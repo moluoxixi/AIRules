@@ -1,0 +1,54 @@
+---
+description: TypeScript 类型规范，包含类型定义位置、命名约定及严格类型要求。
+globs: 
+  - "**/*.ts"
+  - "**/*.tsx"
+  - "**/*.vue"
+alwaysApply: false
+---
+
+# TypeScript 类型规范
+
+## 类型定义位置
+- **文件隔离**：所有 Props、State、接口类型必须放入 `types/` 文件夹
+- **禁止内联**：禁止在组件文件顶部直接声明超过 5 行的类型定义
+
+## 类型文件命名
+- 模块类型：`[ModuleName].types.ts`
+- Props 类型：`props.ts`
+- API 参数：`api-params.ts`
+- 数据模型：`models.ts`
+
+## 类型命名约定
+| 类型用途 | 命名格式 | 示例 |
+|----------|----------|------|
+| 组件 Props | `[ComponentName]PropsType` | `UserCardPropsType` |
+| 组件 State | `[ComponentName]StateType` | `ProfileStateType` |
+| 数据模型 | `[EntityName]ModelType` | `UserModelType` |
+| API 响应 | `[Action]ResponseType` | `GetUserResponseType` |
+
+## 严格类型要求
+- **所有函数参数必须有明确类型**
+- **所有函数返回值必须声明类型**
+- 避免使用 `any`，优先使用 `unknown` 或具体类型
+- 导出的函数、类、接口必须完整类型标注
+
+## 类型检查清单（必须执行）
+每次编写 TypeScript 代码后，必须检查：
+1. ✅ 所有函数参数是否已标注类型
+2. ✅ 所有函数返回值是否已标注类型
+3. ✅ 是否使用了 `any`（必须替换为具体类型或 `unknown`）
+4. ✅ 类型定义是否已放入 `types/` 目录
+5. ✅ 是否有多处使用相同类型定义（应提取为公共类型）
+
+```typescript
+// ✅ 正确
+function getUserById(id: string): Promise<UserModelType> {
+  // ...
+}
+
+// ❌ 错误 - 缺少类型
+function getUserById(id): any {
+  // ...
+}
+```

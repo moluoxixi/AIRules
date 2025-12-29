@@ -1,0 +1,51 @@
+---
+description: 命名约定规范，包含组件、变量、函数的命名规则及代码组织建议。
+globs: 
+  - "**/*.ts"
+  - "**/*.tsx"
+  - "**/*.js"
+  - "**/*.jsx"
+  - "**/*.vue"
+alwaysApply: false
+---
+
+# 命名约定规范
+
+## 组件命名 (PascalCase 大驼峰)
+- **React 组件**：`UserProfile`, `NavigationBar`, `ModalDialog`
+- **Vue 组件**：`UserCard.vue`, `SidebarMenu.vue`
+- **类名**：`UserService`, `DatabaseConnection`
+
+```typescript
+// ✅ 正确
+function UserProfile() { ... }
+export default function NavigationBar() { ... }
+
+// ❌ 错误
+function userProfile() { ... }
+function navigation_bar() { ... }
+```
+
+## 变量与函数命名 (camelCase 小驼峰)
+- **变量**：`userName`, `isLoading`, `itemCount`
+- **函数**：`getUserData`, `handleSubmit`, `formatDate`
+- **常量**：可使用 `UPPER_SNAKE_CASE`，如 `MAX_RETRY_COUNT`
+
+```typescript
+// ✅ 正确
+const userName = 'John';
+function getUserData() { ... }
+
+// ❌ 错误
+const user_name = 'John';
+const GetUserData = () => { ... };
+```
+
+## 代码组织
+- **单一职责**：每个函数/组件只做一件事
+- **适当注释**：复杂逻辑必须添加注释说明意图
+- **导入顺序**：
+  1. 第三方库
+  2. 项目内部模块
+  3. 相对路径导入
+  4. 类型导入

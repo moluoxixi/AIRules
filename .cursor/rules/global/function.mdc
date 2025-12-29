@@ -1,0 +1,49 @@
+---
+description: 函数声明规范，要求优先使用 function 关键字而非箭头函数。
+globs: 
+  - "**/*.ts"
+  - "**/*.tsx"
+  - "**/*.js"
+  - "**/*.jsx"
+alwaysApply: false
+---
+
+# 函数声明规范
+
+## 必须使用 function 关键字
+- **优先使用 function 声明**，而非箭头函数
+- **例外情况**：回调函数、数组方法中的短函数可用箭头函数
+
+```typescript
+// ✅ 正确 - 使用 function 关键字
+function calculateTotal(items) {
+  return items.reduce((sum, item) => sum + item.price, 0);
+}
+
+function handleClick(event) {
+  console.log(event.target);
+}
+
+// 组件内的方法
+function UserList() {
+  function handleItemClick(id) {
+    console.log(id);
+  }
+  
+  return <div onClick={handleItemClick}>...</div>;
+}
+
+// ❌ 错误 - 顶层函数不应使用箭头函数
+const calculateTotal = (items) => {
+  return items.reduce((sum, item) => sum + item.price, 0);
+};
+
+const handleClick = (event) => {
+  console.log(event.target);
+};
+```
+
+## 箭头函数适用场景
+- 数组方法回调：`array.map(item => item.id)`
+- 简短的内联回调：`setTimeout(() => doSomething(), 1000)`
+- 需要保持 `this` 上下文时
