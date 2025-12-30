@@ -162,3 +162,13 @@ alwaysApply: true
 - 匹配 for 循环的格式
 - 匹配 while 循环的格式
 - 匹配数组方法的使用（map, filter, forEach 等）
+
+## 具体代码规范
+
+> **以下规范文件定义了具体的代码规范，会根据文件类型自动应用：**
+> - **JSDoc 注释规范**：`jsdoc.mdc` - 适用于 `.ts`, `.tsx`, `.js`, `.jsx`, `.vue` 文件
+> - **命名约定规范**：`naming.mdc` - 适用于 `.ts`, `.tsx`, `.js`, `.jsx`, `.vue` 文件
+> - **TypeScript 类型规范**：`typescript.mdc` - 适用于 `.ts`, `.tsx`, `.vue` 文件
+> - **函数声明规范**：`function.mdc` - 适用于 `.ts`, `.tsx`, `.js`, `.jsx` 文件
+
+在分析代码风格时，应参考这些规范文件中的具体规则，确保新代码符合项目规范。
