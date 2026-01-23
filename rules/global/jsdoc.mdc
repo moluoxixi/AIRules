@@ -54,6 +54,10 @@ function add(a, b) {
 
 ## 核心要求
 
+### 适用范围分级
+- **必须写**：公共 API、导出组件/类型、复杂业务逻辑、对外暴露的工具/Hook/Composable
+- **可酌情省略**：文件内局部且简单的小函数/小型回调，前提是命名自说明且复杂度低；若逻辑变复杂需补全 JSDoc
+
 ### 必须包含 JSDoc 注释的元素
 - 所有导出的函数（包括 public、private、protected）
 - 所有类及其方法
@@ -63,6 +67,7 @@ function add(a, b) {
 - 所有自定义 Hooks/Composables
 
 ### JSDoc 注释检查清单
+- ✅ 公共/导出项是否已覆盖 JSDoc，局部简单函数是否无需额外注释即可读懂
 - ✅ 所有函数是否包含 `@description` 或描述文本
 - ✅ 所有函数参数是否包含 `@param` 标签
 - ✅ 所有函数返回值是否包含 `@returns` 标签

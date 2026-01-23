@@ -3,7 +3,10 @@ description: React 18+ 开发规范，包含 Hooks 规范、TS 类型隔离及�
 globs:
   - "**/*.tsx"
   - "**/*.jsx"
-  - "components/**/*"
+  - "src/components/**/*.tsx"
+  - "src/components/**/*.jsx"
+  - "src/hooks/**/*.ts"
+  - "src/hooks/**/*.tsx"
 alwaysApply: false
 ---
 

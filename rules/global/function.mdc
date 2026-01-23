@@ -10,9 +10,9 @@ alwaysApply: false
 
 # 函数声明规范
 
-## 必须使用 function 关键字
-- **优先使用 function 声明**，而非箭头函数
-- **例外情况**：回调函数、数组方法中的短函数可用箭头函数
+## 函数声明选择
+- **语义优先**：需要命名、提升或依赖 `this` 语义时优先使用 function 声明
+- **风格匹配**：组件（React/Vue/Next）及简短回调可使用箭头函数，保持与现有代码风格一致；若文件已大量使用箭头函数，优先延续现有风格，避免混用
 
 ```typescript
 // ✅ 正确 - 使用 function 关键字
@@ -33,13 +33,9 @@ function UserList() {
   return <div onClick={handleItemClick}>...</div>;
 }
 
-// ❌ 错误 - 顶层函数不应使用箭头函数
+// ✅ 顶层业务函数可根据代码库风格使用箭头或 function，需保持一致性
 const calculateTotal = (items) => {
   return items.reduce((sum, item) => sum + item.price, 0);
-};
-
-const handleClick = (event) => {
-  console.log(event.target);
 };
 ```
 
