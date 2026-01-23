@@ -1,9 +1,13 @@
 ---
 description: 适用于 Electron 项目，关注主进程、渲染进程、Preload 安全性及跨进程通信类型。
 globs: 
-  - "**/*.ts"
-  - "**/*.tsx"
-  - "**/*.vue"
+  - "src/main/**/*.ts"
+  - "src/preload/**/*.ts"
+  - "src/renderer/**/*.ts"
+  - "src/renderer/**/*.tsx"
+  - "src/renderer/**/*.vue"
+  - "electron/**/*.ts"
+  - "**/ipc/**/*.ts"
 alwaysApply: false
 ---
 

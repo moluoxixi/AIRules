@@ -1,5 +1,7 @@
 ---
 description: AI 行为约束规则，严格控制 AI 的响应方式和代码修改行为
+globs:
+  - "**/*"
 alwaysApply: true
 ---
 
@@ -76,21 +78,21 @@ alwaysApply: true
 
 ### 检查结果处理
 - **如果不符合规则**：
-  - 重大或多项待处理问题使用 `todo_write` 创建 todoList，逐项列出文件与问题
+  - **Agent 模式**：重大或多项待处理问题使用 `todo_write` 创建 todoList，逐项列出文件与问题
+  - **Ask/Edit 模式**：在响应中列出所有问题供用户参考
   - 少量且易于立即修复的问题可直接修复或在响应中说明
   
 - **如果符合规则**：
   - 在响应中明确告知用户已通过规则检查
 
 ### 检查方法
-- 使用 `read_file` 工具读取修改后的文件
-- 使用 `read_lints` 工具检查 lint 错误
+- **Agent 模式**：使用 `read_file`、`read_lints`、`grep`、`codebase_search` 等工具进行自动检查
+- **Ask/Edit 模式**：提示用户手动执行检查或运行 lint 命令
 - 逐项对照规则文件进行检查
-- 对于复杂检查，可以使用 `grep` 或 `codebase_search` 工具辅助
 
 ### 强制要求
 - **不得跳过规则检查**：即使代码看起来正确，也应完成必要的检查
-- **必须创建 todoList**：发现不符合规则的问题时，使用 `todo_write` 工具
+- **记录问题**：Agent 模式下使用 `todo_write` 创建 todoList；其他模式在响应中列出
 - **必须明确告知结果**：无论是否符合规则，都应明确告知用户检查结果
 
 ## 响应语言

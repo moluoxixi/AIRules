@@ -1,5 +1,7 @@
 ---
 description: 代码质量标准和检查清单，包含 SOLID/DRY/KISS 原则及强制执行的质量检查
+globs:
+  - "**/*"
 alwaysApply: true
 ---
 
@@ -182,5 +184,7 @@ function sendEmailToUser(userId: string): Promise<void> {
 
 ## 检查结果处理
 
-- **发现问题**：使用 `todo_write` 创建 todoList，列出所有问题
+- **发现问题**：
+  - **Agent 模式**：使用 `todo_write` 创建 todoList，列出所有问题
+  - **Ask/Edit 模式**：在响应中列出所有问题供用户参考
 - **无问题**：告知用户 "代码已通过规则检查，符合所有规范要求"

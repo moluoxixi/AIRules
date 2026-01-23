@@ -1,5 +1,7 @@
 ---
 description: 代码风格一致性规范，确保新代码遵循项目已建立的风格和约定
+globs:
+  - "**/*"
 alwaysApply: true
 ---
 

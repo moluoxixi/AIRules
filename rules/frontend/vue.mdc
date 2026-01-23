@@ -29,12 +29,13 @@ alwaysApply: false
 - 遵循项目当前使用的状态管理、路由和编译配置，不强制引入 Pinia、typed router 或额外 tsconfig 调整；如需变更先确认团队约定
 
 ## 状态管理
-- 使用 Pinia 进行状态管理
-- 保持 stores 模块化
-- 使用适当的状态组合
-- 实现适当的 actions
-- 使用适当的 getters
-- 正确处理异步状态
+- **优先遵循项目现有的状态管理方案**（Vuex/Pinia/其他）
+- 如项目使用 Pinia，推荐以下最佳实践：
+  - 保持 stores 模块化
+  - 使用适当的状态组合
+  - 实现适当的 actions
+  - 使用适当的 getters
+  - 正确处理异步状态
 
 ## 性能优化
 - 使用适当的组件懒加载
