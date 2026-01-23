@@ -29,3 +29,4 @@ alwaysApply: false
   3. 删除未使用的导入、变量、函数、IPC 监听器
   4. 运行 ESLint 检查并修复所有错误
   5. 确保所有 IPC 通道、Payload 都有完整的类型标注
+  
