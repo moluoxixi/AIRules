@@ -50,6 +50,36 @@ const modelValue = defineModel<string>({ required: true });
 </template>
 ```
 
+## Template 中 Props 引用
+
+为保障代码可读性和明确数据来源，template 中必须显式使用 `props.xxx` 前缀。
+
+```vue
+<script setup lang="ts">
+// ✅ 必须将 defineProps 返回值赋给 props 变量
+const props = withDefaults(defineProps<ButtonProps>(), {
+  variant: 'primary',
+});
+</script>
+
+<template>
+  <!-- ✅ 使用 props.xxx 明确标注 -->
+  <button :class="props.variant" :disabled="props.disabled">
+    {{ props.label }}
+  </button>
+
+  <!-- ❌ 直接使用变量名（不推荐） -->
+  <button :class="variant" :disabled="disabled">
+    {{ label }}
+  </button>
+</template>
+```
+
+**优点：**
+- 清晰区分 props、响应式数据、方法等不同来源
+- 代码审查时一目了然哪些是外部传入的数据
+- 避免与局部变量命名冲突
+
 ## 禁止模式
 
 ```typescript
@@ -57,4 +87,7 @@ const modelValue = defineModel<string>({ required: true });
 defineProps({
   variant: { type: String, default: 'primary' }
 })
+
+// ❌ 不保存 defineProps 返回值
+withDefaults(defineProps<Props>(), { ... })
 ```
