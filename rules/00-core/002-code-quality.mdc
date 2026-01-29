@@ -1,0 +1,49 @@
+---
+description: 代码质量标准 - SOLID/DRY/KISS 原则
+alwaysApply: true
+---
+
+# 代码质量标准
+
+## 设计原则
+
+| 原则 | 说明 |
+|------|------|
+| SRP | 每个函数/类只做一件事 |
+| OCP | 对扩展开放，对修改关闭 |
+| DRY | 不重复代码，提取公共逻辑 |
+| KISS | 保持简单，避免过度设计 |
+| YAGNI | 不实现当前不需要的功能 |
+
+## 代码规范
+
+### 早期返回
+
+```typescript
+// ✅ 正确
+function process(user: User | null): Result {
+  if (!user) return { error: 'Not found' };
+  if (!user.isActive) return { error: 'Inactive' };
+  return { data: user.process() };
+}
+```
+
+### 函数长度
+
+| 类型 | 最大行数 |
+|------|---------|
+| 函数 | 30-50 行 |
+| 组件 | 150-200 行 |
+
+### 常量提取
+
+- 魔法数字必须提取为常量
+- 3+ 处使用的值提取为全局常量
+
+## 质量检查
+
+完成代码修改后检查：
+1. 类型完整（无 any）
+2. 无未使用的导入/变量
+3. 公共 API 有 JSDoc
+4. 边界情况已处理

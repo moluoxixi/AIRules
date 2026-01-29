@@ -1,0 +1,60 @@
+---
+description: Vue 3 Props 和 Emits - 类型安全定义
+globs:
+  - "**/*.vue"
+---
+
+# Props 和 Emits 规范
+
+## Props 定义
+
+```typescript
+// ✅ 使用 interface 定义
+interface ButtonProps {
+  /** 按钮变体 */
+  variant?: 'primary' | 'secondary' | 'danger';
+  /** 是否禁用 */
+  disabled?: boolean;
+}
+
+// ✅ 使用 withDefaults 设置默认值
+const props = withDefaults(defineProps<ButtonProps>(), {
+  variant: 'primary',
+  disabled: false,
+});
+```
+
+## Emits 定义
+
+```typescript
+// ✅ 类型安全的 Emits
+const emit = defineEmits<{
+  click: [event: MouseEvent];
+  'update:modelValue': [value: string];
+}>();
+
+// 使用
+emit('click', event);
+```
+
+## v-model 实现
+
+```vue
+<script setup lang="ts">
+// Vue 3.4+ 使用 defineModel
+const modelValue = defineModel<string>({ required: true });
+</script>
+
+<template>
+  <input v-model="modelValue" />
+</template>
+```
+
+## 禁止模式
+
+```typescript
+// ❌ 运行时定义（不推荐）
+defineProps({
+  variant: { type: String, default: 'primary' }
+})
+```

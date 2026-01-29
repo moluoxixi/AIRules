@@ -1,0 +1,64 @@
+---
+description: UI 测试规范 - 使用 Playwright MCP 验证效果
+globs:
+  - "**/*.vue"
+  - "**/*.tsx"
+  - "**/*.jsx"
+---
+
+# UI 测试规范
+
+> **核心要求：涉及 UI 的改动必须使用 Playwright MCP 验证效果**
+
+## 强制要求
+
+| 场景 | 要求 |
+|------|------|
+| 新建组件 | ✅ 必须用 Playwright 截图验证 |
+| 修改组件样式 | ✅ 必须验证改动效果 |
+| 修改布局 | ✅ 必须验证页面渲染 |
+| 修复 UI Bug | ✅ 必须验证修复效果 |
+
+## 测试流程
+
+```
+开发/修改 UI → 启动本地服务 → Playwright 访问页面 → 截图验证 → 确认效果
+```
+
+## Playwright MCP 使用
+
+### 1. 导航到页面
+
+```
+使用 mcp_playwright_browser_navigate 访问本地开发服务器
+URL: http://localhost:5173/your-page
+```
+
+### 2. 获取页面快照
+
+```
+使用 mcp_playwright_browser_snapshot 获取页面结构
+用于验证元素是否正确渲染
+```
+
+### 3. 截图验证
+
+```
+使用 mcp_playwright_browser_take_screenshot 截图
+验证视觉效果是否符合预期
+```
+
+### 4. 交互测试
+
+```
+使用 mcp_playwright_browser_click 测试点击
+使用 mcp_playwright_browser_type 测试输入
+使用 mcp_playwright_browser_fill_form 测试表单
+```
+
+## 验证检查清单
+
+- [ ] 组件在页面上正确渲染
+- [ ] 样式符合设计稿/预期
+- [ ] 交互功能正常
+- [ ] 无控制台错误

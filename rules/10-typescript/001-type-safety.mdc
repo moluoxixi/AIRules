@@ -1,0 +1,55 @@
+---
+description: TypeScript 类型安全 - 禁止 any，强制类型声明
+globs:
+  - "**/*.ts"
+  - "**/*.tsx"
+  - "**/*.vue"
+---
+
+# TypeScript 类型安全
+
+## 强制要求
+
+| 规则 | 说明 |
+|------|------|
+| 禁止 any | 使用 `unknown` 或具体类型 |
+| 函数参数类型 | 所有参数必须声明类型 |
+| 函数返回类型 | 所有函数必须声明返回类型 |
+| 严格模式 | `tsconfig: "strict": true` |
+
+## 示例
+
+```typescript
+// ❌ 禁止
+function parse(data: any): any { return data; }
+
+// ✅ 正确
+function parse<T>(data: unknown): T {
+  if (typeof data !== 'object') throw new Error('Invalid');
+  return data as T;
+}
+
+// ✅ 完整类型声明
+async function fetchUser(id: string): Promise<User> {
+  return await api.get(`/users/${id}`);
+}
+```
+
+## 类型守卫
+
+```typescript
+function isUser(value: unknown): value is User {
+  return typeof value === 'object' && value !== null && 'id' in value;
+}
+```
+
+## 空值处理
+
+```typescript
+// ✅ 使用可选链和空值合并
+const name = user?.profile?.name ?? 'Anonymous';
+
+// ✅ 类型收窄
+if (user === null) return;
+console.log(user.name); // user 不为 null
+```

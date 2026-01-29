@@ -1,0 +1,53 @@
+---
+description: TypeScript 泛型 - 泛型函数和接口
+globs:
+  - "**/*.ts"
+  - "**/*.tsx"
+---
+
+# 泛型使用规范
+
+## 泛型函数
+
+```typescript
+// 基础泛型
+function first<T>(array: T[]): T | undefined {
+  return array[0];
+}
+
+// 泛型约束
+function getProperty<T, K extends keyof T>(obj: T, key: K): T[K] {
+  return obj[key];
+}
+
+// 默认泛型参数
+function createContainer<T = string>(value: T): { value: T } {
+  return { value };
+}
+```
+
+## 泛型接口
+
+```typescript
+// API 响应
+interface ApiResponse<T> {
+  success: boolean;
+  data: T;
+  message?: string;
+}
+
+// Repository 模式
+interface Repository<T, ID = string> {
+  findById(id: ID): Promise<T | null>;
+  create(data: Omit<T, 'id'>): Promise<T>;
+  update(id: ID, data: Partial<T>): Promise<T>;
+  delete(id: ID): Promise<void>;
+}
+```
+
+## 条件类型
+
+```typescript
+type ExtractArray<T> = T extends Array<infer U> ? U : never;
+type Awaited<T> = T extends Promise<infer U> ? U : T;
+```

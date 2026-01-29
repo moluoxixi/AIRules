@@ -1,0 +1,48 @@
+---
+description: 命名约定规范
+globs:
+  - "**/*.ts"
+  - "**/*.tsx"
+  - "**/*.vue"
+---
+
+# 命名约定
+
+## 命名格式
+
+| 类型 | 格式 | 示例 |
+|------|------|------|
+| 变量/函数 | camelCase | `getUserName` |
+| 类/组件 | PascalCase | `UserProfile` |
+| 常量 | UPPER_SNAKE | `MAX_RETRY` |
+| 文件（组件） | PascalCase | `UserCard.vue` |
+| 文件（工具） | camelCase | `formatDate.ts` |
+| CSS 类 | kebab-case | `user-card` |
+
+## 语义化命名
+
+```typescript
+// ✅ 清晰描述
+const isLoading = true;
+const hasPermission = false;
+const canEdit = true;
+const userList = [];
+
+function fetchUserById(id: string): Promise<User> {}
+function validateEmail(email: string): boolean {}
+
+// ❌ 模糊命名
+const flag = true;
+const data = [];
+function process() {}
+```
+
+## 前缀约定
+
+| 前缀 | 用途 | 示例 |
+|------|------|------|
+| `is/has/can/should` | 布尔值 | `isActive` |
+| `get/fetch` | 获取数据 | `fetchUser` |
+| `set/update` | 设置数据 | `setUser` |
+| `handle/on` | 事件处理 | `handleClick` |
+| `use` | Hook/Composable | `useAuth` |

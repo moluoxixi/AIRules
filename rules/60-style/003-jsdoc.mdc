@@ -1,0 +1,111 @@
+---
+description: 注释规范 - 注释必须丰富完整
+globs:
+  - "**/*.ts"
+  - "**/*.tsx"
+  - "**/*.vue"
+---
+
+# 注释规范
+
+> **核心要求：代码注释必须丰富，让人一看就懂**
+
+## 强制要求
+
+| 场景 | 要求 |
+|------|------|
+| 所有函数/方法 | ✅ 必须有 JSDoc |
+| 所有接口/类型 | ✅ 必须有说明 |
+| 复杂逻辑 | ✅ 必须有行内注释 |
+| 业务规则 | ✅ 必须说明为什么 |
+| 魔法数字 | ✅ 必须说明含义 |
+
+## 函数注释
+
+```typescript
+/**
+ * 计算订单总金额（含税、折扣）
+ *
+ * @param items - 购物车商品列表
+ * @param discount - 折扣比例，0-1 之间
+ * @param taxRate - 税率，默认 0.13
+ * @returns 订单总金额，单位：分
+ * @throws {ValidationError} 商品列表为空时抛出
+ */
+function calculateTotal(
+  items: CartItem[],
+  discount: number,
+  taxRate = 0.13
+): number {
+  // 参数校验
+  if (items.length === 0) {
+    throw new ValidationError('商品列表不能为空');
+  }
+
+  // 计算商品小计
+  const subtotal = items.reduce((sum, item) => {
+    return sum + item.price * item.quantity;
+  }, 0);
+
+  // 应用折扣（折扣在税前）
+  const discountedPrice = subtotal * (1 - discount);
+
+  // 计算税费并返回总额
+  return Math.round(discountedPrice * (1 + taxRate));
+}
+```
+
+## 接口注释
+
+```typescript
+/**
+ * 用户信息
+ */
+interface User {
+  /** 用户唯一标识，UUID 格式 */
+  id: string;
+
+  /** 用户邮箱，用于登录和通知，全局唯一 */
+  email: string;
+
+  /**
+   * 账户状态
+   * - active: 正常使用
+   * - suspended: 被封禁
+   * - pending: 待激活
+   */
+  status: 'active' | 'suspended' | 'pending';
+}
+```
+
+## Vue 组件注释
+
+```vue
+<script setup lang="ts">
+/**
+ * 用户卡片组件
+ *
+ * 展示用户头像、姓名、状态等基本信息
+ */
+
+// ========== Props ==========
+interface Props {
+  /** 用户数据 */
+  user: User;
+  /** 是否显示操作按钮，默认 true */
+  showActions?: boolean;
+}
+
+// ========== 状态 ==========
+/** 是否显示确认删除对话框 */
+const showDeleteConfirm = ref(false);
+
+// ========== 方法 ==========
+/**
+ * 处理删除确认
+ */
+function handleDelete(): void {
+  showDeleteConfirm.value = true;
+}
+</script>
+```

@@ -1,0 +1,58 @@
+---
+description: RESTful API 设计规范
+globs:
+  - "src/api/**/*"
+  - "**/*.controller.ts"
+  - "**/*.route.ts"
+---
+
+# RESTful API 设计
+
+## URL 规范
+
+| 规则 | 示例 |
+|------|------|
+| 使用名词复数 | `/users`, `/orders` |
+| 小写字母 | `/user-profiles` |
+| 避免动词 | ❌ `/getUsers` |
+
+```
+GET    /users          # 列表
+POST   /users          # 创建
+GET    /users/:id      # 详情
+PUT    /users/:id      # 全量更新
+PATCH  /users/:id      # 部分更新
+DELETE /users/:id      # 删除
+```
+
+## 响应格式
+
+```typescript
+// 成功响应
+interface SuccessResponse<T> {
+  success: true;
+  data: T;
+  message?: string;
+}
+
+// 错误响应
+interface ErrorResponse {
+  success: false;
+  error: {
+    code: string;
+    message: string;
+    details?: unknown;
+  };
+}
+```
+
+## HTTP 状态码
+
+| 场景 | 状态码 |
+|------|--------|
+| 成功 | 200/201 |
+| 参数错误 | 400 |
+| 未认证 | 401 |
+| 无权限 | 403 |
+| 未找到 | 404 |
+| 服务器错误 | 500 |

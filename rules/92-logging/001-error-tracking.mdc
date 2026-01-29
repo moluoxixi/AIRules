@@ -1,0 +1,57 @@
+---
+description: 错误追踪和日志规范
+globs:
+  - "**/*.ts"
+  - "**/*.tsx"
+  - "**/*.vue"
+---
+
+# 错误追踪和日志规范
+
+## 日志级别
+
+| 级别 | 用途 |
+|------|------|
+| `debug` | 开发调试 |
+| `info` | 业务事件 |
+| `warn` | 潜在问题 |
+| `error` | 错误异常 |
+
+## 结构化日志
+
+```typescript
+// ✅ 结构化日志
+logger.info('User logged in', {
+  action: 'login',
+  userId: user.id,
+  method: 'oauth',
+});
+
+// ✅ 错误日志
+logger.error('Failed to create order', {
+  action: 'createOrder',
+  errorCode: error.code,
+  errorMessage: error.message,
+  // ❌ 不要记录敏感数据
+});
+```
+
+## Vue 全局错误处理
+
+```typescript
+// main.ts
+app.config.errorHandler = (err, instance, info) => {
+  logger.error('Vue error', {
+    error: err.message,
+    component: instance?.$options.name,
+    info,
+  });
+};
+
+// 未捕获的 Promise 错误
+window.addEventListener('unhandledrejection', (event) => {
+  logger.error('Unhandled promise rejection', {
+    reason: event.reason?.message || String(event.reason),
+  });
+});
+```

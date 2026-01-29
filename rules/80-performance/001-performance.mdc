@@ -1,0 +1,67 @@
+---
+description: 性能优化规范
+globs:
+  - "**/*.ts"
+  - "**/*.tsx"
+  - "**/*.vue"
+---
+
+# 性能优化
+
+## 前端优化
+
+### 组件懒加载
+
+```typescript
+// 路由懒加载
+const routes = [
+  { path: '/dashboard', component: () => import('./Dashboard.vue') },
+];
+
+// 组件懒加载
+const HeavyComponent = defineAsyncComponent(() =>
+  import('./HeavyComponent.vue')
+);
+```
+
+### 列表优化
+
+```vue
+<!-- ✅ 使用稳定的 key -->
+<div v-for="item in items" :key="item.id">
+
+<!-- ✅ 虚拟滚动（大列表） -->
+<VirtualList :items="largeList" :item-height="50" />
+```
+
+### 计算缓存
+
+```typescript
+// ✅ 使用 computed（有缓存）
+const total = computed(() => items.value.reduce((a, b) => a + b, 0));
+
+// ✅ 使用 useMemo（React）
+const sorted = useMemo(() => items.sort(), [items]);
+```
+
+## 后端优化
+
+### 数据库
+
+```typescript
+// ✅ 只查需要的字段
+await db.user.findMany({ select: { id: true, name: true } });
+
+// ✅ 使用分页
+await db.user.findMany({ skip: 0, take: 20 });
+
+// ✅ 避免 N+1
+await db.user.findMany({ include: { posts: true } });
+```
+
+### 缓存
+
+```typescript
+// ✅ 缓存热点数据
+const user = await cache.get(`user:${id}`) ?? await fetchAndCache(id);
+```

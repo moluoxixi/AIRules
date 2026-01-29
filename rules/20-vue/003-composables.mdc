@@ -1,0 +1,59 @@
+---
+description: Vue 3 Composables - 可组合函数规范
+globs:
+  - "src/composables/**/*"
+  - "**/*.vue"
+---
+
+# Composables 规范
+
+## 命名和结构
+
+```typescript
+// composables/useCounter.ts
+import { ref, computed } from 'vue';
+import type { Ref, ComputedRef } from 'vue';
+
+interface UseCounterReturn {
+  count: Ref<number>;
+  doubleCount: ComputedRef<number>;
+  increment: () => void;
+  reset: () => void;
+}
+
+/**
+ * 计数器 Composable
+ */
+export function useCounter(initialValue = 0): UseCounterReturn {
+  const count = ref(initialValue);
+  const doubleCount = computed(() => count.value * 2);
+
+  function increment(): void {
+    count.value++;
+  }
+
+  function reset(): void {
+    count.value = initialValue;
+  }
+
+  return { count, doubleCount, increment, reset };
+}
+```
+
+## 命名约定
+
+- 文件名：`use[Feature].ts`
+- 函数名：`use[Feature]`
+- 返回类型：`Use[Feature]Return`
+
+## 使用规则
+
+```vue
+<script setup lang="ts">
+// ✅ 在 setup 顶层调用
+const { count, increment } = useCounter(10);
+
+// ❌ 不要在条件/循环中调用
+// if (condition) { useCounter(); }
+</script>
+```

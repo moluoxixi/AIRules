@@ -1,0 +1,63 @@
+---
+description: 单元测试规范 - AAA 模式和 Mock
+globs:
+  - "**/*.test.ts"
+  - "**/*.spec.ts"
+  - "**/__tests__/**/*"
+---
+
+# 单元测试规范
+
+## AAA 模式
+
+```typescript
+describe('calculateTotal', () => {
+  it('should calculate total with discount', () => {
+    // Arrange - 准备
+    const items = [{ price: 100, quantity: 2 }];
+    const discount = 0.1;
+
+    // Act - 执行
+    const result = calculateTotal(items, discount);
+
+    // Assert - 断言
+    expect(result).toBe(180);
+  });
+});
+```
+
+## Mock 使用 (Vitest)
+
+```typescript
+import { vi, describe, it, expect, beforeEach } from 'vitest';
+import type { Mock } from 'vitest';
+
+interface MockUserRepository {
+  findById: Mock;
+  create: Mock;
+}
+
+describe('UserService', () => {
+  let mockRepository: MockUserRepository;
+
+  beforeEach(() => {
+    mockRepository = {
+      findById: vi.fn(),
+      create: vi.fn(),
+    };
+  });
+
+  it('should return user when found', async () => {
+    mockRepository.findById.mockResolvedValue({ id: '1', name: 'John' });
+    
+    const result = await service.findById('1');
+    
+    expect(result).toEqual({ id: '1', name: 'John' });
+  });
+});
+```
+
+## 命名规范
+
+- 文件：`*.test.ts` 或 `*.spec.ts`
+- 描述：`should_[行为]_when_[条件]`

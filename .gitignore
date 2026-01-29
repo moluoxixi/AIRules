@@ -1,32 +1,37 @@
-# 测试产物
-# 依赖
-node_modules
+# 依赖(可选)
+*-lock.*
+
+# Logs
+logs
 *.log
-npm-debug.log*
-yarn-debug.log*
-yarn-error.log*
-pnpm-debug.log*
+*.log*
 
-# 构建产物
+# outs
+node_modules
 dist
+*.zip
 *.local
-*.tsbuildinfo
-
-# 文档
-docs
-
-# IDE
-.vscode
-.idea
-*.swp
-*.swo
-*~
-
-# OS
 .DS_Store
+
+# Editor directories and files
+.idea
+*.suo
+*.ntvs*
+*.njsproj
+*.sln
+*.sw?
+
+# 系统文件
 Thumbs.db
 
-# 临时文件
-*.tmp
-.cache
+# 测试覆盖率
+coverage
 
+# 环境变量
+.env.local
+.env.*.local
+
+# 缓存
+.cache
+.temp
+*.tsbuildinfo

@@ -1,0 +1,54 @@
+---
+description: React 状态管理 - useState/useReducer/Zustand
+globs:
+  - "**/*.tsx"
+  - "src/stores/**/*"
+---
+
+# React 状态管理
+
+## 状态选择
+
+| 场景 | 方案 |
+|------|------|
+| 组件内简单状态 | `useState` |
+| 组件内复杂状态 | `useReducer` |
+| 跨组件共享 | Zustand / Context |
+| 服务端状态 | React Query |
+
+## useState
+
+```tsx
+// ✅ 类型推断
+const [count, setCount] = useState(0);
+
+// ✅ 显式类型
+const [user, setUser] = useState<User | null>(null);
+
+// ✅ 函数式更新
+setCount(prev => prev + 1);
+```
+
+## Zustand Store
+
+```typescript
+import { create } from 'zustand';
+
+interface UserStore {
+  user: User | null;
+  isLoading: boolean;
+  login: (email: string, password: string) => Promise<void>;
+  logout: () => void;
+}
+
+export const useUserStore = create<UserStore>((set) => ({
+  user: null,
+  isLoading: false,
+  login: async (email, password) => {
+    set({ isLoading: true });
+    const user = await api.login(email, password);
+    set({ user, isLoading: false });
+  },
+  logout: () => set({ user: null }),
+}));
+```

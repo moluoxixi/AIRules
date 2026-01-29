@@ -1,0 +1,57 @@
+---
+description: Git 提交规范 - Conventional Commits
+globs:
+  - "**/*"
+---
+
+# Git 提交规范
+
+## Commit 格式
+
+```
+<type>(<scope>): <subject>
+
+<body>
+
+<footer>
+```
+
+## Type 类型
+
+| 类型 | 说明 |
+|------|------|
+| `feat` | 新功能 |
+| `fix` | Bug 修复 |
+| `docs` | 文档更新 |
+| `style` | 代码格式（不影响逻辑） |
+| `refactor` | 重构 |
+| `perf` | 性能优化 |
+| `test` | 测试相关 |
+| `chore` | 构建/工具变更 |
+
+## 示例
+
+```
+feat(auth): add login with OAuth2
+
+- Add Google OAuth2 integration
+- Add JWT token refresh mechanism
+
+Closes #123
+```
+
+```
+fix(cart): correct total calculation with discount
+
+The discount was applied after tax instead of before.
+
+Fixes #456
+```
+
+## 分支命名
+
+| 类型 | 格式 |
+|------|------|
+| 功能 | `feature/xxx` |
+| 修复 | `fix/xxx` |
+| 热修复 | `hotfix/xxx` |

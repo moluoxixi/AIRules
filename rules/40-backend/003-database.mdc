@@ -1,0 +1,55 @@
+---
+description: 数据库设计和查询规范
+globs:
+  - "**/*.sql"
+  - "src/models/**/*"
+  - "src/repositories/**/*"
+---
+
+# 数据库规范
+
+## 命名约定
+
+| 类型 | 格式 | 示例 |
+|------|------|------|
+| 表名 | snake_case 复数 | `users`, `order_items` |
+| 列名 | snake_case | `created_at`, `user_id` |
+| 主键 | `id` | `id` |
+| 外键 | `{table}_id` | `user_id` |
+
+## 必须字段
+
+```sql
+CREATE TABLE users (
+  id         UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  created_at TIMESTAMP NOT NULL DEFAULT NOW(),
+  updated_at TIMESTAMP NOT NULL DEFAULT NOW(),
+  -- 业务字段
+);
+```
+
+## 查询优化
+
+```typescript
+// ✅ 使用索引字段查询
+await db.user.findMany({ where: { email } });
+
+// ✅ 只查询需要的字段
+await db.user.findMany({ select: { id: true, name: true } });
+
+// ✅ 分页查询
+await db.user.findMany({ skip: 0, take: 20 });
+
+// ❌ 避免 SELECT *
+// ❌ 避免 N+1 查询
+```
+
+## 事务处理
+
+```typescript
+await db.$transaction(async (tx) => {
+  const order = await tx.order.create({ data });
+  await tx.inventory.update({ where: { id }, data: { stock: { decrement: 1 } } });
+  return order;
+});
+```

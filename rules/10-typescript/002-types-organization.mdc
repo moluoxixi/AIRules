@@ -1,0 +1,48 @@
+---
+description: TypeScript 类型组织 - 类型定义位置和命名
+globs:
+  - "**/*.ts"
+  - "**/*.tsx"
+  - "src/types/**/*"
+---
+
+# 类型组织规范
+
+## 类型位置
+
+| 场景 | 位置 |
+|------|------|
+| 跨模块复用 | `types/` 目录 |
+| 组件私有 | 组件文件内部 |
+| API 类型 | `types/api.types.ts` |
+
+## 命名约定
+
+| 用途 | 格式 | 示例 |
+|------|------|------|
+| Props | `[Component]Props` | `ButtonProps` |
+| DTO | `[Action][Entity]Dto` | `CreateUserDto` |
+| 响应 | `[Entity]Response` | `UserResponse` |
+| 枚举 | `[Entity][Property]` | `UserStatus` |
+
+## Interface vs Type
+
+```typescript
+// ✅ interface - 对象结构（可扩展）
+interface User {
+  id: string;
+  name: string;
+}
+
+// ✅ type - 联合类型、映射类型
+type Status = 'pending' | 'success' | 'error';
+type Nullable<T> = T | null;
+```
+
+## 工具类型
+
+```typescript
+type UserDTO = Pick<User, 'id' | 'name'>;
+type UserInput = Omit<User, 'id' | 'createdAt'>;
+type PartialUser = Partial<User>;
+```

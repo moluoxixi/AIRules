@@ -1,0 +1,64 @@
+---
+description: 安全编码规范 - OWASP 最佳实践
+globs:
+  - "**/*.ts"
+  - "**/*.tsx"
+  - "**/*.vue"
+---
+
+# 安全编码规范
+
+## 输入验证
+
+```typescript
+// ✅ 验证所有外部输入
+function createUser(data: unknown): User {
+  const validated = userSchema.parse(data); // Zod 验证
+  return repository.create(validated);
+}
+
+// ❌ 直接使用未验证输入
+function createUser(data: any): User {
+  return repository.create(data);
+}
+```
+
+## XSS 防护
+
+```typescript
+// ✅ 使用框架的自动转义
+<div>{{ userInput }}</div>  // Vue 自动转义
+
+// ❌ 直接插入 HTML
+<div v-html="userInput"></div>  // 危险！
+```
+
+## SQL 注入防护
+
+```typescript
+// ✅ 使用参数化查询
+await db.user.findMany({ where: { email } });
+
+// ❌ 拼接 SQL
+await db.$queryRaw(`SELECT * FROM users WHERE email = '${email}'`);
+```
+
+## 敏感信息
+
+| 规则 | 说明 |
+|------|------|
+| 不硬编码密钥 | 使用环境变量 |
+| 不记录敏感信息 | 密码、Token 等 |
+| 不前端存储敏感数据 | 使用 httpOnly Cookie |
+
+## 认证授权
+
+```typescript
+// ✅ 每个请求验证权限
+async function updateUser(id: string, data: UpdateUserDto, user: AuthUser) {
+  if (user.id !== id && !user.isAdmin) {
+    throw new ForbiddenError();
+  }
+  // ...
+}
+```

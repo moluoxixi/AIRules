@@ -1,0 +1,54 @@
+---
+description: React 组件规范 - 函数组件和 TypeScript
+globs:
+  - "**/*.tsx"
+  - "**/*.jsx"
+---
+
+# React 组件规范
+
+## 强制要求
+
+| 规则 | 说明 |
+|------|------|
+| 函数组件 | 禁止类组件 |
+| TypeScript | 使用 `.tsx` 文件 |
+| Props 类型 | 必须定义 interface |
+| 组件 ≤ 200 行 | 复杂逻辑抽离为 hooks |
+
+## 组件结构
+
+```tsx
+interface ButtonProps {
+  /** 按钮变体 */
+  variant?: 'primary' | 'secondary';
+  /** 点击事件 */
+  onClick?: (e: React.MouseEvent) => void;
+  children: React.ReactNode;
+}
+
+export function Button({
+  variant = 'primary',
+  onClick,
+  children,
+}: ButtonProps): JSX.Element {
+  return (
+    <button className={`btn-${variant}`} onClick={onClick}>
+      {children}
+    </button>
+  );
+}
+```
+
+## 禁止模式
+
+```tsx
+// ❌ 类组件
+class Button extends React.Component {}
+
+// ❌ 默认导出匿名函数
+export default function() {}
+
+// ❌ 缺少类型
+function Button(props) {}
+```

@@ -1,0 +1,59 @@
+---
+description: Pinia 状态管理规范
+globs:
+  - "src/stores/**/*"
+  - "**/*.vue"
+---
+
+# Pinia 状态管理
+
+## Store 定义
+
+```typescript
+// stores/user.ts
+import { defineStore } from 'pinia';
+import { ref, computed } from 'vue';
+import type { User } from '@/types';
+
+export const useUserStore = defineStore('user', () => {
+  // State
+  const user = ref<User | null>(null);
+  const isLoading = ref(false);
+
+  // Getters
+  const isAuthenticated = computed(() => user.value !== null);
+
+  // Actions
+  async function login(email: string, password: string): Promise<void> {
+    isLoading.value = true;
+    try {
+      user.value = await userApi.login(email, password);
+    } finally {
+      isLoading.value = false;
+    }
+  }
+
+  function logout(): void {
+    user.value = null;
+  }
+
+  return { user, isLoading, isAuthenticated, login, logout };
+});
+```
+
+## 组件中使用
+
+```vue
+<script setup lang="ts">
+import { useUserStore } from '@/stores/user';
+import { storeToRefs } from 'pinia';
+
+const userStore = useUserStore();
+
+// 解构响应式状态
+const { user, isLoading } = storeToRefs(userStore);
+
+// 直接使用 actions
+await userStore.login(email, password);
+</script>
+```

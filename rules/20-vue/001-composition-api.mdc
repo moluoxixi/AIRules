@@ -1,0 +1,58 @@
+---
+description: Vue 3 Composition API - 强制使用 script setup
+globs:
+  - "**/*.vue"
+---
+
+# Vue 3 Composition API
+
+## 强制要求
+
+| 规则 | 说明 |
+|------|------|
+| 使用 `<script setup lang="ts">` | 禁止 Options API |
+| 组件 ≤ 200 行 | 复杂逻辑抽离为 Composable |
+
+## 组件结构
+
+```vue
+<script setup lang="ts">
+// 1. 导入
+import { ref, computed, onMounted } from 'vue';
+import type { User } from '@/types';
+
+// 2. Props 和 Emits
+const props = defineProps<{ user: User }>();
+const emit = defineEmits<{ save: [user: User] }>();
+
+// 3. 响应式状态
+const isLoading = ref(false);
+
+// 4. 计算属性
+const displayName = computed(() => props.user.name);
+
+// 5. 方法
+function handleSave(): void {
+  emit('save', props.user);
+}
+
+// 6. 生命周期
+onMounted(() => { /* 初始化 */ });
+</script>
+
+<template>
+  <div>{{ displayName }}</div>
+</template>
+```
+
+## 禁止模式
+
+```vue
+<!-- ❌ Options API -->
+<script>
+export default {
+  data() { return {} },
+  methods: {},
+}
+</script>
+```

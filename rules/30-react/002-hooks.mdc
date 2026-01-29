@@ -1,0 +1,54 @@
+---
+description: React Hooks 规范 - 自定义 hooks 和使用规则
+globs:
+  - "**/*.tsx"
+  - "src/hooks/**/*"
+---
+
+# React Hooks 规范
+
+## Hooks 规则
+
+- 只在顶层调用 hooks
+- 只在 React 函数中调用
+- 自定义 hook 以 `use` 开头
+
+## 自定义 Hook
+
+```typescript
+// hooks/useCounter.ts
+import { useState, useCallback } from 'react';
+
+interface UseCounterReturn {
+  count: number;
+  increment: () => void;
+  decrement: () => void;
+  reset: () => void;
+}
+
+export function useCounter(initialValue = 0): UseCounterReturn {
+  const [count, setCount] = useState(initialValue);
+
+  const increment = useCallback(() => setCount(c => c + 1), []);
+  const decrement = useCallback(() => setCount(c => c - 1), []);
+  const reset = useCallback(() => setCount(initialValue), [initialValue]);
+
+  return { count, increment, decrement, reset };
+}
+```
+
+## 常见模式
+
+```tsx
+// useEffect 清理
+useEffect(() => {
+  const subscription = subscribe();
+  return () => subscription.unsubscribe();
+}, []);
+
+// useMemo 缓存计算
+const sorted = useMemo(() => items.sort(), [items]);
+
+// useCallback 缓存函数
+const handleClick = useCallback(() => {}, []);
+```

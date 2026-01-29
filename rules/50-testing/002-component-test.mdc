@@ -1,0 +1,64 @@
+---
+description: 组件测试规范 - Vue/React Testing Library
+globs:
+  - "**/*.test.ts"
+  - "**/*.test.tsx"
+  - "**/*.spec.ts"
+---
+
+# 组件测试规范
+
+## Vue 组件测试
+
+```typescript
+import { mount } from '@vue/test-utils';
+import { describe, it, expect } from 'vitest';
+import LoginForm from './LoginForm.vue';
+
+describe('LoginForm', () => {
+  it('should emit submit with form data', async () => {
+    const wrapper = mount(LoginForm);
+
+    await wrapper.find('input[type="email"]').setValue('test@example.com');
+    await wrapper.find('input[type="password"]').setValue('password');
+    await wrapper.find('form').trigger('submit');
+
+    expect(wrapper.emitted('submit')).toBeTruthy();
+    expect(wrapper.emitted('submit')![0]).toEqual([{
+      email: 'test@example.com',
+      password: 'password',
+    }]);
+  });
+});
+```
+
+## React 组件测试
+
+```tsx
+import { render, screen } from '@testing-library/react';
+import userEvent from '@testing-library/user-event';
+import { describe, it, expect, vi } from 'vitest';
+import { LoginForm } from './LoginForm';
+
+describe('LoginForm', () => {
+  it('should call onSubmit with form data', async () => {
+    const mockSubmit = vi.fn();
+    render(<LoginForm onSubmit={mockSubmit} />);
+
+    await userEvent.type(screen.getByLabelText(/email/i), 'test@example.com');
+    await userEvent.type(screen.getByLabelText(/password/i), 'password');
+    await userEvent.click(screen.getByRole('button', { name: /login/i }));
+
+    expect(mockSubmit).toHaveBeenCalledWith({
+      email: 'test@example.com',
+      password: 'password',
+    });
+  });
+});
+```
+
+## 测试原则
+
+- 测试行为，而非实现
+- 每个测试只测一件事
+- 避免测试框架内置功能

@@ -1,0 +1,62 @@
+---
+description: 国际化 (i18n) 规范 - Vue I18n 最佳实践
+globs:
+  - "**/*.vue"
+  - "**/*.ts"
+  - "src/locales/**/*"
+---
+
+# 国际化 (i18n) 规范
+
+## 核心原则
+
+| 原则 | 说明 |
+|------|------|
+| 文本分离 | 所有用户可见文本放入语言文件 |
+| 键名语义化 | 使用描述性的翻译键 |
+| 支持复数 | 处理单复数形式 |
+
+## 翻译键命名
+
+```typescript
+// ✅ 模块化、语义化的键名
+export default {
+  common: {
+    confirm: '确认',
+    cancel: '取消',
+  },
+  user: {
+    profile: {
+      title: '用户资料',
+      name: '姓名',
+    },
+  },
+};
+
+// ❌ 扁平化、无意义的键名
+export default {
+  text1: '确认',
+  msg: '请输入邮箱',
+};
+```
+
+## Vue 组件使用
+
+```vue
+<script setup lang="ts">
+import { useI18n } from 'vue-i18n';
+
+const { t, n, d } = useI18n();
+</script>
+
+<template>
+  <!-- 基础翻译 -->
+  <h1>{{ t('user.profile.title') }}</h1>
+
+  <!-- 带参数 -->
+  <p>{{ t('message.greeting', { name: user.name }) }}</p>
+
+  <!-- 数字格式化 -->
+  <span>{{ n(1234567.89, 'currency') }}</span>
+</template>
+```

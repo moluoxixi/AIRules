@@ -1,0 +1,49 @@
+---
+description: Vue 3 响应式 - ref/reactive 最佳实践
+globs:
+  - "**/*.vue"
+  - "src/composables/**/*"
+---
+
+# 响应式最佳实践
+
+## ref vs reactive
+
+| 场景 | 推荐 | 原因 |
+|------|------|------|
+| 基本类型 | `ref` | 必须用 ref |
+| 对象/数组 | `ref` | 避免解构丢失响应性 |
+| 大型列表 | `shallowRef` | 性能优化 |
+
+```typescript
+// ✅ 推荐使用 ref
+const user = ref<User | null>(null);
+const items = ref<Item[]>([]);
+
+// ⚠️ reactive 解构会丢失响应性
+const state = reactive({ count: 0 });
+const { count } = state; // ❌ 非响应式
+const { count } = toRefs(state); // ✅ 保持响应性
+```
+
+## 计算属性 vs 方法
+
+```typescript
+// ✅ 计算属性 - 有缓存
+const fullName = computed(() => `${first.value} ${last.value}`);
+
+// ❌ 方法 - 每次调用都执行
+function getFullName(): string {
+  return `${first.value} ${last.value}`;
+}
+```
+
+## 列表渲染
+
+```vue
+<!-- ✅ 使用稳定的唯一 key -->
+<div v-for="item in items" :key="item.id">
+
+<!-- ❌ 避免 index 作为 key -->
+<div v-for="(item, index) in items" :key="index">
+```
