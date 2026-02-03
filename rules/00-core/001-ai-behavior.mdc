@@ -103,6 +103,30 @@ try {
 读取文件 → 理解上下文 → 完整实现 → 验证结果
 ```
 
+## 终端命令规范
+
+### PowerShell 语法（Windows 环境）
+
+```powershell
+# ❌ 禁止：使用 && 连接命令（PowerShell 不支持）
+cd "E:\project" && pnpm install
+
+# ✅ 正确：使用 ; 连接命令
+cd "E:\project"; pnpm install
+
+# ✅ 正确：分开执行
+cd "E:\project"
+pnpm install
+```
+
+| 场景 | 正确写法 |
+|------|----------|
+| 切换目录并执行 | `cd "路径"; 命令` |
+| 多命令顺序执行 | `命令1; 命令2; 命令3` |
+| 条件执行（成功后） | `if ($?) { 命令 }` |
+
+**记住：Windows PowerShell 不支持 `&&` 和 `||` 操作符，必须使用 `;` 分隔命令。**
+
 ## 响应规范
 
 - 默认使用**简体中文**

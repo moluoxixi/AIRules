@@ -12,37 +12,108 @@ globs:
 |------|------|
 | 使用 `<script setup lang="ts">` | 禁止 Options API |
 | 组件 ≤ 200 行 | 复杂逻辑抽离为 Composable |
+| 使用 `defineModel` | v-model 双向绑定首选方案 |
+| 使用 `withDefaults` | Props 默认值统一写法 |
+| 使用 `useTemplateRef` | 模板引用首选方案 |
 
 ## 组件结构
 
 ```vue
 <script setup lang="ts">
 // 1. 导入
-import { ref, computed, onMounted } from 'vue';
+import { computed, onMounted } from 'vue';
 import type { User } from '@/types';
 
-// 2. Props 和 Emits
-const props = defineProps<{ user: User }>();
-const emit = defineEmits<{ save: [user: User] }>();
+// 2. defineOptions（组件名）
+defineOptions({ name: 'UserCard' });
 
-// 3. 响应式状态
+// 3. Props（使用 withDefaults 设置默认值）
+const props = withDefaults(defineProps<{
+  user: User;
+  disabled?: boolean;
+}>(), {
+  disabled: false,
+});
+
+// 4. Emits
+const emit = defineEmits<{
+  save: [user: User];
+  cancel: [];
+}>();
+
+// 5. Model（使用 defineModel 替代 v-model props）
+const visible = defineModel<boolean>({ default: false });
+const inputValue = defineModel<string>('value', { default: '' });
+
+// 6. 模板引用（使用 useTemplateRef）
+const inputRef = useTemplateRef<HTMLInputElement>('inputRef');
+
+// 7. 响应式状态
 const isLoading = ref(false);
 
-// 4. 计算属性
+// 8. 计算属性
 const displayName = computed(() => props.user.name);
 
-// 5. 方法
+// 9. 方法
 function handleSave(): void {
   emit('save', props.user);
 }
 
-// 6. 生命周期
+// 10. 生命周期
 onMounted(() => { /* 初始化 */ });
 </script>
 
 <template>
-  <div>{{ displayName }}</div>
+  <div>
+    <input ref="inputRef" v-model="inputValue" />
+    {{ displayName }}
+  </div>
 </template>
+```
+
+## defineModel 用法
+
+```typescript
+// ✅ 默认 v-model
+const visible = defineModel<boolean>({ default: false });
+
+// ✅ 具名 v-model（如 v-model:value）
+const value = defineModel<string>('value', { default: '' });
+
+// ❌ 禁止：手动实现 v-model
+const props = defineProps<{ modelValue: boolean }>();
+const emit = defineEmits<{ 'update:modelValue': [value: boolean] }>();
+const visible = computed({
+  get: () => props.modelValue,
+  set: val => emit('update:modelValue', val),
+});
+```
+
+## withDefaults 用法
+
+```typescript
+// ✅ 正确：使用 withDefaults
+const props = withDefaults(defineProps<{
+  title: string;
+  count?: number;
+  items?: string[];
+}>(), {
+  count: 0,
+  items: () => [],  // 引用类型使用工厂函数
+});
+
+// ❌ 禁止：在 interface 中定义默认值或使用其他方式
+```
+
+## useTemplateRef 用法
+
+```typescript
+// ✅ 正确：使用 useTemplateRef（Vue 3.5+）
+const inputRef = useTemplateRef<HTMLInputElement>('inputRef');
+const formRef = useTemplateRef<FormInstance>('formRef');
+
+// ⚠️ 兼容写法（Vue 3.4 及以下）
+const inputRef = ref<HTMLInputElement>();
 ```
 
 ## 禁止模式
