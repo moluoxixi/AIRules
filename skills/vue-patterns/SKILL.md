@@ -1,0 +1,27 @@
+---
+name: vue-patterns
+description: Use when building or refactoring Vue 3, Vite, Pinia, or Vue Router applications, including page composition, composables, state boundaries, forms, async data handling, and component structure.
+---
+
+# Vue Patterns
+
+## Focus
+
+- Prefer Composition API for shared logic
+- Keep route-level orchestration in pages
+- Put reusable logic in composables
+- Keep Pinia stores focused on shared state, not page-local UI state
+
+## Workflow
+
+1. Identify the page boundary, route params, and data-loading path.
+2. Separate UI-only state from shared state before adding a store.
+3. Model forms, loading, empty, and error states explicitly.
+4. Keep components presentational when possible.
+
+## Review Checklist
+
+- Does this logic belong in a composable instead of a component?
+- Is Pinia really needed here?
+- Are route guards and async loading states explicit?
+- Can this component be tested through visible behavior?

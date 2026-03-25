@@ -1,0 +1,5 @@
+node_modules/
+_tmp_*/
+.tmp_test_home/
+.DS_Store
+Thumbs.db

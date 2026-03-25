@@ -1,0 +1,87 @@
+{
+  "version": 1,
+  "vendors": {
+    "superpowers": {
+      "repo": "https://github.com/obra/superpowers.git",
+      "cloneDir": "vendors/superpowers",
+      "links": [
+        {
+          "source": "skills",
+          "target": "skills/superpowers"
+        }
+      ]
+    },
+    "anthropicSkills": {
+      "repo": "https://github.com/anthropics/skills.git",
+      "cloneDir": "vendors/anthropic-skills",
+      "links": [
+        {
+          "source": "skills/frontend-design",
+          "target": "skills/frontend-design"
+        },
+        {
+          "source": "skills/webapp-testing",
+          "target": "skills/webapp-testing"
+        }
+      ]
+    },
+    "vercelSkills": {
+      "repo": "https://github.com/vercel/next.js.git",
+      "cloneDir": "vendors/vercel-skills",
+      "links": [
+        {
+          "source": ".agents/skills/update-docs",
+          "target": "skills/update-docs"
+        },
+        {
+          "source": ".claude-plugin/plugins/cache-components/skills/cache-components",
+          "target": "skills/cache-components"
+        }
+      ]
+    },
+    "vercelLabsSkills": {
+      "repo": "https://github.com/vercel-labs/skills.git",
+      "cloneDir": "vendors/vercel-labs-skills",
+      "links": [
+        {
+          "source": "skills/find-skills",
+          "target": "skills/find-skills"
+        }
+      ]
+    },
+    "geminiSkills": {
+      "repo": "https://github.com/google-gemini/gemini-cli.git",
+      "cloneDir": "vendors/gemini-skills",
+      "links": [
+        {
+          "source": ".gemini/skills/code-reviewer",
+          "target": "skills/code-reviewer"
+        },
+        {
+          "source": ".gemini/skills/pr-creator",
+          "target": "skills/pr-creator"
+        }
+      ]
+    },
+    "reactSkills": {
+      "repo": "https://github.com/facebook/react.git",
+      "cloneDir": "vendors/react-skills",
+      "links": [
+        {
+          "source": ".claude/skills/fix",
+          "target": "skills/fix"
+        }
+      ]
+    },
+    "awesomeLlmApps": {
+      "repo": "https://github.com/Shubhamsaboo/awesome-llm-apps.git",
+      "cloneDir": "vendors/awesome-llm-apps",
+      "links": [
+        {
+          "source": "awesome_agent_skills/fullstack-developer",
+          "target": "skills/fullstack-developer"
+        }
+      ]
+    }
+  }
+}

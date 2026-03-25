@@ -1,0 +1,10 @@
+{
+  "name": "moluoxixi-ai-rules",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "description": "Personal AI rules repository built on top of superpowers.",
+  "scripts": {
+    "test": "node --test tests/*.test.mjs"
+  }
+}
