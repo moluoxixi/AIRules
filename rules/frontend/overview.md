@@ -6,3 +6,5 @@
 - 首屏、交互和错误态完整
 - 样式策略一致，不混乱叠加
 - 与 UI 测试规则一起使用
+- 前端文档注释统一遵循 `rules/frontend/jsdoc.md`
+- 前端标准流程遵循 `rules/frontend/workflow.md`

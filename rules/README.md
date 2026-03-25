@@ -11,7 +11,10 @@
 ## 当前规则层
 
 - `common/`
+- `common/comments.md`
 - `frontend/`
+- `frontend/jsdoc.md`
+- `frontend/workflow.md`
 - `backend/`
 - `react/`
 - `vue/`
@@ -19,3 +22,9 @@
 - `rust/`
 - `java/`
 - `testing/`
+
+## 推荐分工
+
+- `rules/` 负责稳定、可复用、跨任务的约束，例如注释规范、代码组织原则、验证门禁
+- `skills/` 负责任务流程、检查清单和技术栈实现策略
+- 若某项要求需要长期适用于多个 skill，优先写进 `rules/`，再由对应 skill 引用

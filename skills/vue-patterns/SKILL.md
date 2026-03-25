@@ -11,6 +11,7 @@ description: Use when building or refactoring Vue 3, Vite, Pinia, or Vue Router 
 - Keep route-level orchestration in pages
 - Put reusable logic in composables
 - Keep Pinia stores focused on shared state, not page-local UI state
+- Follow `rules/frontend/jsdoc.md` for exported components, composables, and complex utilities
 
 ## Workflow
 
