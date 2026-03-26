@@ -43,7 +43,7 @@ export function getDefaultInstallPaths(userHome = os.homedir()) {
   return {
     userHome,
     moluoHome,
-    repoRoot: path.join(moluoHome, 'source', 'aiRules'),
+    repoRoot: moluoHome,
     claudeHome: path.join(userHome, '.claude'),
     codexHome: path.join(userHome, '.codex'),
     codexAgentSkillsHome: path.join(userHome, '.agents', 'skills')
@@ -53,11 +53,7 @@ export function getDefaultInstallPaths(userHome = os.homedir()) {
 export function ensureInstallRoot(paths) {
   for (const dir of [
     paths.moluoHome,
-    path.join(paths.moluoHome, 'vendors'),
-    path.join(paths.moluoHome, 'rules'),
-    path.join(paths.moluoHome, 'skills'),
-    path.join(paths.moluoHome, 'agents'),
-    path.join(paths.moluoHome, 'source')
+    path.join(paths.moluoHome, 'vendors')
   ]) {
     mkdirSync(dir, { recursive: true });
   }
@@ -87,47 +83,22 @@ export function rebuildVendorSkillLinks({ homeDir, manifestPath }) {
 }
 
 export function projectToClaude({ repoRoot, moluoHome, claudeHome }) {
-  resetDir(path.join(claudeHome, 'rules'));
-  resetDir(path.join(claudeHome, 'skills'));
-  resetDir(path.join(claudeHome, 'agents'));
+  mkdirSync(claudeHome, { recursive: true });
+  rmSync(path.join(claudeHome, 'rules'), { recursive: true, force: true });
+  rmSync(path.join(claudeHome, 'skills'), { recursive: true, force: true });
+  rmSync(path.join(claudeHome, 'agents'), { recursive: true, force: true });
 
-  copyDirContents(path.join(moluoHome, 'rules'), path.join(claudeHome, 'rules'));
-  copyDirContents(path.join(moluoHome, 'skills'), path.join(claudeHome, 'skills'));
-  copyDirContents(path.join(moluoHome, 'agents'), path.join(claudeHome, 'agents'));
-
-  cpSync(path.join(repoRoot, '.claude', 'INSTALL.md'), path.join(claudeHome, 'INSTALL.md'));
-  cpSync(path.join(repoRoot, '.claude', 'UPGRADE.md'), path.join(claudeHome, 'UPGRADE.md'));
+  symlinkSync(path.join(moluoHome, 'rules'), path.join(claudeHome, 'rules'), linkTypeForCurrentPlatform());
+  symlinkSync(path.join(moluoHome, 'skills'), path.join(claudeHome, 'skills'), linkTypeForCurrentPlatform());
+  symlinkSync(path.join(moluoHome, 'agents'), path.join(claudeHome, 'agents'), linkTypeForCurrentPlatform());
 }
 
 export function projectToCodex({ repoRoot, moluoHome, codexHome, codexAgentSkillsHome }) {
-  resetDir(path.join(codexHome, 'rules'));
-  resetDir(path.join(codexHome, 'skills'));
-  resetDir(path.join(codexHome, 'agents'));
+  mkdirSync(codexHome, { recursive: true });
   resetDir(codexAgentSkillsHome);
 
-  copyDirContents(path.join(moluoHome, 'rules'), path.join(codexHome, 'rules'));
-  copyDirContents(path.join(moluoHome, 'skills'), path.join(codexHome, 'skills'));
-  copyDirContents(path.join(moluoHome, 'agents'), path.join(codexHome, 'agents'));
-
+  rmSync(path.join(codexHome, 'AGENTS.md'), { recursive: true, force: true });
   cpSync(path.join(repoRoot, '.codex', 'AGENTS.md'), path.join(codexHome, 'AGENTS.md'));
-  cpSync(path.join(repoRoot, '.codex', 'INSTALL.md'), path.join(codexHome, 'INSTALL.md'));
-  cpSync(path.join(repoRoot, '.codex', 'UPGRADE.md'), path.join(codexHome, 'UPGRADE.md'));
 
-  const superpowersSkills = path.join(moluoHome, 'vendors', 'superpowers', 'skills');
-  if (existsSync(superpowersSkills)) {
-    symlinkSync(superpowersSkills, path.join(codexAgentSkillsHome, 'superpowers'), linkTypeForCurrentPlatform());
-  }
-
-  const aggregatedSkillsDir = path.join(moluoHome, 'skills');
-  for (const entry of readdirSync(aggregatedSkillsDir, { withFileTypes: true })) {
-    if ((!entry.isDirectory() && !entry.isSymbolicLink()) || entry.name === 'superpowers') {
-      continue;
-    }
-
-    symlinkSync(
-      path.join(aggregatedSkillsDir, entry.name),
-      path.join(codexAgentSkillsHome, entry.name),
-      linkTypeForCurrentPlatform()
-    );
-  }
+  symlinkSync(path.join(moluoHome, 'skills'), path.join(codexAgentSkillsHome, 'superpowers'), linkTypeForCurrentPlatform());
 }

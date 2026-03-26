@@ -62,10 +62,8 @@ test('install flow projects first-party content and aggregated skills into Claud
 
   try {
     ensureInstallRoot(paths);
-    mkdirSync(path.dirname(paths.repoRoot), { recursive: true });
     cpSync(repoRoot, paths.repoRoot, { recursive: true });
 
-    syncFirstPartyToHome(paths.repoRoot, paths.moluoHome);
     materializeVendorSources(paths.moluoHome, manifest);
     const linkPlan = rebuildVendorSkillLinks({ homeDir: paths.moluoHome, manifestPath });
 
@@ -86,15 +84,14 @@ test('install flow projects first-party content and aggregated skills into Claud
     assert.equal(existsSync(path.join(paths.moluoHome, 'rules', 'frontend', 'jsdoc.md')), true);
     assert.equal(existsSync(path.join(paths.moluoHome, 'rules', 'common', 'comments.md')), true);
 
-    assert.equal(existsSync(path.join(paths.claudeHome, 'rules', 'frontend', 'workflow.md')), true);
-    assert.equal(existsSync(path.join(paths.codexHome, 'rules', 'frontend', 'workflow.md')), true);
+    assert.equal(existsSync(path.join(paths.claudeHome, 'rules')), true);
+    assert.equal(existsSync(path.join(paths.claudeHome, 'skills')), true);
     assert.equal(existsSync(path.join(paths.codexHome, 'AGENTS.md')), true);
 
     const codexAgentSkills = readdirSync(paths.codexAgentSkillsHome);
-    assert.ok(codexAgentSkills.includes('superpowers'));
-    assert.ok(codexAgentSkills.includes('frontend-design'));
+    assert.deepEqual(codexAgentSkills, ['superpowers']);
 
-    const codexWorkflow = readFileSync(path.join(paths.codexHome, 'rules', 'frontend', 'workflow.md'), 'utf8');
+    const codexWorkflow = readFileSync(path.join(paths.moluoHome, 'rules', 'frontend', 'workflow.md'), 'utf8');
     assert.match(codexWorkflow, /MCP/i);
     assert.ok(linkPlan.some((entry) => entry.target.endsWith('/skills/superpowers')));
   } finally {
