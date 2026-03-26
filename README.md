@@ -1,74 +1,49 @@
 # Moluoxixi AI Rules
 
-基于 [obra/superpowers](https://github.com/obra/superpowers) 扩展的个人 AI 规则仓库。
+Moluoxixi AI Rules 是一套构建在 [superpowers](https://github.com/obra/superpowers) 之上的个人 AI 开发工作流仓库。
 
-目标：
+它的核心思路不是替代 `superpowers`，而是在 `superpowers` 提供的流程能力之上，再补上我自己长期维护的一层：
 
-- 先安装 `superpowers`
-- 再叠加自己的 `rules`、`skills`、`agents`
-- 同时支持 Claude 和 Codex
-- 对可复用的第三方 skills 采用 `git clone` / `git pull` 的方式管理
-- 最终统一落在 `~/.moluoxixi/` 目录下
+- 第一方 `rules`
+- 第一方 `skills`
+- 第一方 `agents`
+- 通过 vendor 管理的第三方 skills
+- Claude / Codex 共用的聚合安装结构
 
-## 目录说明
+安装完成后，`superpowers` 仍然作为底层工作流能力存在，而这个仓库负责把第一方规则、技能和 agent 组织起来，并统一投影到 Claude 和 Codex 的读取位置。
 
-```text
-repo/
-  .claude/                  Claude 安装与升级文档
-  .codex/                   Codex 安装与升级文档及全局 AGENTS
-  agents/                   第一方 agents
-  manifests/                vendor 仓库与链接映射
-  rules/                    第一方规则
-  skills/                   第一方自定义 skills
-  scripts/                  vendor 同步与软链接重建脚本
-  tests/                    脚本、文档与安装链路验证
-```
+## Installation
 
-## 安装后的目标结构
+### Claude
+
+在 Claude / Claude Code 中告诉它：
 
 ```text
-~/.moluoxixi/
-  vendors/
-    superpowers/
-    anthropic-skills/
-    vercel-skills/
-    vercel-labs-skills/
-    gemini-skills/
-    react-skills/
-    awesome-llm-apps/
-  rules/
-  skills/
-  agents/
+Fetch and follow instructions from https://raw.githubusercontent.com/moluoxixi/AIRules/refs/heads/main/.claude/INSTALL.md
 ```
 
-其中：
+### Codex
 
-- `vendors/` 保存第三方仓库真实 clone
-- `skills/` 暴露最终启用的 skills
-- `rules/` 与 `agents/` 由本仓库直接维护
+在 Codex 中告诉它：
 
-## 当前范围
+```text
+Fetch and follow instructions from https://raw.githubusercontent.com/moluoxixi/AIRules/refs/heads/main/.codex/INSTALL.md
+```
 
-第一阶段包含：
+## Updating
 
-- Claude / Codex 安装升级文档
-- `~/.moluoxixi` 目录模型
-- vendor manifest
-- 软链接重建脚本
-- 安装链路测试辅助逻辑
-- 常见技术栈规则骨架
-- 第一方 skills 骨架
+### Claude
 
-## 参考来源
+在 Claude / Claude Code 中告诉它：
 
-- `superpowers`
-- `everything-claude-code`
-- Trae 推荐技能清单
+```text
+Fetch and follow instructions from https://raw.githubusercontent.com/moluoxixi/AIRules/refs/heads/main/.claude/UPGRADE.md
+```
 
-后续会继续补充更完整的规则细节、安装脚本和自动化验证。
+### Codex
 
-## 验证策略
+在 Codex 中告诉它：
 
-- 面向用户的安装入口仍以文档步骤为主
-- 小脚本只负责 vendor 同步、链接重建和测试辅助
-- 安装链路通过自动化测试验证“步骤结果”，不把仓库演化成独立安装器
+```text
+Fetch and follow instructions from https://raw.githubusercontent.com/moluoxixi/AIRules/refs/heads/main/.codex/UPGRADE.md
+```

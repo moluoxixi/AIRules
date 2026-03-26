@@ -5,27 +5,26 @@
 ### macOS / Linux
 
 ```bash
-export MOLUO_HOME="${HOME}/.moluoxixi"
-export MOLUO_REPO="${MOLUO_HOME}/source/aiRules"
+git -C "${HOME}/.moluoxixi/source/aiRules" pull --ff-only
+node "${HOME}/.moluoxixi/source/aiRules/scripts/sync-vendors.mjs" --home "${HOME}/.moluoxixi"
 
-git -C "${MOLUO_REPO}" pull --ff-only
-node "${MOLUO_REPO}/scripts/sync-vendors.mjs" --home "${MOLUO_HOME}"
+rsync -av --delete "${HOME}/.moluoxixi/source/aiRules/rules/" "${HOME}/.moluoxixi/rules/"
+rsync -av "${HOME}/.moluoxixi/source/aiRules/skills/" "${HOME}/.moluoxixi/skills/"
+rsync -av --delete "${HOME}/.moluoxixi/source/aiRules/agents/" "${HOME}/.moluoxixi/agents/"
 
-rsync -av --delete "${MOLUO_REPO}/rules/" "${MOLUO_HOME}/rules/"
-rsync -av "${MOLUO_REPO}/skills/" "${MOLUO_HOME}/skills/"
-rsync -av --delete "${MOLUO_REPO}/agents/" "${MOLUO_HOME}/agents/"
+node "${HOME}/.moluoxixi/source/aiRules/scripts/rebuild-links.mjs" --home "${HOME}/.moluoxixi"
 
-node "${MOLUO_REPO}/scripts/rebuild-links.mjs" --home "${MOLUO_HOME}"
+mkdir -p "${HOME}/.codex/rules" "${HOME}/.codex/skills" "${HOME}/.codex/agents"
+rsync -av --delete "${HOME}/.moluoxixi/rules/" "${HOME}/.codex/rules/"
+rsync -av --delete "${HOME}/.moluoxixi/skills/" "${HOME}/.codex/skills/"
+rsync -av --delete "${HOME}/.moluoxixi/agents/" "${HOME}/.codex/agents/"
+cp "${HOME}/.moluoxixi/source/aiRules/.codex/AGENTS.md" "${HOME}/.codex/AGENTS.md"
 
-rsync -av --delete "${MOLUO_HOME}/rules/" "${HOME}/.codex/rules/"
-rsync -av --delete "${MOLUO_HOME}/skills/" "${HOME}/.codex/skills/"
-rsync -av --delete "${MOLUO_HOME}/agents/" "${HOME}/.codex/agents/"
-cp "${MOLUO_REPO}/.codex/AGENTS.md" "${HOME}/.codex/AGENTS.md"
-
+mkdir -p "${HOME}/.agents/skills"
 rm -rf "${HOME}/.agents/skills/superpowers"
-ln -sfn "${MOLUO_HOME}/vendors/superpowers/skills" "${HOME}/.agents/skills/superpowers"
+ln -sfn "${HOME}/.moluoxixi/vendors/superpowers/skills" "${HOME}/.agents/skills/superpowers"
 
-for dir in "${MOLUO_HOME}"/skills/*; do
+for dir in "${HOME}/.moluoxixi"/skills/*; do
   name="$(basename "$dir")"
   if [ "$name" = "superpowers" ]; then
     continue
@@ -38,29 +37,31 @@ done
 ### Windows PowerShell
 
 ```powershell
-$MOLUO_HOME = Join-Path $env:USERPROFILE '.moluoxixi'
-$MOLUO_REPO = Join-Path $MOLUO_HOME 'source\\aiRules'
+git -C "$env:USERPROFILE\\.moluoxixi\\source\\aiRules" pull --ff-only
+node "$env:USERPROFILE\\.moluoxixi\\source\\aiRules\\scripts\\sync-vendors.mjs" --home "$env:USERPROFILE\\.moluoxixi"
 
-git -C $MOLUO_REPO pull --ff-only
-node "$MOLUO_REPO\\scripts\\sync-vendors.mjs" --home "$MOLUO_HOME"
+Copy-Item "$env:USERPROFILE\\.moluoxixi\\source\\aiRules\\rules\\*" "$env:USERPROFILE\\.moluoxixi\\rules" -Recurse -Force
+Copy-Item "$env:USERPROFILE\\.moluoxixi\\source\\aiRules\\skills\\*" "$env:USERPROFILE\\.moluoxixi\\skills" -Recurse -Force
+Copy-Item "$env:USERPROFILE\\.moluoxixi\\source\\aiRules\\agents\\*" "$env:USERPROFILE\\.moluoxixi\\agents" -Recurse -Force
 
-Copy-Item "$MOLUO_REPO\\rules\\*" "$MOLUO_HOME\\rules" -Recurse -Force
-Copy-Item "$MOLUO_REPO\\skills\\*" "$MOLUO_HOME\\skills" -Recurse -Force
-Copy-Item "$MOLUO_REPO\\agents\\*" "$MOLUO_HOME\\agents" -Recurse -Force
+node "$env:USERPROFILE\\.moluoxixi\\source\\aiRules\\scripts\\rebuild-links.mjs" --home "$env:USERPROFILE\\.moluoxixi"
 
-node "$MOLUO_REPO\\scripts\\rebuild-links.mjs" --home "$MOLUO_HOME"
+New-Item -ItemType Directory -Force -Path "$env:USERPROFILE\\.codex\\rules" | Out-Null
+New-Item -ItemType Directory -Force -Path "$env:USERPROFILE\\.codex\\skills" | Out-Null
+New-Item -ItemType Directory -Force -Path "$env:USERPROFILE\\.codex\\agents" | Out-Null
 
-Copy-Item "$MOLUO_HOME\\rules\\*" "$env:USERPROFILE\\.codex\\rules" -Recurse -Force
-Copy-Item "$MOLUO_HOME\\skills\\*" "$env:USERPROFILE\\.codex\\skills" -Recurse -Force
-Copy-Item "$MOLUO_HOME\\agents\\*" "$env:USERPROFILE\\.codex\\agents" -Recurse -Force
-Copy-Item "$MOLUO_REPO\\.codex\\AGENTS.md" "$env:USERPROFILE\\.codex\\AGENTS.md" -Force
+Copy-Item "$env:USERPROFILE\\.moluoxixi\\rules\\*" "$env:USERPROFILE\\.codex\\rules" -Recurse -Force
+Copy-Item "$env:USERPROFILE\\.moluoxixi\\skills\\*" "$env:USERPROFILE\\.codex\\skills" -Recurse -Force
+Copy-Item "$env:USERPROFILE\\.moluoxixi\\agents\\*" "$env:USERPROFILE\\.codex\\agents" -Recurse -Force
+Copy-Item "$env:USERPROFILE\\.moluoxixi\\source\\aiRules\\.codex\\AGENTS.md" "$env:USERPROFILE\\.codex\\AGENTS.md" -Force
 
+New-Item -ItemType Directory -Force -Path "$env:USERPROFILE\\.agents\\skills" | Out-Null
 if (Test-Path "$env:USERPROFILE\\.agents\\skills\\superpowers") {
   Remove-Item "$env:USERPROFILE\\.agents\\skills\\superpowers" -Recurse -Force
 }
-cmd /c mklink /J "$env:USERPROFILE\\.agents\\skills\\superpowers" "$MOLUO_HOME\\vendors\\superpowers\\skills"
+cmd /c mklink /J "$env:USERPROFILE\\.agents\\skills\\superpowers" "$env:USERPROFILE\\.moluoxixi\\vendors\\superpowers\\skills"
 
-Get-ChildItem "$MOLUO_HOME\\skills" | ForEach-Object {
+Get-ChildItem "$env:USERPROFILE\\.moluoxixi\\skills" | ForEach-Object {
   if ($_.Name -eq 'superpowers') {
     return
   }

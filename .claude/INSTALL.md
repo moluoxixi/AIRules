@@ -32,69 +32,63 @@ Claude 实际读取：
 ### macOS / Linux
 
 ```bash
-export MOLUO_HOME="${HOME}/.moluoxixi"
-export MOLUO_REPO="${MOLUO_HOME}/source/aiRules"
+mkdir -p "${HOME}/.moluoxixi/source" "${HOME}/.moluoxixi/vendors" "${HOME}/.moluoxixi/rules" "${HOME}/.moluoxixi/skills" "${HOME}/.moluoxixi/agents"
 
-mkdir -p "${MOLUO_HOME}/source" "${MOLUO_HOME}/vendors" "${MOLUO_HOME}/rules" "${MOLUO_HOME}/skills" "${MOLUO_HOME}/agents"
-
-# 1. clone 或更新你的仓库
-if [ -d "${MOLUO_REPO}/.git" ]; then
-  git -C "${MOLUO_REPO}" pull --ff-only
+# 1. clone 或更新仓库
+if [ -d "${HOME}/.moluoxixi/source/aiRules/.git" ]; then
+  git -C "${HOME}/.moluoxixi/source/aiRules" pull --ff-only
 else
-  git clone <your-repo-url> "${MOLUO_REPO}"
+  git clone https://github.com/moluoxixi/AIRules.git "${HOME}/.moluoxixi/source/aiRules"
 fi
 
 # 2. 先安装 superpowers，再拉取其他 vendors
-node "${MOLUO_REPO}/scripts/sync-vendors.mjs" --home "${MOLUO_HOME}"
+node "${HOME}/.moluoxixi/source/aiRules/scripts/sync-vendors.mjs" --home "${HOME}/.moluoxixi"
 
 # 3. 同步第一方规则、技能、agents 到 ~/.moluoxixi
-rsync -av --delete "${MOLUO_REPO}/rules/" "${MOLUO_HOME}/rules/"
-rsync -av "${MOLUO_REPO}/skills/" "${MOLUO_HOME}/skills/"
-rsync -av --delete "${MOLUO_REPO}/agents/" "${MOLUO_HOME}/agents/"
+rsync -av --delete "${HOME}/.moluoxixi/source/aiRules/rules/" "${HOME}/.moluoxixi/rules/"
+rsync -av "${HOME}/.moluoxixi/source/aiRules/skills/" "${HOME}/.moluoxixi/skills/"
+rsync -av --delete "${HOME}/.moluoxixi/source/aiRules/agents/" "${HOME}/.moluoxixi/agents/"
 
 # 4. 根据 manifest 重建第三方 skill 链接
-node "${MOLUO_REPO}/scripts/rebuild-links.mjs" --home "${MOLUO_HOME}"
+node "${HOME}/.moluoxixi/source/aiRules/scripts/rebuild-links.mjs" --home "${HOME}/.moluoxixi"
 
 # 5. 投影到 Claude
 mkdir -p "${HOME}/.claude/rules" "${HOME}/.claude/skills" "${HOME}/.claude/agents"
-rsync -av --delete "${MOLUO_HOME}/rules/" "${HOME}/.claude/rules/"
-rsync -av --delete "${MOLUO_HOME}/skills/" "${HOME}/.claude/skills/"
-rsync -av --delete "${MOLUO_HOME}/agents/" "${HOME}/.claude/agents/"
+rsync -av --delete "${HOME}/.moluoxixi/rules/" "${HOME}/.claude/rules/"
+rsync -av --delete "${HOME}/.moluoxixi/skills/" "${HOME}/.claude/skills/"
+rsync -av --delete "${HOME}/.moluoxixi/agents/" "${HOME}/.claude/agents/"
 ```
 
 ### Windows PowerShell
 
 ```powershell
-$MOLUO_HOME = Join-Path $env:USERPROFILE '.moluoxixi'
-$MOLUO_REPO = Join-Path $MOLUO_HOME 'source\\aiRules'
+New-Item -ItemType Directory -Force -Path "$env:USERPROFILE\\.moluoxixi\\source" | Out-Null
+New-Item -ItemType Directory -Force -Path "$env:USERPROFILE\\.moluoxixi\\vendors" | Out-Null
+New-Item -ItemType Directory -Force -Path "$env:USERPROFILE\\.moluoxixi\\rules" | Out-Null
+New-Item -ItemType Directory -Force -Path "$env:USERPROFILE\\.moluoxixi\\skills" | Out-Null
+New-Item -ItemType Directory -Force -Path "$env:USERPROFILE\\.moluoxixi\\agents" | Out-Null
 
-New-Item -ItemType Directory -Force -Path (Join-Path $MOLUO_HOME 'source') | Out-Null
-New-Item -ItemType Directory -Force -Path (Join-Path $MOLUO_HOME 'vendors') | Out-Null
-New-Item -ItemType Directory -Force -Path (Join-Path $MOLUO_HOME 'rules') | Out-Null
-New-Item -ItemType Directory -Force -Path (Join-Path $MOLUO_HOME 'skills') | Out-Null
-New-Item -ItemType Directory -Force -Path (Join-Path $MOLUO_HOME 'agents') | Out-Null
-
-if (Test-Path (Join-Path $MOLUO_REPO '.git')) {
-  git -C $MOLUO_REPO pull --ff-only
+if (Test-Path "$env:USERPROFILE\\.moluoxixi\\source\\aiRules\\.git") {
+  git -C "$env:USERPROFILE\\.moluoxixi\\source\\aiRules" pull --ff-only
 } else {
-  git clone <your-repo-url> $MOLUO_REPO
+  git clone https://github.com/moluoxixi/AIRules.git "$env:USERPROFILE\\.moluoxixi\\source\\aiRules"
 }
 
-node "$MOLUO_REPO\\scripts\\sync-vendors.mjs" --home "$MOLUO_HOME"
+node "$env:USERPROFILE\\.moluoxixi\\source\\aiRules\\scripts\\sync-vendors.mjs" --home "$env:USERPROFILE\\.moluoxixi"
 
-Copy-Item "$MOLUO_REPO\\rules\\*" "$MOLUO_HOME\\rules" -Recurse -Force
-Copy-Item "$MOLUO_REPO\\skills\\*" "$MOLUO_HOME\\skills" -Recurse -Force
-Copy-Item "$MOLUO_REPO\\agents\\*" "$MOLUO_HOME\\agents" -Recurse -Force
+Copy-Item "$env:USERPROFILE\\.moluoxixi\\source\\aiRules\\rules\\*" "$env:USERPROFILE\\.moluoxixi\\rules" -Recurse -Force
+Copy-Item "$env:USERPROFILE\\.moluoxixi\\source\\aiRules\\skills\\*" "$env:USERPROFILE\\.moluoxixi\\skills" -Recurse -Force
+Copy-Item "$env:USERPROFILE\\.moluoxixi\\source\\aiRules\\agents\\*" "$env:USERPROFILE\\.moluoxixi\\agents" -Recurse -Force
 
-node "$MOLUO_REPO\\scripts\\rebuild-links.mjs" --home "$MOLUO_HOME"
+node "$env:USERPROFILE\\.moluoxixi\\source\\aiRules\\scripts\\rebuild-links.mjs" --home "$env:USERPROFILE\\.moluoxixi"
 
 New-Item -ItemType Directory -Force -Path "$env:USERPROFILE\\.claude\\rules" | Out-Null
 New-Item -ItemType Directory -Force -Path "$env:USERPROFILE\\.claude\\skills" | Out-Null
 New-Item -ItemType Directory -Force -Path "$env:USERPROFILE\\.claude\\agents" | Out-Null
 
-Copy-Item "$MOLUO_HOME\\rules\\*" "$env:USERPROFILE\\.claude\\rules" -Recurse -Force
-Copy-Item "$MOLUO_HOME\\skills\\*" "$env:USERPROFILE\\.claude\\skills" -Recurse -Force
-Copy-Item "$MOLUO_HOME\\agents\\*" "$env:USERPROFILE\\.claude\\agents" -Recurse -Force
+Copy-Item "$env:USERPROFILE\\.moluoxixi\\rules\\*" "$env:USERPROFILE\\.claude\\rules" -Recurse -Force
+Copy-Item "$env:USERPROFILE\\.moluoxixi\\skills\\*" "$env:USERPROFILE\\.claude\\skills" -Recurse -Force
+Copy-Item "$env:USERPROFILE\\.moluoxixi\\agents\\*" "$env:USERPROFILE\\.claude\\agents" -Recurse -Force
 ```
 
 ## 验证
