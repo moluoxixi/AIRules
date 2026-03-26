@@ -2,9 +2,9 @@
 import { mkdirSync, existsSync } from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
-import { spawnSync } from 'node:child_process';
 
 import { loadVendorManifest } from './lib/vendors.mjs';
+import { ensureVendorRepo } from './lib/vendor-sync.mjs';
 
 function printHelp() {
   console.log(`Usage: node scripts/sync-vendors.mjs [--home <dir>] [--manifest <file>]
@@ -43,18 +43,6 @@ function parseArgs(argv) {
   return args;
 }
 
-function runGit(args, cwd) {
-  const result = spawnSync('git', args, {
-    cwd,
-    stdio: 'inherit',
-    shell: process.platform === 'win32'
-  });
-
-  if (result.status !== 0) {
-    throw new Error(`git ${args.join(' ')} failed with exit code ${result.status}`);
-  }
-}
-
 function main() {
   const args = parseArgs(process.argv.slice(2));
   if (args.help) {
@@ -66,16 +54,7 @@ function main() {
   mkdirSync(args.home, { recursive: true });
 
   for (const vendor of Object.values(manifest.vendors ?? {})) {
-    const cloneDir = path.resolve(args.home, vendor.cloneDir);
-    const parentDir = path.dirname(cloneDir);
-    mkdirSync(parentDir, { recursive: true });
-
-    if (existsSync(path.join(cloneDir, '.git'))) {
-      runGit(['-C', cloneDir, 'pull', '--ff-only'], process.cwd());
-      continue;
-    }
-
-    runGit(['clone', vendor.repo, cloneDir], process.cwd());
+    ensureVendorRepo(args.home, vendor);
   }
 }
 
