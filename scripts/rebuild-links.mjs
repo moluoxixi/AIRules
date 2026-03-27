@@ -9,7 +9,7 @@ import { loadVendorManifest } from './lib/vendors.mjs';
 function printHelp() {
   console.log(`Usage: node scripts/rebuild-links.mjs [--home <dir>] [--manifest <file>]
 
-Rebuild the aggregated skill links under ~/.moluoxixi based on manifests/vendors.json.
+Rebuild the aggregated skill links under ~/.moluoxixi based on manifests/vendors.jsonc.
 
 Options:
   --home <dir>       Override the target ~/.moluoxixi root
@@ -21,7 +21,7 @@ Options:
 function parseArgs(argv) {
   const args = {
     home: path.join(os.homedir(), '.moluoxixi'),
-    manifest: path.resolve('manifests/vendors.json'),
+    manifest: path.resolve('manifests/vendors.jsonc'),
     help: false
   };
 

@@ -9,7 +9,7 @@ import { ensureVendorRepo } from './lib/vendor-sync.mjs';
 function printHelp() {
   console.log(`Usage: node scripts/sync-vendors.mjs [--home <dir>] [--manifest <file>]
 
-Clone or update all vendor repositories declared in manifests/vendors.json.
+Clone or update all vendor repositories declared in manifests/vendors.jsonc.
 
 Options:
   --home <dir>       Override the target ~/.moluoxixi root
@@ -21,7 +21,7 @@ Options:
 function parseArgs(argv) {
   const args = {
     home: path.join(os.homedir(), '.moluoxixi'),
-    manifest: path.resolve('manifests/vendors.json'),
+    manifest: path.resolve('manifests/vendors.jsonc'),
     help: false
   };
 

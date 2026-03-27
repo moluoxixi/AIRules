@@ -1,11 +1,12 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { readFileSync } from 'node:fs';
+import { loadVendorManifest } from '../scripts/lib/vendors.mjs';
 
 test('vendor manifest includes superpowers and external skill sources', () => {
-  const manifest = JSON.parse(readFileSync(new URL('../manifests/vendors.json', import.meta.url), 'utf8'));
+  const manifest = loadVendorManifest(new URL('../manifests/vendors.jsonc', import.meta.url));
 
   assert.ok(manifest.vendors.superpowers);
   assert.ok(manifest.vendors.anthropicSkills);
   assert.ok(manifest.vendors.vercelSkills);
+  assert.match(manifest.vendors.superpowers.description, /工作流|brainstorming|TDD/i);
 });

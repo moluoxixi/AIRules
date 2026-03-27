@@ -57,7 +57,7 @@ test('install flow projects first-party content and aggregated skills into Claud
   const repoRoot = stageRepoFixture(tempDir);
   const userHome = path.join(tempDir, 'home');
   const paths = getDefaultInstallPaths(userHome);
-  const manifestPath = path.join(repoRoot, 'manifests', 'vendors.json');
+  const manifestPath = path.join(repoRoot, 'manifests', 'vendors.jsonc');
   const manifest = loadVendorManifest(manifestPath);
 
   try {
