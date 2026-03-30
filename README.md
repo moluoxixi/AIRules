@@ -8,9 +8,9 @@ The core philosophy is not to replace `superpowers`, but to add a long-term main
 - First-party `skills` for task-specific capabilities
 - First-party `agents` for workflow orchestration
 - Third-party skills managed through vendor system
-- Unified installation structure shared by Claude and Codex
+- Unified installation structure shared by Claude, Codex, and Qoder
 
-After installation, `superpowers` continues to serve as the baseline workflow layer, while this repository organizes first-party rules, skills, and agents, projecting them uniformly to Claude and Codex reading paths.
+After installation, `superpowers` continues to serve as the baseline workflow layer, while this repository organizes first-party rules, skills, and agents, projecting them uniformly to Claude, Codex, and Qoder reading paths.
 
 ## Architecture Overview
 
@@ -108,6 +108,14 @@ In Codex CLI, tell it:
 Fetch and follow instructions from https://raw.githubusercontent.com/moluoxixi/AIRules/refs/heads/main/.codex/INSTALL.md
 ```
 
+### Qoder
+
+In Qoder IDE, tell it:
+
+```text
+Fetch and follow instructions from https://raw.githubusercontent.com/moluoxixi/AIRules/refs/heads/main/.qoder/INSTALL.md
+```
+
 ## Updating
 
 ### Claude
@@ -124,6 +132,14 @@ In Codex CLI, tell it:
 
 ```text
 Fetch and follow instructions from https://raw.githubusercontent.com/moluoxixi/AIRules/refs/heads/main/.codex/UPGRADE.md
+```
+
+### Qoder
+
+In Qoder IDE, tell it:
+
+```text
+Fetch and follow instructions from https://raw.githubusercontent.com/moluoxixi/AIRules/refs/heads/main/.qoder/UPGRADE.md
 ```
 
 ## Repository Structure
@@ -149,6 +165,7 @@ Fetch and follow instructions from https://raw.githubusercontent.com/moluoxixi/A
 │   └── stack-reviewer.md
 ├── .claude/            # Claude-specific installation docs
 ├── .codex/             # Codex-specific installation docs
+├── .qoder/             # Qoder-specific installation docs
 ├── manifests/          # Vendor skill manifests
 └── scripts/            # Installation and sync scripts
 ```
@@ -160,3 +177,4 @@ Fetch and follow instructions from https://raw.githubusercontent.com/moluoxixi/A
 - [agents/README.md](agents/README.md) - Agent orchestration details
 - [.claude/INSTALL.md](.claude/INSTALL.md) - Claude installation guide
 - [.codex/INSTALL.md](.codex/INSTALL.md) - Codex installation guide
+- [.qoder/INSTALL.md](.qoder/INSTALL.md) - Qoder installation guide
