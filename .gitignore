@@ -1,2 +1,4 @@
 node_modules/
-.qoder
+.qoder/*
+!.qoder/INSTALL.md
+!.qoder/UPGRADE.md
