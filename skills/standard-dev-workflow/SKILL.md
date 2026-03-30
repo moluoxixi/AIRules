@@ -25,7 +25,7 @@ Design → Plan → Code → Test → Verify → Review → Deliver
 
 | Phase | Entry Criteria | Exit Criteria | References |
 |-------|---------------|---------------|------------|
-| **Design** | Task assigned with objective | Requirements clear, approach validated | `rules/common/overview.md` |
+| **Design** | Task assigned with objective; For business apps: Document discovery completed | Requirements clear, approach validated; Key business documents reviewed (or documented as unavailable) | `rules/common/overview.md`, `rules/common/workflow.md` |
 | **Plan** | Design complete | Subtasks defined with deliverables | Task breakdown skill |
 | **Code** | Plan approved | Implementation complete, self-reviewed | `coding-standards` skill, stack-specific rules |
 | **Test** | Code complete | All tests pass, coverage met | `testing-workflow` skill |

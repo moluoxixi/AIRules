@@ -13,10 +13,18 @@ Design → Plan → Code → Test → Verify → Review → Deliver
 ### 1. Design
 - Define requirements and acceptance criteria
 - Identify constraints and dependencies
+- **Document Discovery** (for business application development)
+  - Search for and review relevant business documents
+  - API documentation (Swagger/OpenAPI, Apifox, Postman, `docs/api/`)
+  - Requirements/PRD (Confluence, 飞书, 语雀, `docs/prd/`)
+  - UI designs (Figma, MasterGo, Sketch, `docs/design/`)
+  - Data models (`docs/db/`, ER diagrams)
+  - Business process flows (state diagrams, flowcharts)
+  - Technical specifications (`docs/tech/`, RFCs)
 - Create/Update design documentation if needed
 
 **Entry:** Task assigned with clear objective
-**Exit:** Design approved, approach validated
+**Exit:** Design approved, approach validated, required documents reviewed (or documented as unavailable)
 
 ### 2. Plan
 - Break down into verifiable subtasks

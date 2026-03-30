@@ -2,8 +2,11 @@
 
 Cross-framework documentation conventions for frontend projects.
 
+> **注释语言**：注释语言跟随项目所在地区，详见 [common/comments.md](../common/comments.md)。代码示例使用中文注释。
+
 ## Core Principles
 
+- 注释语言跟随项目所在地区，详见 [common/comments.md](../common/comments.md)
 - Document **why** and **constraints**, not obvious behavior
 - Focus on business semantics, side effects, and edge cases
 - Don't repeat type information already in TypeScript
@@ -12,12 +15,12 @@ Cross-framework documentation conventions for frontend projects.
 
 ```typescript
 /**
- * Calculates discounted price with tiered rates.
+ * 计算带阶梯折扣的折后价格
  *
- * @param basePrice - Original price before discounts
- * @param quantity - Number of items for volume discount calculation
- * @returns Final price after all applicable discounts
- * @throws Error if basePrice is negative
+ * @param basePrice - 折扣前的原价
+ * @param quantity - 用于计算批量折扣的商品数量
+ * @returns 应用所有适用折扣后的最终价格
+ * @throws Error basePrice 为负数时抛出
  */
 function calculatePrice(basePrice: number, quantity: number): number {
 ```
@@ -28,18 +31,18 @@ Document component purpose and important props:
 
 ```typescript
 /**
- * Renders a data table with sorting, filtering, and pagination.
+ * 渲染支持排序、筛选和分页的数据表格
  *
- * Performance note: Uses virtualization for lists > 1000 items.
+ * 性能说明：列表超过 1000 项时使用虚拟化
  */
 interface DataTableProps<T> {
-  /** Data rows to display */
+  /** 要显示的数据行 */
   data: T[];
 
-  /** Column definitions with renderers */
+  /** 带渲染器的列定义 */
   columns: ColumnDef<T>[];
 
-  /** Called when row selection changes */
+  /** 行选择变化时调用 */
   onSelectionChange?: (selected: T[]) => void;
 }
 ```
@@ -47,16 +50,16 @@ interface DataTableProps<T> {
 ## Style Comments
 
 ```css
-/* Component: Card
-   Used for product listings and user profiles.
-   Supports hover states and loading skeletons. */
+/* 组件：Card
+   用于商品列表和用户资料
+   支持悬停状态和加载骨架屏 */
 .card {
   border-radius: var(--radius-md);
   box-shadow: var(--shadow-sm);
 }
 
-/* Modifier: Card highlighted state
-   Applied when item is selected or featured */
+/* 修饰符：Card 高亮状态
+   当项目被选中或推荐时应用 */
 .card--highlighted {
   border-color: var(--color-primary);
 }
@@ -65,12 +68,12 @@ interface DataTableProps<T> {
 ## Complex Logic Comments
 
 ```typescript
-// Debounce search input to avoid excessive API calls.
-// 300ms delay balances responsiveness with server load.
+// 防抖搜索输入以避免过多的 API 调用
+// 300ms 延迟在响应性和服务器负载间取得平衡
 const debouncedSearch = useDebounce(searchQuery, 300);
 
-// NOTE: This workaround handles Safari's flexbox bug with overflow.
-// Can be removed when Safari 15 support is dropped.
+// NOTE: 此 workaround 处理 Safari 的 flexbox 溢出 bug
+// 当不再支持 Safari 15 时可移除
 const safariFix = { minHeight: 0 };
 ```
 
@@ -78,9 +81,9 @@ const safariFix = { minHeight: 0 };
 
 ```typescript
 /**
- * @file User authentication utilities
- * @description Handles JWT token management, session persistence,
- *   and automatic token refresh before expiration.
+ * @file 用户认证工具
+ * @description 处理 JWT token 管理、会话持久化
+ *   和过期前的自动 token 刷新
  */
 ```
 

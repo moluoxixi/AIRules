@@ -21,7 +21,7 @@ Design → Plan → Code → Test → Verify → Review → Deliver
 
 | Phase | Entry Condition | Agent Triggered |
 |-------|----------------|-----------------|
-| Design | Task assigned with objective | (Human-led) |
+| Design | Task assigned with objective; Document discovery completed for business apps | (Human-led) |
 | Plan | Design approved | (Human-led) |
 | Code | Plan with clear deliverables | Code Standards Enforcer |
 | Test | Implementation complete | Test Strategist |
@@ -33,7 +33,7 @@ Design → Plan → Code → Test → Verify → Review → Deliver
 
 | Phase | Exit Criteria | Validation |
 |-------|---------------|------------|
-| Design | Approach validated | Acceptance criteria defined |
+| Design | Approach validated; Business documents reviewed or documented as unavailable | Acceptance criteria defined; Document discovery checklist completed |
 | Plan | Tasks with estimates | Subtask breakdown complete |
 | Code | Self-reviewed, standards met | Code Standards Enforcer pass |
 | Test | All tests pass, coverage met | Test Strategist approval |

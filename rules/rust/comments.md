@@ -2,15 +2,17 @@
 
 Documentation conventions for Rust projects.
 
+> **注释语言**：注释语言跟随项目所在地区，详见 [common/comments.md](../common/comments.md)。代码示例使用中文注释。
+
 ## Module Documentation
 
 Use `//!` for crate/module-level documentation:
 
 ```rust
-//! User authentication and authorization module.
+//! 用户认证和授权模块
 //!
-//! Provides JWT token generation, validation, and refresh.
-//! All tokens expire after 24 hours by default.
+//! 提供 JWT token 生成、验证和刷新功能
+//! 默认所有 token 24 小时后过期
 
 pub mod token;
 pub mod validator;
@@ -21,19 +23,19 @@ pub mod validator;
 Use `///` for function, struct, and trait documentation:
 
 ```rust
-/// Validates a JWT token and extracts user claims.
+/// 验证 JWT token 并提取用户声明
 ///
 /// # Arguments
 ///
-/// * `token` - The JWT string to validate
-/// * `secret` - The HMAC secret used for signing
+/// * `token` - 待验证的 JWT 字符串
+/// * `secret` - 用于签名的 HMAC 密钥
 ///
 /// # Returns
 ///
-/// Returns `Ok(Claims)` if token is valid, or `Err(AuthError)` if:
-/// - Token is expired
-/// - Signature is invalid
-/// - Token format is malformed
+/// 如果 token 有效返回 `Ok(Claims)`，否则返回 `Err(AuthError)`：
+/// - Token 已过期
+/// - 签名无效
+/// - Token 格式错误
 ///
 /// # Examples
 ///
@@ -49,19 +51,19 @@ pub fn validate_token(token: &str, secret: &[u8]) -> Result<Claims, AuthError> {
 ## Struct Documentation
 
 ```rust
-/// Configuration for the HTTP server.
+/// HTTP 服务器配置
 ///
-/// Use `ServerConfig::default()` for development,
-/// or load from environment variables in production.
+/// 开发环境使用 `ServerConfig::default()`，
+/// 生产环境从环境变量加载
 #[derive(Debug, Clone)]
 pub struct ServerConfig {
-    /// Bind address (e.g., "127.0.0.1:8080")
+    /// 绑定地址（如 "127.0.0.1:8080"）
     pub bind_addr: String,
 
-    /// Request timeout in seconds
+    /// 请求超时时间（秒）
     pub timeout_secs: u64,
 
-    /// Maximum concurrent connections
+    /// 最大并发连接数
     pub max_connections: usize,
 }
 ```
@@ -71,7 +73,7 @@ pub struct ServerConfig {
 All public API items should include runnable examples:
 
 ```rust
-/// Parses a date string in ISO 8601 format.
+/// 解析 ISO 8601 格式的日期字符串
 ///
 /// # Examples
 ///
@@ -82,7 +84,7 @@ All public API items should include runnable examples:
 /// assert_eq!(date.year(), 2024);
 /// ```
 ///
-/// Invalid dates return an error:
+/// 无效日期返回错误：
 ///
 /// ```
 /// use mycrate::parse_date;
@@ -97,11 +99,11 @@ pub fn parse_date(input: &str) -> Result<Date, ParseError> {
 Document panic conditions with `# Panics`:
 
 ```rust
-/// Divides two numbers.
+/// 两数相除
 ///
 /// # Panics
 ///
-/// Panics if `divisor` is zero.
+/// 当 `divisor` 为零时 panic
 pub fn divide(dividend: f64, divisor: f64) -> f64 {
     assert!(divisor != 0.0, "division by zero");
     dividend / divisor
