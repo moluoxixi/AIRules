@@ -1,12 +1,12 @@
 # Go Rules Overview
 
-适用于 Go 1.21+ 项目，包括微服务、CLI 工具和库开发。
+Applicable to Go 1.21+ projects, including microservices, CLI tools, and library development.
 
-- 标准项目布局：`cmd/`（入口）、`internal/`（私有包）、`pkg/`（公共库）
-- 错误处理显式化，使用 `errors.Is/As` 进行错误判断和类型断言
-- 并发模式统一：goroutine + channel + `sync` 包，`context` 显式传播
-- 接口设计遵循小接口原则，消费者侧定义，组合优于继承
-- 依赖注入通过构造函数实现，避免全局状态
+- Standard project layout: `cmd/` (entry points), `internal/` (private packages), `pkg/` (public libraries)
+- Explicit error handling, use `errors.Is/As` for error checking and type assertions
+- Unified concurrency patterns: goroutine + channel + `sync` package, `context` explicit propagation
+- Interface design follows small interface principle, consumer-side definition, composition over inheritance
+- Dependency injection via constructors, avoid global state
 
 ## Standard Project Layout
 

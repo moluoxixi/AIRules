@@ -29,8 +29,9 @@ Design → Plan → Code → Test → Verify → Review → Deliver
 | **Plan** | Design complete | Subtasks defined with deliverables | Task breakdown skill |
 | **Code** | Plan approved | Implementation complete, self-reviewed | `coding-standards` skill, stack-specific rules |
 | **Test** | Code complete | All tests pass, coverage met | `testing-workflow` skill |
-| **Verify** | Tests passing | Lint/type/build/security pass | `post-coding-verification` skill |
-| **Review** | Verification complete | Feedback addressed | Code review checklist |
+| **Verify** | Tests passing | Lint/type/build/security pass; If UI changes detected and MCP available, ask user for browser verification | `post-coding-verification` skill, `ui-test-planning` skill |
+| **MCP UI Verify** *(Optional)* | Verify passed, user agreed | Browser validation complete with screenshots/logs | `ui-test-planning` skill (MCP Execution) |
+| **Review** | Verification complete (or MCP UI Verify passed/skipped) | Feedback addressed | Code review checklist |
 | **Deliver** | Review approved | Merged/deployed, documented | `rules/common/git-conventions.md` |
 
 ### Rollback Rules

@@ -58,6 +58,31 @@ Design → Plan → Code → Test → Verify → Review → Deliver
 **Entry:** Tests passing
 **Exit:** All verification gates pass
 
+#### MCP UI Verification (Optional)
+
+Between Verify and Review phases, an optional MCP-based browser verification step may be triggered when all three conditions are met:
+
+1. **UI Change Detected**: Task involves page/component creation, style changes, or interaction logic modifications
+2. **MCP Available**: Environment has UI testing MCP tools (e.g., playwright, browser tools)
+3. **Verify Passed**: All verification gates have passed
+
+**Behavior:**
+- Ask user in natural language: "All verification checks passed. Detected Playwright MCP is available in the current environment. Would you like to launch browser verification for the page effects?"
+- No popups, no selection boxes—plain text conversation only
+- **User responds positively** (e.g., "yes", "sure", "verify it") → Execute MCP browser verification
+- **User continues with other topics or doesn't respond** → Skip and proceed to Review phase
+
+**MCP Verification Scope:**
+- Page rendering correctness (screenshot comparison)
+- Critical user interaction flows (click, form input, navigation)
+- Browser console logs (no errors or warnings)
+- Responsive layout validation
+- Network request verification
+
+**Output:** Structured verification report with screenshots and logs
+
+**Note:** This is NOT a standalone phase but an optional bridge between Verify and Review. It should never block the workflow.
+
 ### 6. Review
 - Code review by peer or self-review checklist
 - Verify against requirements

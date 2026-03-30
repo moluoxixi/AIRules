@@ -1,15 +1,15 @@
 # Java Rules Overview
 
-适用于 Java / Spring Boot 项目。
+Applicable to Java / Spring Boot projects.
 
-## 架构原则
+## Architecture Principles
 
-- controller、service、repository 角色稳定
-- DTO、validation、exception handler 明确
-- 事务边界与数据访问层清晰
+- Controller, service, repository roles are stable
+- DTO, validation, exception handler are explicit
+- Transaction boundaries and data access layer are clear
 
-## 相关规则
+## Related Rules
 
-- [comments.md](./comments.md) - JavaDoc 注释规范
-- [testing.md](./testing.md) - JUnit 5 + Mockito 测试规范
-- [verification.md](./verification.md) - Checkstyle + SpotBugs + google-java-format 校验
+- [comments.md](./comments.md) - JavaDoc comment standards
+- [testing.md](./testing.md) - JUnit 5 + Mockito testing standards
+- [verification.md](./verification.md) - Checkstyle + SpotBugs + google-java-format verification

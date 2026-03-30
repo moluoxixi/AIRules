@@ -1,60 +1,60 @@
 # Common Comment Rules
 
-适用于所有语言与技术栈的注释约束。
+Comment constraints applicable to all languages and technology stacks.
 
-## 核心原则
+## Core Principles
 
-- **注释语言本地化**：注释语言应跟随项目/团队所在地区的主要语言。例如中国团队使用中文注释，日本团队使用日文注释。这包括：函数/类文档注释、行内解释性注释、TODO/FIXME 说明等。
-  - 代码中的标识符（变量名、函数名、类名等）保持英文
-  - 技术术语可保留英文原文（如 API、Promise、middleware 等）
-- 注释默认解释"为什么""约束是什么""边界在哪里"，不复述显而易见的"代码做了什么"
-- 只有当代码本身不足以表达意图时才加注释，避免噪音注释
-- 注释要和代码一起维护；注释一旦过时，优先修正或删除
+- **Comment Language Localization**: Comment language should follow the primary language of the project/team's region. For example, Chinese teams use Chinese comments, Japanese teams use Japanese comments. This includes: function/class documentation comments, inline explanatory comments, TODO/FIXME descriptions, etc.
+  - Identifiers in code (variable names, function names, class names, etc.) remain in English
+  - Technical terms can retain their original English form (e.g., API, Promise, middleware, etc.)
+- Comments should explain "why", "what are the constraints", and "where are the boundaries" by default, not restate the obvious "what the code does"
+- Only add comments when the code itself is insufficient to express intent; avoid noise comments
+- Comments should be maintained alongside code; once comments become outdated, prioritize fixing or removing them
 
-## 必须写注释的场景
+## Scenarios Where Comments Are Required
 
-- 导出的公共 API 存在非直观约束、前置条件、后置行为或副作用
-- 业务规则无法从命名直接看出
-- 存在性能权衡、兼容性处理、降级分支或安全边界
-- 临时 workaround 需要记录原因、触发条件和后续清理信号
+- Exported public APIs have non-obvious constraints, preconditions, post-conditions, or side effects
+- Business rules cannot be directly inferred from naming
+- Performance trade-offs, compatibility handling, fallback branches, or security boundaries exist
+- Temporary workarounds need to document reasons, trigger conditions, and cleanup signals
 
-## 不应写注释的场景
+## Scenarios Where Comments Should Not Be Written
 
-- 逐行翻译代码
-- 重复类型系统、函数名或变量名已经清楚表达的信息
-- 用注释掩盖糟糕命名或过长函数；优先重构
+- Line-by-line translation of code
+- Repeating information already clearly expressed by the type system, function names, or variable names
+- Using comments to cover up poor naming or overly long functions; prioritize refactoring instead
 
-## 文档注释与行内注释
+## Documentation Comments vs Inline Comments
 
-- 对外可复用接口优先使用文档注释
-- 局部复杂逻辑优先使用紧贴代码的短注释
-- 注释应具体、可验证，避免"这里做一些处理"之类空话
+- Prioritize documentation comments for externally reusable interfaces
+- Prioritize short comments close to the code for local complex logic
+- Comments should be specific and verifiable; avoid empty phrases like "do some processing here"
 
-## 文件头注释
+## File Header Comments
 
-- 每个模块/文件顶部应说明其职责和用途
-- 说明该模块的核心功能边界
-- 可选：说明与其他模块的关系或依赖
+- Each module/file header should describe its responsibilities and purpose
+- Describe the core functional boundaries of the module
+- Optional: describe relationships or dependencies with other modules
 
-## 函数签名注释
+## Function Signature Comments
 
-- 公共函数必须说明参数含义、预期类型/范围
-- 必须说明返回值含义和可能的特殊值（如 null/空值）
-- 必须说明可能抛出的异常/错误及触发条件
-- 说明前置条件（调用前必须满足的条件）
-- 说明副作用（如果有）
+- Public functions must describe parameter meanings and expected types/ranges
+- Must describe return value meanings and possible special values (e.g., null/empty values)
+- Must describe possible exceptions/errors and their trigger conditions
+- Describe preconditions (conditions that must be met before calling)
+- Describe side effects (if any)
 
-## 标记注释规范
+## Marker Comment Standards
 
-统一使用以下格式标记特殊代码：
+Use the following formats consistently to mark special code:
 
-- `TODO:` - 待实现的功能，需包含描述和可选的负责人/截止日期
-- `FIXME:` - 已知问题需要修复，需包含问题描述
-- `HACK:` - 临时解决方案，需说明原因和何时可以移除
-- `NOTE:` - 重要提示，提醒读者注意特定细节
-- `WARNING:` - 潜在风险或危险操作警告
+- `TODO:` - Features to be implemented, must include description and optional owner/due date
+- `FIXME:` - Known issues requiring fixes, must include problem description
+- `HACK:` - Temporary solutions, must explain reasons and when they can be removed
+- `NOTE:` - Important reminders to draw reader attention to specific details
+- `WARNING:` - Potential risks or dangerous operation warnings
 
-格式要求：
-- 标记大写，后跟冒号和空格
-- 内容简洁明确
-- 包含足够的上下文信息
+Format requirements:
+- Markers in uppercase, followed by colon and space
+- Content should be concise and clear
+- Include sufficient context information

@@ -53,10 +53,21 @@ Design → Plan → Code → Test → Verify → Review → Deliver
 
 3. **Verify Phase**
    - Invoke: Quality Gate (lint, typecheck, build, security)
-   - On pass: Proceed to Review
+   - On pass: Check for MCP UI verification trigger
    - On fail: Return to Code
 
-4. **Review Phase**
+4. **MCP UI Verification (Optional)**
+   - **Trigger Conditions** (all must be met):
+     1. Task involves UI changes (pages, components, styles, interactions)
+     2. Environment has UI testing MCP (playwright, browser, etc.)
+     3. Verify phase passed
+   - **Action**: Ask user in natural language: "All verification checks passed. Detected [MCP name] is available. Would you like to launch browser verification for the page effects?"
+   - **User Response**:
+     - Positive ("yes", "sure", "verify") → Execute MCP browser validation → On completion: Proceed to Review
+     - No response / topic change / negative → Skip → Proceed to Review
+   - **Non-blocking**: Never delay workflow; default to skip if user doesn't engage
+
+5. **Review Phase**
    - Invoke: Stack Reviewer (cross-cutting concerns)
    - Human review parallel
    - On approval: Proceed to Deliver

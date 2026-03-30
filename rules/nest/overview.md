@@ -1,15 +1,15 @@
 # Nest Rules Overview
 
-适用于 NestJS 项目。
+Applicable to NestJS projects.
 
-## 架构原则
+## Architecture Principles
 
-- module / controller / service / dto 分层明确
-- provider 依赖收敛，不跨层直接耦合
-- 参数校验、配置加载、异常过滤优先标准化
+- Module / controller / service / dto layers are explicit
+- Provider dependencies are converged, no direct cross-layer coupling
+- Parameter validation, configuration loading, and exception filtering are standardized first
 
-## 相关规则
+## Related Rules
 
-- [comments.md](./comments.md) - TSDoc 注释规范
-- [testing.md](./testing.md) - Jest + supertest 测试规范
-- [verification.md](./verification.md) - ESLint + tsc --noEmit + Prettier 校验
+- [comments.md](./comments.md) - TSDoc comment standards
+- [testing.md](./testing.md) - Jest + supertest testing standards
+- [verification.md](./verification.md) - ESLint + tsc --noEmit + Prettier verification

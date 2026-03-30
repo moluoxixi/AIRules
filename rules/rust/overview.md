@@ -1,16 +1,16 @@
 # Rust Rules Overview
 
-适用于 Rust 服务、CLI 与工具项目。
+Applicable to Rust services, CLI, and tooling projects.
 
-## 架构原则
+## Architecture Principles
 
-- 错误类型显式建模
-- I/O 与纯逻辑分离
-- 并发与异步行为要可测试
-- 模块边界保持小而清晰
+- Error types are explicitly modeled
+- I/O is separated from pure logic
+- Concurrency and async behavior must be testable
+- Module boundaries remain small and clear
 
-## 相关规则
+## Related Rules
 
-- [comments.md](./comments.md) - rustdoc (`///`, `//!`) 注释规范
-- [testing.md](./testing.md) - `#[test]` + proptest 测试规范
-- [verification.md](./verification.md) - Clippy + rustfmt + cargo audit 校验
+- [comments.md](./comments.md) - rustdoc (`///`, `//!`) comment standards
+- [testing.md](./testing.md) - `#[test]` + proptest testing standards
+- [verification.md](./verification.md) - Clippy + rustfmt + cargo audit verification

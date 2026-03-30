@@ -1,12 +1,12 @@
 # Python Rules Overview
 
-适用于 Python 3.10+ 项目，包括 Web 服务、CLI 工具和数据处理应用。
+Applicable to Python 3.10+ projects, including web services, CLI tools, and data processing applications.
 
-- 类型提示优先，关键接口使用 `typing.Protocol` 定义契约
-- 项目结构遵循 src layout，`pyproject.toml` 统一管理配置
-- 异步代码统一使用 `asyncio`，显式传播 `async`/`await`
-- 模块边界清晰，避免循环导入，依赖通过构造函数注入
-- 文档与类型注解同步维护
+- Type hints prioritized, use `typing.Protocol` to define contracts for key interfaces
+- Project structure follows src layout, `pyproject.toml` for unified configuration management
+- Async code uniformly uses `asyncio`, explicit propagation of `async`/`await`
+- Clear module boundaries, avoid circular imports, dependencies injected via constructors
+- Documentation and type annotations maintained in sync
 
 ## Type Hints
 

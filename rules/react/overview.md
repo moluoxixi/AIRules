@@ -1,17 +1,17 @@
 # React Rules Overview
 
-适用于 React / Next.js 项目。
+Applicable to React / Next.js projects.
 
-## 架构原则
+## Architecture Principles
 
-- 组件按职责拆分
-- 优先保证数据流与状态边界清晰
-- 保持客户端与服务端职责分离
-- 页面编排结合 `frontend-design` 与 `cache-components` 等外部 skill
+- Components split by responsibility
+- Prioritize clear data flow and state boundaries
+- Maintain separation of client and server responsibilities
+- Page orchestration combines external skills like `frontend-design` and `cache-components`
 
-## 相关规则
+## Related Rules
 
-- [comments.md](./comments.md) - 组件、hooks、Server Component 注释规范
-- [testing.md](./testing.md) - Vitest/Jest + Testing Library 测试规范
-- [verification.md](./verification.md) - ESLint + typescript-eslint + Prettier 校验
-- [frontend/workflow.md](../frontend/workflow.md) - 页面类任务标准流程
+- [comments.md](./comments.md) - Components, hooks, Server Component comment standards
+- [testing.md](./testing.md) - Vitest/Jest + Testing Library testing standards
+- [verification.md](./verification.md) - ESLint + typescript-eslint + Prettier verification
+- [frontend/workflow.md](../frontend/workflow.md) - Page task standard workflow

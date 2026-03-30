@@ -1,75 +1,75 @@
 # Rules
 
-本目录保存第一方规则，不依赖第三方仓库中的相对引用结构。
+This directory stores first-party rules with no external dependencies on third-party repositories.
 
-## 分层继承架构
+## Layered Inheritance Architecture
 
-规则采用三层继承体系：
+Rules follow a three-layer inheritance model:
 
 ```
-common/                    # 通用原则层（跨语言）
-├── coding-standards.md    # 通用编码规范
-├── comments.md            # 通用注释原则
-├── testing-standards.md   # 通用测试原则
-└── verification.md        # 通用校验原则
+common/                    # Universal principles layer (cross-language)
+├── coding-standards.md    # Universal coding standards
+├── comments.md            # Universal comment principles
+├── testing-standards.md   # Universal testing principles
+└── verification.md        # Universal verification principles
 
-tech-stack/                # 技术栈实现层（具体工具）
+tech-stack/                # Tech stack implementation layer (specific tools)
 ├── java/
-│   ├── overview.md        # 架构原则
-│   ├── comments.md        # JavaDoc 规范
+│   ├── overview.md        # Architecture principles
+│   ├── comments.md        # JavaDoc standards
 │   ├── testing.md         # JUnit 5 + Mockito
 │   └── verification.md    # Checkstyle + SpotBugs
 ├── nest/
 │   ├── overview.md
-│   ├── comments.md        # TSDoc 规范
+│   ├── comments.md        # TSDoc standards
 │   ├── testing.md         # Jest + TestingModule
 │   └── verification.md    # ESLint + tsc
 ├── react/
 │   ├── overview.md
-│   ├── comments.md        # JSDoc/TSDoc 组件注释
+│   ├── comments.md        # JSDoc/TSDoc component comments
 │   ├── testing.md         # Vitest + Testing Library
 │   └── verification.md    # ESLint + typescript-eslint
 ├── vue/
 │   ├── overview.md
-│   ├── comments.md        # SFC 注释规范
+│   ├── comments.md        # SFC comment standards
 │   ├── testing.md         # Vitest + Vue Test Utils
 │   └── verification.md    # ESLint + vue-tsc
 ├── rust/
 │   ├── overview.md
-│   ├── comments.md        # rustdoc 规范
+│   ├── comments.md        # rustdoc standards
 │   ├── testing.md         # #[test] + proptest
 │   └── verification.md    # Clippy + rustfmt
-├── frontend/              # 前端跨框架通用
+├── frontend/              # Cross-framework frontend universal
 │   ├── overview.md
 │   ├── comments.md
 │   ├── testing.md
 │   └── verification.md
-└── backend/               # 后端跨框架通用
+└── backend/               # Cross-framework backend universal
     ├── overview.md
     ├── comments.md
     ├── testing.md
     └── verification.md
 ```
 
-## 文件命名约定
+## File Naming Conventions
 
-每个技术栈目录包含4个标准文件：
+Each tech stack directory contains 4 standard files:
 
-| 文件 | 内容 |
-|------|------|
-| `overview.md` | 纯架构原则（分层、职责、边界） |
-| `comments.md` | 注释规范（语言/框架特有） |
-| `testing.md` | 测试规范（工具、命名、结构） |
-| `verification.md` | 校验规范（lint、type check、build） |
+| File | Content |
+|------|---------|
+| `overview.md` | Pure architecture principles (layers, responsibilities, boundaries) |
+| `comments.md` | Comment standards (language/framework specific) |
+| `testing.md` | Testing standards (tools, naming, structure) |
+| `verification.md` | Verification standards (lint, type check, build) |
 
-## 继承原则
+## Inheritance Principles
 
-1. **Common Layer**: 定义跨语言通用原则，不涉及具体工具
-2. **Tech-Stack Layer**: 继承 common 原则，指定具体工具和命令
-3. **引用方式**: 技术栈文件应引用 common 层原则，而非重复定义
+1. **Common Layer**: Defines universal principles across languages, without specific tools
+2. **Tech-Stack Layer**: Inherits common principles, specifies concrete tools and commands
+3. **Reference Method**: Tech stack files should reference common layer principles rather than redefining them
 
-## 推荐分工
+## Recommended Division of Labor
 
-- `rules/` 负责稳定、可复用、跨任务的约束，例如注释规范、代码组织原则、验证门禁
-- `skills/` 负责任务流程、检查清单和技术栈实现策略
-- 若某项要求需要长期适用于多个 skill，优先写进 `rules/`，再由对应 skill 引用
+- `rules/` is responsible for stable, reusable, cross-task constraints such as comment standards, code organization principles, and verification gates
+- `skills/` is responsible for task workflows, checklists, and tech stack implementation strategies
+- If a requirement needs to apply long-term across multiple skills, prioritize writing it into `rules/`, then reference it from the corresponding skill

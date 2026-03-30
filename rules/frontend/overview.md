@@ -1,18 +1,18 @@
 # Frontend Rules Overview
 
-关注页面结构、组件边界、状态管理与视觉一致性。
+Focus on page structure, component boundaries, state management, and visual consistency.
 
-## 架构原则
+## Architecture Principles
 
-- 页面和组件职责清晰
-- 首屏、交互和错误态完整
-- 样式策略一致，不混乱叠加
-- 与 UI 测试规则一起使用
+- Page and component responsibilities are clear
+- First screen, interactions, and error states are complete
+- Styling strategy is consistent without chaotic layering
+- Use together with UI testing rules
 
-## 相关规则
+## Related Rules
 
-- [comments.md](./comments.md) - 前端跨框架通用注释规范
-- [testing.md](./testing.md) - 前端跨框架通用测试规范
-- [verification.md](./verification.md) - 前端跨框架通用校验规范
-- [jsdoc.md](./jsdoc.md) - JSDoc/TSDoc 详细规范
-- [workflow.md](./workflow.md) - 页面类任务标准流程
+- [comments.md](./comments.md) - Cross-framework frontend universal comment standards
+- [testing.md](./testing.md) - Cross-framework frontend universal testing standards
+- [verification.md](./verification.md) - Cross-framework frontend universal verification standards
+- [jsdoc.md](./jsdoc.md) - JSDoc/TSDoc detailed standards
+- [workflow.md](./workflow.md) - Page task standard workflow
