@@ -6,31 +6,45 @@ Quality gates for Vue 3 / Vite projects.
 
 | Tool | Purpose | Command |
 |------|---------|---------|
-| ESLint | Code linting | `npm run lint` |
-| eslint-plugin-vue | Vue-specific linting | Included in ESLint |
+| ESLint | Code linting and formatting (unified) | `npm run lint` |
 | vue-tsc | Vue SFC type checking | `vue-tsc --noEmit` |
-| Prettier | Code formatting | `npm run format` |
+
+> **Note:** Formatting is handled by the ESLint configuration package. No separate Prettier setup is required.
 
 ## ESLint Configuration
 
-```javascript
-// eslint.config.js
-import pluginVue from 'eslint-plugin-vue';
-import ts from 'typescript-eslint';
+We recommend using a modern ESLint flat config package with built-in Vue support.
 
-export default [
-  ...ts.configs.recommended,
-  ...pluginVue.configs['flat/recommended'],
-  {
-    files: ['*.vue', '**/*.vue'],
-    languageOptions: {
-      parserOptions: {
-        parser: '@typescript-eslint/parser',
-      },
-    },
+### Recommended Configuration
+
+**Primary:** `@moluoxixi/eslint-config`
+
+```javascript
+// eslint.config.mjs
+import eslintConfig from '@moluoxixi/eslint-config'
+
+export default eslintConfig({
+  ignores: [
+    // Files to ignore (e.g., 'dist/**', 'node_modules/**')
+  ],
+  rules: {
+    // Custom rules
   },
-];
+})
 ```
+
+**Alternative:** `@antfu/eslint-config`
+
+```javascript
+// eslint.config.mjs
+import antfu from '@antfu/eslint-config'
+
+export default antfu({
+  // Configuration options
+})
+```
+
+Both packages include built-in support for Vue, TypeScript, and formatting.
 
 ## Verification Commands
 
@@ -38,11 +52,11 @@ export default [
 # Type checking for Vue SFCs
 npx vue-tsc --noEmit
 
-# Linting
+# Linting (includes format checking)
 npm run lint
 
-# Formatting check
-npm run format:check
+# Fix linting and formatting issues
+npm run lint:fix
 
 # Build verification
 npm run build
@@ -64,8 +78,7 @@ npm run build 2>&1 | grep -i warning
 ## Pre-Commit Checklist
 
 - [ ] `npx vue-tsc --noEmit` passes
-- [ ] `npm run lint` passes with zero errors
-- [ ] `npm run format:check` passes
+- [ ] `npm run lint` passes with zero errors (includes format checking)
 - [ ] `npm run test` passes
 - [ ] `npm run build` succeeds
 - [ ] No console warnings in development

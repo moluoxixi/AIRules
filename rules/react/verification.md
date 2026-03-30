@@ -6,27 +6,45 @@ Quality gates for React / Next.js projects.
 
 | Tool | Purpose | Command |
 |------|---------|---------|
-| ESLint | Code linting | `npm run lint` |
-| typescript-eslint | TypeScript-aware linting | Included in ESLint |
-| Prettier | Code formatting | `npm run format` |
+| ESLint | Code linting and formatting (unified) | `npm run lint` |
 | TypeScript | Type checking | `npx tsc --noEmit` |
+
+> **Note:** Formatting is handled by the ESLint configuration package. No separate Prettier setup is required.
 
 ## ESLint Configuration
 
-```json
-{
-  "extends": [
-    "eslint:recommended",
-    "plugin:@typescript-eslint/recommended",
-    "plugin:react-hooks/recommended",
-    "plugin:jsx-a11y/recommended"
+We recommend using a modern ESLint flat config package with built-in React/JSX support.
+
+### Recommended Configuration
+
+**Primary:** `@moluoxixi/eslint-config`
+
+```javascript
+// eslint.config.mjs
+import eslintConfig from '@moluoxixi/eslint-config'
+
+export default eslintConfig({
+  ignores: [
+    // Files to ignore (e.g., 'dist/**', 'node_modules/**')
   ],
-  "rules": {
-    "react/react-in-jsx-scope": "off",
-    "@typescript-eslint/explicit-function-return-type": "off"
-  }
-}
+  rules: {
+    // Custom rules
+  },
+})
 ```
+
+**Alternative:** `@antfu/eslint-config`
+
+```javascript
+// eslint.config.mjs
+import antfu from '@antfu/eslint-config'
+
+export default antfu({
+  // Configuration options
+})
+```
+
+Both packages include built-in support for React, JSX, TypeScript, and formatting.
 
 ## Verification Commands
 
@@ -34,11 +52,11 @@ Quality gates for React / Next.js projects.
 # Type checking
 npx tsc --noEmit
 
-# Linting
+# Linting (includes format checking)
 npm run lint
 
-# Formatting check
-npm run format:check
+# Fix linting and formatting issues
+npm run lint:fix
 
 # Build verification
 npm run build
@@ -60,8 +78,7 @@ next lint
 ## Pre-Commit Checklist
 
 - [ ] `npx tsc --noEmit` passes
-- [ ] `npm run lint` passes with zero errors
-- [ ] `npm run format:check` passes
+- [ ] `npm run lint` passes with zero errors (includes format checking)
 - [ ] `npm run test` passes
 - [ ] `npm run build` succeeds
 - [ ] No console errors in development

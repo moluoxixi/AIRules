@@ -6,23 +6,55 @@ Cross-framework quality gates for frontend projects.
 
 | Tool | Purpose |
 |------|---------|
-| ESLint | Code linting |
+| ESLint | Code linting and formatting (unified) |
 | TypeScript | Type checking (`tsc --noEmit`) |
-| Prettier | Code formatting |
+
+> **Note:** Formatting is handled by the ESLint configuration package. No separate Prettier setup is required.
 
 ## ESLint Ecosystem
 
+We recommend using a modern ESLint flat config package that provides both linting and formatting capabilities.
+
+### Recommended Configuration
+
+**Primary:** `@moluoxixi/eslint-config`
+
+```javascript
+// eslint.config.mjs
+import eslintConfig from '@moluoxixi/eslint-config'
+
+export default eslintConfig({
+  ignores: [
+    // Files to ignore (e.g., 'dist/**', 'node_modules/**')
+  ],
+  rules: {
+    // Custom rules
+  },
+})
+```
+
+**Alternative:** `@antfu/eslint-config`
+
+```javascript
+// eslint.config.mjs
+import antfu from '@antfu/eslint-config'
+
+export default antfu({
+  // Configuration options
+})
+```
+
+### Commands
+
 ```bash
-# Core linting
+# Core linting (includes format checking)
 npm run lint
+
+# Fix linting and formatting issues
+npm run lint:fix
 
 # TypeScript-aware linting
 npx tsc --noEmit
-
-# Framework-specific plugins
-# - eslint-plugin-react
-# - eslint-plugin-vue
-# - @typescript-eslint/eslint-plugin
 ```
 
 ## Type Checking
@@ -57,9 +89,8 @@ npm run analyze
 
 ## Pre-Commit Checklist
 
-- [ ] `npm run lint` passes
+- [ ] `npm run lint` passes (includes format checking)
 - [ ] Type checking passes (`tsc --noEmit`)
-- [ ] `npm run format:check` passes
 - [ ] `npm run test` passes
 - [ ] `npm run build` succeeds
 - [ ] No console errors in development
