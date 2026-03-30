@@ -25,3 +25,17 @@ description: Use when building or refactoring NestJS applications, including mod
 - Is configuration loaded through a dedicated module or service?
 - Are auth, logging, and error handling standardized?
 - Can service logic be tested without HTTP transport?
+
+## Related Rules
+
+- `rules/nest/overview.md` - NestJS architecture principles
+- `rules/nest/comments.md` - TSDoc comment conventions
+- `rules/nest/testing.md` - Jest + supertest testing patterns
+- `rules/nest/verification.md` - ESLint + tsc configuration
+
+## Verification Requirements
+
+- ESLint passes with zero errors
+- `tsc --noEmit` type check passes
+- Jest tests pass with meaningful coverage
+- Prettier formatting applied consistently

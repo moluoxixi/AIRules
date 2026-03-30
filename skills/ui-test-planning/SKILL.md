@@ -25,3 +25,15 @@ description: Use when planning or reviewing UI test coverage for web pages or ap
 - Are selectors robust against layout churn?
 - Are failure screenshots, logs, or traces easy to inspect?
 - Are login, navigation, and submission paths covered?
+
+## Related Rules
+
+- `rules/common/testing-standards.md` - Cross-language testing principles
+- `rules/frontend/testing.md` - Frontend-specific testing patterns
+
+## Verification Requirements
+
+- All critical user journeys have test coverage
+- Selectors use roles/labels over CSS classes
+- Accessibility checks pass where applicable
+- Test reports are accessible and actionable

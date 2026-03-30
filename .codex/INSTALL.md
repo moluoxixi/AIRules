@@ -1,51 +1,105 @@
-# Moluoxixi Rules 安装指南（Codex）
+# Moluoxixi Rules Installation Guide (Codex)
 
-## 前提
+## Prerequisites
 
-- 已安装 Git
-- 已安装 Node.js
-- 已安装 Codex
+- Git installed
+- Node.js installed
+- Codex CLI installed
 
-## 目标
+## Goal
 
-Codex 侧最终会用到这两个位置：
+Codex will use these two locations:
 
 ```text
-~/.moluoxixi/          统一聚合层
-~/.agents/skills/      Codex 原生技能发现目录
+~/.moluoxixi/          Unified aggregation layer
+~/.agents/skills/      Codex native skill discovery directory
 ```
 
-其中最终只会暴露一个命名空间入口：
+Only one namespace entry will be exposed:
 
 ```text
 ~/.agents/skills/superpowers -> ~/.moluoxixi/skills
 ```
 
-## 安装步骤
+## What's Included
+
+### Rules (Layered Architecture)
+
+**Common Layer** (Cross-language principles):
+- `common/workflow.md` - Standard development workflow phases
+- `common/coding-standards.md` - Universal coding conventions
+- `common/comments.md` - Cross-language comment principles
+- `common/testing-standards.md` - Universal testing principles
+- `common/verification.md` - Universal verification gates
+- `common/git-conventions.md` - Version control conventions
+- `common/overview.md` - High-level architectural principles
+
+**Tech-Stack Layer** (Implementation-specific):
+- `java/` - Java (overview, comments, testing, verification)
+- `nest/` - NestJS (overview, comments, testing, verification)
+- `react/` - React (overview, comments, testing, verification)
+- `vue/` - Vue.js (overview, comments, testing, verification)
+- `go/` - Go (overview, comments, testing, verification)
+- `python/` - Python (overview, comments, testing, verification)
+- `rust/` - Rust (overview, comments, testing, verification)
+- `frontend/` - Cross-framework frontend guidelines
+- `backend/` - Cross-framework backend guidelines
+
+See [rules/CATALOG.md](../rules/CATALOG.md) for complete rule index and inheritance mapping.
+
+### Skills (First-Party)
+
+**Workflow Skills**:
+- `coding-standards` - Enforce code quality standards
+- `standard-dev-workflow` - Orchestrate workflow phases
+- `testing-workflow` - Test planning and execution
+- `post-coding-verification` - Run verification pipeline
+- `ui-test-planning` - UI-specific test strategies
+
+**Tech Pattern Skills**:
+- `java-backend-patterns` - Java implementation patterns
+- `nest-patterns` - NestJS implementation patterns
+- `react-patterns` - React implementation patterns
+- `vue-patterns` - Vue implementation patterns
+- `go-patterns` - Go implementation patterns
+- `python-patterns` - Python implementation patterns
+- `rust-service-patterns` - Rust implementation patterns
+
+### Agents
+
+- `workflow-orchestrator` - Coordinate phase transitions and agent invocation
+- `code-standards-enforcer` - Enforce naming, complexity, comments, security
+- `test-strategist` - Define test strategy, analyze coverage, identify gaps
+- `quality-gate` - Run lint/typecheck/build/security verification
+- `stack-reviewer` - Review cross-cutting concerns, rule-skill alignment
+
+See [agents/README.md](../agents/README.md) for agent orchestration details.
+
+## Installation Steps
 
 ### macOS / Linux
 
 ```bash
 mkdir -p "${HOME}/.moluoxixi"
 
-# 1. clone 或更新仓库
+# 1. Clone or update repository
 if [ -d "${HOME}/.moluoxixi/.git" ]; then
   git -C "${HOME}/.moluoxixi" pull --ff-only
 else
   git clone https://github.com/moluoxixi/AIRules.git "${HOME}/.moluoxixi"
 fi
 
-# 2. 先安装 superpowers，再拉取其余 vendors
+# 2. Install superpowers first, then fetch other vendors
 node "${HOME}/.moluoxixi/scripts/sync-vendors.mjs" --home "${HOME}/.moluoxixi"
 
-# 3. 重建 vendor skill 链接到 ~/.moluoxixi/skills
+# 3. Rebuild vendor skill links to ~/.moluoxixi/skills
 node "${HOME}/.moluoxixi/scripts/rebuild-links.mjs" --home "${HOME}/.moluoxixi"
 
-# 4. 建立 Codex 入口
+# 4. Set up Codex entry
 mkdir -p "${HOME}/.codex"
 cp "${HOME}/.moluoxixi/.codex/AGENTS.md" "${HOME}/.codex/AGENTS.md"
 
-# 5. 暴露到 Codex 原生技能发现目录
+# 5. Expose to Codex native skill discovery directory
 mkdir -p "${HOME}/.agents/skills"
 rm -rf "${HOME}/.agents/skills/superpowers"
 ln -sfn "${HOME}/.moluoxixi/skills" "${HOME}/.agents/skills/superpowers"
@@ -79,16 +133,25 @@ if (Test-Path "$env:USERPROFILE\\.agents\\skills\\superpowers") {
 cmd /c mklink /J "$env:USERPROFILE\\.agents\\skills\\superpowers" "$env:USERPROFILE\\.moluoxixi\\skills"
 ```
 
-## 验证
+## Verification
 
 ```bash
 ls ~/.moluoxixi/vendors/superpowers
 ls -la ~/.agents/skills/superpowers
 ```
 
-确认点：
+Checkpoints:
 
-- 已先安装 `superpowers`
-- `~/.moluoxixi/skills/` 下已聚合第一方和第三方 skills
-- `~/.agents/skills/superpowers` 已指向 `~/.moluoxixi/skills`
-- `~/.codex/AGENTS.md` 已从 `~/.moluoxixi/.codex/AGENTS.md` 同步
+- `superpowers` is installed as baseline
+- `~/.moluoxixi/skills/` contains both first-party and third-party skills
+- `~/.agents/skills/superpowers` points to `~/.moluoxixi/skills`
+- `~/.codex/AGENTS.md` is synced from `~/.moluoxixi/.codex/AGENTS.md`
+
+## Notes
+
+- This setup installs `superpowers` first as the baseline workflow layer
+- First-party `rules/` are maintained in this repository with a layered architecture:
+  - `common/` - Cross-language principles
+  - `{tech-stack}/` - Implementation-specific rules (java/, react/, vue/, etc.)
+- Third-party skills are aggregated around `~/.moluoxixi/` and exposed via symlinks
+- See [rules/CATALOG.md](../rules/CATALOG.md) for complete rule-skill-agent mapping

@@ -25,3 +25,17 @@ description: Use when building or refactoring Rust backend services, async worke
 - Is async work isolated behind clear functions or traits?
 - Can core logic be tested without the network or database?
 - Are serialization and validation boundaries explicit?
+
+## Related Rules
+
+- `rules/rust/overview.md` - Rust architecture principles
+- `rules/rust/comments.md` - rustdoc (`///`, `//!`) conventions
+- `rules/rust/testing.md` - `#[test]` + proptest patterns
+- `rules/rust/verification.md` - Clippy + rustfmt configuration
+
+## Verification Requirements
+
+- Clippy passes with zero warnings (or documented suppressions)
+- rustfmt formatting applied consistently
+- `cargo test` passes with meaningful coverage
+- `cargo audit` security scan passes

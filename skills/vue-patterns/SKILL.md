@@ -26,3 +26,17 @@ description: Use when building or refactoring Vue 3, Vite, Pinia, or Vue Router 
 - Is Pinia really needed here?
 - Are route guards and async loading states explicit?
 - Can this component be tested through visible behavior?
+
+## Related Rules
+
+- `rules/vue/overview.md` - Vue architecture principles
+- `rules/vue/comments.md` - SFC component and composable documentation
+- `rules/vue/testing.md` - Vitest + Vue Test Utils patterns
+- `rules/vue/verification.md` - ESLint + vue-tsc configuration
+
+## Verification Requirements
+
+- ESLint passes with zero errors
+- `vue-tsc --noEmit` type check passes
+- Vitest tests pass with meaningful coverage
+- Prettier formatting applied consistently
