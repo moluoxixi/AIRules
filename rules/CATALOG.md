@@ -50,13 +50,13 @@ When conflicts occur, resolution follows this priority (highest to lowest):
 
 | Phase | Rules Reference | Skills | Agents |
 |-------|----------------|--------|--------|
-| **Design** | `common/workflow.md` | brainstorming (vendor) | - |
-| **Plan** | `common/workflow.md` | writing-plans (vendor), `standard-dev-workflow` | - |
-| **Code** | `common/coding-standards.md` → `{stack}/overview.md`<br>`common/comments.md` → `{stack}/comments.md` | `coding-standards`, `{tech}-patterns` | frontend-dev / backend-dev / fullstack-dev |
-| **Test** | `common/testing-standards.md` → `{stack}/testing.md` | `testing-workflow`, `ui-test-planning` | - |
-| **Verify** | `common/verification.md` → `{stack}/verification.md` | `post-coding-verification` | - |
-| **Review** | `common/coding-standards.md` | code-reviewer (vendor) | `stack-reviewer` |
-| **Deliver** | `common/git-conventions.md` | pr-creator (vendor) | - |
+| **Design** | `common/workflow.md` | `superpowers/brainstorming` (vendor) | - |
+| **Plan** | `common/workflow.md` | `superpowers/writing-plans` (vendor) | - |
+| **Code** | `common/coding-standards.md` → `{stack}/overview.md`<br>`common/comments.md` → `{stack}/comments.md` | `frontend-design` (vendor, if UI) | frontend-dev / backend-dev / fullstack-dev |
+| **Test** | `common/testing-standards.md` → `{stack}/testing.md` | `superpowers/test-driven-development` (vendor), `webapp-testing` (vendor) | - |
+| **Verify** | `common/verification.md` → `{stack}/verification.md` | `superpowers/verification-before-completion` (vendor), `fix` (vendor) | - |
+| **Review** | `common/coding-standards.md` | `code-reviewer` (vendor) | `stack-reviewer` |
+| **Deliver** | `common/git-conventions.md` | `pr-creator` (vendor), `superpowers/finishing-a-development-branch` (vendor) | - |
 
 ### Phase Flow
 
@@ -150,23 +150,36 @@ Each technology stack follows the 4-file convention:
 
 ---
 
-## Skill Index
+## Vendor Skill Index
 
-| Skill | Purpose | Related Rules | Related Agents |
-|-------|---------|---------------|----------------|
-| [coding-standards](../skills/coding-standards/SKILL.md) | Enforce code quality standards | `common/coding-standards.md` | - |
-| [standard-dev-workflow](../skills/standard-dev-workflow/SKILL.md) | Orchestrate workflow phases | `common/workflow.md` | - |
-| [testing-workflow](../skills/testing-workflow/SKILL.md) | Test planning and execution | `common/testing-standards.md` | - |
-| [post-coding-verification](../skills/post-coding-verification/SKILL.md) | Run verification pipeline | `common/verification.md` | - |
-| [ui-test-planning](../skills/ui-test-planning/SKILL.md) | UI-specific test strategies | `common/testing-standards.md`<br>`frontend/testing.md` | - |
-| **Tech Patterns** | | | |
-| [java-backend-patterns](../skills/java-backend-patterns/SKILL.md) | Java implementation patterns | `java/*.md` | backend-dev |
-| [nest-patterns](../skills/nest-patterns/SKILL.md) | NestJS implementation patterns | `nest/*.md` | backend-dev |
-| [react-patterns](../skills/react-patterns/SKILL.md) | React implementation patterns | `react/*.md` | frontend-dev |
-| [vue-patterns](../skills/vue-patterns/SKILL.md) | Vue implementation patterns | `vue/*.md` | frontend-dev |
-| [go-patterns](../skills/go-patterns/SKILL.md) | Go implementation patterns | `go/*.md` | backend-dev |
-| [python-patterns](../skills/python-patterns/SKILL.md) | Python implementation patterns | `python/*.md` | backend-dev |
-| [rust-service-patterns](../skills/rust-service-patterns/SKILL.md) | Rust implementation patterns | `rust/*.md` | backend-dev |
+Skills sourced from third-party repositories via `manifests/vendors.jsonc`. Loaded as symlinks into `skills/`.
+
+| Vendor | Skill | Purpose | Workflow Phase | Related Agents |
+|--------|-------|---------|---------------|----------------|
+| superpowers | `superpowers/*` (14 sub-skills) | AI-native workflow baseline | All phases | All agents |
+| anthropic | `frontend-design` | Visual design and UI prototyping | Design/Code | frontend-dev, fullstack-dev |
+| anthropic | `webapp-testing` | Playwright browser testing | Test | frontend-dev, fullstack-dev |
+| vercel | `update-docs` | Next.js documentation sync | Deliver | frontend-dev |
+| vercel | `cache-components` | Next.js cache components / PPR | Code | frontend-dev |
+| vercel-labs | `find-skills` | Skill discovery and installation | Meta | - |
+| gemini | `code-reviewer` | Code review execution | Review | All agents |
+| gemini | `pr-creator` | PR creation per repo template | Deliver | backend-dev, fullstack-dev |
+| react | `fix` | Lint/format quick-fix | Code/Verify | All agents |
+| awesome-llm-apps | `fullstack-developer` | Full-stack web development reference | Code | fullstack-dev |
+
+---
+
+## Skill Trigger Decision Tree
+
+| User Intent | Skills to Load |
+|------------|---------------|
+| Design a component/page | `superpowers/brainstorming` + `frontend-design` |
+| Implement a feature | `superpowers/writing-plans` |
+| Fix a bug | `superpowers/systematic-debugging` + `superpowers/test-driven-development` |
+| Write/run tests | `superpowers/test-driven-development` + `webapp-testing` |
+| Review code | `code-reviewer` + `superpowers/receiving-code-review` |
+| Create a PR | `pr-creator` + `superpowers/finishing-a-development-branch` |
+| Run verification | `superpowers/verification-before-completion` + `fix` |
 
 ---
 

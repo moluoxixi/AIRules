@@ -5,12 +5,11 @@ Moluoxixi AI Rules is a personal AI development workflow repository built on top
 The core philosophy is not to replace `superpowers`, but to add a long-term maintained layer on top of its workflow capabilities:
 
 - First-party `rules` with layered inheritance architecture
-- First-party `skills` for task-specific capabilities
 - First-party `agents` for workflow orchestration
 - Third-party skills managed through vendor system
 - Unified installation structure shared by Claude, Codex, and Qoder
 
-After installation, `superpowers` continues to serve as the baseline workflow layer, while this repository organizes first-party rules, skills, and agents, projecting them uniformly to Claude, Codex, and Qoder reading paths.
+After installation, `superpowers` continues to serve as the baseline workflow layer, while this repository organizes first-party rules and agents, projecting them uniformly to Claude, Codex, and Qoder reading paths.
 
 ## Architecture Overview
 
@@ -50,10 +49,10 @@ Design → Plan → Code → Test → Verify → Review → Deliver
 | Phase | Rules | Skills | Agents |
 |-------|-------|--------|--------|
 | Design | `common/workflow.md` | brainstorming (vendor) | - |
-| Plan | `common/workflow.md` | writing-plans (vendor), standard-dev-workflow | - |
-| Code | `common/coding-standards.md` → `{stack}/overview.md` | coding-standards, {tech}-patterns | frontend-dev / backend-dev / fullstack-dev |
-| Test | `common/testing-standards.md` → `{stack}/testing.md` | testing-workflow, ui-test-planning | - |
-| Verify | `common/verification.md` → `{stack}/verification.md` | post-coding-verification | - |
+| Plan | `common/workflow.md` | superpowers/writing-plans (vendor) | - |
+| Code | `common/coding-standards.md` → `{stack}/overview.md` | frontend-design (vendor, if UI) | frontend-dev / backend-dev / fullstack-dev |
+| Test | `common/testing-standards.md` → `{stack}/testing.md` | superpowers/test-driven-development (vendor), webapp-testing (vendor) | - |
+| Verify | `common/verification.md` → `{stack}/verification.md` | superpowers/verification-before-completion (vendor) | - |
 | Review | `common/coding-standards.md` | code-reviewer (vendor) | stack-reviewer |
 | Deliver | `common/git-conventions.md` | pr-creator (vendor) | - |
 
@@ -69,26 +68,25 @@ Once installed, you can drive AI coding by asking questions that trigger the sta
 ```
 "I need to add user authentication to my NestJS backend. 
 Please follow the standard workflow: plan the approach, 
-implement following nest-patterns, write tests, and verify."
+implement following the rules, write tests, and verify."
 ```
 
 **Example 2: Code Review**
 ```
-"Please review this React component following the react-patterns 
-and coding-standards rules. Check for test coverage and run verification."
+"Please review this React component following the coding-standards 
+rules. Check for test coverage and run verification."
 ```
 
 **Example 3: Bug Fix**
 ```
-"There's a bug in my Go service. Use the go-patterns skill to 
+"There's a bug in my Go service. Use the rules to 
 diagnose, fix following coding standards, and ensure tests pass."
 ```
 
 The AI will automatically:
 1. Reference appropriate rules from `common/` and tech-stack layers
-2. Invoke relevant skills for implementation guidance
-3. Apply skills for specialized tasks (testing, verification, review)
-4. Follow the 7-phase workflow from Design to Deliver
+2. Apply vendor skills for specialized tasks (testing, verification, review)
+3. Follow the 7-phase workflow from Design to Deliver
 
 ## Installation
 
@@ -150,13 +148,7 @@ Fetch and follow instructions from https://raw.githubusercontent.com/moluoxixi/A
 │   ├── common/         # Cross-language principles
 │   ├── {stack}/        # Tech-stack implementations
 │   └── CATALOG.md      # Complete rule-skill-agent mapping
-├── skills/             # First-party skills
-│   ├── coding-standards/
-│   ├── standard-dev-workflow/
-│   ├── testing-workflow/
-│   ├── post-coding-verification/
-│   ├── ui-test-planning/
-│   └── {tech}-patterns/  # Tech-specific pattern skills
+├── skills/             # Vendor skill symlinks
 ├── agents/             # First-party agents
 │   ├── frontend-dev.md
 │   ├── backend-dev.md

@@ -119,10 +119,10 @@ When a phase fails, follow this escalation:
 | Phase | Rules Reference | Recommended Skills | Agent Roles |
 |-------|----------------|-------------------|-------------|
 | Design | `rules/common/overview.md` | Architecture, Domain modeling | - |
-| Plan | `rules/common/overview.md` | `standard-dev-workflow`, Task breakdown, Estimation | - |
-| Code | `rules/common/coding-standards.md`, `rules/common/comments.md`, Stack-specific rules | `coding-standards`, Language-specific patterns | frontend-dev / backend-dev / fullstack-dev |
-| Test | `rules/common/testing-standards.md` | `testing-workflow`, TDD | - |
-| Verify | `rules/common/verification.md` | `post-coding-verification`, CI/CD, Tooling | - |
+| Plan | `rules/common/overview.md` | superpowers/writing-plans (vendor), Task breakdown, Estimation | - |
+| Code | `rules/common/coding-standards.md`, `rules/common/comments.md`, Stack-specific rules | frontend-design (vendor, if UI) | frontend-dev / backend-dev / fullstack-dev |
+| Test | `rules/common/testing-standards.md` | superpowers/test-driven-development (vendor), webapp-testing (vendor) | - |
+| Verify | `rules/common/verification.md` | superpowers/verification-before-completion (vendor), CI/CD, Tooling | - |
 | Review | `rules/common/overview.md` | Code review, Security review | `stack-reviewer` |
 | Deliver | `rules/common/git-conventions.md` | Release management | - |
 

@@ -2,3 +2,5 @@ node_modules/
 .qoder/*
 !.qoder/INSTALL.md
 !.qoder/UPGRADE.md
+vendors/
+skills/.gitignore

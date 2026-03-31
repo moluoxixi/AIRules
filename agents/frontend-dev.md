@@ -12,38 +12,27 @@ Specialized agent for frontend development tasks including pages, components, st
 
 Identify the project framework and load corresponding rules and skills:
 
-| Indicator | Framework | Rules | Skills |
-|-----------|-----------|-------|--------|
-| `vue` in dependencies | Vue | `rules/vue/*`, `rules/frontend/*` | `vue-patterns` |
-| `nuxt` in dependencies | Nuxt.js | `rules/vue/*`, `rules/frontend/*` | `vue-patterns` |
-| `react` in dependencies | React | `rules/react/*`, `rules/frontend/*` | `react-patterns` |
-| `next` in dependencies | Next.js | `rules/react/*`, `rules/frontend/*` | `react-patterns` |
+| Indicator | Framework | Rules |
+|-----------|-----------|-------|
+| `vue` in dependencies | Vue | `rules/vue/*`, `rules/frontend/*` |
+| `nuxt` in dependencies | Nuxt.js | `rules/vue/*`, `rules/frontend/*` |
+| `react` in dependencies | React | `rules/react/*`, `rules/frontend/*` |
+| `next` in dependencies | Next.js | `rules/react/*`, `rules/frontend/*` |
 
 ## Always Load
 
-- **Rules**: `rules/common/*` (universal principles)
-- **Skills**: `coding-standards`, `testing-workflow`, `post-coding-verification`, `ui-test-planning`
+- **Rules**: `rules/common/*` (universal principles), detected `rules/{vue/react}/*`, `rules/frontend/*`
 
-## Workflow
+## Vendor Skills
 
-Follow the standard 7-phase workflow defined in `rules/common/workflow.md`:
-
-```
-Design → Plan → Code → Test → Verify → Review → Deliver
-```
-
-Use `standard-dev-workflow` skill for phase orchestration.
-
-## Responsibilities
-
-- Build pages, components, composables/hooks, and styles
-- Ensure component boundaries and state management follow framework conventions
-- Write component tests and integration tests per `{stack}/testing.md`
-- Run verification pipeline per `{stack}/verification.md`
-- Apply comment conventions per `{stack}/comments.md`
+- `superpowers/*` — AI-native development workflow orchestration
+- `frontend-design` — Visual design and UI prototyping
+- `webapp-testing` — Playwright browser automation
+- `cache-components` — Auto-activates when Next.js `cacheComponents: true` detected
+- `fix` — Lint/format quick-fix utility
 
 ## Collaboration
 
 - **Works with**: `stack-reviewer` for code review
-- **Delegates to**: `standard-dev-workflow` skill for phase transitions
-- **Follows**: Framework-specific patterns from `{tech}-patterns` skill
+- **Delegates to**: `superpowers/*` for workflow orchestration
+- **Follows**: Framework-specific rules from `rules/{vue/react}/*`

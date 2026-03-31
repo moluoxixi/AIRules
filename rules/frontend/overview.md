@@ -16,3 +16,15 @@ Focus on page structure, component boundaries, state management, and visual cons
 - [verification.md](./verification.md) - Cross-framework frontend universal verification standards
 - [jsdoc.md](./jsdoc.md) - JSDoc/TSDoc detailed standards
 - [workflow.md](./workflow.md) - Page task standard workflow
+
+## Directory Structure Conventions
+
+General rules that apply across all frontend frameworks.
+
+- **No empty placeholder directories** — only create directories that are actually used
+- **Type-first separation** — type definitions belong in separate `.ts` files, not inline inside component files
+- **Unified entry exports** — components export via `index.ts`; pages use `index.vue` / `index.tsx` directly as their entry
+- **Naming conventions**
+  - Component directories: PascalCase (e.g., `UserPicker/`)
+  - Page directories: kebab-case (e.g., `user-manage/`) or follow the route structure
+  - Type files: lowercase (e.g., `props.ts`, `emits.ts`, `types.ts`)

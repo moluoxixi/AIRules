@@ -47,23 +47,17 @@ Only one namespace entry will be exposed:
 
 See [rules/CATALOG.md](../rules/CATALOG.md) for complete rule index and inheritance mapping.
 
-### Skills (First-Party)
+### Skills (Vendor)
 
-**Workflow Skills**:
-- `coding-standards` - Enforce code quality standards
-- `standard-dev-workflow` - Orchestrate workflow phases
-- `testing-workflow` - Test planning and execution
-- `post-coding-verification` - Run verification pipeline
-- `ui-test-planning` - UI-specific test strategies
+Skills are now sourced exclusively from vendor repositories. See [rules/CATALOG.md](../rules/CATALOG.md) for the complete vendor skill index.
 
-**Tech Pattern Skills**:
-- `java-backend-patterns` - Java implementation patterns
-- `nest-patterns` - NestJS implementation patterns
-- `react-patterns` - React implementation patterns
-- `vue-patterns` - Vue implementation patterns
-- `go-patterns` - Go implementation patterns
-- `python-patterns` - Python implementation patterns
-- `rust-service-patterns` - Rust implementation patterns
+**Key Vendor Skills**:
+- `superpowers/*` — AI-native workflow orchestration
+- `frontend-design` — Visual design and UI prototyping
+- `webapp-testing` — Playwright browser testing
+- `code-reviewer` — Code review execution
+- `pr-creator` — PR creation per repo template
+- `fix` — Lint/format quick-fix
 
 ### Agents
 
@@ -142,7 +136,7 @@ ls -la ~/.agents/skills/superpowers
 Checkpoints:
 
 - `superpowers` is installed as baseline
-- `~/.moluoxixi/skills/` contains both first-party and third-party skills
+- `~/.moluoxixi/skills/` contains vendor skill links
 - `~/.agents/skills/superpowers` points to `~/.moluoxixi/skills`
 - `~/.codex/AGENTS.md` is synced from `~/.moluoxixi/.codex/AGENTS.md`
 

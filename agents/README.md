@@ -7,7 +7,7 @@ Role-based agent cards for the AIRules system. Agents define **who** you are, wh
 | Layer | Responsibility | Question Answered | Examples |
 |-------|---------------|-------------------|----------|
 | **Agent** | Role definition | Who am I? | frontend-dev, backend-dev, fullstack-dev, stack-reviewer |
-| **Skill** | Operational know-how | How do I do it? | standard-dev-workflow, coding-standards, testing-workflow |
+| **Skill** | Operational know-how | How do I do it? | superpowers/*, frontend-design, code-reviewer (vendor) |
 | **Rule** | Standards & constraints | What standards apply? | `rules/common/*`, `rules/react/*`, `rules/go/*` |
 
 ## Agent Inventory
@@ -22,9 +22,10 @@ Role-based agent cards for the AIRules system. Agents define **who** you are, wh
 ## How Agents Work
 
 1. **Detection**: Agent detects project tech stack from files (package.json, go.mod, pom.xml, etc.)
-2. **Loading**: Agent loads relevant rules (`rules/{stack}/*`) and skills (`{stack}-patterns`)
-3. **Always Load**: All agents load `rules/common/*` and universal skills (`coding-standards`, `testing-workflow`, etc.)
-4. **Execution**: Agent delegates to `standard-dev-workflow` skill for phase orchestration
+2. **Loading**: Agent loads relevant rules (`rules/{stack}/*`)
+3. **Always Load**: All agents load `rules/common/*`
+4. **Vendor Skills**: Agent loads vendor skills per its Vendor Skills section (`superpowers/*` for workflow, plus role-specific vendor skills)
+5. **Execution**: Agent delegates to `superpowers/*` skills for workflow orchestration
 
 ## Standard 7-Phase Workflow
 
@@ -34,7 +35,7 @@ All development agents follow the workflow defined in `rules/common/workflow.md`
 Design → Plan → Code → Test → Verify → Review → Deliver
 ```
 
-The `standard-dev-workflow` skill orchestrates transitions between phases.
+The `superpowers/*` vendor skills orchestrate transitions between phases (brainstorming → writing-plans → TDD → verification-before-completion → finishing-a-development-branch).
 
 ## Agent Selection Guide
 
@@ -52,11 +53,14 @@ To extend the agent system:
 1. **Create agent file**: `agents/{agent-name}.md`
 2. **Define metadata**: name, description, tools
 3. **Document tech detection**: How the agent identifies its stack
-4. **Specify rules/skills**: What to load for this role
-5. **Define responsibilities**: Clear scope boundaries
-6. **Update README**: Add to inventory
+4. **Specify rules/skills**: What rules to always load
+5. **List vendor skills**: Which vendor skills this agent uses
+6. **Define collaboration**: How this agent interacts with others
+7. **Update README**: Add to inventory
 
 ### Agent Template
+
+Agent cards are thin role-declaration layers: they define **Who** (identity) + **Skills** (capabilities) + **Rules** (standards). Workflow logic and operational responsibilities live in `superpowers/*` skills.
 
 ```markdown
 ---
@@ -76,16 +80,11 @@ How this agent identifies applicable projects.
 ## Always Load
 
 - **Rules**: Universal rules to always load
-- **Skills**: Universal skills to always load
 
-## Workflow
+## Vendor Skills
 
-Which workflow this agent follows.
-
-## Responsibilities
-
-- Task 1
-- Task 2
+- `superpowers/*` — AI-native workflow orchestration
+- List role-specific vendor skills here
 
 ## Collaboration
 

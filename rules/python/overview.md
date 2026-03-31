@@ -64,3 +64,28 @@ async def managed_resource():
 async with managed_resource() as res:
     await res.process()
 ```
+
+## Error Handling
+
+```python
+# Custom exceptions
+class ValidationError(Exception):
+    def __init__(self, field: str, message: str):
+        self.field = field
+        self.message = message
+        super().__init__(f"{field}: {message}")
+
+# Explicit error propagation
+def process_data(data: dict) -> Result:
+    if not data.get("required_field"):
+        raise ValidationError("required_field", "Missing required field")
+    return transform(data)
+```
+
+## Review Checklist
+
+- Are type hints used for public APIs?
+- Is project structure following src layout?
+- Are async contexts properly managed?
+- Are custom exceptions meaningful?
+- Can business logic be tested without I/O?

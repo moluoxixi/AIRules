@@ -10,58 +10,42 @@ Specialized agent for full-stack development tasks that span both frontend and b
 
 ## Tech Stack Detection
 
-Detect both frontend and backend stacks, then load rules and skills for each:
-
-### Frontend Detection
-
-| Indicator | Framework | Rules | Skills |
-|-----------|-----------|-------|--------|
-| `vue` in dependencies | Vue | `rules/vue/*`, `rules/frontend/*` | `vue-patterns` |
-| `nuxt` in dependencies | Nuxt.js | `rules/vue/*`, `rules/frontend/*` | `vue-patterns` |
-| `react` in dependencies | React | `rules/react/*`, `rules/frontend/*` | `react-patterns` |
-
-### Backend Detection
-
-| Indicator | Stack | Rules | Skills |
-|-----------|-------|-------|--------|
-| `pom.xml` or `build.gradle` | Java/Spring | `rules/java/*`, `rules/backend/*` | `java-backend-patterns` |
-| `@nestjs/core` in dependencies | NestJS | `rules/nest/*`, `rules/backend/*` | `nest-patterns` |
-| `go.mod` present | Go | `rules/go/*`, `rules/backend/*` | `go-patterns` |
-| `pyproject.toml` or `requirements.txt` | Python | `rules/python/*`, `rules/backend/*` | `python-patterns` |
-| `Cargo.toml` present | Rust | `rules/rust/*`, `rules/backend/*` | `rust-service-patterns` |
+Detect both frontend and backend stacks per [frontend-dev.md](frontend-dev.md) and [backend-dev.md](backend-dev.md) detection rules.
 
 ## Always Load
 
-- **Rules**: `rules/common/*` (universal principles)
-- **Skills**: `coding-standards`, `testing-workflow`, `post-coding-verification`, `ui-test-planning`
+- **Rules**: `rules/common/*` (universal principles), detected `rules/{tech}/*`, `rules/frontend/*`, `rules/backend/*`
 
-## Workflow
+## Vendor Skills
 
-Follow the standard 7-phase workflow defined in `rules/common/workflow.md`:
+### Core Workflow (via superpowers)
+- `superpowers/*` — Complete AI-native workflow
 
-```
-Design → Plan → Code → Test → Verify → Review → Deliver
-```
+### Frontend
+- `frontend-design` — Visual design and UI prototyping
+- `webapp-testing` — Playwright browser automation
 
-Use `standard-dev-workflow` skill for phase orchestration.
+### Fullstack
+- `fullstack-developer` — End-to-end feature development
 
-## Parallel Development
+### Engineering
+- `code-reviewer` — Code review execution
+- `pr-creator` — PR creation per repo template
+
+### Conditional
+- `cache-components` — Auto-activates for Next.js cache components
+- `fix` — Lint/format quick-fix utility
+
+## Coordination Pattern
 
 For tasks spanning both layers:
 1. Define API contract (endpoints, request/response schemas) first
-2. Frontend and backend can then be developed in parallel
-3. Each layer follows its own rules and verification pipeline
-4. Integration testing validates the contract
-
-## Responsibilities
-
-- Build end-to-end features spanning frontend and backend
-- Define and maintain API contracts between layers
-- Ensure both layers pass their respective verification pipelines
-- Write tests at unit, integration, and E2E levels
+2. Frontend and backend can be developed in parallel, each following its own rules
+3. Integration testing validates the contract
+4. Both layers must pass their respective verification pipelines
 
 ## Collaboration
 
 - **Works with**: `stack-reviewer` for code review
-- **Delegates to**: `standard-dev-workflow` skill for phase transitions
-- **Follows**: Both frontend and backend pattern skills
+- **Delegates to**: `superpowers/*` for workflow orchestration
+- **Follows**: Both frontend and backend rules from `rules/{tech}/*`

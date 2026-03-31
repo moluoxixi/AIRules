@@ -24,30 +24,12 @@ Each phase has corresponding rules, skills, and agents:
 | Phase | Rules | Skills | Agents |
 |-------|-------|--------|--------|
 | Design | `common/workflow.md` | brainstorming (vendor) | - |
-| Plan | `common/workflow.md` | writing-plans (vendor), standard-dev-workflow | - |
-| Code | `common/coding-standards.md` → `{stack}/overview.md` | coding-standards, {tech}-patterns | frontend-dev / backend-dev / fullstack-dev |
-| Test | `common/testing-standards.md` → `{stack}/testing.md` | testing-workflow, ui-test-planning | - |
-| Verify | `common/verification.md` → `{stack}/verification.md` | post-coding-verification | - |
+| Plan | `common/workflow.md` | superpowers/writing-plans (vendor) | - |
+| Code | `common/coding-standards.md` → `{stack}/overview.md` | frontend-design (vendor, if UI) | frontend-dev / backend-dev / fullstack-dev |
+| Test | `common/testing-standards.md` → `{stack}/testing.md` | superpowers/test-driven-development (vendor), webapp-testing (vendor) | - |
+| Verify | `common/verification.md` → `{stack}/verification.md` | superpowers/verification-before-completion (vendor) | - |
 | Review | `common/coding-standards.md` | code-reviewer (vendor) | stack-reviewer |
 | Deliver | `common/git-conventions.md` | pr-creator (vendor) | - |
-
-## First-Party Skills
-
-### Workflow Skills
-- `coding-standards` - Enforce code quality standards
-- `standard-dev-workflow` - Orchestrate workflow phases
-- `testing-workflow` - Test planning and execution
-- `post-coding-verification` - Run verification pipeline
-- `ui-test-planning` - UI-specific test strategies
-
-### Tech Pattern Skills
-- `java-backend-patterns` - Java implementation patterns
-- `nest-patterns` - NestJS implementation patterns
-- `react-patterns` - React implementation patterns
-- `vue-patterns` - Vue implementation patterns
-- `go-patterns` - Go implementation patterns
-- `python-patterns` - Python implementation patterns
-- `rust-service-patterns` - Rust implementation patterns
 
 ## First-Party Agents
 

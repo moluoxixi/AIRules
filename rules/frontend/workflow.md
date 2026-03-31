@@ -24,8 +24,8 @@
 
 - 页面实现完成后，必须询问用户是否需要进行 MCP 验证
 - 如果用户同意，使用 MCP 验证关键用户路径、用户可见行为以及 loading / empty / error / success 状态
-- MCP 验证时，测试关注点参考 `skills/ui-test-planning/SKILL.md`
-- 如果用户拒绝或当前环境无法执行 MCP，必须在交付说明中明确标注“未执行 MCP 验证”
+- MCP 验证时，使用 `webapp-testing` (vendor) 进行 Playwright 浏览器测试
+- 如果用户拒绝或当前环境无法执行 MCP，必须在交付说明中明确标注"未执行 MCP 验证"
 
 ## Uncertainty Handling
 
