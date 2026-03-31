@@ -116,15 +116,15 @@ When a phase fails, follow this escalation:
 
 ## Rule-Skill-Agent Mapping
 
-| Phase | Rules Reference | Recommended Skills | Optional Agent Roles |
-|-------|----------------|-------------------|---------------------|
-| Design | `rules/common/overview.md` | Architecture, Domain modeling | Tech Lead |
-| Plan | `rules/common/overview.md` | Task breakdown, Estimation | Project Manager |
-| Code | `rules/common/coding-standards.md`, `rules/common/comments.md`, Stack-specific rules | Language-specific patterns | Senior Developer |
-| Test | `rules/common/testing-standards.md` | Test planning, TDD | QA Engineer |
-| Verify | `rules/common/verification.md` | CI/CD, Tooling | DevOps |
-| Review | `rules/common/overview.md` | Code review, Security review | Tech Lead, Security |
-| Deliver | `rules/common/git-conventions.md` | Release management | Release Manager |
+| Phase | Rules Reference | Recommended Skills | Agent Roles |
+|-------|----------------|-------------------|-------------|
+| Design | `rules/common/overview.md` | Architecture, Domain modeling | - |
+| Plan | `rules/common/overview.md` | `standard-dev-workflow`, Task breakdown, Estimation | - |
+| Code | `rules/common/coding-standards.md`, `rules/common/comments.md`, Stack-specific rules | `coding-standards`, Language-specific patterns | frontend-dev / backend-dev / fullstack-dev |
+| Test | `rules/common/testing-standards.md` | `testing-workflow`, TDD | - |
+| Verify | `rules/common/verification.md` | `post-coding-verification`, CI/CD, Tooling | - |
+| Review | `rules/common/overview.md` | Code review, Security review | `stack-reviewer` |
+| Deliver | `rules/common/git-conventions.md` | Release management | - |
 
 ## Uncertainty Handling
 

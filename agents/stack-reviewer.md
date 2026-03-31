@@ -33,34 +33,24 @@ Invoked when:
 
 ## Collaboration with Other Agents
 
-### With Workflow Orchestrator
-- Receives handoff after Quality Gate passes
+### With Development Agents (frontend-dev, backend-dev, fullstack-dev)
+- Reviews code produced by development agents
+- Validates that stack-specific rules were followed
+- Identifies gaps between general and stack-specific standards
+
+### With standard-dev-workflow Skill
+- Receives handoff after verification phase passes
 - Reports blocking issues that prevent delivery
 - Provides final approval for Review phase completion
-
-### With Code Standards Enforcer
-- Validates stack-specific rules are being enforced
-- Identifies gaps between general and stack-specific standards
-- Ensures consistent application across technology boundaries
-
-### With Quality Gate
-- Verifies verification pipeline aligns with repository standards
-- Confirms security scanning covers all relevant paths
-- Validates build artifacts match expected outputs
-
-### With Test Strategist
-- Reviews test coverage of rules/skills themselves
-- Validates MCP integration patterns in test strategies
-- Ensures skill testing follows repository conventions
 
 ## Extended Review Scope
 
 When reviewing agent-related changes:
 
 1. **Agent Definitions**
-   - All agents have required metadata (name, description, tools, model)
-   - Trigger conditions are clearly defined
-   - Output formats are consistent
+   - All agents have required metadata (name, description, tools)
+   - Tech detection logic is clearly defined
+   - Rules and skills references are valid
 
 2. **Agent Interactions**
    - Collaboration patterns are documented

@@ -24,10 +24,10 @@ Each phase has corresponding rules, skills, and agents:
 | Phase | Rules | Skills | Agents |
 |-------|-------|--------|--------|
 | Design | `common/workflow.md` | brainstorming (vendor) | - |
-| Plan | `common/workflow.md` | writing-plans (vendor), standard-dev-workflow | workflow-orchestrator |
-| Code | `common/coding-standards.md` → `{stack}/overview.md` | coding-standards, {tech}-patterns | code-standards-enforcer |
-| Test | `common/testing-standards.md` → `{stack}/testing.md` | testing-workflow, ui-test-planning | test-strategist |
-| Verify | `common/verification.md` → `{stack}/verification.md` | post-coding-verification | quality-gate |
+| Plan | `common/workflow.md` | writing-plans (vendor), standard-dev-workflow | - |
+| Code | `common/coding-standards.md` → `{stack}/overview.md` | coding-standards, {tech}-patterns | frontend-dev / backend-dev / fullstack-dev |
+| Test | `common/testing-standards.md` → `{stack}/testing.md` | testing-workflow, ui-test-planning | - |
+| Verify | `common/verification.md` → `{stack}/verification.md` | post-coding-verification | - |
 | Review | `common/coding-standards.md` | code-reviewer (vendor) | stack-reviewer |
 | Deliver | `common/git-conventions.md` | pr-creator (vendor) | - |
 
@@ -51,10 +51,9 @@ Each phase has corresponding rules, skills, and agents:
 
 ## First-Party Agents
 
-- `workflow-orchestrator` - Coordinate phase transitions and agent invocation
-- `code-standards-enforcer` - Enforce naming, complexity, comments, security
-- `test-strategist` - Define test strategy, analyze coverage, identify gaps
-- `quality-gate` - Run lint/typecheck/build/security verification
+- `frontend-dev` - Frontend development (Vue, React, Next.js)
+- `backend-dev` - Backend development (Java, NestJS, Go, Python, Rust)
+- `fullstack-dev` - Full-stack development spanning both layers
 - `stack-reviewer` - Review cross-cutting concerns, rule-skill alignment
 
 See `~/.moluoxixi/agents/README.md` for agent orchestration details.

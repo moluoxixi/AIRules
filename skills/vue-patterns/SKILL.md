@@ -1,6 +1,6 @@
 ---
 name: vue-patterns
-description: Use when building or refactoring Vue 3, Vite, Pinia, or Vue Router applications, including page composition, composables, state boundaries, forms, async data handling, and component structure.
+description: Use when building or refactoring Vue 3, Nuxt 3, Vite, Pinia, or Vue Router applications, including page composition, composables, state boundaries, forms, async data handling, and component structure.
 ---
 
 # Vue Patterns

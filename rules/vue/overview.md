@@ -1,6 +1,6 @@
 # Vue Rules Overview
 
-Applicable to Vue 3 / Vite / Pinia / Vue Router projects.
+Applicable to Vue 3 / Nuxt 3 / Vite / Pinia / Vue Router projects.
 
 ## Architecture Principles
 

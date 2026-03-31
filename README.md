@@ -50,10 +50,10 @@ Design → Plan → Code → Test → Verify → Review → Deliver
 | Phase | Rules | Skills | Agents |
 |-------|-------|--------|--------|
 | Design | `common/workflow.md` | brainstorming (vendor) | - |
-| Plan | `common/workflow.md` | writing-plans (vendor), standard-dev-workflow | workflow-orchestrator |
-| Code | `common/coding-standards.md` → `{stack}/overview.md` | coding-standards, {tech}-patterns | code-standards-enforcer |
-| Test | `common/testing-standards.md` → `{stack}/testing.md` | testing-workflow, ui-test-planning | test-strategist |
-| Verify | `common/verification.md` → `{stack}/verification.md` | post-coding-verification | quality-gate |
+| Plan | `common/workflow.md` | writing-plans (vendor), standard-dev-workflow | - |
+| Code | `common/coding-standards.md` → `{stack}/overview.md` | coding-standards, {tech}-patterns | frontend-dev / backend-dev / fullstack-dev |
+| Test | `common/testing-standards.md` → `{stack}/testing.md` | testing-workflow, ui-test-planning | - |
+| Verify | `common/verification.md` → `{stack}/verification.md` | post-coding-verification | - |
 | Review | `common/coding-standards.md` | code-reviewer (vendor) | stack-reviewer |
 | Deliver | `common/git-conventions.md` | pr-creator (vendor) | - |
 
@@ -87,7 +87,7 @@ diagnose, fix following coding standards, and ensure tests pass."
 The AI will automatically:
 1. Reference appropriate rules from `common/` and tech-stack layers
 2. Invoke relevant skills for implementation guidance
-3. Apply agents for specialized tasks (testing, verification, review)
+3. Apply skills for specialized tasks (testing, verification, review)
 4. Follow the 7-phase workflow from Design to Deliver
 
 ## Installation
@@ -158,10 +158,9 @@ Fetch and follow instructions from https://raw.githubusercontent.com/moluoxixi/A
 │   ├── ui-test-planning/
 │   └── {tech}-patterns/  # Tech-specific pattern skills
 ├── agents/             # First-party agents
-│   ├── workflow-orchestrator.md
-│   ├── code-standards-enforcer.md
-│   ├── test-strategist.md
-│   ├── quality-gate.md
+│   ├── frontend-dev.md
+│   ├── backend-dev.md
+│   ├── fullstack-dev.md
 │   └── stack-reviewer.md
 ├── .claude/            # Claude-specific installation docs
 ├── .codex/             # Codex-specific installation docs

@@ -51,10 +51,10 @@ When conflicts occur, resolution follows this priority (highest to lowest):
 | Phase | Rules Reference | Skills | Agents |
 |-------|----------------|--------|--------|
 | **Design** | `common/workflow.md` | brainstorming (vendor) | - |
-| **Plan** | `common/workflow.md` | writing-plans (vendor), `standard-dev-workflow` | `workflow-orchestrator` |
-| **Code** | `common/coding-standards.md` → `{stack}/overview.md`<br>`common/comments.md` → `{stack}/comments.md` | `coding-standards`, `{tech}-patterns` | `code-standards-enforcer` |
-| **Test** | `common/testing-standards.md` → `{stack}/testing.md` | `testing-workflow`, `ui-test-planning` | `test-strategist` |
-| **Verify** | `common/verification.md` → `{stack}/verification.md` | `post-coding-verification` | `quality-gate` |
+| **Plan** | `common/workflow.md` | writing-plans (vendor), `standard-dev-workflow` | - |
+| **Code** | `common/coding-standards.md` → `{stack}/overview.md`<br>`common/comments.md` → `{stack}/comments.md` | `coding-standards`, `{tech}-patterns` | frontend-dev / backend-dev / fullstack-dev |
+| **Test** | `common/testing-standards.md` → `{stack}/testing.md` | `testing-workflow`, `ui-test-planning` | - |
+| **Verify** | `common/verification.md` → `{stack}/verification.md` | `post-coding-verification` | - |
 | **Review** | `common/coding-standards.md` | code-reviewer (vendor) | `stack-reviewer` |
 | **Deliver** | `common/git-conventions.md` | pr-creator (vendor) | - |
 
@@ -154,19 +154,19 @@ Each technology stack follows the 4-file convention:
 
 | Skill | Purpose | Related Rules | Related Agents |
 |-------|---------|---------------|----------------|
-| [coding-standards](../skills/coding-standards/SKILL.md) | Enforce code quality standards | `common/coding-standards.md` | `code-standards-enforcer` |
-| [standard-dev-workflow](../skills/standard-dev-workflow/SKILL.md) | Orchestrate workflow phases | `common/workflow.md` | `workflow-orchestrator` |
-| [testing-workflow](../skills/testing-workflow/SKILL.md) | Test planning and execution | `common/testing-standards.md` | `test-strategist` |
-| [post-coding-verification](../skills/post-coding-verification/SKILL.md) | Run verification pipeline | `common/verification.md` | `quality-gate` |
-| [ui-test-planning](../skills/ui-test-planning/SKILL.md) | UI-specific test strategies | `common/testing-standards.md`<br>`frontend/testing.md` | `test-strategist` |
+| [coding-standards](../skills/coding-standards/SKILL.md) | Enforce code quality standards | `common/coding-standards.md` | - |
+| [standard-dev-workflow](../skills/standard-dev-workflow/SKILL.md) | Orchestrate workflow phases | `common/workflow.md` | - |
+| [testing-workflow](../skills/testing-workflow/SKILL.md) | Test planning and execution | `common/testing-standards.md` | - |
+| [post-coding-verification](../skills/post-coding-verification/SKILL.md) | Run verification pipeline | `common/verification.md` | - |
+| [ui-test-planning](../skills/ui-test-planning/SKILL.md) | UI-specific test strategies | `common/testing-standards.md`<br>`frontend/testing.md` | - |
 | **Tech Patterns** | | | |
-| [java-backend-patterns](../skills/java-backend-patterns/SKILL.md) | Java implementation patterns | `java/*.md` | `code-standards-enforcer` |
-| [nest-patterns](../skills/nest-patterns/SKILL.md) | NestJS implementation patterns | `nest/*.md` | `code-standards-enforcer` |
-| [react-patterns](../skills/react-patterns/SKILL.md) | React implementation patterns | `react/*.md` | `code-standards-enforcer` |
-| [vue-patterns](../skills/vue-patterns/SKILL.md) | Vue implementation patterns | `vue/*.md` | `code-standards-enforcer` |
-| [go-patterns](../skills/go-patterns/SKILL.md) | Go implementation patterns | `go/*.md` | `code-standards-enforcer` |
-| [python-patterns](../skills/python-patterns/SKILL.md) | Python implementation patterns | `python/*.md` | `code-standards-enforcer` |
-| [rust-service-patterns](../skills/rust-service-patterns/SKILL.md) | Rust implementation patterns | `rust/*.md` | `code-standards-enforcer` |
+| [java-backend-patterns](../skills/java-backend-patterns/SKILL.md) | Java implementation patterns | `java/*.md` | backend-dev |
+| [nest-patterns](../skills/nest-patterns/SKILL.md) | NestJS implementation patterns | `nest/*.md` | backend-dev |
+| [react-patterns](../skills/react-patterns/SKILL.md) | React implementation patterns | `react/*.md` | frontend-dev |
+| [vue-patterns](../skills/vue-patterns/SKILL.md) | Vue implementation patterns | `vue/*.md` | frontend-dev |
+| [go-patterns](../skills/go-patterns/SKILL.md) | Go implementation patterns | `go/*.md` | backend-dev |
+| [python-patterns](../skills/python-patterns/SKILL.md) | Python implementation patterns | `python/*.md` | backend-dev |
+| [rust-service-patterns](../skills/rust-service-patterns/SKILL.md) | Rust implementation patterns | `rust/*.md` | backend-dev |
 
 ---
 
@@ -174,11 +174,10 @@ Each technology stack follows the 4-file convention:
 
 | Agent | Phase | Responsibility | Trigger |
 |-------|-------|----------------|---------|
-| [workflow-orchestrator](../agents/workflow-orchestrator.md) | All | Coordinate phase transitions and agent invocation | Task start, phase completion |
-| [code-standards-enforcer](../agents/code-standards-enforcer.md) | Code | Enforce naming, complexity, comments, security | Code phase entry |
-| [test-strategist](../agents/test-strategist.md) | Test | Define test strategy, analyze coverage, identify gaps | Test phase entry |
-| [quality-gate](../agents/quality-gate.md) | Verify | Run lint/typecheck/build/security verification | Verify phase entry |
-| [stack-reviewer](../agents/stack-reviewer.md) | Review | Review cross-cutting concerns, rule-skill alignment | Review phase entry |
+| [frontend-dev](../agents/frontend-dev.md) | Code | Frontend development (Vue, Nuxt.js, React, Next.js) | Frontend project detected |
+| [backend-dev](../agents/backend-dev.md) | Code | Backend development (Java, NestJS, Go, Python, Rust) | Backend project detected |
+| [fullstack-dev](../agents/fullstack-dev.md) | Code | Full-stack development spanning both layers | Full-stack project detected |
+| [stack-reviewer](../agents/stack-reviewer.md) | Review | Cross-cutting review, rule-skill alignment | Review phase entry |
 
 ---
 
@@ -233,7 +232,7 @@ common/verification.md
 1. **Always check common rules first** - Establish baseline principles
 2. **Apply tech-stack rules second** - Override with specific implementations
 3. **Reference workflow phases** - Ensure proper phase entry/exit
-4. **Invoke appropriate agents** - Use agent capabilities for specialized tasks
+4. **Invoke appropriate skills** - Use skill capabilities for specialized tasks
 
 ### For Project Setup
 

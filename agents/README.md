@@ -1,107 +1,60 @@
 # Agents
 
-Multi-agent orchestration for the standard development workflow.
+Role-based agent cards for the AIRules system. Agents define **who** you are, while skills define **how** to do things and rules define **what standards** to follow.
+
+## Three-Layer Responsibility Separation
+
+| Layer | Responsibility | Question Answered | Examples |
+|-------|---------------|-------------------|----------|
+| **Agent** | Role definition | Who am I? | frontend-dev, backend-dev, fullstack-dev, stack-reviewer |
+| **Skill** | Operational know-how | How do I do it? | standard-dev-workflow, coding-standards, testing-workflow |
+| **Rule** | Standards & constraints | What standards apply? | `rules/common/*`, `rules/react/*`, `rules/go/*` |
 
 ## Agent Inventory
 
-| Agent | Phase | Primary Responsibility |
-|-------|-------|------------------------|
-| [workflow-orchestrator](workflow-orchestrator.md) | All | Coordinate phase transitions and agent invocation |
-| [code-standards-enforcer](code-standards-enforcer.md) | Code | Enforce naming, complexity, comments, security |
-| [test-strategist](test-strategist.md) | Test | Define test strategy, analyze coverage, identify gaps |
-| [quality-gate](quality-gate.md) | Verify | Run lint/typecheck/build/security verification pipeline |
-| [stack-reviewer](stack-reviewer.md) | Review | Review cross-cutting concerns, rule-skill alignment |
+| Agent | Type | Primary Responsibility |
+|-------|------|------------------------|
+| [frontend-dev](frontend-dev.md) | Role | Frontend development (Vue, React, Next.js) |
+| [backend-dev](backend-dev.md) | Role | Backend development (Java, NestJS, Go, Python, Rust) |
+| [fullstack-dev](fullstack-dev.md) | Role | Full-stack development spanning both layers |
+| [stack-reviewer](stack-reviewer.md) | Review | Cross-cutting review, rule-skill alignment |
 
-## Workflow Execution Order
+## How Agents Work
 
-```
-┌─────────────────────────────────────────────────────────────────┐
-│                         DESIGN                                  │
-│                    (Human-led planning)                         │
-└───────────────────────────┬─────────────────────────────────────┘
-                            │
-┌───────────────────────────▼─────────────────────────────────────┐
-│                          PLAN                                   │
-│                   (Human-led breakdown)                         │
-└───────────────────────────┬─────────────────────────────────────┘
-                            │
-┌───────────────────────────▼─────────────────────────────────────┐
-│                          CODE                                   │
-│  ┌─────────────────────────────────────────────────────────┐   │
-│  │           Code Standards Enforcer                       │   │
-│  │  • Naming semantics  • Function complexity              │   │
-│  │  • Comment rules     • Security checks                  │   │
-│  └─────────────────────────────────────────────────────────┘   │
-└───────────────────────────┬─────────────────────────────────────┘
-                            │
-┌───────────────────────────▼─────────────────────────────────────┐
-│                          TEST                                   │
-│  ┌─────────────────────────────────────────────────────────┐   │
-│  │              Test Strategist                            │   │
-│  │  • Strategy selection  • Coverage analysis              │   │
-│  │  • Gap identification  • MCP integration                │   │
-│  └─────────────────────────────────────────────────────────┘   │
-└───────────────────────────┬─────────────────────────────────────┘
-                            │
-┌───────────────────────────▼─────────────────────────────────────┐
-│                         VERIFY                                  │
-│  ┌─────────────────────────────────────────────────────────┐   │
-│  │                Quality Gate                             │   │
-│  │  • Lint  • Type check  • Build  • Security scan         │   │
-│  └─────────────────────────────────────────────────────────┘   │
-└───────────────────────────┬─────────────────────────────────────┘
-                            │
-┌───────────────────────────▼─────────────────────────────────────┐
-│                         REVIEW                                  │
-│  ┌─────────────────────────────────────────────────────────┐   │
-│  │              Stack Reviewer                             │   │
-│  │  • Cross-cutting concerns  • Rule-skill alignment       │   │
-│  └─────────────────────────────────────────────────────────┘   │
-│                    (Human review parallel)                      │
-└───────────────────────────┬─────────────────────────────────────┘
-                            │
-┌───────────────────────────▼─────────────────────────────────────┐
-│                        DELIVER                                  │
-│                   (Human-led release)                           │
-└─────────────────────────────────────────────────────────────────┘
-```
+1. **Detection**: Agent detects project tech stack from files (package.json, go.mod, pom.xml, etc.)
+2. **Loading**: Agent loads relevant rules (`rules/{stack}/*`) and skills (`{stack}-patterns`)
+3. **Always Load**: All agents load `rules/common/*` and universal skills (`coding-standards`, `testing-workflow`, etc.)
+4. **Execution**: Agent delegates to `standard-dev-workflow` skill for phase orchestration
 
-## Agent Call Graph
+## Standard 7-Phase Workflow
+
+All development agents follow the workflow defined in `rules/common/workflow.md`:
 
 ```
-Workflow Orchestrator
-        │
-        ├──► Code Standards Enforcer ──► Test Strategist
-        │                                        │
-        │                                        ▼
-        │                              Quality Gate
-        │                                        │
-        └────────────────────────────────────────┘
-                     (on pass)
-                          │
-                          ▼
-                   Stack Reviewer
+Design → Plan → Code → Test → Verify → Review → Deliver
 ```
 
-## Conflict Resolution Priority
+The `standard-dev-workflow` skill orchestrates transitions between phases.
 
-When multiple agents provide conflicting recommendations:
+## Agent Selection Guide
 
-1. **Security violations**: Security > Standards > Functionality
-2. **Test coverage vs deadline**: Coverage requirements win
-3. **Style differences**: Project conventions > Personal preference
-4. **Architecture vs speed**: Long-term maintainability wins
+| Project Type | Use Agent |
+|--------------|-----------|
+| Vue/React SPA or component library | `frontend-dev` |
+| API service, microservice, backend | `backend-dev` |
+| Full-stack app with frontend + backend | `fullstack-dev` |
+| Reviewing rule/skill changes | `stack-reviewer` |
 
 ## Adding New Agents
 
 To extend the agent system:
 
 1. **Create agent file**: `agents/{agent-name}.md`
-2. **Define metadata**: name, description, tools, model
-3. **Specify trigger**: When and how the agent is invoked
-4. **Document responsibilities**: Clear scope boundaries
-5. **Update orchestrator**: Add invocation logic to workflow-orchestrator.md
-6. **Update README**: Add to inventory and call graph
+2. **Define metadata**: name, description, tools
+3. **Document tech detection**: How the agent identifies its stack
+4. **Specify rules/skills**: What to load for this role
+5. **Define responsibilities**: Clear scope boundaries
+6. **Update README**: Add to inventory
 
 ### Agent Template
 
@@ -109,26 +62,30 @@ To extend the agent system:
 ---
 name: agent-name
 description: Brief description of agent purpose.
-tools: Read, Grep, Glob
-model: gpt-5
+tools: Read, Write, Grep, Glob, Bash
 ---
 
 # Agent Name
 
 Role description (third person).
 
-## Trigger
+## Tech Stack Detection
 
-When this agent is invoked.
+How this agent identifies applicable projects.
+
+## Always Load
+
+- **Rules**: Universal rules to always load
+- **Skills**: Universal skills to always load
+
+## Workflow
+
+Which workflow this agent follows.
 
 ## Responsibilities
 
 - Task 1
 - Task 2
-
-## Output Format
-
-Expected report structure.
 
 ## Collaboration
 

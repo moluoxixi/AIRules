@@ -74,10 +74,9 @@ See [rules/CATALOG.md](../rules/CATALOG.md) for complete rule index and inherita
 
 ### Agents
 
-- `workflow-orchestrator` - Coordinate phase transitions and agent invocation
-- `code-standards-enforcer` - Enforce naming, complexity, comments, security
-- `test-strategist` - Define test strategy, analyze coverage, identify gaps
-- `quality-gate` - Run lint/typecheck/build/security verification
+- `frontend-dev` - Frontend development (Vue, React, Next.js)
+- `backend-dev` - Backend development (Java, NestJS, Go, Python, Rust)
+- `fullstack-dev` - Full-stack development spanning both layers
 - `stack-reviewer` - Review cross-cutting concerns, rule-skill alignment
 
 See [agents/README.md](../agents/README.md) for agent orchestration details.
@@ -154,7 +153,7 @@ Checkpoints:
 - `~/.moluoxixi/skills/` contains both vendor skill links and first-party skills
 - `~/.claude/skills/` points to `~/.moluoxixi/skills/`
 - `~/.claude/rules/` contains the layered rule structure (common/ + tech-stack/)
-- `~/.claude/agents/` contains 5 agent definitions
+- `~/.claude/agents/` contains 4 agent definitions
 
 ## Notes
 
