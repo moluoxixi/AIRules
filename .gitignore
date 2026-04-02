@@ -1,4 +1,6 @@
 node_modules/
+.worktrees/
+idea
 .qoder/*
 !.qoder/INSTALL.md
 !.qoder/UPGRADE.md
