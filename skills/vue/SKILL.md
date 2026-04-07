@@ -1,6 +1,6 @@
 ---
 name: vue
-description: 叠加在 frontend 和 typescript 之上的 Vue / Nuxt 指导。
+description: Use when 任务涉及 Vue / Nuxt 的 .vue 文件、composables、store、页面数据流或响应式状态归属。
 ---
 
 # Vue

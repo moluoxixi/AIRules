@@ -1,6 +1,6 @@
 ---
 name: standard-workflow
-description: 定义默认交付顺序的第一方入口 skill，从需求澄清一直到收尾。
+description: Use when 任务会跨越需求澄清、方案、实现、测试、验证或收尾多个阶段，或用户明确要求按仓库标准流程推进。
 ---
 
 # Standard Workflow

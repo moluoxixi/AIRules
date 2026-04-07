@@ -1,6 +1,6 @@
 ---
 name: javascript
-description: JavaScript 实现指导，覆盖异步行为、模块边界、运行时安全和可读性。
+description: Use when 编辑 .js / .mjs，或问题涉及异步流程、运行时校验、模块边界与错误处理。
 ---
 
 # JavaScript

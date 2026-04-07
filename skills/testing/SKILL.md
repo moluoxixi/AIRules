@@ -1,6 +1,6 @@
 ---
 name: testing
-description: 补充 superpowers test-driven-development 的仓库级测试指导。
+description: Use when 行为已经变化，需要补测试、决定先跑哪些检查，或为改动提供直接测试证据。
 ---
 
 # Testing

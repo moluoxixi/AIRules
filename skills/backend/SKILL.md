@@ -1,6 +1,6 @@
 ---
 name: backend
-description: 跨技术栈后端指导，覆盖 API 边界、服务职责、校验和错误处理。
+description: Use when 处理 API、service、输入校验、数据访问、错误映射或外部副作用边界。
 ---
 
 # Backend

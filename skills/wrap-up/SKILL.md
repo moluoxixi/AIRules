@@ -1,6 +1,6 @@
 ---
 name: wrap-up
-description: 在测试和验证之后用于最终交接的收尾指导，强调简洁和证据。
+description: Use when 实现和验证已经结束，需要做最终交接、收尾、汇报结果或说明未验证范围。
 ---
 
 # Wrap-Up

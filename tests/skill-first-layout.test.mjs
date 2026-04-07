@@ -44,3 +44,42 @@ test('task-2 skill files keep required boundary and language invariants', () => 
   assert.match(typescript, /避免 `any`/);
   assert.match(typescript, /无效状态/);
 });
+
+test('first-party skill descriptions are trigger-oriented', () => {
+  const standardWorkflow = readFileSync(new URL('../skills/standard-workflow/SKILL.md', import.meta.url), 'utf8');
+  const frontend = readFileSync(new URL('../skills/frontend/SKILL.md', import.meta.url), 'utf8');
+  const backend = readFileSync(new URL('../skills/backend/SKILL.md', import.meta.url), 'utf8');
+  const javascript = readFileSync(new URL('../skills/javascript/SKILL.md', import.meta.url), 'utf8');
+  const typescript = readFileSync(new URL('../skills/typescript/SKILL.md', import.meta.url), 'utf8');
+  const react = readFileSync(new URL('../skills/react/SKILL.md', import.meta.url), 'utf8');
+  const vue = readFileSync(new URL('../skills/vue/SKILL.md', import.meta.url), 'utf8');
+  const testing = readFileSync(new URL('../skills/testing/SKILL.md', import.meta.url), 'utf8');
+  const verification = readFileSync(new URL('../skills/verification/SKILL.md', import.meta.url), 'utf8');
+  const wrapUp = readFileSync(new URL('../skills/wrap-up/SKILL.md', import.meta.url), 'utf8');
+
+  for (const content of [
+    standardWorkflow,
+    frontend,
+    backend,
+    javascript,
+    typescript,
+    react,
+    vue,
+    testing,
+    verification,
+    wrapUp
+  ]) {
+    assert.match(content, /^description:\s*Use when\b/m);
+  }
+
+  assert.match(standardWorkflow, /多个阶段|标准流程/);
+  assert.match(frontend, /页面|组件|交互|状态/);
+  assert.match(backend, /API|service|校验|副作用/);
+  assert.match(javascript, /\.js|\.mjs|异步|运行时/);
+  assert.match(typescript, /\.ts|\.tsx|类型|边界/);
+  assert.match(react, /React|Next|hooks|server\/client/);
+  assert.match(vue, /Vue|Nuxt|composables|store/);
+  assert.match(testing, /测试|断言|验证改动/);
+  assert.match(verification, /宣称完成|验证证据|汇报完成/);
+  assert.match(wrapUp, /最终交接|收尾|汇报结果/);
+});

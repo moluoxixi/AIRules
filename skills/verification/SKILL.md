@@ -1,6 +1,6 @@
 ---
 name: verification
-description: 补充 superpowers verification-before-completion 的仓库级完成前验证指导。
+description: Use when 准备宣称完成，或测试已通过但还需要整理最终验证证据与剩余风险。
 ---
 
 # Verification

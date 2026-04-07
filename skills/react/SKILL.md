@@ -1,6 +1,6 @@
 ---
 name: react
-description: 叠加在 frontend 和 typescript 之上的 React / Next.js 指导。
+description: Use when 任务涉及 React / Next.js 组件、hooks、server/client 边界、页面交互或路由层状态。
 ---
 
 # React

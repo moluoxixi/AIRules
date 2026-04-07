@@ -1,6 +1,6 @@
 ---
 name: typescript
-description: TypeScript 类型设计指导，在 JavaScript 基础上补边界类型和无效状态建模。
+description: Use when 编辑 .ts / .tsx，或需要设计边界类型、公共接口、联合状态与类型收窄。
 ---
 
 # TypeScript

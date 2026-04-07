@@ -1,6 +1,6 @@
 ---
 name: frontend
-description: 跨框架前端指导，覆盖页面/组件边界、状态归属和交互完整性。
+description: Use when 处理页面、组件、交互或状态归属，或需要明确 loading / empty / error 等前端界面状态。
 ---
 
 # Frontend
