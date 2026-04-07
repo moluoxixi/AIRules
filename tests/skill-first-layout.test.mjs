@@ -99,13 +99,10 @@ test('first-party skills follow the shared content structure', () => {
   ]) {
     const content = readFileSync(new URL(relativePath, import.meta.url), 'utf8');
     assert.match(content, /## Overview/);
-    assert.match(content, /## When to Use/);
-    assert.match(content, /When NOT to use:/);
     assert.match(content, /## Quick Reference/);
     assert.match(content, /## Common Mistakes/);
     assert.match(content, /## Related Skills/);
-    assert.doesNotMatch(content, /## 硬约束/);
-    assert.doesNotMatch(content, /## 流程/);
-    assert.doesNotMatch(content, /## 核心指导/);
+    assert.doesNotMatch(content, /## When to Use/);
+    assert.doesNotMatch(content, /When NOT to use:/);
   }
 });

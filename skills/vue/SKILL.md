@@ -9,16 +9,6 @@ description: Use when 任务涉及 Vue / Nuxt 的 .vue 文件、composables、st
 
 这个 skill 在 `frontend` 和 `typescript` 之上补充 Vue / Nuxt 的具体判断，重点是 composables、store 边界、模板可读性和数据流。
 
-## When to Use
-
-- 任务涉及 `.vue`、composables、store 或页面数据流
-- 需要判断状态该放在 `ref` / `reactive`、composable 还是 store
-- 需要处理 Nuxt 的数据获取和路由层行为
-
-When NOT to use:
-- 你还停留在跨框架页面/组件边界讨论阶段
-- 问题主要是 TypeScript 类型设计，而不是 Vue / Nuxt 模式选择
-
 ## Quick Reference
 
 - 先继承 `frontend` 的边界，再继承 `typescript` 的契约
