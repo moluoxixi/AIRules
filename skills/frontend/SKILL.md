@@ -38,4 +38,3 @@ description: 跨框架前端指导，覆盖页面/组件边界、状态归属和
 - `react`, `vue`
 - `backend`
 - `testing`, `verification`
-- `personal-defaults`

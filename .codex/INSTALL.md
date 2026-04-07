@@ -29,7 +29,7 @@ The Codex projection is:
 
 `~/.agents/skills/moluoxixi/` exposes the aggregated `~/.moluoxixi/skills/` tree, including:
 
-- First-party skills such as `standard-workflow`, `personal-defaults`, `frontend`, `backend`, `testing`, `verification`, and `wrap-up`
+- First-party skills such as `standard-workflow`, `frontend`, `backend`, `testing`, `verification`, and `wrap-up`
 - Language and framework skills such as `javascript`, `typescript`, `react`, and `vue`
 - Linked vendor skills, including `superpowers/*`
 

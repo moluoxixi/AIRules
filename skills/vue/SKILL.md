@@ -39,5 +39,4 @@ description: 叠加在 frontend 和 typescript 之上的 Vue / Nuxt 指导。
 - `typescript`
 - `testing`
 - `verification`
-- `personal-defaults`
 

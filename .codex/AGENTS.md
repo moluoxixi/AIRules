@@ -16,10 +16,9 @@ Treat this install as skills-first from the projected namespace and first-party 
 Use the first-party skills in this rough order:
 
 1. `standard-workflow` establishes the default delivery flow.
-2. `personal-defaults` applies repository-wide working preferences.
-3. Choose the domain layer: `frontend` or `backend`.
-4. Add the language and framework layer you need, such as `javascript`, `typescript`, `react`, or `vue`.
-5. Close with the phase skills: `testing`, `verification`, and `wrap-up`.
+2. Choose the domain layer: `frontend` or `backend`.
+3. Add the language and framework layer you need, such as `javascript`, `typescript`, `react`, or `vue`.
+4. Close with the phase skills: `testing`, `verification`, and `wrap-up`.
 
 These first-party skills live under `~/.agents/skills/moluoxixi/` alongside linked vendor skills.
 

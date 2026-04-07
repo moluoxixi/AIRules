@@ -44,5 +44,4 @@ description: 补充 superpowers test-driven-development 的仓库级测试指导
 - `superpowers/test-driven-development`
 - `verification`
 - `wrap-up`
-- `personal-defaults`
 

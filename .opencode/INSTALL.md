@@ -26,7 +26,7 @@ The shared installation root remains:
 
 The projected `skills/` tree contains:
 
-- First-party skills such as `standard-workflow`, `personal-defaults`, `frontend`, `backend`, `testing`, `verification`, and `wrap-up`
+- First-party skills such as `standard-workflow`, `frontend`, `backend`, `testing`, `verification`, and `wrap-up`
 - Language and framework skills such as `javascript`, `typescript`, `react`, and `vue`
 - Vendor skills linked from `vendors/`, including `superpowers/*`
 
