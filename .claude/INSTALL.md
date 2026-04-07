@@ -15,28 +15,16 @@ After installation, the shared content lives at:
   skills/           # First-party skills plus linked vendor skills
   agents/           # Optional first-party agents
   vendors/          # Vendor clones used to build the aggregated skills tree
+  AGENTS.md         # Shared host baseline source
 ```
 
 Claude reads from:
 
 ```text
-~/.claude/skills  -> ~/.moluoxixi/skills
-~/.claude/agents  -> ~/.moluoxixi/agents   # only if agents are present
+~/.claude/skills   -> ~/.moluoxixi/skills
+~/.claude/agents   -> ~/.moluoxixi/agents   # only if agents are present
+~/.claude/CLAUDE.md -> ~/.moluoxixi/AGENTS.md
 ```
-
-## What's Included
-
-### Skills
-
-The aggregated `skills/` tree combines:
-
-- First-party workflow and engineering skills such as `standard-workflow`, `frontend`, `backend`, `testing`, `verification`, and `wrap-up`
-- Language and framework skills such as `javascript`, `typescript`, `react`, and `vue`
-- Vendor skills linked from `vendors/`, including `superpowers/*`
-
-### Agents
-
-If the repository contains first-party agents, Claude will also project them to `~/.claude/agents`.
 
 ## Installation Steps
 
@@ -61,6 +49,8 @@ ln -sfn "${HOME}/.moluoxixi/skills" "${HOME}/.claude/skills"
 if [ -d "${HOME}/.moluoxixi/agents" ]; then
   ln -sfn "${HOME}/.moluoxixi/agents" "${HOME}/.claude/agents"
 fi
+
+node "${HOME}/.moluoxixi/scripts/link-host-baselines.mjs" --home "${HOME}/.moluoxixi" --host claude
 ```
 
 ### Windows PowerShell
@@ -89,6 +79,8 @@ cmd /c mklink /J "$env:USERPROFILE\\.claude\\skills" "$env:USERPROFILE\\.moluoxi
 if (Test-Path "$env:USERPROFILE\\.moluoxixi\\agents") {
   cmd /c mklink /J "$env:USERPROFILE\\.claude\\agents" "$env:USERPROFILE\\.moluoxixi\\agents"
 }
+
+node "$env:USERPROFILE\\.moluoxixi\\scripts\\link-host-baselines.mjs" --home "$env:USERPROFILE\\.moluoxixi" --host claude
 ```
 
 ## Verification
@@ -96,6 +88,7 @@ if (Test-Path "$env:USERPROFILE\\.moluoxixi\\agents") {
 ```bash
 ls ~/.moluoxixi/skills
 ls ~/.claude/skills
+ls ~/.claude/CLAUDE.md
 ```
 
 If agents are installed, also verify:
@@ -106,13 +99,6 @@ ls ~/.claude/agents
 
 Checkpoints:
 
-- `~/.moluoxixi/skills/` contains first-party and vendor skills
 - `~/.claude/skills/` points to `~/.moluoxixi/skills/`
+- `~/.claude/CLAUDE.md` points to `~/.moluoxixi/AGENTS.md`
 - `~/.claude/agents/` exists only when `~/.moluoxixi/agents/` exists
-- Claude is using the shared skills-first layout
-
-## Notes
-
-- `superpowers/*` remains the baseline process layer inside the aggregated skills tree
-- First-party guidance is published through `skills/`
-- Re-run the install flow after repository updates so Claude keeps the latest linked skills

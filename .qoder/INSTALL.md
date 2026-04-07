@@ -12,31 +12,19 @@ After installation, the shared content lives at:
 
 ```text
 ~/.moluoxixi/
-  skills/           # First-party skills plus linked vendor skills
-  agents/           # Optional first-party agents
-  vendors/          # Vendor clones used to build the aggregated skills tree
+  skills/
+  agents/
+  vendors/
+  AGENTS.md
 ```
 
 Qoder reads from:
 
 ```text
-~/.qoder/skills  -> ~/.moluoxixi/skills
-~/.qoder/agents  -> ~/.moluoxixi/agents   # only if agents are present
+~/.qoder/skills   -> ~/.moluoxixi/skills
+~/.qoder/agents   -> ~/.moluoxixi/agents   # only if agents are present
+~/.qoder/AGENTS.md -> ~/.moluoxixi/AGENTS.md
 ```
-
-## What's Included
-
-### Skills
-
-The aggregated `skills/` tree combines:
-
-- First-party workflow and engineering skills such as `standard-workflow`, `frontend`, `backend`, `testing`, `verification`, and `wrap-up`
-- Language and framework skills such as `javascript`, `typescript`, `react`, and `vue`
-- Vendor skills linked from `vendors/`, including `superpowers/*`
-
-### Agents
-
-If the repository contains first-party agents, Qoder will also project them to `~/.qoder/agents`.
 
 ## Installation Steps
 
@@ -61,6 +49,8 @@ ln -sfn "${HOME}/.moluoxixi/skills" "${HOME}/.qoder/skills"
 if [ -d "${HOME}/.moluoxixi/agents" ]; then
   ln -sfn "${HOME}/.moluoxixi/agents" "${HOME}/.qoder/agents"
 fi
+
+node "${HOME}/.moluoxixi/scripts/link-host-baselines.mjs" --home "${HOME}/.moluoxixi" --host qoder
 ```
 
 ### Windows PowerShell
@@ -89,6 +79,8 @@ cmd /c mklink /J "$env:USERPROFILE\\.qoder\\skills" "$env:USERPROFILE\\.moluoxix
 if (Test-Path "$env:USERPROFILE\\.moluoxixi\\agents") {
   cmd /c mklink /J "$env:USERPROFILE\\.qoder\\agents" "$env:USERPROFILE\\.moluoxixi\\agents"
 }
+
+node "$env:USERPROFILE\\.moluoxixi\\scripts\\link-host-baselines.mjs" --home "$env:USERPROFILE\\.moluoxixi" --host qoder
 ```
 
 ## Verification
@@ -96,6 +88,7 @@ if (Test-Path "$env:USERPROFILE\\.moluoxixi\\agents") {
 ```bash
 ls ~/.moluoxixi/skills
 ls ~/.qoder/skills
+ls ~/.qoder/AGENTS.md
 ```
 
 If agents are installed, also verify:
@@ -106,13 +99,6 @@ ls ~/.qoder/agents
 
 Checkpoints:
 
-- `~/.moluoxixi/skills/` contains first-party and vendor skills
 - `~/.qoder/skills/` points to `~/.moluoxixi/skills/`
+- `~/.qoder/AGENTS.md` points to `~/.moluoxixi/AGENTS.md`
 - `~/.qoder/agents/` exists only when `~/.moluoxixi/agents/` exists
-- Qoder is using the shared skills-first layout
-
-## Notes
-
-- `superpowers/*` remains the baseline process layer inside the aggregated skills tree
-- First-party guidance is published through `skills/`
-- Re-run the install flow after repository updates so Qoder keeps the latest linked skills

@@ -8,27 +8,12 @@
 
 ## Goal
 
-After installation, openCode reads the aggregated skills tree from:
+openCode reads these locations:
 
 ```text
-~/.config/opencode/skills -> ~/.moluoxixi/skills
+~/.config/opencode/skills   -> ~/.moluoxixi/skills
+~/.config/opencode/AGENTS.md -> ~/.moluoxixi/AGENTS.md
 ```
-
-The shared installation root remains:
-
-```text
-~/.moluoxixi/
-  skills/           # First-party skills plus linked vendor skills
-  vendors/          # Vendor clones used to build the aggregated skills tree
-```
-
-## What's Included
-
-The projected `skills/` tree contains:
-
-- First-party skills such as `standard-workflow`, `frontend`, `backend`, `testing`, `verification`, and `wrap-up`
-- Language and framework skills such as `javascript`, `typescript`, `react`, and `vue`
-- Vendor skills linked from `vendors/`, including `superpowers/*`
 
 ## Installation Steps
 
@@ -49,6 +34,8 @@ node "${HOME}/.moluoxixi/scripts/rebuild-links.mjs" --home "${HOME}/.moluoxixi"
 mkdir -p "${HOME}/.config/opencode"
 rm -rf "${HOME}/.config/opencode/skills"
 ln -sfn "${HOME}/.moluoxixi/skills" "${HOME}/.config/opencode/skills"
+
+node "${HOME}/.moluoxixi/scripts/link-host-baselines.mjs" --home "${HOME}/.moluoxixi" --host opencode
 ```
 
 ### Windows PowerShell
@@ -70,6 +57,8 @@ if (Test-Path "$env:USERPROFILE\\.config\\opencode\\skills") {
   Remove-Item "$env:USERPROFILE\\.config\\opencode\\skills" -Recurse -Force
 }
 cmd /c mklink /J "$env:USERPROFILE\\.config\\opencode\\skills" "$env:USERPROFILE\\.moluoxixi\\skills"
+
+node "$env:USERPROFILE\\.moluoxixi\\scripts\\link-host-baselines.mjs" --home "$env:USERPROFILE\\.moluoxixi" --host opencode
 ```
 
 ## Verification
@@ -77,15 +66,11 @@ cmd /c mklink /J "$env:USERPROFILE\\.config\\opencode\\skills" "$env:USERPROFILE
 ```bash
 ls ~/.moluoxixi/skills
 ls ~/.config/opencode/skills
+ls ~/.config/opencode/AGENTS.md
 ```
 
 Checkpoints:
 
 - `~/.config/opencode/skills` points to `~/.moluoxixi/skills`
-- openCode is using the shared skills-first projection
-- openCode uses the shared skills-first projection directly
-
-## Notes
-
-- `superpowers/*` remains part of the projected skill tree
-- openCode uses the same aggregated `~/.moluoxixi/skills/` tree as the other supported hosts
+- `~/.config/opencode/AGENTS.md` points to `~/.moluoxixi/AGENTS.md`
+- openCode uses the shared skills-first projection

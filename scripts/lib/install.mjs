@@ -33,6 +33,12 @@ function copyDirContents(sourceDir, targetDir) {
   }
 }
 
+function copyRequiredFile(sourceFile, targetFile) {
+  mkdirSync(path.dirname(targetFile), { recursive: true });
+  rmSync(targetFile, { recursive: true, force: true });
+  cpSync(sourceFile, targetFile);
+}
+
 function syncRequiredDir(sourceDir, targetDir) {
   copyDirContents(sourceDir, targetDir);
 }
@@ -50,6 +56,16 @@ function linkTypeForCurrentPlatform() {
   return process.platform === 'win32' ? 'junction' : 'dir';
 }
 
+function linkFileForCurrentPlatform() {
+  return process.platform === 'win32' ? 'file' : 'file';
+}
+
+function replaceWithSymlink(source, target, type) {
+  mkdirSync(path.dirname(target), { recursive: true });
+  rmSync(target, { recursive: true, force: true });
+  symlinkSync(source, target, type);
+}
+
 export function getDefaultInstallPaths(userHome = os.homedir()) {
   const moluoHome = path.join(userHome, '.moluoxixi');
   const opencodeHome = path.join(userHome, '.config', 'opencode');
@@ -62,8 +78,15 @@ export function getDefaultInstallPaths(userHome = os.homedir()) {
     codexHome: path.join(userHome, '.codex'),
     codexAgentSkillsHome: path.join(userHome, '.agents', 'skills'),
     qoderHome: path.join(userHome, '.qoder'),
+    tareHome: path.join(userHome, '.tare'),
     opencodeHome,
-    opencodeSkillsHome: path.join(opencodeHome, 'skills')
+    opencodeSkillsHome: path.join(opencodeHome, 'skills'),
+    moluoBaselineFile: path.join(moluoHome, 'AGENTS.md'),
+    claudeBaselineFile: path.join(userHome, '.claude', 'CLAUDE.md'),
+    codexBaselineFile: path.join(userHome, '.codex', 'AGENTS.md'),
+    qoderBaselineFile: path.join(userHome, '.qoder', 'AGENTS.md'),
+    tareBaselineFile: path.join(userHome, '.tare', 'AGENTS.md'),
+    opencodeBaselineFile: path.join(opencodeHome, 'AGENTS.md')
   };
 }
 
@@ -79,6 +102,7 @@ export function ensureInstallRoot(paths) {
 export function syncFirstPartyToHome(repoRoot, moluoHome) {
   syncRequiredDir(path.join(repoRoot, 'skills'), path.join(moluoHome, 'skills'));
   syncOptionalDir(path.join(repoRoot, 'agents'), path.join(moluoHome, 'agents'));
+  copyRequiredFile(path.join(repoRoot, 'AGENTS.md'), path.join(moluoHome, 'AGENTS.md'));
 }
 
 export function rebuildVendorSkillLinks({ homeDir, manifestPath }) {
@@ -113,24 +137,80 @@ function projectSharedSkillsHost(hostHome, moluoHome) {
 
 export function projectToClaude({ moluoHome, claudeHome }) {
   projectSharedSkillsHost(claudeHome, moluoHome);
+  replaceWithSymlink(
+    path.join(moluoHome, 'AGENTS.md'),
+    path.join(claudeHome, 'CLAUDE.md'),
+    linkFileForCurrentPlatform()
+  );
 }
 
 export function projectToQoder({ moluoHome, qoderHome }) {
   projectSharedSkillsHost(qoderHome, moluoHome);
+  replaceWithSymlink(
+    path.join(moluoHome, 'AGENTS.md'),
+    path.join(qoderHome, 'AGENTS.md'),
+    linkFileForCurrentPlatform()
+  );
 }
 
-export function projectToCodex({ repoRoot, moluoHome, codexHome, codexAgentSkillsHome }) {
+export function projectToCodex({ moluoHome, codexHome, codexAgentSkillsHome }) {
   mkdirSync(codexHome, { recursive: true });
-  resetDir(codexAgentSkillsHome);
-
-  rmSync(path.join(codexHome, 'AGENTS.md'), { recursive: true, force: true });
-  cpSync(path.join(repoRoot, '.codex', 'AGENTS.md'), path.join(codexHome, 'AGENTS.md'));
-
-  symlinkSync(path.join(moluoHome, 'skills'), path.join(codexAgentSkillsHome, 'moluoxixi'), linkTypeForCurrentPlatform());
+  mkdirSync(codexAgentSkillsHome, { recursive: true });
+  replaceWithSymlink(
+    path.join(moluoHome, 'skills'),
+    path.join(codexAgentSkillsHome, 'moluoxixi'),
+    linkTypeForCurrentPlatform()
+  );
+  replaceWithSymlink(
+    path.join(moluoHome, 'AGENTS.md'),
+    path.join(codexHome, 'AGENTS.md'),
+    linkFileForCurrentPlatform()
+  );
 }
 
-export function projectToOpenCode({ moluoHome, opencodeSkillsHome }) {
+export function projectToTare({ moluoHome, tareHome, codexAgentSkillsHome }) {
+  mkdirSync(tareHome, { recursive: true });
+  mkdirSync(codexAgentSkillsHome, { recursive: true });
+  replaceWithSymlink(
+    path.join(moluoHome, 'skills'),
+    path.join(codexAgentSkillsHome, 'moluoxixi'),
+    linkTypeForCurrentPlatform()
+  );
+  replaceWithSymlink(
+    path.join(moluoHome, 'AGENTS.md'),
+    path.join(tareHome, 'AGENTS.md'),
+    linkFileForCurrentPlatform()
+  );
+}
+
+export function projectToOpenCode({ moluoHome, opencodeHome, opencodeSkillsHome }) {
   mkdirSync(path.dirname(opencodeSkillsHome), { recursive: true });
-  rmSync(opencodeSkillsHome, { recursive: true, force: true });
-  symlinkSync(path.join(moluoHome, 'skills'), opencodeSkillsHome, linkTypeForCurrentPlatform());
+  replaceWithSymlink(
+    path.join(moluoHome, 'skills'),
+    opencodeSkillsHome,
+    linkTypeForCurrentPlatform()
+  );
+  replaceWithSymlink(
+    path.join(moluoHome, 'AGENTS.md'),
+    path.join(opencodeHome, 'AGENTS.md'),
+    linkFileForCurrentPlatform()
+  );
+}
+
+export function linkHostBaseline({ moluoHome, host, userHome = os.homedir() }) {
+  const source = path.join(moluoHome, 'AGENTS.md');
+  const targets = {
+    claude: path.join(userHome, '.claude', 'CLAUDE.md'),
+    codex: path.join(userHome, '.codex', 'AGENTS.md'),
+    qoder: path.join(userHome, '.qoder', 'AGENTS.md'),
+    tare: path.join(userHome, '.tare', 'AGENTS.md'),
+    opencode: path.join(userHome, '.config', 'opencode', 'AGENTS.md')
+  };
+
+  if (!(host in targets)) {
+    throw new Error(`Unknown host: ${host}`);
+  }
+
+  replaceWithSymlink(source, targets[host], linkFileForCurrentPlatform());
+  return targets[host];
 }

@@ -16,6 +16,8 @@ ln -sfn "${HOME}/.moluoxixi/skills" "${HOME}/.qoder/skills"
 if [ -d "${HOME}/.moluoxixi/agents" ]; then
   ln -sfn "${HOME}/.moluoxixi/agents" "${HOME}/.qoder/agents"
 fi
+
+node "${HOME}/.moluoxixi/scripts/link-host-baselines.mjs" --home "${HOME}/.moluoxixi" --host qoder
 ```
 
 ### Windows PowerShell
@@ -37,22 +39,14 @@ cmd /c mklink /J "$env:USERPROFILE\\.qoder\\skills" "$env:USERPROFILE\\.moluoxix
 if (Test-Path "$env:USERPROFILE\\.moluoxixi\\agents") {
   cmd /c mklink /J "$env:USERPROFILE\\.qoder\\agents" "$env:USERPROFILE\\.moluoxixi\\agents"
 }
+
+node "$env:USERPROFILE\\.moluoxixi\\scripts\\link-host-baselines.mjs" --home "$env:USERPROFILE\\.moluoxixi" --host qoder
 ```
 
 ## Verification
 
-```bash
-ls ~/.qoder/skills
-```
-
-If agents are installed, also verify:
-
-```bash
-ls ~/.qoder/agents
-```
-
 Confirm after upgrade:
 
 - `~/.qoder/skills/` still points to `~/.moluoxixi/skills/`
-- `~/.qoder/agents/` is recreated only when `~/.moluoxixi/agents/` exists
-- The Qoder install remains on the shared skills-first layout
+- `~/.qoder/AGENTS.md` still points to `~/.moluoxixi/AGENTS.md`
+- optional `agents` projection is refreshed when present

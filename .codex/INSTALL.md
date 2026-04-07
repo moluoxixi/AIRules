@@ -13,29 +13,8 @@ Codex uses these locations:
 ```text
 ~/.moluoxixi/                 Shared installation root
 ~/.agents/skills/moluoxixi    Codex skill namespace for this repository
-~/.codex/AGENTS.md            Host guidance copied from this repository
+~/.codex/AGENTS.md            Host guidance symlinked from ~/.moluoxixi/AGENTS.md
 ```
-
-The Codex projection is:
-
-```text
-~/.agents/skills/moluoxixi -> ~/.moluoxixi/skills
-~/.codex/AGENTS.md         <- ~/.moluoxixi/.codex/AGENTS.md
-```
-
-## What's Included
-
-### Skills
-
-`~/.agents/skills/moluoxixi/` exposes the aggregated `~/.moluoxixi/skills/` tree, including:
-
-- First-party skills such as `standard-workflow`, `frontend`, `backend`, `testing`, `verification`, and `wrap-up`
-- Language and framework skills such as `javascript`, `typescript`, `react`, and `vue`
-- Linked vendor skills, including `superpowers/*`
-
-### Guidance Layer
-
-`~/.codex/AGENTS.md` explains how to use the first-party skill layering together with the aggregated skill namespace.
 
 ## Installation Steps
 
@@ -53,12 +32,11 @@ fi
 node "${HOME}/.moluoxixi/scripts/sync-vendors.mjs" --home "${HOME}/.moluoxixi"
 node "${HOME}/.moluoxixi/scripts/rebuild-links.mjs" --home "${HOME}/.moluoxixi"
 
-mkdir -p "${HOME}/.codex"
-cp "${HOME}/.moluoxixi/.codex/AGENTS.md" "${HOME}/.codex/AGENTS.md"
-
 mkdir -p "${HOME}/.agents/skills"
 rm -rf "${HOME}/.agents/skills/moluoxixi"
 ln -sfn "${HOME}/.moluoxixi/skills" "${HOME}/.agents/skills/moluoxixi"
+
+node "${HOME}/.moluoxixi/scripts/link-host-baselines.mjs" --home "${HOME}/.moluoxixi" --host codex
 ```
 
 ### Windows PowerShell
@@ -75,17 +53,13 @@ if (Test-Path "$env:USERPROFILE\\.moluoxixi\\.git") {
 node "$env:USERPROFILE\\.moluoxixi\\scripts\\sync-vendors.mjs" --home "$env:USERPROFILE\\.moluoxixi"
 node "$env:USERPROFILE\\.moluoxixi\\scripts\\rebuild-links.mjs" --home "$env:USERPROFILE\\.moluoxixi"
 
-New-Item -ItemType Directory -Force -Path "$env:USERPROFILE\\.codex" | Out-Null
-if (Test-Path "$env:USERPROFILE\\.codex\\AGENTS.md") {
-  Remove-Item "$env:USERPROFILE\\.codex\\AGENTS.md" -Force
-}
-Copy-Item "$env:USERPROFILE\\.moluoxixi\\.codex\\AGENTS.md" "$env:USERPROFILE\\.codex\\AGENTS.md" -Force
-
 New-Item -ItemType Directory -Force -Path "$env:USERPROFILE\\.agents\\skills" | Out-Null
 if (Test-Path "$env:USERPROFILE\\.agents\\skills\\moluoxixi") {
   Remove-Item "$env:USERPROFILE\\.agents\\skills\\moluoxixi" -Recurse -Force
 }
 cmd /c mklink /J "$env:USERPROFILE\\.agents\\skills\\moluoxixi" "$env:USERPROFILE\\.moluoxixi\\skills"
+
+node "$env:USERPROFILE\\.moluoxixi\\scripts\\link-host-baselines.mjs" --home "$env:USERPROFILE\\.moluoxixi" --host codex
 ```
 
 ## Verification
@@ -99,11 +73,5 @@ ls ~/.codex/AGENTS.md
 Checkpoints:
 
 - `~/.agents/skills/moluoxixi` points to `~/.moluoxixi/skills`
-- `~/.codex/AGENTS.md` is refreshed from `~/.moluoxixi/.codex/AGENTS.md`
-- Codex is using the repository namespace `moluoxixi`, not a `superpowers` alias
-
-## Notes
-
-- `superpowers/*` still ships inside the aggregated skill tree as the baseline process layer
-- First-party guidance is distributed through `~/.agents/skills/moluoxixi/`
-- Re-run the install flow after updates so the namespace and `AGENTS.md` stay aligned
+- `~/.codex/AGENTS.md` points to `~/.moluoxixi/AGENTS.md`
+- Codex is using the repository namespace `moluoxixi`

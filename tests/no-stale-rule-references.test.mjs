@@ -3,14 +3,16 @@ import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
 
 const filesToScan = [
+  '../AGENTS.md',
   '../README.md',
   '../.claude/INSTALL.md',
   '../.claude/UPGRADE.md',
   '../.codex/INSTALL.md',
   '../.codex/UPGRADE.md',
-  '../.codex/AGENTS.md',
   '../.qoder/INSTALL.md',
   '../.qoder/UPGRADE.md',
+  '../.tare/INSTALL.md',
+  '../.tare/UPGRADE.md',
   '../.opencode/INSTALL.md',
   '../.opencode/UPGRADE.md',
   '../scripts/lib/install.mjs'

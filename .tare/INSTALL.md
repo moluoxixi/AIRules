@@ -8,42 +8,13 @@
 
 ## Goal
 
-tare uses these two locations:
+tare uses these locations:
 
 ```text
-~/.moluoxixi/          Unified aggregation layer
-~/.agents/skills/      AGENTS-compatible native skill discovery directory
+~/.moluoxixi/                 Shared installation root
+~/.agents/skills/moluoxixi    Shared AGENTS-compatible skill namespace
+~/.tare/AGENTS.md             Host guidance symlinked from ~/.moluoxixi/AGENTS.md
 ```
-
-tare exposes one first-party namespace entry:
-
-```text
-~/.agents/skills/moluoxixi -> ~/.moluoxixi/skills
-```
-
-## What's Included
-
-### First-Party Skills
-
-- `standard-workflow`
-- `frontend`
-- `backend`
-- `javascript`
-- `typescript`
-- `react`
-- `vue`
-- `testing`
-- `verification`
-- `wrap-up`
-
-### Vendor Skills
-
-- `superpowers/*`
-- `frontend-design`
-- `webapp-testing`
-- `code-reviewer`
-- `pr-creator`
-- `fix`
 
 ## Installation Steps
 
@@ -64,6 +35,8 @@ node "${HOME}/.moluoxixi/scripts/rebuild-links.mjs" --home "${HOME}/.moluoxixi"
 mkdir -p "${HOME}/.agents/skills"
 rm -rf "${HOME}/.agents/skills/moluoxixi"
 ln -sfn "${HOME}/.moluoxixi/skills" "${HOME}/.agents/skills/moluoxixi"
+
+node "${HOME}/.moluoxixi/scripts/link-host-baselines.mjs" --home "${HOME}/.moluoxixi" --host tare
 ```
 
 ### Windows PowerShell
@@ -85,6 +58,8 @@ if (Test-Path "$env:USERPROFILE\\.agents\\skills\\moluoxixi") {
   Remove-Item "$env:USERPROFILE\\.agents\\skills\\moluoxixi" -Recurse -Force
 }
 cmd /c mklink /J "$env:USERPROFILE\\.agents\\skills\\moluoxixi" "$env:USERPROFILE\\.moluoxixi\\skills"
+
+node "$env:USERPROFILE\\.moluoxixi\\scripts\\link-host-baselines.mjs" --home "$env:USERPROFILE\\.moluoxixi" --host tare
 ```
 
 ## Verification
@@ -92,10 +67,11 @@ cmd /c mklink /J "$env:USERPROFILE\\.agents\\skills\\moluoxixi" "$env:USERPROFIL
 ```bash
 ls ~/.moluoxixi/skills
 ls -la ~/.agents/skills/moluoxixi
+ls ~/.tare/AGENTS.md
 ```
 
 Checkpoints:
 
-- `~/.moluoxixi/skills/` contains first-party skills and vendor links
 - `~/.agents/skills/moluoxixi` points to `~/.moluoxixi/skills`
+- `~/.tare/AGENTS.md` points to `~/.moluoxixi/AGENTS.md`
 - tare uses the shared skills-first namespace

@@ -12,6 +12,8 @@ node "${HOME}/.moluoxixi/scripts/rebuild-links.mjs" --home "${HOME}/.moluoxixi"
 mkdir -p "${HOME}/.config/opencode"
 rm -rf "${HOME}/.config/opencode/skills"
 ln -sfn "${HOME}/.moluoxixi/skills" "${HOME}/.config/opencode/skills"
+
+node "${HOME}/.moluoxixi/scripts/link-host-baselines.mjs" --home "${HOME}/.moluoxixi" --host opencode
 ```
 
 ### Windows PowerShell
@@ -26,16 +28,13 @@ if (Test-Path "$env:USERPROFILE\\.config\\opencode\\skills") {
   Remove-Item "$env:USERPROFILE\\.config\\opencode\\skills" -Recurse -Force
 }
 cmd /c mklink /J "$env:USERPROFILE\\.config\\opencode\\skills" "$env:USERPROFILE\\.moluoxixi\\skills"
+
+node "$env:USERPROFILE\\.moluoxixi\\scripts\\link-host-baselines.mjs" --home "$env:USERPROFILE\\.moluoxixi" --host opencode
 ```
 
 ## Verification
 
-```bash
-ls ~/.config/opencode/skills
-```
-
 Confirm after upgrade:
 
 - `~/.config/opencode/skills` still points to `~/.moluoxixi/skills`
-- openCode remains on the shared skills-first projection
-- The upgrade flow keeps openCode on the shared skills-first projection
+- `~/.config/opencode/AGENTS.md` still points to `~/.moluoxixi/AGENTS.md`

@@ -19,6 +19,7 @@ import {
   projectToCodex,
   projectToOpenCode,
   projectToQoder,
+  projectToTare,
   rebuildVendorSkillLinks,
   syncFirstPartyToHome
 } from '../scripts/lib/install.mjs';
@@ -29,6 +30,7 @@ function stageRepoFixture(tempDir, { includeAgents = true } = {}) {
   mkdirSync(repoRoot, { recursive: true });
 
   const entries = [
+    'AGENTS.md',
     '.codex',
     'manifests',
     'scripts',
@@ -82,28 +84,39 @@ test('install flow projects first-party content into skills-first host entrypoin
     });
 
     projectToCodex({
-      repoRoot,
       moluoHome: paths.moluoHome,
       codexHome: paths.codexHome,
       codexAgentSkillsHome: paths.codexAgentSkillsHome
     });
 
+    projectToTare({
+      moluoHome: paths.moluoHome,
+      tareHome: paths.tareHome,
+      codexAgentSkillsHome: paths.codexAgentSkillsHome
+    });
+
     projectToOpenCode({
       moluoHome: paths.moluoHome,
+      opencodeHome: paths.opencodeHome,
       opencodeSkillsHome: paths.opencodeSkillsHome
     });
 
     assert.equal(existsSync(path.join(paths.moluoHome, 'skills', 'standard-workflow', 'SKILL.md')), true);
+    assert.equal(existsSync(path.join(paths.moluoHome, 'AGENTS.md')), true);
     assert.equal(existsSync(path.join(paths.moluoHome, 'rules')), false);
 
     assert.equal(existsSync(path.join(paths.claudeHome, 'skills', 'standard-workflow', 'SKILL.md')), true);
+    assert.equal(existsSync(path.join(paths.claudeHome, 'CLAUDE.md')), true);
     assert.equal(existsSync(path.join(paths.claudeHome, 'rules')), false);
 
     assert.equal(existsSync(path.join(paths.qoderHome, 'skills', 'standard-workflow', 'SKILL.md')), true);
+    assert.equal(existsSync(path.join(paths.qoderHome, 'AGENTS.md')), true);
     assert.equal(existsSync(path.join(paths.qoderHome, 'rules')), false);
 
     assert.equal(existsSync(path.join(paths.codexHome, 'AGENTS.md')), true);
     assert.equal(existsSync(path.join(paths.opencodeSkillsHome, 'standard-workflow', 'SKILL.md')), true);
+    assert.equal(existsSync(path.join(paths.opencodeHome, 'AGENTS.md')), true);
+    assert.equal(existsSync(path.join(paths.tareHome, 'AGENTS.md')), true);
 
     const codexAgentSkills = readdirSync(paths.codexAgentSkillsHome);
     assert.deepEqual(codexAgentSkills, ['moluoxixi']);
@@ -136,6 +149,7 @@ test('install flow removes stale projected agents when the optional source disap
       moluoHome: paths.moluoHome,
       claudeHome: paths.claudeHome
     });
+    assert.equal(existsSync(path.join(paths.claudeHome, 'CLAUDE.md')), true);
 
     assert.equal(existsSync(path.join(paths.moluoHome, 'agents')), true);
     assert.equal(existsSync(path.join(paths.claudeHome, 'agents')), true);
@@ -150,6 +164,7 @@ test('install flow removes stale projected agents when the optional source disap
 
     assert.equal(existsSync(path.join(paths.moluoHome, 'agents')), false);
     assert.equal(existsSync(path.join(paths.claudeHome, 'agents')), false);
+    assert.equal(existsSync(path.join(paths.claudeHome, 'CLAUDE.md')), true);
   } finally {
     rmSync(tempDir, { recursive: true, force: true });
   }
@@ -177,11 +192,25 @@ test('install flow works when agents are absent from the source tree from the st
       moluoHome: paths.moluoHome,
       qoderHome: paths.qoderHome
     });
+    projectToTare({
+      moluoHome: paths.moluoHome,
+      tareHome: paths.tareHome,
+      codexAgentSkillsHome: paths.codexAgentSkillsHome
+    });
+    projectToOpenCode({
+      moluoHome: paths.moluoHome,
+      opencodeHome: paths.opencodeHome,
+      opencodeSkillsHome: paths.opencodeSkillsHome
+    });
 
     assert.equal(existsSync(path.join(paths.moluoHome, 'agents')), false);
     assert.equal(existsSync(path.join(paths.claudeHome, 'agents')), false);
     assert.equal(existsSync(path.join(paths.qoderHome, 'agents')), false);
     assert.equal(existsSync(path.join(paths.moluoHome, 'skills', 'standard-workflow', 'SKILL.md')), true);
+    assert.equal(existsSync(path.join(paths.claudeHome, 'CLAUDE.md')), true);
+    assert.equal(existsSync(path.join(paths.qoderHome, 'AGENTS.md')), true);
+    assert.equal(existsSync(path.join(paths.tareHome, 'AGENTS.md')), true);
+    assert.equal(existsSync(path.join(paths.opencodeHome, 'AGENTS.md')), true);
   } finally {
     rmSync(tempDir, { recursive: true, force: true });
   }

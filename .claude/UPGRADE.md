@@ -16,6 +16,8 @@ ln -sfn "${HOME}/.moluoxixi/skills" "${HOME}/.claude/skills"
 if [ -d "${HOME}/.moluoxixi/agents" ]; then
   ln -sfn "${HOME}/.moluoxixi/agents" "${HOME}/.claude/agents"
 fi
+
+node "${HOME}/.moluoxixi/scripts/link-host-baselines.mjs" --home "${HOME}/.moluoxixi" --host claude
 ```
 
 ### Windows PowerShell
@@ -37,22 +39,14 @@ cmd /c mklink /J "$env:USERPROFILE\\.claude\\skills" "$env:USERPROFILE\\.moluoxi
 if (Test-Path "$env:USERPROFILE\\.moluoxixi\\agents") {
   cmd /c mklink /J "$env:USERPROFILE\\.claude\\agents" "$env:USERPROFILE\\.moluoxixi\\agents"
 }
+
+node "$env:USERPROFILE\\.moluoxixi\\scripts\\link-host-baselines.mjs" --home "$env:USERPROFILE\\.moluoxixi" --host claude
 ```
 
 ## Verification
 
-```bash
-ls ~/.claude/skills
-```
-
-If agents are installed, also verify:
-
-```bash
-ls ~/.claude/agents
-```
-
 Confirm after upgrade:
 
 - `~/.claude/skills/` still points to `~/.moluoxixi/skills/`
-- `~/.claude/agents/` is recreated only when `~/.moluoxixi/agents/` exists
-- The Claude install remains on the shared skills-first layout
+- `~/.claude/CLAUDE.md` still points to `~/.moluoxixi/AGENTS.md`
+- optional `agents` projection is refreshed when present

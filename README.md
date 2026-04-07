@@ -8,6 +8,7 @@ It is built on top of [superpowers](https://github.com/obra/superpowers) and pac
 
 ## What This Distribution Includes
 
+- A shared root `AGENTS.md` as the single baseline source for host global guidance
 - First-party skills in `skills/` for local workflow defaults and stack guidance
 - Vendor skills managed through `manifests/` and projected into each host
 - First-party agents in `agents/` for orchestration roles
