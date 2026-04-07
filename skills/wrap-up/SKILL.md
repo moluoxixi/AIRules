@@ -1,37 +1,37 @@
 ---
 name: wrap-up
-description: Final handoff behavior for concise completion reporting after testing and verification.
+description: 在测试和验证之后用于最终交接的收尾指导，强调简洁和证据。
 ---
 
 # Wrap-Up
 
-## Overview
+## 概述
 
-This skill defines final handoff behavior once testing and verification are complete. It keeps completion reporting concise, evidence-based, and actionable.
+这个 skill 定义测试和验证完成后的最终交接方式，目标是让完成汇报简洁、有证据、可行动。
 
-## When to Use
+## 何时使用
 
-Use at the end of a task after `testing` and `verification` have been run (or explicitly reported as blocked).
+在任务末尾使用，前提是 `testing` 和 `verification` 已执行，或者已明确说明被阻塞。
 
-## Hard Gates
+## 硬约束
 
-1. Do not present completion as successful without verification evidence.
-2. Include changed files and test/verification outcomes in the final handoff.
-3. Separate confirmed results from assumptions or unresolved risks.
-4. Keep handoff concise and task-focused.
+1. 没有验证证据时，不要把完成描述成成功。
+2. 最终交接里要包含改动文件和测试/验证结果。
+3. 已确认结果与假设、未解决风险要分开写。
+4. 收尾表达要简洁，并聚焦当前任务。
 
-## Process
+## 流程
 
-1. Summarize what changed in outcome terms.
-2. Report executed test/verification commands with pass/fail status.
-3. List residual risks, blockers, or scope not verified.
-4. Provide a clear status label (`DONE`, `DONE_WITH_CONCERNS`, `NEEDS_CONTEXT`, or `BLOCKED` when requested).
+1. 先用结果导向的话概括这次改了什么。
+2. 报告已执行的测试/验证命令和通过/失败状态。
+3. 列出剩余风险、阻塞项和未验证范围。
+4. 在需要时给出清晰状态标签，例如 `DONE`、`DONE_WITH_CONCERNS`、`NEEDS_CONTEXT`、`BLOCKED`。
 
-## Boundaries
+## 边界
 
-This skill does not replace verification requirements; it formats and communicates the final state after those checks.
+这个 skill 不替代验证要求，它只是负责在验证之后整理和传达最终状态。
 
-## Related Skills
+## 相关 Skills
 
 - `standard-workflow`
 - `testing`

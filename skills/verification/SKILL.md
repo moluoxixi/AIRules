@@ -1,44 +1,44 @@
 ---
 name: verification
-description: Repository-specific completion verification guidance that complements superpowers verification-before-completion.
+description: 补充 superpowers verification-before-completion 的仓库级完成前验证指导。
 ---
 
 # Verification
 
-## Overview
+## 概述
 
-This skill defines repository-specific verification checks before completion claims. It complements `superpowers/verification-before-completion` with practical evidence expectations for this codebase.
+这个 skill 定义仓库级的完成前验证检查，用来补充 `superpowers/verification-before-completion`，强调这个代码库里什么才算真正验证过。
 
-## When to Use
+## 何时使用
 
-Use immediately before reporting completion, especially after tests pass and before final handoff.
+在准备汇报完成之前立刻使用，尤其是在测试通过、最终交付之前。
 
-## Hard Gates
+## 硬约束
 
-1. Apply `superpowers/verification-before-completion` as the primary rule set.
-2. Re-run the relevant verification command(s) after the final edit, not from stale output.
-3. Confirm results against task requirements, not just command exit codes.
-4. Report any unverified scope explicitly as risk or follow-up work.
+1. 先遵守 `superpowers/verification-before-completion` 这套主规则。
+2. 最后一次修改后要重新跑相关验证命令，不能使用旧输出。
+3. 结果要对照任务要求确认，而不只是看 exit code。
+4. 任何未验证范围都要明确写成风险或后续工作。
 
-## Process
+## 流程
 
-1. Map each requirement to concrete evidence (test command, file check, behavior check).
-2. Run required command(s) fresh and read full output.
-3. Confirm requirement-by-requirement coverage and identify gaps.
-4. Summarize evidence in final handoff with explicit pass/fail outcomes.
+1. 把每条要求映射到具体证据，例如测试命令、文件检查、行为检查。
+2. 重新运行所需命令，并读完整输出。
+3. 逐条确认要求是否被覆盖，并找出缺口。
+4. 在最终交接里明确总结证据及其通过/失败结果。
 
-## Repository Notes
+## 仓库说明
 
-- For skill layout updates, treat
+- 对 skill 布局更新，把
   `node --test tests/skill-first-layout.test.mjs`
-  as mandatory verification evidence.
-- If verification cannot run, provide the blocker and exact missing evidence.
+  视为必需验证证据。
+- 如果验证跑不起来，要明确写出阻塞原因和缺失的具体证据。
 
-## Boundaries
+## 边界
 
-This skill does not define implementation or testing strategy. Use `testing` for test execution flow and technical skills for code/content decisions.
+这个 skill 不定义实现策略或测试策略。测试执行流程交给 `testing`，代码或内容决策交给各技术 skills。
 
-## Related Skills
+## 相关 Skills
 
 - `standard-workflow`
 - `testing`

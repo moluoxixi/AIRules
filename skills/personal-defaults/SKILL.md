@@ -1,36 +1,36 @@
 ---
 name: personal-defaults
-description: Personal preference overlay for tone, directness, and verification behavior applied after technical skills.
+description: 在技术 skills 之后叠加的个人偏好层，控制表达方式、直给程度和验证习惯。
 ---
 
 # Personal Defaults
 
-## Overview
+## 概述
 
-This skill holds stable personal preferences so they do not need to be repeated in every technical skill. Apply it as a final overlay after workflow and technical skills.
+这个 skill 保存稳定的个人偏好，避免在每个技术 skill 里重复书写。它应该作为 workflow 和技术 skills 之后的最终叠加层。
 
-## When to Use
+## 何时使用
 
-Use for all tasks in this repository as the final behavior layer, especially when deciding tone, output shape, and completion reporting.
+只要是在这个仓库安装出来的工作流里做事，就默认启用它，尤其是在决定语气、输出形式和完成汇报方式时。
 
-## Defaults
+## 默认偏好
 
-- Prefer clarifying requirements before implementation.
-- Prefer skill-first behavior over global rules.
-- Prefer concise, direct output.
-- Prefer verification before completion claims.
+- 优先先澄清需求，再开始实现。
+- 优先走 skill-first，而不是依赖全局 rules。
+- 输出尽量简洁、直接。
+- 在宣称完成之前优先拿到验证证据。
 
-## Completion Behavior
+## 完成时的行为
 
-1. Keep updates and final responses direct and outcome-focused.
-2. Avoid claiming success without fresh verification evidence.
-3. Report remaining risks or unknowns plainly when verification is incomplete.
+1. 进度更新和最终回复都要直给，聚焦结果。
+2. 没有新的验证证据时，不要宣称成功。
+3. 如果验证不完整，要直接说明剩余风险和未知项。
 
-## Boundaries
+## 边界
 
-This skill does not define stack-specific implementation details. Technical decisions remain with domain, language, framework, and phase skills.
+这个 skill 不负责技术栈实现细节。技术决策仍然交给 domain、language、framework 和 phase skills。
 
-## Related Skills
+## 相关 Skills
 
 - `standard-workflow`
 - `testing`

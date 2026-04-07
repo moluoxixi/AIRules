@@ -1,44 +1,44 @@
 ---
 name: testing
-description: Repository-specific testing guidance that complements superpowers test-driven-development.
+description: 补充 superpowers test-driven-development 的仓库级测试指导。
 ---
 
 # Testing
 
-## Overview
+## 概述
 
-This skill defines repository-specific testing behavior. It complements `superpowers/test-driven-development` by specifying how to scope and run checks in this repo.
+这个 skill 定义仓库级的测试习惯，用来补充 `superpowers/test-driven-development`，说明在这个仓库里怎么收敛测试范围、怎么给出测试证据。
 
-## When to Use
+## 何时使用
 
-Use after or alongside TDD when adding, changing, or reviewing repository behavior, including skill layout and workflow conventions.
+在增加、修改或审查仓库行为时使用，可以和 TDD 并行，也可以在其后补充，尤其适合 skill 布局和工作流约定这类变更。
 
-## Hard Gates
+## 硬约束
 
-1. Follow red-green discipline from `superpowers/test-driven-development`; this skill does not replace it.
-2. Run the smallest relevant test command first, then broaden only as needed.
-3. Include at least one test/assertion that covers the changed behavior directly.
-4. Do not claim task completion based on reasoning alone; test evidence is required.
+1. 遵守 `superpowers/test-driven-development` 的红绿循环；这个 skill 不替代它。
+2. 先跑最小相关测试命令，再按需要逐步放大。
+3. 至少保留一个直接覆盖改动行为的测试或断言。
+4. 不要只靠推理宣称完成，必须给出测试证据。
 
-## Process
+## 流程
 
-1. Identify the most targeted command for the changed area.
-2. Run targeted checks while iterating.
-3. Re-run impacted checks after edits are complete.
-4. Capture concise evidence (command, pass/fail result, and notable failures if any).
-5. If a test gap remains, call it out explicitly in handoff.
+1. 先识别和改动区域最贴近的测试命令。
+2. 在迭代中持续跑定向检查。
+3. 编辑完成后重新跑受影响的检查。
+4. 记录简洁证据：命令、通过/失败结果、必要的失败信息。
+5. 如果还存在测试缺口，要在交接时明确指出。
 
-## Repository Notes
+## 仓库说明
 
-- For skill tree presence/structure changes, run:
+- 对 skill 树存在性或结构变更，运行：
   `node --test tests/skill-first-layout.test.mjs`
-- Prefer deterministic test inputs and avoid brittle assertions tied to incidental formatting.
+- 优先使用确定性的测试输入，避免依赖偶然格式的脆弱断言。
 
-## Boundaries
+## 边界
 
-This skill is repository-specific and phase-focused. Keep technical implementation guidance in domain/language/framework skills, and completion-claim rules in `verification`.
+这个 skill 是仓库级、阶段级指导。技术实现细节继续放在 domain/language/framework skills，完成宣称规则放在 `verification`。
 
-## Related Skills
+## 相关 Skills
 
 - `standard-workflow`
 - `superpowers/test-driven-development`

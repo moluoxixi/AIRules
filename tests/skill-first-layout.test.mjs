@@ -23,25 +23,25 @@ test('task-2 skill files keep required boundary and language invariants', () => 
   const javascript = readFileSync(new URL('../skills/javascript/SKILL.md', import.meta.url), 'utf8');
   const typescript = readFileSync(new URL('../skills/typescript/SKILL.md', import.meta.url), 'utf8');
 
-  assert.match(frontend, /cross-framework/i);
-  assert.match(frontend, /framework-specific details/i);
-  assert.match(frontend, /loading,\s*empty,\s*and error states/i);
-  assert.match(frontend, /Interactive behavior must be complete/i);
+  assert.match(frontend, /跨框架/);
+  assert.match(frontend, /框架特有细节/);
+  assert.match(frontend, /加载、空态和错误状态/);
+  assert.match(frontend, /交互行为必须完整/);
 
-  assert.match(backend, /stack-agnostic/i);
-  assert.match(backend, /framework-specific patterns/i);
-  assert.match(backend, /API\/contract shapes/i);
-  assert.match(backend, /validation/i);
-  assert.match(backend, /side effects/i);
+  assert.match(backend, /技术栈无关/);
+  assert.match(backend, /框架特定模式/);
+  assert.match(backend, /API\/契约形状/);
+  assert.match(backend, /校验/);
+  assert.match(backend, /副作用/);
 
-  assert.match(javascript, /runtime/i);
-  assert.match(javascript, /(async|asynchronous|promise)/i);
-  assert.match(javascript, /module boundaries/i);
-  assert.match(javascript, /readable/i);
-  assert.match(javascript, /errors?/i);
+  assert.match(javascript, /运行时/);
+  assert.match(javascript, /(async\/await|异步|Promise)/);
+  assert.match(javascript, /模块边界/);
+  assert.match(javascript, /可读/);
+  assert.match(javascript, /错误/);
 
-  assert.match(typescript, /`javascript`/i);
-  assert.match(typescript, /type/i);
-  assert.match(typescript, /Avoid `any`/i);
-  assert.match(typescript, /invalid states?/i);
+  assert.match(typescript, /`javascript`/);
+  assert.match(typescript, /类型/);
+  assert.match(typescript, /避免 `any`/);
+  assert.match(typescript, /无效状态/);
 });

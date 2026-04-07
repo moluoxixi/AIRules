@@ -1,37 +1,37 @@
 ---
 name: frontend
-description: Cross-framework frontend guidance for page/component boundaries, state ownership, and interaction completeness.
+description: 跨框架前端指导，覆盖页面/组件边界、状态归属和交互完整性。
 ---
 
 # Frontend
 
-## Overview
+## 概述
 
-This skill captures frontend concerns shared across frameworks. It focuses on clear page/component boundaries, deliberate state placement, and complete user-facing interactions.
+这个 skill 负责跨框架共享的前端问题，重点是清晰的页面/组件边界、刻意设计的状态放置方式，以及完整的用户交互。
 
-## When to Use
+## 何时使用
 
-Use when implementing or reviewing UI behavior, page flows, or component structure in any frontend stack.
+在任意前端技术栈中实现或审查 UI 行为、页面流程、组件结构时使用。
 
-## Hard Gates
+## 硬约束
 
-1. Define clear ownership for each page and component; avoid mixed responsibilities.
-2. Every async surface must handle loading, empty, and error states explicitly.
-3. Interactive behavior must be complete, not partial: success, failure, disabled, and retry paths should all be intentional.
+1. 每个页面和组件都要有清晰归属，避免职责混杂。
+2. 每个异步界面都必须显式处理加载、空态和错误状态。
+3. 交互行为必须完整，而不是只做一半：成功、失败、禁用、重试路径都要有明确设计。
 
-## Process
+## 流程
 
-1. Choose boundaries first: what belongs to route/page level vs reusable component level.
-2. Place state at the lowest level that still supports the required interactions.
-3. Define user-visible state transitions for fetches and mutations before implementation.
-4. Keep forms, lists, and actions behaviorally complete with predictable feedback.
-5. Verify accessibility basics for semantics, keyboard access, and labeling.
+1. 先划分边界：哪些属于路由/页面层，哪些属于可复用组件层。
+2. 把状态放在能满足交互需求的最低层级。
+3. 在实现前先定义用户可见的抓取和提交状态流转。
+4. 让表单、列表和操作在行为上完整，反馈可预期。
+5. 检查基本可访问性：语义、键盘可达性和标签是否齐全。
 
-## Boundaries
+## 边界
 
-This skill does not own framework-specific details (React hooks, Vue composables, Next/Nuxt conventions). Use framework skills for those decisions.
+这个 skill 不负责 React hooks、Vue composables、Next/Nuxt 约定等框架特有细节。这些决策交给 framework skills。
 
-## Related Skills
+## 相关 Skills
 
 - `standard-workflow`
 - `javascript`, `typescript`

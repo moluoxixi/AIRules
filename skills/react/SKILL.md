@@ -1,38 +1,38 @@
 ---
 name: react
-description: React and Next.js guidance layered on top of frontend and typescript skills.
+description: 叠加在 frontend 和 typescript 之上的 React / Next.js 指导。
 ---
 
 # React
 
-## Overview
+## 概述
 
-This skill adds React and Next.js specifics on top of `frontend` and `typescript`. It focuses on component boundaries, hook discipline, and rendering/data choices in modern React apps.
+这个 skill 在 `frontend` 和 `typescript` 之上补充 React / Next.js 的具体判断，重点是组件边界、hook 纪律以及现代 React 应用里的渲染/取数选择。
 
-## When to Use
+## 何时使用
 
-Use when implementing or reviewing React/Next code (`.tsx`, route handlers, server/client components, hooks, and UI state flow).
+在实现或审查 React / Next 代码时使用，例如 `.tsx`、route handlers、server/client components、hooks 和 UI 状态流。
 
-## Hard Gates
+## 硬约束
 
-1. Respect server/client boundaries in Next.js; use `'use client'` only when interactivity is required.
-2. Keep hooks deterministic and top-level; avoid conditional hook execution.
-3. Prefer derived state and controlled data flow over duplicated local state.
-4. Ensure loading, empty, and error states are explicit for async UI surfaces.
+1. 尊重 Next.js 的 server/client 边界；只有确实需要交互时才使用 `'use client'`。
+2. hooks 要保持确定性并位于顶层，避免条件式调用。
+3. 优先派生状态和受控数据流，不要复制局部状态。
+4. 异步 UI 必须显式处理加载、空态和错误状态。
 
-## Process
+## 流程
 
-1. Start with `frontend` boundaries and `typescript` contracts.
-2. Choose rendering strategy intentionally (server component, client component, or hybrid).
-3. Keep side effects in `useEffect` minimal and idempotent; move pure computation outside effects.
-4. Use custom hooks when logic is shared across multiple components.
-5. Verify interaction paths, accessibility basics, and route-level state transitions.
+1. 先继承 `frontend` 的边界和 `typescript` 的契约。
+2. 有意识地选择渲染策略：server component、client component 或混合模式。
+3. 把 `useEffect` 中的副作用压到最小且保持幂等，纯计算移到 effect 外。
+4. 共享逻辑出现时优先抽成 custom hook。
+5. 检查交互路径、基础可访问性和路由级状态流转。
 
-## Boundaries
+## 边界
 
-This skill does not replace shared domain/language guidance from `frontend` and `typescript`. It also does not redefine testing/verification workflow; use `testing` and `verification` for those phases.
+这个 skill 不替代 `frontend` 和 `typescript` 的共享规则，也不重定义 testing/verification 流程；相关阶段仍交给 `testing` 和 `verification`。
 
-## Related Skills
+## 相关 Skills
 
 - `standard-workflow`
 - `frontend`

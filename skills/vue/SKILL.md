@@ -1,38 +1,38 @@
 ---
 name: vue
-description: Vue and Nuxt guidance layered on top of frontend and typescript skills.
+description: 叠加在 frontend 和 typescript 之上的 Vue / Nuxt 指导。
 ---
 
 # Vue
 
-## Overview
+## 概述
 
-This skill adds Vue and Nuxt specifics on top of `frontend` and `typescript`. It emphasizes composable-first structure, clear reactive ownership, and explicit data-loading behavior.
+这个 skill 在 `frontend` 和 `typescript` 之上补充 Vue / Nuxt 的具体判断，重点是 composable-first 结构、清晰的响应式归属，以及显式的数据加载行为。
 
-## When to Use
+## 何时使用
 
-Use when implementing or reviewing Vue/Nuxt code (`.vue`, composables, stores, and route/page data flows).
+在实现或审查 Vue / Nuxt 代码时使用，例如 `.vue`、composables、stores 和路由/页面数据流。
 
-## Hard Gates
+## 硬约束
 
-1. Keep reactive ownership clear: avoid mutating shared state from arbitrary components.
-2. Prefer `computed` for derivations and `watch` for side effects; do not blur the two.
-3. Keep composables focused and reusable; avoid large page-only composables that hide view logic.
-4. Handle loading, empty, and error states explicitly for async data in pages and components.
+1. 保持响应式归属清晰，避免任意组件直接修改共享状态。
+2. 用 `computed` 做派生，用 `watch` 做副作用，不要把两者混在一起。
+3. composables 要聚焦且可复用，避免大而全的页面专用 composable 把视图逻辑藏起来。
+4. 页面和组件里的异步数据都要显式处理加载、空态和错误状态。
 
-## Process
+## 流程
 
-1. Start with `frontend` boundaries and `typescript` contracts.
-2. Decide where state lives (`ref`/`reactive`, composable, or store) based on sharing needs.
-3. In Nuxt, choose server/client data behavior intentionally (`useAsyncData`, `useFetch`, route middleware).
-4. Keep template logic readable; move non-trivial logic into script/composables.
-5. Verify interaction completeness, accessibility basics, and route transition behavior.
+1. 先继承 `frontend` 的边界和 `typescript` 的契约。
+2. 根据共享需求决定状态放在哪：`ref` / `reactive`、composable 或 store。
+3. 在 Nuxt 中有意识地选择 server/client 数据行为，例如 `useAsyncData`、`useFetch`、route middleware。
+4. 保持模板逻辑可读，把非平凡逻辑移进 script/composables。
+5. 检查交互完整性、基础可访问性和路由切换行为。
 
-## Boundaries
+## 边界
 
-This skill does not replace shared domain/language guidance from `frontend` and `typescript`. It also does not define phase-level testing or completion verification; use `testing` and `verification`.
+这个 skill 不替代 `frontend` 和 `typescript` 的共享规则，也不定义 phase-level 的测试或完成验证；这些阶段仍使用 `testing` 和 `verification`。
 
-## Related Skills
+## 相关 Skills
 
 - `standard-workflow`
 - `frontend`

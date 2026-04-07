@@ -1,45 +1,45 @@
 ---
 name: standard-workflow
-description: First-party entry skill that defines the default phase order from clarification through wrap-up.
+description: 定义默认交付顺序的第一方入口 skill，从需求澄清一直到收尾。
 ---
 
 # Standard Workflow
 
-## Overview
+## 概述
 
-This is the first-party entry skill for repository work. It keeps the default flow aligned to the approved sequence:
+这是这个仓库的第一方入口 skill，用来固定默认工作顺序：
 
 `requirements clarification -> solution/design -> implementation -> testing -> verification -> wrap-up`
 
-Use this as the starting behavioral layer, then compose domain/language/framework/phase skills as needed.
+先启用它，再按任务叠加 domain、language、framework 和 phase skills。
 
-## When to Use
+## 何时使用
 
-Use when starting or re-scoping work in this repository, especially when task sequencing or handoff between phases is unclear.
+在这个仓库里启动新任务、重设任务范围，或阶段衔接不清楚时使用。
 
-## Hard Gates
+## 硬约束
 
-1. Do not skip requirements clarification before design or implementation.
-2. Do not skip solution/design before implementation.
-3. Do not claim completion until testing and verification have both run with fresh evidence.
+1. 在设计和实现之前，不要跳过需求澄清。
+2. 在实现之前，不要跳过方案或设计。
+3. 在测试和验证都拿到新的证据之前，不要宣称完成。
 
-## Process
+## 流程
 
-1. Clarify requirements, constraints, and success criteria.
-2. Define a concrete solution or design approach before coding.
-3. Implement in small, reviewable steps.
-4. Run task-appropriate tests.
-5. Verify outcomes against requirements and test evidence.
-6. Wrap up with a concise summary of changes, residual risks, and next steps.
+1. 先澄清需求、约束和成功标准。
+2. 编码前先给出具体方案或设计思路。
+3. 以小步、可审查的方式实现。
+4. 运行与任务相符的测试。
+5. 用需求和测试证据验证结果。
+6. 最后用简洁方式总结改动、剩余风险和下一步。
 
-## Boundaries
+## 边界
 
-This skill defines phase order and workflow expectations. It does not replace technical detail owned by domain, language, framework, or phase-specific skills.
+这个 skill 只负责阶段顺序和流程预期，不替代 domain、language、framework 或 phase skills 的技术细节。
 
-## Related Skills
+## 相关 Skills
 
 - `frontend`, `backend`
 - `javascript`, `typescript`
 - `react`, `vue`
 - `testing`, `verification`, `wrap-up`
-- `personal-defaults` (final overlay)
+- `personal-defaults`（最终叠加层）
