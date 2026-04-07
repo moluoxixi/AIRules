@@ -2,4 +2,3 @@ node_modules/
 .worktrees/
 idea
 vendors/
-skills/.gitignore
