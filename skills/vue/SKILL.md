@@ -7,30 +7,31 @@ description: Use when 任务涉及 Vue / Nuxt 的 .vue 文件、composables、st
 
 ## 概述
 
-这个 skill 在 `frontend` 和 `typescript` 之上补充 Vue / Nuxt 的具体判断，重点是 composable-first 结构、清晰的响应式归属，以及显式的数据加载行为。
+这个 skill 在 `frontend` 和 `typescript` 之上补充 Vue / Nuxt 的具体判断，重点是 composables、store 边界、模板可读性和数据流。
 
 ## 何时使用
 
-在实现或审查 Vue / Nuxt 代码时使用，例如 `.vue`、composables、stores 和路由/页面数据流。
+- 任务涉及 `.vue`、composables、store 或页面数据流
+- 需要判断状态该放在 `ref` / `reactive`、composable 还是 store
+- 需要处理 Nuxt 的数据获取和路由层行为
 
-## 硬约束
+## 不在这些情况下使用
 
-1. 保持响应式归属清晰，避免任意组件直接修改共享状态。
-2. 用 `computed` 做派生，用 `watch` 做副作用，不要把两者混在一起。
-3. composables 要聚焦且可复用，避免大而全的页面专用 composable 把视图逻辑藏起来。
-4. 页面和组件里的异步数据都要显式处理加载、空态和错误状态。
+- 你还停留在跨框架的页面/组件边界讨论阶段
+- 问题主要是 TypeScript 类型设计而不是 Vue / Nuxt 模式选择
 
-## 流程
+## 核心指导
 
-1. 先继承 `frontend` 的边界和 `typescript` 的契约。
-2. 根据共享需求决定状态放在哪：`ref` / `reactive`、composable 或 store。
-3. 在 Nuxt 中有意识地选择 server/client 数据行为，例如 `useAsyncData`、`useFetch`、route middleware。
-4. 保持模板逻辑可读，把非平凡逻辑移进 script/composables。
-5. 检查交互完整性、基础可访问性和路由切换行为。
+- 先继承 `frontend` 的边界，再继承 `typescript` 的契约
+- composables 要聚焦、可复用，不要把页面逻辑全部藏进去
+- store 只在确有共享状态时使用
+- 页面和组件里的异步数据都要显式处理加载、空态和错误状态
 
-## 边界
+## 常见误区
 
-这个 skill 不替代 `frontend` 和 `typescript` 的共享规则，也不定义 phase-level 的测试或完成验证；这些阶段仍使用 `testing` 和 `verification`。
+- 用 store 兜所有状态，导致归属模糊
+- 用 `watch` 做本该交给 `computed` 的派生逻辑
+- 模板里塞入过多复杂逻辑，影响可读性
 
 ## 相关 Skills
 
@@ -39,4 +40,3 @@ description: Use when 任务涉及 Vue / Nuxt 的 .vue 文件、composables、st
 - `typescript`
 - `testing`
 - `verification`
-

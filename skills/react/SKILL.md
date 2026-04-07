@@ -7,30 +7,31 @@ description: Use when 任务涉及 React / Next.js 组件、hooks、server/clien
 
 ## 概述
 
-这个 skill 在 `frontend` 和 `typescript` 之上补充 React / Next.js 的具体判断，重点是组件边界、hook 纪律以及现代 React 应用里的渲染/取数选择。
+这个 skill 在 `frontend` 和 `typescript` 之上补充 React / Next.js 的具体判断，重点是组件边界、hooks、server/client 边界和渲染策略。
 
 ## 何时使用
 
-在实现或审查 React / Next 代码时使用，例如 `.tsx`、route handlers、server/client components、hooks 和 UI 状态流。
+- 任务涉及 React / Next.js 组件、hooks 或页面交互
+- 需要判断 server component、client component 或两者混合
+- 需要处理路由层状态、异步 UI 行为或客户端副作用
 
-## 硬约束
+## 不在这些情况下使用
 
-1. 尊重 Next.js 的 server/client 边界；只有确实需要交互时才使用 `'use client'`。
-2. hooks 要保持确定性并位于顶层，避免条件式调用。
-3. 优先派生状态和受控数据流，不要复制局部状态。
-4. 异步 UI 必须显式处理加载、空态和错误状态。
+- 你还停留在跨框架页面/组件边界讨论阶段
+- 问题主要是 TypeScript 类型设计而不是 React 模式选择
 
-## 流程
+## 核心指导
 
-1. 先继承 `frontend` 的边界和 `typescript` 的契约。
-2. 有意识地选择渲染策略：server component、client component 或混合模式。
-3. 把 `useEffect` 中的副作用压到最小且保持幂等，纯计算移到 effect 外。
-4. 共享逻辑出现时优先抽成 custom hook。
-5. 检查交互路径、基础可访问性和路由级状态流转。
+- 先继承 `frontend` 的边界，再继承 `typescript` 的契约
+- 有意识地选择 server/client 边界，不要随手加 `'use client'`
+- hooks 必须保持顶层、确定性调用
+- 异步 UI 仍然要显式处理加载、空态和错误状态
 
-## 边界
+## 常见误区
 
-这个 skill 不替代 `frontend` 和 `typescript` 的共享规则，也不重定义 testing/verification 流程；相关阶段仍交给 `testing` 和 `verification`。
+- 用组件层的小修补掩盖错误的 server/client 边界
+- 把副作用塞进 `useEffect`，但没有控制依赖和幂等
+- 本该抽成 custom hook 的逻辑散落在多个组件里
 
 ## 相关 Skills
 
@@ -39,4 +40,3 @@ description: Use when 任务涉及 React / Next.js 组件、hooks、server/clien
 - `typescript`
 - `testing`
 - `verification`
-

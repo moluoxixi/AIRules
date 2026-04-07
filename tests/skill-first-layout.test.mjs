@@ -83,3 +83,26 @@ test('first-party skill descriptions are trigger-oriented', () => {
   assert.match(verification, /宣称完成|验证证据|汇报完成/);
   assert.match(wrapUp, /最终交接|收尾|汇报结果/);
 });
+
+test('first-party skills follow the shared content structure', () => {
+  for (const relativePath of [
+    '../skills/standard-workflow/SKILL.md',
+    '../skills/frontend/SKILL.md',
+    '../skills/backend/SKILL.md',
+    '../skills/javascript/SKILL.md',
+    '../skills/typescript/SKILL.md',
+    '../skills/react/SKILL.md',
+    '../skills/vue/SKILL.md',
+    '../skills/testing/SKILL.md',
+    '../skills/verification/SKILL.md',
+    '../skills/wrap-up/SKILL.md'
+  ]) {
+    const content = readFileSync(new URL(relativePath, import.meta.url), 'utf8');
+    assert.match(content, /## 概述/);
+    assert.match(content, /## 何时使用/);
+    assert.match(content, /## 不在这些情况下使用/);
+    assert.match(content, /## 核心指导/);
+    assert.match(content, /## 常见误区/);
+    assert.match(content, /## 相关 Skills/);
+  }
+});
