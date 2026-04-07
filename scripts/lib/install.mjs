@@ -33,12 +33,21 @@ function copyDirContents(sourceDir, targetDir) {
   }
 }
 
+function syncOptionalDir(sourceDir, targetDir) {
+  if (!existsSync(sourceDir)) {
+    return;
+  }
+
+  copyDirContents(sourceDir, targetDir);
+}
+
 function linkTypeForCurrentPlatform() {
   return process.platform === 'win32' ? 'junction' : 'dir';
 }
 
 export function getDefaultInstallPaths(userHome = os.homedir()) {
   const moluoHome = path.join(userHome, '.moluoxixi');
+  const opencodeHome = path.join(userHome, '.config', 'opencode');
 
   return {
     userHome,
@@ -46,7 +55,10 @@ export function getDefaultInstallPaths(userHome = os.homedir()) {
     repoRoot: moluoHome,
     claudeHome: path.join(userHome, '.claude'),
     codexHome: path.join(userHome, '.codex'),
-    codexAgentSkillsHome: path.join(userHome, '.agents', 'skills')
+    codexAgentSkillsHome: path.join(userHome, '.agents', 'skills'),
+    qoderHome: path.join(userHome, '.qoder'),
+    opencodeHome,
+    opencodeSkillsHome: path.join(opencodeHome, 'skills')
   };
 }
 
@@ -60,9 +72,8 @@ export function ensureInstallRoot(paths) {
 }
 
 export function syncFirstPartyToHome(repoRoot, moluoHome) {
-  copyDirContents(path.join(repoRoot, 'rules'), path.join(moluoHome, 'rules'));
-  copyDirContents(path.join(repoRoot, 'skills'), path.join(moluoHome, 'skills'));
-  copyDirContents(path.join(repoRoot, 'agents'), path.join(moluoHome, 'agents'));
+  syncOptionalDir(path.join(repoRoot, 'skills'), path.join(moluoHome, 'skills'));
+  syncOptionalDir(path.join(repoRoot, 'agents'), path.join(moluoHome, 'agents'));
 }
 
 export function rebuildVendorSkillLinks({ homeDir, manifestPath }) {
@@ -82,15 +93,25 @@ export function rebuildVendorSkillLinks({ homeDir, manifestPath }) {
   return plan;
 }
 
-export function projectToClaude({ repoRoot, moluoHome, claudeHome }) {
-  mkdirSync(claudeHome, { recursive: true });
-  rmSync(path.join(claudeHome, 'rules'), { recursive: true, force: true });
-  rmSync(path.join(claudeHome, 'skills'), { recursive: true, force: true });
-  rmSync(path.join(claudeHome, 'agents'), { recursive: true, force: true });
+function projectSharedSkillsHost(hostHome, moluoHome) {
+  mkdirSync(hostHome, { recursive: true });
+  rmSync(path.join(hostHome, 'rules'), { recursive: true, force: true });
+  rmSync(path.join(hostHome, 'skills'), { recursive: true, force: true });
+  rmSync(path.join(hostHome, 'agents'), { recursive: true, force: true });
 
-  symlinkSync(path.join(moluoHome, 'rules'), path.join(claudeHome, 'rules'), linkTypeForCurrentPlatform());
-  symlinkSync(path.join(moluoHome, 'skills'), path.join(claudeHome, 'skills'), linkTypeForCurrentPlatform());
-  symlinkSync(path.join(moluoHome, 'agents'), path.join(claudeHome, 'agents'), linkTypeForCurrentPlatform());
+  symlinkSync(path.join(moluoHome, 'skills'), path.join(hostHome, 'skills'), linkTypeForCurrentPlatform());
+
+  if (existsSync(path.join(moluoHome, 'agents'))) {
+    symlinkSync(path.join(moluoHome, 'agents'), path.join(hostHome, 'agents'), linkTypeForCurrentPlatform());
+  }
+}
+
+export function projectToClaude({ moluoHome, claudeHome }) {
+  projectSharedSkillsHost(claudeHome, moluoHome);
+}
+
+export function projectToQoder({ moluoHome, qoderHome }) {
+  projectSharedSkillsHost(qoderHome, moluoHome);
 }
 
 export function projectToCodex({ repoRoot, moluoHome, codexHome, codexAgentSkillsHome }) {
@@ -100,5 +121,11 @@ export function projectToCodex({ repoRoot, moluoHome, codexHome, codexAgentSkill
   rmSync(path.join(codexHome, 'AGENTS.md'), { recursive: true, force: true });
   cpSync(path.join(repoRoot, '.codex', 'AGENTS.md'), path.join(codexHome, 'AGENTS.md'));
 
-  symlinkSync(path.join(moluoHome, 'skills'), path.join(codexAgentSkillsHome, 'superpowers'), linkTypeForCurrentPlatform());
+  symlinkSync(path.join(moluoHome, 'skills'), path.join(codexAgentSkillsHome, 'moluoxixi'), linkTypeForCurrentPlatform());
+}
+
+export function projectToOpenCode({ moluoHome, opencodeSkillsHome }) {
+  mkdirSync(path.dirname(opencodeSkillsHome), { recursive: true });
+  rmSync(opencodeSkillsHome, { recursive: true, force: true });
+  symlinkSync(path.join(moluoHome, 'skills'), opencodeSkillsHome, linkTypeForCurrentPlatform());
 }

@@ -5,7 +5,6 @@ import {
   existsSync,
   mkdtempSync,
   mkdirSync,
-  readFileSync,
   readdirSync,
   rmSync,
   writeFileSync
@@ -18,6 +17,8 @@ import {
   getDefaultInstallPaths,
   projectToClaude,
   projectToCodex,
+  projectToOpenCode,
+  projectToQoder,
   rebuildVendorSkillLinks,
   syncFirstPartyToHome
 } from '../scripts/lib/install.mjs';
@@ -28,11 +29,9 @@ function stageRepoFixture(tempDir) {
   mkdirSync(repoRoot, { recursive: true });
 
   for (const entry of [
-    '.claude',
     '.codex',
     'agents',
     'manifests',
-    'rules',
     'scripts',
     'skills'
   ]) {
@@ -52,7 +51,7 @@ function materializeVendorSources(homeDir, manifest) {
   }
 }
 
-test('install flow projects first-party content and aggregated skills into Claude and Codex homes', () => {
+test('install flow projects first-party content into skills-first host entrypoints', () => {
   const tempDir = mkdtempSync(path.join(os.tmpdir(), 'ai-rules-install-'));
   const repoRoot = stageRepoFixture(tempDir);
   const userHome = path.join(tempDir, 'home');
@@ -62,37 +61,52 @@ test('install flow projects first-party content and aggregated skills into Claud
 
   try {
     ensureInstallRoot(paths);
-    cpSync(repoRoot, paths.repoRoot, { recursive: true });
+    syncFirstPartyToHome(repoRoot, paths.moluoHome);
 
     materializeVendorSources(paths.moluoHome, manifest);
     const linkPlan = rebuildVendorSkillLinks({ homeDir: paths.moluoHome, manifestPath });
 
     projectToClaude({
-      repoRoot: paths.repoRoot,
       moluoHome: paths.moluoHome,
       claudeHome: paths.claudeHome
     });
 
+    projectToQoder({
+      moluoHome: paths.moluoHome,
+      qoderHome: paths.qoderHome
+    });
+
     projectToCodex({
-      repoRoot: paths.repoRoot,
+      repoRoot,
       moluoHome: paths.moluoHome,
       codexHome: paths.codexHome,
       codexAgentSkillsHome: paths.codexAgentSkillsHome
     });
 
-    assert.equal(existsSync(path.join(paths.moluoHome, 'rules', 'frontend', 'workflow.md')), true);
-    assert.equal(existsSync(path.join(paths.moluoHome, 'rules', 'frontend', 'jsdoc.md')), true);
-    assert.equal(existsSync(path.join(paths.moluoHome, 'rules', 'common', 'comments.md')), true);
+    projectToOpenCode({
+      moluoHome: paths.moluoHome,
+      opencodeSkillsHome: paths.opencodeSkillsHome
+    });
 
-    assert.equal(existsSync(path.join(paths.claudeHome, 'rules')), true);
-    assert.equal(existsSync(path.join(paths.claudeHome, 'skills')), true);
+    assert.equal(existsSync(path.join(paths.moluoHome, 'skills', 'standard-workflow', 'SKILL.md')), true);
+    assert.equal(existsSync(path.join(paths.moluoHome, 'rules')), false);
+
+    assert.equal(existsSync(path.join(paths.claudeHome, 'skills', 'standard-workflow', 'SKILL.md')), true);
+    assert.equal(existsSync(path.join(paths.claudeHome, 'rules')), false);
+
+    assert.equal(existsSync(path.join(paths.qoderHome, 'skills', 'standard-workflow', 'SKILL.md')), true);
+    assert.equal(existsSync(path.join(paths.qoderHome, 'rules')), false);
+
     assert.equal(existsSync(path.join(paths.codexHome, 'AGENTS.md')), true);
+    assert.equal(existsSync(path.join(paths.opencodeSkillsHome, 'standard-workflow', 'SKILL.md')), true);
 
     const codexAgentSkills = readdirSync(paths.codexAgentSkillsHome);
-    assert.deepEqual(codexAgentSkills, ['superpowers']);
+    assert.deepEqual(codexAgentSkills, ['moluoxixi']);
+    assert.equal(
+      existsSync(path.join(paths.codexAgentSkillsHome, 'moluoxixi', 'standard-workflow', 'SKILL.md')),
+      true
+    );
 
-    const codexWorkflow = readFileSync(path.join(paths.moluoHome, 'rules', 'frontend', 'workflow.md'), 'utf8');
-    assert.match(codexWorkflow, /MCP/i);
     assert.ok(linkPlan.some((entry) => entry.target.endsWith('/skills/superpowers')));
   } finally {
     rmSync(tempDir, { recursive: true, force: true });
