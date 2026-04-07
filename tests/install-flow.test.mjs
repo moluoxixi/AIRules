@@ -24,17 +24,22 @@ import {
 } from '../scripts/lib/install.mjs';
 import { loadVendorManifest } from '../scripts/lib/vendors.mjs';
 
-function stageRepoFixture(tempDir) {
+function stageRepoFixture(tempDir, { includeAgents = true } = {}) {
   const repoRoot = path.join(tempDir, 'repo');
   mkdirSync(repoRoot, { recursive: true });
 
-  for (const entry of [
+  const entries = [
     '.codex',
-    'agents',
     'manifests',
     'scripts',
     'skills'
-  ]) {
+  ];
+
+  if (includeAgents) {
+    entries.splice(1, 0, 'agents');
+  }
+
+  for (const entry of entries) {
     cpSync(path.resolve(entry), path.join(repoRoot, entry), { recursive: true });
   }
 
@@ -108,6 +113,75 @@ test('install flow projects first-party content into skills-first host entrypoin
     );
 
     assert.ok(linkPlan.some((entry) => entry.target.endsWith('/skills/superpowers')));
+  } finally {
+    rmSync(tempDir, { recursive: true, force: true });
+  }
+});
+
+test('install flow removes stale projected agents when the optional source disappears', () => {
+  const tempDir = mkdtempSync(path.join(os.tmpdir(), 'ai-rules-install-optional-agents-'));
+  const repoRoot = stageRepoFixture(tempDir);
+  const userHome = path.join(tempDir, 'home');
+  const paths = getDefaultInstallPaths(userHome);
+  const manifestPath = path.join(repoRoot, 'manifests', 'vendors.jsonc');
+  const manifest = loadVendorManifest(manifestPath);
+
+  try {
+    ensureInstallRoot(paths);
+    materializeVendorSources(paths.moluoHome, manifest);
+
+    syncFirstPartyToHome(repoRoot, paths.moluoHome);
+    rebuildVendorSkillLinks({ homeDir: paths.moluoHome, manifestPath });
+    projectToClaude({
+      moluoHome: paths.moluoHome,
+      claudeHome: paths.claudeHome
+    });
+
+    assert.equal(existsSync(path.join(paths.moluoHome, 'agents')), true);
+    assert.equal(existsSync(path.join(paths.claudeHome, 'agents')), true);
+
+    rmSync(path.join(repoRoot, 'agents'), { recursive: true, force: true });
+
+    syncFirstPartyToHome(repoRoot, paths.moluoHome);
+    projectToClaude({
+      moluoHome: paths.moluoHome,
+      claudeHome: paths.claudeHome
+    });
+
+    assert.equal(existsSync(path.join(paths.moluoHome, 'agents')), false);
+    assert.equal(existsSync(path.join(paths.claudeHome, 'agents')), false);
+  } finally {
+    rmSync(tempDir, { recursive: true, force: true });
+  }
+});
+
+test('install flow works when agents are absent from the source tree from the start', () => {
+  const tempDir = mkdtempSync(path.join(os.tmpdir(), 'ai-rules-install-no-agents-'));
+  const repoRoot = stageRepoFixture(tempDir, { includeAgents: false });
+  const userHome = path.join(tempDir, 'home');
+  const paths = getDefaultInstallPaths(userHome);
+  const manifestPath = path.join(repoRoot, 'manifests', 'vendors.jsonc');
+  const manifest = loadVendorManifest(manifestPath);
+
+  try {
+    ensureInstallRoot(paths);
+    materializeVendorSources(paths.moluoHome, manifest);
+
+    syncFirstPartyToHome(repoRoot, paths.moluoHome);
+    rebuildVendorSkillLinks({ homeDir: paths.moluoHome, manifestPath });
+    projectToClaude({
+      moluoHome: paths.moluoHome,
+      claudeHome: paths.claudeHome
+    });
+    projectToQoder({
+      moluoHome: paths.moluoHome,
+      qoderHome: paths.qoderHome
+    });
+
+    assert.equal(existsSync(path.join(paths.moluoHome, 'agents')), false);
+    assert.equal(existsSync(path.join(paths.claudeHome, 'agents')), false);
+    assert.equal(existsSync(path.join(paths.qoderHome, 'agents')), false);
+    assert.equal(existsSync(path.join(paths.moluoHome, 'skills', 'standard-workflow', 'SKILL.md')), true);
   } finally {
     rmSync(tempDir, { recursive: true, force: true });
   }

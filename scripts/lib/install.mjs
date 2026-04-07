@@ -33,8 +33,13 @@ function copyDirContents(sourceDir, targetDir) {
   }
 }
 
+function syncRequiredDir(sourceDir, targetDir) {
+  copyDirContents(sourceDir, targetDir);
+}
+
 function syncOptionalDir(sourceDir, targetDir) {
   if (!existsSync(sourceDir)) {
+    rmSync(targetDir, { recursive: true, force: true });
     return;
   }
 
@@ -72,7 +77,7 @@ export function ensureInstallRoot(paths) {
 }
 
 export function syncFirstPartyToHome(repoRoot, moluoHome) {
-  syncOptionalDir(path.join(repoRoot, 'skills'), path.join(moluoHome, 'skills'));
+  syncRequiredDir(path.join(repoRoot, 'skills'), path.join(moluoHome, 'skills'));
   syncOptionalDir(path.join(repoRoot, 'agents'), path.join(moluoHome, 'agents'));
 }
 
