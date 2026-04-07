@@ -1,5 +1,7 @@
 # Moluoxixi AI Workflow Distribution
 
+For Chinese documentation, see [README-zh.md](README-zh.md).
+
 Moluoxixi AI Workflow Distribution is a superpowers-based, skills-first workflow distribution for personal AI coding.
 
 It is built on top of [superpowers](https://github.com/obra/superpowers) and packages a consistent workflow layer across Claude, Codex, Qoder, tare, and openCode.
@@ -19,22 +21,52 @@ It is built on top of [superpowers](https://github.com/obra/superpowers) and pac
 - tare
 - openCode
 
-## Install
+## Claude
 
-Tell your host to fetch and follow its install document:
+### Install
 
-- `https://raw.githubusercontent.com/moluoxixi/AIRules/refs/heads/main/.claude/INSTALL.md`
-- `https://raw.githubusercontent.com/moluoxixi/AIRules/refs/heads/main/.codex/INSTALL.md`
-- `https://raw.githubusercontent.com/moluoxixi/AIRules/refs/heads/main/.qoder/INSTALL.md`
-- `https://raw.githubusercontent.com/moluoxixi/AIRules/refs/heads/main/.tare/INSTALL.md`
-- `https://raw.githubusercontent.com/moluoxixi/AIRules/refs/heads/main/.opencode/INSTALL.md`
+`https://raw.githubusercontent.com/moluoxixi/AIRules/refs/heads/main/.claude/INSTALL.md`
 
-## Upgrade
+### Upgrade
 
-Tell your host to fetch and follow its upgrade document:
+`https://raw.githubusercontent.com/moluoxixi/AIRules/refs/heads/main/.claude/UPGRADE.md`
 
-- `https://raw.githubusercontent.com/moluoxixi/AIRules/refs/heads/main/.claude/UPGRADE.md`
-- `https://raw.githubusercontent.com/moluoxixi/AIRules/refs/heads/main/.codex/UPGRADE.md`
-- `https://raw.githubusercontent.com/moluoxixi/AIRules/refs/heads/main/.qoder/UPGRADE.md`
-- `https://raw.githubusercontent.com/moluoxixi/AIRules/refs/heads/main/.tare/UPGRADE.md`
-- `https://raw.githubusercontent.com/moluoxixi/AIRules/refs/heads/main/.opencode/UPGRADE.md`
+## Codex
+
+### Install
+
+`https://raw.githubusercontent.com/moluoxixi/AIRules/refs/heads/main/.codex/INSTALL.md`
+
+### Upgrade
+
+`https://raw.githubusercontent.com/moluoxixi/AIRules/refs/heads/main/.codex/UPGRADE.md`
+
+## Qoder
+
+### Install
+
+`https://raw.githubusercontent.com/moluoxixi/AIRules/refs/heads/main/.qoder/INSTALL.md`
+
+### Upgrade
+
+`https://raw.githubusercontent.com/moluoxixi/AIRules/refs/heads/main/.qoder/UPGRADE.md`
+
+## tare
+
+### Install
+
+`https://raw.githubusercontent.com/moluoxixi/AIRules/refs/heads/main/.tare/INSTALL.md`
+
+### Upgrade
+
+`https://raw.githubusercontent.com/moluoxixi/AIRules/refs/heads/main/.tare/UPGRADE.md`
+
+## openCode
+
+### Install
+
+`https://raw.githubusercontent.com/moluoxixi/AIRules/refs/heads/main/.opencode/INSTALL.md`
+
+### Upgrade
+
+`https://raw.githubusercontent.com/moluoxixi/AIRules/refs/heads/main/.opencode/UPGRADE.md`

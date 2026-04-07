@@ -1,13 +1,12 @@
-# Moluoxixi Codex 全局基线
+# Moluoxixi openCode 全局基线
 
 ## 宿主入口
 
-当 Codex 通过这个仓库安装后，把下面这些路径视为当前生效入口：
+当 openCode 通过这个仓库安装后，把下面这些路径视为当前生效入口：
 
-- `~/.agents/skills/moluoxixi/` 是这个仓库对 Codex 暴露的统一技能命名空间
-- `~/.moluoxixi/skills/` 是被投影进去的源技能树
-- `~/.moluoxixi/agents/` 是可选的辅助 agents 目录
-- `~/.codex/AGENTS.md` 是 Codex 侧的全局基线文件
+- `~/.config/opencode/skills/` 是 openCode 读取的技能入口
+- `~/.moluoxixi/skills/` 是被投影到该入口的源技能树
+- `.opencode/AGENTS.md` 是 openCode 侧的全局基线文件
 
 这是一套 `skills-first` 的安装，`rules` 不再作为主入口。
 
@@ -20,7 +19,7 @@
 3. `javascript` / `typescript` / `react` / `vue`：决定语言与框架层 guidance
 4. `testing` / `verification` / `wrap-up`：决定阶段层 guidance
 
-这些第一方 skills 都位于 `~/.agents/skills/moluoxixi/` 下，与 vendor skills 并列存在。
+这些第一方 skills 都位于 openCode 的技能入口下，与 vendor skills 并列存在。
 
 ## 第一方与 Vendor 的关系
 
@@ -41,7 +40,7 @@
 
 ## 工作方式
 
-- 从 `~/.agents/skills/moluoxixi/` 这个命名空间出发，而不是假设存在全局 `superpowers` 别名
+- 从 `~/.config/opencode/skills/` 这个入口出发
 - 优先加载第一方 skill 分层，再补充 vendor skills
 - 默认遵循 `standard-workflow -> domain -> language/framework -> phase` 这个顺序
 - 要修改仓库行为时，优先编辑 `~/.moluoxixi/skills/` 里的第一方 skills
@@ -50,7 +49,6 @@
 
 在宣称安装、升级或任务完成之前：
 
-- 确认 `~/.agents/skills/moluoxixi/` 真的指向 `~/.moluoxixi/skills/`
-- 确认需要的第一方 skills 已经存在于这个命名空间
-- 确认 `~/.codex/AGENTS.md` 已和仓库中的 `.codex/AGENTS.md` 同步
+- 确认 `~/.config/opencode/skills/` 真的指向 `~/.moluoxixi/skills/`
+- 确认需要的第一方 skills 已经存在于 openCode 的技能入口
 - 确认当前宿主描述仍然符合 `skills-first` 模型
