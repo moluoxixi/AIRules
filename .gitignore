@@ -1,4 +1,9 @@
 node_modules/
 .worktrees/
-idea
+.idea/
+.qoder/*
+!.qoder/INSTALL.md
+!.qoder/UPGRADE.md
+!.qoder/AGENTS.md
 vendors/
+skills/.gitignore
