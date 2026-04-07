@@ -1,35 +1,19 @@
 # Moluoxixi Skills Upgrade Guide (openCode)
 
-## Quick Upgrade
+## Command
 
 ### macOS / Linux
 
 ```bash
 git -C "${HOME}/.moluoxixi" pull --ff-only
-node "${HOME}/.moluoxixi/scripts/sync-vendors.mjs" --home "${HOME}/.moluoxixi"
-node "${HOME}/.moluoxixi/scripts/rebuild-links.mjs" --home "${HOME}/.moluoxixi"
-
-mkdir -p "${HOME}/.config/opencode"
-rm -rf "${HOME}/.config/opencode/skills"
-ln -sfn "${HOME}/.moluoxixi/skills" "${HOME}/.config/opencode/skills"
-
-node "${HOME}/.moluoxixi/scripts/link-host-baselines.mjs" --home "${HOME}/.moluoxixi" --host opencode
+node "${HOME}/.moluoxixi/scripts/host-setup.mjs" --host opencode --mode upgrade --home "${HOME}/.moluoxixi"
 ```
 
 ### Windows PowerShell
 
 ```powershell
 git -C "$env:USERPROFILE\\.moluoxixi" pull --ff-only
-node "$env:USERPROFILE\\.moluoxixi\\scripts\\sync-vendors.mjs" --home "$env:USERPROFILE\\.moluoxixi"
-node "$env:USERPROFILE\\.moluoxixi\\scripts\\rebuild-links.mjs" --home "$env:USERPROFILE\\.moluoxixi"
-
-New-Item -ItemType Directory -Force -Path "$env:USERPROFILE\\.config\\opencode" | Out-Null
-if (Test-Path "$env:USERPROFILE\\.config\\opencode\\skills") {
-  Remove-Item "$env:USERPROFILE\\.config\\opencode\\skills" -Recurse -Force
-}
-cmd /c mklink /J "$env:USERPROFILE\\.config\\opencode\\skills" "$env:USERPROFILE\\.moluoxixi\\skills"
-
-node "$env:USERPROFILE\\.moluoxixi\\scripts\\link-host-baselines.mjs" --home "$env:USERPROFILE\\.moluoxixi" --host opencode
+node "$env:USERPROFILE\\.moluoxixi\\scripts\\host-setup.mjs" --host opencode --mode upgrade --home "$env:USERPROFILE\\.moluoxixi"
 ```
 
 ## Verification

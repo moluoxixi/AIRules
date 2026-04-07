@@ -23,34 +23,34 @@ test('host docs describe the skills-first projections and shared baseline source
     assert.match(doc, /~\/\.claude\/skills|~\\\.claude\\skills/);
     assert.match(doc, /~\/\.claude\/CLAUDE\.md|~\\\.claude\\CLAUDE\.md/);
     assert.match(doc, /~\/\.moluoxixi\/AGENTS\.md|~\\\.moluoxixi\\AGENTS\.md/);
-    assert.match(doc, /scripts\/link-host-baselines\.mjs|scripts\\link-host-baselines\.mjs/);
+    assert.match(doc, /scripts\/host-setup\.mjs|scripts\\host-setup\.mjs/);
   }
 
   for (const doc of [codexInstall, codexUpgrade]) {
     assert.match(doc, /~\/\.agents\/skills\/moluoxixi|~\\\.agents\\skills\\moluoxixi/);
     assert.match(doc, /~\/\.codex\/AGENTS\.md|~\\\.codex\\AGENTS\.md/);
     assert.match(doc, /~\/\.moluoxixi\/AGENTS\.md|~\\\.moluoxixi\\AGENTS\.md/);
-    assert.match(doc, /scripts\/link-host-baselines\.mjs|scripts\\link-host-baselines\.mjs/);
+    assert.match(doc, /scripts\/host-setup\.mjs|scripts\\host-setup\.mjs/);
   }
 
   for (const doc of [qoderInstall, qoderUpgrade]) {
     assert.match(doc, /~\/\.qoder\/skills|~\\\.qoder\\skills/);
     assert.match(doc, /~\/\.qoder\/AGENTS\.md|~\\\.qoder\\AGENTS\.md/);
     assert.match(doc, /~\/\.moluoxixi\/AGENTS\.md|~\\\.moluoxixi\\AGENTS\.md/);
-    assert.match(doc, /scripts\/link-host-baselines\.mjs|scripts\\link-host-baselines\.mjs/);
+    assert.match(doc, /scripts\/host-setup\.mjs|scripts\\host-setup\.mjs/);
   }
 
   for (const doc of [tareInstall, tareUpgrade]) {
     assert.match(doc, /~\/\.agents\/skills\/moluoxixi|~\\\.agents\\skills\\moluoxixi/);
     assert.match(doc, /~\/\.tare\/AGENTS\.md|~\\\.tare\\AGENTS\.md/);
     assert.match(doc, /~\/\.moluoxixi\/AGENTS\.md|~\\\.moluoxixi\\AGENTS\.md/);
-    assert.match(doc, /scripts\/link-host-baselines\.mjs|scripts\\link-host-baselines\.mjs/);
+    assert.match(doc, /scripts\/host-setup\.mjs|scripts\\host-setup\.mjs/);
   }
 
   for (const doc of [opencodeInstall, opencodeUpgrade]) {
     assert.match(doc, /~\/\.config\/opencode\/skills|~\\\.config\\opencode\\skills/);
     assert.match(doc, /~\/\.config\/opencode\/AGENTS\.md|~\\\.config\\opencode\\AGENTS\.md/);
     assert.match(doc, /~\/\.moluoxixi\/AGENTS\.md|~\\\.moluoxixi\\AGENTS\.md/);
-    assert.match(doc, /scripts\/link-host-baselines\.mjs|scripts\\link-host-baselines\.mjs/);
+    assert.match(doc, /scripts\/host-setup\.mjs|scripts\\host-setup\.mjs/);
   }
 });

@@ -15,7 +15,7 @@ openCode reads these locations:
 ~/.config/opencode/AGENTS.md -> ~/.moluoxixi/AGENTS.md
 ```
 
-## Installation Steps
+## Command
 
 ### macOS / Linux
 
@@ -28,14 +28,7 @@ else
   git clone https://github.com/moluoxixi/AIRules.git "${HOME}/.moluoxixi"
 fi
 
-node "${HOME}/.moluoxixi/scripts/sync-vendors.mjs" --home "${HOME}/.moluoxixi"
-node "${HOME}/.moluoxixi/scripts/rebuild-links.mjs" --home "${HOME}/.moluoxixi"
-
-mkdir -p "${HOME}/.config/opencode"
-rm -rf "${HOME}/.config/opencode/skills"
-ln -sfn "${HOME}/.moluoxixi/skills" "${HOME}/.config/opencode/skills"
-
-node "${HOME}/.moluoxixi/scripts/link-host-baselines.mjs" --home "${HOME}/.moluoxixi" --host opencode
+node "${HOME}/.moluoxixi/scripts/host-setup.mjs" --host opencode --mode install --home "${HOME}/.moluoxixi"
 ```
 
 ### Windows PowerShell
@@ -49,16 +42,7 @@ if (Test-Path "$env:USERPROFILE\\.moluoxixi\\.git") {
   git clone https://github.com/moluoxixi/AIRules.git "$env:USERPROFILE\\.moluoxixi"
 }
 
-node "$env:USERPROFILE\\.moluoxixi\\scripts\\sync-vendors.mjs" --home "$env:USERPROFILE\\.moluoxixi"
-node "$env:USERPROFILE\\.moluoxixi\\scripts\\rebuild-links.mjs" --home "$env:USERPROFILE\\.moluoxixi"
-
-New-Item -ItemType Directory -Force -Path "$env:USERPROFILE\\.config\\opencode" | Out-Null
-if (Test-Path "$env:USERPROFILE\\.config\\opencode\\skills") {
-  Remove-Item "$env:USERPROFILE\\.config\\opencode\\skills" -Recurse -Force
-}
-cmd /c mklink /J "$env:USERPROFILE\\.config\\opencode\\skills" "$env:USERPROFILE\\.moluoxixi\\skills"
-
-node "$env:USERPROFILE\\.moluoxixi\\scripts\\link-host-baselines.mjs" --home "$env:USERPROFILE\\.moluoxixi" --host opencode
+node "$env:USERPROFILE\\.moluoxixi\\scripts\\host-setup.mjs" --host opencode --mode install --home "$env:USERPROFILE\\.moluoxixi"
 ```
 
 ## Verification
