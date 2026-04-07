@@ -101,8 +101,10 @@ test('first-party skills follow the shared content structure', () => {
     assert.match(content, /## 概述/);
     assert.match(content, /## 何时使用/);
     assert.match(content, /## 不在这些情况下使用/);
-    assert.match(content, /## 核心指导/);
+    assert.match(content, /## 快速参考/);
     assert.match(content, /## 常见误区/);
     assert.match(content, /## 相关 Skills/);
+    assert.doesNotMatch(content, /## 硬约束/);
+    assert.doesNotMatch(content, /## 流程/);
   }
 });
