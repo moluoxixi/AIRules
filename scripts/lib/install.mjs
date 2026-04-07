@@ -19,13 +19,18 @@ function resetDir(targetDir) {
   mkdirSync(targetDir, { recursive: true });
 }
 
-function copyDirContents(sourceDir, targetDir) {
+function copyDirContents(sourceDir, targetDir, options = {}) {
   mkdirSync(targetDir, { recursive: true });
 
   for (const entry of readdirSync(sourceDir, { withFileTypes: true })) {
     const source = path.join(sourceDir, entry.name);
     const target = path.join(targetDir, entry.name);
     const sourceStats = lstatSync(source);
+
+    if (options.skipSymlinks && sourceStats.isSymbolicLink()) {
+      continue;
+    }
+
     const copySource = sourceStats.isSymbolicLink() ? realpathSync(source) : source;
 
     rmSync(target, { recursive: true, force: true });
@@ -39,8 +44,14 @@ function copyRequiredFile(sourceFile, targetFile) {
   cpSync(sourceFile, targetFile);
 }
 
-function syncRequiredDir(sourceDir, targetDir) {
-  copyDirContents(sourceDir, targetDir);
+function syncRequiredDir(sourceDir, targetDir, options = {}) {
+  if (options.fullReset) {
+    resetDir(targetDir);
+  } else {
+    mkdirSync(targetDir, { recursive: true });
+  }
+
+  copyDirContents(sourceDir, targetDir, options);
 }
 
 function syncOptionalDir(sourceDir, targetDir) {
@@ -49,6 +60,7 @@ function syncOptionalDir(sourceDir, targetDir) {
     return;
   }
 
+  resetDir(targetDir);
   copyDirContents(sourceDir, targetDir);
 }
 
@@ -100,7 +112,10 @@ export function ensureInstallRoot(paths) {
 }
 
 export function syncFirstPartyToHome(repoRoot, moluoHome) {
-  syncRequiredDir(path.join(repoRoot, 'skills'), path.join(moluoHome, 'skills'));
+  syncRequiredDir(path.join(repoRoot, 'skills'), path.join(moluoHome, 'skills'), {
+    skipSymlinks: true,
+    fullReset: false
+  });
   syncOptionalDir(path.join(repoRoot, 'agents'), path.join(moluoHome, 'agents'));
   copyRequiredFile(path.join(repoRoot, 'AGENTS.md'), path.join(moluoHome, 'AGENTS.md'));
 }
