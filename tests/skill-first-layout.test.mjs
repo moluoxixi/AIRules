@@ -98,13 +98,14 @@ test('first-party skills follow the shared content structure', () => {
     '../skills/wrap-up/SKILL.md'
   ]) {
     const content = readFileSync(new URL(relativePath, import.meta.url), 'utf8');
-    assert.match(content, /## 概述/);
-    assert.match(content, /## 何时使用/);
-    assert.match(content, /## 不在这些情况下使用/);
-    assert.match(content, /## 快速参考/);
-    assert.match(content, /## 常见误区/);
-    assert.match(content, /## 相关 Skills/);
+    assert.match(content, /## Overview/);
+    assert.match(content, /## When to Use/);
+    assert.match(content, /When NOT to use:/);
+    assert.match(content, /## Quick Reference/);
+    assert.match(content, /## Common Mistakes/);
+    assert.match(content, /## Related Skills/);
     assert.doesNotMatch(content, /## 硬约束/);
     assert.doesNotMatch(content, /## 流程/);
+    assert.doesNotMatch(content, /## 核心指导/);
   }
 });
