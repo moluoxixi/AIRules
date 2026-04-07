@@ -55,4 +55,4 @@ Confirm after upgrade:
 
 - `~/.claude/skills/` still points to `~/.moluoxixi/skills/`
 - `~/.claude/agents/` is recreated only when `~/.moluoxixi/agents/` exists
-- The Claude install remains skills-first and does not recreate a `rules/` projection
+- The Claude install remains on the shared skills-first layout

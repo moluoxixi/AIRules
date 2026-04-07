@@ -11,8 +11,6 @@ It is built on top of [superpowers](https://github.com/obra/superpowers) and pac
 - First-party agents in `agents/` for orchestration roles
 - Multi-host install/upgrade docs in `.claude/`, `.codex/`, `.qoder/`, and `.opencode/`
 
-`rules/` remains available as supporting documentation, but the core architecture is the skills-first distribution and host projections.
-
 ## Host Support
 
 - Claude / Claude Code

@@ -9,7 +9,7 @@ When Codex is installed from this repository, treat these paths as the active ho
 - `~/.moluoxixi/agents/` is an optional companion layer for hosts that support projected agents
 - `~/.codex/AGENTS.md` is the Codex-specific guidance file copied from this repository
 
-Do not treat `rules/` as a primary layer in Codex. This install is skills-first.
+Treat this install as skills-first from the projected namespace and first-party skill layering.
 
 ## First-Party Skill Layering
 

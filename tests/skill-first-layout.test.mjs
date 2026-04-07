@@ -14,6 +14,7 @@ test('first-party skills exist in skills/', () => {
   assert.equal(existsSync(new URL('../skills/testing/SKILL.md', import.meta.url)), true);
   assert.equal(existsSync(new URL('../skills/verification/SKILL.md', import.meta.url)), true);
   assert.equal(existsSync(new URL('../skills/wrap-up/SKILL.md', import.meta.url)), true);
+  assert.equal(existsSync(new URL('../rules', import.meta.url)), false);
 });
 
 test('task-2 skill files keep required boundary and language invariants', () => {

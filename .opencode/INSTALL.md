@@ -83,7 +83,7 @@ Checkpoints:
 
 - `~/.config/opencode/skills` points to `~/.moluoxixi/skills`
 - openCode is using the shared skills-first projection
-- No host-specific `rules/` layer is required for openCode
+- openCode uses the shared skills-first projection directly
 
 ## Notes
 

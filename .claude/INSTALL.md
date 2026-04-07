@@ -109,10 +109,10 @@ Checkpoints:
 - `~/.moluoxixi/skills/` contains first-party and vendor skills
 - `~/.claude/skills/` points to `~/.moluoxixi/skills/`
 - `~/.claude/agents/` exists only when `~/.moluoxixi/agents/` exists
-- Claude is using the skills-first layout, not a `rules/` projection
+- Claude is using the shared skills-first layout
 
 ## Notes
 
 - `superpowers/*` remains the baseline process layer inside the aggregated skills tree
-- First-party guidance is now published through `skills/`, not `rules/`
+- First-party guidance is published through `skills/`
 - Re-run the install flow after repository updates so Claude keeps the latest linked skills

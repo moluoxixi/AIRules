@@ -38,4 +38,4 @@ Confirm after upgrade:
 
 - `~/.config/opencode/skills` still points to `~/.moluoxixi/skills`
 - openCode remains on the shared skills-first projection
-- The upgrade flow does not recreate any `rules/` layer for openCode
+- The upgrade flow keeps openCode on the shared skills-first projection

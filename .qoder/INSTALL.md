@@ -109,10 +109,10 @@ Checkpoints:
 - `~/.moluoxixi/skills/` contains first-party and vendor skills
 - `~/.qoder/skills/` points to `~/.moluoxixi/skills/`
 - `~/.qoder/agents/` exists only when `~/.moluoxixi/agents/` exists
-- Qoder is using the skills-first layout, not a `rules/` projection
+- Qoder is using the shared skills-first layout
 
 ## Notes
 
 - `superpowers/*` remains the baseline process layer inside the aggregated skills tree
-- First-party guidance is now published through `skills/`, not `rules/`
+- First-party guidance is published through `skills/`
 - Re-run the install flow after repository updates so Qoder keeps the latest linked skills

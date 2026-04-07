@@ -43,4 +43,4 @@ Confirm after upgrade:
 
 - `~/.agents/skills/moluoxixi` still points to `~/.moluoxixi/skills`
 - `~/.codex/AGENTS.md` has been recopied from `~/.moluoxixi/.codex/AGENTS.md`
-- Codex keeps the skills-first `moluoxixi` namespace instead of recreating `~/.agents/skills/superpowers`
+- Codex keeps the skills-first `moluoxixi` namespace during upgrade

@@ -55,4 +55,4 @@ Confirm after upgrade:
 
 - `~/.qoder/skills/` still points to `~/.moluoxixi/skills/`
 - `~/.qoder/agents/` is recreated only when `~/.moluoxixi/agents/` exists
-- The Qoder install remains skills-first and does not recreate a `rules/` projection
+- The Qoder install remains on the shared skills-first layout
