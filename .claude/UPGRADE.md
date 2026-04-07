@@ -1,6 +1,6 @@
-# Moluoxixi Rules 升级指南（Claude）
+# Moluoxixi Skills Upgrade Guide (Claude)
 
-## 快速升级
+## Quick Upgrade
 
 ### macOS / Linux
 
@@ -10,10 +10,12 @@ node "${HOME}/.moluoxixi/scripts/sync-vendors.mjs" --home "${HOME}/.moluoxixi"
 node "${HOME}/.moluoxixi/scripts/rebuild-links.mjs" --home "${HOME}/.moluoxixi"
 
 mkdir -p "${HOME}/.claude"
-rm -rf "${HOME}/.claude/rules" "${HOME}/.claude/skills" "${HOME}/.claude/agents"
-ln -sfn "${HOME}/.moluoxixi/rules" "${HOME}/.claude/rules"
+rm -rf "${HOME}/.claude/skills" "${HOME}/.claude/agents"
 ln -sfn "${HOME}/.moluoxixi/skills" "${HOME}/.claude/skills"
-ln -sfn "${HOME}/.moluoxixi/agents" "${HOME}/.claude/agents"
+
+if [ -d "${HOME}/.moluoxixi/agents" ]; then
+  ln -sfn "${HOME}/.moluoxixi/agents" "${HOME}/.claude/agents"
+fi
 ```
 
 ### Windows PowerShell
@@ -24,28 +26,33 @@ node "$env:USERPROFILE\\.moluoxixi\\scripts\\sync-vendors.mjs" --home "$env:USER
 node "$env:USERPROFILE\\.moluoxixi\\scripts\\rebuild-links.mjs" --home "$env:USERPROFILE\\.moluoxixi"
 
 New-Item -ItemType Directory -Force -Path "$env:USERPROFILE\\.claude" | Out-Null
-if (Test-Path "$env:USERPROFILE\\.claude\\rules") {
-  Remove-Item "$env:USERPROFILE\\.claude\\rules" -Recurse -Force
-}
 if (Test-Path "$env:USERPROFILE\\.claude\\skills") {
   Remove-Item "$env:USERPROFILE\\.claude\\skills" -Recurse -Force
 }
 if (Test-Path "$env:USERPROFILE\\.claude\\agents") {
   Remove-Item "$env:USERPROFILE\\.claude\\agents" -Recurse -Force
 }
-cmd /c mklink /J "$env:USERPROFILE\\.claude\\rules" "$env:USERPROFILE\\.moluoxixi\\rules"
 cmd /c mklink /J "$env:USERPROFILE\\.claude\\skills" "$env:USERPROFILE\\.moluoxixi\\skills"
-cmd /c mklink /J "$env:USERPROFILE\\.claude\\agents" "$env:USERPROFILE\\.moluoxixi\\agents"
+
+if (Test-Path "$env:USERPROFILE\\.moluoxixi\\agents") {
+  cmd /c mklink /J "$env:USERPROFILE\\.claude\\agents" "$env:USERPROFILE\\.moluoxixi\\agents"
+}
 ```
 
-## 验证
+## Verification
 
 ```bash
 ls ~/.claude/skills
 ```
 
-确认升级后：
+If agents are installed, also verify:
 
-- `~/.claude/` 入口仍指向 `~/.moluoxixi/`
-- `superpowers` 和其他第三方 skills 已更新
-- `~/.moluoxixi/skills` 中的链接仍然有效
+```bash
+ls ~/.claude/agents
+```
+
+Confirm after upgrade:
+
+- `~/.claude/skills/` still points to `~/.moluoxixi/skills/`
+- `~/.claude/agents/` is recreated only when `~/.moluoxixi/agents/` exists
+- The Claude install remains skills-first and does not recreate a `rules/` projection

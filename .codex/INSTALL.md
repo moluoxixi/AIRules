@@ -1,4 +1,4 @@
-# Moluoxixi Rules Installation Guide (Codex)
+# Moluoxixi Skills Installation Guide (Codex)
 
 ## Prerequisites
 
@@ -8,65 +8,34 @@
 
 ## Goal
 
-Codex will use these two locations:
+Codex uses these locations:
 
 ```text
-~/.moluoxixi/          Unified aggregation layer
-~/.agents/skills/      Codex native skill discovery directory
+~/.moluoxixi/                 Shared installation root
+~/.agents/skills/moluoxixi    Codex skill namespace for this repository
+~/.codex/AGENTS.md            Host guidance copied from this repository
 ```
 
-Only one namespace entry will be exposed:
+The Codex projection is:
 
 ```text
-~/.agents/skills/superpowers -> ~/.moluoxixi/skills
+~/.agents/skills/moluoxixi -> ~/.moluoxixi/skills
+~/.codex/AGENTS.md         <- ~/.moluoxixi/.codex/AGENTS.md
 ```
 
 ## What's Included
 
-### Rules (Layered Architecture)
+### Skills
 
-**Common Layer** (Cross-language principles):
-- `common/workflow.md` - Standard development workflow phases
-- `common/coding-standards.md` - Universal coding conventions
-- `common/comments.md` - Cross-language comment principles
-- `common/testing-standards.md` - Universal testing principles
-- `common/verification.md` - Universal verification gates
-- `common/git-conventions.md` - Version control conventions
-- `common/overview.md` - High-level architectural principles
+`~/.agents/skills/moluoxixi/` exposes the aggregated `~/.moluoxixi/skills/` tree, including:
 
-**Tech-Stack Layer** (Implementation-specific):
-- `java/` - Java (overview, comments, testing, verification)
-- `nest/` - NestJS (overview, comments, testing, verification)
-- `react/` - React (overview, comments, testing, verification)
-- `vue/` - Vue.js (overview, comments, testing, verification)
-- `go/` - Go (overview, comments, testing, verification)
-- `python/` - Python (overview, comments, testing, verification)
-- `rust/` - Rust (overview, comments, testing, verification)
-- `frontend/` - Cross-framework frontend guidelines
-- `backend/` - Cross-framework backend guidelines
+- First-party skills such as `standard-workflow`, `personal-defaults`, `frontend`, `backend`, `testing`, `verification`, and `wrap-up`
+- Language and framework skills such as `javascript`, `typescript`, `react`, and `vue`
+- Linked vendor skills, including `superpowers/*`
 
-See [rules/CATALOG.md](../rules/CATALOG.md) for complete rule index and inheritance mapping.
+### Guidance Layer
 
-### Skills (Vendor)
-
-Skills are now sourced exclusively from vendor repositories. See [rules/CATALOG.md](../rules/CATALOG.md) for the complete vendor skill index.
-
-**Key Vendor Skills**:
-- `superpowers/*` — AI-native workflow orchestration
-- `frontend-design` — Visual design and UI prototyping
-- `webapp-testing` — Playwright browser testing
-- `code-reviewer` — Code review execution
-- `pr-creator` — PR creation per repo template
-- `fix` — Lint/format quick-fix
-
-### Agents
-
-- `frontend-dev` - Frontend development (Vue, React, Next.js)
-- `backend-dev` - Backend development (Java, NestJS, Go, Python, Rust)
-- `fullstack-dev` - Full-stack development spanning both layers
-- `stack-reviewer` - Review cross-cutting concerns, rule-skill alignment
-
-See [agents/README.md](../agents/README.md) for agent orchestration details.
+`~/.codex/AGENTS.md` explains how to use the first-party skill layering together with the aggregated skill namespace.
 
 ## Installation Steps
 
@@ -75,27 +44,21 @@ See [agents/README.md](../agents/README.md) for agent orchestration details.
 ```bash
 mkdir -p "${HOME}/.moluoxixi"
 
-# 1. Clone or update repository
 if [ -d "${HOME}/.moluoxixi/.git" ]; then
   git -C "${HOME}/.moluoxixi" pull --ff-only
 else
   git clone https://github.com/moluoxixi/AIRules.git "${HOME}/.moluoxixi"
 fi
 
-# 2. Install superpowers first, then fetch other vendors
 node "${HOME}/.moluoxixi/scripts/sync-vendors.mjs" --home "${HOME}/.moluoxixi"
-
-# 3. Rebuild vendor skill links to ~/.moluoxixi/skills
 node "${HOME}/.moluoxixi/scripts/rebuild-links.mjs" --home "${HOME}/.moluoxixi"
 
-# 4. Set up Codex entry
 mkdir -p "${HOME}/.codex"
 cp "${HOME}/.moluoxixi/.codex/AGENTS.md" "${HOME}/.codex/AGENTS.md"
 
-# 5. Expose to Codex native skill discovery directory
 mkdir -p "${HOME}/.agents/skills"
-rm -rf "${HOME}/.agents/skills/superpowers"
-ln -sfn "${HOME}/.moluoxixi/skills" "${HOME}/.agents/skills/superpowers"
+rm -rf "${HOME}/.agents/skills/moluoxixi"
+ln -sfn "${HOME}/.moluoxixi/skills" "${HOME}/.agents/skills/moluoxixi"
 ```
 
 ### Windows PowerShell
@@ -110,7 +73,6 @@ if (Test-Path "$env:USERPROFILE\\.moluoxixi\\.git") {
 }
 
 node "$env:USERPROFILE\\.moluoxixi\\scripts\\sync-vendors.mjs" --home "$env:USERPROFILE\\.moluoxixi"
-
 node "$env:USERPROFILE\\.moluoxixi\\scripts\\rebuild-links.mjs" --home "$env:USERPROFILE\\.moluoxixi"
 
 New-Item -ItemType Directory -Force -Path "$env:USERPROFILE\\.codex" | Out-Null
@@ -120,31 +82,28 @@ if (Test-Path "$env:USERPROFILE\\.codex\\AGENTS.md") {
 Copy-Item "$env:USERPROFILE\\.moluoxixi\\.codex\\AGENTS.md" "$env:USERPROFILE\\.codex\\AGENTS.md" -Force
 
 New-Item -ItemType Directory -Force -Path "$env:USERPROFILE\\.agents\\skills" | Out-Null
-if (Test-Path "$env:USERPROFILE\\.agents\\skills\\superpowers") {
-  Remove-Item "$env:USERPROFILE\\.agents\\skills\\superpowers" -Recurse -Force
+if (Test-Path "$env:USERPROFILE\\.agents\\skills\\moluoxixi") {
+  Remove-Item "$env:USERPROFILE\\.agents\\skills\\moluoxixi" -Recurse -Force
 }
-cmd /c mklink /J "$env:USERPROFILE\\.agents\\skills\\superpowers" "$env:USERPROFILE\\.moluoxixi\\skills"
+cmd /c mklink /J "$env:USERPROFILE\\.agents\\skills\\moluoxixi" "$env:USERPROFILE\\.moluoxixi\\skills"
 ```
 
 ## Verification
 
 ```bash
-ls ~/.moluoxixi/vendors/superpowers
-ls -la ~/.agents/skills/superpowers
+ls ~/.moluoxixi/skills
+ls -la ~/.agents/skills/moluoxixi
+ls ~/.codex/AGENTS.md
 ```
 
 Checkpoints:
 
-- `superpowers` is installed as baseline
-- `~/.moluoxixi/skills/` contains vendor skill links
-- `~/.agents/skills/superpowers` points to `~/.moluoxixi/skills`
-- `~/.codex/AGENTS.md` is synced from `~/.moluoxixi/.codex/AGENTS.md`
+- `~/.agents/skills/moluoxixi` points to `~/.moluoxixi/skills`
+- `~/.codex/AGENTS.md` is refreshed from `~/.moluoxixi/.codex/AGENTS.md`
+- Codex is using the repository namespace `moluoxixi`, not a `superpowers` alias
 
 ## Notes
 
-- This setup installs `superpowers` first as the baseline workflow layer
-- First-party `rules/` are maintained in this repository with a layered architecture:
-  - `common/` - Cross-language principles
-  - `{tech-stack}/` - Implementation-specific rules (java/, react/, vue/, etc.)
-- Third-party skills are aggregated around `~/.moluoxixi/` and exposed via symlinks
-- See [rules/CATALOG.md](../rules/CATALOG.md) for complete rule-skill-agent mapping
+- `superpowers/*` still ships inside the aggregated skill tree as the baseline process layer
+- First-party guidance is distributed through `~/.agents/skills/moluoxixi/`
+- Re-run the install flow after updates so the namespace and `AGENTS.md` stay aligned

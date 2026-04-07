@@ -1,6 +1,6 @@
-# Moluoxixi Rules 升级指南（Codex）
+# Moluoxixi Skills Upgrade Guide (Codex)
 
-## 快速升级
+## Quick Upgrade
 
 ### macOS / Linux
 
@@ -13,8 +13,8 @@ mkdir -p "${HOME}/.codex"
 cp "${HOME}/.moluoxixi/.codex/AGENTS.md" "${HOME}/.codex/AGENTS.md"
 
 mkdir -p "${HOME}/.agents/skills"
-rm -rf "${HOME}/.agents/skills/superpowers"
-ln -sfn "${HOME}/.moluoxixi/skills" "${HOME}/.agents/skills/superpowers"
+rm -rf "${HOME}/.agents/skills/moluoxixi"
+ln -sfn "${HOME}/.moluoxixi/skills" "${HOME}/.agents/skills/moluoxixi"
 ```
 
 ### Windows PowerShell
@@ -31,17 +31,16 @@ if (Test-Path "$env:USERPROFILE\\.codex\\AGENTS.md") {
 Copy-Item "$env:USERPROFILE\\.moluoxixi\\.codex\\AGENTS.md" "$env:USERPROFILE\\.codex\\AGENTS.md" -Force
 
 New-Item -ItemType Directory -Force -Path "$env:USERPROFILE\\.agents\\skills" | Out-Null
-if (Test-Path "$env:USERPROFILE\\.agents\\skills\\superpowers") {
-  Remove-Item "$env:USERPROFILE\\.agents\\skills\\superpowers" -Recurse -Force
+if (Test-Path "$env:USERPROFILE\\.agents\\skills\\moluoxixi") {
+  Remove-Item "$env:USERPROFILE\\.agents\\skills\\moluoxixi" -Recurse -Force
 }
-cmd /c mklink /J "$env:USERPROFILE\\.agents\\skills\\superpowers" "$env:USERPROFILE\\.moluoxixi\\skills"
+cmd /c mklink /J "$env:USERPROFILE\\.agents\\skills\\moluoxixi" "$env:USERPROFILE\\.moluoxixi\\skills"
 ```
 
-## 验证
+## Verification
 
-确认升级后：
+Confirm after upgrade:
 
-- `superpowers` 已更新
-- `~/.moluoxixi/skills` 链接仍有效
-- `~/.agents/skills/superpowers` 已刷新为最新入口
-- `~/.codex/AGENTS.md` 已重新从 `~/.moluoxixi/.codex/AGENTS.md` 同步
+- `~/.agents/skills/moluoxixi` still points to `~/.moluoxixi/skills`
+- `~/.codex/AGENTS.md` has been recopied from `~/.moluoxixi/.codex/AGENTS.md`
+- Codex keeps the skills-first `moluoxixi` namespace instead of recreating `~/.agents/skills/superpowers`
