@@ -7,8 +7,9 @@ test('README positions the repo as a superpowers-based, multi-host, skills-first
 
   assert.match(readme, /skills-first workflow distribution/i);
   assert.match(readme, /built on top of .*superpowers/i);
-  assert.match(readme, /first-party skills/i);
+  assert.match(readme, /projected skills/i);
   assert.match(readme, /vendor skills/i);
+  assert.match(readme, /constants\/skills\.js/i);
   assert.match(readme, /claude/i);
   assert.match(readme, /codex/i);
   assert.match(readme, /qoder/i);

@@ -80,10 +80,11 @@ function syncVendorsIfNeeded(homeDir, repoRoot, skipVendors) {
     return;
   }
 
-  const manifest = loadVendorManifest(path.join(repoRoot, 'manifests', 'vendors.jsonc'));
-  for (const vendor of Object.values(manifest.vendors ?? {})) {
-    ensureVendorRepo(homeDir, vendor);
-  }
+  return loadVendorManifest(path.join(repoRoot, 'constants', 'skills.js')).then((manifest) => {
+    for (const vendor of Object.values(manifest.vendors ?? {})) {
+      ensureVendorRepo(homeDir, vendor);
+    }
+  });
 }
 
 function projectHost(args, paths) {
@@ -120,7 +121,7 @@ function projectHost(args, paths) {
   }
 }
 
-function main() {
+async function main() {
   const args = parseArgs(process.argv.slice(2));
   if (args.help) {
     printHelp();
@@ -137,10 +138,10 @@ function main() {
 
   ensureInstallRoot(paths);
   syncFirstPartyToHome(repoRoot, paths.moluoHome);
-  syncVendorsIfNeeded(paths.moluoHome, repoRoot, args.skipVendors);
-  rebuildVendorSkillLinks({
+  await syncVendorsIfNeeded(paths.moluoHome, repoRoot, args.skipVendors);
+  await rebuildVendorSkillLinks({
     homeDir: paths.moluoHome,
-    manifestPath: path.join(repoRoot, 'manifests', 'vendors.jsonc')
+    manifestPath: path.join(repoRoot, 'constants', 'skills.js')
   });
 
   projectHost(args, paths);
@@ -156,4 +157,7 @@ function main() {
   console.log(`[baseline] ${baselineTarget}`);
 }
 
-main();
+main().catch((error) => {
+  console.error(error);
+  process.exit(1);
+});

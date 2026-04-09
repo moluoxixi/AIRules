@@ -4,6 +4,7 @@ import { existsSync, mkdtempSync, mkdirSync, rmSync, writeFileSync } from 'node:
 import os from 'node:os';
 import path from 'node:path';
 import { spawnSync } from 'node:child_process';
+import { pathToFileURL } from 'node:url';
 
 import { ensureVendorRepo, getRemoteDefaultBranch } from '../scripts/lib/vendor-sync.mjs';
 
@@ -26,9 +27,8 @@ test('ensureVendorRepo recovers detached HEAD and syncs to origin default branch
   const remoteDir = path.join(tempDir, 'remote.git');
   const seedDir = path.join(tempDir, 'seed');
   const homeDir = path.join(tempDir, 'home');
-  const cloneDir = path.join(homeDir, 'vendors', 'sample-repo');
-  // 使用本地路径（不用 file:// URL），本地 clone 不支持 --filter 但 depth/sparse 可以工作
-  const remoteUrl = remoteDir;
+  const cloneDir = path.join(homeDir, 'vendor', 'repos', 'sample-repo');
+  const remoteUrl = pathToFileURL(remoteDir).href;
 
   try {
     mkdirSync(seedDir, { recursive: true });
@@ -47,13 +47,14 @@ test('ensureVendorRepo recovers detached HEAD and syncs to origin default branch
     runGit(['commit', '-m', 'init'], seedDir);
     runGit(['remote', 'add', 'origin', remoteDir], seedDir);
     runGit(['push', '-u', 'origin', 'canary'], seedDir);
+    runGit(['symbolic-ref', 'HEAD', 'refs/heads/canary'], remoteDir);
 
     // 第一次 clone，带 links 配置以触发 sparse-checkout
     ensureVendorRepo(homeDir, {
       repo: remoteUrl,
-      cloneDir: 'vendors/sample-repo',
+      cloneDir: 'vendor/repos/sample-repo',
       links: [
-        { source: 'skills/example.md', target: 'skills/example.md' }
+        { source: 'skills/example.md', target: 'vendor/skills/frontend/example' }
       ]
     });
 
@@ -72,18 +73,20 @@ test('ensureVendorRepo recovers detached HEAD and syncs to origin default branch
 
     ensureVendorRepo(homeDir, {
       repo: remoteUrl,
-      cloneDir: 'vendors/sample-repo',
+      cloneDir: 'vendor/repos/sample-repo',
       links: [
-        { source: 'skills/example.md', target: 'skills/example.md' }
+        { source: 'skills/example.md', target: 'vendor/skills/frontend/example' }
       ]
     });
 
     const currentBranch = runGit(['branch', '--show-current'], cloneDir);
     const fileContent = runGit(['show', 'HEAD:skills/example.md'], cloneDir);
+    const isShallow = runGit(['rev-parse', '--is-shallow-repository'], cloneDir);
 
     assert.equal(getRemoteDefaultBranch(cloneDir), 'canary');
     assert.equal(currentBranch, 'canary');
     assert.equal(fileContent, 'skill v2');
+    assert.equal(isShallow, 'true');
   } finally {
     rmSync(tempDir, { recursive: true, force: true });
   }

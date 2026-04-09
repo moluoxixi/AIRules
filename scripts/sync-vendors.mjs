@@ -6,10 +6,12 @@ import path from 'node:path';
 import { loadVendorManifest } from './lib/vendors.mjs';
 import { ensureVendorRepo } from './lib/vendor-sync.mjs';
 
+const DEFAULT_MANIFEST_PATH = path.resolve('constants/skills.js');
+
 function printHelp() {
   console.log(`Usage: node scripts/sync-vendors.mjs [--home <dir>] [--manifest <file>]
 
-Clone or update all vendor repositories declared in manifests/vendors.jsonc.
+Clone or update all vendor repositories declared in constants/skills.js.
 
 Options:
   --home <dir>       Override the target ~/.moluoxixi root
@@ -21,7 +23,7 @@ Options:
 function parseArgs(argv) {
   const args = {
     home: path.join(os.homedir(), '.moluoxixi'),
-    manifest: path.resolve('manifests/vendors.jsonc'),
+    manifest: DEFAULT_MANIFEST_PATH,
     help: false
   };
 
@@ -43,14 +45,14 @@ function parseArgs(argv) {
   return args;
 }
 
-function main() {
+async function main() {
   const args = parseArgs(process.argv.slice(2));
   if (args.help) {
     printHelp();
     return;
   }
 
-  const manifest = loadVendorManifest(args.manifest);
+  const manifest = await loadVendorManifest(args.manifest);
   mkdirSync(args.home, { recursive: true });
 
   for (const vendor of Object.values(manifest.vendors ?? {})) {
@@ -58,4 +60,7 @@ function main() {
   }
 }
 
-main();
+main().catch((error) => {
+  console.error(error);
+  process.exit(1);
+});

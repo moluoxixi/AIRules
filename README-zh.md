@@ -9,8 +9,8 @@ Moluoxixi AI Workflow Distribution 是一个基于 [superpowers](https://github.
 ## 这个发行版包含什么
 
 - 位于仓库根目录的 `AGENTS.md`，作为宿主全局规则的唯一源文件
-- 放在 `skills/` 下的第一方 skills，用来表达你的工作流默认值和技术指导
-- 通过 `manifests/` 管理并投影到各宿主的 vendor skills
+- 放在 `skills/` 下的第一方与投影 skills，用来承载本地工作流默认值和宿主消费入口
+- 通过 `constants/skills.js` 声明并投影到各宿主的 vendor skills
 - 放在 `agents/` 下的第一方 agents，用于编排型辅助角色
 - 分别位于 `.claude/`、`.codex/`、`.qoder/`、`.tare/`、`.opencode/` 下的宿主安装与升级文档
 

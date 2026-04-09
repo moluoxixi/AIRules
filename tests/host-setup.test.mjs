@@ -25,7 +25,7 @@ function stageRepoFixture(tempDir) {
     '.tare',
     '.opencode',
     'agents',
-    'manifests',
+    'constants',
     'scripts',
     'skills'
   ]) {
@@ -65,8 +65,8 @@ test('host-setup installs the selected host baseline and skills projection', () 
     ], repoRoot);
 
     assert.equal(existsSync(path.join(moluoHome, 'AGENTS.md')), true);
-    assert.equal(existsSync(path.join(moluoHome, 'skills', 'standard-workflow', 'SKILL.md')), true);
-    assert.equal(existsSync(path.join(homeRoot, '.agents', 'skills', 'moluoxixi', 'standard-workflow', 'SKILL.md')), true);
+    assert.equal(existsSync(path.join(moluoHome, 'skills')), true);
+    assert.equal(existsSync(path.join(homeRoot, '.agents', 'skills', 'moluoxixi')), true);
     assert.equal(existsSync(path.join(homeRoot, '.codex', 'AGENTS.md')), true);
 
     const sharedBaseline = readFileSync(path.join(moluoHome, 'AGENTS.md'), 'utf8');

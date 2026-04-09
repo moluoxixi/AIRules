@@ -66,17 +66,17 @@ function getSparsePatterns(vendor) {
 }
 
 function isLocalRepo(repoUrl) {
-  // 本地 repo: 不含 :// 或使用 file://
-  return !repoUrl.includes('://') || repoUrl.startsWith('file://');
+  // 纯本地路径不支持可靠的 shallow clone；file:// 可以按远端仓库处理。
+  return !repoUrl.includes('://');
 }
 
 export function ensureVendorRepo(homeDir, vendor) {
   const cloneDir = path.resolve(homeDir, vendor.cloneDir);
   mkdirSync(path.dirname(cloneDir), { recursive: true });
+  const sparsePatterns = getSparsePatterns(vendor);
 
   if (!existsSync(path.join(cloneDir, '.git'))) {
-    // 三重优化：shallow + partial + sparse（仅对远程 repo）
-    // 本地 repo 不支持 --depth/--filter/--sparse，做普通 clone
+    // 远程仓库统一使用浅克隆；本地仓库保留普通 clone，避免 git 本地优化绕过 shallow。
     if (isLocalRepo(vendor.repo)) {
       runGit(['clone', vendor.repo, cloneDir], process.cwd(), { stdio: 'inherit' });
     } else {
@@ -84,10 +84,7 @@ export function ensureVendorRepo(homeDir, vendor) {
               vendor.repo, cloneDir], process.cwd(), { stdio: 'inherit' });
     }
 
-    // 从 links 配置中提取需要检出的顶级目录
-    const sparsePatterns = getSparsePatterns(vendor);
     if (sparsePatterns.length > 0) {
-      // 本地 clone 后也需要开启 sparse-checkout
       if (isLocalRepo(vendor.repo)) {
         runGit(['-C', cloneDir, 'sparse-checkout', 'init', '--cone'],
                process.cwd(), { stdio: 'inherit' });
@@ -97,19 +94,38 @@ export function ensureVendorRepo(homeDir, vendor) {
     }
   }
 
-  // 浅层 fetch
-  runGit(['-C', cloneDir, 'fetch', '--depth', '1', '--prune', 'origin'],
-         process.cwd(), { stdio: 'inherit' });
-
   const defaultBranch = getRemoteDefaultBranch(cloneDir);
+  const remoteRef = `origin/${defaultBranch}`;
+
+  if (!isLocalRepo(vendor.repo)) {
+    runGit(['-C', cloneDir, 'fetch', '--depth', '1', '--prune', 'origin', defaultBranch],
+           process.cwd(), { stdio: 'inherit' });
+  } else {
+    runGit(['-C', cloneDir, 'fetch', '--prune', 'origin', defaultBranch],
+           process.cwd(), { stdio: 'inherit' });
+  }
+
+  if (sparsePatterns.length > 0) {
+    if (isLocalRepo(vendor.repo)) {
+      runGit(['-C', cloneDir, 'sparse-checkout', 'set', ...sparsePatterns],
+             process.cwd(), { stdio: 'inherit' });
+    } else {
+      runGit(['-C', cloneDir, 'sparse-checkout', 'reapply'],
+             process.cwd(), { stdio: 'inherit' });
+    }
+  }
+
   const currentBranch = getCurrentBranch(cloneDir);
 
   if (currentBranch !== defaultBranch) {
     runGit(['-C', cloneDir, 'checkout', '-B', defaultBranch,
-            `origin/${defaultBranch}`], process.cwd(), { stdio: 'inherit' });
+            remoteRef], process.cwd(), { stdio: 'inherit' });
+  } else {
+    runGit(['-C', cloneDir, 'checkout', defaultBranch],
+           process.cwd(), { stdio: 'inherit' });
   }
 
-  runGit(['-C', cloneDir, 'merge', '--ff-only', `origin/${defaultBranch}`],
+  runGit(['-C', cloneDir, 'merge', '--ff-only', remoteRef],
          process.cwd(), { stdio: 'inherit' });
   return cloneDir;
 }
