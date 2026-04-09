@@ -1,15 +1,15 @@
 /**
- * Author-facing vendor tree.
+ * 面向维护者的 vendor 树定义。
  *
- * Shape:
- * - top-level key: target namespace under `vendor/skills/`
- * - top-level key with a `source` field: single vendor entry for that namespace
- * - nested key with a `source` field: vendor entry targeting the current namespace bucket
- * - nested key without a `source` field: child namespace bucket
+ * 结构说明：
+ * - 对象键：`vendor/skills/` 下的目标命名空间
+ * - 叶子值：该命名空间下的远程 vendor 条目数组
+ * - vendor 别名：存放在每个条目的 `name` 字段中
  */
 export const vendors = {
-  common: {
-    gemini: {
+  common: [
+    {
+      name: 'gemini',
       official: true,
       source: 'https://github.com/google-gemini/gemini-cli.git',
       sourceBaseDir: '.gemini/skills',
@@ -18,7 +18,8 @@ export const vendors = {
         'pr-creator': 'pr-creator',
       },
     },
-    vercelLabs: {
+    {
+      name: 'vercelLabs',
       official: true,
       source: 'https://github.com/vercel-labs/skills.git',
       sourceBaseDir: 'skills',
@@ -26,7 +27,8 @@ export const vendors = {
         'find-skills': 'find-skills',
       },
     },
-    react: {
+    {
+      name: 'react',
       official: true,
       source: 'https://github.com/facebook/react.git',
       sourceBaseDir: '.claude/skills',
@@ -34,7 +36,8 @@ export const vendors = {
         fix: 'fix',
       },
     },
-    vercel: {
+    {
+      name: 'vercel',
       official: true,
       source: 'https://github.com/vercel/next.js.git',
       sourceBaseDir: '.agents/skills',
@@ -42,7 +45,8 @@ export const vendors = {
         'update-docs': 'update-docs',
       },
     },
-    awesomeLlmApps: {
+    {
+      name: 'awesomeLlmApps',
       official: false,
       source: 'https://github.com/Shubhamsaboo/awesome-llm-apps.git',
       sourceBaseDir: 'awesome_agent_skills',
@@ -50,7 +54,8 @@ export const vendors = {
         'fullstack-developer': 'fullstack-developer',
       },
     },
-    moluoxixi: {
+    {
+      name: 'moluoxixi',
       official: true,
       source: 'https://github.com/moluoxixi/skills.git',
       sourceBaseDir: 'skills',
@@ -63,10 +68,11 @@ export const vendors = {
         vitest: 'vitest',
       },
     },
-  },
+  ],
 
-  frontend: {
-    anthropic: {
+  frontend: [
+    {
+      name: 'anthropic',
       official: true,
       source: 'https://github.com/anthropics/skills.git',
       sourceBaseDir: 'skills',
@@ -75,7 +81,8 @@ export const vendors = {
         'webapp-testing': 'webapp-testing',
       },
     },
-    vercel: {
+    {
+      name: 'vercel',
       official: true,
       source: 'https://github.com/vercel/next.js.git',
       sourceBaseDir: '.claude-plugin/plugins/cache-components/skills',
@@ -83,7 +90,8 @@ export const vendors = {
         'cache-components': 'cache-components',
       },
     },
-    moluoxixi: {
+    {
+      name: 'moluoxixi',
       official: true,
       source: 'https://github.com/moluoxixi/skills.git',
       sourceBaseDir: 'skills',
@@ -101,11 +109,14 @@ export const vendors = {
         'web-design-guidelines': 'web-design-guidelines',
       },
     },
-  },
+  ],
 
-  superpowers: {
-    official: true,
-    source: 'https://github.com/obra/superpowers.git',
-    sourceDir: 'skills',
-  },
-}
+  superpowers: [
+    {
+      name: 'superpowers',
+      official: true,
+      source: 'https://github.com/obra/superpowers.git',
+      sourceDir: 'skills',
+    },
+  ],
+};

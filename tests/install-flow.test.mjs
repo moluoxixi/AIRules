@@ -65,7 +65,7 @@ function materializeVendorSources(homeDir, manifest) {
   }
 }
 
-test('install flow projects first-party content into skills-first host entrypoints', async () => {
+test('install flow projects remote vendor content into skills-first host entrypoints', async () => {
   const tempDir = mkdtempSync(path.join(os.tmpdir(), 'ai-rules-install-'));
   const repoRoot = stageRepoFixture(tempDir);
   const userHome = path.join(tempDir, 'home');
@@ -109,33 +109,41 @@ test('install flow projects first-party content into skills-first host entrypoin
     });
 
     assert.equal(existsSync(path.join(paths.moluoHome, 'skills')), true);
-    assert.equal(existsSync(path.join(paths.moluoHome, 'skills', 'frontend', 'frontend-design', 'SKILL.md')), true);
+    assert.equal(existsSync(path.join(paths.moluoHome, 'skills', 'frontend-design', 'SKILL.md')), true);
+    assert.equal(existsSync(path.join(paths.moluoHome, 'skills', 'brainstorming', 'SKILL.md')), true);
+    assert.equal(existsSync(path.join(paths.moluoHome, 'skills', 'standard-workflow', 'SKILL.md')), false);
+    assert.equal(existsSync(path.join(paths.moluoHome, 'skills', 'frontend', 'SKILL.md')), false);
     assert.equal(existsSync(path.join(paths.moluoHome, 'vendor', 'skills', 'frontend', 'frontend-design', 'SKILL.md')), true);
     assert.equal(existsSync(path.join(paths.moluoHome, 'vendor', 'skills', 'superpowers', 'brainstorming', 'SKILL.md')), true);
+    assert.equal(existsSync(path.join(paths.moluoHome, 'vendor', 'skills', 'workflow', 'standard-workflow', 'SKILL.md')), false);
+    assert.equal(existsSync(path.join(paths.moluoHome, 'vendor', 'skills', 'domain', 'frontend', 'SKILL.md')), false);
     assert.equal(existsSync(path.join(paths.moluoHome, 'AGENTS.md')), true);
     assert.equal(existsSync(path.join(paths.moluoHome, 'rules')), false);
 
-    assert.equal(existsSync(path.join(paths.claudeHome, 'skills', 'frontend', 'frontend-design', 'SKILL.md')), true);
-    assert.equal(existsSync(path.join(paths.claudeHome, 'skills', 'superpowers', 'brainstorming', 'SKILL.md')), true);
+    assert.equal(existsSync(path.join(paths.claudeHome, 'skills', 'frontend-design', 'SKILL.md')), true);
+    assert.equal(existsSync(path.join(paths.claudeHome, 'skills', 'brainstorming', 'SKILL.md')), true);
+    assert.equal(existsSync(path.join(paths.claudeHome, 'skills', 'standard-workflow', 'SKILL.md')), false);
     assert.equal(existsSync(path.join(paths.claudeHome, 'CLAUDE.md')), true);
     assert.equal(existsSync(path.join(paths.claudeHome, 'rules')), false);
 
-    assert.equal(existsSync(path.join(paths.qoderHome, 'skills', 'frontend', 'frontend-design', 'SKILL.md')), true);
+    assert.equal(existsSync(path.join(paths.qoderHome, 'skills', 'frontend-design', 'SKILL.md')), true);
     assert.equal(existsSync(path.join(paths.qoderHome, 'AGENTS.md')), true);
     assert.equal(existsSync(path.join(paths.qoderHome, 'rules')), false);
 
     assert.equal(existsSync(path.join(paths.codexHome, 'AGENTS.md')), true);
-    assert.equal(existsSync(path.join(paths.opencodeSkillsHome, 'frontend', 'frontend-design', 'SKILL.md')), true);
+    assert.equal(existsSync(path.join(paths.opencodeSkillsHome, 'frontend-design', 'SKILL.md')), true);
     assert.equal(existsSync(path.join(paths.opencodeHome, 'AGENTS.md')), true);
     assert.equal(existsSync(path.join(paths.tareHome, 'AGENTS.md')), true);
 
     const codexAgentSkills = readdirSync(paths.codexAgentSkillsHome);
     assert.deepEqual(codexAgentSkills, ['moluoxixi']);
     assert.equal(
-      existsSync(path.join(paths.codexAgentSkillsHome, 'moluoxixi', 'frontend', 'frontend-design', 'SKILL.md')),
+      existsSync(path.join(paths.codexAgentSkillsHome, 'moluoxixi', 'frontend-design', 'SKILL.md')),
       true
     );
 
+    assert.ok(linkPlan.every((entry) => !entry.target.endsWith('/vendor/skills/workflow/standard-workflow')));
+    assert.ok(linkPlan.every((entry) => !entry.target.endsWith('/vendor/skills/domain/frontend')));
     assert.ok(linkPlan.some((entry) => entry.target.endsWith('/vendor/skills/superpowers')));
     assert.ok(linkPlan.some((entry) => entry.target.endsWith('/vendor/skills/frontend/frontend-design')));
     assert.ok(linkPlan.some((entry) => entry.target.endsWith('/vendor/skills/frontend/vue')));
@@ -221,7 +229,8 @@ test('install flow works when agents are absent from the source tree from the st
     assert.equal(existsSync(path.join(paths.claudeHome, 'agents')), false);
     assert.equal(existsSync(path.join(paths.qoderHome, 'agents')), false);
     assert.equal(existsSync(path.join(paths.moluoHome, 'skills')), true);
-    assert.equal(existsSync(path.join(paths.moluoHome, 'skills', 'frontend', 'frontend-design', 'SKILL.md')), true);
+    assert.equal(existsSync(path.join(paths.moluoHome, 'skills', 'frontend-design', 'SKILL.md')), true);
+    assert.equal(existsSync(path.join(paths.moluoHome, 'skills', 'standard-workflow', 'SKILL.md')), false);
     assert.equal(existsSync(path.join(paths.claudeHome, 'CLAUDE.md')), true);
     assert.equal(existsSync(path.join(paths.qoderHome, 'AGENTS.md')), true);
     assert.equal(existsSync(path.join(paths.tareHome, 'AGENTS.md')), true);

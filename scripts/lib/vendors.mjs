@@ -6,7 +6,12 @@ export function normalizePath(value) {
 }
 
 function isVendorEntry(value) {
-  return Boolean(value && typeof value === 'object' && typeof value.source === 'string');
+  return Boolean(
+    value &&
+    typeof value === 'object' &&
+    typeof value.name === 'string' &&
+    typeof value.source === 'string'
+  );
 }
 
 function buildTargetPath(namespaceParts, outputName) {
@@ -30,12 +35,16 @@ function buildLinksForEntry(namespaceParts, entry) {
   }));
 }
 
-function mergeVendor(vendors, vendorId, namespaceParts, entry) {
-  const cloneDir = path.posix.join('vendor', 'repos', vendorId);
+function mergeVendor(vendors, vendorName, namespaceParts, entry) {
+  if (entry.local === true) {
+    throw new Error('Local vendor entries are not supported');
+  }
+
+  const cloneDir = path.posix.join('vendor', 'repos', vendorName);
   const links = buildLinksForEntry(namespaceParts, entry);
 
-  if (!vendors[vendorId]) {
-    vendors[vendorId] = {
+  if (!vendors[vendorName]) {
+    vendors[vendorName] = {
       official: entry.official,
       repo: entry.source,
       cloneDir,
@@ -44,9 +53,12 @@ function mergeVendor(vendors, vendorId, namespaceParts, entry) {
     return;
   }
 
-  const existing = vendors[vendorId];
-  if (existing.repo !== entry.source || existing.cloneDir !== cloneDir) {
-    throw new Error(`Vendor "${vendorId}" is defined inconsistently across modules`);
+  const existing = vendors[vendorName];
+  if (
+    existing.repo !== entry.source ||
+    existing.cloneDir !== cloneDir
+  ) {
+    throw new Error(`Vendor "${vendorName}" is defined inconsistently across modules`);
   }
 
   existing.official = existing.official || entry.official;
@@ -54,14 +66,18 @@ function mergeVendor(vendors, vendorId, namespaceParts, entry) {
 }
 
 function walkVendorTree(node, namespaceParts, vendors) {
-  for (const [key, value] of Object.entries(node ?? {})) {
-    if (isVendorEntry(value)) {
-      const vendorId = value.vendorId ?? key;
-      const targetNamespaceParts = namespaceParts.length === 0 ? [key] : namespaceParts;
-      mergeVendor(vendors, vendorId, targetNamespaceParts, value);
-      continue;
-    }
+  if (Array.isArray(node)) {
+    for (const entry of node) {
+      if (!isVendorEntry(entry)) {
+        throw new Error(`Invalid vendor entry under "${namespaceParts.join('/') || '<root>'}"`);
+      }
 
+      mergeVendor(vendors, entry.name, namespaceParts, entry);
+    }
+    return;
+  }
+
+  for (const [key, value] of Object.entries(node ?? {})) {
     walkVendorTree(value, [...namespaceParts, key], vendors);
   }
 }

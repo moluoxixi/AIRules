@@ -12,9 +12,9 @@ After installation, the shared content lives at:
 
 ```text
 ~/.moluoxixi/
-  skills/
+  skills/   # Flattened host-facing leaf skill entrypoints
   agents/
-  vendors/
+  vendor/
   AGENTS.md
 ```
 

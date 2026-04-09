@@ -157,26 +157,12 @@ After migration:
 
 ```text
 AIRules/
-├─ skills/
-│  ├─ superpowers/
-│  ├─ frontend-design/
-│  ├─ webapp-testing/
-│  ├─ code-reviewer/
-│  ├─ pr-creator/
-│  ├─ fix/
-│  ├─ standard-workflow/
-│  ├─ personal-defaults/
-│  ├─ frontend/
-│  ├─ backend/
-│  ├─ javascript/
-│  ├─ typescript/
-│  ├─ react/
-│  ├─ vue/
-│  ├─ testing/
-│  ├─ verification/
-│  └─ wrap-up/
-├─ manifests/
-│  └─ vendors.jsonc
+├─ vendor/
+│  ├─ repos/               # cloned remote vendor repositories
+│  └─ skills/              # classified final artifact tree
+│     ├─ common/
+│     ├─ frontend/
+│     └─ superpowers/
 ├─ scripts/
 ├─ agents/
 ├─ .claude/
@@ -184,10 +170,16 @@ AIRules/
 ├─ .qoder/
 ├─ .opencode/
 ├─ tests/
-├─ vendors/
 ├─ README.md
 └─ package.json
 ```
+
+## Source / Artifact / Projection Contract
+
+- `constants/skills.js` maps remote vendor sources into classified targets under `vendor/skills/`.
+- `vendor/skills/` is the only final artifact tree.
+- `~/.moluoxixi/skills/` is a flattened host-facing projection built from leaf skill directories under `vendor/skills/`.
+- Duplicate projected leaf skill names must fail fast instead of being silently overwritten.
 
 ## First-Party Skill Set
 
@@ -362,6 +354,12 @@ Current install documentation and projection scripts still assume a first-party 
 ### Target Behavior
 
 `~/.moluoxixi/skills` becomes the main projected asset.
+
+The installation contract is:
+
+- sync vendor repositories into `~/.moluoxixi/vendor/repos/*`
+- rebuild the classified artifact tree in `~/.moluoxixi/vendor/skills`
+- project flattened host-facing leaf skill entrypoints into `~/.moluoxixi/skills`
 
 Target projections:
 

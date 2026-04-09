@@ -9,6 +9,7 @@ test('vendor manifest includes aggregated vendor skill targets', async () => {
   assert.ok(manifest.vendors.anthropic);
   assert.ok(manifest.vendors.vercel);
   assert.ok(manifest.vendors.moluoxixi);
+  assert.equal(manifest.vendors['first-party'], undefined);
   assert.equal(manifest.vendors.superpowers.cloneDir, 'vendor/repos/superpowers');
   assert.equal(manifest.vendors.anthropic.cloneDir, 'vendor/repos/anthropic');
   assert.equal(manifest.vendors.vercel.cloneDir, 'vendor/repos/vercel');

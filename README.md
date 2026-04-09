@@ -9,10 +9,19 @@ It is built on top of [superpowers](https://github.com/obra/superpowers) and pac
 ## What This Distribution Includes
 
 - A shared root `AGENTS.md` as the single baseline source for host global guidance
-- First-party and projected skills under `skills/` for local workflow defaults and host consumption
+- Remote vendor skill repositories cloned under `vendor/repos/`
+- Final skill artifacts under `vendor/skills/`
+- Host-visible projected skills exposed as leaf entrypoints through `~/.moluoxixi/skills/`
 - Vendor skills declared in `constants/skills.js` and projected into each host
 - First-party agents in `agents/` for orchestration roles
 - Multi-host install/upgrade docs in `.claude/`, `.codex/`, `.qoder/`, `.tare/`, and `.opencode/`
+
+## Skill Layout
+
+- `constants/skills.js` defines which remote vendor repositories are synced into `vendor/repos/`
+- The same manifest defines how those vendor sources are classified into `vendor/skills/`
+- `vendor/skills/` is the only final artifact tree
+- Installed host entrypoints read from `~/.moluoxixi/skills/`, which is a flat projection of leaf skill directories from `vendor/skills/`
 
 ## Host Support
 

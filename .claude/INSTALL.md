@@ -12,9 +12,9 @@ After installation, the shared content lives at:
 
 ```text
 ~/.moluoxixi/
-  skills/           # First-party skills plus linked vendor skills
+  skills/           # Flattened host-facing leaf skill entrypoints
   agents/           # Optional first-party agents
-  vendors/          # Vendor clones used to build the aggregated skills tree
+  vendor/           # Source mirrors and final aggregated skill artifacts
   AGENTS.md         # Shared host baseline source
 ```
 

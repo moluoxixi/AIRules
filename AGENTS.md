@@ -33,12 +33,15 @@
 - 从当前宿主已经安装好的技能入口出发
 - 优先加载第一方 skill 分层，再补充 vendor skills
 - 默认遵循 `standard-workflow -> domain -> language/framework -> phase` 这个顺序
-- 要修改仓库行为时，优先编辑 `~/.moluoxixi/skills/` 里的第一方 skills
+- 仓库内第一方 source skill 统一维护在根目录 `skills/<skill-name>/`
+- 安装产物统一落到 `~/.moluoxixi/vendor/skills/`，宿主入口 `~/.moluoxixi/skills/` 只暴露扁平的 leaf skill 投影
+- 要修改仓库行为时，优先编辑仓库根目录 `skills/` 的第一方 source，而不是直接改宿主投影目录
 
 ## 完成前验证
 
 在宣称安装、升级或任务完成之前：
 
 - 确认当前宿主的技能入口真的指向 `~/.moluoxixi/skills/`
+- 确认 `~/.moluoxixi/vendor/skills/` 是最终构建产物目录，`~/.moluoxixi/skills/` 只是 leaf skill 投影入口
 - 确认需要的第一方 skills 已经存在于该入口
 - 确认当前宿主描述仍然符合 `skills-first` 模型
