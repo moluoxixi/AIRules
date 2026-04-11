@@ -1,12 +1,13 @@
-/**
- * 面向维护者的 vendor 树定义。
- *
- * 结构说明：
- * - 对象键：`vendor/skills/` 下的目标命名空间
- * - 叶子值：该命名空间下的远程 vendor 条目数组
- * - vendor 别名：存放在每个条目的 `name` 字段中
- */
-export const vendors = {
+export interface VendorRepo {
+  name: string;
+  official: boolean;
+  source: string;
+  sourceBaseDir?: string;
+  sourceDir?: string;
+  skills?: Record<string, string>;
+}
+
+export const vendors: Record<string, VendorRepo[]> = {
   common: [
     {
       name: 'gemini',
@@ -55,17 +56,26 @@ export const vendors = {
       },
     },
     {
-      name: 'moluoxixi',
+      name: 'antfu',
       official: true,
-      source: 'https://github.com/moluoxixi/skills.git',
+      source: 'https://github.com/antfu/skills.git',
       sourceBaseDir: 'skills',
       skills: {
-        antfu: 'antfu',
         pnpm: 'pnpm',
         slidev: 'slidev',
         tsdown: 'tsdown',
         turborepo: 'turborepo',
         vitest: 'vitest',
+      },
+    },
+    {
+      name: 'moluoxixi',
+      official: true,
+      source: 'https://github.com/moluoxixi/AIRules.git',
+      sourceBaseDir: 'skills',
+      skills: {
+        'moluoxixi': 'moluoxixi',
+        'vue-best-practices': 'vue-best-practices',
       },
     },
   ],
@@ -91,9 +101,9 @@ export const vendors = {
       },
     },
     {
-      name: 'moluoxixi',
+      name: 'antfu',
       official: true,
-      source: 'https://github.com/moluoxixi/skills.git',
+      source: 'https://github.com/antfu/skills.git',
       sourceBaseDir: 'skills',
       skills: {
         nuxt: 'nuxt',
@@ -102,7 +112,6 @@ export const vendors = {
         vite: 'vite',
         vitepress: 'vitepress',
         vue: 'vue',
-        'vue-best-practices': 'vue-best-practices',
         'vue-router-best-practices': 'vue-router-best-practices',
         'vue-testing-best-practices': 'vue-testing-best-practices',
         'vueuse-functions': 'vueuse-functions',

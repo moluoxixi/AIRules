@@ -6,5 +6,10 @@
   "description": "Personal AI workflow distribution built on top of superpowers.",
   "scripts": {
     "test": "node --test tests"
+  },
+  "devDependencies": {
+    "@types/node": "^25.6.0",
+    "tsx": "^4.21.0",
+    "typescript": "^6.0.2"
   }
 }
