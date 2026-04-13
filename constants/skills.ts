@@ -7,6 +7,19 @@ export interface VendorRepo {
   skills?: Record<string, string>;
 }
 
+
+/**
+ * @see https://github.com/vercel/next.js.git next.js官方仓库
+ * @see https://github.com/vercel/next.js/tree/canary/.claude-plugin/plugins/cache-components/skills next.js官方用于calude的skills
+ * @see https://github.com/facebook/react.git react官方仓库
+ * @see https://github.com/antfu/skills.git antfu的技能仓库，收集了很多前端技能
+ * @see https://github.com/facebook/react/tree/main/.claude/skills react官方用于claude的skills
+ * @see https://github.com/Shubhamsaboo/awesome-llm-apps/tree/main/awesome_agent_skills awesome-agent-skills仓库，收集了很多技能
+ * @see https://github.com/anthropics/skills.git anthropic（calude）官方技能仓库
+ * @see https://github.com/google-gemini/gemini-cli.git gemini官方技能仓库
+ * @see https://github.com/openai/skills.git openai官方技能仓库
+ * @see https://github.com/obra/superpowers.git superpowers官方技能仓库
+*/
 export const vendors: Record<string, VendorRepo[]> = {
   common: [
     {
@@ -29,30 +42,13 @@ export const vendors: Record<string, VendorRepo[]> = {
       },
     },
     {
-      name: 'react',
-      official: true,
-      source: 'https://github.com/facebook/react.git',
-      sourceBaseDir: '.claude/skills',
-      skills: {
-        fix: 'fix',
-      },
-    },
-    {
       name: 'vercel',
       official: true,
       source: 'https://github.com/vercel/next.js.git',
       sourceBaseDir: '.agents/skills',
       skills: {
+        // TODO: 有问题，文档强绑定next.js，后续需要优化
         'update-docs': 'update-docs',
-      },
-    },
-    {
-      name: 'awesomeLlmApps',
-      official: false,
-      source: 'https://github.com/Shubhamsaboo/awesome-llm-apps.git',
-      sourceBaseDir: 'awesome_agent_skills',
-      skills: {
-        'fullstack-developer': 'fullstack-developer',
       },
     },
     {
@@ -61,6 +57,7 @@ export const vendors: Record<string, VendorRepo[]> = {
       source: 'https://github.com/antfu/skills.git',
       sourceBaseDir: 'skills',
       skills: {
+        antfu: 'antfu',
         pnpm: 'pnpm',
         slidev: 'slidev',
         tsdown: 'tsdown',
@@ -75,7 +72,6 @@ export const vendors: Record<string, VendorRepo[]> = {
       sourceBaseDir: 'skills',
       skills: {
         'moluoxixi': 'moluoxixi',
-        'vue-best-practices': 'vue-best-practices',
       },
     },
   ],
@@ -87,17 +83,8 @@ export const vendors: Record<string, VendorRepo[]> = {
       source: 'https://github.com/anthropics/skills.git',
       sourceBaseDir: 'skills',
       skills: {
-        'frontend-design': 'frontend-design',
+        // TODO: 仅支持playwright的脚本，不支持mcp，需要进行优化(moluoxixi包中补充说明)
         'webapp-testing': 'webapp-testing',
-      },
-    },
-    {
-      name: 'vercel',
-      official: true,
-      source: 'https://github.com/vercel/next.js.git',
-      sourceBaseDir: '.claude-plugin/plugins/cache-components/skills',
-      skills: {
-        'cache-components': 'cache-components',
       },
     },
     {
@@ -112,6 +99,7 @@ export const vendors: Record<string, VendorRepo[]> = {
         vite: 'vite',
         vitepress: 'vitepress',
         vue: 'vue',
+        'vue-best-practices': 'vue-best-practices',
         'vue-router-best-practices': 'vue-router-best-practices',
         'vue-testing-best-practices': 'vue-testing-best-practices',
         'vueuse-functions': 'vueuse-functions',
