@@ -5,7 +5,9 @@
   "type": "module",
   "description": "Personal AI workflow distribution built on top of superpowers.",
   "scripts": {
-    "test": "node --test tests"
+    "sync": "npx tsx scripts/sync-vendors.ts",
+    "pretest": "npm run sync",
+    "test": "node --test tests/*.test.mjs"
   },
   "devDependencies": {
     "@types/node": "^25.6.0",
