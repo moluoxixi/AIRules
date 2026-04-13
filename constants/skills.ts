@@ -65,15 +65,6 @@ export const vendors: Record<string, VendorRepo[]> = {
         vitest: 'vitest',
       },
     },
-    {
-      name: 'moluoxixi',
-      official: true,
-      source: 'https://github.com/moluoxixi/AIRules.git',
-      sourceBaseDir: 'skills',
-      skills: {
-        'moluoxixi': 'moluoxixi',
-      },
-    },
   ],
 
   frontend: [
