@@ -1,0 +1,12 @@
+name: minimal
+description: "最小化输出：仅核心内容"
+version: "1.0"
+stages:
+  - name: core
+    type: documentation
+    prompt: |
+      提取核心内容：
+      - 主要概念和定义
+      - 关键API和使用方法
+      - 简单示例
+      排除：高级用法、故障排除、FAQ

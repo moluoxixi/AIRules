@@ -1,0 +1,25 @@
+name: architecture-comprehensive
+description: "全面架构分析：设计模式、组件关系、数据流"
+version: "1.0"
+stages:
+  - name: patterns
+    type: pattern_recognition
+    prompt: |
+      识别代码中的架构模式和设计模式：
+      - GoF设计模式（Singleton、Factory、Observer等）
+      - 架构模式（MVC、MVVM、MVP等）
+      - 框架特定模式
+  - name: components
+    type: dependency_analysis
+    prompt: |
+      分析组件依赖关系：
+      - 模块间依赖
+      - 循环依赖检测
+      - 依赖方向图
+  - name: data-flow
+    type: flow_analysis
+    prompt: |
+      追踪数据流动：
+      - 输入数据处理流程
+      - 状态管理
+      - 输出生成

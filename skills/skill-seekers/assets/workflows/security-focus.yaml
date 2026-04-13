@@ -1,0 +1,21 @@
+name: security-focus
+description: "安全重点审查：漏洞、认证、数据处理"
+version: "1.0"
+stages:
+  - name: vulnerabilities
+    type: custom
+    prompt: |
+      审查代码中的安全漏洞，重点关注：
+      - OWASP Top 10 漏洞
+      - SQL注入、XSS、CSRF
+      - 硬编码凭证和密钥
+      - 不安全的依赖
+  - name: auth-review
+    type: custom
+    prompt: |
+      检查认证和授权模式：
+      - 身份验证机制
+      - 会话管理
+      - 访问控制
+      - 密码存储
+    uses_history: true

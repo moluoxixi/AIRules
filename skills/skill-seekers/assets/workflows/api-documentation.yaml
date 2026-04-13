@@ -1,0 +1,25 @@
+name: api-documentation
+description: "生成完整的API参考文档"
+version: "1.0"
+stages:
+  - name: endpoints
+    type: api_extraction
+    prompt: |
+      提取所有API端点：
+      - HTTP方法、路径、参数
+      - 请求/响应格式
+      - 认证要求
+  - name: parameters
+    type: parameter_doc
+    prompt: |
+      记录参数和返回值：
+      - 参数类型、默认值
+      - 验证规则
+      - 错误码
+  - name: examples
+    type: example_generation
+    prompt: |
+      生成使用示例：
+      - curl命令
+      - 代码示例（多种语言）
+      - 常见用例

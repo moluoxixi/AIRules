@@ -1,0 +1,21 @@
+{
+  "name": "quick-start",
+  "description": "用于快速开始项目的AI技能",
+  "base_url": "https://docs.example.com/",
+  "selectors": {
+    "main_content": "article, main, div[role='main']",
+    "title": "h1",
+    "code_blocks": "pre code"
+  },
+  "url_patterns": {
+    "include": ["/quickstart", "/getting-started", "/introduction"],
+    "exclude": ["/blog", "/changelog"]
+  },
+  "categories": {
+    "getting_started": ["quickstart", "getting-started"],
+    "basic_usage": ["basic", "intro"],
+    "examples": ["example", "tutorial"]
+  },
+  "rate_limit": 1,
+  "max_pages": 50
+}
