@@ -83,17 +83,19 @@ function collectLeafSkillDirs(rootDir: string): string[] {
   return leaves.sort((left, right) => left.localeCompare(right));
 }
 
-function projectLeafSkillLinks(vendorSkillsDir: string, skillsDir: string): string[] {
+function projectLeafSkillLinks(sourceDirs: string[], skillsDir: string): string[] {
   const projectedSkills = new Map<string, string>();
 
-  for (const leafDir of collectLeafSkillDirs(vendorSkillsDir)) {
-    const leafName = path.basename(leafDir);
-    if (projectedSkills.has(leafName)) {
-      const existing = projectedSkills.get(leafName);
-      throw new Error(`Duplicate projected skill "${leafName}" from "${existing}" and "${leafDir}"`);
-    }
+  for (const rootDir of sourceDirs) {
+    for (const leafDir of collectLeafSkillDirs(rootDir)) {
+      const leafName = path.basename(leafDir);
+      if (projectedSkills.has(leafName)) {
+        const existing = projectedSkills.get(leafName);
+        throw new Error(`Duplicate projected skill "${leafName}" from "${existing}" and "${leafDir}"`);
+      }
 
-    projectedSkills.set(leafName, leafDir);
+      projectedSkills.set(leafName, leafDir);
+    }
   }
 
   resetDir(skillsDir);
@@ -121,7 +123,16 @@ function isSamePath(path1: string, path2: string): boolean {
 export function replaceWithSymlink(source: string, target: string, type: 'junction' | 'dir' | 'file') {
   mkdirSync(path.dirname(target), { recursive: true });
   rmSync(target, { recursive: true, force: true });
-  symlinkSync(source, target, type);
+  try {
+    symlinkSync(source, target, type);
+  } catch (error: any) {
+    if (type === 'file' && error?.code === 'EPERM' && process.platform === 'win32') {
+      console.warn(`[link] Warning: symlink failed for ${target} (EPERM), falling back to copy.`);
+      cpSync(source, target);
+      return;
+    }
+    throw error;
+  }
 }
 
 export interface InstallPaths {
@@ -203,7 +214,7 @@ export function syncFirstPartyToHome(repoRoot: string, moluoHome: string) {
   copyRequiredFile(path.join(repoRoot, 'AGENTS.md'), path.join(moluoHome, 'AGENTS.md'));
 }
 
-export async function rebuildVendorSkillLinks({ homeDir, manifestPath }: { homeDir: string, manifestPath: string }): Promise<LinkEntry[]> {
+export async function rebuildVendorSkillLinks({ homeDir, repoRoot, manifestPath }: { homeDir: string, repoRoot: string, manifestPath: string }): Promise<LinkEntry[]> {
   const manifest = await loadVendorManifest(manifestPath);
   const plan = buildLinkPlan(manifest, homeDir);
   const vendorSkillsDir = path.join(homeDir, 'vendor', 'skills');
@@ -221,7 +232,7 @@ export async function rebuildVendorSkillLinks({ homeDir, manifestPath }: { homeD
     symlinkSync(entry.source, entry.target, linkTypeForCurrentPlatform());
   }
 
-  const projectedSkillNames = projectLeafSkillLinks(vendorSkillsDir, skillsDir);
+  const projectedSkillNames = projectLeafSkillLinks([vendorSkillsDir, path.join(repoRoot, 'skills')], skillsDir);
 
   const gitignoreContent = [
     '# 由 rebuild-links.ts 自动生成，请勿手动编辑',

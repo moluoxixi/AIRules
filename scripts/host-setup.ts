@@ -138,6 +138,7 @@ async function main() {
   await syncVendorsIfNeeded(paths.moluoHome, repoRoot, args.skipVendors);
   await rebuildVendorSkillLinks({
     homeDir: paths.moluoHome,
+    repoRoot,
     manifestPath: path.join(repoRoot, 'constants', 'skills.js')
   });
 
