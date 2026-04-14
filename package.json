@@ -8,8 +8,21 @@
   "repository": "https://github.com/moluoxixi/AIRules",
   "scripts": {
     "setup": "tsx scripts/host-setup.ts",
-    "sync": "npx tsx scripts/sync-vendors.ts",
-    "pretest": "npm run sync",
+    "install:all": "tsx scripts/host-setup.ts --host all --mode install",
+    "install:claude": "tsx scripts/host-setup.ts --host claude --mode install",
+    "install:codex": "tsx scripts/host-setup.ts --host codex --mode install",
+    "install:cursor": "tsx scripts/host-setup.ts --host cursor --mode install",
+    "install:qoder": "tsx scripts/host-setup.ts --host qoder --mode install",
+    "install:tare": "tsx scripts/host-setup.ts --host tare --mode install",
+    "install:opencode": "tsx scripts/host-setup.ts --host opencode --mode install",
+    "update:all": "tsx scripts/host-setup.ts --host all --mode update",
+    "update:claude": "tsx scripts/host-setup.ts --host claude --mode update",
+    "update:codex": "tsx scripts/host-setup.ts --host codex --mode update",
+    "update:cursor": "tsx scripts/host-setup.ts --host cursor --mode update",
+    "update:qoder": "tsx scripts/host-setup.ts --host qoder --mode update",
+    "update:tare": "tsx scripts/host-setup.ts --host tare --mode update",
+    "update:opencode": "tsx scripts/host-setup.ts --host opencode --mode update",
+    "pretest": "npx tsx scripts/sync-vendors.ts",
     "test": "node --import tsx --test tests/*.test.ts"
   },
   "devDependencies": {
