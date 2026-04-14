@@ -58,25 +58,39 @@ function syncOptionalDir(sourceDir: string, targetDir: string) {
 function projectLeafSkillLinks(sourceDirs: string[], skillsDir: string): string[] {
   const projectedSkills = new Map<string, string>();
 
+  function addEntry(name: string, sourcePath: string) {
+    if (name === '.gitignore') return;
+    if (projectedSkills.has(name)) {
+      return;
+    }
+    projectedSkills.set(name, sourcePath);
+  }
+
   for (const rootDir of sourceDirs) {
     if (!existsSync(rootDir)) {
       continue;
     }
 
+    const isVendorSkills = rootDir.includes(path.join('vendor', 'skills'));
+
     for (const entry of readdirSync(rootDir, { withFileTypes: true })) {
-      const entryName = entry.name;
-      if (entryName === '.gitignore') {
-        continue;
-      }
+      const entryPath = path.join(rootDir, entry.name);
 
-      if (entry.isDirectory() || entry.isSymbolicLink()) {
-        const sourcePath = path.join(rootDir, entryName);
-        if (projectedSkills.has(entryName)) {
-          console.warn(`[link] Warning: Duplicate skill "${entryName}" ignored (already found in "${projectedSkills.get(entryName)}")`);
-          continue;
+      if (entry.isSymbolicLink()) {
+        // Symbolic links (like 'superpowers' or vendor repo roots) are projected as-is
+        addEntry(entry.name, entryPath);
+      } else if (entry.isDirectory()) {
+        if (isVendorSkills) {
+          // If it's a directory inside vendor/skills (like 'common' or 'frontend'), project its children
+          for (const child of readdirSync(entryPath, { withFileTypes: true })) {
+            if (child.isSymbolicLink() || child.isDirectory()) {
+              addEntry(child.name, path.join(entryPath, child.name));
+            }
+          }
+        } else {
+          // Local skill directories are projected as-is
+          addEntry(entry.name, entryPath);
         }
-
-        projectedSkills.set(entryName, sourcePath);
       }
     }
   }
