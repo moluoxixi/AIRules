@@ -57,43 +57,109 @@ test('Installation linking - Without .agents', () => {
   }
 });
 
-test('Installation linking - With .agents', () => {
+test('Installation linking - With .agents chaining only', () => {
   const { tmpDir, userHome, moluoHome, claudeHome } = setupMockEnvironment();
 
   try {
-    // Manually create .agents directory to trigger the alternative logic
     const agentsDir = path.join(userHome, '.agents');
     fs.mkdirSync(agentsDir, { recursive: true });
 
     const claudeSkillsDir = path.join(claudeHome, 'skills');
     projectSkillsToHost(userHome, moluoHome, claudeSkillsDir);
 
-    // Verify ~/.claude/skills exists
-    assert.ok(fs.existsSync(claudeSkillsDir), 'Claude skills directory should exist');
-
-    // Verify ~/.agents/skills/skill-a exists
+    // Verify .agents links point to moluoxixi
     const agentSkillA = path.join(agentsDir, 'skills', 'skill-a');
     assert.ok(fs.lstatSync(agentSkillA).isSymbolicLink(), 'agent skill-a should be a symlink');
-
-    // Verify .agents link points to moluoxixi
-    const agentRawLink = fs.readlinkSync(agentSkillA);
-    const agentResolvedTarget = path.resolve(path.dirname(agentSkillA), agentRawLink);
+    const agentTarget = path.resolve(path.dirname(agentSkillA), fs.readlinkSync(agentSkillA));
     assert.strictEqual(
-      path.normalize(agentResolvedTarget),
-      path.normalize(path.join(moluoHome, 'skills', 'skill-a')),
-      'Agent link should point directly to .moluoxixi/skills/skill-a'
+      path.normalize(agentTarget),
+      path.normalize(path.join(moluoHome, 'skills', 'skill-a'))
     );
 
-    // Verify Claude link points to .agents
+    // Verify Claude links point to .agents
     const skillA = path.join(claudeSkillsDir, 'skill-a');
     assert.ok(fs.lstatSync(skillA).isSymbolicLink(), 'Claude skill-a should be a symlink');
-    
-    const claudeRawLink = fs.readlinkSync(skillA);
-    const claudeResolvedTarget = path.resolve(path.dirname(skillA), claudeRawLink);
+    const claudeTarget = path.resolve(path.dirname(skillA), fs.readlinkSync(skillA));
     assert.strictEqual(
-      path.normalize(claudeResolvedTarget),
-      path.normalize(agentSkillA),
-      'Claude link should point to .agents/skills/skill-a'
+      path.normalize(claudeTarget),
+      path.normalize(agentSkillA)
+    );
+  } finally {
+    cleanup(tmpDir);
+  }
+});
+
+test('Installation linking - With .cc-switch chaining only', () => {
+  const { tmpDir, userHome, moluoHome, claudeHome } = setupMockEnvironment();
+
+  try {
+    const ccSwitchDir = path.join(userHome, '.cc-switch');
+    fs.mkdirSync(ccSwitchDir, { recursive: true });
+
+    const claudeSkillsDir = path.join(claudeHome, 'skills');
+    projectSkillsToHost(userHome, moluoHome, claudeSkillsDir);
+
+    // Verify .cc-switch links point to moluoxixi
+    const ccSwitchSkillA = path.join(ccSwitchDir, 'skills', 'skill-a');
+    assert.ok(fs.lstatSync(ccSwitchSkillA).isSymbolicLink(), 'ccSwitch skill-a should be a symlink');
+    const ccSwitchTarget = path.resolve(path.dirname(ccSwitchSkillA), fs.readlinkSync(ccSwitchSkillA));
+    assert.strictEqual(
+      path.normalize(ccSwitchTarget),
+      path.normalize(path.join(moluoHome, 'skills', 'skill-a'))
+    );
+
+    // Verify Claude links point to .cc-switch
+    const skillA = path.join(claudeSkillsDir, 'skill-a');
+    assert.ok(fs.lstatSync(skillA).isSymbolicLink(), 'Claude skill-a should be a symlink');
+    const claudeTarget = path.resolve(path.dirname(skillA), fs.readlinkSync(skillA));
+    assert.strictEqual(
+      path.normalize(claudeTarget),
+      path.normalize(ccSwitchSkillA)
+    );
+  } finally {
+    cleanup(tmpDir);
+  }
+});
+
+test('Installation linking - With .cc-switch and .agents chaining', () => {
+  const { tmpDir, userHome, moluoHome, claudeHome } = setupMockEnvironment();
+
+  try {
+    // Manually create .cc-switch and .agents to trigger the complete chain
+    const ccSwitchDir = path.join(userHome, '.cc-switch');
+    fs.mkdirSync(ccSwitchDir, { recursive: true });
+    
+    const agentsDir = path.join(userHome, '.agents');
+    fs.mkdirSync(agentsDir, { recursive: true });
+
+    const claudeSkillsDir = path.join(claudeHome, 'skills');
+    projectSkillsToHost(userHome, moluoHome, claudeSkillsDir);
+
+    // Verify .cc-switch links point to moluoxixi
+    const ccSwitchSkillA = path.join(ccSwitchDir, 'skills', 'skill-a');
+    assert.ok(fs.lstatSync(ccSwitchSkillA).isSymbolicLink(), 'ccSwitch skill-a should be a symlink');
+    const ccSwitchTarget = path.resolve(path.dirname(ccSwitchSkillA), fs.readlinkSync(ccSwitchSkillA));
+    assert.strictEqual(
+      path.normalize(ccSwitchTarget),
+      path.normalize(path.join(moluoHome, 'skills', 'skill-a'))
+    );
+
+    // Verify .agents links point to .cc-switch
+    const agentSkillA = path.join(agentsDir, 'skills', 'skill-a');
+    assert.ok(fs.lstatSync(agentSkillA).isSymbolicLink(), 'agent skill-a should be a symlink');
+    const agentTarget = path.resolve(path.dirname(agentSkillA), fs.readlinkSync(agentSkillA));
+    assert.strictEqual(
+      path.normalize(agentTarget),
+      path.normalize(ccSwitchSkillA)
+    );
+
+    // Verify Claude links point to .agents
+    const skillA = path.join(claudeSkillsDir, 'skill-a');
+    assert.ok(fs.lstatSync(skillA).isSymbolicLink(), 'Claude skill-a should be a symlink');
+    const claudeTarget = path.resolve(path.dirname(skillA), fs.readlinkSync(skillA));
+    assert.strictEqual(
+      path.normalize(claudeTarget),
+      path.normalize(agentSkillA)
     );
   } finally {
     cleanup(tmpDir);

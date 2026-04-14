@@ -197,6 +197,8 @@ export function rebuildVendorSkillLinks({ homeDir, manifestPath }) {
 
 export function projectSkillsToHost(userHome, moluoHome, hostSkillsHome) {
   const sourceSkillsDir = path.join(moluoHome, 'skills');
+  const ccSwitchDir = path.join(userHome, '.cc-switch');
+  const ccSwitchSkillsDir = path.join(ccSwitchDir, 'skills');
   const agentsDir = path.join(userHome, '.agents');
   const agentsSkillsDir = path.join(agentsDir, 'skills');
 
@@ -211,6 +213,11 @@ export function projectSkillsToHost(userHome, moluoHome, hostSkillsHome) {
     }
   }
 
+  const useCcSwitch = existsSync(ccSwitchDir);
+  if (useCcSwitch) {
+    mkdirSync(ccSwitchSkillsDir, { recursive: true });
+  }
+
   const useAgents = existsSync(agentsDir);
   if (useAgents) {
     mkdirSync(agentsSkillsDir, { recursive: true });
@@ -220,25 +227,30 @@ export function projectSkillsToHost(userHome, moluoHome, hostSkillsHome) {
   mkdirSync(hostSkillsHome, { recursive: true });
 
   for (const skillName of skillDirs) {
-    const moluoSkillPath = path.join(sourceSkillsDir, skillName);
+    let currentSource = path.join(sourceSkillsDir, skillName);
     
-    let finalSource = moluoSkillPath;
+    if (useCcSwitch) {
+      const ccSwitchSkillPath = path.join(ccSwitchSkillsDir, skillName);
+      replaceWithSymlink(currentSource, ccSwitchSkillPath, linkTypeForCurrentPlatform());
+      currentSource = ccSwitchSkillPath;
+    }
+
     if (useAgents) {
       const agentSkillPath = path.join(agentsSkillsDir, skillName);
-      replaceWithSymlink(moluoSkillPath, agentSkillPath, linkTypeForCurrentPlatform());
-      finalSource = agentSkillPath;
+      replaceWithSymlink(currentSource, agentSkillPath, linkTypeForCurrentPlatform());
+      currentSource = agentSkillPath;
     }
     
-    replaceWithSymlink(finalSource, path.join(hostSkillsHome, skillName), linkTypeForCurrentPlatform());
+    replaceWithSymlink(currentSource, path.join(hostSkillsHome, skillName), linkTypeForCurrentPlatform());
   }
 }
 
-function projectSharedSkillsHost(userHome, hostHome, moluoHome) {
+function projectSharedSkillsHost(userHome, hostHome, moluoHome, customSkillsDirName = 'skills') {
   mkdirSync(hostHome, { recursive: true });
   rmSync(path.join(hostHome, 'rules'), { recursive: true, force: true });
   rmSync(path.join(hostHome, 'agents'), { recursive: true, force: true });
 
-  projectSkillsToHost(userHome, moluoHome, path.join(hostHome, 'skills'));
+  projectSkillsToHost(userHome, moluoHome, path.join(hostHome, customSkillsDirName));
 
   if (existsSync(path.join(moluoHome, 'agents'))) {
     symlinkSync(path.join(moluoHome, 'agents'), path.join(hostHome, 'agents'), linkTypeForCurrentPlatform());
