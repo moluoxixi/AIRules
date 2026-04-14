@@ -1,42 +1,32 @@
 # AIRules 安装指南 (Cursor)
 
-在 Cursor Agent 中启用 AIRules。
+在 Cursor 中启用 AIRules。
 
 ## 前置条件
 
-- Cursor Desktop
+- Cursor
 - Git & Node.js
 
 ## 安装步骤
 
-1. **运行标准安装脚本：**
-   ```bash
-   git clone https://github.com/moluoxixi/AIRules.git ~/.moluoxixi
-   cd ~/.moluoxixi
-   npm install
-   npm run setup -- --host cursor --mode install
-   ```
-
-2. **重启 Cursor** (或刷新 Agent 窗口)。
-
-## 验证 (Verification)
-
-运行以下命令查看已安装的技能：
+运行标准安装脚本（该脚本包含**自动依赖安装及环境校验**）：
 
 ```bash
-ls -la ~/.cursor/skills/
+git clone https://github.com/moluoxixi/AIRules.git ~/.moluoxixi
+cd ~/.moluoxixi
+npm run rules:install -- --host cursor
 ```
 
-你应该能看到 `antfu`, `gemini`, `superpowers` 等技能。
+安装完成后，脚本会自动输出验证报告。如果报告显示 `✅ cursor 验证通过`，则表示安装成功，只需重启 Cursor 即可。
 
 ## 更新 (Update)
 
 ```bash
-cd ~/.moluoxixi && git pull && npm run setup -- --host cursor --mode install
+npm run rules:install -- --host cursor
 ```
 
 ## 卸载 (Uninstall)
 
 ```bash
-npm run setup -- --host cursor --mode uninstall
+npm run rules:install -- --host cursor --mode uninstall
 ```

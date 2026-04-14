@@ -14,6 +14,7 @@ import {
   syncFirstPartyToHome,
   type InstallPaths
 } from './lib/install.js';
+import { verifyHost } from './lib/verify.js';
 import { existsSync } from 'node:fs';
 
 const ALL_HOSTS = ['claude', 'codex', 'cursor', 'qoder', 'tare', 'opencode'];
@@ -27,7 +28,7 @@ interface Args {
 }
 
 function printHelp() {
-  console.log(`Usage: npx tsx scripts/host-setup.ts --host <name|all> --mode <install|upgrade> [--home <dir>] [--skip-vendors]
+  console.log(`Usage: npx tsx scripts/host-setup.ts --host <name|all> [--mode <install|uninstall>] [--home <dir>] [--skip-vendors]
 
 Hosts:
   all (安装到所有支持的代理)
@@ -43,7 +44,7 @@ Hosts:
 function parseArgs(argv: string[]): Args {
   const args: Args = {
     host: '',
-    mode: '',
+    mode: 'install', // 默认安装
     home: path.join(os.homedir(), '.moluoxixi'),
     skipVendors: false,
     help: false
@@ -166,6 +167,9 @@ async function main() {
       if (baselineTarget) {
         console.log(`[baseline] ${baselineTarget}`);
       }
+
+      // 自动执行校验逻辑
+      await verifyHost(host, paths.moluoHome);
     }
   }
 

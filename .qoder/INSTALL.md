@@ -4,37 +4,29 @@
 
 ## 前置条件
 
-- Qoder CLI
+- Qoder
 - Git & Node.js
 
 ## 安装步骤
 
-1. **运行标准安装脚本：**
-   ```bash
-   git clone https://github.com/moluoxixi/AIRules.git ~/.moluoxixi
-   cd ~/.moluoxixi
-   npm install
-   npm run setup -- --host qoder --mode install
-   ```
-
-2. **重启 Qoder**。
-
-## 验证 (Verification)
-
-运行以下命令查看已安装的技能：
+运行标准安装脚本（该脚本包含**自动依赖安装及环境校验**）：
 
 ```bash
-ls -la ~/.qoder/skills/
+git clone https://github.com/moluoxixi/AIRules.git ~/.moluoxixi
+cd ~/.moluoxixi
+npm run rules:install -- --host qoder
 ```
+
+安装完成后，脚本会自动输出验证报告。如果报告显示 `✅ qoder 验证通过`，则表示安装成功，只需重启 Qoder 即可。
 
 ## 更新 (Update)
 
 ```bash
-cd ~/.moluoxixi && git pull && npm run setup -- --host qoder --mode install
+npm run rules:install -- --host qoder
 ```
 
 ## 卸载 (Uninstall)
 
 ```bash
-npm run setup -- --host qoder --mode uninstall
+npm run rules:install -- --host qoder --mode uninstall
 ```

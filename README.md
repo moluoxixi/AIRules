@@ -6,23 +6,22 @@ Moluoxixi AIRules is a personal distribution of AI coding workflows and skills, 
 
 AIRules isn't just a collection of snippets; it's a systematic approach to AI-assisted development. From initial design to subagent-driven implementation and TDD verification, AIRules ensures your agent follows professional engineering standards.
 
-As soon as your agent sees a task, it doesn't just write code. It steps back to brainstorm, creates detailed implementation plans, and works through tasks with rigorous testing and review stages.
-
 ## Installation
 
 AIRules uses a **script-driven installation model**. You can deploy and sync skills to all supported AI agents with a single command:
 
-### Quick Full Installation (Recommended)
+### Quick Installation (Recommended)
 
 ```bash
 git clone https://github.com/moluoxixi/AIRules.git ~/.moluoxixi
 cd ~/.moluoxixi
-npm install
-npm run setup -- --host all --mode install
+npm run rules:install -- --host all
 ```
 
 > [!TIP]
-> This command automatically cleans up all **dead symlinks** in host directories and ensures the physical integrity of 50+ vendor skills.
+> **All-in-One Process**: This command automatically pulls the latest code, installs dependencies, cleans up dead links, and **automatically runs a full verification check**. If you need to uninstall, simply add `--mode uninstall` to the command.
+
+---
 
 ### Agent-Specific Entry Points
 
@@ -56,7 +55,7 @@ Fetch and follow instructions from https://raw.githubusercontent.com/moluoxixi/A
 
 - **Personalized Workflow**: Tailored rules that reflect specific engineering tastes and project needs.
 - **Systematic over ad-hoc**: Every change follows a plan and passes a test.
-- **Self-Healing Distribution**: Skills are automatically synced by scripts, handling environment adaptation and link self-healing (including automatic removal of all dead symlinks).
+- **Self-Healing Distribution**: Skills are automatically synced by scripts, handling environment adaptation, link self-healing, and built-in automatic verification.
 
 ## License
 

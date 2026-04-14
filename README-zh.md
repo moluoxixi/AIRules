@@ -4,25 +4,24 @@ Moluoxixi AIRules 是基于 Superpowers 架构开发的个人 AI 开发工作流
 
 ## 工作原理
 
-AIRules 不仅仅是代码片段的集合，它是一套系统性的 AI 辅助开发方法论。从最初的设计阶段到子代理驱动的实现，再到 TDD（测试驱动开发）验证，AIRules 确保你的 AI 代理始终遵循专业的工程标准。
-
-当 AI 代理接收到任务时，它不会直接盲目写代码，而是先进入头脑风暴阶段，制定详细的实施计划，并通过严格的测试和审查阶段逐步推进任务。
+AIRules 不仅仅是代码片段的集合，它是一套系统性的 AI 辅助开发方法论。从最初的设计阶段到子代理驱动的实现，再到 TDD（测试驱动开发）验证，AIRules 确保你的 AI 代理遵循专业的工程标准。
 
 ## 安装指南 (Installation)
 
 AIRules 采用**脚本驱动的全量安装模式**。你可以通过一条命令为所有支持的 AI 代理一键部署并同步技能：
 
-### 快速全量安装 (获取 100% 完整体验)
+### 快速安装 (获取 100% 完整体验)
 
 ```bash
 git clone https://github.com/moluoxixi/AIRules.git ~/.moluoxixi
 cd ~/.moluoxixi
-npm install
-npm run setup -- --host all --mode install
+npm run rules:install -- --host all
 ```
 
 > [!TIP]
-> 该命令会自动清理所有宿主目录下的**死链接**，并确保 50+ 供应商技能的物理完整性。
+> **全自动流程**：该命令会自动拉取最新代码、安装依赖、清理死链接，并在完成后**自动运行全量验证报告**。如果需要卸载，只需在命令后添加 `--mode uninstall`。
+
+---
 
 ### 针对特定代理的引导入口
 
@@ -48,15 +47,15 @@ Fetch and follow instructions from https://raw.githubusercontent.com/moluoxixi/A
 
 ## 核心技能
 
-1. **frontend-workflow** - 针对现代前端开发的专业工作流，强调组件规范和状态管理。
-2. **skill-creator-pro** - 用于在该分发版中设计、编写和测试新技能的元技能（Meta-skill）。
+1. **frontend-workflow** - 针对现代前端开发的专业工作流，强调组件规范 and 状态管理。
+2. **skill-creator-pro** - 用于在该分发版中设计、编写和测试新技能的元技能 (Meta-skill)。
 3. **skill-seekers** - 根据当前上下文自动发现并加载相关的技能。
 
 ## 开发哲学
 
  - **个性化工作流**：反映特定工程审美和项目需求的量身定制规则。
  - **系统化胜过随机性**：每一次代码变更都应遵循计划并通过测试。
- - **自愈式分发**：技能由脚本自动同步，并自动处理环境适配与链接自愈（包括自动移除所有失效死链接）。
+ - **自愈式分发**：技能由脚本自动同步，自动处理软链接自愈，并内置自动环境校验。
 
 ## 许可证
 

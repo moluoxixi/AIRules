@@ -1,44 +1,32 @@
-# Moluoxixi Skills 安装指南 (Codex)
+# AIRules 安装指南 (Codex)
 
-通过原生技能发现机制在 Codex 中启用 Moluoxixi 技能。只需克隆并建立软链接。
+在 Codex 中启用 AIRules。
 
 ## 前置条件
 
-- Git
+- Codex
+- Git & Node.js
 
 ## 安装步骤
 
-1. **运行标准安装脚本：**
-   ```bash
-   git clone https://github.com/moluoxixi/AIRules.git ~/.moluoxixi
-   cd ~/.moluoxixi
-   npm install
-   npm run setup -- --host codex --mode install
-   ```
-
-3. **重启 Codex** (退出并重新启动 CLI) 以发现新技能。
-
-## 验证 (Verification)
-
-运行以下命令查看已安装的技能：
+运行标准安装脚本（该脚本包含**自动依赖安装及环境校验**）：
 
 ```bash
-ls -la ~/.codex/skills/
+git clone https://github.com/moluoxixi/AIRules.git ~/.moluoxixi
+cd ~/.moluoxixi
+npm run rules:install -- --host codex
 ```
 
-你应该能看到 `antfu`, `code-reviewer`, `superpowers` 等技能以顶级软链接的形式存在。
+安装完成后，脚本会自动输出验证报告。如果报告显示 `✅ codex 验证通过`，则表示安装成功，只需重启 Codex 即可。
 
 ## 更新 (Update)
 
 ```bash
-cd ~/.moluoxixi && git pull && npm run setup -- --host codex --mode install
+npm run rules:install -- --host codex
 ```
 
 ## 卸载 (Uninstall)
 
 ```bash
-npm run setup -- --host codex --mode uninstall
-# 或者手动删除安装目录和软链接：
-# rm -rf ~/.moluoxixi
-# rm -rf ~/.codex/skills/*
+npm run rules:install -- --host codex --mode uninstall
 ```

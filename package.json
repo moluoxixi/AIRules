@@ -8,13 +8,7 @@
   "repository": "https://github.com/moluoxixi/AIRules",
   "scripts": {
     "setup": "tsx scripts/host-setup.ts",
-    "install:all": "tsx scripts/host-setup.ts --host all --mode install",
-    "install:claude": "tsx scripts/host-setup.ts --host claude --mode install",
-    "install:codex": "tsx scripts/host-setup.ts --host codex --mode install",
-    "install:cursor": "tsx scripts/host-setup.ts --host cursor --mode install",
-    "install:qoder": "tsx scripts/host-setup.ts --host qoder --mode install",
-    "install:tare": "tsx scripts/host-setup.ts --host tare --mode install",
-    "install:opencode": "tsx scripts/host-setup.ts --host opencode --mode install",
+    "rules:install": "git pull && npm install && tsx scripts/host-setup.ts",
     "pretest": "npx tsx scripts/sync-vendors.ts",
     "test": "node --import tsx --test tests/*.test.ts"
   },
