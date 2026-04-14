@@ -55,54 +55,37 @@ function syncOptionalDir(sourceDir: string, targetDir: string) {
   copyDirContents(sourceDir, targetDir);
 }
 
-function collectLeafSkillDirs(rootDir: string): string[] {
-  if (!existsSync(rootDir)) {
-    return [];
-  }
-
-  const leaves: string[] = [];
-
-  function walk(currentDir: string) {
-    if (existsSync(path.join(currentDir, 'SKILL.md'))) {
-      leaves.push(currentDir);
-      return;
-    }
-
-    for (const entry of readdirSync(currentDir, { withFileTypes: true })) {
-      const entryPath = path.join(currentDir, entry.name);
-      const stats = lstatSync(entryPath);
-      if (!stats.isDirectory() && !stats.isSymbolicLink()) {
-        continue;
-      }
-
-      walk(entryPath);
-    }
-  }
-
-  walk(rootDir);
-  return leaves.sort((left, right) => left.localeCompare(right));
-}
-
 function projectLeafSkillLinks(sourceDirs: string[], skillsDir: string): string[] {
   const projectedSkills = new Map<string, string>();
 
   for (const rootDir of sourceDirs) {
-    for (const leafDir of collectLeafSkillDirs(rootDir)) {
-      const leafName = path.basename(leafDir);
-      if (projectedSkills.has(leafName)) {
-        const existing = projectedSkills.get(leafName);
-        throw new Error(`Duplicate projected skill "${leafName}" from "${existing}" and "${leafDir}"`);
+    if (!existsSync(rootDir)) {
+      continue;
+    }
+
+    for (const entry of readdirSync(rootDir, { withFileTypes: true })) {
+      const entryName = entry.name;
+      if (entryName === '.gitignore') {
+        continue;
       }
 
-      projectedSkills.set(leafName, leafDir);
+      if (entry.isDirectory() || entry.isSymbolicLink()) {
+        const sourcePath = path.join(rootDir, entryName);
+        if (projectedSkills.has(entryName)) {
+          console.warn(`[link] Warning: Duplicate skill "${entryName}" ignored (already found in "${projectedSkills.get(entryName)}")`);
+          continue;
+        }
+
+        projectedSkills.set(entryName, sourcePath);
+      }
     }
   }
 
   resetDir(skillsDir);
 
-  for (const [leafName, sourceDir] of projectedSkills) {
-    const projectionTarget = path.join(skillsDir, leafName);
-    symlinkSync(sourceDir, projectionTarget, linkTypeForCurrentPlatform());
+  for (const [skillName, sourcePath] of projectedSkills) {
+    const projectionTarget = path.join(skillsDir, skillName);
+    symlinkSync(sourcePath, projectionTarget, linkTypeForCurrentPlatform());
   }
 
   return [...projectedSkills.keys()].sort();
