@@ -55,6 +55,12 @@ function syncOptionalDir(sourceDir: string, targetDir: string) {
   copyDirContents(sourceDir, targetDir);
 }
 
+/**
+ * 将源目录中的一级子目录投影为目标目录中的软链接。
+ * 之前的递归搜索 SKILL.md 逻辑已被移除，现在仅进行顶级映射。
+ * @param sourceDirs 源目录列表（如 vendor/skills 和本地 skills）
+ * @param skillsDir 投影目标目录（~/.moluoxixi/skills）
+ */
 function projectLeafSkillLinks(sourceDirs: string[], skillsDir: string): string[] {
   const projectedSkills = new Map<string, string>();
 
@@ -63,8 +69,7 @@ function projectLeafSkillLinks(sourceDirs: string[], skillsDir: string): string[
       continue;
     }
 
-    // We no longer categorize by namespace here. Everything in rootDir (vendor/skills or local skills)
-    // is treated as a top-level unit to project.
+    // 遍历源目录的一级子项。Everything in rootDir 都会被视为顶级技能单元进行投影。
     for (const entry of readdirSync(rootDir, { withFileTypes: true })) {
       const entryName = entry.name;
       if (entryName === '.gitignore') {
@@ -74,7 +79,7 @@ function projectLeafSkillLinks(sourceDirs: string[], skillsDir: string): string[
       if (entry.isDirectory() || entry.isSymbolicLink()) {
         const sourcePath = path.join(rootDir, entryName);
         if (projectedSkills.has(entryName)) {
-          // If collision occurs (e.g. same skill name in different categories), first one wins
+          // 如果名称冲突（例如不同分类下有同名技能），则遵循“首次发现优先”原则
           continue;
         }
 
@@ -87,7 +92,7 @@ function projectLeafSkillLinks(sourceDirs: string[], skillsDir: string): string[
 
   for (const [skillName, sourcePath] of projectedSkills) {
     const projectionTarget = path.join(skillsDir, skillName);
-    symlinkSync(sourcePath, projectionTarget, linkTypeForCurrentPlatform());
+    replaceWithSymlink(sourcePath, projectionTarget, linkTypeForCurrentPlatform());
   }
 
   return [...projectedSkills.keys()].sort();
@@ -183,6 +188,10 @@ export function ensureInstallRoot(paths: InstallPaths) {
   }
 }
 
+/**
+ * 确保全局 Agent 技能目录 (~/.agents/skills) 的链接正确。
+ * 遵循层级自愈同步逻辑。
+ */
 export function ensureGlobalSkillLink(paths: InstallPaths) {
   const sourceSkillsDir = path.join(paths.moluoHome, 'skills');
   const targetLinkDir = paths.globalAgentSkillsHome;
@@ -190,6 +199,12 @@ export function ensureGlobalSkillLink(paths: InstallPaths) {
   syncFlattenedSkills(sourceSkillsDir, targetLinkDir, paths.moluoHome);
 }
 
+/**
+ * 同步展平的技能软链接，并清理过时链接。
+ * @param sourceDir 源技能目录
+ * @param targetDir 目标链接目录
+ * @param moluoHome moluoxixi 根目录（用于识别自愈时需要删除的内部链接）
+ */
 export function syncFlattenedSkills(sourceDir: string, targetDir: string, moluoHome: string) {
   if (!existsSync(sourceDir)) {
     return;
@@ -199,32 +214,30 @@ export function syncFlattenedSkills(sourceDir: string, targetDir: string, moluoH
 
   const currentSkills = new Set(readdirSync(sourceDir).filter(n => n !== '.gitignore'));
   
-  // Cleanup stale links
+  // 自愈式同步：清理目标目录中不再需要的技能链接
   if (existsSync(targetDir)) {
     for (const entry of readdirSync(targetDir, { withFileTypes: true })) {
       const targetPath = path.join(targetDir, entry.name);
       
-      // We only care about symbolic links that we might have created
+      // 我们只处理那些我们可能创建过的软链接
       if (entry.isSymbolicLink()) {
         try {
           const resolvedPath = realpathSync(targetPath);
           const normalizedResolved = path.resolve(resolvedPath);
           const normalizedMoluo = path.resolve(moluoHome);
 
-          // If the link points into moluoxixi home but is not in the current set, remove it
+          // 如果该链接指向 moluoxixi 主目录，但不在当前技能集合中，则视为过时并移除
           if (normalizedResolved.startsWith(normalizedMoluo) && !currentSkills.has(entry.name)) {
             rmSync(targetPath, { recursive: true, force: true });
           }
         } catch (error) {
-          // If the link is broken or inaccessible, but it matches our naming pattern in a dangerous way?
-          // Actually, if it's broken, it's safer to leave it unless we are sure it was ours.
-          // But usually, broken links should be cleaned up if they are in the way.
+          // 如果链接失效或权限受限，通常由 replaceWithSymlink 在后续更新时处理
         }
       }
     }
   }
 
-  // Link current skills
+  // 为所有当前有效的技能创建或更新软链接
   for (const skillName of currentSkills) {
     const source = path.join(sourceDir, skillName);
     const target = path.join(targetDir, skillName);
@@ -232,6 +245,9 @@ export function syncFlattenedSkills(sourceDir: string, targetDir: string, moluoH
   }
 }
 
+/**
+ * 同步第一方（当前仓库内）的技能到本地 moluoxixi 主目录。
+ */
 export function syncFirstPartyToHome(repoRoot: string, moluoHome: string) {
   if (isSamePath(repoRoot, moluoHome)) {
     return;
@@ -274,6 +290,10 @@ export async function rebuildVendorSkillLinks({ homeDir, repoRoot, manifestPath 
   return plan;
 }
 
+/**
+ * 将所有技能投影到宿主软件目录（如 .claude 或 .cursor）。
+ * 该过程遵循层级链接：宿主 -> .agents -> .cc-switch -> 源码。
+ */
 export function projectSkillsToHost(userHome: string, moluoHome: string, hostSkillsHome: string) {
   const sourceSkillsDir = path.join(moluoHome, 'skills');
   const ccSwitchSkillsDir = path.join(userHome, '.cc-switch', 'skills');
@@ -281,16 +301,19 @@ export function projectSkillsToHost(userHome: string, moluoHome: string, hostSki
 
   let currentSource = sourceSkillsDir;
 
+  // 1. 如果存在 .cc-switch 中间层
   if (existsSync(path.join(userHome, '.cc-switch'))) {
     syncFlattenedSkills(currentSource, ccSwitchSkillsDir, moluoHome);
     currentSource = ccSwitchSkillsDir;
   }
 
+  // 2. 如果存在 .agents 中间层
   if (existsSync(path.join(userHome, '.agents'))) {
     syncFlattenedSkills(currentSource, agentsSkillsDir, moluoHome);
     currentSource = agentsSkillsDir;
   }
 
+  // 3. 最终投影到宿主技能目录
   syncFlattenedSkills(currentSource, hostSkillsHome, moluoHome);
 }
 

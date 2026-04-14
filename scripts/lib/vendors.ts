@@ -23,6 +23,9 @@ export interface VendorManifest {
   vendors: Record<string, Vendor>;
 }
 
+/**
+ * 判断是否为有效的 VendorRepo 定义
+ */
 function isVendorEntry(value: any): boolean {
   return Boolean(
     value &&
@@ -32,10 +35,20 @@ function isVendorEntry(value: any): boolean {
   );
 }
 
+/**
+ * 构造技能链接的目标路径
+ * @param namespaceParts 分类路径片段
+ * @param outputName 最终的技能目录名
+ */
 function buildTargetPath(namespaceParts: string[], outputName: string): string {
   return path.posix.join('vendor', 'skills', ...namespaceParts, outputName);
 }
 
+/**
+ * 构建单个供应商实体的链接计划
+ * @param namespaceParts 当前递归深度对应的分类路径
+ * @param entry 供应商定义实体
+ */
 function buildLinksForEntry(namespaceParts: string[], entry: any): VendorLink[] {
   if (entry.sourceDir) {
     return [{
@@ -53,9 +66,12 @@ function buildLinksForEntry(namespaceParts: string[], entry: any): VendorLink[] 
   }));
 }
 
+/**
+ * 合并供应商定义到全局清单
+ */
 function mergeVendor(vendors: Record<string, Vendor>, vendorName: string, namespaceParts: string[], entry: any) {
   if (entry.local === true) {
-    throw new Error('Local vendor entries are not supported');
+    throw new Error('暂不支持本地供应商实体 (Local vendor entries)');
   }
 
   const cloneDir = path.posix.join('vendor', 'repos', vendorName);
@@ -76,27 +92,46 @@ function mergeVendor(vendors: Record<string, Vendor>, vendorName: string, namesp
     existing.repo !== entry.source ||
     existing.cloneDir !== cloneDir
   ) {
-    throw new Error(`Vendor "${vendorName}" is defined inconsistently across modules`);
+    throw new Error(`供应商 "${vendorName}" 在不同模块中的定义不一致`);
   }
 
   existing.official = existing.official || entry.official;
   existing.links.push(...links);
 }
 
-function walkVendorTree(node: any, namespaceParts: string[], vendors: Record<string, Vendor>) {
+/**
+ * 递归遍历供应商定义树，支持混合数组和对象结构
+ * @param node 当前处理的节点 (VendorRepo | Record | Array)
+ * @param namespaceParts 当前递归深度对应的分类路径
+ * @param vendors 全局积累的供应商对象映射
+ */
+/**
+ * 递归遍历供应商定义树，支持混合数组和对象结构
+ * @param node 当前处理的节点 (VendorRepo | Record | Array)
+ * @param namespaceParts 当前递归深度对应的分类路径
+ * @param vendors 全局积累的供应商对象映射
+ */
+export function walkVendorTree(node: any, namespaceParts: string[], vendors: Record<string, Vendor>) {
+  if (!node) return;
+
   if (Array.isArray(node)) {
     for (const entry of node) {
-      if (!isVendorEntry(entry)) {
-        throw new Error(`Invalid vendor entry under "${namespaceParts.join('/') || '<root>'}"`);
+      if (isVendorEntry(entry)) {
+        mergeVendor(vendors, entry.name, namespaceParts, entry);
+      } else if (entry && typeof entry === 'object') {
+        // 如果数组元素是普通对象，则视为分类节点（例如 { "frontend": [...] }）
+        for (const [key, value] of Object.entries(entry)) {
+          walkVendorTree(value, [...namespaceParts, key], vendors);
+        }
+      } else {
+        throw new Error(`在分类 "${namespaceParts.join('/') || '根目录'}" 下发现无效的供应商节点定义`);
       }
-
-      mergeVendor(vendors, entry.name, namespaceParts, entry);
     }
-    return;
-  }
-
-  for (const [key, value] of Object.entries(node ?? {})) {
-    walkVendorTree(value, [...namespaceParts, key], vendors);
+  } else if (typeof node === 'object') {
+    // 处理直接传入的对象结构（用于递归或旧版兼容）
+    for (const [key, value] of Object.entries(node)) {
+      walkVendorTree(value, [...namespaceParts, key], vendors);
+    }
   }
 }
 

@@ -1,25 +1,35 @@
 import { execSync } from 'child_process';
 import { resolve, join, dirname } from 'path';
 import { fileURLToPath } from 'url';
-import { rmSync, mkdirSync, cpSync, existsSync, readdirSync } from 'fs';
-import { vendors } from '../constants/skills.js';
+import { rmSync, mkdirSync, cpSync, existsSync } from 'fs';
+import { vendors as vendorsConfig } from '../constants/skills.js';
+import { walkVendorTree, type Vendor } from './lib/vendors.js';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = dirname(__filename);
 const PROJECT_ROOT = resolve(__dirname, '..');
 const VENDOR_SKILLS_DIR = join(PROJECT_ROOT, 'vendor', 'skills');
-const LOCAL_SKILLS_DIR = join(PROJECT_ROOT, 'skills');
 const CACHE_DIR = join(PROJECT_ROOT, '.cache-git');
 
+/**
+ * 执行 Git 命令并实时输出
+ * @param cmd Git 命令
+ * @param cwd 运行目录
+ */
 function runGitQuery(cmd: string, cwd: string) {
   console.log(`[GIT] ${cmd} (in ${cwd})`);
   return execSync(cmd, { cwd, stdio: 'inherit' });
 }
 
+/**
+ * 供应商技能同步脚本 (核心逻辑)
+ * 该脚本负责克隆远程仓库，并根据 manifest 计划将技能提取到 vendor/skills。
+ * 目前支持混合数组结构的递归发现。
+ */
 async function main() {
-  console.log('[SYNC] Starting vendor skills synchronization...');
+  console.log('[SYNC] 正在启动供应商技能同步...');
 
-  // Clean and prepare the vendor directory
+  // 1. 清理环境：移除旧的 vendor/skills 和 git 缓存
   if (existsSync(VENDOR_SKILLS_DIR)) {
     rmSync(VENDOR_SKILLS_DIR, { recursive: true, force: true });
   }
@@ -30,76 +40,59 @@ async function main() {
   mkdirSync(VENDOR_SKILLS_DIR, { recursive: true });
   mkdirSync(CACHE_DIR, { recursive: true });
 
-  // 1. Process Remote Vendors
-  for (const [namespace, vendorList] of Object.entries(vendors)) {
-    for (const vendor of vendorList) {
-      if (!vendor.source) continue;
+  // 2. 构造同步清单：通过递归遍历配置，获取所有供应商及其链接计划
+  const vendorsMap: Record<string, Vendor> = {};
+  walkVendorTree(vendorsConfig, [], vendorsMap);
 
-      const cacheTarget = join(CACHE_DIR, vendor.name);
-      
-      console.log(`\n--- Fetching remote supplier: ${vendor.name} ---`);
-      
-      try {
-        // Clone with blobless and no-checkout for blazing speed
-        runGitQuery(`git clone --filter=blob:none --no-checkout ${vendor.source} ${vendor.name}`, CACHE_DIR);
+  // 3. 处理每个供应商
+  for (const [vendorName, vendor] of Object.entries(vendorsMap)) {
+    if (!vendor.repo) continue;
 
-        const baseDir = vendor.sourceBaseDir || vendor.sourceDir;
-        let checkoutPaths: string[] = [];
+    const cacheTarget = join(CACHE_DIR, vendorName);
+    console.log(`\n--- 正在拉取远程供应商: ${vendorName} ---`);
+    
+    try {
+      // 3.1 极速克隆 (blobless & no-checkout)：仅下载提交历史，不下载文件
+      runGitQuery(`git clone --filter=blob:none --no-checkout ${vendor.repo} ${vendorName}`, CACHE_DIR);
 
-        if (vendor.skills) {
-          // If specific skills are listed, add them to sparse checkout paths
-          for (const skillKey of Object.values(vendor.skills)) {
-            const skillPath = baseDir ? `${baseDir}/${skillKey}` : skillKey;
-            checkoutPaths.push(skillPath);
-          }
-        } else if (baseDir) {
-          // If no specific skills but has a base dir, checkout the whole base dir
-          checkoutPaths.push(baseDir);
-        } else {
-          // Fallback to checking out everything if no mapping is provided
-          console.warn(`[WARN] No specific skills mapping or baseDir for ${vendor.name}. Checking out everything.`);
-        }
-
-        if (checkoutPaths.length > 0) {
-          runGitQuery(`git sparse-checkout set ${checkoutPaths.join(' ')}`, cacheTarget);
-        }
-        
-        runGitQuery(`git checkout`, cacheTarget);
-
-        // Copy out the specific skills to the final vendor/skills path
-        if (vendor.skills) {
-          for (const [skillId, skillPathKey] of Object.entries(vendor.skills)) {
-            const finalTargetDir = join(VENDOR_SKILLS_DIR, skillId);
-            const sourcePath = join(cacheTarget, baseDir ? baseDir : '', skillPathKey);
-            
-            mkdirSync(finalTargetDir, { recursive: true });
-            cpSync(sourcePath, finalTargetDir, { recursive: true });
-            console.log(`[COPIED] ${vendor.name}/${skillId}`);
-          }
-        } else if (baseDir) {
-            const finalTargetDir = join(VENDOR_SKILLS_DIR, vendor.name);
-            const sourcePath = join(cacheTarget, baseDir);
-            mkdirSync(finalTargetDir, { recursive: true });
-            cpSync(sourcePath, finalTargetDir, { recursive: true });
-            console.log(`[COPIED] ${vendor.name} (whole baseDir)`);
-        } else {
-            const finalTargetDir = join(VENDOR_SKILLS_DIR, vendor.name);
-            mkdirSync(finalTargetDir, { recursive: true });
-            cpSync(cacheTarget, finalTargetDir, { recursive: true });
-            console.log(`[COPIED] ${vendor.name} (full repo fallback)`);
-        }
-        
-      } catch (err) {
-        console.error(`[ERROR] Failed to fetch vendor ${vendor.name}:`, err);
+      // 3.2 收集所有需要检出的路径 (Sparse Checkout)
+      const checkoutPaths = new Set<string>();
+      for (const link of vendor.links) {
+        checkoutPaths.add(link.source);
       }
+
+      if (checkoutPaths.size > 0) {
+        // 仅拉取我们真正需要的路径，节省带宽和磁盘空间
+        runGitQuery(`git sparse-checkout set ${[...checkoutPaths].join(' ')}`, cacheTarget);
+      }
+      
+      runGitQuery(`git checkout`, cacheTarget);
+
+      // 3.3 按照 Manifest 计划分发技能到 vendor/skills
+      for (const link of vendor.links) {
+        const sourcePath = join(cacheTarget, link.source);
+        const finalTargetDir = join(PROJECT_ROOT, link.target);
+        
+        if (!existsSync(sourcePath)) {
+          console.warn(`[WARN] 跳过缺失的源目录: ${link.source}`);
+          continue;
+        }
+
+        mkdirSync(dirname(finalTargetDir), { recursive: true });
+        cpSync(sourcePath, finalTargetDir, { recursive: true });
+        console.log(`[COPIED] ${vendorName} -> ${link.target}`);
+      }
+      
+    } catch (err) {
+      console.error(`[ERROR] 供应商 ${vendorName} 同步失败:`, err);
     }
   }
 
-  // 清除远程缓存
-  console.log('\n[SYNC] Cleaning up remote caches...');
+  // 4. 清除远程 Git 缓存
+  console.log('\n[SYNC] 正在清理远程缓存...');
   rmSync(CACHE_DIR, { recursive: true, force: true });
 
-  console.log('\n[SYNC] Vendor skills initialization completed successfully.');
+  console.log('\n[SYNC] 供应商技能同步完成。');
 }
 
 main().catch(console.error);

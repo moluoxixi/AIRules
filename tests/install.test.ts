@@ -192,3 +192,63 @@ test('Installation linking - Pre-existing folder deletion', () => {
     cleanup(tmpDir);
   }
 });
+
+test('Self-healing - Orphan link cleanup', () => {
+  const { tmpDir, userHome, moluoHome, claudeHome } = setupMockEnvironment();
+
+  try {
+    const claudeSkillsDir = path.join(claudeHome, 'skills');
+    fs.mkdirSync(claudeSkillsDir, { recursive: true });
+
+    // 1. 在 moluoxixi 中创建一些物理文件
+    const currentSkillDir = path.join(moluoHome, 'skills', 'skill-present');
+    fs.mkdirSync(currentSkillDir, { recursive: true });
+
+    // 2. 在目标目录中手动创建一个“孤儿链接” (指向一个在清单中不存在的目录)
+    const staleLink = path.join(claudeSkillsDir, 'stale-skill');
+    // 注意：我们将它指向 moluoxixi 内部，这样它才会被“自愈”识别
+    const staleTarget = path.join(moluoHome, 'skills', 'skill-old-deleted');
+    fs.mkdirSync(staleTarget, { recursive: true }); // 先创建目标以便建立链接
+    fs.symlinkSync(staleTarget, staleLink, 'junction');
+    fs.rmSync(staleTarget, { recursive: true, force: true }); // 删除目标使其变成死链接/孤儿
+
+    assert.ok(fs.existsSync(staleLink) || fs.lstatSync(staleLink).isSymbolicLink(), 'Stale link should exist initially');
+
+    // 执行同步
+    projectSkillsToHost(userHome, moluoHome, claudeSkillsDir);
+
+    // 3. 验证
+    assert.ok(fs.existsSync(path.join(claudeSkillsDir, 'skill-present')), 'New skill should be linked');
+    assert.ok(!fs.existsSync(staleLink), 'Orphan link pointing to moluoxixi should be cleaned up');
+  } finally {
+    cleanup(tmpDir);
+  }
+});
+
+test('Self-healing - Safety boundary (External links)', () => {
+  const { tmpDir, userHome, moluoHome, claudeHome } = setupMockEnvironment();
+
+  try {
+    const claudeSkillsDir = path.join(claudeHome, 'skills');
+    fs.mkdirSync(claudeSkillsDir, { recursive: true });
+
+    // 1. 创建一个普通文件（非链接）
+    const userFile = path.join(claudeSkillsDir, 'my-config.json');
+    fs.writeFileSync(userFile, '{}');
+
+    // 2. 创建一个指向外部（非 moluoxixi）的链接
+    const externalLink = path.join(claudeSkillsDir, 'external-ref');
+    const externalTarget = path.join(tmpDir, 'some-external-app');
+    fs.mkdirSync(externalTarget, { recursive: true });
+    fs.symlinkSync(externalTarget, externalLink, 'junction');
+
+    // 执行同步
+    projectSkillsToHost(userHome, moluoHome, claudeSkillsDir);
+
+    // 3. 验证：非 moluoxixi 管理的文件和外部链接不应被删除
+    assert.ok(fs.existsSync(userFile), 'User files should be preserved');
+    assert.ok(fs.existsSync(externalLink), 'External links (out of moluoxixi scope) should be preserved');
+  } finally {
+    cleanup(tmpDir);
+  }
+});
