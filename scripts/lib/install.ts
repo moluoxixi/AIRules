@@ -121,6 +121,8 @@ function isSamePath(path1: string, path2: string): boolean {
 }
 
 export function replaceWithSymlink(source: string, target: string, type: 'junction' | 'dir' | 'file') {
+  console.log(`[link] source: ${source}`);
+  console.log(`[link] target: ${target}`);
   mkdirSync(path.dirname(target), { recursive: true });
   rmSync(target, { recursive: true, force: true });
   try {
