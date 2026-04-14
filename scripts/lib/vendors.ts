@@ -33,8 +33,7 @@ function isVendorEntry(value: any): boolean {
 }
 
 function buildTargetPath(namespaceParts: string[], outputName: string): string {
-  // Always ignore namespaceParts to keep a flat installation structure in vendor/skills
-  return path.posix.join('vendor', 'skills', outputName);
+  return path.posix.join('vendor', 'skills', ...namespaceParts, outputName);
 }
 
 function buildLinksForEntry(namespaceParts: string[], entry: any): VendorLink[] {
@@ -42,7 +41,7 @@ function buildLinksForEntry(namespaceParts: string[], entry: any): VendorLink[] 
     return [{
       kind: 'namespace-dir',
       source: entry.sourceDir,
-      target: path.posix.join('vendor', 'skills', entry.name),
+      target: path.posix.join('vendor', 'skills', ...namespaceParts, entry.name),
     }];
   }
 

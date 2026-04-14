@@ -20,91 +20,75 @@ export interface VendorRepo {
  * @see https://github.com/openai/skills.git openai官方技能仓库
  * @see https://github.com/obra/superpowers.git superpowers官方技能仓库
 */
-export const vendors: Record<string, VendorRepo[]> = {
-  common: [
-    {
-      name: 'gemini',
-      official: true,
-      source: 'https://github.com/google-gemini/gemini-cli.git',
-      sourceBaseDir: '.gemini/skills',
-      skills: {
-        'code-reviewer': 'code-reviewer',
-        'pr-creator': 'pr-creator',
-      },
-    },
-    {
-      name: 'vercelLabs',
-      official: true,
-      source: 'https://github.com/vercel-labs/skills.git',
-      sourceBaseDir: 'skills',
-      skills: {
-        'find-skills': 'find-skills',
-      },
-    },
-    {
-      name: 'vercel',
-      official: true,
-      source: 'https://github.com/vercel/next.js.git',
-      sourceBaseDir: '.agents/skills',
-      skills: {
-        // TODO: 有问题，文档强绑定next.js，后续需要优化
-        'update-docs': 'update-docs',
-      },
-    },
-    {
-      name: 'antfu',
-      official: true,
-      source: 'https://github.com/antfu/skills.git',
-      sourceBaseDir: 'skills',
-      skills: {
-        antfu: 'antfu',
-        pnpm: 'pnpm',
-        slidev: 'slidev',
-        tsdown: 'tsdown',
-        turborepo: 'turborepo',
-        vitest: 'vitest',
-      },
-    },
-  ],
+export type VendorsConfig = VendorRepo[] | Record<string, VendorRepo[]>;
 
-  frontend: [
-    {
-      name: 'anthropic',
-      official: true,
-      source: 'https://github.com/anthropics/skills.git',
-      sourceBaseDir: 'skills',
-      skills: {
-        // TODO: 仅支持playwright的脚本，不支持mcp，需要进行优化(moluoxixi包中补充说明)
-        'webapp-testing': 'webapp-testing',
-      },
+export const vendors: VendorsConfig = [
+  {
+    name: 'gemini',
+    official: true,
+    source: 'https://github.com/google-gemini/gemini-cli.git',
+    sourceBaseDir: '.gemini/skills',
+    skills: {
+      'code-reviewer': 'code-reviewer',
+      'pr-creator': 'pr-creator',
     },
-    {
-      name: 'antfu',
-      official: true,
-      source: 'https://github.com/antfu/skills.git',
-      sourceBaseDir: 'skills',
-      skills: {
-        nuxt: 'nuxt',
-        pinia: 'pinia',
-        unocss: 'unocss',
-        vite: 'vite',
-        vitepress: 'vitepress',
-        vue: 'vue',
-        'vue-best-practices': 'vue-best-practices',
-        'vue-router-best-practices': 'vue-router-best-practices',
-        'vue-testing-best-practices': 'vue-testing-best-practices',
-        'vueuse-functions': 'vueuse-functions',
-        'web-design-guidelines': 'web-design-guidelines',
-      },
+  },
+  {
+    name: 'vercelLabs',
+    official: true,
+    source: 'https://github.com/vercel-labs/skills.git',
+    sourceBaseDir: 'skills',
+    skills: {
+      'find-skills': 'find-skills',
     },
-  ],
-
-  superpowers: [
-    {
-      name: 'superpowers',
-      official: true,
-      source: 'https://github.com/obra/superpowers.git',
-      sourceDir: 'skills',
+  },
+  {
+    name: 'vercel',
+    official: true,
+    source: 'https://github.com/vercel/next.js.git',
+    sourceBaseDir: '.agents/skills',
+    skills: {
+      'update-docs': 'update-docs',
     },
-  ],
-};
+  },
+  {
+    name: 'antfu',
+    official: true,
+    source: 'https://github.com/antfu/skills.git',
+    sourceBaseDir: 'skills',
+    skills: {
+      antfu: 'antfu',
+      pnpm: 'pnpm',
+      slidev: 'slidev',
+      tsdown: 'tsdown',
+      turborepo: 'turborepo',
+      vitest: 'vitest',
+      nuxt: 'nuxt',
+      pinia: 'pinia',
+      unocss: 'unocss',
+      vite: 'vite',
+      vitepress: 'vitepress',
+      vue: 'vue',
+      'vue-best-practices': 'vue-best-practices',
+      'vue-router-best-practices': 'vue-router-best-practices',
+      'vue-testing-best-practices': 'vue-testing-best-practices',
+      'vueuse-functions': 'vueuse-functions',
+      'web-design-guidelines': 'web-design-guidelines',
+    },
+  },
+  {
+    name: 'anthropic',
+    official: true,
+    source: 'https://github.com/anthropics/skills.git',
+    sourceBaseDir: 'skills',
+    skills: {
+      'webapp-testing': 'webapp-testing',
+    },
+  },
+  {
+    name: 'superpowers',
+    official: true,
+    source: 'https://github.com/obra/superpowers.git',
+    sourceDir: 'skills',
+  },
+];
