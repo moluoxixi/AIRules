@@ -114,6 +114,10 @@ function linkFileForCurrentPlatform(): 'file' {
   return 'file';
 }
 
+function isSamePath(path1: string, path2: string): boolean {
+  return path.resolve(path1) === path.resolve(path2);
+}
+
 export function replaceWithSymlink(source: string, target: string, type: 'junction' | 'dir' | 'file') {
   mkdirSync(path.dirname(target), { recursive: true });
   rmSync(target, { recursive: true, force: true });
@@ -191,6 +195,10 @@ export function ensureGlobalSkillLink(paths: InstallPaths) {
 }
 
 export function syncFirstPartyToHome(repoRoot: string, moluoHome: string) {
+  if (isSamePath(repoRoot, moluoHome)) {
+    return;
+  }
+
   syncOptionalDir(path.join(repoRoot, 'agents'), path.join(moluoHome, 'agents'));
   copyRequiredFile(path.join(repoRoot, 'AGENTS.md'), path.join(moluoHome, 'AGENTS.md'));
 }

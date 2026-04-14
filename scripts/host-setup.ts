@@ -130,7 +130,7 @@ async function main() {
   const userHome = path.dirname(path.resolve(args.home));
   const paths = getDefaultInstallPaths(userHome);
   paths.moluoHome = path.resolve(args.home);
-  paths.repoRoot = paths.moluoHome;
+  paths.repoRoot = repoRoot;
 
   ensureInstallRoot(paths);
   ensureGlobalSkillLink(paths);
