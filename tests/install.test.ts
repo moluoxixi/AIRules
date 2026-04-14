@@ -1,25 +1,35 @@
 import test from 'node:test';
-import assert from 'node:assert/strict';
+import assert from 'node:assert';
 import fs from 'node:fs';
 import path from 'node:path';
 import os from 'node:os';
-import { projectSkillsToHost } from '../scripts/lib/install.mjs';
+import { 
+  projectSkillsToHost, 
+  getDefaultInstallPaths,
+  type InstallPaths
+} from '../scripts/lib/install.js';
 
 function setupMockEnvironment() {
   const tmpDir = fs.mkdtempSync(path.join(os.tmpdir(), 'moluoxixi-test-'));
-  const userHome = path.join(tmpDir, 'home');
+  const userHome = path.join(tmpDir, 'user');
   const moluoHome = path.join(userHome, '.moluoxixi');
-  const claudeHome = path.join(userHome, '.claude');
-
-  // Create base directories
-  fs.mkdirSync(moluoHome, { recursive: true });
-  fs.mkdirSync(path.join(moluoHome, 'skills', 'skill-a'), { recursive: true });
-  fs.mkdirSync(path.join(moluoHome, 'skills', 'skill-b'), { recursive: true });
   
+  fs.mkdirSync(userHome, { recursive: true });
+  fs.mkdirSync(moluoHome, { recursive: true });
+  
+  // Create some dummy skills in .moluoxixi/skills
+  const skillsBase = path.join(moluoHome, 'skills');
+  fs.mkdirSync(skillsBase, { recursive: true });
+  fs.mkdirSync(path.join(skillsBase, 'skill-a'), { recursive: true });
+  fs.mkdirSync(path.join(skillsBase, 'skill-b'), { recursive: true });
+
+  const claudeHome = path.join(userHome, '.claude');
+  fs.mkdirSync(claudeHome, { recursive: true });
+
   return { tmpDir, userHome, moluoHome, claudeHome };
 }
 
-function cleanup(tmpDir) {
+function cleanup(tmpDir: string) {
   fs.rmSync(tmpDir, { recursive: true, force: true });
 }
 
@@ -33,20 +43,14 @@ test('Installation linking - Without .agents', () => {
     // Verify ~/.claude/skills exists
     assert.ok(fs.existsSync(claudeSkillsDir), 'Claude skills directory should exist');
 
-    // Verify skill-a links directly to moluoxixi
+    // Verify it contains skill-a and skill-b as symlinks
     const skillA = path.join(claudeSkillsDir, 'skill-a');
     assert.ok(fs.lstatSync(skillA).isSymbolicLink(), 'skill-a should be a symlink');
     
-    // It should point to ~/.moluoxixi/skills/skill-a
-    const rawLinkPath = fs.readlinkSync(skillA);
-    const resolvedLinkTarget = path.resolve(path.dirname(skillA), rawLinkPath);
-    const expectedTarget = path.join(moluoHome, 'skills', 'skill-a');
-    
-    // Compare resolved target values
+    const target = path.resolve(path.dirname(skillA), fs.readlinkSync(skillA));
     assert.strictEqual(
-      path.normalize(resolvedLinkTarget),
-      path.normalize(expectedTarget),
-      'Link should point directly to .moluoxixi/skills/skill-a'
+      path.normalize(target),
+      path.normalize(path.join(moluoHome, 'skills', 'skill-a'))
     );
 
     // Verify .agents/skills does not exist

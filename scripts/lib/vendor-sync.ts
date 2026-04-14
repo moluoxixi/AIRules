@@ -1,8 +1,9 @@
 import { existsSync, mkdirSync } from 'node:fs';
 import path from 'node:path';
-import { spawnSync } from 'node:child_process';
+import { spawnSync, type StdioOptions } from 'node:child_process';
+import type { Vendor } from './vendors.js';
 
-function runGit(args, cwd, options = {}) {
+function runGit(args: string[], cwd: string, options: { stdio?: StdioOptions } = {}): string {
   const result = spawnSync('git', args, {
     cwd,
     encoding: 'utf8',
@@ -11,14 +12,14 @@ function runGit(args, cwd, options = {}) {
   });
 
   if (result.status !== 0) {
-    const stderr = (result.stderr ?? '').trim();
+    const stderr = (result.stderr as string ?? '').trim();
     throw new Error(`git ${args.join(' ')} failed with exit code ${result.status}${stderr ? `: ${stderr}` : ''}`);
   }
 
-  return (result.stdout ?? '').trim();
+  return (result.stdout as string ?? '').trim();
 }
 
-export function getRemoteDefaultBranch(cloneDir) {
+export function getRemoteDefaultBranch(cloneDir: string): string {
   try {
     const ref = runGit(['-C', cloneDir, 'symbolic-ref', 'refs/remotes/origin/HEAD'], process.cwd());
     return ref.replace('refs/remotes/origin/', '');
@@ -51,13 +52,13 @@ export function getRemoteDefaultBranch(cloneDir) {
   }
 }
 
-function getCurrentBranch(cloneDir) {
+function getCurrentBranch(cloneDir: string): string {
   return runGit(['-C', cloneDir, 'branch', '--show-current'], process.cwd());
 }
 
-function getSparsePatterns(vendor) {
+function getSparsePatterns(vendor: Vendor): string[] {
   if (!vendor.links?.length) return [];
-  const topDirs = new Set();
+  const topDirs = new Set<string>();
   for (const link of vendor.links) {
     const first = link.source.split('/')[0];
     if (first) topDirs.add(first);
@@ -65,18 +66,16 @@ function getSparsePatterns(vendor) {
   return [...topDirs];
 }
 
-function isLocalRepo(repoUrl) {
-  // 纯本地路径不支持可靠的 shallow clone；file:// 可以按远端仓库处理。
+function isLocalRepo(repoUrl: string): boolean {
   return !repoUrl.includes('://');
 }
 
-export function ensureVendorRepo(homeDir, vendor) {
+export function ensureVendorRepo(homeDir: string, vendor: Vendor): string {
   const cloneDir = path.resolve(homeDir, vendor.cloneDir);
   mkdirSync(path.dirname(cloneDir), { recursive: true });
   const sparsePatterns = getSparsePatterns(vendor);
 
   if (!existsSync(path.join(cloneDir, '.git'))) {
-    // 远程仓库统一使用浅克隆；本地仓库保留普通 clone，避免 git 本地优化绕过 shallow。
     if (isLocalRepo(vendor.repo)) {
       runGit(['clone', vendor.repo, cloneDir], process.cwd(), { stdio: 'inherit' });
     } else {

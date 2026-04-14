@@ -19,6 +19,7 @@ Moluoxixi AI Workflow Distribution 是一个基于 [superpowers](https://github.
 ## 支持的宿主
 
 - Claude / Claude Code
+- Cursor
 - Codex CLI
 - Qoder IDE
 - tare
@@ -40,6 +41,24 @@ Fetch and follow instructions from https://raw.githubusercontent.com/moluoxixi/A
 
 ```
 Fetch and follow instructions from https://raw.githubusercontent.com/moluoxixi/AIRules/refs/heads/main/.claude/UPGRADE.md
+```
+
+## Cursor
+
+### 安装
+
+告诉 Cursor:
+
+```
+Fetch and follow instructions from https://raw.githubusercontent.com/moluoxixi/AIRules/refs/heads/main/.cursor/INSTALL.md
+```
+
+### 更新
+
+告诉 Cursor:
+
+```
+Fetch and follow instructions from https://raw.githubusercontent.com/moluoxixi/AIRules/refs/heads/main/.cursor/UPGRADE.md
 ```
 
 ## Codex

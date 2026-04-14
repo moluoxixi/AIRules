@@ -26,6 +26,7 @@ It is built on top of [superpowers](https://github.com/obra/superpowers) and pac
 ## Host Support
 
 - Claude / Claude Code
+- Cursor
 - Codex CLI
 - Qoder IDE
 - tare
@@ -47,6 +48,24 @@ Tell Claude:
 
 ```
 Fetch and follow instructions from https://raw.githubusercontent.com/moluoxixi/AIRules/refs/heads/main/.claude/UPGRADE.md
+```
+
+## Cursor
+
+### Install
+
+Tell Cursor:
+
+```
+Fetch and follow instructions from https://raw.githubusercontent.com/moluoxixi/AIRules/refs/heads/main/.cursor/INSTALL.md
+```
+
+### Upgrade
+
+Tell Cursor:
+
+```
+Fetch and follow instructions from https://raw.githubusercontent.com/moluoxixi/AIRules/refs/heads/main/.cursor/UPGRADE.md
 ```
 
 ## Codex

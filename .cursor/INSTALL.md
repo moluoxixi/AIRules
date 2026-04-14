@@ -1,10 +1,10 @@
-# Moluoxixi Skills Installation Guide (openCode)
+# Moluoxixi Skills Installation Guide (Cursor)
 
 ## Prerequisites
 
 - Git installed
 - Node.js installed
-- openCode installed
+- Cursor installed
 
 ## Command
 
@@ -19,7 +19,7 @@ else
   git clone https://github.com/moluoxixi/AIRules.git ~/.moluoxixi
 fi
 
-npx tsx ~/.moluoxixi/scripts/host-setup.ts --host opencode --mode install
+npx tsx ~/.moluoxixi/scripts/host-setup.ts --host cursor --mode install
 ```
 
 ### Windows PowerShell
@@ -33,5 +33,5 @@ if (Test-Path "~/.moluoxixi/.git") {
   git clone https://github.com/moluoxixi/AIRules.git "~/.moluoxixi"
 }
 
-npx tsx ~/.moluoxixi/scripts/host-setup.ts --host opencode --mode install
+npx tsx ~/.moluoxixi/scripts/host-setup.ts --host cursor --mode install
 ```

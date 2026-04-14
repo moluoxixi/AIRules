@@ -12,15 +12,15 @@ import {
 import os from 'node:os';
 import path from 'node:path';
 
-import { buildLinkPlan } from './links.mjs';
-import { loadVendorManifest, normalizePath } from './vendors.mjs';
+import { buildLinkPlan, type LinkEntry } from './links.js';
+import { loadVendorManifest, normalizePath } from './vendors.js';
 
-function resetDir(targetDir) {
+function resetDir(targetDir: string) {
   rmSync(targetDir, { recursive: true, force: true });
   mkdirSync(targetDir, { recursive: true });
 }
 
-function copyDirContents(sourceDir, targetDir, options = {}) {
+function copyDirContents(sourceDir: string, targetDir: string, options: { skipSymlinks?: boolean } = {}) {
   mkdirSync(targetDir, { recursive: true });
 
   for (const entry of readdirSync(sourceDir, { withFileTypes: true })) {
@@ -39,13 +39,13 @@ function copyDirContents(sourceDir, targetDir, options = {}) {
   }
 }
 
-function copyRequiredFile(sourceFile, targetFile) {
+function copyRequiredFile(sourceFile: string, targetFile: string) {
   mkdirSync(path.dirname(targetFile), { recursive: true });
   rmSync(targetFile, { recursive: true, force: true });
   cpSync(sourceFile, targetFile);
 }
 
-function syncOptionalDir(sourceDir, targetDir) {
+function syncOptionalDir(sourceDir: string, targetDir: string) {
   if (!existsSync(sourceDir)) {
     rmSync(targetDir, { recursive: true, force: true });
     return;
@@ -55,14 +55,14 @@ function syncOptionalDir(sourceDir, targetDir) {
   copyDirContents(sourceDir, targetDir);
 }
 
-function collectLeafSkillDirs(rootDir) {
+function collectLeafSkillDirs(rootDir: string): string[] {
   if (!existsSync(rootDir)) {
     return [];
   }
 
-  const leaves = [];
+  const leaves: string[] = [];
 
-  function walk(currentDir) {
+  function walk(currentDir: string) {
     if (existsSync(path.join(currentDir, 'SKILL.md'))) {
       leaves.push(currentDir);
       return;
@@ -83,8 +83,8 @@ function collectLeafSkillDirs(rootDir) {
   return leaves.sort((left, right) => left.localeCompare(right));
 }
 
-function projectLeafSkillLinks(vendorSkillsDir, skillsDir) {
-  const projectedSkills = new Map();
+function projectLeafSkillLinks(vendorSkillsDir: string, skillsDir: string): string[] {
+  const projectedSkills = new Map<string, string>();
 
   for (const leafDir of collectLeafSkillDirs(vendorSkillsDir)) {
     const leafName = path.basename(leafDir);
@@ -106,21 +106,43 @@ function projectLeafSkillLinks(vendorSkillsDir, skillsDir) {
   return [...projectedSkills.keys()].sort();
 }
 
-function linkTypeForCurrentPlatform() {
+function linkTypeForCurrentPlatform(): 'junction' | 'dir' {
   return process.platform === 'win32' ? 'junction' : 'dir';
 }
 
-function linkFileForCurrentPlatform() {
-  return process.platform === 'win32' ? 'file' : 'file';
+function linkFileForCurrentPlatform(): 'file' {
+  return 'file';
 }
 
-function replaceWithSymlink(source, target, type) {
+export function replaceWithSymlink(source: string, target: string, type: 'junction' | 'dir' | 'file') {
   mkdirSync(path.dirname(target), { recursive: true });
   rmSync(target, { recursive: true, force: true });
   symlinkSync(source, target, type);
 }
 
-export function getDefaultInstallPaths(userHome = os.homedir()) {
+export interface InstallPaths {
+  userHome: string;
+  moluoHome: string;
+  repoRoot: string;
+  claudeHome: string;
+  codexHome: string;
+  cursorHome: string;
+  codexAgentSkillsHome: string;
+  qoderHome: string;
+  tareHome: string;
+  opencodeHome: string;
+  opencodeSkillsHome: string;
+  moluoBaselineFile: string;
+  claudeBaselineFile: string;
+  codexBaselineFile: string;
+  cursorBaselineFile: string;
+  qoderBaselineFile: string;
+  tareBaselineFile: string;
+  opencodeBaselineFile: string;
+  [key: string]: string;
+}
+
+export function getDefaultInstallPaths(userHome = os.homedir()): InstallPaths {
   const moluoHome = path.join(userHome, '.moluoxixi');
   const opencodeHome = path.join(userHome, '.config', 'opencode');
 
@@ -130,6 +152,7 @@ export function getDefaultInstallPaths(userHome = os.homedir()) {
     repoRoot: moluoHome,
     claudeHome: path.join(userHome, '.claude'),
     codexHome: path.join(userHome, '.codex'),
+    cursorHome: path.join(userHome, '.cursor'),
     codexAgentSkillsHome: path.join(userHome, '.agents', 'skills'),
     qoderHome: path.join(userHome, '.qoder'),
     tareHome: path.join(userHome, '.tare'),
@@ -138,13 +161,14 @@ export function getDefaultInstallPaths(userHome = os.homedir()) {
     moluoBaselineFile: path.join(moluoHome, 'AGENTS.md'),
     claudeBaselineFile: path.join(userHome, '.claude', 'CLAUDE.md'),
     codexBaselineFile: path.join(userHome, '.codex', 'AGENTS.md'),
+    cursorBaselineFile: path.join(userHome, '.cursor', 'AGENTS.md'),
     qoderBaselineFile: path.join(userHome, '.qoder', 'AGENTS.md'),
     tareBaselineFile: path.join(userHome, '.tare', 'AGENTS.md'),
     opencodeBaselineFile: path.join(opencodeHome, 'AGENTS.md')
   };
 }
 
-export function ensureInstallRoot(paths) {
+export function ensureInstallRoot(paths: InstallPaths) {
   for (const dir of [
     paths.moluoHome,
     path.join(paths.moluoHome, 'vendor'),
@@ -156,46 +180,45 @@ export function ensureInstallRoot(paths) {
   }
 }
 
-export function syncFirstPartyToHome(repoRoot, moluoHome) {
+export function syncFirstPartyToHome(repoRoot: string, moluoHome: string) {
   syncOptionalDir(path.join(repoRoot, 'agents'), path.join(moluoHome, 'agents'));
   copyRequiredFile(path.join(repoRoot, 'AGENTS.md'), path.join(moluoHome, 'AGENTS.md'));
 }
 
-export function rebuildVendorSkillLinks({ homeDir, manifestPath }) {
-  return loadVendorManifest(manifestPath).then((manifest) => {
-    const plan = buildLinkPlan(manifest, homeDir);
-    const vendorSkillsDir = path.join(homeDir, 'vendor', 'skills');
-    const skillsDir = path.join(homeDir, 'skills');
+export async function rebuildVendorSkillLinks({ homeDir, manifestPath }: { homeDir: string, manifestPath: string }): Promise<LinkEntry[]> {
+  const manifest = await loadVendorManifest(manifestPath);
+  const plan = buildLinkPlan(manifest, homeDir);
+  const vendorSkillsDir = path.join(homeDir, 'vendor', 'skills');
+  const skillsDir = path.join(homeDir, 'skills');
 
-    resetDir(vendorSkillsDir);
+  resetDir(vendorSkillsDir);
 
-    for (const entry of plan) {
-      if (!existsSync(entry.source)) {
-        continue;
-      }
-
-      mkdirSync(path.dirname(entry.target), { recursive: true });
-      rmSync(entry.target, { recursive: true, force: true });
-      symlinkSync(entry.source, entry.target, linkTypeForCurrentPlatform());
+  for (const entry of plan) {
+    if (!existsSync(entry.source)) {
+      continue;
     }
 
-    const projectedSkillNames = projectLeafSkillLinks(vendorSkillsDir, skillsDir);
+    mkdirSync(path.dirname(entry.target), { recursive: true });
+    rmSync(entry.target, { recursive: true, force: true });
+    symlinkSync(entry.source, entry.target, linkTypeForCurrentPlatform());
+  }
 
-    const gitignoreContent = [
-      '# 由 rebuild-links.mjs 自动生成，请勿手动编辑',
-      '# 这些 vendor skill 软链接应被 git 忽略',
-      ...projectedSkillNames,
-      ''
-    ].join('\n');
+  const projectedSkillNames = projectLeafSkillLinks(vendorSkillsDir, skillsDir);
 
-    mkdirSync(skillsDir, { recursive: true });
-    writeFileSync(path.join(skillsDir, '.gitignore'), gitignoreContent, 'utf8');
+  const gitignoreContent = [
+    '# 由 rebuild-links.ts 自动生成，请勿手动编辑',
+    '# 这些 vendor skill 软链接应被 git 忽略',
+    ...projectedSkillNames,
+    ''
+  ].join('\n');
 
-    return plan;
-  });
+  mkdirSync(skillsDir, { recursive: true });
+  writeFileSync(path.join(skillsDir, '.gitignore'), gitignoreContent, 'utf8');
+
+  return plan;
 }
 
-export function projectSkillsToHost(userHome, moluoHome, hostSkillsHome) {
+export function projectSkillsToHost(userHome: string, moluoHome: string, hostSkillsHome: string) {
   const sourceSkillsDir = path.join(moluoHome, 'skills');
   const ccSwitchDir = path.join(userHome, '.cc-switch');
   const ccSwitchSkillsDir = path.join(ccSwitchDir, 'skills');
@@ -204,7 +227,7 @@ export function projectSkillsToHost(userHome, moluoHome, hostSkillsHome) {
 
   mkdirSync(hostSkillsHome, { recursive: true });
 
-  const skillDirs = [];
+  const skillDirs: string[] = [];
   if (existsSync(sourceSkillsDir)) {
     for (const entry of readdirSync(sourceSkillsDir, { withFileTypes: true })) {
       if (entry.name !== '.gitignore' && (entry.isDirectory() || entry.isSymbolicLink())) {
@@ -245,7 +268,7 @@ export function projectSkillsToHost(userHome, moluoHome, hostSkillsHome) {
   }
 }
 
-function projectSharedSkillsHost(userHome, hostHome, moluoHome, customSkillsDirName = 'skills') {
+function projectSharedSkillsHost(userHome: string, hostHome: string, moluoHome: string, customSkillsDirName: string = 'skills') {
   mkdirSync(hostHome, { recursive: true });
   rmSync(path.join(hostHome, 'rules'), { recursive: true, force: true });
   rmSync(path.join(hostHome, 'agents'), { recursive: true, force: true });
@@ -253,60 +276,39 @@ function projectSharedSkillsHost(userHome, hostHome, moluoHome, customSkillsDirN
   projectSkillsToHost(userHome, moluoHome, path.join(hostHome, customSkillsDirName));
 
   if (existsSync(path.join(moluoHome, 'agents'))) {
-    symlinkSync(path.join(moluoHome, 'agents'), path.join(hostHome, 'agents'), linkTypeForCurrentPlatform());
+    const agentsSource = path.join(moluoHome, 'agents');
+    const agentsTarget = path.join(hostHome, 'agents');
+    replaceWithSymlink(agentsSource, agentsTarget, linkTypeForCurrentPlatform());
   }
 }
 
-export function projectToClaude({ moluoHome, claudeHome, userHome }) {
-  projectSharedSkillsHost(userHome, claudeHome, moluoHome);
+export function projectToHost({ 
+  userHome, 
+  moluoHome, 
+  hostHome, 
+  hostBaselineFile, 
+  customSkillsDirName = 'skills' 
+}: { 
+  userHome: string, 
+  moluoHome: string, 
+  hostHome: string, 
+  hostBaselineFile: string, 
+  customSkillsDirName?: string 
+}) {
+  projectSharedSkillsHost(userHome, hostHome, moluoHome, customSkillsDirName);
   replaceWithSymlink(
     path.join(moluoHome, 'AGENTS.md'),
-    path.join(claudeHome, 'CLAUDE.md'),
+    hostBaselineFile,
     linkFileForCurrentPlatform()
   );
 }
 
-export function projectToQoder({ moluoHome, qoderHome, userHome }) {
-  projectSharedSkillsHost(userHome, qoderHome, moluoHome);
-  replaceWithSymlink(
-    path.join(moluoHome, 'AGENTS.md'),
-    path.join(qoderHome, 'AGENTS.md'),
-    linkFileForCurrentPlatform()
-  );
-}
-
-export function projectToCodex({ moluoHome, codexHome, userHome }) {
-  projectSharedSkillsHost(userHome, codexHome, moluoHome);
-  replaceWithSymlink(
-    path.join(moluoHome, 'AGENTS.md'),
-    path.join(codexHome, 'AGENTS.md'),
-    linkFileForCurrentPlatform()
-  );
-}
-
-export function projectToTare({ moluoHome, tareHome, userHome }) {
-  projectSharedSkillsHost(userHome, tareHome, moluoHome);
-  replaceWithSymlink(
-    path.join(moluoHome, 'AGENTS.md'),
-    path.join(tareHome, 'AGENTS.md'),
-    linkFileForCurrentPlatform()
-  );
-}
-
-export function projectToOpenCode({ moluoHome, opencodeHome, userHome }) {
-  projectSharedSkillsHost(userHome, opencodeHome, moluoHome);
-  replaceWithSymlink(
-    path.join(moluoHome, 'AGENTS.md'),
-    path.join(opencodeHome, 'AGENTS.md'),
-    linkFileForCurrentPlatform()
-  );
-}
-
-export function linkHostBaseline({ moluoHome, host, userHome = os.homedir() }) {
+export function linkHostBaseline({ moluoHome, host, userHome = os.homedir() }: { moluoHome: string, host: string, userHome?: string }): string {
   const source = path.join(moluoHome, 'AGENTS.md');
-  const targets = {
+  const targets: Record<string, string> = {
     claude: path.join(userHome, '.claude', 'CLAUDE.md'),
     codex: path.join(userHome, '.codex', 'AGENTS.md'),
+    cursor: path.join(userHome, '.cursor', 'AGENTS.md'),
     qoder: path.join(userHome, '.qoder', 'AGENTS.md'),
     tare: path.join(userHome, '.tare', 'AGENTS.md'),
     opencode: path.join(userHome, '.config', 'opencode', 'AGENTS.md')

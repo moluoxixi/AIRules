@@ -6,72 +6,32 @@
 - Node.js installed
 - Qoder IDE working properly
 
-## Goal
-
-After installation, the shared content lives at:
-
-```text
-~/.moluoxixi/
-  skills/   # Flattened host-facing leaf skill entrypoints
-  agents/
-  vendor/
-  AGENTS.md
-```
-
-Qoder reads from:
-
-```text
-~/.qoder/skills   -> ~/.moluoxixi/skills
-~/.qoder/agents   -> ~/.moluoxixi/agents   # only if agents are present
-~/.qoder/AGENTS.md -> ~/.moluoxixi/AGENTS.md
-```
-
 ## Command
 
 ### macOS / Linux
 
 ```bash
-mkdir -p "${HOME}/.moluoxixi"
+mkdir -p ~/.moluoxixi
 
-if [ -d "${HOME}/.moluoxixi/.git" ]; then
-  git -C "${HOME}/.moluoxixi" pull --ff-only
+if [ -d ~/.moluoxixi/.git ]; then
+  git -C ~/.moluoxixi pull --ff-only
 else
-  git clone https://github.com/moluoxixi/AIRules.git "${HOME}/.moluoxixi"
+  git clone https://github.com/moluoxixi/AIRules.git ~/.moluoxixi
 fi
 
-node "${HOME}/.moluoxixi/scripts/host-setup.mjs" --host qoder --mode install --home "${HOME}/.moluoxixi"
+npx tsx ~/.moluoxixi/scripts/host-setup.ts --host qoder --mode install
 ```
 
 ### Windows PowerShell
 
 ```powershell
-New-Item -ItemType Directory -Force -Path "$env:USERPROFILE\\.moluoxixi" | Out-Null
+New-Item -ItemType Directory -Force -Path "~/.moluoxixi" | Out-Null
 
-if (Test-Path "$env:USERPROFILE\\.moluoxixi\\.git") {
-  git -C "$env:USERPROFILE\\.moluoxixi" pull --ff-only
+if (Test-Path "~/.moluoxixi/.git") {
+  git -C "~/.moluoxixi" pull --ff-only
 } else {
-  git clone https://github.com/moluoxixi/AIRules.git "$env:USERPROFILE\\.moluoxixi"
+  git clone https://github.com/moluoxixi/AIRules.git "~/.moluoxixi"
 }
 
-node "$env:USERPROFILE\\.moluoxixi\\scripts\\host-setup.mjs" --host qoder --mode install --home "$env:USERPROFILE\\.moluoxixi"
+npx tsx ~/.moluoxixi/scripts/host-setup.ts --host qoder --mode install
 ```
-
-## Verification
-
-```bash
-ls ~/.moluoxixi/skills
-ls ~/.qoder/skills
-ls ~/.qoder/AGENTS.md
-```
-
-If agents are installed, also verify:
-
-```bash
-ls ~/.qoder/agents
-```
-
-Checkpoints:
-
-- `~/.qoder/skills/` points to `~/.moluoxixi/skills/`
-- `~/.qoder/AGENTS.md` points to `~/.moluoxixi/AGENTS.md`
-- `~/.qoder/agents/` exists only when `~/.moluoxixi/agents/` exists

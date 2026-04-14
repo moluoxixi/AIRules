@@ -5,20 +5,13 @@
 ### macOS / Linux
 
 ```bash
-git -C "${HOME}/.moluoxixi" pull --ff-only
-node "${HOME}/.moluoxixi/scripts/host-setup.mjs" --host codex --mode upgrade --home "${HOME}/.moluoxixi"
+git -C ~/.moluoxixi pull --ff-only
+npx tsx ~/.moluoxixi/scripts/host-setup.ts --host codex --mode upgrade
 ```
 
 ### Windows PowerShell
 
 ```powershell
-git -C "$env:USERPROFILE\\.moluoxixi" pull --ff-only
-node "$env:USERPROFILE\\.moluoxixi\\scripts\\host-setup.mjs" --host codex --mode upgrade --home "$env:USERPROFILE\\.moluoxixi"
+git -C "~/.moluoxixi" pull --ff-only
+npx tsx ~/.moluoxixi/scripts/host-setup.ts --host codex --mode upgrade
 ```
-
-## Verification
-
-Confirm after upgrade:
-
-- `~/.agents/skills/moluoxixi` still points to `~/.moluoxixi/skills`
-- `~/.codex/AGENTS.md` still points to `~/.moluoxixi/AGENTS.md`

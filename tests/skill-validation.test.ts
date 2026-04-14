@@ -23,7 +23,7 @@ test('Agent Skills Validation', async (t) => {
     if (baseDirs.length === 0) continue;
 
     // Collect all skills safely handling superpowers exceptional nesting
-    let skillsToTest = [];
+    let skillsToTest: { name: string; path: string }[] = [];
     for (const dName of baseDirs) {
       if (dName.startsWith('.')) continue;
 

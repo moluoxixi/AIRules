@@ -1,40 +1,46 @@
-#!/usr/bin/env node
+#!/usr/bin/env npx tsx
 import os from 'node:os';
 import path from 'node:path';
 
-import { loadVendorManifest } from './lib/vendors.mjs';
-import { ensureVendorRepo } from './lib/vendor-sync.mjs';
+import { loadVendorManifest } from './lib/vendors.js';
+import { ensureVendorRepo } from './lib/vendor-sync.js';
 import {
   ensureInstallRoot,
   getDefaultInstallPaths,
   linkHostBaseline,
-  projectToClaude,
-  projectToCodex,
-  projectToOpenCode,
-  projectToQoder,
-  projectToTare,
+  projectToHost,
   rebuildVendorSkillLinks,
-  syncFirstPartyToHome
-} from './lib/install.mjs';
+  syncFirstPartyToHome,
+  type InstallPaths
+} from './lib/install.js';
+
+interface Args {
+  host: string;
+  mode: string;
+  home: string;
+  skipVendors: boolean;
+  help: boolean;
+}
 
 function printHelp() {
-  console.log(`Usage: node scripts/host-setup.mjs --host <name> --mode <install|upgrade> [--home <dir>] [--skip-vendors]
+  console.log(`Usage: npx tsx scripts/host-setup.ts --host <name> --mode <install|upgrade> [--home <dir>] [--skip-vendors]
 
 Hosts:
   claude
   codex
+  cursor
   qoder
   tare
   opencode
 
 Examples:
-  node scripts/host-setup.mjs --host claude --mode install
-  node scripts/host-setup.mjs --host codex --mode upgrade --home ~/.moluoxixi
+  npx tsx scripts/host-setup.ts --host claude --mode install
+  npx tsx scripts/host-setup.ts --host codex --mode upgrade --home ~/.moluoxixi
 `);
 }
 
-function parseArgs(argv) {
-  const args = {
+function parseArgs(argv: string[]): Args {
+  const args: Args = {
     host: '',
     mode: '',
     home: path.join(os.homedir(), '.moluoxixi'),
@@ -65,7 +71,7 @@ function parseArgs(argv) {
   return args;
 }
 
-function assertRequiredArgs(args) {
+function assertRequiredArgs(args: Args) {
   if (!args.host) {
     throw new Error('Missing required --host argument');
   }
@@ -75,50 +81,39 @@ function assertRequiredArgs(args) {
   }
 }
 
-function syncVendorsIfNeeded(homeDir, repoRoot, skipVendors) {
+async function syncVendorsIfNeeded(homeDir: string, repoRoot: string, skipVendors: boolean) {
   if (skipVendors) {
     return;
   }
 
-  return loadVendorManifest(path.join(repoRoot, 'constants', 'skills.js')).then((manifest) => {
-    for (const vendor of Object.values(manifest.vendors ?? {})) {
-      ensureVendorRepo(homeDir, vendor);
-    }
-  });
+  const manifest = await loadVendorManifest(path.join(repoRoot, 'constants', 'skills.js'));
+  for (const vendor of Object.values(manifest.vendors ?? {})) {
+    ensureVendorRepo(homeDir, vendor);
+  }
 }
 
-function projectHost(args, paths) {
-  switch (args.host) {
-    case 'claude':
-      projectToClaude({ moluoHome: paths.moluoHome, claudeHome: paths.claudeHome, userHome: paths.userHome });
-      break;
-    case 'codex':
-      projectToCodex({
-        moluoHome: paths.moluoHome,
-        codexHome: paths.codexHome,
-        userHome: paths.userHome
-      });
-      break;
-    case 'qoder':
-      projectToQoder({ moluoHome: paths.moluoHome, qoderHome: paths.qoderHome, userHome: paths.userHome });
-      break;
-    case 'tare':
-      projectToTare({
-        moluoHome: paths.moluoHome,
-        tareHome: paths.tareHome,
-        userHome: paths.userHome
-      });
-      break;
-    case 'opencode':
-      projectToOpenCode({
-        moluoHome: paths.moluoHome,
-        opencodeHome: paths.opencodeHome,
-        userHome: paths.userHome
-      });
-      break;
-    default:
-      throw new Error(`Unknown host: ${args.host}`);
+function projectHost(args: Args, paths: InstallPaths) {
+  const hostConfig: Record<string, { hostHome: string, hostBaselineFile: string, customSkillsDirName?: string }> = {
+    claude: { hostHome: paths.claudeHome, hostBaselineFile: paths.claudeBaselineFile },
+    cursor: { hostHome: paths.cursorHome, hostBaselineFile: paths.cursorBaselineFile, customSkillsDirName: 'cursor-skills' },
+    codex: { hostHome: paths.codexHome, hostBaselineFile: paths.codexBaselineFile },
+    qoder: { hostHome: paths.qoderHome, hostBaselineFile: paths.qoderBaselineFile },
+    tare: { hostHome: paths.tareHome, hostBaselineFile: paths.tareBaselineFile },
+    opencode: { hostHome: paths.opencodeHome, hostBaselineFile: paths.opencodeBaselineFile }
+  };
+
+  const config = hostConfig[args.host];
+  if (!config) {
+    throw new Error(`Unknown host: ${args.host}`);
   }
+
+  projectToHost({
+    userHome: paths.userHome,
+    moluoHome: paths.moluoHome,
+    hostHome: config.hostHome,
+    hostBaselineFile: config.hostBaselineFile,
+    customSkillsDirName: config.customSkillsDirName
+  });
 }
 
 async function main() {

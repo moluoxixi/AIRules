@@ -1,11 +1,29 @@
 import path from 'node:path';
 import { pathToFileURL } from 'node:url';
 
-export function normalizePath(value) {
+export function normalizePath(value: string): string {
   return value.replace(/\\/g, '/');
 }
 
-function isVendorEntry(value) {
+export interface VendorLink {
+  kind: string;
+  source: string;
+  target: string;
+}
+
+export interface Vendor {
+  official?: boolean;
+  repo: string;
+  cloneDir: string;
+  links: VendorLink[];
+}
+
+export interface VendorManifest {
+  version: number;
+  vendors: Record<string, Vendor>;
+}
+
+function isVendorEntry(value: any): boolean {
   return Boolean(
     value &&
     typeof value === 'object' &&
@@ -14,11 +32,11 @@ function isVendorEntry(value) {
   );
 }
 
-function buildTargetPath(namespaceParts, outputName) {
+function buildTargetPath(namespaceParts: string[], outputName: string): string {
   return path.posix.join('vendor', 'skills', ...namespaceParts, outputName);
 }
 
-function buildLinksForEntry(namespaceParts, entry) {
+function buildLinksForEntry(namespaceParts: string[], entry: any): VendorLink[] {
   if (entry.sourceDir) {
     return [{
       kind: 'namespace-dir',
@@ -30,12 +48,12 @@ function buildLinksForEntry(namespaceParts, entry) {
   const sourceBaseDir = entry.sourceBaseDir ?? 'skills';
   return Object.entries(entry.skills ?? {}).map(([sourceName, outputName]) => ({
     kind: 'skill',
-    source: path.posix.join(sourceBaseDir, sourceName),
-    target: buildTargetPath(namespaceParts, outputName),
+    source: path.posix.join(sourceBaseDir, sourceName as string),
+    target: buildTargetPath(namespaceParts, outputName as string),
   }));
 }
 
-function mergeVendor(vendors, vendorName, namespaceParts, entry) {
+function mergeVendor(vendors: Record<string, Vendor>, vendorName: string, namespaceParts: string[], entry: any) {
   if (entry.local === true) {
     throw new Error('Local vendor entries are not supported');
   }
@@ -65,7 +83,7 @@ function mergeVendor(vendors, vendorName, namespaceParts, entry) {
   existing.links.push(...links);
 }
 
-function walkVendorTree(node, namespaceParts, vendors) {
+function walkVendorTree(node: any, namespaceParts: string[], vendors: Record<string, Vendor>) {
   if (Array.isArray(node)) {
     for (const entry of node) {
       if (!isVendorEntry(entry)) {
@@ -82,7 +100,7 @@ function walkVendorTree(node, namespaceParts, vendors) {
   }
 }
 
-export async function loadVendorManifest(manifestPath) {
+export async function loadVendorManifest(manifestPath: string): Promise<VendorManifest> {
   const manifestUrl = manifestPath instanceof URL
     ? manifestPath.href
     : pathToFileURL(path.resolve(manifestPath)).href;
@@ -92,7 +110,7 @@ export async function loadVendorManifest(manifestPath) {
     throw new Error(`Vendor manifest "${manifestPath}" must export a "vendors" object`);
   }
 
-  const vendors = {};
+  const vendors: Record<string, Vendor> = {};
   walkVendorTree(vendorTree, [], vendors);
 
   return {
@@ -101,10 +119,10 @@ export async function loadVendorManifest(manifestPath) {
   };
 }
 
-export function getRepoRoot(fromFileUrl) {
+export function getRepoRoot(fromFileUrl: string): string {
   return path.resolve(new URL('../..', fromFileUrl).pathname);
 }
 
-export function resolveHomePath(homeDir, relativePath) {
+export function resolveHomePath(homeDir: string, relativePath: string): string {
   return normalizePath(path.resolve(homeDir, relativePath));
 }

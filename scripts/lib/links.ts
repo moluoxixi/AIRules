@@ -1,9 +1,14 @@
 import path from 'node:path';
+import { normalizePath, type VendorManifest } from './vendors.js';
 
-import { normalizePath } from './vendors.mjs';
+export interface LinkEntry {
+  vendorId: string;
+  source: string;
+  target: string;
+}
 
-export function buildLinkPlan(manifest, homeDir) {
-  const plan = [];
+export function buildLinkPlan(manifest: VendorManifest, homeDir: string): LinkEntry[] {
+  const plan: LinkEntry[] = [];
 
   for (const [vendorId, vendor] of Object.entries(manifest.vendors ?? {})) {
     for (const link of vendor.links ?? []) {
