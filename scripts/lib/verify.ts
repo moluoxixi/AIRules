@@ -91,8 +91,12 @@ export async function verifyHost(host: string, moluoHome: string): Promise<boole
         validCount++;
       } else {
         const real = realpathSync(skillPath);
-        // 简单校验是否指向本地 moluoxixi 路径
-        if (real.includes('.moluoxixi') || real.includes(path.basename(moluoHome))) {
+        const normalizedReal = path.resolve(real);
+        const normalizedMoluo = path.resolve(moluoHome);
+        const normalizedRepo = path.resolve(process.cwd());
+
+        // 验证指向是否在 moluoxixi 内部或仓库根目录
+        if (normalizedReal.startsWith(normalizedMoluo) || normalizedReal.startsWith(normalizedRepo)) {
            validCount++;
         } else {
            console.warn(`[WARN] 链接指向外部路径: ${skill} -> ${real}`);

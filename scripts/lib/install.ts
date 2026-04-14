@@ -219,21 +219,26 @@ export function syncFlattenedSkills(sourceDir: string, targetDir: string, moluoH
     for (const entry of readdirSync(targetDir, { withFileTypes: true })) {
       const targetPath = path.join(targetDir, entry.name);
       
-      // 我们只处理那些我们可能创建过的软链接
       if (entry.isSymbolicLink()) {
-        try {
-          const resolvedPath = realpathSync(targetPath);
-          const normalizedResolved = path.resolve(resolvedPath);
-          const normalizedMoluo = path.resolve(moluoHome);
+        const isBroken = !existsSync(targetPath);
 
-          // 如果该链接指向 moluoxixi 主目录，但不在当前技能集合中，则视为过时并移除
-          if (normalizedResolved.startsWith(normalizedMoluo) && !currentSkills.has(entry.name)) {
-            rmSync(targetPath, { recursive: true, force: true });
-          }
-        } catch (error) {
-          // 如果链接失效（目标已不存在）或权限受限，则将其视为死链接并清理
+        if (isBroken) {
           rmSync(targetPath, { recursive: true, force: true });
           console.log(`[cleanup] 已移除失效的死链接: ${entry.name}`);
+          continue;
+        }
+
+        const resolvedPath = realpathSync(targetPath);
+        const normalizedResolved = path.resolve(resolvedPath);
+        const normalizedMoluo = path.resolve(moluoHome);
+        const normalizedRepo = path.resolve(process.cwd()); // 仓库根目录
+
+        const isInternal = normalizedResolved.startsWith(normalizedMoluo) || 
+                           normalizedResolved.startsWith(normalizedRepo);
+
+        // 如果该链接指向我们的项目，但不在当前技能集合中，则视为过时并移除
+        if (isInternal && !currentSkills.has(entry.name)) {
+          rmSync(targetPath, { recursive: true, force: true });
         }
       }
     }
@@ -243,6 +248,7 @@ export function syncFlattenedSkills(sourceDir: string, targetDir: string, moluoH
   for (const skillName of currentSkills) {
     const source = path.join(sourceDir, skillName);
     const target = path.join(targetDir, skillName);
+    
     replaceWithSymlink(source, target, linkTypeForCurrentPlatform());
   }
 }
@@ -256,6 +262,7 @@ export function syncFirstPartyToHome(repoRoot: string, moluoHome: string) {
   }
 
   syncOptionalDir(path.join(repoRoot, 'agents'), path.join(moluoHome, 'agents'));
+  syncOptionalDir(path.join(repoRoot, 'skills'), path.join(moluoHome, 'skills')); // 同步第一方技能目录
   copyRequiredFile(path.join(repoRoot, 'AGENTS.md'), path.join(moluoHome, 'AGENTS.md'));
 }
 
