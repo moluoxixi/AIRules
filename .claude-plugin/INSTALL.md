@@ -1,34 +1,42 @@
-# Moluoxixi Skills 安装指南 (Claude)
+# AIRules 安装指南 (Claude Code)
+
+通过原生插件发现机制在 Claude Code 中启用 AIRules。
 
 ## 前置条件
 
-- 已安装 Git
-- 已安装 Node.js
-- Claude / Claude Code 运行正常
+- Claude Code CLI
+- Git & Node.js
 
-## 安装指令
+## 安装步骤
 
-### 市场安装 (推荐)
+1. **运行标准安装脚本：**
+   ```bash
+   git clone https://github.com/moluoxixi/AIRules.git ~/.moluoxixi
+   cd ~/.moluoxixi
+   npm install
+   npm run setup -- --host claude --mode install
+   ```
 
-在 Claude Code 中，先注册插件市场：
+2. **重启 Claude Code** 以发现新技能。
+
+## 验证 (Verification)
+
+运行以下命令查看已安装的技能：
 
 ```bash
-/plugin marketplace add moluoxixi/AIRules
+ls -la ~/.claude/skills/
 ```
 
-然后从该市场安装插件：
+你应该能看到 `antfu`, `gemini`, `superpowers` 等技能。
+
+## 更新 (Update)
 
 ```bash
-/plugin install moluoxixi-ai-rules@AIRules
+cd ~/.moluoxixi && git pull && npm run setup -- --host claude --mode install
 ```
 
-### 手动安装 (推荐)
-
-克隆仓库并运行标准安装脚本：
+## 卸载 (Uninstall)
 
 ```bash
-git clone https://github.com/moluoxixi/AIRules.git ~/.moluoxixi
-cd ~/.moluoxixi
-npm install
-npm run setup -- --host claude --mode install
+npm run setup -- --host claude --mode uninstall
 ```

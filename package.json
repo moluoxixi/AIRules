@@ -3,7 +3,6 @@
   "version": "0.1.0",
   "private": true,
   "type": "module",
-  "main": ".opencode/plugins/moluoxixi.js",
   "description": "Personal AI workflow distribution built on top of superpowers.",
   "license": "MIT",
   "repository": "https://github.com/moluoxixi/AIRules",

@@ -1,38 +1,40 @@
-# Moluoxixi Skills 安装指南 (OpenCode)
+# AIRules 安装指南 (OpenCode)
+
+在 OpenCode 中启用 AIRules。
 
 ## 前置条件
 
-- 已安装 [OpenCode.ai](https://opencode.ai)
+- OpenCode CLI
+- Git & Node.js
 
 ## 安装步骤
 
-在你的 `opencode.json` (全局或项目级) 的 `plugin` 数组中添加 moluoxixi：
+1. **运行标准安装脚本：**
+   ```bash
+   git clone https://github.com/moluoxixi/AIRules.git ~/.moluoxixi
+   cd ~/.moluoxixi
+   npm install
+   npm run setup -- --host opencode --mode install
+   ```
 
-```json
-{
-  "plugin": ["moluoxixi@git+https://github.com/moluoxixi/AIRules.git"]
-}
-```
+2. **重启 OpenCode**。
 
-重启 OpenCode。大功告成 —— 插件会自动安装并注册所有技能。
+## 验证 (Verification)
 
-### 手动安装 (本地开发)
-
-克隆并运行安装脚本：
+运行以下命令查看已安装的技能：
 
 ```bash
-git clone https://github.com/moluoxixi/AIRules.git ~/.moluoxixi
-cd ~/.moluoxixi
-npm install
-npm run setup -- --host opencode --mode install
+ls -la ~/.config/opencode/skills/
 ```
 
-可以通过询问 “Tell me about your moluoxixi skills” 来验证。
+## 更新 (Update)
 
-## 更新
+```bash
+cd ~/.moluoxixi && git pull && npm run setup -- --host opencode --mode install
+```
 
-当你重启 OpenCode 时，技能会自动更新。
+## 卸载 (Uninstall)
 
-## 故障排除
-
-使用 OpenCode 原生的 `skill` 工具可以列出已发现的技能。
+```bash
+npm run setup -- --host opencode --mode uninstall
+```

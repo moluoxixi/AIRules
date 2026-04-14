@@ -10,42 +10,29 @@ As soon as your agent sees a task, it doesn't just write code. It steps back to 
 
 ## Installation
 
-AIRules is distributed as a set of native plugins and marketplace extensions.
+AIRules uses a **script-driven installation model**. Depending on the AI agent you use, tell it to read its specific instructions and follow the steps:
 
-### Claude Code
-Register the marketplace and install the plugin:
-
-```bash
-/plugin marketplace add moluoxixi/AIRules
-/plugin install moluoxixi-ai-rules@AIRules
-```
-
-### Cursor
-Add the repository as a plugin in Cursor Agent:
-
-```text
-/add-plugin https://github.com/moluoxixi/AIRules
-```
-
-### OpenCode
-Add the plugin to your `opencode.json`:
-
-```json
-{
-  "plugin": ["moluoxixi@git+https://github.com/moluoxixi/AIRules.git"]
-}
-```
-
-**Detailed docs:** [docs/README.opencode.md](docs/README.opencode.md)
-
-### Codex / General Agents
-Tell your agent to follow the instructions:
-
-```text
+### 1. Codex / General
 Fetch and follow instructions from https://raw.githubusercontent.com/moluoxixi/AIRules/refs/heads/main/.codex/INSTALL.md
-```
 
-**Detailed docs:** [docs/README.codex.md](docs/README.codex.md)
+### 2. Claude Code
+Fetch and follow instructions from https://raw.githubusercontent.com/moluoxixi/AIRules/refs/heads/main/.claude-plugin/INSTALL.md
+
+### 3. Cursor
+Fetch and follow instructions from https://raw.githubusercontent.com/moluoxixi/AIRules/refs/heads/main/.cursor-plugin/INSTALL.md
+
+### 4. Qoder
+Fetch and follow instructions from https://raw.githubusercontent.com/moluoxixi/AIRules/refs/heads/main/.qoder/INSTALL.md
+
+### 5. Tare
+Fetch and follow instructions from https://raw.githubusercontent.com/moluoxixi/AIRules/refs/heads/main/.tare/INSTALL.md
+
+### 6. OpenCode
+Fetch and follow instructions from https://raw.githubusercontent.com/moluoxixi/AIRules/refs/heads/main/.opencode/INSTALL.md
+
+---
+> [!TIP]
+> All installation flows ultimately use `npm run setup` locally to ensure the physical integrity of the 50+ vendor skills.
 
 ## Core Skills
 

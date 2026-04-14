@@ -1,22 +1,42 @@
-# Moluoxixi Skills 安装指南 (Cursor)
+# AIRules 安装指南 (Cursor)
+
+在 Cursor Agent 中启用 AIRules。
 
 ## 前置条件
 
-- 已安装 Cursor
+- Cursor Desktop
+- Git & Node.js
 
-## 安装指令
+## 安装步骤
 
-在 Cursor Agent 聊天中直接添加插件：
+1. **运行标准安装脚本：**
+   ```bash
+   git clone https://github.com/moluoxixi/AIRules.git ~/.moluoxixi
+   cd ~/.moluoxixi
+   npm install
+   npm run setup -- --host cursor --mode install
+   ```
 
-```text
-/add-plugin https://github.com/moluoxixi/AIRules
-```
+2. **重启 Cursor** (或刷新 Agent 窗口)。
 
-或者克隆仓库后，运行标准安装脚本：
+## 验证 (Verification)
+
+运行以下命令查看已安装的技能：
 
 ```bash
-git clone https://github.com/moluoxixi/AIRules.git ~/.moluoxixi
-cd ~/.moluoxixi
-npm install
-npm run setup -- --host cursor --mode install
+ls -la ~/.cursor/skills/
+```
+
+你应该能看到 `antfu`, `gemini`, `superpowers` 等技能。
+
+## 更新 (Update)
+
+```bash
+cd ~/.moluoxixi && git pull && npm run setup -- --host cursor --mode install
+```
+
+## 卸载 (Uninstall)
+
+```bash
+npm run setup -- --host cursor --mode uninstall
 ```

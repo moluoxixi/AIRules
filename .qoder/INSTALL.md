@@ -1,6 +1,11 @@
-# Moluoxixi Skills 安装指南 (Qoder)
+# AIRules 安装指南 (Qoder)
 
-通过原生技能发现机制在 Qoder 中启用 Moluoxixi 技能。
+在 Qoder 中启用 AIRules。
+
+## 前置条件
+
+- Qoder CLI
+- Git & Node.js
 
 ## 安装步骤
 
@@ -12,4 +17,24 @@
    npm run setup -- --host qoder --mode install
    ```
 
-3. **重启 Qoder** 以发现新技能。
+2. **重启 Qoder**。
+
+## 验证 (Verification)
+
+运行以下命令查看已安装的技能：
+
+```bash
+ls -la ~/.qoder/skills/
+```
+
+## 更新 (Update)
+
+```bash
+cd ~/.moluoxixi && git pull && npm run setup -- --host qoder --mode install
+```
+
+## 卸载 (Uninstall)
+
+```bash
+npm run setup -- --host qoder --mode uninstall
+```

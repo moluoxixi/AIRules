@@ -96,7 +96,7 @@ async function syncVendorsIfNeeded(homeDir: string, repoRoot: string, skipVendor
 function projectHost(args: Args, paths: InstallPaths) {
   const hostConfig: Record<string, { hostHome: string, hostBaselineFile: string, customSkillsDirName?: string }> = {
     claude: { hostHome: paths.claudeHome, hostBaselineFile: paths.claudeBaselineFile },
-    cursor: { hostHome: paths.cursorHome, hostBaselineFile: paths.cursorBaselineFile, customSkillsDirName: 'cursor-skills' },
+    cursor: { hostHome: paths.cursorHome, hostBaselineFile: paths.cursorBaselineFile, customSkillsDirName: 'skills-cursor' },
     codex: { hostHome: paths.codexHome, hostBaselineFile: paths.codexBaselineFile },
     qoder: { hostHome: paths.qoderHome, hostBaselineFile: paths.qoderBaselineFile },
     tare: { hostHome: paths.tareHome, hostBaselineFile: paths.tareBaselineFile },
