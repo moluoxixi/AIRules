@@ -1,37 +1,15 @@
-# Moluoxixi Skills Installation Guide (Qoder)
+# Moluoxixi Skills 安装指南 (Qoder)
 
-## Prerequisites
+通过原生技能发现机制在 Qoder 中启用 Moluoxixi 技能。
 
-- Git installed
-- Node.js installed
-- Qoder IDE working properly
+## 安装步骤
 
-## Command
+1. **运行标准安装脚本：**
+   ```bash
+   git clone https://github.com/moluoxixi/AIRules.git ~/.moluoxixi
+   cd ~/.moluoxixi
+   npm install
+   npm run setup -- --host qoder --mode install
+   ```
 
-### macOS / Linux
-
-```bash
-mkdir -p ~/.moluoxixi
-
-if [ -d ~/.moluoxixi/.git ]; then
-  git -C ~/.moluoxixi pull --ff-only
-else
-  git clone https://github.com/moluoxixi/AIRules.git ~/.moluoxixi
-fi
-
-npx tsx ~/.moluoxixi/scripts/host-setup.ts --host qoder --mode install
-```
-
-### Windows PowerShell
-
-```powershell
-New-Item -ItemType Directory -Force -Path "~/.moluoxixi" | Out-Null
-
-if (Test-Path "~/.moluoxixi/.git") {
-  git -C "~/.moluoxixi" pull --ff-only
-} else {
-  git clone https://github.com/moluoxixi/AIRules.git "~/.moluoxixi"
-}
-
-npx tsx ~/.moluoxixi/scripts/host-setup.ts --host qoder --mode install
-```
+3. **重启 Qoder** 以发现新技能。

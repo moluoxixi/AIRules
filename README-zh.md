@@ -1,148 +1,64 @@
-# Moluoxixi AI Workflow Distribution
+# Moluoxixi AIRules (个人 AI 开发规则集)
 
-英文说明请见 [README.md](README.md)。
+Moluoxixi AIRules 是基于 Superpowers 架构开发的个人 AI 开发工作流与技能分发版。它提供了一套可组合的“技能”，旨在将你的 AI 代理提升为具备专业工程思维的协作伙伴。
 
-Moluoxixi AI Workflow Distribution 是一个基于 [superpowers](https://github.com/obra/superpowers) 的、以 skills-first 为核心的个人 AI 工作流发行版。
+## 工作原理
 
-它面向 Claude、Codex、Qoder、tare 和 openCode，提供统一的技能分发、宿主接入方式与本地安装结构。
+AIRules 不仅仅是代码片段的集合，它是一套系统性的 AI 辅助开发方法论。从最初的设计阶段到子代理驱动的实现，再到 TDD（测试驱动开发）验证，AIRules 确保你的 AI 代理始终遵循专业的工程标准。
 
-## 这个发行版包含什么
+当 AI 代理接收到任务时，它不会直接盲目写代码，而是先进入头脑风暴阶段，制定详细的实施计划，并通过严格的测试和审查阶段逐步推进任务。
 
-- 位于仓库根目录的 `AGENTS.md`，作为宿主全局规则的唯一源文件
-- 克隆到 `vendor/repos/` 下的远程 vendor skill 仓库
-- 放在 `vendor/skills/` 下的最终技能产物树
-- 通过 `~/.moluoxixi/skills/` 暴露给宿主的 leaf skill 投影入口
-- 通过 `constants/skills.js` 声明并投影到各宿主的 vendor skills
-- 放在 `agents/` 下的第一方 agents，用于编排型辅助角色
-- 分别位于 `.claude/`、`.codex/`、`.qoder/`、`.tare/`、`.opencode/` 下的宿主安装与升级文档
+## 安装指南
 
-## 支持的宿主
+AIRules 以原生插件和市场扩展的形式进行分发。
 
-- Claude / Claude Code
-- Cursor
-- Codex CLI
-- Qoder IDE
-- tare
-- openCode
+### Claude Code
+注册市场并安装插件：
 
-## Claude
-
-### 安装
-
-告诉 Claude:
-
-```
-Fetch and follow instructions from https://raw.githubusercontent.com/moluoxixi/AIRules/refs/heads/main/.claude/INSTALL.md
+```bash
+/plugin marketplace add moluoxixi/AIRules
+/plugin install moluoxixi-ai-rules@AIRules
 ```
 
-### 更新
+### Cursor
+在 Cursor Agent 聊天中添加插件：
 
-告诉 Claude:
-
-```
-Fetch and follow instructions from https://raw.githubusercontent.com/moluoxixi/AIRules/refs/heads/main/.claude/UPGRADE.md
-```
-
-## Cursor
-
-### 安装
-
-告诉 Cursor:
-
-```
-Fetch and follow instructions from https://raw.githubusercontent.com/moluoxixi/AIRules/refs/heads/main/.cursor/INSTALL.md
+```text
+/add-plugin https://github.com/moluoxixi/AIRules
 ```
 
-### 更新
+### OpenCode
+在 `opencode.json` 中添加插件配置：
 
-告诉 Cursor:
-
+```json
+{
+  "plugin": ["moluoxixi@git+https://github.com/moluoxixi/AIRules.git"]
+}
 ```
-Fetch and follow instructions from https://raw.githubusercontent.com/moluoxixi/AIRules/refs/heads/main/.cursor/UPGRADE.md
-```
 
-## Codex
+**详细内容:** [docs/README.opencode.md](docs/README.opencode.md)
 
-### 安装
+### Codex / 其他代理
+直接告诉你的 AI 代理：
 
-告诉 Codex:
-
-```
+```text
 Fetch and follow instructions from https://raw.githubusercontent.com/moluoxixi/AIRules/refs/heads/main/.codex/INSTALL.md
 ```
 
-### 更新
+**详细内容:** [docs/README.codex.md](docs/README.codex.md)
 
-告诉 Codex:
+## 核心技能
 
-```
-Fetch and follow instructions from https://raw.githubusercontent.com/moluoxixi/AIRules/refs/heads/main/.codex/UPGRADE.md
-```
+1. **frontend-workflow** - 针对现代前端开发的专业工作流，强调组件规范和状态管理。
+2. **skill-creator-pro** - 用于在该分发版中设计、编写和测试新技能的元技能（Meta-skill）。
+3. **skill-seekers** - 根据当前上下文自动发现并加载相关的技能。
 
-## Qoder
+## 开发哲学
 
-### 安装
+- **个性化工作流**：反映特定工程审美和项目需求的量身定制规则。
+- **系统化胜过随机性**：每一次代码变更都应遵循计划并通过测试。
+- **发现优先**：技能由环境自然发现并按需加载，无需繁琐的手动配置。
 
-告诉 Qoder:
+## 许可证
 
-```
-Fetch and follow instructions from https://raw.githubusercontent.com/moluoxixi/AIRules/refs/heads/main/.qoder/INSTALL.md
-```
-
-### 更新
-
-告诉 Qoder:
-
-```
-Fetch and follow instructions from https://raw.githubusercontent.com/moluoxixi/AIRules/refs/heads/main/.qoder/UPGRADE.md
-```
-
-## tare
-
-### 安装
-
-告诉 tare:
-
-```
-Fetch and follow instructions from https://raw.githubusercontent.com/moluoxixi/AIRules/refs/heads/main/.tare/INSTALL.md
-```
-
-### 更新
-
-告诉 tare:
-
-```
-Fetch and follow instructions from https://raw.githubusercontent.com/moluoxixi/AIRules/refs/heads/main/.tare/UPGRADE.md
-```
-
-## openCode
-
-### 安装
-
-告诉 openCode:
-
-```
-Fetch and follow instructions from https://raw.githubusercontent.com/moluoxixi/AIRules/refs/heads/main/.opencode/INSTALL.md
-```
-
-### 更新
-
-告诉 openCode:
-
-```
-Fetch and follow instructions from https://raw.githubusercontent.com/moluoxixi/AIRules/refs/heads/main/.opencode/UPGRADE.md
-```
-
-## 核心定位
-
-- 这是一个 `skills-first` 的仓库，而不是 `rules-first`
-- `superpowers/*` 仍然是底层流程基线
-- 第一方 skills 负责表达你的工作方式与技术偏好
-- 各宿主通过各自的入口文件把同一套技能树投影到本机
-
-## 技能目录约定
-
-- `constants/skills.js` 负责声明哪些远程 vendor 仓库会被同步到 `vendor/repos/`
-- 同一个 manifest 也负责声明这些 vendor source 如何进入 `vendor/skills/`
-- `vendor/skills/` 是唯一的最终产物树
-- 宿主消费的 `~/.moluoxixi/skills/` 只保留来自 `vendor/skills/` 的扁平 leaf skill 入口
+MIT

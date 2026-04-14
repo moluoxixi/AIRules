@@ -1,37 +1,38 @@
-# Moluoxixi Skills Installation Guide (openCode)
+# Moluoxixi Skills 安装指南 (OpenCode)
 
-## Prerequisites
+## 前置条件
 
-- Git installed
-- Node.js installed
-- openCode installed
+- 已安装 [OpenCode.ai](https://opencode.ai)
 
-## Command
+## 安装步骤
 
-### macOS / Linux
+在你的 `opencode.json` (全局或项目级) 的 `plugin` 数组中添加 moluoxixi：
+
+```json
+{
+  "plugin": ["moluoxixi@git+https://github.com/moluoxixi/AIRules.git"]
+}
+```
+
+重启 OpenCode。大功告成 —— 插件会自动安装并注册所有技能。
+
+### 手动安装 (本地开发)
+
+克隆并运行安装脚本：
 
 ```bash
-mkdir -p ~/.moluoxixi
-
-if [ -d ~/.moluoxixi/.git ]; then
-  git -C ~/.moluoxixi pull --ff-only
-else
-  git clone https://github.com/moluoxixi/AIRules.git ~/.moluoxixi
-fi
-
-npx tsx ~/.moluoxixi/scripts/host-setup.ts --host opencode --mode install
+git clone https://github.com/moluoxixi/AIRules.git ~/.moluoxixi
+cd ~/.moluoxixi
+npm install
+npm run setup -- --host opencode --mode install
 ```
 
-### Windows PowerShell
+可以通过询问 “Tell me about your moluoxixi skills” 来验证。
 
-```powershell
-New-Item -ItemType Directory -Force -Path "~/.moluoxixi" | Out-Null
+## 更新
 
-if (Test-Path "~/.moluoxixi/.git") {
-  git -C "~/.moluoxixi" pull --ff-only
-} else {
-  git clone https://github.com/moluoxixi/AIRules.git "~/.moluoxixi"
-}
+当你重启 OpenCode 时，技能会自动更新。
 
-npx tsx ~/.moluoxixi/scripts/host-setup.ts --host opencode --mode install
-```
+## 故障排除
+
+使用 OpenCode 原生的 `skill` 工具可以列出已发现的技能。

@@ -6,6 +6,7 @@ import { loadVendorManifest } from './lib/vendors.js';
 import { ensureVendorRepo } from './lib/vendor-sync.js';
 import {
   ensureInstallRoot,
+  ensureGlobalSkillLink,
   getDefaultInstallPaths,
   linkHostBaseline,
   projectToHost,
@@ -132,6 +133,7 @@ async function main() {
   paths.repoRoot = paths.moluoHome;
 
   ensureInstallRoot(paths);
+  ensureGlobalSkillLink(paths);
   syncFirstPartyToHome(repoRoot, paths.moluoHome);
   await syncVendorsIfNeeded(paths.moluoHome, repoRoot, args.skipVendors);
   await rebuildVendorSkillLinks({

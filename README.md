@@ -1,141 +1,64 @@
-# Moluoxixi AI Workflow Distribution
+# Moluoxixi AIRules
 
-For Chinese documentation, see [README-zh.md](README-zh.md).
+Moluoxixi AIRules is a personal distribution of AI coding workflows and skills, built on top of the Superpowers foundation. It provides a cohesive set of composable "skills" that transform your AI agent into a sophisticated engineering partner.
 
-Moluoxixi AI Workflow Distribution is a superpowers-based, skills-first workflow distribution for personal AI coding.
+## How it works
 
-It is built on top of [superpowers](https://github.com/obra/superpowers) and packages a consistent workflow layer across Claude, Codex, Qoder, tare, and openCode.
+AIRules isn't just a collection of snippets; it's a systematic approach to AI-assisted development. From initial design to subagent-driven implementation and TDD verification, AIRules ensures your agent follows professional engineering standards.
 
-## What This Distribution Includes
+As soon as your agent sees a task, it doesn't just write code. It steps back to brainstorm, creates detailed implementation plans, and works through tasks with rigorous testing and review stages.
 
-- A shared root `AGENTS.md` as the single baseline source for host global guidance
-- Remote vendor skill repositories cloned under `vendor/repos/`
-- Final skill artifacts under `vendor/skills/`
-- Host-visible projected skills exposed as leaf entrypoints through `~/.moluoxixi/skills/`
-- Vendor skills declared in `constants/skills.js` and projected into each host
-- First-party agents in `agents/` for orchestration roles
-- Multi-host install/upgrade docs in `.claude/`, `.codex/`, `.qoder/`, `.tare/`, and `.opencode/`
+## Installation
 
-## Skill Layout
+AIRules is distributed as a set of native plugins and marketplace extensions.
 
-- `constants/skills.js` defines which remote vendor repositories are synced into `vendor/repos/`
-- The same manifest defines how those vendor sources are classified into `vendor/skills/`
-- `vendor/skills/` is the only final artifact tree
-- Installed host entrypoints read from `~/.moluoxixi/skills/`, which is a flat projection of leaf skill directories from `vendor/skills/`
+### Claude Code
+Register the marketplace and install the plugin:
 
-## Host Support
-
-- Claude / Claude Code
-- Cursor
-- Codex CLI
-- Qoder IDE
-- tare
-- openCode
-
-## Claude
-
-### Install
-
-Tell Claude:
-
-```
-Fetch and follow instructions from https://raw.githubusercontent.com/moluoxixi/AIRules/refs/heads/main/.claude/INSTALL.md
+```bash
+/plugin marketplace add moluoxixi/AIRules
+/plugin install moluoxixi-ai-rules@AIRules
 ```
 
-### Upgrade
+### Cursor
+Add the repository as a plugin in Cursor Agent:
 
-Tell Claude:
-
-```
-Fetch and follow instructions from https://raw.githubusercontent.com/moluoxixi/AIRules/refs/heads/main/.claude/UPGRADE.md
-```
-
-## Cursor
-
-### Install
-
-Tell Cursor:
-
-```
-Fetch and follow instructions from https://raw.githubusercontent.com/moluoxixi/AIRules/refs/heads/main/.cursor/INSTALL.md
+```text
+/add-plugin https://github.com/moluoxixi/AIRules
 ```
 
-### Upgrade
+### OpenCode
+Add the plugin to your `opencode.json`:
 
-Tell Cursor:
-
+```json
+{
+  "plugin": ["moluoxixi@git+https://github.com/moluoxixi/AIRules.git"]
+}
 ```
-Fetch and follow instructions from https://raw.githubusercontent.com/moluoxixi/AIRules/refs/heads/main/.cursor/UPGRADE.md
-```
 
-## Codex
+**Detailed docs:** [docs/README.opencode.md](docs/README.opencode.md)
 
-### Install
+### Codex / General Agents
+Tell your agent to follow the instructions:
 
-Tell Codex:
-
-```
+```text
 Fetch and follow instructions from https://raw.githubusercontent.com/moluoxixi/AIRules/refs/heads/main/.codex/INSTALL.md
 ```
 
-### Upgrade
+**Detailed docs:** [docs/README.codex.md](docs/README.codex.md)
 
-Tell Codex:
+## Core Skills
 
-```
-Fetch and follow instructions from https://raw.githubusercontent.com/moluoxixi/AIRules/refs/heads/main/.codex/UPGRADE.md
-```
+1. **frontend-workflow** - Specialized workflows for modern frontend development, emphasizing component hygiene and state management.
+2. **skill-creator-pro** - A meta-skill for designing, documenting, and testing new AI skills within this distribution.
+3. **skill-seekers** - Automatic discovery and loading of relevant skills based on the current context.
 
-## Qoder
+## Philosophy
 
-### Install
+- **Personalized Workflow**: Tailored rules that reflect specific engineering tastes and project needs.
+- **Systematic over ad-hoc**: Every change follows a plan and passes a test.
+- **Discovery-first**: Skills are naturally discovered and loaded by the environment.
 
-Tell Qoder:
+## License
 
-```
-Fetch and follow instructions from https://raw.githubusercontent.com/moluoxixi/AIRules/refs/heads/main/.qoder/INSTALL.md
-```
-
-### Upgrade
-
-Tell Qoder:
-
-```
-Fetch and follow instructions from https://raw.githubusercontent.com/moluoxixi/AIRules/refs/heads/main/.qoder/UPGRADE.md
-```
-
-## tare
-
-### Install
-
-Tell tare:
-
-```
-Fetch and follow instructions from https://raw.githubusercontent.com/moluoxixi/AIRules/refs/heads/main/.tare/INSTALL.md
-```
-
-### Upgrade
-
-Tell tare:
-
-```
-Fetch and follow instructions from https://raw.githubusercontent.com/moluoxixi/AIRules/refs/heads/main/.tare/UPGRADE.md
-```
-
-## openCode
-
-### Install
-
-Tell openCode:
-
-```
-Fetch and follow instructions from https://raw.githubusercontent.com/moluoxixi/AIRules/refs/heads/main/.opencode/INSTALL.md
-```
-
-### Upgrade
-
-Tell openCode:
-
-```
-Fetch and follow instructions from https://raw.githubusercontent.com/moluoxixi/AIRules/refs/heads/main/.opencode/UPGRADE.md
-```
+MIT

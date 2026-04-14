@@ -139,6 +139,7 @@ export interface InstallPaths {
   qoderBaselineFile: string;
   tareBaselineFile: string;
   opencodeBaselineFile: string;
+  globalAgentSkillsHome: string;
   [key: string]: string;
 }
 
@@ -158,6 +159,7 @@ export function getDefaultInstallPaths(userHome = os.homedir()): InstallPaths {
     tareHome: path.join(userHome, '.tare'),
     opencodeHome,
     opencodeSkillsHome: path.join(opencodeHome, 'skills'),
+    globalAgentSkillsHome: path.join(userHome, '.agents', 'skills'),
     moluoBaselineFile: path.join(moluoHome, 'AGENTS.md'),
     claudeBaselineFile: path.join(userHome, '.claude', 'CLAUDE.md'),
     codexBaselineFile: path.join(userHome, '.codex', 'AGENTS.md'),
@@ -174,10 +176,18 @@ export function ensureInstallRoot(paths: InstallPaths) {
     path.join(paths.moluoHome, 'vendor'),
     path.join(paths.moluoHome, 'vendor', 'repos'),
     path.join(paths.moluoHome, 'vendor', 'skills'),
-    path.join(paths.moluoHome, 'skills')
+    path.join(paths.moluoHome, 'skills'),
+    paths.globalAgentSkillsHome
   ]) {
     mkdirSync(dir, { recursive: true });
   }
+}
+
+export function ensureGlobalSkillLink(paths: InstallPaths) {
+  const sourceSkillsDir = path.join(paths.moluoHome, 'skills');
+  const targetLink = path.join(paths.globalAgentSkillsHome, 'moluoxixi');
+
+  replaceWithSymlink(sourceSkillsDir, targetLink, linkTypeForCurrentPlatform());
 }
 
 export function syncFirstPartyToHome(repoRoot: string, moluoHome: string) {

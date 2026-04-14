@@ -1,37 +1,39 @@
-# Moluoxixi Skills Installation Guide (Codex)
+# Moluoxixi Skills 安装指南 (Codex)
 
-## Prerequisites
+通过原生技能发现机制在 Codex 中启用 Moluoxixi 技能。只需克隆并建立软链接。
 
-- Git installed
-- Node.js installed
-- Codex CLI installed
+## 前置条件
 
-## Command
+- Git
 
-### macOS / Linux
+## 安装步骤
+
+1. **运行标准安装脚本：**
+   ```bash
+   git clone https://github.com/moluoxixi/AIRules.git ~/.moluoxixi
+   cd ~/.moluoxixi
+   npm install
+   npm run setup -- --host codex --mode install
+   ```
+
+3. **重启 Codex** (退出并重新启动 CLI) 以发现新技能。
+
+## 验证
 
 ```bash
-mkdir -p ~/.moluoxixi
-
-if [ -d ~/.moluoxixi/.git ]; then
-  git -C ~/.moluoxixi pull --ff-only
-else
-  git clone https://github.com/moluoxixi/AIRules.git ~/.moluoxixi
-fi
-
-npx tsx ~/.moluoxixi/scripts/host-setup.ts --host codex --mode install
+ls -la ~/.agents/skills/moluoxixi
 ```
 
-### Windows PowerShell
+你应该能看到一个指向 moluoxixi 技能目录的软链接（Windows 上为联接点）。
 
-```powershell
-New-Item -ItemType Directory -Force -Path "~/.moluoxixi" | Out-Null
+## 更新
 
-if (Test-Path "~/.moluoxixi/.git") {
-  git -C "~/.moluoxixi" pull --ff-only
-} else {
-  git clone https://github.com/moluoxixi/AIRules.git "~/.moluoxixi"
-}
+```bash
+cd ~/.moluoxixi && git pull
+```
 
-npx tsx ~/.moluoxixi/scripts/host-setup.ts --host codex --mode install
+## 卸载
+
+```bash
+rm ~/.agents/skills/moluoxixi
 ```
