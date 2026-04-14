@@ -90,30 +90,30 @@ function syncVendorsIfNeeded(homeDir, repoRoot, skipVendors) {
 function projectHost(args, paths) {
   switch (args.host) {
     case 'claude':
-      projectToClaude({ moluoHome: paths.moluoHome, claudeHome: paths.claudeHome });
+      projectToClaude({ moluoHome: paths.moluoHome, claudeHome: paths.claudeHome, userHome: paths.userHome });
       break;
     case 'codex':
       projectToCodex({
         moluoHome: paths.moluoHome,
         codexHome: paths.codexHome,
-        codexAgentSkillsHome: paths.codexAgentSkillsHome
+        userHome: paths.userHome
       });
       break;
     case 'qoder':
-      projectToQoder({ moluoHome: paths.moluoHome, qoderHome: paths.qoderHome });
+      projectToQoder({ moluoHome: paths.moluoHome, qoderHome: paths.qoderHome, userHome: paths.userHome });
       break;
     case 'tare':
       projectToTare({
         moluoHome: paths.moluoHome,
         tareHome: paths.tareHome,
-        codexAgentSkillsHome: paths.codexAgentSkillsHome
+        userHome: paths.userHome
       });
       break;
     case 'opencode':
       projectToOpenCode({
         moluoHome: paths.moluoHome,
         opencodeHome: paths.opencodeHome,
-        opencodeSkillsHome: paths.opencodeSkillsHome
+        userHome: paths.userHome
       });
       break;
     default:

@@ -195,21 +195,58 @@ export function rebuildVendorSkillLinks({ homeDir, manifestPath }) {
   });
 }
 
-function projectSharedSkillsHost(hostHome, moluoHome) {
+export function projectSkillsToHost(userHome, moluoHome, hostSkillsHome) {
+  const sourceSkillsDir = path.join(moluoHome, 'skills');
+  const agentsDir = path.join(userHome, '.agents');
+  const agentsSkillsDir = path.join(agentsDir, 'skills');
+
+  mkdirSync(hostSkillsHome, { recursive: true });
+
+  const skillDirs = [];
+  if (existsSync(sourceSkillsDir)) {
+    for (const entry of readdirSync(sourceSkillsDir, { withFileTypes: true })) {
+      if (entry.name !== '.gitignore' && (entry.isDirectory() || entry.isSymbolicLink())) {
+        skillDirs.push(entry.name);
+      }
+    }
+  }
+
+  const useAgents = existsSync(agentsDir);
+  if (useAgents) {
+    mkdirSync(agentsSkillsDir, { recursive: true });
+  }
+
+  rmSync(hostSkillsHome, { recursive: true, force: true });
+  mkdirSync(hostSkillsHome, { recursive: true });
+
+  for (const skillName of skillDirs) {
+    const moluoSkillPath = path.join(sourceSkillsDir, skillName);
+    
+    let finalSource = moluoSkillPath;
+    if (useAgents) {
+      const agentSkillPath = path.join(agentsSkillsDir, skillName);
+      replaceWithSymlink(moluoSkillPath, agentSkillPath, linkTypeForCurrentPlatform());
+      finalSource = agentSkillPath;
+    }
+    
+    replaceWithSymlink(finalSource, path.join(hostSkillsHome, skillName), linkTypeForCurrentPlatform());
+  }
+}
+
+function projectSharedSkillsHost(userHome, hostHome, moluoHome) {
   mkdirSync(hostHome, { recursive: true });
   rmSync(path.join(hostHome, 'rules'), { recursive: true, force: true });
-  rmSync(path.join(hostHome, 'skills'), { recursive: true, force: true });
   rmSync(path.join(hostHome, 'agents'), { recursive: true, force: true });
 
-  symlinkSync(path.join(moluoHome, 'skills'), path.join(hostHome, 'skills'), linkTypeForCurrentPlatform());
+  projectSkillsToHost(userHome, moluoHome, path.join(hostHome, 'skills'));
 
   if (existsSync(path.join(moluoHome, 'agents'))) {
     symlinkSync(path.join(moluoHome, 'agents'), path.join(hostHome, 'agents'), linkTypeForCurrentPlatform());
   }
 }
 
-export function projectToClaude({ moluoHome, claudeHome }) {
-  projectSharedSkillsHost(claudeHome, moluoHome);
+export function projectToClaude({ moluoHome, claudeHome, userHome }) {
+  projectSharedSkillsHost(userHome, claudeHome, moluoHome);
   replaceWithSymlink(
     path.join(moluoHome, 'AGENTS.md'),
     path.join(claudeHome, 'CLAUDE.md'),
@@ -217,8 +254,8 @@ export function projectToClaude({ moluoHome, claudeHome }) {
   );
 }
 
-export function projectToQoder({ moluoHome, qoderHome }) {
-  projectSharedSkillsHost(qoderHome, moluoHome);
+export function projectToQoder({ moluoHome, qoderHome, userHome }) {
+  projectSharedSkillsHost(userHome, qoderHome, moluoHome);
   replaceWithSymlink(
     path.join(moluoHome, 'AGENTS.md'),
     path.join(qoderHome, 'AGENTS.md'),
@@ -226,14 +263,8 @@ export function projectToQoder({ moluoHome, qoderHome }) {
   );
 }
 
-export function projectToCodex({ moluoHome, codexHome, codexAgentSkillsHome }) {
-  mkdirSync(codexHome, { recursive: true });
-  mkdirSync(codexAgentSkillsHome, { recursive: true });
-  replaceWithSymlink(
-    path.join(moluoHome, 'skills'),
-    path.join(codexAgentSkillsHome, 'moluoxixi'),
-    linkTypeForCurrentPlatform()
-  );
+export function projectToCodex({ moluoHome, codexHome, userHome }) {
+  projectSharedSkillsHost(userHome, codexHome, moluoHome);
   replaceWithSymlink(
     path.join(moluoHome, 'AGENTS.md'),
     path.join(codexHome, 'AGENTS.md'),
@@ -241,14 +272,8 @@ export function projectToCodex({ moluoHome, codexHome, codexAgentSkillsHome }) {
   );
 }
 
-export function projectToTare({ moluoHome, tareHome, codexAgentSkillsHome }) {
-  mkdirSync(tareHome, { recursive: true });
-  mkdirSync(codexAgentSkillsHome, { recursive: true });
-  replaceWithSymlink(
-    path.join(moluoHome, 'skills'),
-    path.join(codexAgentSkillsHome, 'moluoxixi'),
-    linkTypeForCurrentPlatform()
-  );
+export function projectToTare({ moluoHome, tareHome, userHome }) {
+  projectSharedSkillsHost(userHome, tareHome, moluoHome);
   replaceWithSymlink(
     path.join(moluoHome, 'AGENTS.md'),
     path.join(tareHome, 'AGENTS.md'),
@@ -256,13 +281,8 @@ export function projectToTare({ moluoHome, tareHome, codexAgentSkillsHome }) {
   );
 }
 
-export function projectToOpenCode({ moluoHome, opencodeHome, opencodeSkillsHome }) {
-  mkdirSync(path.dirname(opencodeSkillsHome), { recursive: true });
-  replaceWithSymlink(
-    path.join(moluoHome, 'skills'),
-    opencodeSkillsHome,
-    linkTypeForCurrentPlatform()
-  );
+export function projectToOpenCode({ moluoHome, opencodeHome, userHome }) {
+  projectSharedSkillsHost(userHome, opencodeHome, moluoHome);
   replaceWithSymlink(
     path.join(moluoHome, 'AGENTS.md'),
     path.join(opencodeHome, 'AGENTS.md'),
