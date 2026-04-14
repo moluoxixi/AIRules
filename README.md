@@ -10,29 +10,41 @@ As soon as your agent sees a task, it doesn't just write code. It steps back to 
 
 ## Installation
 
-AIRules uses a **script-driven installation model**. Depending on the AI agent you use, tell it to read its specific instructions and follow the steps:
+AIRules uses a **script-driven installation model**. You can deploy and sync skills to all supported AI agents with a single command:
 
-### 1. Codex / General
+### Quick Full Installation (Recommended)
+
+```bash
+git clone https://github.com/moluoxixi/AIRules.git ~/.moluoxixi
+cd ~/.moluoxixi
+npm install
+npm run setup -- --host all --mode install
+```
+
+> [!TIP]
+> This command automatically cleans up all **dead symlinks** in host directories and ensures the physical integrity of 50+ vendor skills.
+
+### Agent-Specific Entry Points
+
+If you wish to interact with or install to a specific agent, tell it to read its specific instructions:
+
+#### 1. Codex / General
 Fetch and follow instructions from https://raw.githubusercontent.com/moluoxixi/AIRules/refs/heads/main/.codex/INSTALL.md
 
-### 2. Claude Code
+#### 2. Claude Code
 Fetch and follow instructions from https://raw.githubusercontent.com/moluoxixi/AIRules/refs/heads/main/.claude-plugin/INSTALL.md
 
-### 3. Cursor
+#### 3. Cursor
 Fetch and follow instructions from https://raw.githubusercontent.com/moluoxixi/AIRules/refs/heads/main/.cursor-plugin/INSTALL.md
 
-### 4. Qoder
+#### 4. Qoder
 Fetch and follow instructions from https://raw.githubusercontent.com/moluoxixi/AIRules/refs/heads/main/.qoder/INSTALL.md
 
-### 5. Tare
+#### 5. Tare
 Fetch and follow instructions from https://raw.githubusercontent.com/moluoxixi/AIRules/refs/heads/main/.tare/INSTALL.md
 
-### 6. OpenCode
+#### 6. OpenCode
 Fetch and follow instructions from https://raw.githubusercontent.com/moluoxixi/AIRules/refs/heads/main/.opencode/INSTALL.md
-
----
-> [!TIP]
-> All installation flows ultimately use `npm run setup` locally to ensure the physical integrity of the 50+ vendor skills.
 
 ## Core Skills
 
@@ -44,7 +56,7 @@ Fetch and follow instructions from https://raw.githubusercontent.com/moluoxixi/A
 
 - **Personalized Workflow**: Tailored rules that reflect specific engineering tastes and project needs.
 - **Systematic over ad-hoc**: Every change follows a plan and passes a test.
-- **Discovery-first**: Skills are naturally discovered and loaded by the environment.
+- **Self-Healing Distribution**: Skills are automatically synced by scripts, handling environment adaptation and link self-healing (including automatic removal of all dead symlinks).
 
 ## License
 

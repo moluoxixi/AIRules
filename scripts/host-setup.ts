@@ -14,6 +14,9 @@ import {
   syncFirstPartyToHome,
   type InstallPaths
 } from './lib/install.js';
+import { existsSync } from 'node:fs';
+
+const ALL_HOSTS = ['claude', 'codex', 'cursor', 'qoder', 'tare', 'opencode'];
 
 interface Args {
   host: string;
@@ -24,19 +27,16 @@ interface Args {
 }
 
 function printHelp() {
-  console.log(`Usage: npx tsx scripts/host-setup.ts --host <name> --mode <install|upgrade> [--home <dir>] [--skip-vendors]
+  console.log(`Usage: npx tsx scripts/host-setup.ts --host <name|all> --mode <install|upgrade> [--home <dir>] [--skip-vendors]
 
 Hosts:
+  all (安装到所有支持的代理)
   claude
   codex
   cursor
   qoder
   tare
   opencode
-
-Examples:
-  npx tsx scripts/host-setup.ts --host claude --mode install
-  npx tsx scripts/host-setup.ts --host codex --mode upgrade --home ~/.moluoxixi
 `);
 }
 
@@ -93,7 +93,7 @@ async function syncVendorsIfNeeded(homeDir: string, repoRoot: string, skipVendor
   }
 }
 
-function projectHost(args: Args, paths: InstallPaths) {
+function projectHost(host: string, paths: InstallPaths): boolean {
   const hostConfig: Record<string, { hostHome: string, hostBaselineFile: string, customSkillsDirName?: string }> = {
     claude: { hostHome: paths.claudeHome, hostBaselineFile: paths.claudeBaselineFile },
     cursor: { hostHome: paths.cursorHome, hostBaselineFile: paths.cursorBaselineFile, customSkillsDirName: 'skills-cursor' },
@@ -103,9 +103,16 @@ function projectHost(args: Args, paths: InstallPaths) {
     opencode: { hostHome: paths.opencodeHome, hostBaselineFile: paths.opencodeBaselineFile }
   };
 
-  const config = hostConfig[args.host];
+  const config = hostConfig[host];
   if (!config) {
-    throw new Error(`Unknown host: ${args.host}`);
+    throw new Error(`Unknown host: ${host}`);
+  }
+
+  // 如果宿主主目录不存在，则跳过（针对 --host all 模式）
+  const hostHomePath = path.resolve(config.hostHome);
+  if (!existsSync(hostHomePath)) {
+    console.warn(`[skip] 宿主目录不存在，跳过投影: ${host} (${hostHomePath})`);
+    return false;
   }
 
   projectToHost({
@@ -115,6 +122,8 @@ function projectHost(args: Args, paths: InstallPaths) {
     hostBaselineFile: config.hostBaselineFile,
     customSkillsDirName: config.customSkillsDirName
   });
+
+  return true;
 }
 
 async function main() {
@@ -142,17 +151,26 @@ async function main() {
     manifestPath: path.join(repoRoot, 'constants', 'skills.js')
   });
 
-  projectHost(args, paths);
-  const baselineTarget = linkHostBaseline({
-    moluoHome: paths.moluoHome,
-    host: args.host,
-    userHome
-  });
+  const targets = args.host === 'all' ? ALL_HOSTS : [args.host];
 
-  console.log(`[host] ${args.host}`);
-  console.log(`[mode] ${args.mode}`);
+  for (const host of targets) {
+    const success = projectHost(host, paths);
+    if (success) {
+      const baselineTarget = linkHostBaseline({
+        moluoHome: paths.moluoHome,
+        host: host,
+        userHome
+      });
+
+      console.log(`[host] ${host} - 配置完成`);
+      if (baselineTarget) {
+        console.log(`[baseline] ${baselineTarget}`);
+      }
+    }
+  }
+
+  console.log(`\n[success] 安装/更新流程已完成。`);
   console.log(`[home] ${paths.moluoHome}`);
-  console.log(`[baseline] ${baselineTarget}`);
 }
 
 main().catch((error) => {

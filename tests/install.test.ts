@@ -252,3 +252,37 @@ test('Self-healing - Safety boundary (External links)', () => {
     cleanup(tmpDir);
   }
 });
+
+test('Self-healing - Aggressive broken link removal', () => {
+  const { tmpDir, userHome, moluoHome, claudeHome } = setupMockEnvironment();
+
+  try {
+    const claudeSkillsDir = path.join(claudeHome, 'skills');
+    fs.mkdirSync(claudeSkillsDir, { recursive: true });
+
+    // 创建一个完全无关的死链接（指向本测试环境之外或不存在的路径）
+    const deadLink = path.join(claudeSkillsDir, 'garbage-link');
+    const nonExistentPath = path.join(tmpDir, 'void-directory-' + Date.now());
+    
+    // 手动创建链接后删除目标路径
+    fs.mkdirSync(nonExistentPath, { recursive: true });
+    fs.symlinkSync(nonExistentPath, deadLink, 'junction');
+    fs.rmSync(nonExistentPath, { recursive: true, force: true });
+
+    assert.ok(fs.lstatSync(deadLink).isSymbolicLink(), 'Dead link should exist initially');
+
+    // 执行同步
+    projectSkillsToHost(userHome, moluoHome, claudeSkillsDir);
+
+    // 验证：即使不属于 moluoxixi，死链接也应该被清理
+    assert.ok(!fs.existsSync(deadLink), 'Dead link should be aggressively removed');
+    try {
+      fs.lstatSync(deadLink);
+      assert.fail('lstatSync should throw for removed dead link');
+    } catch (e) {
+      // Expected
+    }
+  } finally {
+    cleanup(tmpDir);
+  }
+});

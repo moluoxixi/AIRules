@@ -231,7 +231,9 @@ export function syncFlattenedSkills(sourceDir: string, targetDir: string, moluoH
             rmSync(targetPath, { recursive: true, force: true });
           }
         } catch (error) {
-          // 如果链接失效或权限受限，通常由 replaceWithSymlink 在后续更新时处理
+          // 如果链接失效（目标已不存在）或权限受限，则将其视为死链接并清理
+          rmSync(targetPath, { recursive: true, force: true });
+          console.log(`[cleanup] 已移除失效的死链接: ${entry.name}`);
         }
       }
     }

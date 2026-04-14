@@ -105,12 +105,6 @@ function mergeVendor(vendors: Record<string, Vendor>, vendorName: string, namesp
  * @param namespaceParts 当前递归深度对应的分类路径
  * @param vendors 全局积累的供应商对象映射
  */
-/**
- * 递归遍历供应商定义树，支持混合数组和对象结构
- * @param node 当前处理的节点 (VendorRepo | Record | Array)
- * @param namespaceParts 当前递归深度对应的分类路径
- * @param vendors 全局积累的供应商对象映射
- */
 export function walkVendorTree(node: any, namespaceParts: string[], vendors: Record<string, Vendor>) {
   if (!node) return;
 
