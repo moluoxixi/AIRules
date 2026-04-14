@@ -121,8 +121,6 @@ function isSamePath(path1: string, path2: string): boolean {
 }
 
 export function replaceWithSymlink(source: string, target: string, type: 'junction' | 'dir' | 'file') {
-  console.log(`[link] source: ${source}`);
-  console.log(`[link] target: ${target}`);
   mkdirSync(path.dirname(target), { recursive: true });
   rmSync(target, { recursive: true, force: true });
   try {
@@ -251,52 +249,25 @@ export async function rebuildVendorSkillLinks({ homeDir, repoRoot, manifestPath 
 
 export function projectSkillsToHost(userHome: string, moluoHome: string, hostSkillsHome: string) {
   const sourceSkillsDir = path.join(moluoHome, 'skills');
-  const ccSwitchDir = path.join(userHome, '.cc-switch');
-  const ccSwitchSkillsDir = path.join(ccSwitchDir, 'skills');
-  const agentsDir = path.join(userHome, '.agents');
-  const agentsSkillsDir = path.join(agentsDir, 'skills');
+  const ccSwitchSkillsDir = path.join(userHome, '.cc-switch', 'skills');
+  const agentsSkillsDir = path.join(userHome, '.agents', 'skills');
 
-  mkdirSync(hostSkillsHome, { recursive: true });
+  let currentSource = sourceSkillsDir;
 
-  const skillDirs: string[] = [];
-  if (existsSync(sourceSkillsDir)) {
-    for (const entry of readdirSync(sourceSkillsDir, { withFileTypes: true })) {
-      if (entry.name !== '.gitignore' && (entry.isDirectory() || entry.isSymbolicLink())) {
-        skillDirs.push(entry.name);
-      }
-    }
+  if (existsSync(path.join(userHome, '.cc-switch'))) {
+    const target = path.join(ccSwitchSkillsDir, 'moluoxixi');
+    replaceWithSymlink(currentSource, target, linkTypeForCurrentPlatform());
+    currentSource = target;
   }
 
-  const useCcSwitch = existsSync(ccSwitchDir);
-  if (useCcSwitch) {
-    mkdirSync(ccSwitchSkillsDir, { recursive: true });
+  if (existsSync(path.join(userHome, '.agents'))) {
+    const target = path.join(agentsSkillsDir, 'moluoxixi');
+    replaceWithSymlink(currentSource, target, linkTypeForCurrentPlatform());
+    currentSource = target;
   }
 
-  const useAgents = existsSync(agentsDir);
-  if (useAgents) {
-    mkdirSync(agentsSkillsDir, { recursive: true });
-  }
-
-  rmSync(hostSkillsHome, { recursive: true, force: true });
-  mkdirSync(hostSkillsHome, { recursive: true });
-
-  for (const skillName of skillDirs) {
-    let currentSource = path.join(sourceSkillsDir, skillName);
-    
-    if (useCcSwitch) {
-      const ccSwitchSkillPath = path.join(ccSwitchSkillsDir, skillName);
-      replaceWithSymlink(currentSource, ccSwitchSkillPath, linkTypeForCurrentPlatform());
-      currentSource = ccSwitchSkillPath;
-    }
-
-    if (useAgents) {
-      const agentSkillPath = path.join(agentsSkillsDir, skillName);
-      replaceWithSymlink(currentSource, agentSkillPath, linkTypeForCurrentPlatform());
-      currentSource = agentSkillPath;
-    }
-    
-    replaceWithSymlink(currentSource, path.join(hostSkillsHome, skillName), linkTypeForCurrentPlatform());
-  }
+  const hostTarget = path.join(hostSkillsHome, 'moluoxixi');
+  replaceWithSymlink(currentSource, hostTarget, linkTypeForCurrentPlatform());
 }
 
 function projectSharedSkillsHost(userHome: string, hostHome: string, moluoHome: string, customSkillsDirName: string = 'skills') {
