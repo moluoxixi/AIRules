@@ -200,9 +200,51 @@ export function ensureInstallRoot(paths: InstallPaths) {
 
 export function ensureGlobalSkillLink(paths: InstallPaths) {
   const sourceSkillsDir = path.join(paths.moluoHome, 'skills');
-  const targetLink = path.join(paths.globalAgentSkillsHome, 'moluoxixi');
+  const targetLinkDir = paths.globalAgentSkillsHome;
 
-  replaceWithSymlink(sourceSkillsDir, targetLink, linkTypeForCurrentPlatform());
+  syncFlattenedSkills(sourceSkillsDir, targetLinkDir, paths.moluoHome);
+}
+
+export function syncFlattenedSkills(sourceDir: string, targetDir: string, moluoHome: string) {
+  if (!existsSync(sourceDir)) {
+    return;
+  }
+
+  mkdirSync(targetDir, { recursive: true });
+
+  const currentSkills = new Set(readdirSync(sourceDir).filter(n => n !== '.gitignore'));
+  
+  // Cleanup stale links
+  if (existsSync(targetDir)) {
+    for (const entry of readdirSync(targetDir, { withFileTypes: true })) {
+      const targetPath = path.join(targetDir, entry.name);
+      
+      // We only care about symbolic links that we might have created
+      if (entry.isSymbolicLink()) {
+        try {
+          const resolvedPath = realpathSync(targetPath);
+          const normalizedResolved = path.resolve(resolvedPath);
+          const normalizedMoluo = path.resolve(moluoHome);
+
+          // If the link points into moluoxixi home but is not in the current set, remove it
+          if (normalizedResolved.startsWith(normalizedMoluo) && !currentSkills.has(entry.name)) {
+            rmSync(targetPath, { recursive: true, force: true });
+          }
+        } catch (error) {
+          // If the link is broken or inaccessible, but it matches our naming pattern in a dangerous way?
+          // Actually, if it's broken, it's safer to leave it unless we are sure it was ours.
+          // But usually, broken links should be cleaned up if they are in the way.
+        }
+      }
+    }
+  }
+
+  // Link current skills
+  for (const skillName of currentSkills) {
+    const source = path.join(sourceDir, skillName);
+    const target = path.join(targetDir, skillName);
+    replaceWithSymlink(source, target, linkTypeForCurrentPlatform());
+  }
 }
 
 export function syncFirstPartyToHome(repoRoot: string, moluoHome: string) {
@@ -255,19 +297,16 @@ export function projectSkillsToHost(userHome: string, moluoHome: string, hostSki
   let currentSource = sourceSkillsDir;
 
   if (existsSync(path.join(userHome, '.cc-switch'))) {
-    const target = path.join(ccSwitchSkillsDir, 'moluoxixi');
-    replaceWithSymlink(currentSource, target, linkTypeForCurrentPlatform());
-    currentSource = target;
+    syncFlattenedSkills(currentSource, ccSwitchSkillsDir, moluoHome);
+    currentSource = ccSwitchSkillsDir;
   }
 
   if (existsSync(path.join(userHome, '.agents'))) {
-    const target = path.join(agentsSkillsDir, 'moluoxixi');
-    replaceWithSymlink(currentSource, target, linkTypeForCurrentPlatform());
-    currentSource = target;
+    syncFlattenedSkills(currentSource, agentsSkillsDir, moluoHome);
+    currentSource = agentsSkillsDir;
   }
 
-  const hostTarget = path.join(hostSkillsHome, 'moluoxixi');
-  replaceWithSymlink(currentSource, hostTarget, linkTypeForCurrentPlatform());
+  syncFlattenedSkills(currentSource, hostSkillsHome, moluoHome);
 }
 
 function projectSharedSkillsHost(userHome: string, hostHome: string, moluoHome: string, customSkillsDirName: string = 'skills') {
