@@ -58,39 +58,27 @@ function syncOptionalDir(sourceDir: string, targetDir: string) {
 function projectLeafSkillLinks(sourceDirs: string[], skillsDir: string): string[] {
   const projectedSkills = new Map<string, string>();
 
-  function addEntry(name: string, sourcePath: string) {
-    if (name === '.gitignore') return;
-    if (projectedSkills.has(name)) {
-      return;
-    }
-    projectedSkills.set(name, sourcePath);
-  }
-
   for (const rootDir of sourceDirs) {
     if (!existsSync(rootDir)) {
       continue;
     }
 
-    const isVendorSkills = rootDir.includes(path.join('vendor', 'skills'));
-
+    // We no longer categorize by namespace here. Everything in rootDir (vendor/skills or local skills)
+    // is treated as a top-level unit to project.
     for (const entry of readdirSync(rootDir, { withFileTypes: true })) {
-      const entryPath = path.join(rootDir, entry.name);
+      const entryName = entry.name;
+      if (entryName === '.gitignore') {
+        continue;
+      }
 
-      if (entry.isSymbolicLink()) {
-        // Symbolic links (like 'superpowers' or vendor repo roots) are projected as-is
-        addEntry(entry.name, entryPath);
-      } else if (entry.isDirectory()) {
-        if (isVendorSkills) {
-          // If it's a directory inside vendor/skills (like 'common' or 'frontend'), project its children
-          for (const child of readdirSync(entryPath, { withFileTypes: true })) {
-            if (child.isSymbolicLink() || child.isDirectory()) {
-              addEntry(child.name, path.join(entryPath, child.name));
-            }
-          }
-        } else {
-          // Local skill directories are projected as-is
-          addEntry(entry.name, entryPath);
+      if (entry.isDirectory() || entry.isSymbolicLink()) {
+        const sourcePath = path.join(rootDir, entryName);
+        if (projectedSkills.has(entryName)) {
+          // If collision occurs (e.g. same skill name in different categories), first one wins
+          continue;
         }
+
+        projectedSkills.set(entryName, sourcePath);
       }
     }
   }
