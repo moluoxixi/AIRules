@@ -55,31 +55,60 @@ function syncOptionalDir(sourceDir: string, targetDir: string) {
   copyDirContents(sourceDir, targetDir);
 }
 
+export function isSamePath(p1: string, p2: string): boolean {
+  if (!p1 || !p2) return false;
+  const n1 = path.resolve(p1).toLowerCase().replace(/\\/g, '/').replace(/\/$/, '');
+  const n2 = path.resolve(p2).toLowerCase().replace(/\\/g, '/').replace(/\/$/, '');
+  return n1 === n2;
+}
+
 /**
- * 将源目录中的一级子目录投影为目标目录中的软链接。
- * 之前的递归搜索 SKILL.md 逻辑已被移除，现在仅进行顶级映射。
- * @param sourceDirs 源目录列表（如 vendor/skills 和本地 skills）
- * @param skillsDir 投影目标目录（~/.moluoxixi/skills）
+ * 将各个来源的技能统一投影（软链接）到目标技能目录。
+ * @param sourceDirs 技能来源目录列表（如 [vendorSkillsDir, repoRootSkillsDir]）
+ * @param skillsDir 统一的投影目标目录（如 ~/.moluoxixi/skills）
+ * @returns 最终投影的技能名称列表
+ */
+/**
+ * 将各个来源的技能统一投影（软链接）到目标技能目录。
+ * @param sourceDirs 技能来源目录列表（如 [vendorSkillsDir, repoRootSkillsDir]）
+ * @param skillsDir 统一的投影目标目录（如 ~/.moluoxixi/skills）
+ * @returns 最终投影的技能名称列表
  */
 function projectLeafSkillLinks(sourceDirs: string[], skillsDir: string): string[] {
-  const projectedSkills = new Map<string, string>();
+  const projectedSkills = new Map<string, string>(); // [skillName]: [sourcePath]
+  
+  const isInPlace = sourceDirs.some(dir => isSamePath(dir, skillsDir));
+
+  // 如果不是原位安装，则清空目标目录以确保投影干净
+  if (!isInPlace) {
+    resetDir(skillsDir);
+  }
 
   for (const rootDir of sourceDirs) {
-    if (!existsSync(rootDir)) {
-      continue;
-    }
+    if (!existsSync(rootDir)) continue;
 
-    // 遍历源目录的一级子项。Everything in rootDir 都会被视为顶级技能单元进行投影。
     for (const entry of readdirSync(rootDir, { withFileTypes: true })) {
       const entryName = entry.name;
-      if (entryName === '.gitignore') {
-        continue;
-      }
+      // 忽略隐藏文件/目录
+      if (entryName.startsWith('.')) continue;
 
       if (entry.isDirectory() || entry.isSymbolicLink()) {
         const sourcePath = path.join(rootDir, entryName);
-        if (projectedSkills.has(entryName)) {
-          // 如果名称冲突（例如不同分类下有同名技能），则遵循“首次发现优先”原则
+        const targetPath = path.join(skillsDir, entryName);
+        
+        // [原位安装防护] 如果当前扫描的目录就是目标目录（通常是 ~/.moluoxixi/skills），
+        // 我们绝对不能把其中的“软链接”当作有效的源，否则会导致循环映射（例如指向了 .agents）。
+        // 我们只在这里寻找第一方的“实体目录”。
+        if (isSamePath(rootDir, skillsDir) && entry.isSymbolicLink()) {
+          continue;
+        }
+
+        // 如果物理路径完全一致（例如 rootDir/skill 与 skillsDir/skill 是同一个地方），
+        // 记录它存在即可，不需要建立链接。
+        if (isSamePath(sourcePath, targetPath)) {
+          if (!projectedSkills.has(entryName)) {
+            projectedSkills.set(entryName, sourcePath);
+          }
           continue;
         }
 
@@ -88,15 +117,18 @@ function projectLeafSkillLinks(sourceDirs: string[], skillsDir: string): string[
     }
   }
 
-  resetDir(skillsDir);
-
   for (const [skillName, sourcePath] of projectedSkills) {
     const projectionTarget = path.join(skillsDir, skillName);
+    if (isSamePath(sourcePath, projectionTarget)) {
+      continue;
+    }
+
     replaceWithSymlink(sourcePath, projectionTarget, linkTypeForCurrentPlatform());
   }
 
   return [...projectedSkills.keys()].sort();
 }
+
 
 function linkTypeForCurrentPlatform(): 'junction' | 'dir' {
   return process.platform === 'win32' ? 'junction' : 'dir';
@@ -106,18 +138,28 @@ function linkFileForCurrentPlatform(): 'file' {
   return 'file';
 }
 
-function isSamePath(path1: string, path2: string): boolean {
-  return path.resolve(path1) === path.resolve(path2);
-}
-
 export function replaceWithSymlink(source: string, target: string, type: 'junction' | 'dir' | 'file') {
+  if (isSamePath(source, target)) {
+    return;
+  }
+  
+  // 如果目标已经是一个软链接并指向了源码，则无需重复创建
+  if (existsSync(target) && lstatSync(target).isSymbolicLink()) {
+    try {
+      if (isSamePath(realpathSync(target), source)) {
+        return;
+      }
+    } catch {
+      // ignore
+    }
+  }
+  
   mkdirSync(path.dirname(target), { recursive: true });
   rmSync(target, { recursive: true, force: true });
   try {
     symlinkSync(source, target, type);
   } catch (error: any) {
     if (type === 'file' && error?.code === 'EPERM' && process.platform === 'win32') {
-      console.warn(`[link] Warning: symlink failed for ${target} (EPERM), falling back to copy.`);
       cpSync(source, target);
       return;
     }
@@ -209,7 +251,6 @@ export function syncFlattenedSkills(sourceDir: string, targetDir: string, moluoH
   if (!existsSync(sourceDir)) {
     return;
   }
-
   mkdirSync(targetDir, { recursive: true });
 
   const currentSkills = new Set(readdirSync(sourceDir).filter(n => n !== '.gitignore'));
@@ -279,9 +320,13 @@ export async function rebuildVendorSkillLinks({ homeDir, repoRoot, manifestPath 
       continue;
     }
 
+    if (isSamePath(entry.source, entry.target)) {
+      console.log(`[link] Skip (source === target): ${entry.target}`);
+      continue;
+    }
+
     mkdirSync(path.dirname(entry.target), { recursive: true });
-    rmSync(entry.target, { recursive: true, force: true });
-    symlinkSync(entry.source, entry.target, linkTypeForCurrentPlatform());
+    replaceWithSymlink(entry.source, entry.target, linkTypeForCurrentPlatform());
   }
 
   const projectedSkillNames = projectLeafSkillLinks([vendorSkillsDir, path.join(repoRoot, 'skills')], skillsDir);

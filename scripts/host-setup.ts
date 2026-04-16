@@ -155,21 +155,31 @@ async function main() {
   const targets = args.host === 'all' ? ALL_HOSTS : [args.host];
 
   for (const host of targets) {
-    const success = projectHost(host, paths);
-    if (success) {
-      const baselineTarget = linkHostBaseline({
-        moluoHome: paths.moluoHome,
-        host: host,
-        userHome
-      });
+    try {
+      const success = projectHost(host, paths);
+      if (success) {
+        const baselineTarget = linkHostBaseline({
+          moluoHome: paths.moluoHome,
+          host: host,
+          userHome
+        });
 
-      console.log(`[host] ${host} - 配置完成`);
-      if (baselineTarget) {
-        console.log(`[baseline] ${baselineTarget}`);
+        console.log(`[host] ${host} - 配置完成`);
+        if (baselineTarget) {
+          console.log(`[baseline] ${baselineTarget}`);
+        }
+
+        // 自动执行校验逻辑
+        const verified = await verifyHost(host, paths.moluoHome);
+        if (!verified) {
+          console.error(`[error] ${host} 验证未通过，请检查上述错误信息。`);
+          process.exitCode = 1; // 标记失败但继续下一个宿主
+        }
       }
-
-      // 自动执行校验逻辑
-      await verifyHost(host, paths.moluoHome);
+    } catch (error: any) {
+      console.error(`[error] ${host} 安装过程中发生异常:`);
+      console.error(error?.message || error);
+      process.exitCode = 1;
     }
   }
 
