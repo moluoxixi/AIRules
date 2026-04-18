@@ -68,15 +68,7 @@ export const vendors: VendorsConfig = [
       'find-skills': 'find-skills',
     },
   },
-  {
-    name: 'vercel',
-    official: true,
-    source: 'https://github.com/vercel/next.js.git',
-    sourceBaseDir: '.agents/skills',
-    skills: {
-      'update-docs': 'update-docs',
-    },
-  },
+
   {
     name: 'antfu',
     official: true,

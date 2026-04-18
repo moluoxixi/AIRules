@@ -41,7 +41,7 @@ AIRules is a **composable AI skill distribution system**. The core idea is simpl
 
 ## What You Get
 
-- 🔥 **23+ curated** frontend/general AI Skills out of the box
+- 🔥 **22+ curated** frontend/general AI Skills out of the box
 - 🛠️ **Zero-barrier skill creation** with the built-in skill-creator-pro
 - 🌐 **Multi-agent sync**: configure once, works across Claude / Cursor / Codex / ...
 - 🔄 **Continuous updates**: one command pulls latest upstream skills
@@ -86,10 +86,11 @@ To install to a specific agent, have it read its dedicated instructions:
 
 | Source | Skills | Description |
 |--------|--------|-------------|
-| **antfu** | vue, nuxt, pinia, vite, vitest, unocss, pnpm, vitepress, tsdown, turborepo + 6 more | Vue ecosystem + frontend toolchain best practices |
+| **antfu** | vue, nuxt, pinia, vite, vitest, unocss, pnpm, vitepress, slidev, tsdown, turborepo + 4 more | Vue ecosystem + frontend toolchain best practices |
 | **Anthropic** | webapp-testing | Playwright-driven web application testing |
 | **Google Gemini** | code-reviewer, pr-creator | Automated code review and PR creation |
-| **Vercel** | find-skills, update-docs | Skill discovery and documentation updates |
+| **Vercel Labs** | find-skills | Open ecosystem skill discovery and installation |
+| **Microsoft** | playwright-cli | Browser automation and E2E testing |
 | **Superpowers** | Full skill set | Foundation engineering skills (TDD, subagent-driven, etc.) |
 
 ## Project Structure
