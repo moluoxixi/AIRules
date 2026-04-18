@@ -103,12 +103,12 @@ export const vendors: VendorsConfig = [
     },
   },
   {
-    name: 'anthropic',
+    name: 'playwright',
     official: true,
-    source: 'https://github.com/anthropics/skills.git',
+    source: 'https://github.com/microsoft/playwright-cli.git',
     sourceBaseDir: 'skills',
     skills: {
-      'webapp-testing': 'webapp-testing',
+      'playwright-cli': 'playwright-cli',
     },
   },
   {
