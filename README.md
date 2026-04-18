@@ -10,7 +10,7 @@ AIRules is a **composable AI skill distribution system**. The core idea is simpl
 
 - **Clone** mature AI Skills from the community (antfu, Anthropic, Google Gemini, Vercel, etc.)
 - **Write** your own domain-specific Skills
-- **Compose** these small, modular units into your personalized frontend development best practices
+- **Compose** these small, modular units into your personalized development best practices
 - **Distribute** them to all your AI agents (Claude, Cursor, Codex, Gemini, etc.) with one command
 
 ## Core Philosophy
