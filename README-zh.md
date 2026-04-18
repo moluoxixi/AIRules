@@ -1,16 +1,52 @@
-# Moluoxixi AIRules (个人 AI 开发规则集)
+# Moluoxixi AIRules
 
-Moluoxixi AIRules 是基于 Superpowers 架构开发的个人 AI 开发工作流与技能分发版。它提供了一套可组合的“技能”，旨在将你的 AI 代理提升为具备专业工程思维的协作伙伴。
+> 🧩 用"乐高积木"的方式，拼装你自己的 AI 编程最佳实践。
 
-## 工作原理
+**[English](README.md)** | **中文**
 
-AIRules 不仅仅是代码片段的集合，它是一套系统性的 AI 辅助开发方法论。从最初的设计阶段到子代理驱动的实现，再到 TDD（测试驱动开发）验证，AIRules 确保你的 AI 代理遵循专业的工程标准。
+## 这是什么？
 
-## 安装指南 (Installation)
+AIRules 是一个**可组合的 AI 技能分发系统**。它的核心思想很简单：
 
-AIRules 采用**脚本驱动的全量安装模式**。你可以通过一条命令为所有支持的 AI 代理一键部署并同步技能：
+- **克隆**业界成熟的 AI Skills（来自 antfu、Anthropic、Google Gemini、Vercel 等）
+- **编写**你自己的领域专属 Skills
+- **组合**这些小单元模块，形成你个人的前端开发生态最佳实践
+- **一键分发**到所有 AI 代理（Claude、Cursor、Codex、Gemini 等）
 
-### 快速安装 (获取 100% 完整体验)
+## 核心理念
+
+### 🏗️ 三层架构
+
+```
+┌─────────────────────────────────────────────┐
+│  🔧 第一方 Skills（你自己写的）                │ ← 你的核心竞争力
+│  frontend-workflow / 自定义工作流              │
+├─────────────────────────────────────────────┤
+│  📦 第三方 Skills（克隆成熟仓库）              │ ← 站在巨人肩膀上
+│  antfu/vue · anthropic/testing · gemini/... │
+├─────────────────────────────────────────────┤
+│  🚀 分发引擎（一键安装到所有 AI 代理）         │ ← 自动化基础设施
+│  Claude · Cursor · Codex · Gemini · ...     │
+└─────────────────────────────────────────────┘
+```
+
+### 📐 设计原则
+
+| 原则 | 说明 |
+|------|------|
+| **小单元模块化** | 每个 skill 只做一件事，独立、可测试、可替换 |
+| **组合 > 大而全** | 像 Unix 管道一样，通过组合小工具解决大问题 |
+| **第三方优先** | 能用成熟的就不自己写，自己只写真正有独特价值的部分 |
+| **自愈式分发** | 一条命令同步到所有 AI 代理，自动处理软链接、依赖、验证 |
+
+## 你能得到什么？
+
+- 🔥 **开箱即得** 23+ 精选前端/通用 AI Skills
+- 🛠️ **个性化扩展**：用 skill-creator-pro 零门槛创建自己的 skill
+- 🌐 **多代理同步**：一次配置，Claude / Cursor / Codex / ... 全部生效
+- 🔄 **持续更新**：上游 skills 更新后，一条命令同步最新版本
+
+## 安装
 
 ```bash
 git clone https://github.com/moluoxixi/AIRules.git ~/.moluoxixi
@@ -27,35 +63,62 @@ npm run rules:install -- --host all
 
 如果你希望针对特定代理进行操作，请直接让其读取远程说明：
 
-#### 1. Codex / 其他 (通用)
-Fetch and follow instructions from https://raw.githubusercontent.com/moluoxixi/AIRules/refs/heads/main/.codex/INSTALL.md
+| 代理 | 引导指令 |
+|------|---------|
+| **Codex / 通用** | Fetch and follow instructions from `https://raw.githubusercontent.com/moluoxixi/AIRules/refs/heads/main/.codex/INSTALL.md` |
+| **Claude Code** | Fetch and follow instructions from `https://raw.githubusercontent.com/moluoxixi/AIRules/refs/heads/main/.claude-plugin/INSTALL.md` |
+| **Cursor** | Fetch and follow instructions from `https://raw.githubusercontent.com/moluoxixi/AIRules/refs/heads/main/.cursor-plugin/INSTALL.md` |
+| **Qoder** | Fetch and follow instructions from `https://raw.githubusercontent.com/moluoxixi/AIRules/refs/heads/main/.qoder/INSTALL.md` |
+| **Tare** | Fetch and follow instructions from `https://raw.githubusercontent.com/moluoxixi/AIRules/refs/heads/main/.tare/INSTALL.md` |
+| **OpenCode** | Fetch and follow instructions from `https://raw.githubusercontent.com/moluoxixi/AIRules/refs/heads/main/.opencode/INSTALL.md` |
 
-#### 2. Claude Code
-Fetch and follow instructions from https://raw.githubusercontent.com/moluoxixi/AIRules/refs/heads/main/.claude-plugin/INSTALL.md
+## Skills 全景图
 
-#### 3. Cursor
-Fetch and follow instructions from https://raw.githubusercontent.com/moluoxixi/AIRules/refs/heads/main/.cursor-plugin/INSTALL.md
+### 第一方 Skills（自写）
 
-#### 4. Qoder
-Fetch and follow instructions from https://raw.githubusercontent.com/moluoxixi/AIRules/refs/heads/main/.qoder/INSTALL.md
+| 名称 | 描述 |
+|------|------|
+| **frontend-workflow** | 前端项目核心工作流控制：页面生成、接口联调、交付测试全流程管控 |
+| **skill-creator-pro** | 元技能：创建、测试、评估、优化 AI Skills 的完整工具链 |
+| **skill-seekers** | 知识抓取：将文档网站/GitHub/PDF 等 17 种来源一键转换为标准 Skill |
 
-#### 5. Tare
-Fetch and follow instructions from https://raw.githubusercontent.com/moluoxixi/AIRules/refs/heads/main/.tare/INSTALL.md
+### 第三方 Skills（精选）
 
-#### 6. OpenCode
-Fetch and follow instructions from https://raw.githubusercontent.com/moluoxixi/AIRules/refs/heads/main/.opencode/INSTALL.md
+| 来源 | Skills | 说明 |
+|------|--------|------|
+| **antfu** | vue, nuxt, pinia, vite, vitest, unocss, pnpm, vitepress, tsdown, turborepo 等 16 个 | Vue 全家桶 + 前端工具链最佳实践 |
+| **Anthropic** | webapp-testing | Playwright 驱动的 Web 应用测试 |
+| **Google Gemini** | code-reviewer, pr-creator | 代码审查与 PR 自动创建 |
+| **Vercel** | find-skills, update-docs | 技能发现与文档更新 |
+| **Superpowers** | 完整技能集 | 基础工程技能（TDD、子代理驱动等） |
 
-## 核心技能
+## 项目结构
 
-1. **frontend-workflow** - 针对现代前端开发的专业工作流，强调组件规范 and 状态管理。
-2. **skill-creator-pro** - 用于在该分发版中设计、编写和测试新技能的元技能 (Meta-skill)。
-3. **skill-seekers** - 根据当前上下文自动发现并加载相关的技能。
+```
+~/.moluoxixi/
+├── skills/                  # 第一方 skills（你的核心资产）
+│   ├── frontend-workflow/
+│   ├── skill-creator-pro/
+│   └── skill-seekers/
+├── vendor/
+│   ├── repos/               # 克隆的第三方源仓库
+│   └── skills/              # 提取出的第三方 skills
+├── constants/skills.ts      # 唯一的第三方技能配置清单
+├── scripts/                 # 安装/同步/校验脚本
+└── tests/                   # 自动化验证测试
+```
 
-## 开发哲学
+## 为什么不是另一个 AI Rules 集合？
 
- - **个性化工作流**：反映特定工程审美和项目需求的量身定制规则。
- - **系统化胜过随机性**：每一次代码变更都应遵循计划并通过测试。
- - **自愈式分发**：技能由脚本自动同步，自动处理软链接自愈，并内置自动环境校验。
+市面上已经有很多 AI rules 仓库。AIRules 不同的地方在于：
+
+| 其他方案 | AIRules |
+|---------|---------|
+| 一个大的 rules 文件 | 模块化的小 skill 单元 |
+| 手动复制粘贴 | 脚本驱动的自动分发 |
+| 只支持一种代理 | 同时支持 6 种 AI 代理 |
+| 全部自己写 | 克隆成熟的 + 自己写独特的 |
+| 一次性配置 | 持续同步 + 自愈修复 |
 
 ## 许可证
 

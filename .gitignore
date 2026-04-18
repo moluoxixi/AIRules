@@ -3,3 +3,8 @@
 node_modules/
 vendor/
 *.log
+
+# 临时/调试文件
+repro_repo/
+temp_test_home/
+scratch/
