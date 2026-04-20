@@ -16,9 +16,20 @@ Fetch and follow instructions from https://raw.githubusercontent.com/moluoxixi/A
 
 对于需要深度定制的用户，建议克隆代码仓库：
 
+**macOS / Linux / Git Bash：**
+
 ```bash
-git clone https://github.com/moluoxixi/AIRules.git ~/.moluoxixi
-cd ~/.moluoxixi
+git clone https://github.com/moluoxixi/AIRules.git "$HOME/.moluoxixi"
+cd "$HOME/.moluoxixi"
+npm install
+npm run setup -- --host codex --mode install
+```
+
+**Windows PowerShell：**
+
+```powershell
+git clone https://github.com/moluoxixi/AIRules.git "$env:USERPROFILE\.moluoxixi"
+cd "$env:USERPROFILE\.moluoxixi"
 npm install
 npm run setup -- --host codex --mode install
 ```
@@ -38,5 +49,5 @@ npm run setup -- --host codex --mode install
 
 ## 故障排除
 
-1. 验证软链接状态：`ls -la ~/.codex/skills/`
+1. 验证软链接状态：`ls -la "$HOME/.codex/skills/"`
 2. 重启 Codex —— 技能仅在启动时加载一次

@@ -232,7 +232,7 @@ skill-seekers create https://docs.example.com/ --no-verify-ssl
 python -m skill_seekers.mcp.server_fastmcp
 
 # 检查 Claude Code 配置
-cat ~/.claude/claude_desktop_config.json
+cat "$HOME/.claude/claude_desktop_config.json"
 
 # 确保 MCP 服务器已正确安装
 pip install skill-seekers[mcp]
@@ -245,7 +245,7 @@ pip install skill-seekers[mcp]
 **解决方案：**
 ```bash
 # 替换占位符为实际路径
-# 在 ~/.claude/claude_desktop_config.json 中：
+# 在 $HOME/.claude/claude_desktop_config.json 中：
 {
   "mcpServers": {
     "skill-seekers": {
@@ -326,7 +326,7 @@ skill-seekers enhance output/skill --mode LOCAL
 claude --version
 
 # 检查 Claude Code 配置
-cat ~/.claude/claude_desktop_config.json
+cat "$HOME/.claude/claude_desktop_config.json"
 
 # 使用 API 模式作为备选
 export ANTHROPIC_API_KEY=sk-ant-xxx

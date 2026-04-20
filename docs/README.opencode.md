@@ -8,9 +8,20 @@ OpenCode 用户应采用**脚本驱动的全量安装模式**。这能确保 .op
 
 直接运行设置脚本：
 
+**macOS / Linux / Git Bash：**
+
 ```bash
-git clone https://github.com/moluoxixi/AIRules.git ~/.moluoxixi
-cd ~/.moluoxixi
+git clone https://github.com/moluoxixi/AIRules.git "$HOME/.moluoxixi"
+cd "$HOME/.moluoxixi"
+npm install
+npm run setup -- --host opencode --mode install
+```
+
+**Windows PowerShell：**
+
+```powershell
+git clone https://github.com/moluoxixi/AIRules.git "$env:USERPROFILE\.moluoxixi"
+cd "$env:USERPROFILE\.moluoxixi"
 npm install
 npm run setup -- --host opencode --mode install
 ```

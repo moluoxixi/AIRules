@@ -141,7 +141,7 @@ skill-seekers github --repo owner/repo --non-interactive
 ./scripts/bootstrap_skill.sh
 
 # 安装到 Claude Code
-cp -r output/skill-seekers ~/.claude/skills/
+cp -r output/skill-seekers "$HOME/.claude/skills/"
 ```
 
 **生成内容：**

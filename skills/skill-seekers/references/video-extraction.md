@@ -208,7 +208,7 @@ skill-seekers video --playlist https://youtube.com/playlist?list=PLxxx --name ml
 
 ### 示例 4: 本地视频文件
 ```bash
-skill-seekers video --video-file ~/Videos/recording.mp4 --name demo
+skill-seekers video --video-file "$HOME/Videos/recording.mp4" --name demo
 ```
 
 ### 示例 5: 时间裁剪 + 高质量转录
