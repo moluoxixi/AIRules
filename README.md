@@ -48,7 +48,7 @@ AIRules is a **composable AI skill distribution system**. The core idea is simpl
 
 ## Installation
 
-**macOS / Linux / Git Bash / CMD:**
+**macOS / Linux / Git Bash:**
 
 ```bash
 git clone https://github.com/moluoxixi/AIRules.git "$HOME/.moluoxixi"
@@ -56,7 +56,7 @@ cd "$HOME/.moluoxixi"
 npm run rules:install -- --host all
 ```
 
-**Windows PowerShell:**
+**Windows PowerShell / CMD:**
 
 ```powershell
 git clone https://github.com/moluoxixi/AIRules.git "$env:USERPROFILE\.moluoxixi"
