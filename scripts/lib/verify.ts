@@ -1,7 +1,7 @@
 import os from 'node:os';
 import path from 'node:path';
 import { existsSync, readdirSync, lstatSync, realpathSync } from 'node:fs';
-import { getDefaultInstallPaths } from './install.js';
+import { findHostConfig, resolveHostPaths } from '../../constants/hosts.js';
 
 /**
  * 验证指定宿主的技能链接完整性
@@ -13,28 +13,17 @@ export async function verifyHost(host: string, moluoHome: string): Promise<boole
   console.log(`\n--- 正在验证宿主: ${host} ---`);
 
   const userHome = os.homedir();
-  const paths = getDefaultInstallPaths(userHome);
-  paths.moluoHome = moluoHome;
-
-  const hostConfig: Record<string, { hostHome: string, customSkillsDirName?: string }> = {
-    claude: { hostHome: paths.claudeHome },
-    cursor: { hostHome: paths.cursorHome, customSkillsDirName: 'skills-cursor' },
-    codex: { hostHome: paths.codexHome },
-    qoder: { hostHome: paths.qoderHome },
-    tare: { hostHome: paths.tareHome },
-    opencode: { hostHome: paths.opencodeHome }
-  };
-
-  const config = hostConfig[host];
+  const config = findHostConfig(host);
   if (!config) return false;
 
-  const resolvedHostHome = path.resolve(config.hostHome);
+  const { hostHome, skillsDirName } = resolveHostPaths(config, userHome);
+
+  const resolvedHostHome = path.resolve(hostHome);
   if (!existsSync(resolvedHostHome)) {
     console.warn(`[SKIP] 宿主目录不存在: ${resolvedHostHome}`);
     return true; // 跳过但不视为失败
   }
 
-  const skillsDirName = config.customSkillsDirName || 'skills';
   const targetSkillsDir = path.join(resolvedHostHome, skillsDirName);
 
   if (!existsSync(targetSkillsDir)) {
@@ -44,7 +33,7 @@ export async function verifyHost(host: string, moluoHome: string): Promise<boole
 
   // 1. 获取预期技能列表 (第一方 + 供应商)
   const expectedSkills = new Set<string>();
-  
+
   const firstPartyDir = path.join(moluoHome, 'skills');
   if (existsSync(firstPartyDir)) {
     readdirSync(firstPartyDir).forEach(name => {
@@ -68,7 +57,7 @@ export async function verifyHost(host: string, moluoHome: string): Promise<boole
 
   for (const skill of expectedSkills) {
     const skillPath = path.join(targetSkillsDir, skill);
-    
+
     // existsSync 对断开的链接返回 false
     if (!existsSync(skillPath)) {
       try {
@@ -78,7 +67,7 @@ export async function verifyHost(host: string, moluoHome: string): Promise<boole
           continue;
         }
       } catch (e) {}
-      
+
       console.error(`[FAIL] 缺失技能链接 (Missing): ${skill}`);
       missingCount++;
       continue;

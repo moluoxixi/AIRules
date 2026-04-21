@@ -9,15 +9,14 @@ import {
   ensureGlobalSkillLink,
   getDefaultInstallPaths,
   linkHostBaseline,
-  projectToHost,
+  projectHostById,
   rebuildVendorSkillLinks,
+  runSkillSetupCommands,
   syncFirstPartyToHome,
   type InstallPaths
 } from './lib/install.js';
 import { verifyHost } from './lib/verify.js';
-import { existsSync } from 'node:fs';
-
-const ALL_HOSTS = ['claude', 'codex', 'cursor', 'qoder', 'tare', 'opencode'];
+import { ALL_HOST_IDS } from '../constants/hosts.js';
 
 interface Args {
   host: string;
@@ -28,16 +27,12 @@ interface Args {
 }
 
 function printHelp() {
+  const hostsLine = ALL_HOST_IDS.join('\n  ');
   console.log(`Usage: npx tsx scripts/host-setup.ts --host <name|all> [--mode <install|uninstall>] [--home <dir>] [--skip-vendors]
 
 Hosts:
   all (安装到所有支持的代理)
-  claude
-  codex
-  cursor
-  qoder
-  tare
-  opencode
+  ${hostsLine}
 `);
 }
 
@@ -92,39 +87,9 @@ async function syncVendorsIfNeeded(homeDir: string, repoRoot: string, skipVendor
   for (const vendor of Object.values(manifest.vendors ?? {})) {
     ensureVendorRepo(homeDir, vendor);
   }
-}
 
-function projectHost(host: string, paths: InstallPaths): boolean {
-  const hostConfig: Record<string, { hostHome: string, hostBaselineFile: string, customSkillsDirName?: string }> = {
-    claude: { hostHome: paths.claudeHome, hostBaselineFile: paths.claudeBaselineFile },
-    cursor: { hostHome: paths.cursorHome, hostBaselineFile: paths.cursorBaselineFile, customSkillsDirName: 'skills-cursor' },
-    codex: { hostHome: paths.codexHome, hostBaselineFile: paths.codexBaselineFile },
-    qoder: { hostHome: paths.qoderHome, hostBaselineFile: paths.qoderBaselineFile },
-    tare: { hostHome: paths.tareHome, hostBaselineFile: paths.tareBaselineFile },
-    opencode: { hostHome: paths.opencodeHome, hostBaselineFile: paths.opencodeBaselineFile }
-  };
-
-  const config = hostConfig[host];
-  if (!config) {
-    throw new Error(`Unknown host: ${host}`);
-  }
-
-  // 如果宿主主目录不存在，则跳过（针对 --host all 模式）
-  const hostHomePath = path.resolve(config.hostHome);
-  if (!existsSync(hostHomePath)) {
-    console.warn(`[skip] 宿主目录不存在，跳过投影: ${host} (${hostHomePath})`);
-    return false;
-  }
-
-  projectToHost({
-    userHome: paths.userHome,
-    moluoHome: paths.moluoHome,
-    hostHome: config.hostHome,
-    hostBaselineFile: config.hostBaselineFile,
-    customSkillsDirName: config.customSkillsDirName
-  });
-
-  return true;
+  // 执行各 skill 的安装前置命令
+  runSkillSetupCommands(manifest);
 }
 
 async function main() {
@@ -152,11 +117,11 @@ async function main() {
     manifestPath: path.join(repoRoot, 'constants', 'skills.js')
   });
 
-  const targets = args.host === 'all' ? ALL_HOSTS : [args.host];
+  const targets = args.host === 'all' ? ALL_HOST_IDS : [args.host];
 
   for (const host of targets) {
     try {
-      const success = projectHost(host, paths);
+      const { success } = projectHostById(host, userHome, paths.moluoHome);
       if (success) {
         const baselineTarget = linkHostBaseline({
           moluoHome: paths.moluoHome,

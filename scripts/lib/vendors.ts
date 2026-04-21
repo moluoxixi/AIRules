@@ -9,6 +9,8 @@ export interface VendorLink {
   kind: string;
   source: string;
   target: string;
+  /** 该 skill 的安装前置命令（来自 SkillConfig.setup） */
+  setup?: string[];
 }
 
 export interface Vendor {
@@ -16,6 +18,8 @@ export interface Vendor {
   repo: string;
   cloneDir: string;
   links: VendorLink[];
+  /** 安装前置命令列表，来自 VendorRepo.setup */
+  setup?: string[];
 }
 
 export interface VendorManifest {
@@ -55,15 +59,32 @@ function buildLinksForEntry(namespaceParts: string[], entry: any): VendorLink[] 
       kind: 'namespace-dir',
       source: entry.sourceDir,
       target: path.posix.join('vendor', 'skills', ...namespaceParts, entry.name),
+      setup: entry.setup,
     }];
   }
 
   const sourceBaseDir = entry.sourceBaseDir ?? 'skills';
-  return Object.entries(entry.skills ?? {}).map(([sourceName, outputName]) => ({
-    kind: 'skill',
-    source: path.posix.join(sourceBaseDir, sourceName as string),
-    target: buildTargetPath(namespaceParts, outputName as string),
-  }));
+  const skills: any[] = entry.skills ?? [];
+
+  return skills.map((skillDef: any) => {
+    // 字符串简写：name === output，无 setup
+    if (typeof skillDef === 'string') {
+      return {
+        kind: 'skill',
+        source: path.posix.join(sourceBaseDir, skillDef),
+        target: buildTargetPath(namespaceParts, skillDef),
+      };
+    }
+    // SkillConfig 对象：name 必填，output 可选（默认等于 name），setup 可选
+    const sourceName = skillDef.name as string;
+    const outputName = (skillDef.output ?? skillDef.name) as string;
+    return {
+      kind: 'skill',
+      source: path.posix.join(sourceBaseDir, sourceName),
+      target: buildTargetPath(namespaceParts, outputName),
+      setup: skillDef.setup,
+    };
+  });
 }
 
 /**
@@ -83,6 +104,7 @@ function mergeVendor(vendors: Record<string, Vendor>, vendorName: string, namesp
       repo: entry.source,
       cloneDir,
       links,
+      setup: entry.setup,
     };
     return;
   }

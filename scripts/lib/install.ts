@@ -9,15 +9,43 @@ import {
   symlinkSync,
   writeFileSync
 } from 'node:fs';
+import { execSync } from 'node:child_process';
 import os from 'node:os';
 import path from 'node:path';
 
 import { buildLinkPlan, type LinkEntry } from './links.js';
-import { loadVendorManifest, normalizePath } from './vendors.js';
+import { loadVendorManifest, normalizePath, type VendorManifest } from './vendors.js';
+import { findHostConfig, resolveHostPaths } from '../../constants/hosts.js';
 
 function resetDir(targetDir: string) {
   rmSync(targetDir, { recursive: true, force: true });
   mkdirSync(targetDir, { recursive: true });
+}
+
+/**
+ * 执行各 skill 的安装前置命令（per-skill 精度）。
+ * 遍历 manifest 中所有 vendor 的 links，对具有 setup 字段的 link 执行其命令。
+ * 任一命令失败均打印警告但不中断整体流程。
+ * @param manifest 已解析的 VendorManifest
+ */
+export function runSkillSetupCommands(manifest: VendorManifest): void {
+  for (const [vendorName, vendor] of Object.entries(manifest.vendors)) {
+    for (const link of vendor.links) {
+      if (!link.setup || link.setup.length === 0) continue;
+
+      const skillName = path.basename(link.target);
+      console.log(`\n[setup] 执行 ${vendorName}/${skillName} 的安装前置命令...`);
+      for (const cmd of link.setup) {
+        console.log(`[setup] > ${cmd}`);
+        try {
+          execSync(cmd, { stdio: 'inherit', shell: true });
+        } catch (err: any) {
+          console.warn(`[setup][warn] 命令执行失败，已跳过: ${cmd}`);
+          console.warn(`[setup][warn] 失败原因: ${err?.message ?? String(err)}`);
+        }
+      }
+    }
+  }
 }
 
 function copyDirContents(sourceDir: string, targetDir: string, options: { skipSymlinks?: boolean } = {}) {
@@ -171,49 +199,19 @@ export interface InstallPaths {
   userHome: string;
   moluoHome: string;
   repoRoot: string;
-  claudeHome: string;
-  codexHome: string;
-  cursorHome: string;
-  codexAgentSkillsHome: string;
-  qoderHome: string;
-  tareHome: string;
-  opencodeHome: string;
-  opencodeSkillsHome: string;
   moluoBaselineFile: string;
-  claudeBaselineFile: string;
-  codexBaselineFile: string;
-  cursorBaselineFile: string;
-  qoderBaselineFile: string;
-  tareBaselineFile: string;
-  opencodeBaselineFile: string;
   globalAgentSkillsHome: string;
   [key: string]: string;
 }
 
 export function getDefaultInstallPaths(userHome = os.homedir()): InstallPaths {
   const moluoHome = path.join(userHome, '.moluoxixi');
-  const opencodeHome = path.join(userHome, '.config', 'opencode');
-
   return {
     userHome,
     moluoHome,
     repoRoot: moluoHome,
-    claudeHome: path.join(userHome, '.claude'),
-    codexHome: path.join(userHome, '.codex'),
-    cursorHome: path.join(userHome, '.cursor'),
-    codexAgentSkillsHome: path.join(userHome, '.agents', 'skills'),
-    qoderHome: path.join(userHome, '.qoder'),
-    tareHome: path.join(userHome, '.tare'),
-    opencodeHome,
-    opencodeSkillsHome: path.join(opencodeHome, 'skills'),
-    globalAgentSkillsHome: path.join(userHome, '.agents', 'skills'),
     moluoBaselineFile: path.join(moluoHome, 'AGENTS.md'),
-    claudeBaselineFile: path.join(userHome, '.claude', 'CLAUDE.md'),
-    codexBaselineFile: path.join(userHome, '.codex', 'AGENTS.md'),
-    cursorBaselineFile: path.join(userHome, '.cursor', 'AGENTS.md'),
-    qoderBaselineFile: path.join(userHome, '.qoder', 'AGENTS.md'),
-    tareBaselineFile: path.join(userHome, '.tare', 'AGENTS.md'),
-    opencodeBaselineFile: path.join(opencodeHome, 'AGENTS.md')
+    globalAgentSkillsHome: path.join(userHome, '.agents', 'skills'),
   };
 }
 
@@ -408,19 +406,44 @@ export function projectToHost({
 
 export function linkHostBaseline({ moluoHome, host, userHome = os.homedir() }: { moluoHome: string, host: string, userHome?: string }): string {
   const source = path.join(moluoHome, 'AGENTS.md');
-  const targets: Record<string, string> = {
-    claude: path.join(userHome, '.claude', 'CLAUDE.md'),
-    codex: path.join(userHome, '.codex', 'AGENTS.md'),
-    cursor: path.join(userHome, '.cursor', 'AGENTS.md'),
-    qoder: path.join(userHome, '.qoder', 'AGENTS.md'),
-    tare: path.join(userHome, '.tare', 'AGENTS.md'),
-    opencode: path.join(userHome, '.config', 'opencode', 'AGENTS.md')
-  };
-
-  if (!(host in targets)) {
+  const config = findHostConfig(host);
+  if (!config) {
     throw new Error(`Unknown host: ${host}`);
   }
 
-  replaceWithSymlink(source, targets[host], linkFileForCurrentPlatform());
-  return targets[host];
+  const { hostBaselineFile } = resolveHostPaths(config, userHome);
+  replaceWithSymlink(source, hostBaselineFile, linkFileForCurrentPlatform());
+  return hostBaselineFile;
+}
+
+/**
+ * 将技能和基线投影到指定宿主，并返回是否成功（宿主目录不存在则跳过）。
+ */
+export function projectHostById(
+  host: string,
+  userHome: string,
+  moluoHome: string,
+): { success: boolean; hostBaselineFile: string } {
+  const config = findHostConfig(host);
+  if (!config) {
+    throw new Error(`Unknown host: ${host}`);
+  }
+
+  const { hostHome, hostBaselineFile, skillsDirName } = resolveHostPaths(config, userHome);
+
+  const hostHomePath = path.resolve(hostHome);
+  if (!existsSync(hostHomePath)) {
+    console.warn(`[skip] 宿主目录不存在，跳过投影: ${host} (${hostHomePath})`);
+    return { success: false, hostBaselineFile };
+  }
+
+  projectToHost({
+    userHome,
+    moluoHome,
+    hostHome,
+    hostBaselineFile,
+    customSkillsDirName: skillsDirName,
+  });
+
+  return { success: true, hostBaselineFile };
 }
