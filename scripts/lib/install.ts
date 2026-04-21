@@ -230,6 +230,7 @@ export function ensureInstallRoot(paths: InstallPaths) {
 
 /**
  * 确保全局 Agent 技能目录 (~/.agents/skills) 的链接正确。
+ * ~/.agents 是行业标准共享层，始终存在。
  * 遵循层级自愈同步逻辑。
  */
 export function ensureGlobalSkillLink(paths: InstallPaths) {
@@ -344,29 +345,19 @@ export async function rebuildVendorSkillLinks({ homeDir, repoRoot, manifestPath 
 
 /**
  * 将所有技能投影到宿主软件目录（如 .claude 或 .cursor）。
- * 该过程遵循层级链接：宿主 -> .agents -> .cc-switch -> 源码。
+ * 该过程遵循两层链接：宿主 -> ~/.agents/skills -> 源码。
+ * ~/.agents 是行业标准共享层，始终存在（不存在则创建）。
  */
 export function projectSkillsToHost(userHome: string, moluoHome: string, hostSkillsHome: string) {
   const sourceSkillsDir = path.join(moluoHome, 'skills');
-  const ccSwitchSkillsDir = path.join(userHome, '.cc-switch', 'skills');
   const agentsSkillsDir = path.join(userHome, '.agents', 'skills');
 
-  let currentSource = sourceSkillsDir;
+  // 1. 始终同步到 ~/.agents/skills（行业标准层，必选）
+  mkdirSync(path.join(userHome, '.agents'), { recursive: true });
+  syncFlattenedSkills(sourceSkillsDir, agentsSkillsDir, moluoHome);
 
-  // 1. 如果存在 .cc-switch 中间层
-  if (existsSync(path.join(userHome, '.cc-switch'))) {
-    syncFlattenedSkills(currentSource, ccSwitchSkillsDir, moluoHome);
-    currentSource = ccSwitchSkillsDir;
-  }
-
-  // 2. 如果存在 .agents 中间层
-  if (existsSync(path.join(userHome, '.agents'))) {
-    syncFlattenedSkills(currentSource, agentsSkillsDir, moluoHome);
-    currentSource = agentsSkillsDir;
-  }
-
-  // 3. 最终投影到宿主技能目录
-  syncFlattenedSkills(currentSource, hostSkillsHome, moluoHome);
+  // 2. 从 ~/.agents 投影到宿主技能目录
+  syncFlattenedSkills(agentsSkillsDir, hostSkillsHome, moluoHome);
 }
 
 function projectSharedSkillsHost(userHome: string, hostHome: string, moluoHome: string, customSkillsDirName: string = 'skills') {

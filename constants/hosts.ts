@@ -51,6 +51,11 @@ export const HOST_CONFIGS: HostConfig[] = [
     homeRelPath: path.join('.config', 'opencode'),
     baselineFileName: 'AGENTS.md',
   },
+  {
+    id: 'cc-switch',
+    homeRelPath: '.cc-switch',
+    baselineFileName: 'AGENTS.md',
+  },
 ]
 
 /** 所有支持的宿主 ID 列表，供 --host all 使用 */
