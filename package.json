@@ -7,13 +7,25 @@
   "license": "MIT",
   "repository": "https://github.com/moluoxixi/AIRules",
   "scripts": {
+    "prepare": "husky",
     "setup": "tsx scripts/host-setup.ts",
     "rules:install": "git pull && npm install && tsx scripts/host-setup.ts",
     "pretest": "npx tsx scripts/sync-vendors.ts",
     "test": "node --import tsx --test tests/*.test.ts"
   },
+  "lint-staged": {
+    "*.{vue,jsx,tsx,js,ts}": [
+      "eslint --fix"
+    ]
+  },
   "devDependencies": {
+    "@antfu/eslint-config": "^8.2.0",
     "@types/node": "^25.6.0",
+    "eslint": "^10.2.1",
+    "eslint-plugin-format": "^2.0.1",
+    "husky": "^9.1.7",
+    "jiti": "^2.6.1",
+    "lint-staged": "^16.4.0",
     "tsx": "^4.21.0",
     "typescript": "^6.0.2"
   }
