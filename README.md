@@ -43,7 +43,7 @@ AIRules is a **composable AI skill distribution system**. The core idea is simpl
 
 - 🔥 **22+ curated** frontend/general AI Skills out of the box
 - 🛠️ **Zero-barrier skill creation** with the built-in skill-creator-pro
-- 🌐 **Multi-agent sync**: configure once, works across Claude / Cursor / Codex / ...
+- 🌐 **Multi-agent sync**: configure once, works across Claude / Cursor / Codex / Qoder / Tare / OpenCode / CC-Switch
 - 🔄 **Continuous updates**: one command pulls latest upstream skills
 
 ## Installation
@@ -56,11 +56,19 @@ cd "$HOME/.moluoxixi"
 npm run rules:install -- --host all
 ```
 
-**Windows PowerShell / CMD:**
+**Windows PowerShell:**
 
 ```powershell
 git clone https://github.com/moluoxixi/AIRules.git "$env:USERPROFILE\.moluoxixi"
 cd "$env:USERPROFILE\.moluoxixi"
+npm run rules:install -- --host all
+```
+
+**Windows CMD:**
+
+```cmd
+git clone https://github.com/moluoxixi/AIRules.git "%USERPROFILE%\.moluoxixi"
+cd "%USERPROFILE%\.moluoxixi"
 npm run rules:install -- --host all
 ```
 
@@ -69,18 +77,24 @@ npm run rules:install -- --host all
 
 ---
 
-### Agent-Specific Entry Points
+---
 
-To install to a specific agent, have it read its dedicated instructions:
+### Agent Support Matrix
 
-| Agent | Bootstrap Instruction |
-|-------|-----------------------|
-| **Codex / General** | Fetch and follow instructions from `https://raw.githubusercontent.com/moluoxixi/AIRules/refs/heads/main/.codex/INSTALL.md` |
-| **Claude Code** | Fetch and follow instructions from `https://raw.githubusercontent.com/moluoxixi/AIRules/refs/heads/main/.claude-plugin/INSTALL.md` |
-| **Cursor** | Fetch and follow instructions from `https://raw.githubusercontent.com/moluoxixi/AIRules/refs/heads/main/.cursor-plugin/INSTALL.md` |
-| **Qoder** | Fetch and follow instructions from `https://raw.githubusercontent.com/moluoxixi/AIRules/refs/heads/main/.qoder/INSTALL.md` |
-| **Tare** | Fetch and follow instructions from `https://raw.githubusercontent.com/moluoxixi/AIRules/refs/heads/main/.tare/INSTALL.md` |
-| **OpenCode** | Fetch and follow instructions from `https://raw.githubusercontent.com/moluoxixi/AIRules/refs/heads/main/.opencode/INSTALL.md` |
+Moluoxixi AIRules supports a growing ecosystem of AI agents through automated projection:
+
+| Agent | Projection Method | Baseline File |
+|-------|-------------------|---------------|
+| **Claude Code** | Symlink to `~/.claude/` | `CLAUDE.md` |
+| **Codex** | Symlink to `~/.codex/` | `AGENTS.md` |
+| **Cursor** | Symlink to `~/.cursor/` | `AGENTS.md` |
+| **Qoder** | Symlink to `~/.qoder/` | `AGENTS.md` |
+| **Tare** | Symlink to `~/.tare/` | `AGENTS.md` |
+| **OpenCode** | Symlink to `~/.config/opencode/` | `AGENTS.md` |
+| **CC-Switch** | Symlink to `~/.cc-switch/` | `AGENTS.md` |
+
+> [!NOTE]
+> All skills are automatically projected into the agent's dedicated skills directory during installation.
 
 ## Skills Overview
 
@@ -96,8 +110,7 @@ To install to a specific agent, have it read its dedicated instructions:
 
 | Source | Skills | Description |
 |--------|--------|-------------|
-| **antfu** | vue, nuxt, pinia, vite, vitest, unocss, pnpm, vitepress, slidev, tsdown, turborepo + 4 more | Vue ecosystem + frontend toolchain best practices |
-| **Anthropic** | webapp-testing | Playwright-driven web application testing |
+| **antfu** | vue, nuxt, pinia, vite, vitest, unocss, pnpm, vitepress, slidev, tsdown, turborepo + 6 more | Vue ecosystem + frontend toolchain best practices |
 | **Google Gemini** | code-reviewer, pr-creator | Automated code review and PR creation |
 | **Vercel Labs** | find-skills | Open ecosystem skill discovery and installation |
 | **Microsoft** | playwright-cli | Browser automation and E2E testing |
@@ -127,7 +140,7 @@ There are many AI rules repositories out there. Here's what makes AIRules differ
 |-----------------|---------|
 | One large rules file | Modular, composable skill units |
 | Manual copy-paste | Script-driven automated distribution |
-| Single agent support | 6 AI agents supported simultaneously |
+| Single agent support | 7 AI agents supported simultaneously |
 | Everything custom-written | Clone mature skills + write only what's unique |
 | One-time setup | Continuous sync + self-healing repair |
 
