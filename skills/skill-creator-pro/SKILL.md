@@ -598,9 +598,9 @@ python -m eval-viewer.generate_review \
 ```json
 {
   "reviews": [
-    {"run_id": "eval-0-with_skill", "feedback": "图表缺少轴标签", "timestamp": "..."},
-    {"run_id": "eval-1-with_skill", "feedback": "", "timestamp": "..."},
-    {"run_id": "eval-2-with_skill", "feedback": "完美，喜欢这个", "timestamp": "..."}
+    { "run_id": "eval-0-with_skill", "feedback": "图表缺少轴标签", "timestamp": "..." },
+    { "run_id": "eval-1-with_skill", "feedback": "", "timestamp": "..." },
+    { "run_id": "eval-2-with_skill", "feedback": "完美，喜欢这个", "timestamp": "..." }
   ],
   "status": "complete"
 }

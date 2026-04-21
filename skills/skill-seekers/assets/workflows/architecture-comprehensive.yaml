@@ -1,6 +1,6 @@
 name: architecture-comprehensive
-description: "全面架构分析：设计模式、组件关系、数据流"
-version: "1.0"
+description: 全面架构分析：设计模式、组件关系、数据流
+version: '1.0'
 stages:
   - name: patterns
     type: pattern_recognition

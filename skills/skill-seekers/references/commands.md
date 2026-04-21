@@ -12,7 +12,7 @@ skill-seekers create <source> [选项]
 - URL (http://, https://) → 文档网站
 - owner/repo → GitHub仓库
 - ./path → 本地目录
-- *.pdf, *.epub → 文档文件
+- *.pdf,*.epub → 文档文件
 
 | 选项 | 说明 |
 |------|------|

@@ -1,6 +1,6 @@
 name: api-documentation
-description: "生成完整的API参考文档"
-version: "1.0"
+description: 生成完整的API参考文档
+version: '1.0'
 stages:
   - name: endpoints
     type: api_extraction

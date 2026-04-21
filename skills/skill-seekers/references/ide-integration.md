@@ -71,7 +71,7 @@ python -m skill_seekers.cli.context_server --port 8765
 name: Update Framework Skill
 on:
   schedule:
-    - cron: '0 0 * * 0'  # 每周
+    - cron: '0 0 * * 0' # 每周
 jobs:
   update:
     runs-on: ubuntu-latest

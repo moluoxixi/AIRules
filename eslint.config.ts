@@ -5,6 +5,7 @@ export default eslintConfig({
     'scripts',
     'public',
     '.zed',
+    'docs',
   ],
   rules: {
     // user

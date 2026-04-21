@@ -20,15 +20,15 @@
 
 ```yaml
 name: security-focus
-description: "安全重点审查：漏洞、认证、数据处理"
-version: "1.0"
+description: 安全重点审查：漏洞、认证、数据处理
+version: '1.0'
 stages:
   - name: vulnerabilities
     type: custom
-    prompt: "审查 OWASP Top 10 和常见安全漏洞..."
+    prompt: 审查 OWASP Top 10 和常见安全漏洞...
   - name: auth-review
     type: custom
-    prompt: "检查认证和授权模式..."
+    prompt: 检查认证和授权模式...
     uses_history: true
 ```
 
@@ -36,36 +36,36 @@ stages:
 
 ```yaml
 name: architecture-comprehensive
-description: "全面架构分析：设计模式、组件关系、数据流"
-version: "1.0"
+description: 全面架构分析：设计模式、组件关系、数据流
+version: '1.0'
 stages:
   - name: patterns
     type: pattern_recognition
-    prompt: "识别架构模式和设计模式..."
+    prompt: 识别架构模式和设计模式...
   - name: components
     type: dependency_analysis
-    prompt: "分析组件依赖关系..."
+    prompt: 分析组件依赖关系...
   - name: data-flow
     type: flow_analysis
-    prompt: "追踪数据流动..."
+    prompt: 追踪数据流动...
 ```
 
 ## API文档预设 (api-documentation)
 
 ```yaml
 name: api-documentation
-description: "生成完整的API参考文档"
-version: "1.0"
+description: 生成完整的API参考文档
+version: '1.0'
 stages:
   - name: endpoints
     type: api_extraction
-    prompt: "提取所有API端点..."
+    prompt: 提取所有API端点...
   - name: parameters
     type: parameter_doc
-    prompt: "记录参数和返回值..."
+    prompt: 记录参数和返回值...
   - name: examples
     type: example_generation
-    prompt: "生成使用示例..."
+    prompt: 生成使用示例...
 ```
 
 ---
@@ -105,15 +105,15 @@ skill-seekers create ./my-project \
 
 ```yaml
 name: my-custom-workflow
-description: "我的自定义工作流"
-version: "1.0"
+description: 我的自定义工作流
+version: '1.0'
 stages:
   - name: stage1
     type: custom
-    prompt: "执行特定任务..."
+    prompt: 执行特定任务...
   - name: stage2
     type: enhancement
-    prompt: "AI增强..."
+    prompt: AI增强...
 ```
 
 ## 预设类型

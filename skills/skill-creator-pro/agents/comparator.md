@@ -146,11 +146,11 @@
       "total": 5,
       "pass_rate": 0.80,
       "details": [
-        {"text": "输出包含名称", "passed": true},
-        {"text": "输出包含日期", "passed": true},
-        {"text": "格式是 PDF", "passed": true},
-        {"text": "包含签名", "passed": false},
-        {"text": "可读文本", "passed": true}
+        { "text": "输出包含名称", "passed": true },
+        { "text": "输出包含日期", "passed": true },
+        { "text": "格式是 PDF", "passed": true },
+        { "text": "包含签名", "passed": false },
+        { "text": "可读文本", "passed": true }
       ]
     },
     "B": {
@@ -158,11 +158,11 @@
       "total": 5,
       "pass_rate": 0.60,
       "details": [
-        {"text": "输出包含名称", "passed": true},
-        {"text": "输出包含日期", "passed": false},
-        {"text": "格式是 PDF", "passed": true},
-        {"text": "包含签名", "passed": false},
-        {"text": "可读文本", "passed": true}
+        { "text": "输出包含名称", "passed": true },
+        { "text": "输出包含日期", "passed": false },
+        { "text": "格式是 PDF", "passed": true },
+        { "text": "包含签名", "passed": false },
+        { "text": "可读文本", "passed": true }
       ]
     }
   }

@@ -427,12 +427,12 @@ Stages:
      - Remove duplicates: true
      - Normalize format: true
      - Fix code blocks: true
-  
+
   2. structure-analysis
      - Detect sections: true
      - Generate TOC: true
      - Optimize hierarchy: true
-  
+
   3. content-enhancement
      - Improve readability: true
      - Add examples: true
@@ -544,7 +544,7 @@ skill-seekers scrape --url https://docs.example.com --workflow "minimal -> defau
 skill-seekers scrape --url https://docs.example.com --enhance
 ```
 
-**说明**: 
+**说明**:
 - 自动检测增强模式（API 或 LOCAL）
 - 使用 Level 2 增强级别
 - 使用 default 工作流

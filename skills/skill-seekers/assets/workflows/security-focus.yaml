@@ -1,6 +1,6 @@
 name: security-focus
-description: "安全重点审查：漏洞、认证、数据处理"
-version: "1.0"
+description: 安全重点审查：漏洞、认证、数据处理
+version: '1.0'
 stages:
   - name: vulnerabilities
     type: custom

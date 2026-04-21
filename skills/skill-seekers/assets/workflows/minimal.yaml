@@ -1,6 +1,6 @@
 name: minimal
-description: "最小化输出：仅核心内容"
-version: "1.0"
+description: 最小化输出：仅核心内容
+version: '1.0'
 stages:
   - name: core
     type: documentation
