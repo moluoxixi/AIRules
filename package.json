@@ -10,6 +10,7 @@
     "prepare": "husky",
     "lint": "eslint --fix",
     "setup": "tsx scripts/host-setup.ts",
+    "update": "npm run rules:install -- --host all",
     "rules:install": "git pull && npm install && tsx scripts/host-setup.ts",
     "pretest": "npx tsx scripts/sync-vendors.ts",
     "test": "node --import tsx --test tests/*.test.ts"
