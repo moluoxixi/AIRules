@@ -31,15 +31,8 @@ export async function verifyHost(host: string, moluoHome: string): Promise<boole
     return false;
   }
 
-  // 1. 获取预期技能列表 (第一方 + 供应商)
+  // 1. 获取预期技能列表 (从 vendor/skills)
   const expectedSkills = new Set<string>();
-
-  const firstPartyDir = path.join(moluoHome, 'skills');
-  if (existsSync(firstPartyDir)) {
-    readdirSync(firstPartyDir).forEach(name => {
-      if (name !== '.gitignore') expectedSkills.add(name);
-    });
-  }
 
   const vendorSkillsDir = path.join(moluoHome, 'vendor', 'skills');
   if (existsSync(vendorSkillsDir)) {
