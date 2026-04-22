@@ -38,7 +38,7 @@ export function runSkillSetupCommands(manifest: VendorManifest): void {
       for (const cmd of link.setup) {
         console.log(`[setup] > ${cmd}`);
         try {
-          execSync(cmd, { stdio: 'inherit', shell: true });
+          execSync(cmd, { stdio: 'inherit' });
         } catch (err: any) {
           console.warn(`[setup][warn] 命令执行失败，已跳过: ${cmd}`);
           console.warn(`[setup][warn] 失败原因: ${err?.message ?? String(err)}`);

@@ -1,6 +1,7 @@
 import os from 'node:os';
 import path from 'node:path';
 import { existsSync, readdirSync, lstatSync, realpathSync } from 'node:fs';
+import kleur from 'kleur';
 import { findHostConfig, resolveHostPaths } from '../../constants/hosts.js';
 
 /**
@@ -95,9 +96,9 @@ export async function verifyHost(host: string, moluoHome: string): Promise<boole
 
   const success = missingCount === 0 && brokenCount === 0;
   if (success) {
-    console.log(`✅ ${host} 验证通过`);
+    console.log(kleur.green(`✅ ${host} 验证通过`));
   } else {
-    console.log(`❌ ${host} 验证失败`);
+    console.log(kleur.red(`❌ ${host} 验证失败`));
   }
 
   return success;

@@ -2,6 +2,7 @@
 import os from 'node:os';
 import path from 'node:path';
 
+import kleur from 'kleur';
 import { loadVendorManifest } from './lib/vendors.js';
 import { ensureVendorRepo } from './lib/vendor-sync.js';
 import {
@@ -12,8 +13,7 @@ import {
   projectHostById,
   rebuildVendorSkillLinks,
   runSkillSetupCommands,
-  syncFirstPartyToHome,
-  type InstallPaths
+  syncFirstPartyToHome
 } from './lib/install.js';
 import { verifyHost } from './lib/verify.js';
 import { ALL_HOST_IDS } from '../constants/hosts.js';
@@ -117,6 +117,8 @@ async function main() {
   });
 
   const targets = args.host === 'all' ? ALL_HOST_IDS : [args.host];
+  const failedHosts: string[] = [];
+  const installErrors: string[] = [];
 
   for (const host of targets) {
     try {
@@ -136,18 +138,32 @@ async function main() {
         // 自动执行校验逻辑
         const verified = await verifyHost(host, paths.moluoHome);
         if (!verified) {
-          console.error(`[error] ${host} 验证未通过，请检查上述错误信息。`);
-          process.exitCode = 1; // 标记失败但继续下一个宿主
+          failedHosts.push(host);
         }
       }
     } catch (error: any) {
+      installErrors.push(host);
       console.error(`[error] ${host} 安装过程中发生异常:`);
       console.error(error?.message || error);
-      process.exitCode = 1;
     }
   }
 
-  console.log(`\n[success] 安装/更新流程已完成。`);
+  const allFailures = [...installErrors, ...failedHosts];
+  const allPassed = allFailures.length === 0;
+
+  if (allPassed) {
+    console.log(`\n${kleur.green('✅ 所有宿主验证通过，安装/更新流程已完成。')}`);
+  } else {
+    console.error(`\n${kleur.red('❌ 以下宿主未通过验证，请检查上述错误信息：')}`);
+    for (const host of installErrors) {
+      console.error(`  ${kleur.red(`• ${host} — 安装异常`)}`);
+    }
+    for (const host of failedHosts) {
+      console.error(`  ${kleur.red(`• ${host} — 验证失败`)}`);
+    }
+    process.exitCode = 1;
+  }
+
   console.log(`[home] ${paths.moluoHome}`);
 }
 
