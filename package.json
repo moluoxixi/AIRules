@@ -13,7 +13,7 @@
     "sync": "npm run rules:install -- --host all",
     "rules:install": "git pull && npm install && tsx scripts/host-setup.ts",
     "pretest": "npx tsx scripts/sync-vendors.ts",
-    "test": "node --import tsx --test tests/*.test.ts"
+    "test": "vitest run"
   },
   "devDependencies": {
     "@antfu/eslint-config": "^8.2.0",

@@ -2,7 +2,7 @@ import assert from 'node:assert/strict'
 import fs from 'node:fs'
 import path from 'node:path'
 import { fileURLToPath } from 'node:url'
-import { test } from 'vitest'
+import { describe, it } from 'vitest'
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url))
 const rootDir = path.resolve(__dirname, '..')
@@ -10,7 +10,7 @@ const rootDir = path.resolve(__dirname, '..')
 // Directories to check for skills
 const skillRoots = ['skills', 'vendor/skills']
 
-test('Agent Skills Validation', async (t) => {
+describe('Agent Skills Validation', () => {
   for (const root of skillRoots) {
     const fullRootPath = path.join(rootDir, root)
 
@@ -46,31 +46,32 @@ test('Agent Skills Validation', async (t) => {
     if (skillsToTest.length === 0)
       continue
 
-    await t.test(`Checking root: ${root}`, async (st) => {
+    describe(`Checking root: ${root}`, () => {
       for (const skill of skillsToTest) {
-        await st.test(`Skill: ${skill.name}`, () => {
+        it(`Skill: ${skill.name}`, () => {
           // 1. SKILL.md naming (case insensitivity check)
           const files = fs.readdirSync(skill.path)
           const skillMdFile = files.find(f => f.toLowerCase() === 'skill.md')
 
           assert.ok(skillMdFile, `Missing SKILL.md in ${skill.name}`)
+          assert.strictEqual(skillMdFile, 'SKILL.md', `SKILL.md filename must be uppercase in ${skill.name}, got "${skillMdFile}"`)
 
-          const content = fs.readFileSync(path.join(skill.path, skillMdFile), 'utf8')
+          const content = fs.readFileSync(path.join(skill.path, skillMdFile!), 'utf8')
 
           // 2. Validate Metadata (name and description)
           // Extract YAML frontmatter (between --- and ---)
           const yamlMatch = content.match(/^---\s*\n([\s\S]*?)\n---\s*\n/)
           assert.ok(yamlMatch, `SKILL.md in ${skill.name} must start with YAML frontmatter (---)`)
 
-          const yamlContent = yamlMatch[1]
+          const yamlContent = yamlMatch![1]
           const nameMatch = yamlContent.match(/^name:\s*(.+)$/m)
           const descMatch = yamlContent.match(/^description:\s*(.+)$/m)
 
           assert.ok(nameMatch, `Missing 'name' in YAML frontmatter of ${skill.name}`)
           assert.ok(descMatch, `Missing 'description' in YAML frontmatter of ${skill.name}`)
 
-          const nameValue = nameMatch[1].trim()
-          const descValue = descMatch[1].trim()
+          const nameValue = nameMatch![1].trim()
+          const descValue = descMatch![1].trim()
 
           assert.ok(nameValue.length > 0, `'name' in ${skill.name} cannot be empty`)
           assert.ok(descValue.length > 0, `'description' in ${skill.name} cannot be empty`)

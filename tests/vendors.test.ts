@@ -1,6 +1,6 @@
 import type { VendorsConfig } from '../constants/skills.js'
 import assert from 'node:assert'
-import test from 'vitest'
+import { test } from 'vitest'
 import { walkVendorTree } from '../scripts/lib/vendors.js'
 
 // ─── 基础结构测试 ────────────────────────────────────────────────────────────
@@ -193,6 +193,29 @@ test('walkVendorTree - sourceDir 模式（整体目录作为一个 skill）', ()
   assert.strictEqual(link.kind, 'namespace-dir')
   assert.strictEqual(link.source, 'skills')
   assert.strictEqual(link.target, 'vendor/skills/superpowers')
+  assert.strictEqual(link.setup, undefined, 'sourceDir 模式无 setup 时应为 undefined')
+})
+
+test('walkVendorTree - sourceDir 模式带 setup', () => {
+  const vendors: Record<string, any> = {}
+  const mockConfig: VendorsConfig = [
+    {
+      name: 'superpowers',
+      official: true,
+      source: 'https://github.com/obra/superpowers.git',
+      sourceDir: 'skills',
+      setup: ['npm install -g superpowers-cli'],
+    },
+  ]
+
+  walkVendorTree(mockConfig, [], vendors)
+
+  const link = vendors.superpowers.links[0]
+  assert.deepStrictEqual(
+    link.setup,
+    ['npm install -g superpowers-cli'],
+    'sourceDir 模式的 setup 应透传到 VendorLink',
+  )
 })
 
 // ─── 错误处理 ─────────────────────────────────────────────────────────────────
