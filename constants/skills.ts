@@ -137,4 +137,11 @@ export const vendors: VendorsConfig = [
     source: 'https://github.com/obra/superpowers.git',
     sourceDir: 'skills',
   },
+  {
+    name: 'moluoxixi',
+    official: true,
+    source: 'https://github.com/moluoxixi/AIRules.git',
+    sourceBaseDir: 'skills',
+    skills: ['frontend-workflow', 'skill-creator-pro', 'skill-seekers'],
+  },
 ]
