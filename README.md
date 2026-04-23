@@ -53,15 +53,7 @@ AIRules is a **composable AI skill distribution system**. The core idea is simpl
 ```bash
 git clone https://github.com/moluoxixi/AIRules.git "$HOME/.moluoxixi"
 cd "$HOME/.moluoxixi"
-npm run rules:install -- --host all
-```
-
-**Windows PowerShell:**
-
-```powershell
-git clone https://github.com/moluoxixi/AIRules.git "$env:USERPROFILE\.moluoxixi"
-cd "$env:USERPROFILE\.moluoxixi"
-npm run rules:install -- --host all
+npm run sync
 ```
 
 **Windows CMD:**
@@ -69,7 +61,15 @@ npm run rules:install -- --host all
 ```cmd
 git clone https://github.com/moluoxixi/AIRules.git "%USERPROFILE%\.moluoxixi"
 cd "%USERPROFILE%\.moluoxixi"
-npm run rules:install -- --host all
+npm run sync
+```
+
+**Windows PowerShell:**
+
+```powershell
+git clone https://github.com/moluoxixi/AIRules.git "$env:USERPROFILE\.moluoxixi"
+cd "$env:USERPROFILE\.moluoxixi"
+npm run sync
 ```
 
 > [!TIP]
@@ -77,24 +77,54 @@ npm run rules:install -- --host all
 
 ---
 
+## Specific Host Installation
+
+**macOS / Linux / Git Bash:**
+
+```bash
+git clone https://github.com/moluoxixi/AIRules.git "$HOME/.moluoxixi"
+cd "$HOME/.moluoxixi"
+npm run rules:install -- --host <host-name> (e.g., claude)
+```
+
+**Windows CMD:**
+
+```cmd
+git clone https://github.com/moluoxixi/AIRules.git "%USERPROFILE%\.moluoxixi"
+cd "%USERPROFILE%\.moluoxixi"
+npm run rules:install -- --host <host-name> (e.g., claude)
+```
+
+**Windows PowerShell:**
+
+```powershell
+git clone https://github.com/moluoxixi/AIRules.git "$env:USERPROFILE\.moluoxixi"
+cd "$env:USERPROFILE\.moluoxixi"
+npm run rules:install -- --host <host-name> (e.g., claude)
+```
+
+> [!TIP]
+> **All-in-One Process**: This command automatically pulls latest code, installs dependencies, cleans dead links, and **runs a full verification check**. To uninstall, simply add `--mode uninstall`.
+
 ---
 
 ### Agent Support Matrix
 
 Moluoxixi AIRules supports a growing ecosystem of AI agents through automated projection:
 
-| Agent | Projection Method | Baseline File |
-|-------|-------------------|---------------|
-| **Claude Code** | Symlink to `~/.claude/` | `CLAUDE.md` |
-| **Codex** | Symlink to `~/.codex/` | `AGENTS.md` |
-| **Cursor** | Symlink to `~/.cursor/` | `AGENTS.md` |
-| **Qoder** | Symlink to `~/.qoder/` | `AGENTS.md` |
-| **Tare** | Symlink to `~/.tare/` | `AGENTS.md` |
-| **OpenCode** | Symlink to `~/.config/opencode/` | `AGENTS.md` |
-| **CC-Switch** | Symlink to `~/.cc-switch/` | `AGENTS.md` |
+| Agent | `--host` Value | Host Path | Projection Method | Baseline File |
+|-------|----------------|-----------|-------------------|---------------|
+| **Claude Code** | `claude` | `~/.claude/` | Symlink | `CLAUDE.md` |
+| **Codex** | `codex` | `~/.codex/` | Symlink | `AGENTS.md` |
+| **Cursor** | `cursor` | `~/.cursor/` | Symlink | `AGENTS.md` |
+| **Tare** | `tare` | `~/.tare/` | Symlink | `AGENTS.md` |
+| **OpenCode** | `opencode` | `~/.config/opencode/` | Symlink | `AGENTS.md` |
+| **CC-Switch** | `cc-switch` | `~/.cc-switch/` | Symlink | `AGENTS.md` |
 
 > [!NOTE]
 > All skills are automatically projected into the agent's dedicated skills directory during installation.
+
+---
 
 ## Skills Overview
 

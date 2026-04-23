@@ -2,7 +2,7 @@ import assert from 'node:assert'
 import fs from 'node:fs'
 import os from 'node:os'
 import path from 'node:path'
-import { test } from 'vitest'
+import { it } from 'vitest'
 import {
 
   projectSkillsToHost,
@@ -16,8 +16,8 @@ function setupMockEnvironment() {
   fs.mkdirSync(userHome, { recursive: true })
   fs.mkdirSync(moluoHome, { recursive: true })
 
-  // Create some dummy skills in .moluoxixi/skills
-  const skillsBase = path.join(moluoHome, 'skills')
+  // Create some dummy skills in .moluoxixi/vendor/skills
+  const skillsBase = path.join(moluoHome, 'vendor', 'skills')
   fs.mkdirSync(skillsBase, { recursive: true })
   fs.mkdirSync(path.join(skillsBase, 'skill-a'), { recursive: true })
   fs.mkdirSync(path.join(skillsBase, 'skill-b'), { recursive: true })
@@ -32,7 +32,7 @@ function cleanup(tmpDir: string) {
   fs.rmSync(tmpDir, { recursive: true, force: true })
 }
 
-test('Installation linking - .agents is always created as mandatory layer', () => {
+it('installation linking - .agents is always created as mandatory layer', () => {
   const { tmpDir, userHome, moluoHome, claudeHome } = setupMockEnvironment()
 
   try {
@@ -49,7 +49,7 @@ test('Installation linking - .agents is always created as mandatory layer', () =
     const agentTarget = path.resolve(path.dirname(agentSkillA), fs.readlinkSync(agentSkillA))
     assert.strictEqual(
       path.normalize(agentTarget),
-      path.normalize(path.join(moluoHome, 'skills', 'skill-a')),
+      path.normalize(path.join(moluoHome, 'vendor', 'skills', 'skill-a')),
     )
 
     // Verify Claude links point to .agents
@@ -66,7 +66,7 @@ test('Installation linking - .agents is always created as mandatory layer', () =
   }
 })
 
-test('Installation linking - Pre-existing .agents directory is preserved', () => {
+it('installation linking - Pre-existing .agents directory is preserved', () => {
   const { tmpDir, userHome, moluoHome, claudeHome } = setupMockEnvironment()
 
   try {
@@ -90,7 +90,7 @@ test('Installation linking - Pre-existing .agents directory is preserved', () =>
   }
 })
 
-test('Installation linking - Pre-existing folder deletion', () => {
+it('installation linking - Pre-existing folder deletion', () => {
   const { tmpDir, userHome, moluoHome, claudeHome } = setupMockEnvironment()
 
   try {
@@ -114,7 +114,7 @@ test('Installation linking - Pre-existing folder deletion', () => {
   }
 })
 
-test('Self-healing - Orphan link cleanup', () => {
+it('self-healing - Orphan link cleanup', () => {
   const { tmpDir, userHome, moluoHome, claudeHome } = setupMockEnvironment()
 
   try {
@@ -122,13 +122,13 @@ test('Self-healing - Orphan link cleanup', () => {
     fs.mkdirSync(claudeSkillsDir, { recursive: true })
 
     // 1. 在 moluoxixi 中创建一些物理文件
-    const currentSkillDir = path.join(moluoHome, 'skills', 'skill-present')
+    const currentSkillDir = path.join(moluoHome, 'vendor', 'skills', 'skill-present')
     fs.mkdirSync(currentSkillDir, { recursive: true })
 
     // 2. 在目标目录中手动创建一个"孤儿链接" (指向一个在清单中不存在的目录)
     const staleLink = path.join(claudeSkillsDir, 'stale-skill')
     // 注意：我们将它指向 moluoxixi 内部，这样它才会被"自愈"识别
-    const staleTarget = path.join(moluoHome, 'skills', 'skill-old-deleted')
+    const staleTarget = path.join(moluoHome, 'vendor', 'skills', 'skill-old-deleted')
     fs.mkdirSync(staleTarget, { recursive: true }) // 先创建目标以便建立链接
     fs.symlinkSync(staleTarget, staleLink, 'junction')
     fs.rmSync(staleTarget, { recursive: true, force: true }) // 删除目标使其变成死链接/孤儿
@@ -147,7 +147,7 @@ test('Self-healing - Orphan link cleanup', () => {
   }
 })
 
-test('Self-healing - Safety boundary (External links)', () => {
+it('self-healing - Safety boundary (External links)', () => {
   const { tmpDir, userHome, moluoHome, claudeHome } = setupMockEnvironment()
 
   try {
@@ -176,7 +176,7 @@ test('Self-healing - Safety boundary (External links)', () => {
   }
 })
 
-test('Self-healing - Aggressive broken link removal', () => {
+it('self-healing - Aggressive broken link removal', () => {
   const { tmpDir, userHome, moluoHome, claudeHome } = setupMockEnvironment()
 
   try {

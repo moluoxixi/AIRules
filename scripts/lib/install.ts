@@ -17,6 +17,26 @@ import { buildLinkPlan, type LinkEntry } from './links.js';
 import { loadVendorManifest, type VendorManifest } from './vendors.js';
 import { findHostConfig, resolveHostPaths } from '../../constants/hosts.js';
 
+// ─── 路径辅助函数：集中管理重复路径模式 ──────────────────────────────────────
+
+/** 基线文件文件名（仓库根目录与 vendor 目录下均使用此名） */
+const BASELINE_FILE_NAME = 'AGENTS.md';
+
+/** 获取基线文件在 vendor 目录下的绝对路径（所有宿主软链接的统一源） */
+function vendorBaselinePath(moluoHome: string): string {
+  return path.join(moluoHome, 'vendor', BASELINE_FILE_NAME);
+}
+
+/** 获取 vendor 技能目录的绝对路径 */
+function vendorSkillsPath(homeDir: string): string {
+  return path.join(homeDir, 'vendor', 'skills');
+}
+
+/** 获取全局 .agents/skills 目录的绝对路径 */
+function agentsSkillsPath(userHome: string): string {
+  return path.join(userHome, '.agents', 'skills');
+}
+
 function resetDir(targetDir: string) {
   rmSync(targetDir, { recursive: true, force: true });
   mkdirSync(targetDir, { recursive: true });
@@ -145,7 +165,7 @@ export function getDefaultInstallPaths(userHome = os.homedir()): InstallPaths {
     userHome,
     moluoHome,
     repoRoot: moluoHome,
-    moluoBaselineFile: path.join(moluoHome, 'AGENTS.md'),
+    moluoBaselineFile: path.join(moluoHome, 'vendor', 'AGENTS.md'),
     globalAgentSkillsHome: path.join(userHome, '.agents', 'skills'),
   };
 }
@@ -231,14 +251,20 @@ export function syncFlattenedSkills(sourceDir: string, targetDir: string, moluoH
 /**
  * 同步第一方（当前仓库内）的 agents 和基线文件到本地 moluoxixi 主目录。
  * skills 统一走 clone → vendor/skills 流程，不在此处理。
+ *
+ * AGENTS.md 始终复制到 vendor/ 目录下，作为所有宿主基线软链接的统一源。
+ * 即使 repoRoot === moluoHome（仓库本身就是安装目录），也需要执行此步骤，
+ * 因为 git clone 只会将 AGENTS.md 放在仓库根目录，而软链接指向的是 vendor/AGENTS.md。
  */
 export function syncFirstPartyToHome(repoRoot: string, moluoHome: string) {
+  // AGENTS.md 始终同步到 vendor/ 下（所有宿主基线的软链接源）
+  copyRequiredFile(path.join(repoRoot, 'AGENTS.md'), path.join(moluoHome, 'vendor', 'AGENTS.md'));
+
   if (isSamePath(repoRoot, moluoHome)) {
     return;
   }
 
   syncOptionalDir(path.join(repoRoot, 'agents'), path.join(moluoHome, 'agents'));
-  copyRequiredFile(path.join(repoRoot, 'AGENTS.md'), path.join(moluoHome, 'AGENTS.md'));
 }
 
 export async function rebuildVendorSkillLinks({ homeDir, manifestPath }: { homeDir: string, manifestPath: string }): Promise<LinkEntry[]> {
@@ -324,14 +350,14 @@ export function projectToHost({
 }) {
   projectSharedSkillsHost(userHome, hostHome, moluoHome, customSkillsDirName);
   replaceWithSymlink(
-    path.join(moluoHome, 'AGENTS.md'),
+    path.join(moluoHome, 'vendor', 'AGENTS.md'),
     hostBaselineFile,
     linkFileForCurrentPlatform()
   );
 }
 
 export function linkHostBaseline({ moluoHome, host, userHome = os.homedir() }: { moluoHome: string, host: string, userHome?: string }): string {
-  const source = path.join(moluoHome, 'AGENTS.md');
+  const source = path.join(moluoHome, 'vendor', 'AGENTS.md');
   const config = findHostConfig(host);
   if (!config) {
     throw new Error(`Unknown host: ${host}`);
