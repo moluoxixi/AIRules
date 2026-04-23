@@ -36,11 +36,12 @@ export const HOST_CONFIGS: HostConfig[] = [
     baselineFileName: 'AGENTS.md',
     skillsDirName: 'skills-cursor',
   },
-  {
-    id: 'qoder',
-    homeRelPath: '.qoder',
-    baselineFileName: 'AGENTS.md',
-  },
+  // 不需要，会自己复用.agents
+  // {
+  //   id: 'qoder',
+  //   homeRelPath: '.qoder',
+  //   baselineFileName: 'AGENTS.md',
+  // },
   {
     id: 'tare',
     homeRelPath: '.tare',
