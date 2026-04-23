@@ -165,8 +165,8 @@ export function getDefaultInstallPaths(userHome = os.homedir()): InstallPaths {
     userHome,
     moluoHome,
     repoRoot: moluoHome,
-    moluoBaselineFile: path.join(moluoHome, 'vendor', 'AGENTS.md'),
-    globalAgentSkillsHome: path.join(userHome, '.agents', 'skills'),
+    moluoBaselineFile: vendorBaselinePath(moluoHome),
+    globalAgentSkillsHome: agentsSkillsPath(userHome),
   };
 }
 
@@ -175,7 +175,7 @@ export function ensureInstallRoot(paths: InstallPaths) {
     paths.moluoHome,
     path.join(paths.moluoHome, 'vendor'),
     path.join(paths.moluoHome, 'vendor', 'repos'),
-    path.join(paths.moluoHome, 'vendor', 'skills'),
+    vendorSkillsPath(paths.moluoHome),
     paths.globalAgentSkillsHome
   ]) {
     mkdirSync(dir, { recursive: true });
@@ -189,7 +189,7 @@ export function ensureInstallRoot(paths: InstallPaths) {
  * 遵循层级自愈同步逻辑。
  */
 export function ensureGlobalSkillLink(paths: InstallPaths) {
-  const sourceSkillsDir = path.join(paths.moluoHome, 'vendor', 'skills');
+  const sourceSkillsDir = vendorSkillsPath(paths.moluoHome);
   const targetLinkDir = paths.globalAgentSkillsHome;
 
   syncFlattenedSkills(sourceSkillsDir, targetLinkDir, paths.moluoHome);
@@ -258,7 +258,7 @@ export function syncFlattenedSkills(sourceDir: string, targetDir: string, moluoH
  */
 export function syncFirstPartyToHome(repoRoot: string, moluoHome: string) {
   // AGENTS.md 始终同步到 vendor/ 下（所有宿主基线的软链接源）
-  copyRequiredFile(path.join(repoRoot, 'AGENTS.md'), path.join(moluoHome, 'vendor', 'AGENTS.md'));
+  copyRequiredFile(path.join(repoRoot, BASELINE_FILE_NAME), vendorBaselinePath(moluoHome));
 
   if (isSamePath(repoRoot, moluoHome)) {
     return;
@@ -270,7 +270,7 @@ export function syncFirstPartyToHome(repoRoot: string, moluoHome: string) {
 export async function rebuildVendorSkillLinks({ homeDir, manifestPath }: { homeDir: string, manifestPath: string }): Promise<LinkEntry[]> {
   const manifest = await loadVendorManifest(manifestPath);
   const plan = buildLinkPlan(manifest, homeDir);
-  const vendorSkillsDir = path.join(homeDir, 'vendor', 'skills');
+  const vendorSkillsDir = vendorSkillsPath(homeDir);
 
   resetDir(vendorSkillsDir);
 
@@ -310,8 +310,8 @@ export async function rebuildVendorSkillLinks({ homeDir, manifestPath }: { homeD
  * ~/.agents 是行业标准共享层，始终存在（不存在则创建）。
  */
 export function projectSkillsToHost(userHome: string, moluoHome: string, hostSkillsHome: string) {
-  const sourceSkillsDir = path.join(moluoHome, 'vendor', 'skills');
-  const agentsSkillsDir = path.join(userHome, '.agents', 'skills');
+  const sourceSkillsDir = vendorSkillsPath(moluoHome);
+  const agentsSkillsDir = agentsSkillsPath(userHome);
 
   // 1. vendor/skills → ~/.agents/skills
   mkdirSync(path.join(userHome, '.agents'), { recursive: true });
@@ -350,14 +350,14 @@ export function projectToHost({
 }) {
   projectSharedSkillsHost(userHome, hostHome, moluoHome, customSkillsDirName);
   replaceWithSymlink(
-    path.join(moluoHome, 'vendor', 'AGENTS.md'),
+    vendorBaselinePath(moluoHome),
     hostBaselineFile,
     linkFileForCurrentPlatform()
   );
 }
 
 export function linkHostBaseline({ moluoHome, host, userHome = os.homedir() }: { moluoHome: string, host: string, userHome?: string }): string {
-  const source = path.join(moluoHome, 'vendor', 'AGENTS.md');
+  const source = vendorBaselinePath(moluoHome);
   const config = findHostConfig(host);
   if (!config) {
     throw new Error(`Unknown host: ${host}`);
