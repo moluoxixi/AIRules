@@ -11,7 +11,7 @@
     "lint": "eslint --fix",
     "setup": "tsx scripts/host-setup.ts",
     "sync": "npm run rules:install -- --host all",
-    "rules:install": "git checkout . && git reset --hard origin/main && npm install && tsx scripts/host-setup.ts",
+    "rules:install": "git fetch --prune origin main && git reset --hard origin/main && git clean -fd && npm install && tsx scripts/host-setup.ts",
     "pretest": "npx tsx scripts/sync-vendors.ts",
     "test": "vitest run"
   },
