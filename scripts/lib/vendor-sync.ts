@@ -52,10 +52,6 @@ export function getRemoteDefaultBranch(cloneDir: string): string {
   }
 }
 
-function getCurrentBranch(cloneDir: string): string {
-  return runGit(['-C', cloneDir, 'branch', '--show-current'], process.cwd());
-}
-
 function getSparsePatterns(vendor: Vendor): string[] {
   if (!vendor.links?.length) return [];
   const topDirs = new Set<string>();
@@ -114,17 +110,15 @@ export function ensureVendorRepo(homeDir: string, vendor: Vendor): string {
     }
   }
 
-  const currentBranch = getCurrentBranch(cloneDir);
-
-  if (currentBranch !== defaultBranch) {
-    runGit(['-C', cloneDir, 'checkout', '-B', defaultBranch,
-            remoteRef], process.cwd(), { stdio: 'inherit' });
-  } else {
-    runGit(['-C', cloneDir, 'checkout', defaultBranch],
-           process.cwd(), { stdio: 'inherit' });
-  }
-
-  runGit(['-C', cloneDir, 'merge', '--ff-only', remoteRef],
+  runGit(['-C', cloneDir, 'reset', '--hard'],
+         process.cwd(), { stdio: 'inherit' });
+  runGit(['-C', cloneDir, 'clean', '-fd'],
+         process.cwd(), { stdio: 'inherit' });
+  runGit(['-C', cloneDir, 'checkout', '-B', defaultBranch, remoteRef],
+         process.cwd(), { stdio: 'inherit' });
+  runGit(['-C', cloneDir, 'reset', '--hard', remoteRef],
+         process.cwd(), { stdio: 'inherit' });
+  runGit(['-C', cloneDir, 'clean', '-fd'],
          process.cwd(), { stdio: 'inherit' });
   return cloneDir;
 }
