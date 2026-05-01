@@ -1,7 +1,7 @@
 ---
 name: frontend-workflow
 description: 当项目为前端项目时强制使用。按项目类型进行流程编排，风格规范。
-version: 2.0.0
+version: 2.0.1
 protocolVersion: "1.0"
 triggers:
   - "前端开发"
@@ -170,6 +170,36 @@ function handleSearch() { fetchList() }
 
 ---
 
+## 交付验证协议（自包含质量门）
+
+所有交付测试 / 测试验证 / 构建预览阶段必须执行本协议定义的质量门。Skill 必须自包含执行标准，禁止依赖某个项目的外部全局规则文件才能成立。
+
+若当前任务上下文显式提供了更严格的用户规则或项目规则，必须同时遵循更严格规则；若没有提供，本协议即为默认交付标准。
+
+### 通用质量检查
+
+1. 读取项目脚本和配置，优先使用项目已有命令；禁止臆造不存在的脚本。
+2. 必须执行静态检查，例如 ESLint 或项目已有 lint 脚本。
+3. 必须执行类型检查，例如 TypeScript / vue-tsc / tsc 或项目已有 typecheck 脚本。
+4. 必须执行测试，包括单元测试、组件测试和项目已有相关测试脚本。
+5. 必须执行覆盖率检查，优先使用项目已有 coverage 脚本或测试框架覆盖率配置。
+6. 覆盖率默认基线：语句、分支、函数和行覆盖率均不得低于 80%；若项目已有更高阈值，以更高阈值为准。
+7. 新增或修改代码应尽量达到不低于 90% 的覆盖率；涉及鉴权、支付、数据删除、数据迁移、安全边界和核心业务规则的逻辑，必须覆盖成功路径、失败路径、边界条件和异常抛出路径。
+8. 覆盖率不足时不得通过降低阈值、排除关键文件、删除断言或编写无意义测试来通过检查；必须补充有效测试或明确报告未达标原因。
+9. 检查命令失败、覆盖率未达标或工具缺失时，必须将交付状态标记为 `BLOCKED` 或 `DONE_WITH_CONCERNS`，不得伪造成已完成或已通过。
+
+### 前端专项验证
+
+1. 执行项目已有构建命令，确认生产构建可通过。
+2. 启动或访问本地预览环境，确认页面可正常渲染。
+3. 检查浏览器控制台错误和关键网络请求失败。
+4. 验证关键用户交互流程，必要时使用 Playwright 或项目已有 E2E 脚本。
+5. 检查主要响应式视口，确保布局、文本和交互控件不重叠、不溢出、不被遮挡。
+6. 对包含视觉或 3D / canvas 的页面，必须做截图或像素级非空验证，确认实际画面已渲染。
+7. 将命令、结果、失败原因和未覆盖风险写入 `.agent/_workflow_state.json`；存在失败或缺失工具时，`stageStatus` 必须为 `BLOCKED` 或 `DONE_WITH_CONCERNS`，不得标记为无条件完成。
+
+---
+
 ## 分支 A：业务应用（有页面路由、接口调用、UI 组件）
 
 适用于：后台管理系统、H5 应用、小程序、电商前台等需要对接后端的项目。
@@ -219,7 +249,7 @@ requirement  （Headless    api-         delivery
 
 **执行协议**：
 1. 第一步：读取 `.agent/_workflow_state.json` + `.agent/project_context.json` + `.agent/api_context.json`
-2. 执行测试验证
+2. 执行交付验证协议（见上方"交付验证协议"章节）
 3. 完成后更新 `_workflow_state.json`（stageStatus = DONE / DONE_WITH_CONCERNS / BLOCKED）
 
 ---
@@ -268,7 +298,7 @@ requirement  （Headless    （读取       delivery
 
 **执行协议**：
 1. 第一步：读取 `.agent/_workflow_state.json` + `.agent/project_context.json`
-2. 执行测试验证
+2. 执行交付验证协议（见上方"交付验证协议"章节）
 3. 完成后更新 `_workflow_state.json`
 
 ---
@@ -314,7 +344,7 @@ requirement  （纯逻辑  delivery
 
 **执行协议**：
 1. 第一步：读取 `.agent/_workflow_state.json` + `.agent/project_context.json`
-2. 执行测试验证
+2. 执行交付验证协议（见上方"交付验证协议"章节）
 3. 完成后更新 `_workflow_state.json`
 
 ---
@@ -358,7 +388,7 @@ requirement               delivery
 
 **执行协议**：
 1. 第一步：读取 `.agent/_workflow_state.json` + `.agent/project_context.json`
-2. 执行构建与预览验证
+2. 执行交付验证协议（见上方"交付验证协议"章节），并完成构建与预览验证
 3. 完成后更新 `_workflow_state.json`
 
 ---
@@ -403,7 +433,7 @@ requirement            delivery
 
 **执行协议**：
 1. 第一步：读取 `.agent/_workflow_state.json` + `.agent/project_context.json`
-2. 执行测试验证
+2. 执行交付验证协议（见上方"交付验证协议"章节）
 3. 完成后更新 `_workflow_state.json`
 
 ---
