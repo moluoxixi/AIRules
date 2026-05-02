@@ -23,6 +23,7 @@
 
 - `stageStatus` 设为 `DONE` / `DONE_WITH_CONCERNS` / `BLOCKED`
 - 将当前阶段加入 `completedStages`
+- 如为 `DONE_WITH_CONCERNS`，`concerns` 必须填写非阻塞性问题清单
 - 如为 `BLOCKED`，`blockReason` 必须填写具体原因
 
 ---
@@ -31,15 +32,20 @@
 
 严格按以下优先级选择测试方式：
 
-1. **Skills**（最高优先级）
-   - 优先使用已安装的测试相关 Skills（如 `vitest`、`playwright` 等）提供的能力
-   - 适用于：单元测试、组件测试、E2E 测试、构建检查、类型检查、lint 检查
+1. **项目已有脚本和配置**（最高优先级）
+   - 优先执行项目定义的 lint、typecheck、test、coverage、build、preview、E2E 等脚本
+   - 禁止臆造不存在的脚本；脚本缺失必须记录为验证缺口
 
-2. **MCP**（降级方案）
-   - 当没有合适的 Skill 覆盖某些测试场景时，通过 MCP 服务完成
-   - 适用于：自定义工具链调用、特殊环境验证
+2. **MCP / Skills / CLI 按场景选择**
+   - 浏览器自动化、接口测试或外部服务验证优先使用可用 MCP
+   - 框架测试模式、Vitest、Playwright 等知识注入可使用相关 Skills
+   - 本地命令执行使用 CLI
 
-3. **禁止**
+3. **降级必须可见**
+   - 任何工具不可用、脚本缺失或验证范围缩小时，必须记录原因与影响
+   - 不得将降级后的验证伪造成完整通过
+
+4. **禁止**
    - 禁止直接使用浏览器脚本模拟
    - 禁止跳过测试直接标记为通过
 
@@ -74,11 +80,11 @@
 
 测试完成后更新状态文件，`stageStatus` 取值：
 
-| 取值 | 含义 | blockReason |
-|---|---|---|
-| `DONE` | 所有核心测试通过 | 留空 |
-| `DONE_WITH_CONCERNS` | 测试通过但有非阻塞性问题 | 填写问题清单 |
-| `BLOCKED` | 存在阻塞性问题，需回退到前序阶段 | 填写阻塞原因与需回退的阶段 |
+| 取值 | 含义 | concerns | blockReason |
+|---|---|---|---|
+| `DONE` | 所有核心测试通过 | `[]` | `null` |
+| `DONE_WITH_CONCERNS` | 测试通过但有非阻塞性问题 | 填写问题清单 | `null` |
+| `BLOCKED` | 存在阻塞性问题，需回退到前序阶段 | 可填写附加风险 | 填写阻塞原因与需回退的阶段 |
 
 ---
 
@@ -103,7 +109,7 @@
 ## 交付测试报告
 
 ### 环境
-- 测试方式：Skills（vitest / playwright）| MCP
+- 测试方式：项目脚本 | CLI | MCP | Skills（vitest / playwright）
 - 测试时间：xxx
 
 ### 结果

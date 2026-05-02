@@ -57,14 +57,15 @@
 {
   "projectType": "business-app | component-lib | tool-lib | docs-site | cli-tool",
   "techStack": {
-    "framework": "",
-    "language": "",
-    "buildTool": "",
-    "packageManager": "",
-    "cssSolution": "",
-    "testFramework": "",
-    "stateManagement": ""
+    "framework": null,
+    "language": null,
+    "buildTool": null,
+    "packageManager": null,
+    "cssSolution": null,
+    "testFramework": null,
+    "stateManagement": null
   },
+  "missingTechStack": [],
   "recommendedBranch": "A | B | C | D | E",
   "analyzerVersion": "2.0"
 }
@@ -72,7 +73,8 @@
 
 **规则**：
 - `projectType` 必须为上方枚举值之一，禁止自行创造
-- `techStack` 各字段根据实际检测填写，检测不到的填 `""`
+- `techStack` 各字段根据实际检测填写；检测不到时填 `null`，并把字段名写入 `missingTechStack`
+- 禁止使用空字符串、默认框架或缓存印象掩盖未检测到的信息
 - `recommendedBranch` 必须与 `projectType` 对应，映射关系：business-app→A, component-lib→B, tool-lib→C, docs-site→D, cli-tool→E
 
 ### 状态更新：`.agent/_workflow_state.json`
@@ -84,8 +86,10 @@
   "currentStage": "P0",
   "stageStatus": "DONE",
   "completedStages": ["P0"],
+  "verificationResults": [],
+  "concerns": [],
   "lastUpdated": "ISO-8601 时间戳",
-  "blockReason": ""
+  "blockReason": null
 }
 ```
 

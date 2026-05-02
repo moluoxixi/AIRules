@@ -117,13 +117,14 @@
 {
   "branch": "A | B | C | D | E",
   "businessRequirements": "核心业务流程描述",
-  "uiReference": "设计稿链接或布局描述，无则填空字符串",
-  "apiConstraints": "接口文档地址或约束说明，无则填空字符串",
+  "uiReference": null,
+  "apiConstraints": null,
   "checklistStatus": {
     "mandatoryComplete": true,
     "importantMissing": [],
     "optionalMissing": []
   },
+  "missingReasons": {},
   "analyzerVersion": "2.0"
 }
 ```
@@ -132,6 +133,7 @@
 - `branch` 必须从 `.agent/project_context.json` 的 `recommendedBranch` 读取，禁止自行推断
 - `checklistStatus.mandatoryComplete` 为 `false` 时，**禁止**写入契约文件，必须先阻塞补充
 - `importantMissing` / `optionalMissing` 填写缺失项名称
+- 缺失的重要项或建议项使用 `null` 表示，并在 `missingReasons` 中记录原因；禁止用空字符串伪装为已确认信息
 
 ### 状态更新：`.agent/_workflow_state.json`
 
@@ -141,7 +143,7 @@
 
 ## 代码风格规范强制约束
 
-本子代理的输出涉及文件命名、类型命名时，**必须**严格遵循 `references/` 目录下的代码风格规范：
+本子代理的输出涉及文件命名、类型命名时，**必须**严格遵循 [../references/](../references/) 目录下的代码风格规范：
 
 - 变量/函数 — 小驼峰 `handleSearch`
 - 类型/接口 — 大驼峰 `UserRecord`

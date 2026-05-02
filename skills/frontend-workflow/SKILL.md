@@ -1,6 +1,6 @@
 ---
 name: frontend-workflow
-description: 当项目为前端项目时强制使用。按项目类型进行流程编排，风格规范。
+description: Use when working on frontend projects involving 前端开发, UI, 组件, 页面, 视图, 状态管理, API integration, docs sites, or frontend delivery verification.
 version: 2.0.1
 protocolVersion: "1.0"
 triggers:
@@ -15,6 +15,12 @@ triggers:
 # 前端核心工作流协议 v2.0
 
 本 Skill 是前端项目的**底层执行协议**。它将开发流程从"自然语言描述"升级为**机器可严格执行的状态机协议**，确保跨阶段、跨子代理的信息流转零损耗、零幻觉。
+
+---
+
+## 路径约定
+
+本 Skill 中的 [agents/](./agents/) 与 [references/](./references/) 均相对当前 Skill 目录解析，禁止按项目根目录、当前工作目录或外部全局规则推断。
 
 ---
 
@@ -39,12 +45,16 @@ triggers:
   "version": "2.0",
   "branch": "A | B | C | D | E",
   "currentStage": "A1 | A2 | A3 | A4 | B1 | ...",
-  "stageStatus": "PENDING | IN_PROGRESS | DONE | BLOCKED",
+  "stageStatus": "PENDING | IN_PROGRESS | DONE | DONE_WITH_CONCERNS | BLOCKED",
   "completedStages": ["A1", "A2"],
+  "verificationResults": [],
+  "concerns": [],
   "lastUpdated": "ISO-8601",
-  "blockReason": "仅 stageStatus=BLOCKED 时填写"
+  "blockReason": null
 }
 ```
+
+`stageStatus=DONE_WITH_CONCERNS` 时必须填写 `concerns`；`stageStatus=BLOCKED` 时必须填写 `blockReason`；其它状态下 `blockReason` 必须为 `null`。
 
 ### 协议二：严格 I/O 契约交接
 
@@ -78,6 +88,7 @@ triggers:
     "testFramework": "Vitest",
     "stateManagement": "Pinia"
   },
+  "missingTechStack": [],
   "recommendedBranch": "A",
   "analyzerVersion": "2.0"
 }
@@ -88,12 +99,15 @@ triggers:
 {
   "branch": "A",
   "businessRequirements": "核心业务流程描述",
-  "uiReference": "设计稿链接或布局描述",
+  "uiReference": null,
   "apiConstraints": "接口文档地址或约束说明",
   "checklistStatus": {
     "mandatoryComplete": true,
     "importantMissing": ["UI设计稿"],
     "optionalMissing": ["交互规格"]
+  },
+  "missingReasons": {
+    "UI设计稿": "用户暂未提供设计稿"
   },
   "analyzerVersion": "2.0"
 }
@@ -153,7 +167,7 @@ function handleSearch() { fetchList() }
 
 ## 阶段零：项目分析（所有项目必经）
 
-**调度子代理**：`agents/project-analyzer.md`
+**调度子代理**：[agents/project-analyzer.md](./agents/project-analyzer.md)
 
 **执行协议**：
 1. 子代理第一步：检查并读取 `.agent/_workflow_state.json`（如不存在，视为首次启动）
@@ -215,7 +229,7 @@ requirement  （Headless    api-         delivery
 ```
 
 ### A1：需求分析
-**调度子代理**：`agents/requirement-analyst.md`（使用"业务应用"校验清单）
+**调度子代理**：[agents/requirement-analyst.md](./agents/requirement-analyst.md)（使用"业务应用"校验清单）
 
 **执行协议**：
 1. 第一步：读取 `.agent/_workflow_state.json` + `.agent/project_context.json`
@@ -238,14 +252,14 @@ requirement  （Headless    api-         delivery
 4. 每完成一个功能模块，更新 `_workflow_state.json`
 
 ### A3：接口联调
-**调度子代理**：`agents/api-integrator.md`
+**调度子代理**：[agents/api-integrator.md](./agents/api-integrator.md)
 
 **执行协议**：
 1. 第一步：读取 `.agent/_workflow_state.json` + `.agent/requirement_context.json`
 2. 完成后写入 `.agent/api_context.json` + 更新 `_workflow_state.json`
 
 ### A4：交付测试
-**调度子代理**：`agents/delivery-tester.md`
+**调度子代理**：[agents/delivery-tester.md](./agents/delivery-tester.md)
 
 **执行协议**：
 1. 第一步：读取 `.agent/_workflow_state.json` + `.agent/project_context.json` + `.agent/api_context.json`
@@ -268,7 +282,7 @@ requirement  （Headless    （读取       delivery
 ```
 
 ### B1：API 设计
-**调度子代理**：`agents/requirement-analyst.md`（使用"组件库"校验清单）
+**调度子代理**：[agents/requirement-analyst.md](./agents/requirement-analyst.md)（使用"组件库"校验清单）
 
 **执行协议**：
 1. 第一步：读取 `.agent/_workflow_state.json` + `.agent/project_context.json`
@@ -294,7 +308,7 @@ requirement  （Headless    （读取       delivery
 **直接执行**（Storybook / Histoire / VitePress 中编写使用示例）
 
 ### B4：测试验证
-**调度子代理**：`agents/delivery-tester.md`
+**调度子代理**：[agents/delivery-tester.md](./agents/delivery-tester.md)
 
 **执行协议**：
 1. 第一步：读取 `.agent/_workflow_state.json` + `.agent/project_context.json`
@@ -317,7 +331,7 @@ requirement  （纯逻辑  delivery
 ```
 
 ### C1：API 设计
-**调度子代理**：`agents/requirement-analyst.md`（使用"工具库"校验清单）
+**调度子代理**：[agents/requirement-analyst.md](./agents/requirement-analyst.md)（使用"工具库"校验清单）
 
 **执行协议**：
 1. 第一步：读取 `.agent/_workflow_state.json` + `.agent/project_context.json`
@@ -340,7 +354,7 @@ requirement  （纯逻辑  delivery
 4. 每完成一个模块，更新 `_workflow_state.json`
 
 ### C3：测试验证
-**调度子代理**：`agents/delivery-tester.md`
+**调度子代理**：[agents/delivery-tester.md](./agents/delivery-tester.md)
 
 **执行协议**：
 1. 第一步：读取 `.agent/_workflow_state.json` + `.agent/project_context.json`
@@ -363,7 +377,7 @@ requirement               delivery
 ```
 
 ### D1：内容规划
-**调度子代理**：`agents/requirement-analyst.md`（使用"文档站"校验清单）
+**调度子代理**：[agents/requirement-analyst.md](./agents/requirement-analyst.md)（使用"文档站"校验清单）
 
 **执行协议**：
 1. 第一步：读取 `.agent/_workflow_state.json` + `.agent/project_context.json`
@@ -384,7 +398,7 @@ requirement               delivery
 3. 每完成一个章节，更新 `_workflow_state.json`
 
 ### D3：构建预览
-**调度子代理**：`agents/delivery-tester.md`
+**调度子代理**：[agents/delivery-tester.md](./agents/delivery-tester.md)
 
 **执行协议**：
 1. 第一步：读取 `.agent/_workflow_state.json` + `.agent/project_context.json`
@@ -407,7 +421,7 @@ requirement            delivery
 ```
 
 ### E1：命令设计
-**调度子代理**：`agents/requirement-analyst.md`（使用"CLI"校验清单）
+**调度子代理**：[agents/requirement-analyst.md](./agents/requirement-analyst.md)（使用"CLI"校验清单）
 
 **执行协议**：
 1. 第一步：读取 `.agent/_workflow_state.json` + `.agent/project_context.json`
@@ -429,7 +443,7 @@ requirement            delivery
 4. 每完成一个命令，更新 `_workflow_state.json`
 
 ### E3：测试验证
-**调度子代理**：`agents/delivery-tester.md`
+**调度子代理**：[agents/delivery-tester.md](./agents/delivery-tester.md)
 
 **执行协议**：
 1. 第一步：读取 `.agent/_workflow_state.json` + `.agent/project_context.json`
@@ -440,15 +454,15 @@ requirement            delivery
 
 ## 代码风格规范
 
-所有前端项目**必须**遵循以下代码风格规范（详见 `references/` 目录）：
+所有前端项目**必须**遵循以下代码风格规范（详见 [references/](./references/) 目录）：
 
 | 规范文件 | 内容 |
 |---|---|
-| `references/js-style.md` | JS 变量、函数命名（小驼峰） |
-| `references/ts-style.md` | TS 类型/接口（大驼峰）、常量（全大写下划线） |
-| `references/vue-style.md` | Vue SFC 标签顺序、Composable 命名 |
-| `references/react-style.md` | React 组件结构、Hooks 命名 |
-| `references/common-style.md` | 目录命名（除组件外小驼峰）、功能内聚、文件命名、注释 |
+| [references/js-style.md](./references/js-style.md) | JS 变量、函数命名（小驼峰） |
+| [references/ts-style.md](./references/ts-style.md) | TS 类型/接口（大驼峰）、常量（全大写下划线） |
+| [references/vue-style.md](./references/vue-style.md) | Vue SFC 标签顺序、Composable 命名 |
+| [references/react-style.md](./references/react-style.md) | React 组件结构、Hooks 命名 |
+| [references/common-style.md](./references/common-style.md) | 目录命名（除组件外小驼峰）、功能内聚、文件命名、注释 |
 
 **核心原则**：
 - 变量/函数 — 小驼峰 `handleSearch`、`tableData`
@@ -462,9 +476,10 @@ requirement            delivery
 
 ## 工具调用优先级
 
-1. **MCP**：优先通过 MCP 服务完成（如浏览器自动化、API 测试等）
-2. **Skills + CLI**：MCP 无法覆盖时，使用已安装的 Skills 或 CLI 工具
-3. **禁止**：直接使用浏览器脚本模拟
+1. **项目已有脚本和配置**：优先执行项目定义的 lint、typecheck、test、coverage、build、preview、E2E 等脚本，禁止臆造不存在的命令。
+2. **MCP / Skills / CLI 按场景选择**：需要浏览器自动化、接口测试或外部服务时优先使用可用 MCP；需要框架知识或测试模式时使用相关 Skills；本地命令执行使用 CLI。
+3. **降级必须可见**：任何工具不可用、脚本缺失或验证范围缩小时，必须记录原因与影响，不得静默降级为成功。
+4. **禁止**：直接使用浏览器脚本模拟，禁止跳过验证直接标记为通过。
 
 ## 与其他 Skills 的关系
 
@@ -475,7 +490,8 @@ requirement            delivery
 | `vitest` | 单元/组件测试能力，由交付测试子代理按需引用 |
 | `vitepress` | 文档站构建知识，分支 D 场景使用 |
 | `slidev` | 演示文稿工具，不在本协议范围内 |
+| `superpowers` | 通用调试、计划、review、worktree 等过程辅助；不得替代本协议的状态机、契约文件和交付质量门 |
 
 ## 扩展说明
 
-本协议会持续注入前端专属控制协议与执行护栏。任何前端技术栈上下文内，本规则始终保持最高优先级。三条核心协议（状态持久化、I/O 契约、无头逻辑前置）为硬性约束，违反即视为流程违规。
+本协议会持续注入前端专属控制协议与执行护栏。在不覆盖用户显式指令和项目更严格规则的前提下，任何前端技术栈上下文内，本协议均为前端执行主协议。三条核心协议（状态持久化、I/O 契约、无头逻辑前置）为硬性约束，违反即视为流程违规。

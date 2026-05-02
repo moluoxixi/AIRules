@@ -20,7 +20,7 @@
 联调完成后，**必须同时写入**以下两个文件：
 
 1. `.agent/api_context.json` — 结构化接口联调结果（严格遵循下方 Schema）
-2. `.agent/_workflow_state.json` — 更新 `currentStage` 为 `A3`，`stageStatus` 为 `DONE`
+2. `.agent/_workflow_state.json` — 更新 `currentStage` 为 `A3`，`stageStatus` 为 `DONE` / `DONE_WITH_CONCERNS` / `BLOCKED`
 
 **禁止**仅以自然语言描述产出物。
 
@@ -45,12 +45,13 @@
 ## 执行规则
 
 1. **必填项缺失 → 阻塞**：明确告知用户缺少什么，等待补充，**禁止编造接口与字段**
-2. **建议项缺失 → 使用合理默认值**：如默认 Bearer Token 认证、默认分页命名
-3. **全部齐全 → 执行联调**：
+2. **建议项缺失 → 显式记录**：写入 `pendingApis` 或 `concerns`，说明缺失项与影响；禁止使用默认 Bearer Token、默认分页命名等未验证假设
+3. **约定来源可验证 → 执行联调**：
    - 封装请求函数（遵循项目现有的请求工具/axios 实例）
    - 定义 TypeScript 请求/响应类型
    - 添加错误处理和 loading 状态管理
    - 在页面组件中接入真实接口替换 mock 数据
+4. **仅可采用可验证约定**：接口文档、项目现有请求封装、已有类型定义或用户明确确认均可作为约定来源；其它猜测必须阻塞或记录为 concerns
 
 ## Headless First 纪律
 
@@ -87,7 +88,14 @@
       "mockReplaced": true
     }
   ],
-  "pendingApis": [],
+  "pendingApis": [
+    {
+      "apiName": "createUser",
+      "missingFields": ["认证方式"],
+      "reason": "接口文档未说明认证方式"
+    }
+  ],
+  "concerns": [],
   "integratorVersion": "2.0"
 }
 ```
@@ -95,17 +103,22 @@
 **规则**：
 - `integrations` 列出所有已完成的接口联调，字段路径必须与实际文件一致
 - `pendingApis` 列出尚未联调或阻塞的接口及原因
+- `concerns` 列出非阻塞但需要调用方确认的接口约定风险
 - `mockReplaced` 标识该接口的 mock 数据是否已替换为真实请求
 
 ### 状态更新：`.agent/_workflow_state.json`
 
-更新 `currentStage` 为 `A3`，`stageStatus` 为 `DONE`，将 `A3` 加入 `completedStages`。
+更新 `currentStage` 为 `A3`，将 `A3` 加入 `completedStages`。`stageStatus` 按结果设置：
+
+- `DONE`：所有接口已按可验证约定完成联调，且无遗留风险
+- `DONE_WITH_CONCERNS`：核心联调完成，但存在非阻塞性待确认项，必须写入 `concerns`
+- `BLOCKED`：缺少必填接口信息、接口服务不可用或存在阻塞性问题，必须填写 `blockReason`
 
 ---
 
 ## 代码风格规范强制约束
 
-接口联调产出的所有代码，**必须**严格遵循 `references/` 目录下的代码风格规范：
+接口联调产出的所有代码，**必须**严格遵循 [../references/](../references/) 目录下的代码风格规范：
 
 - API 函数 — 小驼峰，动词开头 `getUserList`、`createOrder`
 - 类型/接口 — 大驼峰 `UserRecord`、`OrderQueryParams`
@@ -118,6 +131,7 @@
 
 ## 完成状态
 
-- **DONE**：`.agent/api_context.json` + `.agent/_workflow_state.json` 已写入，所有接口已按文档封装，类型完整，页面已接入
+- **DONE**：`.agent/api_context.json` + `.agent/_workflow_state.json` 已写入，所有接口已按可验证约定封装，类型完整，页面已接入
+- **DONE_WITH_CONCERNS**：核心联调完成但存在非阻塞性待确认项；`stageStatus` 设为 `DONE_WITH_CONCERNS`，并写入 `concerns`
 - **NEEDS_CONTEXT**：接口文档缺失关键信息，等待用户补充；`stageStatus` 设为 `BLOCKED`
 - **BLOCKED**：接口服务不可用或存在阻塞性问题；`stageStatus` 设为 `BLOCKED`，`blockReason` 填写原因
