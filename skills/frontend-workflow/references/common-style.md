@@ -40,7 +40,7 @@ src/
 **原则**: 一个功能相关的**所有文件**（子组件、composable、types、constants 等）除非跨功能共享，否则放在同一个目录下：
 
 ```
-xx组件/                               
+xx组件/
 ├── README.md                        # 描述文件，提供组件用法等
 ├── index.ts                         # 入口文件，提供组件注册函数等
 └── src/
@@ -76,33 +76,63 @@ xx页面/
 
 ## 注释
 
-**导出函数/接口 — JSDoc**
+**目标**
+
+注释用于帮助读者在不深入追踪上下文的情况下快速识别代码作用、边界和约束，不追求机械覆盖每个字段或每个函数。
+
+注释语言必须跟随用户本次需求或项目既有主要语言；若用户明确指定语言，以指定语言为准。命令、代码标识符、日志原文、错误原文、API/库名和专有名词可保留原文。
+
+**必须注释**
+
+- 页面、模块、组件、composable、store、复杂配置对象的整体职责。
+- 导出 API、跨文件复用函数、跨模块共享类型的用途、关键输入输出和副作用。
+- 业务规则、边界条件、兼容性处理、性能约束、异步时序、安全限制和历史原因。
+
+**不应注释**
+
+- 命名、类型和局部上下文已经能清晰表达含义的字段、变量和简单函数。
+- 仅复述代码行为的注释，例如"设置 loading 为 true""处理点击事件"。
+
+**导出函数 / 跨文件复用函数 — JSDoc**
 
 ```ts
 /**
- * 创建默认查询参数
+ * 创建订单列表查询的默认参数。
  *
- * @returns 默认参数
+ * 默认值只包含所有查询场景共享的分页字段，筛选条件由调用方按需传入。
  */
-export function createDefaultParams() { }
+export function createDefaultOrderQuery() { }
 ```
 
-**接口字段 — 每行上方注释**
+**复杂类型 / 字段分组 — 先说明整体，必要时补充字段约束**
 
 ```ts
+/**
+ * 用户详情展示记录，字段直接对齐后端用户详情接口。
+ */
 interface UserRecord {
-  /** 用户ID */
   userId: number
-  /** 用户名 */
   userName: string
+  createdAt: string
+  updatedAt: string
 }
 ```
 
-**常量 — 独立注释行**
+**字段单独注释 — 仅在无法通过命名和类型快速识别时使用**
+
+```ts
+interface RetryPolicy {
+  /** 单位为 ms，必须小于后端熔断窗口。 */
+  retryDelay: number
+  maxAttempts: number
+}
+```
+
+**常量 — 说明来源、限制或业务含义**
 
 ```ts
 /**
- * 默认每页条数
+ * 订单列表默认每页条数，需与后端分页上限保持一致。
  */
 export const DEFAULT_PAGE_SIZE = 10
 ```
@@ -148,7 +178,7 @@ interface ApiRecord {
 }
 
 // ❌ 差：臆造接口不存在的逻辑
-type TableRow = ApiRecord | LoadMoreRow  // 接口不返回 loadMore 行
+type TableRow = ApiRecord | LoadMoreRow // 接口不返回 loadMore 行
 ```
 
 ---

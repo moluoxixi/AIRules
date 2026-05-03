@@ -1,7 +1,7 @@
 ---
 name: frontend-workflow
 description: Use when working on frontend projects involving 前端开发, UI, 组件, 页面, 视图, 状态管理, API integration, docs sites, or frontend delivery verification.
-version: 2.0.1
+version: 2.0.2
 protocolVersion: "1.0"
 triggers:
   - "前端开发"
