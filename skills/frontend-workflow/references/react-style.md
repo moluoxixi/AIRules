@@ -30,8 +30,7 @@ const detailDrawerRef = useRef<DetailDrawerRef>(null)
 ## Hooks — `use` + 大驼峰
 
 ```tsx
-import { useUserList } from '../hooks'
-import { useOrderDetail } from '../hooks'
+import { useOrderDetail, useUserList } from '../hooks'
 ```
 
 ## JSX 属性 — camelCase
@@ -47,7 +46,12 @@ import { useOrderDetail } from '../hooks'
 ## 事件处理函数 — handle + 大驼峰描述
 
 ```tsx
+// 提交当前筛选条件并刷新列表，不负责修改筛选模型。
 function handleSearch() { }
+
+// 同步表格选中项，输入必须来自表格组件的 selection 事件。
 function handleSelectionChange() { }
+
+// 发起审核流程，调用前必须已确认目标记录和权限上下文。
 function handleAudit() { }
 ```

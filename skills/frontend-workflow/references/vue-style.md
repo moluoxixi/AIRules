@@ -43,8 +43,13 @@ import { useOrderDetail } from '../composables'
 
 ```vue
 <script setup lang="ts">
+// 提交当前筛选条件并刷新列表，不负责修改筛选模型。
 function handleSearch() { }
+
+// 同步表格选中项，输入必须来自表格组件的 selection 事件。
 function handleSelectionChange() { }
+
+// 发起审核流程，调用前必须已确认目标记录和权限上下文。
 function handleAudit() { }
 </script>
 ```

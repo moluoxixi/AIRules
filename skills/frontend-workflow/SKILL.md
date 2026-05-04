@@ -152,6 +152,7 @@ const tableData = ref([])
 const formModel = reactive({ name: '', status: '' })
 const formRules = { name: [{ required: true, message: '必填' }] }
 
+// 违规示例：异步请求、页面状态和接口字段被写入视图层，破坏逻辑层边界。
 async function fetchList() {
   loading.value = true
   const { data } = await getOrderList(formModel)
@@ -159,6 +160,7 @@ async function fetchList() {
   loading.value = false
 }
 
+// 违规示例：事件入口直接耦合视图内请求函数，无法复用和独立测试。
 function handleSearch() { fetchList() }
 </script>
 ```
@@ -463,6 +465,12 @@ requirement            delivery
 | [references/vue-style.md](./references/vue-style.md) | Vue SFC 标签顺序、Composable 命名 |
 | [references/react-style.md](./references/react-style.md) | React 组件结构、Hooks 命名 |
 | [references/common-style.md](./references/common-style.md) | 目录命名（除组件外小驼峰）、功能内聚、文件命名、注释 |
+
+**注释执行要求**：
+- 页面、模块、组件、composable、store、复杂配置对象和所有函数默认必须补充注释，说明职责、边界、输入输出约束、副作用或异常语义。
+- 导出 API、跨文件复用函数、业务规则函数、composable/hook、事件处理函数和异步流程函数不得省略注释。
+- 注释必须帮助读者快速识别作用、边界和约束；禁止只复述代码行为或用空泛句子凑覆盖率。
+- 极简单局部回调、测试内联函数或上下文已完整表达含义的短小私有函数可以免注释，但免注释不得影响读者理解代码边界。
 
 **核心原则**：
 - 变量/函数 — 小驼峰 `handleSearch`、`tableData`
