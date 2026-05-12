@@ -26,6 +26,8 @@ Use existing project rules first. If project or user rules are stricter than thi
 
 - Frontend code, UI, components, pages, hooks, composables, routing, or state: use `frontend-code-standard`.
 - Frontend validation, browser checks, component tests, visual responsiveness, accessibility, E2E, or coverage: use `frontend-testing-standard`.
+- Backend code, APIs, services, repositories, database access, DTOs, NestJS, Java, Spring-style layering, transactions, or server-side error handling: use `backend-code-standard`.
+- Backend unit, API, integration, database, transaction, contract, authorization, or service tests: use `backend-testing-standard`.
 - Vue work: use `vue-best-practices`; for Vue tests also use `vue-testing-best-practices`.
 - Vitest configuration, mocking, fixtures, or coverage: use `vitest`.
 - Browser interaction or E2E verification: use `playwright-cli` or the available browser tool.

@@ -146,6 +146,8 @@ export const vendors: VendorsConfig = [
       'software-development-workflow',
       'frontend-code-standard',
       'frontend-testing-standard',
+      'backend-code-standard',
+      'backend-testing-standard',
       'create-handless-skill',
       'skill-creator-pro',
       'skill-seekers',
