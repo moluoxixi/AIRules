@@ -20,7 +20,7 @@ AIRules is a **composable AI skill distribution system**. The core idea is simpl
 ```
 ┌─────────────────────────────────────────────┐
 │  🔧 First-Party Skills (your own)           │ ← Your competitive edge
-│  frontend-workflow / custom workflows        │
+│  software-development-workflow / standards   │
 ├─────────────────────────────────────────────┤
 │  📦 Third-Party Skills (cloned from mature  │ ← Stand on the shoulders
 │  repos) antfu/vue · anthropic/testing · ... │   of giants
@@ -132,7 +132,9 @@ Moluoxixi AIRules supports a growing ecosystem of AI agents through automated pr
 
 | Name | Description |
 |------|-------------|
-| **frontend-workflow** | Core frontend workflow control: page generation, API integration, and delivery testing |
+| **software-development-workflow** | Standard software development workflow for requirements, splitting, design, implementation, verification, review, and delivery reports |
+| **frontend-code-standard** | Frontend code standards for naming, directories, component boundaries, hooks/composables, types, and comments |
+| **frontend-testing-standard** | Frontend testing standards for type checks, unit/component/page integration, interaction, browser, responsive, accessibility, and coverage verification |
 | **skill-creator-pro** | Meta-skill: complete toolkit for creating, testing, evaluating, and optimizing AI Skills |
 | **skill-seekers** | Knowledge ingestion: auto-convert 17 source types (docs, GitHub, PDF, etc.) into standard Skills |
 
@@ -151,7 +153,9 @@ Moluoxixi AIRules supports a growing ecosystem of AI agents through automated pr
 ```
 ~/.moluoxixi/
 ├── skills/                  # First-party skills (your core assets)
-│   ├── frontend-workflow/
+│   ├── software-development-workflow/
+│   ├── frontend-code-standard/
+│   ├── frontend-testing-standard/
 │   ├── skill-creator-pro/
 │   └── skill-seekers/
 ├── vendor/

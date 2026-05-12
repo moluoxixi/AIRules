@@ -20,7 +20,7 @@ AIRules 是一个**可组合的 AI 技能分发系统**。它的核心思想很�
 ```
 ┌─────────────────────────────────────────────┐
 │  🔧 第一方 Skills（你自己写的）                │ ← 你的核心竞争力
-│  frontend-workflow / 自定义工作流              │
+│  software-development-workflow / 前端标准      │
 ├─────────────────────────────────────────────┤
 │  📦 第三方 Skills（克隆成熟仓库）              │ ← 站在巨人肩膀上
 │  antfu/vue · anthropic/testing · gemini/... │
@@ -132,7 +132,9 @@ Moluoxixi AIRules 通过自动化投影，支持不断增长的 AI 代理生态�
 
 | 名称 | 描述 |
 |------|------|
-| **frontend-workflow** | 前端项目核心工作流控制：页面生成、接口联调、交付测试全流程管控 |
+| **software-development-workflow** | 通用软件开发标准流程：需求、拆分、设计、实现、验证、复核与交付报告 |
+| **frontend-code-standard** | 前端编码标准：命名、目录、组件边界、hooks/composables、类型与注释规范 |
+| **frontend-testing-standard** | 前端测试标准：类型检查、单元/组件/页面集成、交互、浏览器、响应式、可访问性与覆盖率 |
 | **skill-creator-pro** | 元技能：创建、测试、评估、优化 AI Skills 的完整工具链 |
 | **skill-seekers** | 知识抓取：将文档网站/GitHub/PDF 等 17 种来源一键转换为标准 Skill |
 
@@ -151,7 +153,9 @@ Moluoxixi AIRules 通过自动化投影，支持不断增长的 AI 代理生态�
 ```
 ~/.moluoxixi/
 ├── skills/                  # 第一方 skills（你的核心资产）
-│   ├── frontend-workflow/
+│   ├── software-development-workflow/
+│   ├── frontend-code-standard/
+│   ├── frontend-testing-standard/
 │   ├── skill-creator-pro/
 │   └── skill-seekers/
 ├── vendor/

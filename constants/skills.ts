@@ -142,6 +142,13 @@ export const vendors: VendorsConfig = [
     official: true,
     source: 'https://github.com/moluoxixi/AIRules.git',
     sourceBaseDir: 'skills',
-    skills: ['frontend-workflow', 'create-handless-skill', 'skill-creator-pro', 'skill-seekers'],
+    skills: [
+      'software-development-workflow',
+      'frontend-code-standard',
+      'frontend-testing-standard',
+      'create-handless-skill',
+      'skill-creator-pro',
+      'skill-seekers',
+    ],
   },
 ]
