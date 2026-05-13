@@ -62,3 +62,9 @@ purchaseOrder/
 - `utils/`: pure utilities reused across features.
 
 Do not move feature-specific code into global folders just because it might be reused later.
+
+## Utility Placement
+
+- Keep feature-specific utilities inside the feature module.
+- Move utilities to shared folders only after real cross-feature reuse exists.
+- Do not create global utilities for speculative reuse.

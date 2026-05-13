@@ -32,17 +32,28 @@ Avoid:
 
 ## Error And Fallbacks
 
-Do not hide API, validation, or rendering failures with empty defaults, fake success, or silent fallback. If UI needs an empty state, represent it explicitly and keep real failures visible.
+Do not hide API, validation, or rendering failures with empty defaults, fake success, cached values, or silent fallback. If UI needs an empty state, represent it explicitly and keep real failures visible.
 
 API functions should preserve failure semantics unless the caller explicitly asks for a domain-specific error result.
+
+If an error is caught for user feedback, cleanup, or context enrichment, rethrow it or return an explicit failure result. Do not convert a failure path into a success path.
 
 ## API Alignment
 
 Frontend models must align with backend contracts:
+- trust the current API types, schemas, docs, or established module contract;
 - do not add fields the API does not return;
-- do not support multiple historical field names unless the project explicitly requires compatibility;
+- do not support multiple historical field names or response shapes unless the project explicitly requires compatibility;
+- do not add response adapters such as `resolveXxxResponse` or `normalizeXxxPage` unless the API contract is genuinely variable and documented;
 - remove stale frontend compatibility when the interface changes;
 - keep form models separate from persistence entities when they have different constraints.
+
+## State And Export Surface
+
+- Keep a single source of truth for mutable state.
+- Do not keep duplicate refs, stores, or derived state unless each has a separate documented responsibility.
+- Expose only the state and actions used by consumers.
+- Remove stale wrapper functions, aliases, and unused exported actions during refactors.
 
 ## Reuse Threshold
 
