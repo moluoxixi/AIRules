@@ -10,7 +10,31 @@ const rootDir = path.resolve(__dirname, '..')
 // Directories to check for skills
 const skillRoots = ['skills', 'vendor/skills']
 
-describe('Agent Skills Validation', () => {
+/**
+ * 从简单 YAML frontmatter 中读取字段值，支持单行值和缩进的多行块。
+ */
+function readYamlField(lines: string[], key: string) {
+  const fieldIndex = lines.findIndex(line => line.startsWith(`${key}:`))
+  if (fieldIndex === -1)
+    return undefined
+
+  const inlineValue = lines[fieldIndex].slice(`${key}:`.length).trim()
+  if (inlineValue)
+    return inlineValue
+
+  const blockLines: string[] = []
+  for (const line of lines.slice(fieldIndex + 1)) {
+    if (!line.startsWith(' ') && !line.startsWith('\t'))
+      break
+    const value = line.trim()
+    if (value)
+      blockLines.push(value)
+  }
+
+  return blockLines.join(' ').trim()
+}
+
+describe('agent Skills Validation', () => {
   for (const root of skillRoots) {
     const fullRootPath = path.join(rootDir, root)
 
@@ -24,23 +48,27 @@ describe('Agent Skills Validation', () => {
     if (baseDirs.length === 0)
       continue
 
-    // Collect all skills safely handling superpowers exceptional nesting
+    // Recursively collect real skill directories and treat folders without SKILL.md as namespaces.
     const skillsToTest: { name: string, path: string }[] = []
-    for (const dName of baseDirs) {
-      if (dName.startsWith('.'))
-        continue
+    const collectSkills = (dir: string, nameParts: string[]) => {
+      const files = fs.readdirSync(dir)
+      const skillMdFile = files.find(f => f.toLowerCase() === 'skill.md')
 
-      if (dName === 'superpowers') {
-        const p = path.join(fullRootPath, dName)
-        const subDirs = fs.readdirSync(p, { withFileTypes: true })
-          .filter(d => d.isDirectory() && !d.name.startsWith('.'))
-        for (const sub of subDirs) {
-          skillsToTest.push({ name: `${dName}/${sub.name}`, path: path.join(p, sub.name) })
-        }
+      if (skillMdFile) {
+        skillsToTest.push({ name: nameParts.join('/'), path: dir })
+        return
       }
-      else {
-        skillsToTest.push({ name: dName, path: path.join(fullRootPath, dName) })
-      }
+
+      const subDirs = fs.readdirSync(dir, { withFileTypes: true })
+        .filter(d => d.isDirectory() && !d.name.startsWith('.'))
+
+      for (const sub of subDirs)
+        collectSkills(path.join(dir, sub.name), [...nameParts, sub.name])
+    }
+
+    for (const dName of baseDirs) {
+      if (!dName.startsWith('.'))
+        collectSkills(path.join(fullRootPath, dName), [dName])
     }
 
     if (skillsToTest.length === 0)
@@ -56,22 +84,23 @@ describe('Agent Skills Validation', () => {
           assert.ok(skillMdFile, `Missing SKILL.md in ${skill.name}`)
           assert.strictEqual(skillMdFile, 'SKILL.md', `SKILL.md filename must be uppercase in ${skill.name}, got "${skillMdFile}"`)
 
-          const content = fs.readFileSync(path.join(skill.path, skillMdFile!), 'utf8')
+          const content = fs.readFileSync(path.join(skill.path, skillMdFile!), 'utf8').replace(/\r\n/g, '\n')
 
           // 2. Validate Metadata (name and description)
           // Extract YAML frontmatter (between --- and ---)
-          const yamlMatch = content.match(/^---\s*\n([\s\S]*?)\n---\s*\n/)
+          const frontmatterEnd = content.indexOf('\n---\n', 4)
+          const yamlMatch = content.startsWith('---\n') && frontmatterEnd !== -1
+            ? content.slice(4, frontmatterEnd)
+            : null
           assert.ok(yamlMatch, `SKILL.md in ${skill.name} must start with YAML frontmatter (---)`)
 
-          const yamlContent = yamlMatch![1]
-          const nameMatch = yamlContent.match(/^name:\s*(.+)$/m)
-          const descMatch = yamlContent.match(/^description:\s*(.+)$/m)
+          const yamlContent = yamlMatch!
+          const yamlLines = yamlContent.split('\n')
+          const nameValue = readYamlField(yamlLines, 'name')
+          const descValue = readYamlField(yamlLines, 'description')
 
-          assert.ok(nameMatch, `Missing 'name' in YAML frontmatter of ${skill.name}`)
-          assert.ok(descMatch, `Missing 'description' in YAML frontmatter of ${skill.name}`)
-
-          const nameValue = nameMatch![1].trim()
-          const descValue = descMatch![1].trim()
+          assert.ok(nameValue !== undefined, `Missing 'name' in YAML frontmatter of ${skill.name}`)
+          assert.ok(descValue !== undefined, `Missing 'description' in YAML frontmatter of ${skill.name}`)
 
           assert.ok(nameValue.length > 0, `'name' in ${skill.name} cannot be empty`)
           assert.ok(descValue.length > 0, `'description' in ${skill.name} cannot be empty`)

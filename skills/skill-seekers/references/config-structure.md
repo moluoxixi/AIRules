@@ -49,9 +49,11 @@ CSS选择器用于内容提取。
 控制抓取哪些页面。
 
 ```json
-"url_patterns": {
-  "include": ["/docs", "/api"],
-  "exclude": ["/blog", "/changelog"]
+{
+  "url_patterns": {
+    "include": ["/docs", "/api"],
+    "exclude": ["/blog", "/changelog"]
+  }
 }
 ```
 
@@ -59,11 +61,13 @@ CSS选择器用于内容提取。
 内容分类规则，用于组织参考文档。
 
 ```json
-"categories": {
-  "getting_started": ["intro", "quickstart", "installation"],
-  "api": ["api", "reference", "endpoints"],
-  "guides": ["guide", "tutorial", "how-to"],
-  "best_practices": ["best-practices", "performance"]
+{
+  "categories": {
+    "getting_started": ["intro", "quickstart", "installation"],
+    "api": ["api", "reference", "endpoints"],
+    "guides": ["guide", "tutorial", "how-to"],
+    "best_practices": ["best-practices", "performance"]
+  }
 }
 ```
 

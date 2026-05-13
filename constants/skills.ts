@@ -23,6 +23,28 @@ export interface SkillConfig {
 export type SkillDef = string | SkillConfig
 
 /**
+ * 单个供应商仓库内的一条安装投影规则。
+ * namespace 用于整体目录投影；skills 用于按 skill 精确投影。
+ */
+export type VendorProjection
+  = | {
+    kind: 'namespace'
+    /** 仓库内要整体投影的目录 */
+    sourceDir: string
+    /** 安装后的 namespace 目录名 */
+    output: string
+    /** namespace 级安装前置命令 */
+    setup?: string[]
+  }
+  | {
+    kind: 'skills'
+    /** 仓库内技能所在的基准目录 */
+    sourceBaseDir: string
+    /** 需要精确安装的技能列表 */
+    skills: SkillDef[]
+  }
+
+/**
  * 代表一个外部供应商的技能仓库
  */
 export interface VendorRepo {
@@ -32,25 +54,8 @@ export interface VendorRepo {
   official: boolean
   /** Git 仓库地址 */
   source: string
-  /** 仓库内技能所在的基准目录（默认为 'skills'） */
-  sourceBaseDir?: string
-  /**
-   * 如果指定了 sourceDir，则表示整个目录作为一个整体技能安装，
-   * 对应安装后的目录名由 VendorRepo 的 name 决定。
-   */
-  sourceDir?: string
-  /**
-   * 技能安装列表。
-   * - 字符串简写：源目录名与安装后目录名相同，无需额外配置
-   * - SkillConfig 对象：支持自定义安装目录名（output）和安装前置命令（setup）
-   */
-  skills?: SkillDef[]
-  /**
-   * 整体 skill 模式（sourceDir）的安装前置命令列表。
-   * 仅适用于 sourceDir 字段存在的场景；skill 级别的命令请使用 SkillConfig.setup。
-   * 命令按顺序执行，任一失败均会输出警告但不中断整体流程。
-   */
-  setup?: string[]
+  /** 从该仓库投影到 vendor/skills 的安装规则列表 */
+  projections: VendorProjection[]
 }
 
 /**
@@ -84,67 +89,98 @@ export const vendors: VendorsConfig = [
     name: 'gemini',
     official: true,
     source: 'https://github.com/google-gemini/gemini-cli.git',
-    sourceBaseDir: '.gemini/skills',
-    skills: ['code-reviewer', 'pr-creator'],
+    projections: [
+      {
+        kind: 'skills',
+        sourceBaseDir: '.gemini/skills',
+        skills: ['code-reviewer', 'pr-creator'],
+      },
+    ],
   },
   {
     name: 'vercelLabs',
     official: true,
     source: 'https://github.com/vercel-labs/skills.git',
-    sourceBaseDir: 'skills',
-    skills: ['find-skills'],
+    projections: [
+      {
+        kind: 'skills',
+        sourceBaseDir: 'skills',
+        skills: ['find-skills'],
+      },
+    ],
   },
   {
     name: 'antfu',
     official: true,
     source: 'https://github.com/antfu/skills.git',
-    sourceBaseDir: 'skills',
-    skills: [
-      'antfu',
-      'pnpm',
-      'slidev',
-      'tsdown',
-      'turborepo',
-      'vitest',
-      'nuxt',
-      'pinia',
-      'unocss',
-      'vite',
-      'vitepress',
-      'vue',
-      'vue-best-practices',
-      'vue-router-best-practices',
-      'vue-testing-best-practices',
-      'vueuse-functions',
-      'web-design-guidelines',
+    projections: [
+      {
+        kind: 'skills',
+        sourceBaseDir: 'skills',
+        skills: [
+          'antfu',
+          'pnpm',
+          'slidev',
+          'tsdown',
+          'turborepo',
+          'vitest',
+          'nuxt',
+          'pinia',
+          'unocss',
+          'vite',
+          'vitepress',
+          'vue',
+          'vue-best-practices',
+          'vue-router-best-practices',
+          'vue-testing-best-practices',
+          'vueuse-functions',
+          'web-design-guidelines',
+        ],
+      },
     ],
   },
   {
     name: 'openai',
     official: true,
     source: 'https://github.com/openai/skills.git',
-    sourceBaseDir: 'skills/.curated',
-    skills: ['playwright'],
+    projections: [
+      {
+        kind: 'skills',
+        sourceBaseDir: 'skills/.curated',
+        skills: ['playwright'],
+      },
+    ],
   },
   {
     name: 'superpowers',
     official: true,
     source: 'https://github.com/obra/superpowers.git',
-    sourceDir: 'skills',
+    projections: [
+      {
+        kind: 'namespace',
+        sourceDir: 'skills',
+        output: 'superpowers',
+      },
+    ],
   },
   {
     name: 'moluoxixi',
     official: true,
     source: 'https://github.com/moluoxixi/AIRules.git',
-    sourceBaseDir: 'skills',
-    skills: [
-      'software-development-workflow',
-      'frontend-code-standard',
-      'frontend-testing-standard',
-      'backend-code-standard',
-      'backend-testing-standard',
-      'skill-creator-pro',
-      'skill-seekers',
+    projections: [
+      {
+        kind: 'namespace',
+        sourceDir: 'skills/workflow',
+        output: 'workflow',
+      },
+      {
+        kind: 'skills',
+        sourceBaseDir: 'skills',
+        skills: [
+          'skill-creator-pro',
+          'skill-seekers',
+        ],
+      },
     ],
   },
 ]

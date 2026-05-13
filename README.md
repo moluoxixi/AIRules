@@ -155,11 +155,12 @@ Moluoxixi AIRules supports a growing ecosystem of AI agents through automated pr
 ```
 ~/.moluoxixi/
 ├── skills/                  # First-party skills (your core assets)
-│   ├── software-development-workflow/
-│   ├── frontend-code-standard/
-│   ├── frontend-testing-standard/
-│   ├── backend-code-standard/
-│   ├── backend-testing-standard/
+│   ├── workflow/
+│   │   ├── software-development-workflow/
+│   │   ├── frontend-code-standard/
+│   │   ├── frontend-testing-standard/
+│   │   ├── backend-code-standard/
+│   │   └── backend-testing-standard/
 │   ├── skill-creator-pro/
 │   └── skill-seekers/
 ├── vendor/

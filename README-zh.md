@@ -155,11 +155,12 @@ Moluoxixi AIRules 通过自动化投影，支持不断增长的 AI 代理生态�
 ```
 ~/.moluoxixi/
 ├── skills/                  # 第一方 skills（你的核心资产）
-│   ├── software-development-workflow/
-│   ├── frontend-code-standard/
-│   ├── frontend-testing-standard/
-│   ├── backend-code-standard/
-│   ├── backend-testing-standard/
+│   ├── workflow/
+│   │   ├── software-development-workflow/
+│   │   ├── frontend-code-standard/
+│   │   ├── frontend-testing-standard/
+│   │   ├── backend-code-standard/
+│   │   └── backend-testing-standard/
 │   ├── skill-creator-pro/
 │   └── skill-seekers/
 ├── vendor/

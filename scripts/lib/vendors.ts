@@ -1,5 +1,5 @@
 import path from 'node:path';
-import { pathToFileURL } from 'node:url';
+import { fileURLToPath, pathToFileURL } from 'node:url';
 
 export function normalizePath(value: string): string {
   return value.replace(/\\/g, '/');
@@ -18,8 +18,6 @@ export interface Vendor {
   repo: string;
   cloneDir: string;
   links: VendorLink[];
-  /** 安装前置命令列表，来自 VendorRepo.setup */
-  setup?: string[];
 }
 
 export interface VendorManifest {
@@ -49,41 +47,61 @@ function buildTargetPath(namespaceParts: string[], outputName: string): string {
 }
 
 /**
+ * 构建 skills projection 中单个 skill 的链接计划
+ * @param namespaceParts 当前递归深度对应的分类路径
+ * @param sourceBaseDir 仓库内技能基准目录
+ * @param skillDef 字符串简写或带输出名/setup 的 skill 配置
+ */
+function buildSkillLink(namespaceParts: string[], sourceBaseDir: string, skillDef: any): VendorLink {
+  if (typeof skillDef === 'string') {
+    return {
+      kind: 'skill',
+      source: path.posix.join(sourceBaseDir, skillDef),
+      target: buildTargetPath(namespaceParts, skillDef),
+    };
+  }
+
+  const sourceName = skillDef.name as string;
+  const outputName = (skillDef.output ?? skillDef.name) as string;
+  return {
+    kind: 'skill',
+    source: path.posix.join(sourceBaseDir, sourceName),
+    target: buildTargetPath(namespaceParts, outputName),
+    setup: skillDef.setup,
+  };
+}
+
+/**
  * 构建单个供应商实体的链接计划
  * @param namespaceParts 当前递归深度对应的分类路径
  * @param entry 供应商定义实体
  */
 function buildLinksForEntry(namespaceParts: string[], entry: any): VendorLink[] {
-  if (entry.sourceDir) {
-    return [{
-      kind: 'namespace-dir',
-      source: entry.sourceDir,
-      target: path.posix.join('vendor', 'skills', ...namespaceParts, entry.name),
-      setup: entry.setup,
-    }];
+  if (entry.sourceDir || entry.sourceBaseDir || entry.skills || entry.setup) {
+    throw new Error(`供应商 "${entry.name}" 必须使用 projections 配置`);
   }
 
-  const sourceBaseDir = entry.sourceBaseDir ?? 'skills';
-  const skills: any[] = entry.skills ?? [];
+  if (!Array.isArray(entry.projections)) {
+    throw new Error(`供应商 "${entry.name}" 必须使用 projections 配置`);
+  }
 
-  return skills.map((skillDef: any) => {
-    // 字符串简写：name === output，无 setup
-    if (typeof skillDef === 'string') {
-      return {
-        kind: 'skill',
-        source: path.posix.join(sourceBaseDir, skillDef),
-        target: buildTargetPath(namespaceParts, skillDef),
-      };
+  return entry.projections.flatMap((projection: any) => {
+    if (projection.kind === 'namespace') {
+      return [{
+        kind: 'namespace-dir',
+        source: projection.sourceDir,
+        target: buildTargetPath(namespaceParts, projection.output),
+        setup: projection.setup,
+      }];
     }
-    // SkillConfig 对象：name 必填，output 可选（默认等于 name），setup 可选
-    const sourceName = skillDef.name as string;
-    const outputName = (skillDef.output ?? skillDef.name) as string;
-    return {
-      kind: 'skill',
-      source: path.posix.join(sourceBaseDir, sourceName),
-      target: buildTargetPath(namespaceParts, outputName),
-      setup: skillDef.setup,
-    };
+
+    if (projection.kind === 'skills') {
+      return projection.skills.map((skillDef: any) =>
+        buildSkillLink(namespaceParts, projection.sourceBaseDir, skillDef)
+      );
+    }
+
+    throw new Error(`供应商 "${entry.name}" 存在未知 projection 类型: ${projection.kind}`);
   });
 }
 
@@ -104,7 +122,6 @@ function mergeVendor(vendors: Record<string, Vendor>, vendorName: string, namesp
       repo: entry.source,
       cloneDir,
       links,
-      setup: entry.setup,
     };
     return;
   }
@@ -171,7 +188,7 @@ export async function loadVendorManifest(manifestPath: string): Promise<VendorMa
 }
 
 export function getRepoRoot(fromFileUrl: string): string {
-  return path.resolve(new URL('../..', fromFileUrl).pathname);
+  return path.resolve(fileURLToPath(new URL('../..', fromFileUrl)));
 }
 
 export function resolveHomePath(homeDir: string, relativePath: string): string {

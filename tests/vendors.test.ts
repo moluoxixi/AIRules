@@ -6,14 +6,20 @@ import { walkVendorTree } from '../scripts/lib/vendors.js'
 
 // ─── 基础结构测试 ────────────────────────────────────────────────────────────
 
-it('walkVendorTree - 字符串简写：name === output，无 setup', () => {
+it('walkVendorTree - skills projection 字符串简写：name === output，无 setup', () => {
   const vendors: Record<string, any> = {}
   const mockConfig: VendorsConfig = [
     {
       name: 'vendor-a',
       official: true,
       source: 'https://github.com/a/a.git',
-      skills: ['s1', 's2'],
+      projections: [
+        {
+          kind: 'skills',
+          sourceBaseDir: 'skills',
+          skills: ['s1', 's2'],
+        },
+      ],
     },
   ]
 
@@ -26,16 +32,22 @@ it('walkVendorTree - 字符串简写：name === output，无 setup', () => {
   assert.strictEqual(vendors['vendor-a'].links[0].setup, undefined, '字符串简写不应有 setup')
 })
 
-it('walkVendorTree - SkillConfig 对象：name 必填，output 可选', () => {
+it('walkVendorTree - skills projection 对象：name 必填，output 可选', () => {
   const vendors: Record<string, any> = {}
   const mockConfig: VendorsConfig = [
     {
       name: 'vendor-b',
       official: true,
       source: 'https://github.com/b/b.git',
-      skills: [
-        { name: 'skill-src', output: 'skill-renamed' }, // 重命名
-        { name: 'skill-same' }, // output 省略，等于 name
+      projections: [
+        {
+          kind: 'skills',
+          sourceBaseDir: 'skills',
+          skills: [
+            { name: 'skill-src', output: 'skill-renamed' }, // 重命名
+            { name: 'skill-same' }, // output 省略，等于 name
+          ],
+        },
       ],
     },
   ]
@@ -49,20 +61,25 @@ it('walkVendorTree - SkillConfig 对象：name 必填，output 可选', () => {
   assert.strictEqual(links[1].target, 'vendor/skills/skill-same', 'output 省略时应等于 name')
 })
 
-it('walkVendorTree - SkillConfig.setup 透传到 VendorLink', () => {
+it('walkVendorTree - skills projection setup 透传到 VendorLink', () => {
   const vendors: Record<string, any> = {}
   const mockConfig: VendorsConfig = [
     {
       name: 'cli-vendor',
       official: true,
       source: 'https://github.com/cli-vendor.git',
-      sourceBaseDir: 'skills',
-      skills: [
+      projections: [
         {
-          name: 'cli-skill',
-          setup: ['npm install -g some-cli@latest'],
+          kind: 'skills',
+          sourceBaseDir: 'skills',
+          skills: [
+            {
+              name: 'cli-skill',
+              setup: ['npm install -g some-cli@latest'],
+            },
+            'plain-utils', // 无 setup 的普通 skill
+          ],
         },
-        'plain-utils', // 无 setup 的普通 skill
       ],
     },
   ]
@@ -85,17 +102,23 @@ it('walkVendorTree - SkillConfig.setup 透传到 VendorLink', () => {
   assert.strictEqual(links[1].setup, undefined, 'plain-utils 不应有 setup')
 })
 
-it('walkVendorTree - 混合数组（字符串 + 对象）', () => {
+it('walkVendorTree - skills projection 混合数组（字符串 + 对象）', () => {
   const vendors: Record<string, any> = {}
   const mockConfig: VendorsConfig = [
     {
       name: 'mixed',
       official: true,
       source: 'https://github.com/mixed.git',
-      skills: [
-        'plain-skill', // 字符串简写
-        { name: 'cli-skill', setup: ['npm i -g my-cli'] }, // 有 setup
-        { name: 'renamed-skill', output: 'new-name' }, // 重命名无 setup
+      projections: [
+        {
+          kind: 'skills',
+          sourceBaseDir: 'skills',
+          skills: [
+            'plain-skill', // 字符串简写
+            { name: 'cli-skill', setup: ['npm i -g my-cli'] }, // 有 setup
+            { name: 'renamed-skill', output: 'new-name' }, // 重命名无 setup
+          ],
+        },
       ],
     },
   ]
@@ -124,7 +147,13 @@ it('walkVendorTree - 数组中的嵌套分类对象', () => {
       name: 'base-vendor',
       official: true,
       source: 'https://github.com/base.git',
-      skills: ['base'],
+      projections: [
+        {
+          kind: 'skills',
+          sourceBaseDir: 'skills',
+          skills: ['base'],
+        },
+      ],
     },
     {
       'category-1': [
@@ -132,7 +161,13 @@ it('walkVendorTree - 数组中的嵌套分类对象', () => {
           name: 'nested-vendor',
           official: true,
           source: 'https://github.com/nested.git',
-          skills: ['n1'],
+          projections: [
+            {
+              kind: 'skills',
+              sourceBaseDir: 'skills',
+              skills: ['n1'],
+            },
+          ],
         },
       ],
     },
@@ -157,7 +192,13 @@ it('walkVendorTree - 深度嵌套递归', () => {
               name: 'deep-vendor',
               official: true,
               source: 'https://github.com/deep.git',
-              skills: [{ name: 'deep', output: 'deep-skill' }],
+              projections: [
+                {
+                  kind: 'skills',
+                  sourceBaseDir: 'skills',
+                  skills: [{ name: 'deep', output: 'deep-skill' }],
+                },
+              ],
             },
           ],
         },
@@ -174,16 +215,22 @@ it('walkVendorTree - 深度嵌套递归', () => {
   )
 })
 
-// ─── sourceDir 整体 skill 模式 ───────────────────────────────────────────────
+// ─── namespace projection 整体目录模式 ───────────────────────────────────────
 
-it('walkVendorTree - sourceDir 模式（整体目录作为一个 skill）', () => {
+it('walkVendorTree - namespace projection 整体目录作为一个 skill namespace', () => {
   const vendors: Record<string, any> = {}
   const mockConfig: VendorsConfig = [
     {
       name: 'superpowers',
       official: true,
       source: 'https://github.com/obra/superpowers.git',
-      sourceDir: 'skills',
+      projections: [
+        {
+          kind: 'namespace',
+          sourceDir: 'skills',
+          output: 'superpowers',
+        },
+      ],
     },
   ]
 
@@ -194,18 +241,24 @@ it('walkVendorTree - sourceDir 模式（整体目录作为一个 skill）', () =
   assert.strictEqual(link.kind, 'namespace-dir')
   assert.strictEqual(link.source, 'skills')
   assert.strictEqual(link.target, 'vendor/skills/superpowers')
-  assert.strictEqual(link.setup, undefined, 'sourceDir 模式无 setup 时应为 undefined')
+  assert.strictEqual(link.setup, undefined, 'namespace projection 无 setup 时应为 undefined')
 })
 
-it('walkVendorTree - sourceDir 模式带 setup', () => {
+it('walkVendorTree - namespace projection 带 setup', () => {
   const vendors: Record<string, any> = {}
   const mockConfig: VendorsConfig = [
     {
       name: 'superpowers',
       official: true,
       source: 'https://github.com/obra/superpowers.git',
-      sourceDir: 'skills',
-      setup: ['npm install -g superpowers-cli'],
+      projections: [
+        {
+          kind: 'namespace',
+          sourceDir: 'skills',
+          output: 'superpowers',
+          setup: ['npm install -g superpowers-cli'],
+        },
+      ],
     },
   ]
 
@@ -215,7 +268,54 @@ it('walkVendorTree - sourceDir 模式带 setup', () => {
   assert.deepStrictEqual(
     link.setup,
     ['npm install -g superpowers-cli'],
-    'sourceDir 模式的 setup 应透传到 VendorLink',
+    'namespace projection 的 setup 应透传到 VendorLink',
+  )
+})
+
+it('walkVendorTree - 单个 vendor 支持 namespace 与 skills projections 混合', () => {
+  const vendors: Record<string, any> = {}
+  const mockConfig: VendorsConfig = [
+    {
+      name: 'moluoxixi',
+      official: true,
+      source: 'https://github.com/moluoxixi/AIRules.git',
+      projections: [
+        {
+          kind: 'namespace',
+          sourceDir: 'skills/workflow',
+          output: 'workflow',
+        },
+        {
+          kind: 'skills',
+          sourceBaseDir: 'skills',
+          skills: ['skill-creator-pro', 'skill-seekers'],
+        },
+      ],
+    },
+  ]
+
+  walkVendorTree(mockConfig, [], vendors)
+
+  assert.strictEqual(vendors.moluoxixi.links.length, 3)
+  assert.deepStrictEqual(
+    vendors.moluoxixi.links.map((link: any) => ({ kind: link.kind, source: link.source, target: link.target })),
+    [
+      {
+        kind: 'namespace-dir',
+        source: 'skills/workflow',
+        target: 'vendor/skills/workflow',
+      },
+      {
+        kind: 'skill',
+        source: 'skills/skill-creator-pro',
+        target: 'vendor/skills/skill-creator-pro',
+      },
+      {
+        kind: 'skill',
+        source: 'skills/skill-seekers',
+        target: 'vendor/skills/skill-seekers',
+      },
+    ],
   )
 })
 
@@ -238,13 +338,25 @@ it('walkVendorTree - 多 vendor 扁平结构', () => {
       name: 'vendor-a',
       official: true,
       source: 'https://github.com/a/a.git',
-      skills: ['s1'],
+      projections: [
+        {
+          kind: 'skills',
+          sourceBaseDir: 'skills',
+          skills: ['s1'],
+        },
+      ],
     },
     {
       name: 'vendor-b',
       official: false,
       source: 'https://github.com/b/b.git',
-      skills: ['s2'],
+      projections: [
+        {
+          kind: 'skills',
+          sourceBaseDir: 'skills',
+          skills: ['s2'],
+        },
+      ],
     },
   ]
 
@@ -254,6 +366,24 @@ it('walkVendorTree - 多 vendor 扁平结构', () => {
   assert.ok(vendors['vendor-b'], 'vendor-b 应存在')
   assert.strictEqual(vendors['vendor-a'].links[0].target, 'vendor/skills/s1')
   assert.strictEqual(vendors['vendor-b'].links[0].target, 'vendor/skills/s2')
+})
+
+it('walkVendorTree - 旧版顶层 sourceDir 或 skills 配置应显式失败', () => {
+  const vendors: Record<string, any> = {}
+  const mockConfig: any = [
+    {
+      name: 'legacy',
+      official: true,
+      source: 'https://github.com/legacy.git',
+      sourceDir: 'skills',
+      skills: ['legacy-skill'],
+    },
+  ]
+
+  assert.throws(
+    () => walkVendorTree(mockConfig, [], vendors),
+    /供应商 "legacy" 必须使用 projections 配置/,
+  )
 })
 
 it('vendors 配置 - 使用 OpenAI Playwright 并移除过时技能', () => {
@@ -281,5 +411,9 @@ it('vendors 配置 - 使用 OpenAI Playwright 并移除过时技能', () => {
   assert.ok(
     !vendors.moluoxixi.links.some((link: any) => link.target.endsWith('/create-handless-skill')),
     '不应继续安装 create-handless-skill',
+  )
+  assert.ok(
+    vendors.moluoxixi.links.some((link: any) => link.target === 'vendor/skills/workflow'),
+    'workflow 类技能应作为 namespace 统一安装',
   )
 })

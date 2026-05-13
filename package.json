@@ -13,11 +13,13 @@
     "sync": "npm run rules:install -- --host all",
     "rules:install": "git reset --hard HEAD && git clean -fd && git pull && npm install && tsx scripts/host-setup.ts",
     "pretest": "npx tsx scripts/sync-vendors.ts",
-    "test": "vitest run"
+    "test": "vitest run",
+    "coverage": "vitest run --coverage"
   },
   "devDependencies": {
     "@antfu/eslint-config": "^8.2.0",
     "@types/node": "^25.6.0",
+    "@vitest/coverage-v8": "4.1.4",
     "eslint": "^10.2.1",
     "eslint-plugin-format": "^2.0.1",
     "husky": "^9.1.7",
