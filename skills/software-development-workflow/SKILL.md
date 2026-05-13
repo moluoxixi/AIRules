@@ -30,7 +30,7 @@ Use existing project rules first. If project or user rules are stricter than thi
 - Backend unit, API, integration, database, transaction, contract, authorization, or service tests: use `backend-testing-standard`.
 - Vue work: use `vue-best-practices`; for Vue tests also use `vue-testing-best-practices`.
 - Vitest configuration, mocking, fixtures, or coverage: use `vitest`.
-- Browser interaction or E2E verification: use `playwright-cli` or the available browser tool.
+- Browser interaction or E2E verification: use `playwright` or the available browser tool.
 - Bug, failing test, or unexpected behavior: use `systematic-debugging`.
 - Implementation before code in a non-trivial task: use `test-driven-development` when applicable.
 - Completion claim, commit, PR, or delivery: use `verification-before-completion`.

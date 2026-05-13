@@ -9,7 +9,7 @@ export interface SkillConfig {
   /**
    * 该 skill 的安装前置命令。
    * 在 skill 链接建立后执行，例如安装对应的全局 CLI 工具。
-   * 例如：['npm install -g @playwright/cli@latest']
+   * 例如：['npm install -g some-cli@latest']
    * 命令按顺序执行，任一失败均会输出警告但不中断整体流程。
    */
   setup?: string[]
@@ -120,16 +120,11 @@ export const vendors: VendorsConfig = [
     ],
   },
   {
-    name: 'playwright',
+    name: 'openai',
     official: true,
-    source: 'https://github.com/microsoft/playwright-cli.git',
-    sourceBaseDir: 'skills',
-    skills: [
-      {
-        name: 'playwright-cli',
-        setup: ['npm install -g @playwright/cli@latest'],
-      },
-    ],
+    source: 'https://github.com/openai/skills.git',
+    sourceBaseDir: 'skills/.curated',
+    skills: ['playwright'],
   },
   {
     name: 'superpowers',
@@ -148,7 +143,6 @@ export const vendors: VendorsConfig = [
       'frontend-testing-standard',
       'backend-code-standard',
       'backend-testing-standard',
-      'create-handless-skill',
       'skill-creator-pro',
       'skill-seekers',
     ],

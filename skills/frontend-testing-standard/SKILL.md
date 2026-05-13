@@ -40,7 +40,7 @@ If a dimension has no project tool or entry point, report it as `MISSING`. If it
 
 - Vue tests: use `vue-testing-best-practices`.
 - Vitest tests, mocks, fixtures, and coverage: use `vitest`.
-- Playwright or browser-driven checks: use `playwright-cli` or available browser tooling.
+- Playwright or browser-driven checks: use `playwright` or available browser tooling.
 - UI accessibility or visual quality reviews: use `web-design-guidelines` when available.
 
 ## No Fake Passes

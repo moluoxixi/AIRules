@@ -147,7 +147,7 @@ Moluoxixi AIRules 通过自动化投影，支持不断增长的 AI 代理生态�
 | **antfu** | vue, nuxt, pinia, vite, vitest, unocss, pnpm, vitepress, slidev, tsdown, turborepo 等 17 个 | Vue 全家桶 + 前端工具链最佳实践 |
 | **Google Gemini** | code-reviewer, pr-creator | 代码审查与 PR 自动创建 |
 | **Vercel Labs** | find-skills | 开源生态 Skill 发现与安装 |
-| **Microsoft** | playwright-cli | 浏览器自动化与 E2E 测试 |
+| **OpenAI** | playwright | 浏览器自动化与 UI 流程调试 |
 | **Superpowers** | 完整技能集 | 基础工程技能（TDD、子代理驱动等） |
 
 ## 项目结构

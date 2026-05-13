@@ -147,7 +147,7 @@ Moluoxixi AIRules supports a growing ecosystem of AI agents through automated pr
 | **antfu** | vue, nuxt, pinia, vite, vitest, unocss, pnpm, vitepress, slidev, tsdown, turborepo + 6 more | Vue ecosystem + frontend toolchain best practices |
 | **Google Gemini** | code-reviewer, pr-creator | Automated code review and PR creation |
 | **Vercel Labs** | find-skills | Open ecosystem skill discovery and installation |
-| **Microsoft** | playwright-cli | Browser automation and E2E testing |
+| **OpenAI** | playwright | Browser automation and UI-flow debugging |
 | **Superpowers** | Full skill set | Foundation engineering skills (TDD, subagent-driven, etc.) |
 
 ## Project Structure

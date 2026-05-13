@@ -1,11 +1,12 @@
 import type { VendorsConfig } from '../constants/skills.js'
 import assert from 'node:assert'
-import { test } from 'vitest'
+import { it } from 'vitest'
+import { vendors as configuredVendors } from '../constants/skills.js'
 import { walkVendorTree } from '../scripts/lib/vendors.js'
 
 // ─── 基础结构测试 ────────────────────────────────────────────────────────────
 
-test('walkVendorTree - 字符串简写：name === output，无 setup', () => {
+it('walkVendorTree - 字符串简写：name === output，无 setup', () => {
   const vendors: Record<string, any> = {}
   const mockConfig: VendorsConfig = [
     {
@@ -25,7 +26,7 @@ test('walkVendorTree - 字符串简写：name === output，无 setup', () => {
   assert.strictEqual(vendors['vendor-a'].links[0].setup, undefined, '字符串简写不应有 setup')
 })
 
-test('walkVendorTree - SkillConfig 对象：name 必填，output 可选', () => {
+it('walkVendorTree - SkillConfig 对象：name 必填，output 可选', () => {
   const vendors: Record<string, any> = {}
   const mockConfig: VendorsConfig = [
     {
@@ -48,43 +49,43 @@ test('walkVendorTree - SkillConfig 对象：name 必填，output 可选', () => 
   assert.strictEqual(links[1].target, 'vendor/skills/skill-same', 'output 省略时应等于 name')
 })
 
-test('walkVendorTree - SkillConfig.setup 透传到 VendorLink', () => {
+it('walkVendorTree - SkillConfig.setup 透传到 VendorLink', () => {
   const vendors: Record<string, any> = {}
   const mockConfig: VendorsConfig = [
     {
-      name: 'playwright',
+      name: 'cli-vendor',
       official: true,
-      source: 'https://github.com/microsoft/playwright-cli.git',
+      source: 'https://github.com/cli-vendor.git',
       sourceBaseDir: 'skills',
       skills: [
         {
-          name: 'playwright-cli',
-          setup: ['npm install -g @playwright/cli@latest'],
+          name: 'cli-skill',
+          setup: ['npm install -g some-cli@latest'],
         },
-        'playwright-utils', // 无 setup 的普通 skill
+        'plain-utils', // 无 setup 的普通 skill
       ],
     },
   ]
 
   walkVendorTree(mockConfig, [], vendors)
 
-  const links = vendors.playwright.links
+  const links = vendors['cli-vendor'].links
   assert.strictEqual(links.length, 2)
 
   // 有 setup 的 skill
-  assert.strictEqual(links[0].target, 'vendor/skills/playwright-cli')
+  assert.strictEqual(links[0].target, 'vendor/skills/cli-skill')
   assert.deepStrictEqual(
     links[0].setup,
-    ['npm install -g @playwright/cli@latest'],
-    'playwright-cli 应携带 setup 命令',
+    ['npm install -g some-cli@latest'],
+    'cli-skill 应携带 setup 命令',
   )
 
   // 无 setup 的 skill
-  assert.strictEqual(links[1].target, 'vendor/skills/playwright-utils')
-  assert.strictEqual(links[1].setup, undefined, 'playwright-utils 不应有 setup')
+  assert.strictEqual(links[1].target, 'vendor/skills/plain-utils')
+  assert.strictEqual(links[1].setup, undefined, 'plain-utils 不应有 setup')
 })
 
-test('walkVendorTree - 混合数组（字符串 + 对象）', () => {
+it('walkVendorTree - 混合数组（字符串 + 对象）', () => {
   const vendors: Record<string, any> = {}
   const mockConfig: VendorsConfig = [
     {
@@ -116,7 +117,7 @@ test('walkVendorTree - 混合数组（字符串 + 对象）', () => {
 
 // ─── 分类嵌套结构测试 ────────────────────────────────────────────────────────
 
-test('walkVendorTree - 数组中的嵌套分类对象', () => {
+it('walkVendorTree - 数组中的嵌套分类对象', () => {
   const vendors: Record<string, any> = {}
   const mockConfig: VendorsConfig = [
     {
@@ -145,7 +146,7 @@ test('walkVendorTree - 数组中的嵌套分类对象', () => {
   assert.strictEqual(vendors['nested-vendor'].links[0].target, 'vendor/skills/category-1/n1')
 })
 
-test('walkVendorTree - 深度嵌套递归', () => {
+it('walkVendorTree - 深度嵌套递归', () => {
   const vendors: Record<string, any> = {}
   const mockConfig: any = [
     {
@@ -175,7 +176,7 @@ test('walkVendorTree - 深度嵌套递归', () => {
 
 // ─── sourceDir 整体 skill 模式 ───────────────────────────────────────────────
 
-test('walkVendorTree - sourceDir 模式（整体目录作为一个 skill）', () => {
+it('walkVendorTree - sourceDir 模式（整体目录作为一个 skill）', () => {
   const vendors: Record<string, any> = {}
   const mockConfig: VendorsConfig = [
     {
@@ -196,7 +197,7 @@ test('walkVendorTree - sourceDir 模式（整体目录作为一个 skill）', ()
   assert.strictEqual(link.setup, undefined, 'sourceDir 模式无 setup 时应为 undefined')
 })
 
-test('walkVendorTree - sourceDir 模式带 setup', () => {
+it('walkVendorTree - sourceDir 模式带 setup', () => {
   const vendors: Record<string, any> = {}
   const mockConfig: VendorsConfig = [
     {
@@ -220,7 +221,7 @@ test('walkVendorTree - sourceDir 模式带 setup', () => {
 
 // ─── 错误处理 ─────────────────────────────────────────────────────────────────
 
-test('walkVendorTree - 无效节点应抛出错误', () => {
+it('walkVendorTree - 无效节点应抛出错误', () => {
   const vendors: Record<string, any> = {}
   const mockConfig: any = ['not-a-vendor-object']
 
@@ -230,7 +231,7 @@ test('walkVendorTree - 无效节点应抛出错误', () => {
   )
 })
 
-test('walkVendorTree - 多 vendor 扁平结构', () => {
+it('walkVendorTree - 多 vendor 扁平结构', () => {
   const vendors: Record<string, any> = {}
   const mockConfig: VendorsConfig = [
     {
@@ -253,4 +254,32 @@ test('walkVendorTree - 多 vendor 扁平结构', () => {
   assert.ok(vendors['vendor-b'], 'vendor-b 应存在')
   assert.strictEqual(vendors['vendor-a'].links[0].target, 'vendor/skills/s1')
   assert.strictEqual(vendors['vendor-b'].links[0].target, 'vendor/skills/s2')
+})
+
+it('vendors 配置 - 使用 OpenAI Playwright 并移除过时技能', () => {
+  const vendors: Record<string, any> = {}
+
+  walkVendorTree(configuredVendors, [], vendors)
+
+  assert.ok(vendors.openai, 'openai 供应商应存在')
+  assert.strictEqual(vendors.openai.repo, 'https://github.com/openai/skills.git')
+  assert.deepStrictEqual(
+    vendors.openai.links.map((link: any) => ({
+      source: link.source,
+      target: link.target,
+      setup: link.setup,
+    })),
+    [{
+      source: 'skills/.curated/playwright',
+      target: 'vendor/skills/playwright',
+      setup: undefined,
+    }],
+    '应从 OpenAI .curated 安装 playwright skill',
+  )
+
+  assert.strictEqual(vendors.playwright, undefined, '不应保留 Microsoft playwright-cli 供应商')
+  assert.ok(
+    !vendors.moluoxixi.links.some((link: any) => link.target.endsWith('/create-handless-skill')),
+    '不应继续安装 create-handless-skill',
+  )
 })
