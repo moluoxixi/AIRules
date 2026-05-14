@@ -1,43 +1,43 @@
-# Task Splitting
+# 任务拆分
 
-## Split When
+## 适合拆分
 
-- The request changes multiple independent domains, packages, routes, or services.
-- The work mixes behavior changes, large refactors, data migration, and UI changes.
-- Different tasks can be verified independently.
-- Multiple agents or sessions may work in parallel.
-- The user asks for a broad goal such as "改造订单管理" that contains several features.
+- 请求会改变多个独立领域、package、route 或 service。
+- 工作混合了行为变化、大型重构、数据迁移和 UI 变化。
+- 不同任务可独立验证。
+- 多个代理或会话可并行工作。
+- 用户提出较宽泛目标，例如“改造订单管理”，其中包含多个功能。
 
-## Parallel Agent Gate
+## 并行代理门槛
 
-Use multiple subagents or parallel sessions when all are true:
-- there are two or more independent problem domains, failures, modules, files, or research tracks;
-- each subtask has a clear goal, boundary, and expected output;
-- write scopes do not overlap, or one subtask is read-only research;
-- subtasks do not require sequential results from each other;
-- each subtask can be verified independently;
-- the host environment supports subagents or parallel sessions.
+以下条件同时成立时，可使用多个子代理或并行会话：
+- 存在两个或更多独立问题域、失败、模块、文件或研究方向；
+- 每个子任务有清晰目标、边界和预期输出；
+- 写入范围不重叠，或其中一个子任务只是只读研究；
+- 子任务之间不依赖顺序结果；
+- 每个子任务可独立验证；
+- 宿主环境支持子代理或并行会话。
 
-Do not dispatch parallel agents when failures are likely caused by the same root issue, the same files must be edited together, or the parent agent cannot safely review and integrate the results.
+当多个失败可能来自同一根因、同一批文件必须一起编辑，或父代理无法安全复核和整合结果时，不适合派发并行代理。
 
-## Keep Together When
+## 适合保持单任务
 
-- One acceptance criterion cannot work without the other changes.
-- The same small set of files must change together.
-- Splitting would create unusable intermediate states.
+- 某个验收条件离不开其他变更。
+- 同一小批文件必须一起修改。
+- 拆分会制造不可用的中间状态。
 
-## Subtask Shape
+## 子任务形态
 
-Each subtask should have:
-- a user-visible goal;
-- file or module scope;
-- acceptance criteria;
-- test expectations;
-- dependencies on earlier subtasks;
-- known risks or blocked inputs.
+每个子任务建议包含：
+- 用户可见目标；
+- 文件或模块范围；
+- 验收标准；
+- 测试预期；
+- 对前置子任务的依赖；
+- 已知风险或阻塞输入。
 
-## Parent And Child Work
+## 父子任务
 
-Use the current functional area as the parent title. Example: `订单管理` can contain `采购订单`, and `采购订单` can contain `新增字段`.
+使用当前功能域作为父标题。例如 `订单管理` 可包含 `采购订单`，`采购订单` 可包含 `新增字段`。
 
-When a new conversation mentions a child item without enough context, infer only from explicit names, aliases, file scope, or project facts. If multiple parent items match, ask before acting.
+新会话只提到子项且上下文不足时，只根据明确名称、别名、文件范围或项目事实推断。若多个父项都可能匹配，行动前先询问。

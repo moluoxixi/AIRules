@@ -1,60 +1,68 @@
 ---
 name: software-development-workflow
-description: Use when starting, planning, implementing, testing, reviewing, or delivering any software development task, including feature work, bug fixes, refactors, multi-step changes, task splitting, quality gates, or handoff reports.
+description: 用于软件开发任务的可复用流程规范。适用于功能开发、Bug 修复、重构、评审、任务拆分、质量门选择和交付报告。
 ---
 
-# Software Development Workflow
+# 软件开发流程规范
 
-## Overview
+## 用途
 
-This skill defines a standard software development workflow for any project. It coordinates requirements, design, implementation, verification, review, and delivery without replacing technology-specific skills.
+本 Skill 是软件开发任务的流程 playbook，提供可复用的执行顺序、分级验证思路和交付报告格式。
 
-Use existing project rules first. If project or user rules are stricter than this skill, follow the stricter rule.
+它不替代 `AGENTS.md`、用户指令或 CI 规则：硬约束由这些上层规则管理，本 Skill 只提供可迁移的工作标准。
 
-## Workflow
+## 适用场景
 
-1. **Context**: identify project type, tech stack, existing scripts, relevant files, and current git state.
-2. **Requirement**: restate the task, acceptance criteria, non-goals, risks, and unknowns. Ask only when a missing answer blocks safe work.
-3. **Split**: decide whether the task is small enough for one change, needs subtasks, or should dispatch parallel agents. See `references/task-splitting.md`.
-4. **Design**: define boundaries, data contracts, error behavior, and affected files before editing.
-5. **Implement**: make the smallest coherent change that satisfies the requirement. Preserve existing patterns.
-6. **Verify**: run discovered project checks for static analysis, type checks, tests, coverage, build, and task-specific behavior. See `references/quality-gate.md`.
-7. **Review**: inspect the diff for correctness, missing tests, unrelated churn, and failure masking.
-8. **Report**: summarize changed behavior, commands run, results, missing tools, and residual risk. See `references/delivery-report.md`.
+- 功能开发、Bug 修复、重构、接口调整、测试补充、交付前检查。
+- 任务需要先判断范围、拆分、风险等级或验证策略。
+- 需要把“做了什么、验证了什么、还剩什么风险”稳定地报告给用户。
 
-## Load Supporting Standards
+## 流程骨架
 
-- Frontend code, UI, components, pages, hooks, composables, routing, or state: use `frontend-code-standard`.
-- Frontend validation, browser checks, component tests, visual responsiveness, accessibility, E2E, or coverage: use `frontend-testing-standard`.
-- Backend code, APIs, services, repositories, database access, DTOs, NestJS, Java, Spring-style layering, transactions, or server-side error handling: use `backend-code-standard`.
-- Backend unit, API, integration, database, transaction, contract, authorization, or service tests: use `backend-testing-standard`.
-- Vue work: use `vue-best-practices`; for Vue tests also use `vue-testing-best-practices`.
-- Vitest configuration, mocking, fixtures, or coverage: use `vitest`.
-- Browser interaction or E2E verification: use `playwright` or the available browser tool.
-- Two or more independent tasks, failures, modules, or research tracks: use `dispatching-parallel-agents` when the host supports subagents.
-- Independent implementation subtasks in one session: use `subagent-driven-development` when available.
-- Bug, failing test, or unexpected behavior: use `systematic-debugging`.
-- Implementation before code in a non-trivial task: use `test-driven-development` when applicable.
-- Completion claim, commit, PR, or delivery: use `verification-before-completion`.
+1. **识别上下文**：项目类型、技术栈、相关文件、已有脚本、当前 git 状态。
+2. **确认目标**：任务目标、验收标准、非目标、风险、未知项。
+3. **选择级别**：按场景和风险选择轻量、相关或完整流程。
+4. **设计边界**：影响文件、数据契约、错误语义、兼容性和副作用。
+5. **实施变更**：优先沿用项目既有模式，保持改动范围清晰。
+6. **执行验证**：参考 [quality-gate.md](references/quality-gate.md) 选择匹配的验证范围。
+7. **复核差异**：检查正确性、测试缺口、无关 churn 和失败掩盖。
+8. **交付报告**：参考 [delivery-report.md](references/delivery-report.md) 汇报结果和风险。
 
-## State And Concurrency
+## 场景分级
 
-Use lightweight project-local notes only when they materially prevent context loss or task collision. Do not force every task into a persistent state machine.
+| 级别 | 典型任务 | 推荐动作 |
+|---|---|---|
+| L0 | 咨询、审查、方案讨论、只读排查 | 不改文件时只报告观察结果和未运行检查原因 |
+| L1 | 文档、AGENTS、Skill、README、策略规则 | 轻量验证，例如 diff check、相关策略测试、目标文件 lint |
+| L2 | 小范围低风险代码调整 | 相关静态检查和直接相关测试 |
+| L3 | 功能、Bug、运行时行为变化 | 相关检查、相关测试、必要类型检查，按影响补 build 或 coverage |
+| L4 | 多模块、高风险、发布前 | 完整质量门和必要的手动或浏览器验证 |
 
-Before implementation, evaluate whether the work can run in parallel. Use multiple subagents or parallel sessions when there are two or more independent problem domains, non-overlapping write scopes, and independent verification paths. Keep coordination, integration, and final verification in the parent agent.
+避免把所有任务套进同一个重流程。Superpowers、并行子代理、TDD、全量测试、coverage 或构建通常只适合 L3/L4 或用户明确要求的场景。
 
-For concurrent or cross-conversation work, track:
-- business or feature title;
-- active task title;
-- file or module scope;
-- current status;
-- blocking decisions;
-- verification status.
+## 关联标准
 
-If two active tasks may edit the same files or contracts, stop and split the scope, use a separate branch/worktree, or ask the user to choose priority. Do not silently merge conflicting work.
+- 前端实现标准：`frontend-code-standard`。
+- 前端验证标准：`frontend-testing-standard`。
+- 后端实现标准：`backend-code-standard`。
+- 后端验证标准：`backend-testing-standard`。
+- Vue、Vitest、Playwright 等技术细节：按项目实际栈加载对应技术 Skill。
+- 拆分和并行判断：参考 [task-splitting.md](references/task-splitting.md)。
 
-## Failure Semantics
+## 输出语言与注释风格
 
-Do not hide real failures with defaults, empty objects, cached output, silent fallback, or fake success. If an error is caught, add context or cleanup, then rethrow or return an equivalent failure state.
+默认跟随用户当前主要语言。命令、标识符、日志、错误原文、API/库名和专有名词可保留原文。
 
-Missing scripts, missing tools, failing checks, insufficient coverage, or unverified browser behavior are delivery concerns. Report them as `MISSING`, `FAILED`, or `NOT RUN`, never as passed.
+注释优先说明职责、边界、输入输出约束、副作用或异常语义，避免只复述代码行为。
+
+## 失败语义
+
+推荐保留真实失败原因。捕获错误适合用于补充上下文、清理资源或转换为等价失败结果，不适合把失败改写成成功路径。
+
+交付报告中的验证状态建议使用 `PASS`、`FAIL`、`MISSING`、`NOT RUN` 和 `N/A`，含义见 [quality-gate.md](references/quality-gate.md)。
+
+## 相关文件
+
+- [task-splitting.md](references/task-splitting.md)：任务拆分、并行和保持单任务的判断。
+- [quality-gate.md](references/quality-gate.md)：场景化验证矩阵和状态定义。
+- [delivery-report.md](references/delivery-report.md)：交付报告建议格式。

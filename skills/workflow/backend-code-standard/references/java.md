@@ -1,8 +1,8 @@
-# Java Backend Standard
+# Java 后端规范
 
-## Package Shape
+## Package 形态
 
-Follow the project's established style. Default feature-oriented shape:
+优先遵循项目既有风格。默认特性导向结构：
 
 ```text
 order/
@@ -14,30 +14,30 @@ order/
   exception/
 ```
 
-Layer-oriented packages are acceptable when the project already uses them consistently.
+如果项目已稳定使用分层导向 package，也可以继续沿用。
 
 ## Controller
 
-Controllers should handle HTTP concerns, validation annotations, request mapping, and response mapping. Business rules belong in service/use-case classes.
+Controller 处理 HTTP 关注点、validation annotations、request mapping 和 response mapping。业务规则放在 service/use-case 类中。
 
 ## Service
 
-Services should hold use-case orchestration, business rules, authorization-sensitive decisions, and transaction boundaries.
+Service 承载 use-case 编排、业务规则、鉴权敏感决策和事务边界。
 
-Use `@Transactional` or equivalent only where atomicity is required. Avoid mixing external network calls into database transactions unless the project has an explicit outbox, saga, or compensation pattern.
+只有需要原子性时才使用 `@Transactional` 或等价机制。除非项目有明确 outbox、saga 或 compensation 模式，否则避免把外部网络调用混入数据库事务。
 
 ## Repository
 
-Repositories should express persistence access. Avoid embedding domain decisions, authorization checks, or response shaping in repository queries unless the project explicitly treats query services as read models.
+Repository 表达持久化访问。除非项目明确把 query service 视为 read model，否则避免在 repository 查询中嵌入领域决策、鉴权检查或响应整形。
 
-## DTO, Entity, And Mapper
+## DTO、Entity 与 Mapper
 
-Keep request DTOs, response DTOs, entities, and mapper code separate when fields or constraints differ.
+当字段或约束不同，应保持 request DTO、response DTO、entity 和 mapper 代码分离。
 
-Do not expose JPA entities directly as API responses in public or unstable contracts unless the project already uses that pattern and accepts the coupling.
+除非项目已采用并接受这种耦合，否则不要在公开或不稳定契约中直接暴露 JPA entity 作为 API 响应。
 
-## Exceptions
+## 异常
 
-Use explicit domain exceptions or framework exceptions. Map them to transport responses in a consistent exception handler/advice layer.
+使用显式 domain exceptions 或 framework exceptions，并在一致的 exception handler/advice 层映射为传输响应。
 
-Do not catch broad exceptions and return empty success responses.
+不要捕获宽泛异常后返回空成功响应。

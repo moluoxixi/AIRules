@@ -1,26 +1,26 @@
-# Accessibility Checks
+# 可访问性检查
 
-## Baseline
+## 基线
 
-Check the parts touched by the change for:
-- usable labels for form controls;
-- visible focus states;
-- keyboard navigation for interactive controls;
-- correct disabled and loading states;
-- semantic buttons and links;
-- dialog focus management and close behavior;
-- status/error text that is exposed to users;
-- color not being the only way to express state.
+对变更触及部分可检查：
+- 表单控件有可用 label；
+- focus 状态可见；
+- 交互控件支持键盘导航；
+- disabled 和 loading 状态正确；
+- button 和 link 语义正确；
+- dialog 有焦点管理和关闭行为；
+- 状态/错误文本对用户可见；
+- 不只用颜色表达状态。
 
-## When To Go Deeper
+## 深入检查场景
 
-Use stronger accessibility review when the work affects:
-- navigation;
-- forms;
-- dialogs;
-- tables;
-- keyboard-heavy tools;
-- public pages;
-- design system components.
+当变更影响以下范围时，可加强可访问性评审：
+- 导航；
+- 表单；
+- dialogs；
+- 表格；
+- 重键盘操作工具；
+- 公共页面；
+- 设计系统组件。
 
-Automated accessibility checks are useful but not sufficient. Pair them with keyboard and screen semantics review where relevant.
+自动化可访问性检查有帮助，但不充分；相关场景应结合键盘操作和屏幕语义评审。

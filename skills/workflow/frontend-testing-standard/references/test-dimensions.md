@@ -1,45 +1,45 @@
-# Frontend Test Dimensions
+# 前端测试维度
 
-## Static Quality
+## 静态质量
 
-Check lint, formatting, import rules, unused code, dependency boundaries, and project-specific static rules.
+检查 lint、格式化、导入规则、未使用代码、依赖边界和项目特定静态规则。
 
-## Type Correctness
+## 类型正确性
 
-Run the project's type mechanism, such as TypeScript, vue-tsc, framework typecheck, or workspace type tasks.
+使用项目的类型机制，例如 TypeScript、vue-tsc、框架 typecheck 或 workspace type 任务。
 
-## Unit Logic
+## 单元逻辑
 
-Cover:
-- pure utilities;
-- data transforms;
-- validators;
-- permission rules;
-- hooks/composables without DOM dependencies;
-- stores and reducers;
-- error conversion and failure propagation.
+可覆盖：
+- 纯工具函数；
+- 数据转换；
+- 校验器；
+- 权限规则；
+- 无 DOM 依赖的 hooks/composables；
+- stores 和 reducers；
+- 错误转换和失败传播。
 
-## Component Behavior
+## 组件行为
 
-Cover:
-- props and emitted events or callbacks;
-- slots or children;
-- loading, empty, error, and success states;
-- form validation and submission;
-- disabled and permission-limited states;
-- async updates and race-sensitive behavior.
+可覆盖：
+- props 和 emitted events / callbacks；
+- slots 或 children；
+- loading、empty、error、success 状态；
+- 表单校验和提交；
+- disabled 和权限受限状态；
+- 异步更新和竞态敏感行为。
 
-Test visible behavior rather than implementation details.
+测试可见行为，而不是实现细节。
 
-## Page Integration
+## 页面集成
 
-Cover:
-- route loading and parameter handling;
-- API trigger timing;
-- success, failure, and empty API responses;
-- state persistence or reset between navigation;
-- modal, drawer, table, tab, menu, and pagination flows.
+可覆盖：
+- 路由加载和参数处理；
+- API 触发时机；
+- 成功、失败和空 API 响应；
+- 导航之间的状态保留或重置；
+- modal、drawer、table、tab、menu 和 pagination 流程。
 
-## Delivery Behavior
+## 交付行为
 
-Check that the production build or equivalent packaging path works, and that the built app can render in its expected host when the project supports previewing.
+当项目支持时，检查生产构建或等价打包路径可用，并确认构建后的应用能在预期宿主中渲染。

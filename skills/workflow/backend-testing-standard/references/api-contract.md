@@ -1,23 +1,23 @@
-# API And Contract Verification
+# API 与契约验证
 
-## API Behavior
+## API 行为
 
-Verify the API surface affected by the change:
-- route and method;
-- request shape;
-- validation failures;
-- response shape;
-- status code;
-- error body;
-- headers or cookies when relevant;
-- pagination, sorting, filtering, or idempotency semantics.
+可验证受变更影响的 API 表面：
+- route 和 method；
+- request shape；
+- validation failures；
+- response shape；
+- status code；
+- error body；
+- 相关 headers 或 cookies；
+- pagination、sorting、filtering 或 idempotency 语义。
 
-## Contract Tests
+## 契约测试
 
-Use contract or integration tests when clients depend on stable behavior, especially for public APIs, microservice boundaries, webhooks, SDK-facing endpoints, or cross-team contracts.
+当客户端依赖稳定行为时，可使用契约或集成测试，尤其是 public APIs、microservice boundaries、webhooks、SDK-facing endpoints 或跨团队契约。
 
-Do not update snapshots or schemas without checking whether the API change is intentional.
+更新 snapshot 或 schema 前，应确认 API 变化是有意设计。
 
-## Error Contracts
+## 错误契约
 
-Failure responses should be explicit and stable enough for clients to handle. Do not convert backend failures into HTTP 200 with empty data unless the API contract explicitly defines that behavior.
+失败响应应足够显式和稳定，便于客户端处理。除非 API 契约明确规定，不要把后端失败转换成带空数据的 HTTP 200。

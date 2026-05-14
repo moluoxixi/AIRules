@@ -1,34 +1,40 @@
 ---
 name: frontend-code-standard
-description: Use when writing, modifying, or reviewing frontend code involving UI, components, pages, routes, state, API clients, hooks, composables, TypeScript models, naming, directory structure, or frontend module boundaries.
+description: 用于编写、修改或评审前端代码，适用于 UI、组件、页面、路由、状态、API 客户端、hooks、composables、类型模型、命名、目录结构和模块边界。
 ---
 
-# Frontend Code Standard
+# 前端代码规范
 
-## Overview
+## 用途
 
-This skill defines frontend coding standards for naming, directory structure, module boundaries, comments, and UI logic organization. It applies across Vue, React, and general TypeScript/JavaScript frontend projects.
+本 Skill 提供前端代码的可复用规范，覆盖命名、目录结构、模块边界、注释、API 对齐和 UI 逻辑组织。
 
-Prefer the project's existing conventions. When the project has no clear convention, use this skill as the default standard.
+优先遵循项目已有约定；项目没有明确约定时，可将本 Skill 作为默认参考。
 
-## Load References
+## 适用场景
 
-- General naming, comments, colocation, API alignment, and TypeScript principles: read `references/common.md`.
-- Directory and feature structure: read `references/directory-structure.md`.
-- Vue SFCs, composables, refs, and events: read `references/vue.md`.
-- React components, hooks, refs, and events: read `references/react.md`.
-- TypeScript and JavaScript naming examples: read `references/typescript-javascript.md`.
+- 新增或调整前端组件、页面、路由、状态、API 调用、hooks 或 composables。
+- 评审前端模块边界、类型模型、命名、目录放置和 UI 逻辑组织。
+- 需要判断某段逻辑应该留在视图、抽到 hook/composable、放入 service/store，还是成为纯工具函数。
 
-## Core Rules
+## 读取参考
 
-- Keep view files focused on rendering and wiring. Extract data fetching, validation, derived state, and business rules into hooks, composables, stores, services, or pure modules.
-- Define types and constants before implementation when they clarify contracts.
-- Keep feature-specific files close to the feature unless they are genuinely reused across multiple features.
-- Align frontend fields with backend/API contracts. Do not invent compatibility fields, fake rows, or fallback semantics without explicit requirements.
-- Use comments to explain responsibility, boundary, input/output constraints, side effects, and failure semantics. Do not write comments that only repeat code behavior.
+- 通用命名、注释、共置、API 对齐和 TypeScript 原则：读 [common.md](references/common.md)。
+- 目录和功能结构：读 [directory-structure.md](references/directory-structure.md)。
+- Vue SFC、composables、refs 和事件：读 [vue.md](references/vue.md)。
+- React 组件、hooks、refs 和事件：读 [react.md](references/react.md)。
+- TypeScript / JavaScript 命名和示例：读 [typescript-javascript.md](references/typescript-javascript.md)。
 
-## Framework Skills
+## 核心判断
 
-- Vue code must also use `vue-best-practices`; Vue tests should also use `vue-testing-best-practices`.
-- React code can use installed React-specific skills when available; otherwise follow React official component purity and hook boundary principles through this skill.
-- Styling, accessibility, or visual review should also use `web-design-guidelines` when available.
+- 视图文件聚焦渲染和事件装配；数据加载、校验、派生状态和业务规则优先放入 hook、composable、store、service 或纯模块。
+- 类型和常量能帮助表达契约时，应先定义契约再实现逻辑。
+- 特性专属文件优先靠近特性；确有跨特性复用后再上移到共享目录。
+- 前端字段应对齐后端/API 契约；没有明确需求时，不引入兼容字段、伪数据或静默 fallback。
+- 注释用于说明职责、边界、输入输出约束、副作用和失败语义，避免只复述代码行为。
+
+## 关联 Skill
+
+- Vue 代码可结合 `vue-best-practices`；Vue 测试可结合 `vue-testing-best-practices`。
+- React 代码可结合已安装的 React 专项 Skill；没有专项 Skill 时，按本规范中的组件纯度和 hook 边界原则执行。
+- 样式、可访问性或视觉评审可结合 `web-design-guidelines`。

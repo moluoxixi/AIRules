@@ -1,35 +1,36 @@
-# Command Discovery
+# 命令发现
 
-## Discovery Order
+## 发现顺序
 
-Find commands from:
-- package manager lockfiles and workspace files;
-- `package.json` scripts;
-- framework configs such as Vite, Nuxt, Next, Vue, React, Vitest, Playwright, ESLint, TypeScript;
-- CI files;
-- repository documentation;
-- project instructions.
+从以下位置发现命令：
+- 包管理器 lockfile 和 workspace 文件；
+- `package.json` scripts；
+- Vite、Nuxt、Next、Vue、React、Vitest、Playwright、ESLint、TypeScript 等框架配置；
+- CI 文件；
+- 仓库文档；
+- 项目指令。
 
-Do not invent scripts that are not present. Do not make a command mandatory because it is common in another project.
+不要发明项目不存在的脚本，也不要因为某命令在其他项目常见就把它当成本项目必需项。
 
-## Common Script Categories
+## 常见脚本类别
 
-Look for scripts whose names imply:
-- lint or static check;
-- typecheck or compile-only type validation;
-- test, unit, component, e2e, integration;
-- coverage;
-- build;
-- preview or start;
-- storybook, histoire, docs, or visual test when relevant.
+关注名称暗示以下用途的脚本：
+- lint 或静态检查；
+- typecheck 或只编译不输出的类型验证；
+- test、unit、component、e2e、integration；
+- coverage；
+- build；
+- preview 或 start；
+- storybook、histoire、docs 或相关视觉测试。
 
-Example command names are only examples: `pnpm lint`, `npm run typecheck`, `pnpm test`, `pnpm coverage`, `pnpm build`, `pnpm exec playwright test`.
+示例命令仅作示意：`pnpm lint`、`npm run typecheck`、`pnpm test`、`pnpm coverage`、`pnpm build`、`pnpm exec playwright test`。
 
-## Result Labels
+## 结果标签
 
-- `PASS`: command ran and succeeded.
-- `FAIL`: command ran and failed.
-- `MISSING`: no script, config, dependency, or test target exists.
-- `NOT RUN`: skipped because of time, environment, dependency, or user instruction.
+- `PASS`：命令已运行且成功。
+- `FAIL`：命令已运行但失败。
+- `MISSING`：没有脚本、配置、依赖或测试目标。
+- `NOT RUN`：由于时间、环境、依赖或用户指令跳过。
+- `N/A`：该维度与本次任务无关。
 
-Always report the exact command that was run and its result.
+报告时写明实际运行的精确命令和结果。

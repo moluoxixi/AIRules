@@ -1,6 +1,6 @@
-# TypeScript And JavaScript Standard
+# TypeScript 与 JavaScript 规范
 
-## TypeScript Types
+## TypeScript 类型
 
 ```ts
 /**
@@ -18,7 +18,7 @@ interface UserRecord {
 interface OrderQueryParams {}
 ```
 
-## Constants
+## 常量
 
 ```ts
 /**
@@ -32,7 +32,7 @@ export const DEFAULT_PAGE_SIZE = 10
 export const statusLabelMap = {}
 ```
 
-## API Functions
+## API 函数
 
 ```ts
 /**
@@ -43,7 +43,7 @@ export const statusLabelMap = {}
 export function getUserList() {}
 ```
 
-## JavaScript Functions
+## JavaScript 函数
 
 ```js
 /**
@@ -56,4 +56,4 @@ function formatDate(date) {
 }
 ```
 
-Prefer TypeScript contracts over defensive runtime normalization for internal data. Use runtime validation for user input, third-party data, or untrusted external responses.
+内部数据优先依赖 TypeScript 契约，不用防御式运行时规范化替代清晰类型。用户输入、第三方数据或不可信外部响应需要运行时校验。

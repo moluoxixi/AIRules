@@ -1,6 +1,6 @@
-# React Standard
+# React 规范
 
-## Component Directory
+## 组件目录
 
 ```text
 FormDrawer/
@@ -11,9 +11,9 @@ ConfirmDialog/
   index.tsx
 ```
 
-## Hook Boundary
+## Hook 边界
 
-Hooks should contain state, derived state, data loading, validation orchestration, and user actions. Components should render and wire events.
+Hook 适合承载状态、派生状态、数据加载、校验编排和用户动作。组件负责渲染和事件装配。
 
 ```tsx
 /**
@@ -29,9 +29,9 @@ const formDrawerRef = useRef<FormDrawerRef>(null)
 const detailDrawerRef = useRef<DetailDrawerRef>(null)
 ```
 
-## JSX And Events
+## JSX 与事件
 
-Use camelCase props and `handle`-prefixed event functions:
+props 使用 camelCase，事件函数优先使用 `handle` 前缀：
 
 ```tsx
 <DataTable
@@ -50,4 +50,4 @@ Use camelCase props and `handle`-prefixed event functions:
 function handleSelectionChange() {}
 ```
 
-Keep components pure. Do not mutate props, hide side effects in render, or mix API orchestration into presentational components.
+保持组件纯净。不要修改 props，不要在 render 中隐藏副作用，也不要把 API 编排混入展示组件。

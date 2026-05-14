@@ -1,32 +1,32 @@
-# Coverage And Risk
+# 覆盖率与风险
 
-## Baseline
+## 基线
 
-Use project coverage thresholds when defined. If none exist, report against 80% statements, branches, functions, and lines.
+优先使用项目覆盖率阈值。若项目没有定义，可参考 80% statements、branches、functions 和 lines。
 
-New or modified logic should aim for at least 90% meaningful coverage.
+新增或修改逻辑可尽量达到 90%+ 有意义覆盖。
 
-## High-Risk Logic
+## 高风险逻辑
 
-The following require success, failure, boundary, and exception-path coverage:
-- authentication and authorization;
-- payment;
-- deletion;
-- data migration;
-- security boundaries;
-- core business rules;
-- irreversible user actions;
-- complex async coordination.
+以下逻辑通常需要覆盖成功、失败、边界和异常路径：
+- authentication 和 authorization；
+- payment；
+- deletion；
+- data migration；
+- security boundaries；
+- core business rules；
+- irreversible user actions；
+- complex async coordination。
 
-## Invalid Ways To Pass
+## 无效通过方式
 
-Do not:
-- lower thresholds;
-- exclude key files;
-- delete assertions;
-- snapshot broad output without behavior assertions;
-- mock the unit under test;
-- convert errors to success paths;
-- remove tests for failing behavior.
+不要通过以下方式让报告变绿：
+- 降低阈值；
+- 排除关键文件；
+- 删除断言；
+- 对大块输出做 snapshot 但没有行为断言；
+- mock 掉被测单元；
+- 把错误转换成成功路径；
+- 删除失败行为对应的测试。
 
-If coverage cannot be collected, report the missing tool or config and explain the risk.
+如果无法收集 coverage，报告缺失工具或配置，并说明风险。

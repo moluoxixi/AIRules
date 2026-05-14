@@ -1,52 +1,52 @@
-# Common Backend Code Standard
+# 后端通用代码规范
 
-## Layer Boundaries
+## 分层边界
 
-Default backend layers:
-- route/controller: transport boundary, request validation, response shaping;
-- application/service: use-case orchestration and business rules;
-- domain/model: domain invariants and pure rules when the project has a domain layer;
-- repository/DAO/mapper: persistence access;
-- infrastructure/client: external services, queues, caches, object storage, and SDK adapters;
-- configuration: environment parsing and runtime options.
+常见后端分层：
+- route/controller：传输边界、请求校验、响应整形；
+- application/service：用例编排和业务规则；
+- domain/model：领域不变量和纯规则，适用于有领域层的项目；
+- repository/DAO/mapper：持久化访问；
+- infrastructure/client：外部服务、队列、缓存、对象存储和 SDK 适配器；
+- configuration：环境解析和运行时选项。
 
-Keep dependencies pointing inward where the architecture supports it. Avoid importing controllers from services or repositories from DTOs.
+在架构支持时，依赖方向应尽量向内。避免 service 导入 controller，也避免 DTO 导入 repository。
 
-## Naming
+## 命名
 
-Use project conventions first. Defaults:
-- API handlers/controllers: noun or resource name plus transport suffix, such as `OrderController`.
-- services/use cases: business capability, such as `OrderApprovalService`.
-- repositories/DAOs: aggregate or table name plus persistence suffix, such as `OrderRepository`.
-- DTOs: operation and direction, such as `CreateOrderRequest`, `OrderDetailResponse`.
-- errors/exceptions: domain reason, such as `OrderNotFoundError`.
+优先使用项目约定。默认参考：
+- API handlers/controllers：名词或资源名 + 传输层后缀，例如 `OrderController`。
+- services/use cases：业务能力，例如 `OrderApprovalService`。
+- repositories/DAOs：聚合或表名 + 持久化后缀，例如 `OrderRepository`。
+- DTOs：操作和方向，例如 `CreateOrderRequest`, `OrderDetailResponse`。
+- errors/exceptions：领域原因，例如 `OrderNotFoundError`。
 
-## DTO, Entity, And View Boundaries
+## DTO、Entity 与视图边界
 
-- Request DTOs describe accepted input, not database rows.
-- Response DTOs describe public output, not internal entities.
-- Entities or persistence models describe stored state and invariants.
-- Do not expose persistence-only fields unless the API contract requires them.
-- Do not accept client-controlled values for server-owned fields such as ids, tenant id, audit fields, roles, or status transitions unless explicitly designed.
+- Request DTO 描述可接受输入，不代表数据库行。
+- Response DTO 描述公开输出，不代表内部 entity。
+- Entity 或持久化模型描述存储状态和不变量。
+- 除非 API 契约要求，不暴露仅持久化使用的字段。
+- 除非明确设计，不接收客户端控制服务端拥有的字段，例如 id、tenant id、audit fields、roles 或状态流转字段。
 
-## Error Semantics
+## 错误语义
 
-Errors must remain visible:
-- validation errors should identify invalid fields or business constraints;
-- domain errors should map to explicit failure responses;
-- infrastructure errors should preserve enough cause context for diagnosis;
-- catch blocks may add context or cleanup, then rethrow or return an equivalent failure result.
+错误应保持可见：
+- validation errors 应指出无效字段或业务约束；
+- domain errors 应映射到显式失败响应；
+- infrastructure errors 应保留足够 cause context 以便诊断；
+- catch block 可补充上下文或清理资源，然后重新抛出或返回等价失败结果。
 
-Do not return success with empty data after a failed write, failed authorization check, failed external call, or failed transaction.
+写入失败、鉴权失败、外部调用失败或事务失败后，不应返回带空数据的成功响应。
 
-## Transactions
+## 事务
 
-Use a transaction when multiple writes or read-modify-write operations must be atomic. Keep transaction boundaries in service/use-case code unless the framework has an established pattern.
+当多个写入或 read-modify-write 操作必须保持原子性时使用事务。除非框架已有明确模式，事务边界优先放在 service/use-case 代码中。
 
-Do not perform long-running external calls inside a transaction unless the project explicitly accepts that risk.
+除非项目明确接受风险，不要在事务内执行耗时外部调用。
 
-## Logging And Configuration
+## 日志与配置
 
-Configuration must fail fast when required values are missing or malformed. Do not silently default production-critical URLs, credentials, feature flags, or security options.
+必需配置缺失或格式错误时应 fail fast。不要静默默认生产关键 URL、凭据、功能开关或安全选项。
 
-Logs should include request or correlation ids where available, but must redact secrets and user-sensitive data.
+日志可包含 request id 或 correlation id，但必须脱敏 secrets 和用户敏感数据。

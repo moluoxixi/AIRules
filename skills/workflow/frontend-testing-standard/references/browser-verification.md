@@ -1,37 +1,37 @@
-# Browser Verification
+# 浏览器验证
 
-## Runtime Health
+## 运行时健康
 
-When the change affects UI, routing, browser APIs, layout, canvas, 3D, or user interaction, run the app or preview if the project provides a way to do so.
+当变更影响 UI、路由、浏览器 API、布局、canvas、3D 或用户交互时，如果项目提供运行或预览方式，可启动应用或 preview。
 
-Check:
-- page is not blank;
-- console has no new errors;
-- critical network requests do not fail unexpectedly;
-- assets load;
-- route entry points render expected content.
+可检查：
+- 页面不是空白；
+- console 没有新增错误；
+- 关键网络请求没有非预期失败；
+- 资源能加载；
+- 路由入口渲染预期内容。
 
-## Interaction Checks
+## 交互检查
 
-Exercise the user path affected by the change:
-- buttons;
-- forms;
-- dialogs and drawers;
-- tables and pagination;
-- tabs, menus, and filters;
-- drag/drop or keyboard controls when present.
+操作受影响的用户路径：
+- 按钮；
+- 表单；
+- dialogs 和 drawers；
+- 表格和分页；
+- tabs、menus 和 filters；
+- 存在时检查 drag/drop 或键盘控制。
 
-## Responsive And Visual Checks
+## 响应式与视觉检查
 
-Check representative desktop and mobile viewports. Verify:
-- no overlapping text;
-- no clipped controls;
-- no unintended horizontal overflow;
-- fixed-format widgets keep stable dimensions;
-- loading, empty, error, and long-content states remain usable.
+检查代表性的桌面和移动视口。可验证：
+- 文本不重叠；
+- 控件不被裁切；
+- 没有非预期横向溢出；
+- 固定格式组件保持稳定尺寸；
+- loading、empty、error 和长内容状态仍可用。
 
-## Canvas, 3D, And Media
+## Canvas、3D 与媒体
 
-For canvas, WebGL, charts, videos, generated images, or 3D scenes, verify rendered pixels or screenshots. A passing build is not enough to prove visual output exists.
+对 canvas、WebGL、图表、视频、生成图片或 3D 场景，应通过渲染像素或截图验证输出存在。构建通过不足以证明视觉输出存在。
 
-Use Playwright, the in-app browser, or project E2E tooling when available.
+可使用 Playwright、内置浏览器或项目 E2E 工具。

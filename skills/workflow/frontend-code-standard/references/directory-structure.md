@@ -1,6 +1,6 @@
-# Directory Structure
+# 目录结构
 
-## Default Shape
+## 默认形态
 
 ```text
 src/
@@ -16,11 +16,11 @@ src/
   app.vue or app.tsx
 ```
 
-Follow the existing project structure when it is established.
+项目已有稳定结构时，优先遵循项目结构。
 
-## Feature Colocation
+## 特性共置
 
-Keep feature-specific files together:
+特性专属文件优先放在特性目录内：
 
 ```text
 purchaseOrder/
@@ -36,7 +36,7 @@ purchaseOrder/
       composables/
 ```
 
-For React:
+React 项目可使用：
 
 ```text
 purchaseOrder/
@@ -52,19 +52,19 @@ purchaseOrder/
       hooks/
 ```
 
-## Boundaries
+## 边界
 
-- `api/`: request functions and API DTOs only.
-- `types/`: contracts used by the feature or shared module.
-- `constants/`: stable mappings, defaults, enum labels, and config.
-- `composables/` or `hooks/`: state, data loading, validation orchestration, and actions.
-- `components/`: view components and feature UI.
-- `utils/`: pure utilities reused across features.
+- `api/`：请求函数和 API DTO。
+- `types/`：特性或共享模块使用的契约。
+- `constants/`：稳定映射、默认值、枚举文案和配置。
+- `composables/` 或 `hooks/`：状态、数据加载、校验编排和动作。
+- `components/`：视图组件和特性 UI。
+- `utils/`：跨特性复用的纯工具。
 
-Do not move feature-specific code into global folders just because it might be reused later.
+不要因为“以后可能复用”就把特性专属代码提前移到全局目录。
 
-## Utility Placement
+## 工具放置
 
-- Keep feature-specific utilities inside the feature module.
-- Move utilities to shared folders only after real cross-feature reuse exists.
-- Do not create global utilities for speculative reuse.
+- 特性专属工具留在特性模块内。
+- 确认存在跨特性复用后，再移动到共享目录。
+- 不为推测性复用创建全局工具。

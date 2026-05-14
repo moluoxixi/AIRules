@@ -1,6 +1,6 @@
-# Vue Standard
+# Vue 规范
 
-## SFC Order
+## SFC 顺序
 
 ```vue
 <template>
@@ -8,9 +8,9 @@
 <style scoped>
 ```
 
-Follow project tooling if it enforces a different order.
+如果项目工具强制其他顺序，优先遵循项目工具。
 
-## Component Directory
+## 组件目录
 
 ```text
 FormDrawer/
@@ -21,9 +21,9 @@ ConfirmDialog/
   index.vue
 ```
 
-## Composable Boundary
+## Composable 边界
 
-Composables should contain state, derived state, data fetching, validation orchestration, and actions that the view consumes.
+Composable 适合承载视图消费的状态、派生状态、数据加载、校验编排和动作。
 
 ```ts
 /**
@@ -34,7 +34,7 @@ Composables should contain state, derived state, data fetching, validation orche
 export function useUserList() {}
 ```
 
-Views should call composables and bind returned state:
+视图文件调用 composable，并绑定其返回状态：
 
 ```vue
 <script setup lang="ts">
@@ -44,7 +44,7 @@ const { tableData, loading, handleSearch } = useUserList()
 </script>
 ```
 
-## Events And Refs
+## 事件与 refs
 
 ```vue
 <script setup lang="ts">
@@ -59,4 +59,4 @@ function handleSearch() {}
 </script>
 ```
 
-Do not put data fetching, permission rules, or form normalization directly in `<script setup>` unless the logic is trivial and purely local to rendering.
+除非逻辑非常简单且只服务于当前渲染，否则不要把数据加载、权限规则或表单规范化直接放在 `<script setup>` 中。
