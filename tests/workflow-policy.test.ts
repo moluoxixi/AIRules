@@ -102,3 +102,18 @@ it('工作流策略 - workflow skills 使用中文规范结构', () => {
     assert.doesNotMatch(content, legacySectionPattern, `${file} contains legacy English section heading`)
   }
 })
+
+it('前端目录规范 - 保持特性模块化结构和嵌套模块示例', () => {
+  const directoryStructure = readProjectFile('skills', 'workflow', 'frontend-code-standard', 'references', 'directory-structure.md').replace(/\r\n/g, '\n')
+
+  assert.match(directoryStructure, /默认采用特性模块化目录结构/)
+  assert.match(directoryStructure, /`views\/`、`pages\/` 或 `modules\/`/)
+  assert.ok(directoryStructure.includes('src/\n  api/\n  components/\n  composables/ or hooks/\n  views/ or pages/ or modules/'))
+  assert.match(directoryStructure, /是或的关系/)
+  assert.ok(directoryStructure.includes('DataTable/\n  README.md\n  index.ts\n  src/'))
+  assert.ok(directoryStructure.includes('columnSettings/\n        index.vue or index.tsx'))
+  assert.match(directoryStructure, /index\.vue or index\.tsx/)
+  assert.ok(directoryStructure.includes('modules/\n    approval/'))
+  assert.match(directoryStructure, /3 个及以上特性复用/)
+  assert.match(directoryStructure, /不要跨模块 deep import 内部文件/)
+})
