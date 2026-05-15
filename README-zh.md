@@ -133,7 +133,7 @@ Moluoxixi AIRules 通过自动化投影，支持不断增长的 AI 代理生态�
 | 名称 | 描述 |
 |------|------|
 | **software-development-workflow** | 通用软件开发标准流程：需求、拆分、设计、实现、验证、复核与交付报告 |
-| **frontend-code-standard** | Vue 3 与 TypeScript 前端编码标准：分形架构、特性模块、就近内聚、类型拆分、统一导出与 import 边界 |
+| **frontend-code-standard** | Vue 3 与 React TypeScript 前端编码标准：分形架构、无头逻辑、路径别名、最近公共父级上浮、类型契约、统一导出与副作用注释 |
 | **frontend-testing-standard** | 前端测试标准：类型检查、单元/组件/页面集成、交互、浏览器、响应式、可访问性与覆盖率 |
 | **skill-creator-pro** | 元技能：创建、测试、评估、优化 AI Skills 的完整工具链 |
 | **skill-seekers** | 知识抓取：将文档网站/GitHub/PDF 等 17 种来源一键转换为标准 Skill |

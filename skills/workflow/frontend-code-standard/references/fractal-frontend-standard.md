@@ -1,38 +1,32 @@
-# Vue 3 与 TypeScript 分形前端规范
+# Vue 3 / React TypeScript 分形前端规范
+
+生成、重构或修改 Vue 3 或 React TypeScript 代码时，必须将本规范作为最高优先级。本项目基于分形架构（Fractal Architecture）和特性驱动（Feature-Driven）组织目录与代码。
 
 ## 1. 核心原则：分形递归与就近原则
 
-每一个复杂组件（如 `components/DataTable`）或业务模块（如 `views/purchaseOrder`）都必须视为高度自治的微型应用。
+每一个复杂组件或业务模块都被视为一个高度自治的“微型应用”。
 
-- 禁止扁平化：不得将模块专用的类型、工具类或 composable 提升到全局 `src/types`、`src/utils` 或 `src/composables`。
-- 就近原则：类型、常量、API 定义、纯函数、状态逻辑和私有子组件必须优先放在当前处理组件或模块最近的目录内。
-- 递归结构：组件内部的子组件必须拥有与父级完全一致的目录层级能力，可继续包含自己的 `types/`、`constants/`、`utils/`、`composables/`、`components/` 和 `api/`。
+- 逻辑与 UI 分离：倡导 Headless 模式，核心业务状态和交互逻辑必须从视图层中剥离。
+- 禁止扁平化：不得将模块专用的类型、工具类或状态逻辑盲目提升到全局（`src/types`、`src/utils`）。
+- 递归结构：组件内部的子组件必须拥有与父级完全一致的目录层级能力，包含自己的私有作用域。
 
-## 2. 标准模块骨架
+## 2. 目录形态标准
 
-创建新的业务视图或复杂组件时，必须使用以下骨架；不要创建没有对应职责的空目录。
+创建新的业务视图或复杂组件时，必须按照以下骨架生成目录和文件。
 
 ```text
 [ModuleName]/
-  index.vue
-  api/
-    index.ts
-  components/
-    index.ts
-  composables/
-    index.ts
-  constants/
-    index.ts
-  types/
-    index.ts
-  utils/
-    index.ts
-  index.ts
+  index.vue (或 index.tsx) - UI 视图/组件入口，仅负责渲染和组装
+  api/ - 仅限本模块调用的接口定义
+  components/ - 模块私有子组件（可继续递归此结构）
+  composables/ (Vue) 或 hooks/ (React) - 模块私有状态与无头业务逻辑
+  constants/ - 模块私有常量字典
+  types/ - 模块私有类型定义
+  utils/ - 模块私有纯函数与工具
+  index.ts - 模块的唯一公共出口
 ```
 
-如项目使用 TSX，可将 `index.vue` 替换为 `index.tsx`；如项目已统一使用 `hooks/`，可将 `composables/` 替换为 `hooks/`，但同一模块内不得混用两套命名。
-
-业务模块示例：
+完整结构示例：
 
 ```text
 views/
@@ -71,62 +65,16 @@ views/
     index.ts
 ```
 
-复杂组件示例：
-
-```text
-components/
-  DataTable/
-    index.vue
-    api/
-      index.ts
-    components/
-      index.ts
-      ColumnSettings/
-        index.vue
-        components/
-          index.ts
-        composables/
-          index.ts
-        constants/
-          index.ts
-        types/
-          props.ts
-          emit.ts
-          expose.ts
-          index.ts
-        utils/
-          index.ts
-        index.ts
-    composables/
-      index.ts
-    constants/
-      index.ts
-    types/
-      props.ts
-      emit.ts
-      expose.ts
-      index.ts
-    utils/
-      index.ts
-    index.ts
-```
-
-`AuditDialog/` 和 `ColumnSettings/` 不是扁平子文件，而是可继续递归扩展的独立组件模块。复杂组件和业务视图使用同一套内部组织能力；差异只在放置位置和业务语义，不允许为复杂组件创建一套扁平化特例。
-
-目录职责：
-
-- `index.vue` 或 `index.tsx`：主视图或主组件入口，只负责组装渲染和事件装配。
-- `api/`：仅限当前模块调用的接口定义、请求函数和请求层适配。
-- `components/`：当前模块私有子组件，子组件可继续递归本结构。
-- `composables/` 或 `hooks/`：当前模块私有状态、派生状态、数据加载、校验编排和业务动作。
-- `constants/`：当前模块私有常量、字典、配置和稳定映射。
-- `types/`：当前模块私有类型定义；复杂 Vue 组件类型必须按 `props.ts`、`emit.ts`、`expose.ts` 拆分。
-- `utils/`：当前模块私有纯函数与工具。
-- `index.ts`：当前模块或功能集目录的唯一公共出口。
+React 模块使用同一结构，将 `index.vue` 替换为 `index.tsx`，将 `composables/` 替换为 `hooks/`。
 
 ## 3. 组件类型细粒度拆分规则
 
-复杂 Vue 组件的类型必须从视图文件中抽离到当前组件的 `types/` 目录，并按职责切割。
+类型定义必须从视图文件中彻底抽离，在 `types/` 目录下进行严格切割。
+
+- `props.ts`：仅定义组件的入参 Props 接口。
+- `expose.ts`（或 `ref.ts`）：仅定义组件对外暴露的实例方法与属性接口。
+- `emit.ts`：仅限 Vue，定义组件 Emits 事件接口。
+- `index.ts`：必须通过此文件统一导出上述所有类型。
 
 ```text
 AuditDialog/
@@ -138,112 +86,76 @@ AuditDialog/
     index.ts
 ```
 
-- `props.ts`：仅定义组件 Props 接口。
-- `emit.ts`：仅定义组件 Emits 接口。
-- `expose.ts`：仅定义组件对外暴露（`defineExpose`）的实例方法与属性接口。
-- `index.ts`：必须统一导出上述所有类型。
+```text
+DataTable/
+  index.tsx
+  types/
+    props.ts
+    ref.ts
+    index.ts
+```
 
 ```ts
-// types/index.ts
+// Vue types/index.ts
 export type * from './props'
-export type * from './emit'
 export type * from './expose'
-```
-
-外部导入类型时必须导入 `types/` 目录入口。
-
-```ts
-import type { AuditDialogProps } from './types'
-```
-
-不得穿透到具体类型文件。
-
-```ts
-import type { AuditDialogProps } from './types/props'
-```
-
-## 4. 强制统一导出原则
-
-任意层级下的功能集目录，包括 `components/`、`composables/`、`hooks/`、`types/`、`utils/`、`constants/` 和 `api/`，必须提供 `index.ts` 作为该目录唯一对外 API 入口。
-
-目录内新增任何子文件后，必须立即在同级 `index.ts` 中显式导出。
-
-```ts
-// utils/index.ts
-export * from './object'
+export type * from './emit'
 ```
 
 ```ts
-// components/index.ts
-export { default as AuditDialog } from './AuditDialog'
+// React types/index.ts
+export type * from './props'
+export type * from './ref'
 ```
 
-## 5. Deep Imports 零容忍
+## 4. 强制统一导出与路径别名优先
 
-任何模块在引用同级目录或其他模块暴露资源时，路径必须且只能止步于该资源所在的根目录名称，并默认命中 `index.ts`。
+对于任意层级下的功能集目录，必须提供一个 `index.ts` 文件作为唯一对外 API 入口。
+
+- 路径别名优先：跨模块引用或涉及多层向上查找（如 `../../`）时，必须优先使用项目配置的路径别名（如 `@/`）。
+- Deep Imports 零容忍：无论使用相对路径还是别名，路径必须且只能止步于该资源所在的根目录名称（默认命中 `index.ts`）。绝对禁止穿透目录直接引用具体文件。
 
 禁止生成：
 
 ```ts
 import { formatDate } from '../../utils/date'
-import type { AuditProps } from '../types/props'
+import { formatDate } from '@/components/DataTable/utils/date'
 ```
 
 必须生成：
 
 ```ts
-import { formatDate } from '../../utils'
-import type { AuditProps } from '../types'
+import { formatDate } from '@/components/DataTable/utils'
 ```
 
-输出 `import` 语句时，如果路径包含两层以上相对路径（例如 `../../`），必须立即核对是否破坏了统一导出原则或发生跨域调用。
+## 5. 高内聚、三次原则与逐级上浮
 
-## 6. 高内聚与三次法则
+业务逻辑默认属于私有财产，必须遵循“严格阈值”与“拒绝越级”的抽离规则。
 
-业务逻辑和状态默认属于组件或模块的私有财产，必须尽可能内聚。
+- 状态局部闭环：新逻辑首选写在当前组件的 `composables/` 或 `hooks/` 中。
+- 严格重构三次原则（Strict Rule of Three）：绝对禁止过早抽象！只有当明确发现某段逻辑或组件在至少 3 个独立的地方重复时，才允许触发抽离重构。
+- 逐级提取至最近公共父级（Nearest Common Ancestor）：触发“三次原则”后，必须将代码提取到这 3 个调用者的“最近公共父级目录”下。
+- 全局门槛：只有当不同的顶级业务域同时需要该逻辑（且满足三次原则）时，才允许进入 `src/` 根级别的公共目录。
 
-- 状态局部闭环：新的状态或业务逻辑首选写在组件内部。
-- 复杂逻辑就近抽离：当逻辑变复杂时，只能抽离到该组件所在目录下的 `composables/` 或 `hooks/`。
-- 外部模块只负责传递指令与数据，不得干预组件内部中间状态流转。
+示例：A、B、C 组件共用逻辑，若它们的最近父级是 `purchaseOrder` 模块，则提取到 `purchaseOrder/utils/`，绝对禁止越权直接提取到全局 `src/utils/`。
 
-绝对禁止过早抽象。只有明确发现同一段代码或状态被至少 3 个完全不同的顶层模块，或至少 3 个无直接父子关系的组件重复消费时，才允许上浮到全局公共目录。
+## 6. 注释与代码解释规范
 
-写入全局 `src/stores`、`src/composables`、`src/hooks`、`src/utils` 或 `src/types` 前，必须验证该逻辑是否已被 3 个独立场景消费；不满足时必须留在最近的业务模块或组件目录。
+- 强制 JSDoc 契约：核心契约（`props`、`expose`）及公用 `utils` 必须使用 JSDoc 标注字段含义和默认值，保障编辑器提示。
+- Why over What：在业务逻辑中，必须解释业务意图或架构设计（如 `// 初始化底层配置以驱动动态表单渲染`），禁止生成翻译代码的无用注释。
+- 标注复杂副作用：使用 `watch`、`watchEffect` 或 `useEffect`、`useMemo` 等响应式/副作用钩子时，必须明确注释其监听的依赖变化原因、副作用目标以及潜在的闭包边界情况。
 
 ## 7. 依赖流向限制
 
-- 自上而下：父级模块只能导入其内部子目录通过 `index.ts` 暴露的内容。
-- 禁止同级跨域：模块 A 严禁直接导入模块 B 内部的私有文件。
-- 禁止穿透封装：跨模块协作只能依赖目标模块 `index.ts` 暴露的公共 API。
+- 自上而下：父级模块只能导入其内部子目录的内容。
+- 禁止同级跨域：模块 A 严禁直接导入模块 B 内部的私有文件。若需复用，必须向上游触发“逐级上浮”重构。
 
-## 8. Vue 组件入口边界
+## 8. AI 执行验证检查清单
 
-复杂组件的 `index.vue` 只负责视图组装、事件装配和对私有 composable 的调用；不得把大量状态流转、数据加载、接口适配或纯工具逻辑堆进 `<script setup>`。
+在每次生成代码或修改文件前，必须在内心执行以下自检，不输出自检过程。
 
-```vue
-<script setup lang="ts">
-import { useAuditDialog } from './composables'
-import type { AuditDialogEmits, AuditDialogExpose, AuditDialogProps } from './types'
-
-const props = defineProps<AuditDialogProps>()
-const emit = defineEmits<AuditDialogEmits>()
-
-const dialog = useAuditDialog(props, emit)
-
-defineExpose<AuditDialogExpose>({
-  open: dialog.open,
-  close: dialog.close,
-})
-</script>
-```
-
-父级模块只负责向子组件传递指令与数据，不得直接干预子组件内部中间状态流转。子组件状态若需要被外部使用，必须通过明确的 Props、Emits 或 `defineExpose` 契约暴露。
-
-## 9. 执行自检
-
-每次输出文件路径或生成代码前，必须在内部完成以下检查，不输出自检过程。
-
-- 辅助函数和类型是否严格放进当前处理组件最近的 `utils/` 或 `types/` 目录。
-- 复杂组件接口是否按 `props.ts`、`emit.ts`、`expose.ts` 拆分，并由 `types/index.ts` 导出。
-- import 语句是否全部指向目标 Barrel 入口，没有穿透到深层具体文件。
-- 是否违反三次法则，在没有 3 个以上独立调用场景的情况下擅自把代码提到全局目录。
+1. 复杂组件的接口定义是否按照 `props`、`expose` 拆分并由 `types/index.ts` 导出了？
+2. 我是否优先使用了路径别名（`@/`）？`import` 语句是否全部指向了目标的 `index.ts`，没有发生穿透？
+3. 我是否严格遵守了“三次原则”？在没有 3 处以上调用的情况下，我是否克制住了抽离公共代码的冲动？
+4. 触发抽离时，我是否精确地将其提取到了“最近的公共父级”目录，而不是错误地塞进全局 `src/`？
+5. 涉及依赖数组/响应式追踪的复杂副作用是否添加了“Why over What”级别的高质量注释？

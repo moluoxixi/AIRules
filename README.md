@@ -133,7 +133,7 @@ Moluoxixi AIRules supports a growing ecosystem of AI agents through automated pr
 | Name | Description |
 |------|-------------|
 | **software-development-workflow** | Standard software development workflow for requirements, splitting, design, implementation, verification, review, and delivery reports |
-| **frontend-code-standard** | Vue 3 and TypeScript frontend code standards for fractal architecture, feature-driven modules, local cohesion, type splitting, barrels, and import boundaries |
+| **frontend-code-standard** | Vue 3 and React TypeScript frontend code standards for fractal architecture, headless logic, path aliases, nearest-common-ancestor hoisting, type contracts, barrels, and side-effect comments |
 | **frontend-testing-standard** | Frontend testing standards for type checks, unit/component/page integration, interaction, browser, responsive, accessibility, and coverage verification |
 | **skill-creator-pro** | Meta-skill: complete toolkit for creating, testing, evaluating, and optimizing AI Skills |
 | **skill-seekers** | Knowledge ingestion: auto-convert 17 source types (docs, GitHub, PDF, etc.) into standard Skills |
