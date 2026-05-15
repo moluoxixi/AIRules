@@ -20,7 +20,7 @@ AIRules is a **composable AI skill distribution system**. The core idea is simpl
 ```
 ┌─────────────────────────────────────────────┐
 │  🔧 First-Party Skills (your own)           │ ← Your competitive edge
-│  software-development-workflow / frontend    │
+│  software-development-workflow / standards   │
 ├─────────────────────────────────────────────┤
 │  📦 Third-Party Skills (cloned from mature  │ ← Stand on the shoulders
 │  repos) antfu/vue · anthropic/testing · ... │   of giants
@@ -41,7 +41,7 @@ AIRules is a **composable AI skill distribution system**. The core idea is simpl
 
 ## What You Get
 
-- 🔥 **22+ curated** frontend/general AI Skills out of the box
+- 🔥 **23+ curated** frontend/backend/general AI Skills out of the box
 - 🛠️ **Zero-barrier skill creation** with the built-in skill-creator-pro
 - 🌐 **Multi-agent sync**: configure once, works across Claude / Cursor / Codex / Qoder / Tare / OpenCode / CC-Switch
 - 🔄 **Continuous updates**: one command pulls latest upstream skills
@@ -135,6 +135,7 @@ Moluoxixi AIRules supports a growing ecosystem of AI agents through automated pr
 | **software-development-workflow** | Standard software development workflow for requirements, splitting, design, implementation, verification, review, and delivery reports |
 | **frontend-code-standard** | Vue 3 and React TypeScript frontend code standards for fractal architecture, headless logic, path aliases, nearest-common-ancestor hoisting, type contracts, barrels, and side-effect comments |
 | **frontend-testing-standard** | Frontend testing standards for type checks, unit/component/page integration, interaction, browser, responsive, accessibility, and coverage verification |
+| **backend-code-standard** | Node.js backend code standards for Fastify, Express, Koa, Nitro, and NestJS with vertical slice domains, strict DI, barrels, runtime DTO validation, and service-layer contracts |
 | **skill-creator-pro** | Meta-skill: complete toolkit for creating, testing, evaluating, and optimizing AI Skills |
 | **skill-seekers** | Knowledge ingestion: auto-convert 17 source types (docs, GitHub, PDF, etc.) into standard Skills |
 
@@ -156,7 +157,8 @@ Moluoxixi AIRules supports a growing ecosystem of AI agents through automated pr
 │   ├── workflow/
 │   │   ├── software-development-workflow/
 │   │   ├── frontend-code-standard/
-│   │   └── frontend-testing-standard/
+│   │   ├── frontend-testing-standard/
+│   │   └── backend-code-standard/
 │   ├── skill-creator-pro/
 │   └── skill-seekers/
 ├── vendor/

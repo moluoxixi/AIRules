@@ -20,7 +20,7 @@ AIRules 是一个**可组合的 AI 技能分发系统**。它的核心思想很�
 ```
 ┌─────────────────────────────────────────────┐
 │  🔧 第一方 Skills（你自己写的）                │ ← 你的核心竞争力
-│  software-development-workflow / 前端标准      │
+│  software-development-workflow / 标准集合      │
 ├─────────────────────────────────────────────┤
 │  📦 第三方 Skills（克隆成熟仓库）              │ ← 站在巨人肩膀上
 │  antfu/vue · anthropic/testing · gemini/... │
@@ -41,7 +41,7 @@ AIRules 是一个**可组合的 AI 技能分发系统**。它的核心思想很�
 
 ## 你能得到什么？
 
-- 🔥 **开箱即得** 22+ 精选前端/通用 AI Skills
+- 🔥 **开箱即得** 23+ 精选前端/后端/通用 AI Skills
 - 🛠️ **个性化扩展**：用 skill-creator-pro 零门槛创建自己的 skill
 - 🌐 **多代理同步**：一次配置，Claude / Cursor / Codex / Qoder / Tare / OpenCode / CC-Switch 全部生效
 - 🔄 **持续更新**：上游 skills 更新后，一条命令同步最新版本
@@ -135,6 +135,7 @@ Moluoxixi AIRules 通过自动化投影，支持不断增长的 AI 代理生态�
 | **software-development-workflow** | 通用软件开发标准流程：需求、拆分、设计、实现、验证、复核与交付报告 |
 | **frontend-code-standard** | Vue 3 与 React TypeScript 前端编码标准：分形架构、无头逻辑、路径别名、最近公共父级上浮、类型契约、统一导出与副作用注释 |
 | **frontend-testing-standard** | 前端测试标准：类型检查、单元/组件/页面集成、交互、浏览器、响应式、可访问性与覆盖率 |
+| **backend-code-standard** | Node.js 后端编码标准：适用于 Fastify、Express、Koa、Nitro、NestJS，覆盖垂直切片领域、严格 DI、Barrel、运行时 DTO 校验与 Service 契约 |
 | **skill-creator-pro** | 元技能：创建、测试、评估、优化 AI Skills 的完整工具链 |
 | **skill-seekers** | 知识抓取：将文档网站/GitHub/PDF 等 17 种来源一键转换为标准 Skill |
 
@@ -156,7 +157,8 @@ Moluoxixi AIRules 通过自动化投影，支持不断增长的 AI 代理生态�
 │   ├── workflow/
 │   │   ├── software-development-workflow/
 │   │   ├── frontend-code-standard/
-│   │   └── frontend-testing-standard/
+│   │   ├── frontend-testing-standard/
+│   │   └── backend-code-standard/
 │   ├── skill-creator-pro/
 │   └── skill-seekers/
 ├── vendor/
