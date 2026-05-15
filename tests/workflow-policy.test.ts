@@ -117,3 +117,15 @@ it('前端目录规范 - 保持特性模块化结构和嵌套模块示例', () =
   assert.match(directoryStructure, /3 个及以上特性复用/)
   assert.match(directoryStructure, /不要跨模块 deep import 内部文件/)
 })
+
+it('前端代码规范 - 模块内聚规则归属通用代码逻辑', () => {
+  const common = readProjectFile('skills', 'workflow', 'frontend-code-standard', 'references', 'common.md')
+  const directoryStructure = readProjectFile('skills', 'workflow', 'frontend-code-standard', 'references', 'directory-structure.md')
+
+  assert.match(common, /## 模块内聚与抽象边界/)
+  assert.match(common, /业务语义优先于代码相似度/)
+  assert.match(common, /90% 配置相似/)
+  assert.match(common, /用户未明确要求抽象时/)
+  assert.match(common, /不得为了减少重复.*helper/)
+  assert.doesNotMatch(directoryStructure, /业务语义优先于代码相似度|90% 配置相似|同一个可配置组件/)
+})

@@ -15,6 +15,7 @@ src/
   styles/
   types/
   utils/
+  ...
   app.vue or app.tsx
 ```
 
@@ -35,11 +36,15 @@ purchaseOrder/
       index.vue or index.tsx
       types/
       constants/
+      utils/
+      types/
       composables/ or hooks/
+      ...
   composables/ or hooks/
   types/
   constants/
   utils/
+  ...
 ```
 
 ## 组件目录结构
