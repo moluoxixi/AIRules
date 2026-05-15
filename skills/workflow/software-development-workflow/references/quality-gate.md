@@ -16,7 +16,7 @@
 
 ## 可评估维度
 
-按相关性选择以下维度：
+按相关性选择以下维度（执行测试或收集覆盖率时，必须优先指定被修改的具体文件，严禁盲目运行全量测试套件消耗时间与算力）：
 - 静态质量，例如 lint 或 formatter 检查；
 - 类型正确性，例如 TypeScript、vue-tsc、tsc 或等价机制；
 - 覆盖改动行为的自动化测试；
@@ -35,7 +35,7 @@
 - 现有 CI 配置；
 - 项目级 agent 指令。
 
-示例仅作示意：`pnpm lint`、`npm test`、`pnpm exec tsc --noEmit`、`pnpm build`、`pnpm coverage`。
+示例仅作示意：`pnpm lint`、`npm test -- <相关文件>`、`pnpm exec tsc --noEmit`、`pnpm build`、`pnpm coverage -- --include <相关文件>`。
 
 ## Coverage 参考
 

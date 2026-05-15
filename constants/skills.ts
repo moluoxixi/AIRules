@@ -74,12 +74,12 @@ export type VendorsConfig = VendorNode[]
 
 /**
  * @see https://github.com/vercel/next.js.git next.js官方仓库
- * @see https://github.com/vercel/next.js/tree/canary/.claude-plugin/plugins/cache-components/skills next.js官方用于calude的skills
+ * @see https://github.com/vercel/next.js/tree/canary/.claude-plugin/plugins/cache-components/skills next.js官方用于claude的skills
  * @see https://github.com/facebook/react.git react官方仓库
  * @see https://github.com/antfu/skills.git antfu的技能仓库，收集了很多前端技能
  * @see https://github.com/facebook/react/tree/main/.claude/skills react官方用于claude的skills
  * @see https://github.com/Shubhamsaboo/awesome-llm-apps/tree/main/awesome_agent_skills awesome-agent-skills仓库，收集了很多技能
- * @see https://github.com/anthropics/skills.git anthropic（calude）官方技能仓库
+ * @see https://github.com/anthropics/skills.git anthropic（claude）官方技能仓库
  * @see https://github.com/google-gemini/gemini-cli.git gemini官方技能仓库
  * @see https://github.com/openai/skills.git openai官方技能仓库
  * @see https://github.com/obra/superpowers.git superpowers官方技能仓库
