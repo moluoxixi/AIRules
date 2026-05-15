@@ -44,8 +44,7 @@ description: 用于软件开发任务的可复用流程规范。适用于功能�
 
 - 前端实现标准：`frontend-code-standard`。
 - 前端验证标准：`frontend-testing-standard`。
-- 后端实现标准：`backend-code-standard`。
-- 后端验证标准：`backend-testing-standard`。
+- 后端标准尚未提供；收到后端规范前，不引用旧后端 skill，也不自行补写后端规则。
 - Vue、Vitest、Playwright 等技术细节：按项目实际栈加载对应技术 Skill。
 - 拆分和并行判断：参考 [task-splitting.md](references/task-splitting.md)。
 

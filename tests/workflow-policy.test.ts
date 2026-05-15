@@ -14,60 +14,24 @@ function readProjectFile(...parts: string[]) {
   return fs.readFileSync(path.join(rootDir, ...parts), 'utf8')
 }
 
-it('工作流策略 - 并行子代理规则同时存在于入口和 workflow skill', () => {
+it('入口策略 - AGENTS 保留公共硬规则并补充前后端规范边界', () => {
   const agents = readProjectFile('AGENTS.md')
-  const workflowSkill = readProjectFile('skills', 'workflow', 'software-development-workflow', 'SKILL.md')
-  const taskSplitting = readProjectFile('skills', 'workflow', 'software-development-workflow', 'references', 'task-splitting.md')
 
-  assert.match(agents, /## 并行子代理/)
-  assert.match(agents, /两个或更多相互独立的问题域/)
-  assert.match(workflowSkill, /拆分和并行判断/)
-  assert.match(workflowSkill, /task-splitting\.md/)
-  assert.match(taskSplitting, /## 并行代理门槛/)
-  assert.match(taskSplitting, /两个或更多独立问题域/)
-})
-
-it('工作流策略 - 质量检查按场景分级而不是默认全量执行', () => {
-  const agents = readProjectFile('AGENTS.md')
-  const workflowSkill = readProjectFile('skills', 'workflow', 'software-development-workflow', 'SKILL.md')
-  const qualityGate = readProjectFile('skills', 'workflow', 'software-development-workflow', 'references', 'quality-gate.md')
-  const deliveryReport = readProjectFile('skills', 'workflow', 'software-development-workflow', 'references', 'delivery-report.md')
-
+  assert.match(agents, /## 核心规则/)
+  assert.match(agents, /禁止防御式编程/)
+  assert.match(agents, /禁止错误回退/)
+  assert.match(agents, /优先使用成熟库/)
+  assert.match(agents, /用户本次消息的主要语言/)
+  assert.match(agents, /代码注释只说明作用、边界和约束/)
+  assert.match(agents, /frontend-code-standard/)
+  assert.match(agents, /不重复维护前端目录、组件、类型、导出和 import 细则/)
+  assert.match(agents, /后端编码与测试标准尚未提供/)
+  assert.match(agents, /不得沿用旧后端规范/)
   assert.match(agents, /质量检查必须按任务场景和风险分级执行/)
   assert.match(agents, /Superpowers、并行子代理、系统化调试、TDD、全量测试、coverage 和构建不得默认触发/)
-  assert.match(workflowSkill, /流程 playbook/)
-  assert.match(workflowSkill, /硬约束由这些上层规则管理/)
-  assert.match(workflowSkill, /## 场景分级/)
-  assert.match(workflowSkill, /避免把所有任务套进同一个重流程/)
-  assert.match(qualityGate, /## 验证分级/)
-  assert.match(qualityGate, /验证范围选择建议/)
-  assert.match(qualityGate, /避免把所有任务默认升级为 Superpowers、全量测试、coverage 或构建/)
-  assert.match(qualityGate, /咨询、审查、方案讨论、只读排查/)
-  assert.match(qualityGate, /文档、AGENTS、Skill、README、策略规则/)
-  assert.match(qualityGate, /多模块、高风险、发布前/)
-  assert.match(qualityGate, /`N\/A`/)
-  assert.match(deliveryReport, /交付报告建议格式/)
-  assert.match(deliveryReport, /只读任务或未修改代码/)
-})
-
-it('工作流策略 - workflow skill 自包含语言与注释约束', () => {
-  const agents = readProjectFile('AGENTS.md')
-  const workflowSkill = readProjectFile('skills', 'workflow', 'software-development-workflow', 'SKILL.md')
-
-  assert.match(agents, /用户本次消息的主要语言/)
-  assert.match(workflowSkill, /默认跟随用户当前主要语言/)
-  assert.match(workflowSkill, /职责、边界、输入输出约束、副作用或异常语义/)
-})
-
-it('工作流策略 - 质量状态统一使用 FAIL 而不是 FAILED', () => {
-  const workflowSkill = readProjectFile('skills', 'workflow', 'software-development-workflow', 'SKILL.md')
-  const qualityGate = readProjectFile('skills', 'workflow', 'software-development-workflow', 'references', 'quality-gate.md')
-  const deliveryReport = readProjectFile('skills', 'workflow', 'software-development-workflow', 'references', 'delivery-report.md')
-
-  for (const content of [workflowSkill, qualityGate, deliveryReport]) {
-    assert.match(content, /`FAIL`/)
-    assert.doesNotMatch(content, /`FAILED`/)
-  }
+  assert.match(agents, /检查状态统一使用 `PASS`、`FAIL`、`MISSING`、`NOT RUN`、`N\/A`/)
+  assert.match(agents, /## 并行子代理/)
+  assert.doesNotMatch(agents, /Props 接口|Deep Imports 零容忍|分形架构/)
 })
 
 it('工作流策略 - workflow skills 使用中文规范结构', () => {
@@ -103,29 +67,75 @@ it('工作流策略 - workflow skills 使用中文规范结构', () => {
   }
 })
 
-it('前端目录规范 - 保持特性模块化结构和嵌套模块示例', () => {
-  const directoryStructure = readProjectFile('skills', 'workflow', 'frontend-code-standard', 'references', 'directory-structure.md').replace(/\r\n/g, '\n')
+it('前端编码规范 - 入口只引用 Vue 3 与 TypeScript 分形架构规范', () => {
+  const skill = readProjectFile('skills', 'workflow', 'frontend-code-standard', 'SKILL.md')
 
-  assert.match(directoryStructure, /默认采用特性模块化目录结构/)
-  assert.match(directoryStructure, /`views\/`、`pages\/` 或 `modules\/`/)
-  assert.ok(directoryStructure.includes('src/\n  api/\n  components/\n  composables/ or hooks/\n  views/ or pages/ or modules/'))
-  assert.match(directoryStructure, /是或的关系/)
-  assert.ok(directoryStructure.includes('DataTable/\n  README.md\n  index.ts\n  src/'))
-  assert.ok(directoryStructure.includes('columnSettings/\n        index.vue or index.tsx'))
-  assert.match(directoryStructure, /index\.vue or index\.tsx/)
-  assert.ok(directoryStructure.includes('modules/\n    approval/'))
-  assert.match(directoryStructure, /3 个及以上特性复用/)
-  assert.match(directoryStructure, /不要跨模块 deep import 内部文件/)
+  assert.match(skill, /Vue 3 与 TypeScript/)
+  assert.match(skill, /分形架构/)
+  assert.match(skill, /特性驱动/)
+  assert.match(skill, /fractal-frontend-standard\.md/)
+  assert.match(skill, /前端编码与目录创建不可拆开理解/)
+  assert.match(skill, /禁止扁平化/)
+  assert.match(skill, /Deep Imports 零容忍/)
+  assert.match(skill, /状态局部闭环/)
+  assert.match(skill, /依赖自上而下/)
+  assert.doesNotMatch(skill, /React|react\.md|typescript-javascript\.md|directory-structure\.md|common\.md|vue\.md/)
 })
 
-it('前端代码规范 - 模块内聚规则归属通用代码逻辑', () => {
-  const common = readProjectFile('skills', 'workflow', 'frontend-code-standard', 'references', 'common.md')
-  const directoryStructure = readProjectFile('skills', 'workflow', 'frontend-code-standard', 'references', 'directory-structure.md')
+it('前端编码规范 - 单文件主规范同时覆盖目录和编码约束', () => {
+  const standard = readProjectFile('skills', 'workflow', 'frontend-code-standard', 'references', 'fractal-frontend-standard.md').replace(/\r\n/g, '\n')
 
-  assert.match(common, /## 模块内聚与抽象边界/)
-  assert.match(common, /业务语义优先于代码相似度/)
-  assert.match(common, /90% 配置相似/)
-  assert.match(common, /用户未明确要求抽象时/)
-  assert.match(common, /不得为了减少重复.*helper/)
-  assert.doesNotMatch(directoryStructure, /业务语义优先于代码相似度|90% 配置相似|同一个可配置组件/)
+  assert.match(standard, /## 1\. 核心原则：分形递归与就近原则/)
+  assert.match(standard, /复杂组件（如 `components\/DataTable`）/)
+  assert.match(standard, /业务模块（如 `views\/purchaseOrder`）/)
+  assert.match(standard, /## 2\. 标准模块骨架/)
+  assert.ok(standard.includes('[ModuleName]/\n  index.vue\n  api/\n    index.ts\n  components/\n    index.ts\n  composables/\n    index.ts\n  constants/\n    index.ts\n  types/\n    index.ts\n  utils/\n    index.ts\n  index.ts'))
+  assert.ok(standard.includes('AuditDialog/\n        index.vue\n        api/'))
+  assert.ok(standard.includes('DataTable/\n    index.vue\n    api/'))
+  assert.match(standard, /## 4\. 强制统一导出原则/)
+  assert.match(standard, /## 5\. Deep Imports 零容忍/)
+  assert.match(standard, /## 6\. 高内聚与三次法则/)
+  assert.match(standard, /## 7\. 依赖流向限制/)
+  assert.ok(!standard.includes('views/ or pages/ or modules/'))
+  assert.ok(!standard.includes('README.md\n  index.ts\n  src/'))
+  assert.ok(!standard.includes('columnSettings'))
+})
+
+it('前端编码规范 - Vue 类型按 props emit expose 拆分', () => {
+  const standard = readProjectFile('skills', 'workflow', 'frontend-code-standard', 'references', 'fractal-frontend-standard.md')
+
+  assert.match(standard, /复杂 Vue 组件的类型必须从视图文件中抽离/)
+  assert.match(standard, /props\.ts/)
+  assert.match(standard, /emit\.ts/)
+  assert.match(standard, /expose\.ts/)
+  assert.match(standard, /defineExpose/)
+  assert.match(standard, /import type \{ AuditDialogProps \} from '\.\/types'/)
+  assert.match(standard, /不得穿透到具体类型文件/)
+})
+
+it('前端编码规范 - Barrel、三次法则和依赖流向为硬约束', () => {
+  const standard = readProjectFile('skills', 'workflow', 'frontend-code-standard', 'references', 'fractal-frontend-standard.md')
+
+  assert.match(standard, /任意层级下的功能集目录/)
+  assert.match(standard, /必须提供 `index\.ts` 作为该目录唯一对外 API 入口/)
+  assert.match(standard, /Deep Imports 零容忍/)
+  assert.match(standard, /import \{ formatDate \} from '\.\.\/\.\.\/utils'/)
+  assert.match(standard, /至少 3 个完全不同的顶层模块/)
+  assert.match(standard, /src\/stores/)
+  assert.match(standard, /自上而下/)
+  assert.match(standard, /禁止同级跨域/)
+  assert.match(standard, /执行自检/)
+})
+
+it('后端规范 - 旧后端 skill 暂不分发', () => {
+  const readme = readProjectFile('README.md')
+  const readmeZh = readProjectFile('README-zh.md')
+  const workflowSkill = readProjectFile('skills', 'workflow', 'software-development-workflow', 'SKILL.md')
+
+  assert.ok(!fs.existsSync(path.join(rootDir, 'skills', 'workflow', 'backend-code-standard', 'SKILL.md')))
+  assert.ok(!fs.existsSync(path.join(rootDir, 'skills', 'workflow', 'backend-testing-standard', 'SKILL.md')))
+  assert.doesNotMatch(readme, /backend-code-standard|backend-testing-standard/)
+  assert.doesNotMatch(readmeZh, /backend-code-standard|backend-testing-standard/)
+  assert.doesNotMatch(workflowSkill, /`backend-code-standard`|`backend-testing-standard`/)
+  assert.match(workflowSkill, /后端标准尚未提供/)
 })

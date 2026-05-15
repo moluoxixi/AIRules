@@ -20,7 +20,7 @@ AIRules 是一个**可组合的 AI 技能分发系统**。它的核心思想很�
 ```
 ┌─────────────────────────────────────────────┐
 │  🔧 第一方 Skills（你自己写的）                │ ← 你的核心竞争力
-│  software-development-workflow / 前后端标准    │
+│  software-development-workflow / 前端标准      │
 ├─────────────────────────────────────────────┤
 │  📦 第三方 Skills（克隆成熟仓库）              │ ← 站在巨人肩膀上
 │  antfu/vue · anthropic/testing · gemini/... │
@@ -133,10 +133,8 @@ Moluoxixi AIRules 通过自动化投影，支持不断增长的 AI 代理生态�
 | 名称 | 描述 |
 |------|------|
 | **software-development-workflow** | 通用软件开发标准流程：需求、拆分、设计、实现、验证、复核与交付报告 |
-| **frontend-code-standard** | 前端编码标准：命名、目录、组件边界、hooks/composables、类型与注释规范 |
+| **frontend-code-standard** | Vue 3 与 TypeScript 前端编码标准：分形架构、特性模块、就近内聚、类型拆分、统一导出与 import 边界 |
 | **frontend-testing-standard** | 前端测试标准：类型检查、单元/组件/页面集成、交互、浏览器、响应式、可访问性与覆盖率 |
-| **backend-code-standard** | 后端编码标准：API 分层、DTO、service、repository、事务、异常、NestJS 与 Java 项目规范 |
-| **backend-testing-standard** | 后端测试标准：单元、service、API、集成、数据库、契约、鉴权与失败路径验证 |
 | **skill-creator-pro** | 元技能：创建、测试、评估、优化 AI Skills 的完整工具链 |
 | **skill-seekers** | 知识抓取：将文档网站/GitHub/PDF 等 17 种来源一键转换为标准 Skill |
 
@@ -158,9 +156,7 @@ Moluoxixi AIRules 通过自动化投影，支持不断增长的 AI 代理生态�
 │   ├── workflow/
 │   │   ├── software-development-workflow/
 │   │   ├── frontend-code-standard/
-│   │   ├── frontend-testing-standard/
-│   │   ├── backend-code-standard/
-│   │   └── backend-testing-standard/
+│   │   └── frontend-testing-standard/
 │   ├── skill-creator-pro/
 │   └── skill-seekers/
 ├── vendor/

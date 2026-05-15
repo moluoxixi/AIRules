@@ -1,40 +1,31 @@
 ---
 name: frontend-code-standard
-description: 用于编写、修改或评审前端代码，适用于 UI、组件、页面、路由、状态、API 客户端、hooks、composables、类型模型、命名、目录结构和模块边界。
+description: 用于编写、修改或评审 Vue 3 与 TypeScript 前端代码，强制执行分形架构、特性驱动目录、就近内聚、细粒度类型拆分、统一导出和依赖流向约束。
 ---
 
-# 前端代码规范
+# 前端编码规范
 
 ## 用途
 
-本 Skill 提供前端代码的可复用规范，覆盖命名、目录结构、模块边界、注释、API 对齐和 UI 逻辑组织。
+本 Skill 是 Vue 3 与 TypeScript 前端代码的唯一编码规范来源。
 
-优先遵循项目已有约定；项目没有明确约定时，可将本 Skill 作为默认参考。
+生成、重构或修改前端代码时，必须优先遵循分形架构（Fractal Architecture）和特性驱动（Feature-Driven）组织原则：每个复杂组件或业务模块都视为自治的微型应用，所有类型、工具、状态和子组件默认就近放置。
 
 ## 适用场景
 
-- 新增或调整前端组件、页面、路由、状态、API 调用、hooks 或 composables。
-- 评审前端模块边界、类型模型、命名、目录放置和 UI 逻辑组织。
-- 需要判断某段逻辑应该留在视图、抽到 hook/composable、放入 service/store，还是成为纯工具函数。
+- 新增或调整 Vue 3 组件、业务视图、业务模块和复杂组件。
+- 评审前端目录结构、组件边界、模块边界、状态归属、类型拆分、导出入口和 import 路径。
+- 判断类型、工具、composable、常量、API 定义是否应该留在当前模块，还是满足三次法则后上浮。
 
-## 读取参考
+## 必读规范
 
-- 通用命名、注释、共置、API 对齐和 TypeScript 原则：读 [common.md](references/common.md)。
-- 目录和功能结构：读 [directory-structure.md](references/directory-structure.md)。
-- Vue SFC、composables、refs 和事件：读 [vue.md](references/vue.md)。
-- React 组件、hooks、refs 和事件：读 [react.md](references/react.md)。
-- TypeScript / JavaScript 命名和示例：读 [typescript-javascript.md](references/typescript-javascript.md)。
+前端编码与目录创建不可拆开理解，必须完整读取 [fractal-frontend-standard.md](references/fractal-frontend-standard.md)。
 
-## 核心判断
+## 硬性原则
 
-- 视图文件聚焦渲染和事件装配；数据加载、校验、派生状态和业务规则优先放入 hook、composable、store、service 或纯模块。
-- 类型和常量能帮助表达契约时，应先定义契约再实现逻辑。
-- 特性专属文件优先靠近特性；确有跨特性复用后再上移到共享目录。
-- 前端字段应对齐后端/API 契约；没有明确需求时，不引入兼容字段、伪数据或静默 fallback。
-- 注释用于说明职责、边界、输入输出约束、副作用和失败语义，避免只复述代码行为。
-
-## 关联 Skill
-
-- Vue 代码可结合 `vue-best-practices`；Vue 测试可结合 `vue-testing-best-practices`。
-- React 代码可结合已安装的 React 专项 Skill；没有专项 Skill 时，按本规范中的组件纯度和 hook 边界原则执行。
-- 样式、可访问性或视觉评审可结合 `web-design-guidelines`。
+- 禁止扁平化：模块专用的类型、工具、composable、常量、API 定义和子组件不得提升到全局目录。
+- 递归结构：复杂子组件必须拥有与父级一致的目录层级能力，包括自己的 `types/`、`constants/`、`utils/`、`composables/` 和 `components/`。
+- 统一导出：任意功能集目录必须提供 `index.ts` 作为唯一对外 API 入口，新增子文件必须立即由同级 `index.ts` 显式导出。
+- Deep Imports 零容忍：模块引用同级目录或其他模块暴露资源时，只能导入目录入口，不得穿透到具体文件。
+- 状态局部闭环：新的状态和业务逻辑默认属于当前组件或模块；只有满足三次法则后才允许上浮。
+- 依赖自上而下：父级模块只能导入自身内部子目录暴露的入口；禁止同级模块跨域导入对方私有文件。
