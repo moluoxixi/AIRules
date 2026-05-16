@@ -1,5 +1,5 @@
 import assert from 'node:assert/strict'
-import { execFileSync } from 'node:child_process'
+import { execFileSync, spawnSync } from 'node:child_process'
 import fs from 'node:fs'
 import os from 'node:os'
 import path from 'node:path'
@@ -107,7 +107,7 @@ it('前端编码规范 - 单文件主规范同时覆盖目录和编码约束', (
   assert.ok(standard.includes('composables/ (Vue) 或 hooks/ (React) - [可选] 模块私有状态与无头业务逻辑'))
   assert.match(standard, /React 模块使用同一结构/)
   assert.ok(standard.includes('AuditDialog/\n        index.vue\n        api/\n          index.ts\n        components/\n          index.ts\n        composables/'))
-  assert.ok(standard.includes('DataTable/\n  README.md - [必填] 描述组件用途、使用方式和 Props/Events/Expose/Slots 等接口契约\n  index.ts - [必填] 组件包唯一公共出口\n  src/ - [必填] 组件真实实现目录'))
+  assert.ok(standard.includes('DataTable/\n  README.md - [必填] 描述组件用途、使用方式和 Props/Events/Expose/Slots 等接口契约\n  index.ts 或 index.js - [必填] 组件包唯一公共出口\n  src/ - [必填] 组件真实实现目录'))
   assert.match(standard, /禁止穿透 `src\/` 引用组件内部实现/)
   assert.match(standard, /## 4\. 强制统一导出与路径别名优先/)
   assert.match(standard, /## 5\. 高内聚、三次原则与逐级上浮/)
@@ -118,11 +118,22 @@ it('前端编码规范 - 单文件主规范同时覆盖目录和编码约束', (
 
 it('前端编码规范 - skill 自带验证脚本覆盖组件结构和最近公共父级', () => {
   const scriptPath = path.join(rootDir, 'skills', 'workflow', 'frontend-code-standard', 'scripts', 'verify-rules.mjs')
-  const componentRoot = fs.mkdtempSync(path.join(os.tmpdir(), 'airules-component-'))
+  const componentRootTs = fs.mkdtempSync(path.join(os.tmpdir(), 'airules-component-ts-'))
+  const componentRootJs = fs.mkdtempSync(path.join(os.tmpdir(), 'airules-component-js-'))
+  const componentRootDuplicate = fs.mkdtempSync(path.join(os.tmpdir(), 'airules-component-dupe-'))
 
-  fs.writeFileSync(path.join(componentRoot, 'README.md'), '# DataTable\n\n## Usage\n\nProps and Events are documented here.\n')
-  fs.writeFileSync(path.join(componentRoot, 'index.ts'), 'export * from \'./src\'\n')
-  fs.mkdirSync(path.join(componentRoot, 'src'))
+  fs.writeFileSync(path.join(componentRootTs, 'README.md'), '# DataTable\n\n## Usage\n\nProps and Events are documented here.\n')
+  fs.writeFileSync(path.join(componentRootTs, 'index.ts'), 'export * from \'./src\'\n')
+  fs.mkdirSync(path.join(componentRootTs, 'src'))
+
+  fs.writeFileSync(path.join(componentRootJs, 'README.md'), '# DataTable\n\n## Usage\n\nProps and Events are documented here.\n')
+  fs.writeFileSync(path.join(componentRootJs, 'index.js'), 'export * from \'./src/index.js\'\n')
+  fs.mkdirSync(path.join(componentRootJs, 'src'))
+
+  fs.writeFileSync(path.join(componentRootDuplicate, 'README.md'), '# DataTable\n\n## Usage\n\nProps and Events are documented here.\n')
+  fs.writeFileSync(path.join(componentRootDuplicate, 'index.ts'), 'export * from \'./src\'\n')
+  fs.writeFileSync(path.join(componentRootDuplicate, 'index.js'), 'export * from \'./src/index.js\'\n')
+  fs.mkdirSync(path.join(componentRootDuplicate, 'src'))
 
   assert.ok(fs.existsSync(scriptPath))
   assert.ok(!fs.existsSync(path.join(rootDir, 'scripts', 'verify-skill-rules.mjs')))
@@ -132,10 +143,28 @@ it('前端编码规范 - skill 自带验证脚本覆盖组件结构和最近公�
       scriptPath,
       'component',
       '--root',
-      componentRoot,
+      componentRootTs,
     ], { cwd: rootDir, encoding: 'utf8' }),
     /PASS frontend component package structure is valid/,
   )
+  assert.match(
+    execFileSync(process.execPath, [
+      scriptPath,
+      'component',
+      '--root',
+      componentRootJs,
+    ], { cwd: rootDir, encoding: 'utf8' }),
+    /PASS frontend component package structure is valid/,
+  )
+  const duplicateResult = spawnSync(process.execPath, [
+    scriptPath,
+    'component',
+    '--root',
+    componentRootDuplicate,
+  ], { cwd: rootDir, encoding: 'utf8' })
+
+  assert.notEqual(duplicateResult.status, 0)
+  assert.match(duplicateResult.stderr, /只能存在一个公共入口：index\.ts 或 index\.js/)
   assert.match(
     execFileSync(process.execPath, [
       scriptPath,

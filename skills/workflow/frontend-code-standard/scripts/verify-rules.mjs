@@ -90,14 +90,19 @@ function assertTargetInsideAncestor(target, ancestor) {
 function assertComponentPackage(root) {
   const componentRoot = path.resolve(process.cwd(), root)
   const readmePath = path.join(componentRoot, 'README.md')
-  const entryPath = path.join(componentRoot, 'index.ts')
   const srcPath = path.join(componentRoot, 'src')
+  const entryCandidates = ['index.ts', 'index.js']
+    .map(filename => path.join(componentRoot, filename))
+    .filter(candidate => fs.existsSync(candidate))
 
   if (!fs.existsSync(readmePath))
     throw new Error('组件包根目录缺少 README.md')
 
-  if (!fs.existsSync(entryPath))
-    throw new Error('组件包根目录缺少 index.ts')
+  if (entryCandidates.length === 0)
+    throw new Error('组件包根目录缺少唯一公共入口：index.ts 或 index.js')
+
+  if (entryCandidates.length > 1)
+    throw new Error('组件包根目录只能存在一个公共入口：index.ts 或 index.js')
 
   if (!fs.statSync(srcPath).isDirectory())
     throw new Error('组件包根目录缺少 src/ 实现目录')
@@ -112,6 +117,7 @@ function assertComponentPackage(root) {
 
   printPass('frontend component package structure is valid', {
     componentRoot,
+    entry: path.basename(entryCandidates[0]),
   })
 }
 
@@ -123,7 +129,7 @@ function verifySelf() {
   assertContains(standard, /至少 3 个独立的地方/, '前端规范必须保留三次原则')
   assertContains(standard, /最近公共父级目录/, '前端规范必须保留最近公共父级约束')
   assertContains(standard, /README\.md/, '前端组件包结构必须强制 README.md')
-  assertContains(standard, /index\.ts/, '前端组件包结构必须强制 index.ts')
+  assertContains(standard, /index\.(ts|js)/, '前端组件包结构必须强制单一公共入口')
   assertContains(standard, /src\//, '前端组件包结构必须强制 src/ 实现目录')
   assertContains(standard, /禁止穿透 `src\/`/, '前端组件包必须禁止外部穿透 src/')
 
