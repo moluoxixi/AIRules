@@ -1,5 +1,7 @@
 import assert from 'node:assert/strict'
+import { execFileSync } from 'node:child_process'
 import fs from 'node:fs'
+import os from 'node:os'
 import path from 'node:path'
 import { fileURLToPath } from 'node:url'
 import { it } from 'vitest'
@@ -14,7 +16,14 @@ function readProjectFile(...parts: string[]) {
   return fs.readFileSync(path.join(rootDir, ...parts), 'utf8')
 }
 
-it('入口策略 - AGENTS 保留公共硬规则并补充前后端规范边界', () => {
+function runNodeScript(...parts: string[]) {
+  return execFileSync(process.execPath, [path.join(rootDir, ...parts)], {
+    cwd: rootDir,
+    encoding: 'utf8',
+  })
+}
+
+it('入口策略 - AGENTS 保留公共硬规则并保持简洁入口边界', () => {
   const agents = readProjectFile('AGENTS.md')
 
   assert.match(agents, /## 核心规则/)
@@ -24,19 +33,12 @@ it('入口策略 - AGENTS 保留公共硬规则并补充前后端规范边界', 
   assert.match(agents, /用户本次消息的主要语言/)
   assert.match(agents, /生成的代码必须包含清晰、专业的注释/)
   assert.match(agents, /零成本理解代码的设计意图、API 契约和业务逻辑/)
-  assert.match(agents, /Vue 3 \/ React TypeScript/)
-  assert.match(agents, /frontend-code-standard/)
-  assert.match(agents, /不重复维护前端目录、组件、类型、导出和 import 细则/)
-  assert.match(agents, /Node\.js 后端编码规范/)
-  assert.match(agents, /Fastify \/ Express \/ Koa \/ Nitro \/ NestJS/)
-  assert.match(agents, /backend-code-standard/)
-  assert.match(agents, /后端测试标准尚未提供/)
-  assert.match(agents, /不得沿用旧规范或自行补写/)
   assert.match(agents, /质量检查必须按任务场景和风险分级执行/)
   assert.match(agents, /Superpowers、并行子代理、系统化调试、TDD、全量测试、coverage 和构建不得默认触发/)
   assert.match(agents, /检查状态统一使用 `PASS`、`FAIL`、`MISSING`、`NOT RUN`、`N\/A`/)
   assert.match(agents, /## 并行子代理/)
-  assert.doesNotMatch(agents, /Props 接口|Deep Imports 零容忍|分形架构/)
+  assert.match(agents, /写入范围不重叠、可独立验证的子任务/)
+  assert.doesNotMatch(agents, /frontend-code-standard|backend-code-standard|Props 接口|Deep Imports 零容忍|分形架构/)
 })
 
 it('工作流策略 - workflow skills 使用中文规范结构', () => {
@@ -87,6 +89,8 @@ it('前端编码规范 - 入口只引用 Vue 3 / React TypeScript 分形架构�
   assert.match(skill, /逐级上浮/)
   assert.match(skill, /注释契约/)
   assert.match(skill, /Why over What/)
+  assert.match(skill, /scripts\/verify-rules\.mjs/)
+  assert.match(skill, /不得用仓库根级共享脚本替代/)
   assert.doesNotMatch(skill, /react\.md|typescript-javascript\.md|directory-structure\.md|common\.md|vue\.md/)
 })
 
@@ -99,16 +103,52 @@ it('前端编码规范 - 单文件主规范同时覆盖目录和编码约束', (
   assert.match(standard, /逻辑与 UI 分离/)
   assert.match(standard, /Headless 模式/)
   assert.match(standard, /## 2\. 目录形态标准/)
-  assert.ok(standard.includes('[ModuleName]/\n  index.vue (或 index.tsx) - UI 视图/组件入口，仅负责渲染和组装\n  api/ - 仅限本模块调用的接口定义\n  components/ - 模块私有子组件（可继续递归此结构）'))
-  assert.ok(standard.includes('composables/ (Vue) 或 hooks/ (React) - 模块私有状态与无头业务逻辑'))
+  assert.ok(standard.includes('[ModuleName]/\n  index.vue (或 index.tsx) - [必填] UI 视图/组件入口，仅负责渲染和组装\n  api/ - [可选] 仅限本模块调用的接口定义\n  components/ - [可选] 模块私有子组件（可继续递归此结构）'))
+  assert.ok(standard.includes('composables/ (Vue) 或 hooks/ (React) - [可选] 模块私有状态与无头业务逻辑'))
   assert.match(standard, /React 模块使用同一结构/)
   assert.ok(standard.includes('AuditDialog/\n        index.vue\n        api/\n          index.ts\n        components/\n          index.ts\n        composables/'))
+  assert.ok(standard.includes('DataTable/\n  README.md - [必填] 描述组件用途、使用方式和 Props/Events/Expose/Slots 等接口契约\n  index.ts - [必填] 组件包唯一公共出口\n  src/ - [必填] 组件真实实现目录'))
+  assert.match(standard, /禁止穿透 `src\/` 引用组件内部实现/)
   assert.match(standard, /## 4\. 强制统一导出与路径别名优先/)
   assert.match(standard, /## 5\. 高内聚、三次原则与逐级上浮/)
-  assert.match(standard, /## 7\. 依赖流向限制/)
+  assert.match(standard, /依赖流向限制/)
   assert.ok(!standard.includes('views/ or pages/ or modules/'))
-  assert.ok(!standard.includes('README.md\n  index.ts\n  src/'))
   assert.ok(!standard.includes('columnSettings'))
+})
+
+it('前端编码规范 - skill 自带验证脚本覆盖组件结构和最近公共父级', () => {
+  const scriptPath = path.join(rootDir, 'skills', 'workflow', 'frontend-code-standard', 'scripts', 'verify-rules.mjs')
+  const componentRoot = fs.mkdtempSync(path.join(os.tmpdir(), 'airules-component-'))
+
+  fs.writeFileSync(path.join(componentRoot, 'README.md'), '# DataTable\n\n## Usage\n\nProps and Events are documented here.\n')
+  fs.writeFileSync(path.join(componentRoot, 'index.ts'), 'export * from \'./src\'\n')
+  fs.mkdirSync(path.join(componentRoot, 'src'))
+
+  assert.ok(fs.existsSync(scriptPath))
+  assert.ok(!fs.existsSync(path.join(rootDir, 'scripts', 'verify-skill-rules.mjs')))
+  assert.match(runNodeScript('skills', 'workflow', 'frontend-code-standard', 'scripts', 'verify-rules.mjs'), /PASS frontend-code-standard self rules are valid/)
+  assert.match(
+    execFileSync(process.execPath, [
+      scriptPath,
+      'component',
+      '--root',
+      componentRoot,
+    ], { cwd: rootDir, encoding: 'utf8' }),
+    /PASS frontend component package structure is valid/,
+  )
+  assert.match(
+    execFileSync(process.execPath, [
+      scriptPath,
+      'hoist',
+      '--target',
+      'src/views/purchaseOrder/utils',
+      '--uses',
+      'src/views/purchaseOrder/create/index.tsx',
+      'src/views/purchaseOrder/update/index.tsx',
+      'src/views/purchaseOrder/delete/index.tsx',
+    ], { cwd: rootDir, encoding: 'utf8' }),
+    /PASS frontend hoist target stays under nearest common ancestor/,
+  )
 })
 
 it('前端编码规范 - 类型按 props expose ref emit 拆分', () => {
@@ -194,9 +234,32 @@ it('后端编码规范 - 入口引用轻量 Node 与 NestJS 规范', () => {
   assert.match(skill, /Deep Imports 零容忍/)
   assert.match(skill, /逐级上浮/)
   assert.match(skill, /Service 公共方法和外部 DTO/)
+  assert.match(skill, /scripts\/verify-rules\.mjs/)
+  assert.match(skill, /不得用仓库根级共享脚本替代/)
   assert.match(workflowSkill, /Node\.js 后端实现标准：`backend-code-standard`/)
   assert.match(workflowSkill, /Fastify、Express、Koa、Nitro 和 NestJS/)
   assert.match(workflowSkill, /后端测试标准尚未提供/)
+})
+
+it('后端编码规范 - skill 自带验证脚本覆盖最近公共父级', () => {
+  const scriptPath = path.join(rootDir, 'skills', 'workflow', 'backend-code-standard', 'scripts', 'verify-rules.mjs')
+
+  assert.ok(fs.existsSync(scriptPath))
+  assert.ok(!fs.existsSync(path.join(rootDir, 'scripts', 'verify-skill-rules.mjs')))
+  assert.match(runNodeScript('skills', 'workflow', 'backend-code-standard', 'scripts', 'verify-rules.mjs'), /PASS backend-code-standard self rules are valid/)
+  assert.match(
+    execFileSync(process.execPath, [
+      scriptPath,
+      'hoist',
+      '--target',
+      'src/modules/orders/utils',
+      '--uses',
+      'src/modules/orders/create/service.ts',
+      'src/modules/orders/update/service.ts',
+      'src/modules/orders/delete/service.ts',
+    ], { cwd: rootDir, encoding: 'utf8' }),
+    /PASS backend hoist target stays under nearest common ancestor/,
+  )
 })
 
 it('后端编码规范 - 单文件主规范覆盖目录、契约和依赖边界', () => {

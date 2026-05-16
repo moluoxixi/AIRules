@@ -68,6 +68,23 @@ views/
 
 React 模块使用同一结构，将 `index.vue` 替换为 `index.tsx`，将 `composables/` 替换为 `hooks/`。
 
+组件包或复杂组件目录必须使用独立组件包结构，组件根目录只承载使用说明与公共出口，真实实现必须放入 `src/`：
+
+```text
+DataTable/
+  README.md - [必填] 描述组件用途、使用方式和 Props/Events/Expose/Slots 等接口契约
+  index.ts - [必填] 组件包唯一公共出口
+  src/ - [必填] 组件真实实现目录
+    index.vue (或 index.tsx)
+    types/
+      props.ts
+      expose.ts (或 ref.ts)
+      emit.ts
+      index.ts
+```
+
+外部消费者只能从组件根目录的 `index.ts` 导入，禁止穿透 `src/` 引用组件内部实现。
+
 ## 3. 组件类型细粒度拆分规则
 
 类型定义必须从视图文件中彻底抽离，在 `types/` 目录下进行严格切割。

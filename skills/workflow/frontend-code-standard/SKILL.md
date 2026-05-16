@@ -21,11 +21,16 @@ description: 用于编写、修改或评审 Vue 3 或 React TypeScript 前端代
 
 前端编码与目录创建不可拆开理解，必须完整读取 [fractal-frontend-standard.md](references/fractal-frontend-standard.md)。
 
+## 验证辅助
+
+本 Skill 自带 `scripts/verify-rules.mjs`，用于快速验证前端专属的三次原则、最近公共父级抽离位置和组件包结构。该脚本只属于本 Skill，不得用仓库根级共享脚本替代。
+
 ## 硬性原则
 
 - 逻辑与 UI 分离：核心业务状态和交互逻辑必须进入模块私有 `composables/` 或 `hooks/`，视图入口仅负责渲染和组装。
 - 禁止扁平化：模块专用的类型、工具、状态逻辑和子组件不得盲目提升到全局目录。
 - 递归结构：复杂子组件必须拥有与父级一致的目录层级能力和私有作用域。
+- 组件包结构：组件包或复杂组件目录必须包含 `README.md`、`index.ts` 和 `src/`；`README.md` 必须描述组件用途、使用方式和接口契约。
 - 统一导出：任意功能集目录必须提供 `index.ts` 作为唯一对外 API 入口。
 - 路径别名优先：跨模块引用或多层向上查找时，必须优先使用项目配置的路径别名。
 - Deep Imports 零容忍：无论相对路径还是别名，都不得穿透到具体文件。

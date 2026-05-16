@@ -25,6 +25,10 @@ description: 用于编写、修改或评审 Node.js 后端代码，适用于 Fas
 - Fastify / Express / Koa / Nitro：读取 [vertical-slice-backend-standard.md](references/vertical-slice-backend-standard.md)。
 - NestJS：读取 [nest-backend-standard.md](references/nest-backend-standard.md)。
 
+## 验证辅助
+
+本 Skill 自带 `scripts/verify-rules.mjs`，用于快速验证后端专属的三次原则和最近公共父级抽离位置。该脚本只属于本 Skill，不得用仓库根级共享脚本替代。
+
 ## 硬性原则
 
 - 垂直切片：代码必须按业务领域组织，不得按 Controller、Service、Repository 做全局扁平分层。
