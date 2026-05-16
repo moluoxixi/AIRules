@@ -42,7 +42,7 @@ AIRules is a **composable AI skill distribution system**. The core idea is simpl
 ## What You Get
 
 - 🔥 **23+ curated** frontend/backend/general AI Skills out of the box
-- 🛠️ **Zero-barrier skill creation** with the built-in skill-creator-pro
+- 🧱 **Reserved first-party expansion slots** so you can add your own top-level skills later without changing the distribution model
 - 🌐 **Multi-agent sync**: configure once, works across Claude / Cursor / Codex / Qoder / Tare / OpenCode / CC-Switch
 - 🔄 **Continuous updates**: one command pulls latest upstream skills
 
@@ -136,8 +136,8 @@ Moluoxixi AIRules supports a growing ecosystem of AI agents through automated pr
 | **frontend-code-standard** | Vue 3 and React TypeScript frontend code standards for fractal architecture, headless logic, path aliases, nearest-common-ancestor hoisting, type contracts, barrels, and side-effect comments |
 | **frontend-testing-standard** | Frontend testing standards for type checks, unit/component/page integration, interaction, browser, responsive, accessibility, and coverage verification |
 | **backend-code-standard** | Node.js backend code standards for Fastify, Express, Koa, Nitro, and NestJS with vertical slice domains, strict DI, barrels, runtime DTO validation, and service-layer contracts |
-| **skill-creator-pro** | Meta-skill: complete toolkit for creating, testing, evaluating, and optimizing AI Skills |
-| **skill-seekers** | Knowledge ingestion: auto-convert 17 source types (docs, GitHub, PDF, etc.) into standard Skills |
+
+> Reserved top-level first-party skill slots are intentionally kept empty in the current config so new custom skills can be added later without reshaping the projection model.
 
 ### Third-Party Skills (Curated)
 
@@ -154,13 +154,11 @@ Moluoxixi AIRules supports a growing ecosystem of AI agents through automated pr
 ```
 ~/.moluoxixi/
 ├── skills/                  # First-party skills (your core assets)
-│   ├── workflow/
-│   │   ├── software-development-workflow/
-│   │   ├── frontend-code-standard/
-│   │   ├── frontend-testing-standard/
-│   │   └── backend-code-standard/
-│   ├── skill-creator-pro/
-│   └── skill-seekers/
+│   └── workflow/
+│       ├── software-development-workflow/
+│       ├── frontend-code-standard/
+│       ├── frontend-testing-standard/
+│       └── backend-code-standard/
 ├── vendor/
 │   ├── repos/               # Cloned third-party source repos
 │   └── skills/              # Extracted third-party skills
@@ -168,6 +166,8 @@ Moluoxixi AIRules supports a growing ecosystem of AI agents through automated pr
 ├── scripts/                 # Install / sync / verify scripts
 └── tests/                   # Automated verification tests
 ```
+
+> The top-level first-party `skills/` projection list is intentionally empty for now and reserved for future custom skill additions.
 
 ## Why Not Just Another AI Rules Repo?
 

@@ -138,6 +138,29 @@ it('walkVendorTree - skills projection 混合数组（字符串 + 对象）', ()
   assert.strictEqual(links[2].setup, undefined)
 })
 
+it('walkVendorTree - 空 skills projection 仅保留配置槽位，不生成 skill link', () => {
+  const vendors: Record<string, any> = {}
+  const mockConfig: VendorsConfig = [
+    {
+      name: 'reserved-slot',
+      official: true,
+      source: 'https://github.com/example/reserved-slot.git',
+      projections: [
+        {
+          kind: 'skills',
+          sourceBaseDir: 'skills',
+          skills: [],
+        },
+      ],
+    },
+  ]
+
+  walkVendorTree(mockConfig, [], vendors)
+
+  assert.ok(vendors['reserved-slot'], 'reserved-slot 应存在')
+  assert.deepStrictEqual(vendors['reserved-slot'].links, [], '空 skills projection 不应生成任何 link')
+})
+
 // ─── 分类嵌套结构测试 ────────────────────────────────────────────────────────
 
 it('walkVendorTree - 数组中的嵌套分类对象', () => {
@@ -288,7 +311,7 @@ it('walkVendorTree - 单个 vendor 支持 namespace 与 skills projections 混�
         {
           kind: 'skills',
           sourceBaseDir: 'skills',
-          skills: ['skill-creator-pro', 'skill-seekers'],
+          skills: [],
         },
       ],
     },
@@ -296,7 +319,7 @@ it('walkVendorTree - 单个 vendor 支持 namespace 与 skills projections 混�
 
   walkVendorTree(mockConfig, [], vendors)
 
-  assert.strictEqual(vendors.moluoxixi.links.length, 3)
+  assert.strictEqual(vendors.moluoxixi.links.length, 1)
   assert.deepStrictEqual(
     vendors.moluoxixi.links.map((link: any) => ({ kind: link.kind, source: link.source, target: link.target })),
     [
@@ -304,16 +327,6 @@ it('walkVendorTree - 单个 vendor 支持 namespace 与 skills projections 混�
         kind: 'namespace-dir',
         source: 'skills/workflow',
         target: 'vendor/skills/workflow',
-      },
-      {
-        kind: 'skill',
-        source: 'skills/skill-creator-pro',
-        target: 'vendor/skills/skill-creator-pro',
-      },
-      {
-        kind: 'skill',
-        source: 'skills/skill-seekers',
-        target: 'vendor/skills/skill-seekers',
       },
     ],
   )
