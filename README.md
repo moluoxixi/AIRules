@@ -133,7 +133,7 @@ Moluoxixi AIRules supports a growing ecosystem of AI agents through automated pr
 | Name | Description |
 |------|-------------|
 | **software-development-workflow** | Standard software development workflow for requirements, splitting, design, implementation, verification, review, and delivery reports |
-| **frontend-code-standard** | Vue 3 and React TypeScript frontend code standards for fractal architecture, headless logic, path aliases, nearest-common-ancestor hoisting, type contracts, barrels, and side-effect comments |
+| **frontend-code-standard** | Vue 3 and React TypeScript/JavaScript frontend code standards for fractal architecture, headless logic, path aliases, nearest-common-ancestor hoisting, type contracts, barrels, and side-effect comments |
 | **frontend-testing-standard** | Frontend testing standards for type checks, unit/component/page integration, interaction, browser, responsive, accessibility, and coverage verification |
 | **backend-code-standard** | Node.js backend code standards for Fastify, Express, Koa, Nitro, and NestJS with vertical slice domains, strict DI, barrels, runtime DTO validation, and service-layer contracts |
 

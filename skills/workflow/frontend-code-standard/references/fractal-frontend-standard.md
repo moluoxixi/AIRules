@@ -1,6 +1,6 @@
-# Vue 3 / React TypeScript 分形前端规范
+# Vue 3 / React TypeScript / JavaScript 分形前端规范
 
-生成、重构或修改 Vue 3 或 React TypeScript 代码时，必须将本规范作为最高优先级。本项目基于分形架构（Fractal Architecture）和特性驱动（Feature-Driven）组织目录与代码。
+生成、重构或修改 Vue 3 或 React TypeScript / JavaScript 代码时，必须将本规范作为最高优先级。本项目基于分形架构（Fractal Architecture）和特性驱动（Feature-Driven）组织目录与代码。
 
 ## 1. 核心原则：分形递归与就近原则
 
@@ -16,7 +16,7 @@
 
 ```text
 [ModuleName]/
-  index.vue (或 index.tsx) - [必填] UI 视图/组件入口，仅负责渲染和组装
+  index.vue (或 index.tsx / index.jsx) - [必填] UI 视图/组件入口，仅负责渲染和组装
   api/ - [可选] 仅限本模块调用的接口定义
   components/ - [可选] 模块私有子组件（可继续递归此结构）
   composables/ (Vue) 或 hooks/ (React) - [可选] 模块私有状态与无头业务逻辑
@@ -24,7 +24,7 @@
   styles/ - [可选] 模块私有样式文件
   types/ - [可选] 模块私有类型定义
   utils/ - [可选] 模块私有纯函数与工具
-  index.ts - [必填] 模块的唯一公共出口
+  index.ts 或 index.js - [必填] 模块的唯一公共出口
 ```
 
 完整结构示例：
@@ -66,16 +66,18 @@ views/
     index.ts
 ```
 
-React 模块使用同一结构，将 `index.vue` 替换为 `index.tsx`，将 `composables/` 替换为 `hooks/`。
+React 模块使用同一结构，将 `index.vue` 替换为 `index.tsx` 或 `index.jsx`，将 `composables/` 替换为 `hooks/`。
+
+单个业务模块直接在根目录组织，不再额外创建 `src/`；只有组件包或项目级封装才使用 `src/` 作为实现目录。
 
 组件包或复杂组件目录必须使用独立组件包结构，组件根目录只承载使用说明与公共出口，真实实现必须放入 `src/`：
 
 ```text
 DataTable/
   README.md - [必填] 描述组件用途、使用方式和 Props/Events/Expose/Slots 等接口契约
-  index.ts - [必填] 组件包唯一公共出口
+  index.ts 或 index.js - [必填] 组件包唯一公共出口
   src/ - [必填] 组件真实实现目录
-    index.vue (或 index.tsx)
+    index.vue (或 index.tsx / index.jsx)
     types/
       props.ts
       expose.ts (或 ref.ts)
@@ -83,7 +85,7 @@ DataTable/
       index.ts
 ```
 
-外部消费者只能从组件根目录的 `index.ts` 导入，禁止穿透 `src/` 引用组件内部实现。
+外部消费者只能从组件根目录的 `index.ts` 或 `index.js` 导入，禁止穿透 `src/` 引用组件内部实现。
 
 ## 3. 组件类型细粒度拆分规则
 
@@ -130,10 +132,10 @@ export type * from './ref'
 
 ## 4. 强制统一导出与路径别名优先
 
-对于任意层级下的功能集目录，必须提供一个 `index.ts` 文件作为唯一对外 API 入口。
+对于任意层级下的功能集目录，必须提供一个 `index.ts` 或 `index.js` 文件作为唯一对外 API 入口。
 
 - 路径别名优先：跨模块引用或涉及多层向上查找（如 `../../`）时，必须优先使用项目配置的路径别名（如 `@/`）。
-- Deep Imports 零容忍：无论使用相对路径还是别名，路径必须且只能止步于该资源所在的根目录名称（默认命中 `index.ts`）。绝对禁止穿透目录直接引用具体文件。
+- Deep Imports 零容忍：无论使用相对路径还是别名，路径必须且只能止步于该资源所在的根目录名称（默认命中 `index.ts` 或 `index.js`）。绝对禁止穿透目录直接引用具体文件。
 
 禁止生成：
 
@@ -180,7 +182,7 @@ import { formatDate } from '@/components/DataTable/utils'
 在每次生成代码或修改文件前，必须在内心执行以下自检，不输出自检过程。
 
 1. 复杂组件的接口定义是否按照 `props`、`expose` 拆分并由 `types/index.ts` 导出了？
-2. 我是否优先使用了路径别名（`@/`）？`import` 语句是否全部指向了目标的 `index.ts`，没有发生穿透？
+2. 我是否优先使用了路径别名（`@/`）？`import` 语句是否全部指向了目标的 `index.ts` 或 `index.js`，没有发生穿透？
 3. 我是否严格遵守了“三次原则”？在没有 3 处以上调用的情况下，我是否克制住了抽离公共代码的冲动？
 4. 触发抽离时，我是否精确地将其提取到了“最近的公共父级”目录，而不是错误地塞进全局 `src/`？
 5. 涉及依赖数组/响应式追踪的复杂副作用是否添加了“Why over What”级别的高质量注释？

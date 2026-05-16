@@ -77,7 +77,7 @@ it('工作流策略 - workflow skills 使用中文规范结构', () => {
 it('前端编码规范 - 入口只引用 Vue 3 / React TypeScript 分形架构规范', () => {
   const skill = readProjectFile('skills', 'workflow', 'frontend-code-standard', 'SKILL.md')
 
-  assert.match(skill, /Vue 3 或 React TypeScript/)
+  assert.match(skill, /Vue 3 或 React TypeScript\/JavaScript/)
   assert.match(skill, /分形架构/)
   assert.match(skill, /特性驱动/)
   assert.match(skill, /fractal-frontend-standard\.md/)
@@ -91,6 +91,7 @@ it('前端编码规范 - 入口只引用 Vue 3 / React TypeScript 分形架构�
   assert.match(skill, /Why over What/)
   assert.match(skill, /scripts\/verify-rules\.mjs/)
   assert.match(skill, /不得用仓库根级共享脚本替代/)
+  assert.match(skill, /单个业务模块不得再嵌套 `src\/`/)
   assert.doesNotMatch(skill, /react\.md|typescript-javascript\.md|directory-structure\.md|common\.md|vue\.md/)
 })
 
@@ -98,18 +99,22 @@ it('前端编码规范 - 单文件主规范同时覆盖目录和编码约束', (
   const standard = readProjectFile('skills', 'workflow', 'frontend-code-standard', 'references', 'fractal-frontend-standard.md').replace(/\r\n/g, '\n')
 
   assert.match(standard, /最高优先级/)
-  assert.match(standard, /Vue 3 或 React TypeScript/)
+  assert.match(standard, /Vue 3 或 React TypeScript \/ JavaScript/)
   assert.match(standard, /## 1\. 核心原则：分形递归与就近原则/)
   assert.match(standard, /逻辑与 UI 分离/)
   assert.match(standard, /Headless 模式/)
   assert.match(standard, /## 2\. 目录形态标准/)
-  assert.ok(standard.includes('[ModuleName]/\n  index.vue (或 index.tsx) - [必填] UI 视图/组件入口，仅负责渲染和组装\n  api/ - [可选] 仅限本模块调用的接口定义\n  components/ - [可选] 模块私有子组件（可继续递归此结构）'))
+  assert.ok(standard.includes('[ModuleName]/\n  index.vue (或 index.tsx / index.jsx) - [必填] UI 视图/组件入口，仅负责渲染和组装\n  api/ - [可选] 仅限本模块调用的接口定义\n  components/ - [可选] 模块私有子组件（可继续递归此结构）'))
   assert.ok(standard.includes('composables/ (Vue) 或 hooks/ (React) - [可选] 模块私有状态与无头业务逻辑'))
   assert.match(standard, /React 模块使用同一结构/)
+  assert.match(standard, /index\.tsx/)
+  assert.match(standard, /index\.jsx/)
+  assert.match(standard, /单个业务模块直接在根目录组织，不再额外创建 `src\/`/)
   assert.ok(standard.includes('AuditDialog/\n        index.vue\n        api/\n          index.ts\n        components/\n          index.ts\n        composables/'))
-  assert.ok(standard.includes('DataTable/\n  README.md - [必填] 描述组件用途、使用方式和 Props/Events/Expose/Slots 等接口契约\n  index.ts 或 index.js - [必填] 组件包唯一公共出口\n  src/ - [必填] 组件真实实现目录'))
+  assert.ok(standard.includes('DataTable/\n  README.md - [必填] 描述组件用途、使用方式和 Props/Events/Expose/Slots 等接口契约\n  index.ts 或 index.js - [必填] 组件包唯一公共出口\n  src/ - [必填] 组件真实实现目录\n    index.vue (或 index.tsx / index.jsx)'))
   assert.match(standard, /禁止穿透 `src\/` 引用组件内部实现/)
   assert.match(standard, /## 4\. 强制统一导出与路径别名优先/)
+  assert.match(standard, /必须提供一个 `index\.ts` 或 `index\.js` 文件作为唯一对外 API 入口/)
   assert.match(standard, /## 5\. 高内聚、三次原则与逐级上浮/)
   assert.match(standard, /依赖流向限制/)
   assert.ok(!standard.includes('views/ or pages/ or modules/'))
@@ -121,19 +126,42 @@ it('前端编码规范 - skill 自带验证脚本覆盖组件结构和最近公�
   const componentRootTs = fs.mkdtempSync(path.join(os.tmpdir(), 'airules-component-ts-'))
   const componentRootJs = fs.mkdtempSync(path.join(os.tmpdir(), 'airules-component-js-'))
   const componentRootDuplicate = fs.mkdtempSync(path.join(os.tmpdir(), 'airules-component-dupe-'))
+  const componentRootWithRootImplementation = fs.mkdtempSync(path.join(os.tmpdir(), 'airules-component-root-entry-'))
+  const moduleRootTs = fs.mkdtempSync(path.join(os.tmpdir(), 'airules-module-ts-'))
+  const moduleRootJs = fs.mkdtempSync(path.join(os.tmpdir(), 'airules-module-js-'))
+  const moduleRootWithSrc = fs.mkdtempSync(path.join(os.tmpdir(), 'airules-module-src-'))
 
   fs.writeFileSync(path.join(componentRootTs, 'README.md'), '# DataTable\n\n## Usage\n\nProps and Events are documented here.\n')
   fs.writeFileSync(path.join(componentRootTs, 'index.ts'), 'export * from \'./src\'\n')
   fs.mkdirSync(path.join(componentRootTs, 'src'))
+  fs.writeFileSync(path.join(componentRootTs, 'src', 'index.tsx'), 'export function DataTable() { return null }\n')
 
   fs.writeFileSync(path.join(componentRootJs, 'README.md'), '# DataTable\n\n## Usage\n\nProps and Events are documented here.\n')
   fs.writeFileSync(path.join(componentRootJs, 'index.js'), 'export * from \'./src/index.js\'\n')
   fs.mkdirSync(path.join(componentRootJs, 'src'))
+  fs.writeFileSync(path.join(componentRootJs, 'src', 'index.jsx'), 'export function DataTable() { return null }\n')
 
   fs.writeFileSync(path.join(componentRootDuplicate, 'README.md'), '# DataTable\n\n## Usage\n\nProps and Events are documented here.\n')
   fs.writeFileSync(path.join(componentRootDuplicate, 'index.ts'), 'export * from \'./src\'\n')
   fs.writeFileSync(path.join(componentRootDuplicate, 'index.js'), 'export * from \'./src/index.js\'\n')
   fs.mkdirSync(path.join(componentRootDuplicate, 'src'))
+  fs.writeFileSync(path.join(componentRootDuplicate, 'src', 'index.vue'), '<template />\n')
+
+  fs.writeFileSync(path.join(componentRootWithRootImplementation, 'README.md'), '# DataTable\n\n## Usage\n\nProps and Events are documented here.\n')
+  fs.writeFileSync(path.join(componentRootWithRootImplementation, 'index.ts'), 'export * from \'./src\'\n')
+  fs.writeFileSync(path.join(componentRootWithRootImplementation, 'index.vue'), '<template />\n')
+  fs.mkdirSync(path.join(componentRootWithRootImplementation, 'src'))
+  fs.writeFileSync(path.join(componentRootWithRootImplementation, 'src', 'index.vue'), '<template />\n')
+
+  fs.writeFileSync(path.join(moduleRootTs, 'index.ts'), 'export { AuditDialog } from \'./index.vue\'\n')
+  fs.writeFileSync(path.join(moduleRootTs, 'index.vue'), '<template />\n')
+
+  fs.writeFileSync(path.join(moduleRootJs, 'index.js'), 'export { AuditDialog } from \'./index.jsx\'\n')
+  fs.writeFileSync(path.join(moduleRootJs, 'index.jsx'), 'export function AuditDialog() { return null }\n')
+
+  fs.writeFileSync(path.join(moduleRootWithSrc, 'index.ts'), 'export { AuditDialog } from \'./index.vue\'\n')
+  fs.writeFileSync(path.join(moduleRootWithSrc, 'index.vue'), '<template />\n')
+  fs.mkdirSync(path.join(moduleRootWithSrc, 'src'))
 
   assert.ok(fs.existsSync(scriptPath))
   assert.ok(!fs.existsSync(path.join(rootDir, 'scripts', 'verify-skill-rules.mjs')))
@@ -156,6 +184,24 @@ it('前端编码规范 - skill 自带验证脚本覆盖组件结构和最近公�
     ], { cwd: rootDir, encoding: 'utf8' }),
     /PASS frontend component package structure is valid/,
   )
+  assert.match(
+    execFileSync(process.execPath, [
+      scriptPath,
+      'module',
+      '--root',
+      moduleRootTs,
+    ], { cwd: rootDir, encoding: 'utf8' }),
+    /PASS frontend module structure is valid/,
+  )
+  assert.match(
+    execFileSync(process.execPath, [
+      scriptPath,
+      'module',
+      '--root',
+      moduleRootJs,
+    ], { cwd: rootDir, encoding: 'utf8' }),
+    /PASS frontend module structure is valid/,
+  )
   const duplicateResult = spawnSync(process.execPath, [
     scriptPath,
     'component',
@@ -164,7 +210,25 @@ it('前端编码规范 - skill 自带验证脚本覆盖组件结构和最近公�
   ], { cwd: rootDir, encoding: 'utf8' })
 
   assert.notEqual(duplicateResult.status, 0)
-  assert.match(duplicateResult.stderr, /只能存在一个公共入口：index\.ts 或 index\.js/)
+  assert.match(duplicateResult.stderr, /组件包根目录公共入口 只能存在一个入口：index\.ts、index\.js/)
+  const rootImplementationResult = spawnSync(process.execPath, [
+    scriptPath,
+    'component',
+    '--root',
+    componentRootWithRootImplementation,
+  ], { cwd: rootDir, encoding: 'utf8' })
+
+  assert.notEqual(rootImplementationResult.status, 0)
+  assert.match(rootImplementationResult.stderr, /组件包根目录不得放置实现入口：index\.vue/)
+  const moduleWithSrcResult = spawnSync(process.execPath, [
+    scriptPath,
+    'module',
+    '--root',
+    moduleRootWithSrc,
+  ], { cwd: rootDir, encoding: 'utf8' })
+
+  assert.notEqual(moduleWithSrcResult.status, 0)
+  assert.match(moduleWithSrcResult.stderr, /单个模块不得再嵌套 src\/ 目录/)
   assert.match(
     execFileSync(process.execPath, [
       scriptPath,
@@ -200,7 +264,7 @@ it('前端编码规范 - Barrel、路径别名、三次原则和逐级上浮为�
   assert.match(standard, /路径别名优先/)
   assert.match(standard, /@\/components\/DataTable\/utils\/date/)
   assert.match(standard, /@\/components\/DataTable\/utils/)
-  assert.match(standard, /必须提供一个 `index\.ts` 文件作为唯一对外 API 入口/)
+  assert.match(standard, /必须提供一个 `index\.ts` 或 `index\.js` 文件作为唯一对外 API 入口/)
   assert.match(standard, /Deep Imports 零容忍/)
   assert.match(standard, /至少 3 个独立的地方/)
   assert.match(standard, /最近公共父级目录/)
@@ -236,10 +300,10 @@ it('前端编码规范 - README 描述同步 Vue 与 React 范围', () => {
   const readme = readProjectFile('README.md')
   const readmeZh = readProjectFile('README-zh.md')
 
-  assert.match(readme, /Vue 3 and React TypeScript frontend code standards/)
+  assert.match(readme, /Vue 3 and React TypeScript\/JavaScript frontend code standards/)
   assert.match(readme, /path aliases/)
   assert.match(readme, /nearest-common-ancestor hoisting/)
-  assert.match(readmeZh, /Vue 3 与 React TypeScript 前端编码标准/)
+  assert.match(readmeZh, /Vue 3 与 React TypeScript\/JavaScript 前端编码标准/)
   assert.match(readmeZh, /路径别名/)
   assert.match(readmeZh, /最近公共父级上浮/)
 })
