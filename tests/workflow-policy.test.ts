@@ -78,6 +78,7 @@ it('前端编码规范 - 入口只引用 Vue 3 / React TypeScript 分形架构�
   const skill = readProjectFile('skills', 'workflow', 'frontend-code-standard', 'SKILL.md')
 
   assert.match(skill, /Vue 3 或 React TypeScript\/JavaScript/)
+  assert.match(skill, /前端应用、前端工具库和 UI 组件库/)
   assert.match(skill, /分形架构/)
   assert.match(skill, /特性驱动/)
   assert.match(skill, /fractal-frontend-standard\.md/)
@@ -87,10 +88,12 @@ it('前端编码规范 - 入口只引用 Vue 3 / React TypeScript 分形架构�
   assert.match(skill, /路径别名优先/)
   assert.match(skill, /Deep Imports 零容忍/)
   assert.match(skill, /逐级上浮/)
+  assert.match(skill, /类型推导优先/)
   assert.match(skill, /注释契约/)
   assert.match(skill, /Why over What/)
   assert.match(skill, /scripts\/verify-rules\.mjs/)
   assert.match(skill, /不得用仓库根级共享脚本替代/)
+  assert.match(skill, /前端工具库结构和 UI 组件库结构/)
   assert.match(skill, /单个业务模块不得再嵌套 `src\/`/)
   assert.doesNotMatch(skill, /react\.md|typescript-javascript\.md|directory-structure\.md|common\.md|vue\.md/)
 })
@@ -100,9 +103,12 @@ it('前端编码规范 - 单文件主规范同时覆盖目录和编码约束', (
 
   assert.match(standard, /最高优先级/)
   assert.match(standard, /Vue 3 或 React TypeScript \/ JavaScript/)
+  assert.match(standard, /前端应用、前端工具库或 UI 组件库代码/)
   assert.match(standard, /## 1\. 核心原则：分形递归与就近原则/)
   assert.match(standard, /逻辑与 UI 分离/)
   assert.match(standard, /Headless 模式/)
+  assert.match(standard, /工具库功能域或组件库组件/)
+  assert.match(standard, /前端运行时、浏览器能力、Vue\/React 组件、样式系统或前端构建产物/)
   assert.match(standard, /## 2\. 目录形态标准/)
   assert.ok(standard.includes('[ModuleName]/\n  index.vue (或 index.tsx / index.jsx) - [必填] UI 视图/组件入口，仅负责渲染和组装\n  api/ - [可选] 仅限本模块调用的接口定义\n  components/ - [可选] 模块私有子组件（可继续递归此结构）'))
   assert.ok(standard.includes('composables/ (Vue) 或 hooks/ (React) - [可选] 模块私有状态与无头业务逻辑'))
@@ -113,8 +119,14 @@ it('前端编码规范 - 单文件主规范同时覆盖目录和编码约束', (
   assert.ok(standard.includes('AuditDialog/\n        index.vue\n        api/\n          index.ts\n        components/\n          index.ts\n        composables/'))
   assert.ok(standard.includes('DataTable/\n  README.md - [必填] 描述组件用途、使用方式和 Props/Events/Expose/Slots 等接口契约\n  index.ts 或 index.js - [必填] 组件包唯一公共出口\n  src/ - [必填] 组件真实实现目录\n    index.vue (或 index.tsx / index.jsx)'))
   assert.match(standard, /禁止穿透 `src\/` 引用组件内部实现/)
+  assert.ok(standard.includes('BrowserToolkit/\n  README.md - [必填] 描述库用途、公开 API、使用方式和运行时边界\n  index.ts 或 index.js - [必填] 工具库唯一公共出口\n  src/ - [必填] 工具库真实实现目录\n    index.ts 或 index.js - [必填] 聚合工具库可公开模块'))
+  assert.ok(standard.includes('MoluoxixiUI/\n  README.md - [必填] 描述组件库用途、安装方式、主题约束和公共 API\n  index.ts 或 index.js - [必填] 组件库唯一公共出口\n  src/ - [必填] 组件库真实实现目录\n    index.ts 或 index.js - [必填] 聚合组件库可公开组件'))
+  assert.match(standard, /前端工具库必须使用库包结构/)
+  assert.match(standard, /UI 组件库必须使用库包结构/)
+  assert.match(standard, /禁止让消费者穿透 `src\/components\/\.\.\.`/)
   assert.match(standard, /## 4\. 强制统一导出与路径别名优先/)
   assert.match(standard, /必须提供一个 `index\.ts` 或 `index\.js` 文件作为唯一对外 API 入口/)
+  assert.match(standard, /库包出口收敛/)
   assert.match(standard, /## 5\. 高内聚、三次原则与逐级上浮/)
   assert.match(standard, /依赖流向限制/)
   assert.ok(!standard.includes('views/ or pages/ or modules/'))
@@ -127,6 +139,10 @@ it('前端编码规范 - skill 自带验证脚本覆盖组件结构和最近公�
   const componentRootJs = fs.mkdtempSync(path.join(os.tmpdir(), 'airules-component-js-'))
   const componentRootDuplicate = fs.mkdtempSync(path.join(os.tmpdir(), 'airules-component-dupe-'))
   const componentRootWithRootImplementation = fs.mkdtempSync(path.join(os.tmpdir(), 'airules-component-root-entry-'))
+  const utilityLibraryRoot = fs.mkdtempSync(path.join(os.tmpdir(), 'airules-utility-library-'))
+  const uiLibraryRoot = fs.mkdtempSync(path.join(os.tmpdir(), 'airules-ui-library-'))
+  const libraryRootMissingSrcEntry = fs.mkdtempSync(path.join(os.tmpdir(), 'airules-library-missing-src-entry-'))
+  const uiLibraryRootMissingComponents = fs.mkdtempSync(path.join(os.tmpdir(), 'airules-ui-library-missing-components-'))
   const moduleRootTs = fs.mkdtempSync(path.join(os.tmpdir(), 'airules-module-ts-'))
   const moduleRootJs = fs.mkdtempSync(path.join(os.tmpdir(), 'airules-module-js-'))
   const moduleRootWithSrc = fs.mkdtempSync(path.join(os.tmpdir(), 'airules-module-src-'))
@@ -152,6 +168,33 @@ it('前端编码规范 - skill 自带验证脚本覆盖组件结构和最近公�
   fs.writeFileSync(path.join(componentRootWithRootImplementation, 'index.vue'), '<template />\n')
   fs.mkdirSync(path.join(componentRootWithRootImplementation, 'src'))
   fs.writeFileSync(path.join(componentRootWithRootImplementation, 'src', 'index.vue'), '<template />\n')
+
+  fs.writeFileSync(path.join(utilityLibraryRoot, 'README.md'), '# BrowserToolkit\n\n## Usage\n\nPublic API for browser tools.\n')
+  fs.writeFileSync(path.join(utilityLibraryRoot, 'index.ts'), 'export * from \'./src\'\n')
+  fs.mkdirSync(path.join(utilityLibraryRoot, 'src'))
+  fs.writeFileSync(path.join(utilityLibraryRoot, 'src', 'index.ts'), 'export * from \'./clipboard\'\n')
+  fs.mkdirSync(path.join(utilityLibraryRoot, 'src', 'clipboard'))
+  fs.writeFileSync(path.join(utilityLibraryRoot, 'src', 'clipboard', 'index.ts'), 'export function copyText() {}\n')
+
+  fs.writeFileSync(path.join(uiLibraryRoot, 'README.md'), '# MoluoxixiUI\n\n## Usage\n\nComponents and API are documented here.\n')
+  fs.writeFileSync(path.join(uiLibraryRoot, 'index.ts'), 'export * from \'./src\'\n')
+  fs.mkdirSync(path.join(uiLibraryRoot, 'src'))
+  fs.writeFileSync(path.join(uiLibraryRoot, 'src', 'index.ts'), 'export * from \'./components/DataTable\'\n')
+  fs.mkdirSync(path.join(uiLibraryRoot, 'src', 'components'))
+  fs.mkdirSync(path.join(uiLibraryRoot, 'src', 'components', 'DataTable'))
+  fs.writeFileSync(path.join(uiLibraryRoot, 'src', 'components', 'DataTable', 'README.md'), '# DataTable\n\n## Usage\n\nProps and Slots are documented here.\n')
+  fs.writeFileSync(path.join(uiLibraryRoot, 'src', 'components', 'DataTable', 'index.ts'), 'export * from \'./src\'\n')
+  fs.mkdirSync(path.join(uiLibraryRoot, 'src', 'components', 'DataTable', 'src'))
+  fs.writeFileSync(path.join(uiLibraryRoot, 'src', 'components', 'DataTable', 'src', 'index.vue'), '<template />\n')
+
+  fs.writeFileSync(path.join(libraryRootMissingSrcEntry, 'README.md'), '# BrowserToolkit\n\n## Usage\n\nPublic API for browser tools.\n')
+  fs.writeFileSync(path.join(libraryRootMissingSrcEntry, 'index.ts'), 'export * from \'./src\'\n')
+  fs.mkdirSync(path.join(libraryRootMissingSrcEntry, 'src'))
+
+  fs.writeFileSync(path.join(uiLibraryRootMissingComponents, 'README.md'), '# MoluoxixiUI\n\n## Usage\n\nComponents are documented here.\n')
+  fs.writeFileSync(path.join(uiLibraryRootMissingComponents, 'index.ts'), 'export * from \'./src\'\n')
+  fs.mkdirSync(path.join(uiLibraryRootMissingComponents, 'src'))
+  fs.writeFileSync(path.join(uiLibraryRootMissingComponents, 'src', 'index.ts'), 'export {}\n')
 
   fs.writeFileSync(path.join(moduleRootTs, 'index.ts'), 'export { AuditDialog } from \'./index.vue\'\n')
   fs.writeFileSync(path.join(moduleRootTs, 'index.vue'), '<template />\n')
@@ -202,6 +245,24 @@ it('前端编码规范 - skill 自带验证脚本覆盖组件结构和最近公�
     ], { cwd: rootDir, encoding: 'utf8' }),
     /PASS frontend module structure is valid/,
   )
+  assert.match(
+    execFileSync(process.execPath, [
+      scriptPath,
+      'utility',
+      '--root',
+      utilityLibraryRoot,
+    ], { cwd: rootDir, encoding: 'utf8' }),
+    /PASS frontend utility library structure is valid/,
+  )
+  assert.match(
+    execFileSync(process.execPath, [
+      scriptPath,
+      'ui-library',
+      '--root',
+      uiLibraryRoot,
+    ], { cwd: rootDir, encoding: 'utf8' }),
+    /PASS frontend UI component library structure is valid/,
+  )
   const duplicateResult = spawnSync(process.execPath, [
     scriptPath,
     'component',
@@ -229,6 +290,24 @@ it('前端编码规范 - skill 自带验证脚本覆盖组件结构和最近公�
 
   assert.notEqual(moduleWithSrcResult.status, 0)
   assert.match(moduleWithSrcResult.stderr, /单个模块不得再嵌套 src\/ 目录/)
+  const missingSrcEntryResult = spawnSync(process.execPath, [
+    scriptPath,
+    'utility',
+    '--root',
+    libraryRootMissingSrcEntry,
+  ], { cwd: rootDir, encoding: 'utf8' })
+
+  assert.notEqual(missingSrcEntryResult.status, 0)
+  assert.match(missingSrcEntryResult.stderr, /库 src\/ 聚合入口 缺少唯一入口：index\.ts、index\.js/)
+  const missingComponentsResult = spawnSync(process.execPath, [
+    scriptPath,
+    'ui-library',
+    '--root',
+    uiLibraryRootMissingComponents,
+  ], { cwd: rootDir, encoding: 'utf8' })
+
+  assert.notEqual(missingComponentsResult.status, 0)
+  assert.match(missingComponentsResult.stderr, /UI 组件库缺少 src\/components\/ 组件目录/)
   assert.match(
     execFileSync(process.execPath, [
       scriptPath,
@@ -248,6 +327,9 @@ it('前端编码规范 - 类型按 props expose ref emit 拆分', () => {
   const standard = readProjectFile('skills', 'workflow', 'frontend-code-standard', 'references', 'fractal-frontend-standard.md')
 
   assert.match(standard, /类型定义必须从视图文件中彻底抽离/)
+  assert.match(standard, /类型推导优先/)
+  assert.match(standard, /优先从现有组件、Hook、Composable、API 响应、Schema 或常量对象推导类型/)
+  assert.match(standard, /不得为了省事重复手写/)
   assert.match(standard, /props\.ts/)
   assert.match(standard, /ref\.ts/)
   assert.match(standard, /emit\.ts/)
@@ -300,10 +382,10 @@ it('前端编码规范 - README 描述同步 Vue 与 React 范围', () => {
   const readme = readProjectFile('README.md')
   const readmeZh = readProjectFile('README-zh.md')
 
-  assert.match(readme, /Vue 3 and React TypeScript\/JavaScript frontend code standards/)
+  assert.match(readme, /Vue 3 and React TypeScript\/JavaScript standards for frontend apps, utility libraries, and UI component libraries/)
   assert.match(readme, /path aliases/)
   assert.match(readme, /nearest-common-ancestor hoisting/)
-  assert.match(readmeZh, /Vue 3 与 React TypeScript\/JavaScript 前端编码标准/)
+  assert.match(readmeZh, /Vue 3 与 React TypeScript\/JavaScript 前端应用、工具库和 UI 组件库编码标准/)
   assert.match(readmeZh, /路径别名/)
   assert.match(readmeZh, /最近公共父级上浮/)
 })

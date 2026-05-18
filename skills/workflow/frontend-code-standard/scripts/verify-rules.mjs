@@ -115,7 +115,7 @@ function assertComponentPackage(root) {
   if (!fs.existsSync(readmePath))
     throw new Error('组件包根目录缺少 README.md')
 
-  if (!fs.statSync(srcPath).isDirectory())
+  if (!fs.existsSync(srcPath) || !fs.statSync(srcPath).isDirectory())
     throw new Error('组件包根目录缺少 src/ 实现目录')
 
   if (rootImplementationEntries.length > 0)
@@ -135,6 +135,54 @@ function assertComponentPackage(root) {
     componentRoot,
     entry: publicEntry,
     implementationEntry: srcImplementationEntry,
+  })
+}
+
+function assertLibraryPackage(root, options = {}) {
+  const libraryRoot = path.resolve(process.cwd(), root)
+  const readmePath = path.join(libraryRoot, 'README.md')
+  const srcPath = path.join(libraryRoot, 'src')
+  const publicEntry = assertSingleExistingFile(libraryRoot, PUBLIC_ENTRY_FILENAMES, '库根目录公共入口')
+  const rootImplementationEntries = findExistingFiles(libraryRoot, MODULE_IMPLEMENTATION_FILENAMES)
+
+  if (!fs.existsSync(readmePath))
+    throw new Error('库根目录缺少 README.md')
+
+  if (!fs.existsSync(srcPath) || !fs.statSync(srcPath).isDirectory())
+    throw new Error('库根目录缺少 src/ 实现目录')
+
+  if (rootImplementationEntries.length > 0)
+    throw new Error(`库根目录不得放置组件实现入口：${rootImplementationEntries.join('、')}`)
+
+  const srcEntry = assertSingleExistingFile(srcPath, PUBLIC_ENTRY_FILENAMES, '库 src/ 聚合入口')
+  const readme = fs.readFileSync(readmePath, 'utf8').trim()
+
+  if (readme.length === 0)
+    throw new Error('库 README.md 不得为空，必须描述库如何使用')
+
+  if (!/(使用|用法|Usage|API|Exports|组件|工具|安装|Install)/.test(readme))
+    throw new Error('库 README.md 必须包含使用方式或公开 API 说明')
+
+  if (options.requireComponents) {
+    const componentsPath = path.join(srcPath, 'components')
+
+    if (!fs.existsSync(componentsPath) || !fs.statSync(componentsPath).isDirectory())
+      throw new Error('UI 组件库缺少 src/components/ 组件目录')
+
+    const componentDirs = fs.readdirSync(componentsPath, { withFileTypes: true })
+      .filter(entry => entry.isDirectory())
+
+    if (componentDirs.length === 0)
+      throw new Error('UI 组件库 src/components/ 下至少需要一个组件包')
+
+    for (const componentDir of componentDirs)
+      assertComponentPackage(path.join(componentsPath, componentDir.name))
+  }
+
+  printPass(options.requireComponents ? 'frontend UI component library structure is valid' : 'frontend utility library structure is valid', {
+    libraryRoot,
+    entry: publicEntry,
+    srcEntry,
   })
 }
 
@@ -160,6 +208,7 @@ function verifySelf() {
 
   assertContains(skill, /scripts\/verify-rules\.mjs/, 'SKILL.md 必须声明本 skill 自带的验证脚本')
   assertContains(skill, /JavaScript/, '前端规范说明必须声明 JavaScript 支持范围')
+  assertContains(skill, /工具库和 UI 组件库/, '前端规范入口必须覆盖前端工具库和 UI 组件库')
   assertContains(standard, /至少 3 个独立的地方/, '前端规范必须保留三次原则')
   assertContains(standard, /最近公共父级目录/, '前端规范必须保留最近公共父级约束')
   assertContains(standard, /README\.md/, '前端组件包结构必须强制 README.md')
@@ -168,6 +217,9 @@ function verifySelf() {
   assertContains(standard, /index\.(vue|tsx|jsx)/, '前端规范必须覆盖 Vue、TypeScript 和 JSX 入口')
   assertContains(standard, /单个业务模块直接在根目录组织，不再额外创建 `src\/`/, '前端规范必须区分单个模块与组件包的目录层级')
   assertContains(standard, /禁止穿透 `src\/`/, '前端组件包必须禁止外部穿透 src/')
+  assertContains(standard, /前端工具库必须使用库包结构/, '前端规范必须覆盖工具库结构')
+  assertContains(standard, /UI 组件库必须使用库包结构/, '前端规范必须覆盖 UI 组件库结构')
+  assertContains(standard, /src\/index\.ts` 或 `src\/index\.js/, '前端库包必须声明 src 聚合入口')
 
   printPass('frontend-code-standard self rules are valid')
 }
@@ -199,6 +251,12 @@ function main() {
 
   if (command === 'component' || command === 'package' || command === 'project')
     return assertComponentPackage(getOption(args, '--root'))
+
+  if (command === 'utility' || command === 'tool-library')
+    return assertLibraryPackage(getOption(args, '--root'))
+
+  if (command === 'ui-library' || command === 'component-library')
+    return assertLibraryPackage(getOption(args, '--root'), { requireComponents: true })
 
   throw new Error(`未知命令：${command}`)
 }
