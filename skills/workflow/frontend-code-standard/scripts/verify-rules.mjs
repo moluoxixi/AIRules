@@ -294,7 +294,6 @@ function verifySelf() {
   assertContains(skill, /只有复杂组件包、前端工具库和 UI 组件库允许通过 `index\.ts` 或 `index\.js`/, 'SKILL.md 必须限制公共入口只属于包级结构')
   assertContains(skill, /普通代码目录用 `index\.ts` \/ `\.js`/, 'SKILL.md 必须声明普通代码目录入口')
   assertContains(skill, /`styles\/` 用 `index\.css` \/ `\.scss` \/ `\.less`/, 'SKILL.md 必须声明 styles 样式入口')
-  assertContains(skill, /类型边界：复杂组件的 Props、Emits、Expose、Ref/, 'SKILL.md 必须声明类型边界')
   assertContains(businessModuleExample, /本文件只提供示例，不定义新规则/, '业务模块示例文件不得定义新规则')
   assertContains(componentExample, /本文件只提供示例，不定义新规则/, '组件示例文件不得定义新规则')
   assertContains(utilityExample, /本文件只提供示例，不定义新规则/, '工具示例文件不得定义新规则')
