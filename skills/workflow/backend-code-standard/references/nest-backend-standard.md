@@ -65,12 +65,12 @@ export * from './create-order.dto'
 export * from './update-order.dto'
 ```
 
-## 4. 强制统一导出与路径别名优先
+## 4. 公共入口与路径别名优先
 
-对于任意层级下的功能集目录，特别是 `dto/`、`utils/`、`constants/`，必须提供 `index.ts` 文件作为唯一对外入口。
+业务模块或需要形成稳定公共 API 的功能集目录，必须提供 `index.ts` 文件作为对外入口。模块私有的 `dto/`、`utils/`、`constants/` 不因目录存在而强制创建 barrel；只有被模块入口公开消费时，才建立明确的 public surface。
 
 - 路径别名优先：跨模块引用或涉及多层向上查找时，必须优先使用项目配置的路径别名（如 `@/` 或 `src/`）。
-- Deep Imports 零容忍：模块间的引用必须且只能止步于目标资源的根目录名称。
+- Deep Imports 零容忍：模块间引用必须止步于目标模块公共入口；模块内部文件之间可按就近原则引用私有文件，但不得绕过模块入口访问其他模块内部结构。
 - 模块边界双重暴露：跨模块使用 Service 时，目标模块必须同时通过 `index.ts` 和 `@Module({ exports: [...] })` 暴露公共能力。
 
 禁止生成：
@@ -101,8 +101,8 @@ import { OrdersModule, CreateOrderDto } from '@/modules/orders'
 
 - 强制 JSDoc 契约：Service 层的类方法必须包含 JSDoc 注释，详细标注参数、返回值和设计意图。
 - Why over What：注释必须解释复杂的业务规则，严禁翻译代码；禁止编写 `// 保存到数据库` 这类无效注释。
-- 标准异常抛出：Service 层遇到业务阻断时，必须抛出 Nest 内置的 `HttpException` 或其子类，如 `BadRequestException`。
-- Controller 保持干净：Controller 层无需手动 `try-catch` 这些标准异常，交由 Nest 异常过滤链处理。
+- 标准异常边界：Service 层优先抛出领域错误或应用错误，保持业务语义不绑定 HTTP；Controller、Filter 或全局异常过滤器负责映射为 `HttpException`、`Problem Details` 或项目统一错误响应。
+- Controller 保持干净：Controller 层无需手动 `try-catch` 可由 Nest 异常过滤链处理的错误；若捕获错误，只能补充上下文、转换为等价失败语义或清理资源，并继续抛出。
 
 ## 7. 依赖流向限制
 
@@ -119,4 +119,4 @@ import { OrdersModule, CreateOrderDto } from '@/modules/orders'
 3. 我是否优先使用了路径别名（`@/`）？`import` 语句是否全部指向了目标的 `index.ts`，没有深层穿透？
 4. 我是否严格遵守了“三次原则”？在没有 3 处以上调用的情况下，是否克制住了抽离代码的冲动？
 5. 触发抽离时，我是否精确地将其提取到了“最近的公共父级”目录，而不是错误地一步登天塞进 `src/common/`？
-6. DTO 是否使用了 `class-validator` 装饰器？Service 是否抛出了标准的 Nest `HttpException`？
+6. DTO 是否使用了 `class-validator` 装饰器？Service 抛出的错误是否保持领域语义，并由过滤器统一映射 HTTP 响应？

@@ -66,6 +66,7 @@ it('工作流策略 - workflow skills 使用中文规范结构', () => {
     const content = fs.readFileSync(file, 'utf8')
     assert.doesNotMatch(content, /description:\s*Use when/)
     assert.match(content, /description:\s*用于/)
+    assert.doesNotMatch(content, /description:.*强制执行/)
   }
 
   for (const file of markdownFiles) {
@@ -89,12 +90,21 @@ it('前端编码规范 - 入口只引用 Vue 3 / React TypeScript 分形架构�
   assert.match(skill, /Deep Imports 零容忍/)
   assert.match(skill, /逐级上浮/)
   assert.match(skill, /类型推导优先/)
-  assert.match(skill, /注释契约/)
+  assert.match(skill, /注释解释 Why over What/)
   assert.match(skill, /Why over What/)
   assert.match(skill, /scripts\/verify-rules\.mjs/)
   assert.match(skill, /不得用仓库根级共享脚本替代/)
-  assert.match(skill, /前端工具库结构和 UI 组件库结构/)
+  assert.match(skill, /简单组件结构、复杂组件包结构、前端工具库结构和 UI 组件库结构/)
   assert.match(skill, /单个业务模块不得再嵌套 `src\/`/)
+  assert.match(skill, /模块根目录只保留唯一实现入口/)
+  assert.match(skill, /不得在模块根目录创建 `index\.ts` 或 `index\.js`/)
+  assert.match(skill, /目录入口/)
+  assert.match(skill, /除简单组件文件、单个业务模块根目录和 `styles\/` 目录外/)
+  assert.match(skill, /其他代码目录一旦创建/)
+  assert.match(skill, /`styles\/` 目录一旦创建，必须提供唯一 `index\.css`、`index\.scss` 或 `index\.less`/)
+  assert.match(skill, /简单组件结构/)
+  assert.match(skill, /复杂组件包结构/)
+  assert.match(skill, /只有复杂组件包、前端工具库和 UI 组件库允许/)
   assert.doesNotMatch(skill, /react\.md|typescript-javascript\.md|directory-structure\.md|common\.md|vue\.md/)
 })
 
@@ -107,25 +117,39 @@ it('前端编码规范 - 单文件主规范同时覆盖目录和编码约束', (
   assert.match(standard, /## 1\. 核心原则：分形递归与就近原则/)
   assert.match(standard, /逻辑与 UI 分离/)
   assert.match(standard, /Headless 模式/)
+  assert.match(standard, /复杂状态、跨组件复用逻辑或副作用编排/)
+  assert.match(standard, /简单局部交互状态/)
   assert.match(standard, /工具库功能域或组件库组件/)
   assert.match(standard, /前端运行时、浏览器能力、Vue\/React 组件、样式系统或前端构建产物/)
   assert.match(standard, /## 2\. 目录形态标准/)
-  assert.ok(standard.includes('[ModuleName]/\n  index.vue (或 index.tsx / index.jsx) - [必填] UI 视图/组件入口，仅负责渲染和组装\n  api/ - [可选] 仅限本模块调用的接口定义\n  components/ - [可选] 模块私有子组件（可继续递归此结构）'))
+  assert.ok(standard.includes('[ModuleName]/\n  index.vue (或 index.tsx / index.jsx) - [必填] UI 视图/组件入口，仅负责渲染和组装\n  api/ - [可选] 仅限本模块调用的接口定义\n    index.ts 或 index.js - [必填] 当前 api 目录聚合入口\n  components/ - [可选] 模块私有子组件；简单组件用单文件，复杂组件用复杂组件包结构\n    index.ts 或 index.js - [必填] 当前 components 目录聚合入口'))
   assert.ok(standard.includes('composables/ (Vue) 或 hooks/ (React) - [可选] 模块私有状态与无头业务逻辑'))
   assert.match(standard, /React 模块使用同一结构/)
   assert.match(standard, /index\.tsx/)
   assert.match(standard, /index\.jsx/)
   assert.match(standard, /单个业务模块直接在根目录组织，不再额外创建 `src\/`/)
-  assert.ok(standard.includes('AuditDialog/\n        index.vue\n        api/\n          index.ts\n        components/\n          index.ts\n        composables/'))
+  assert.match(standard, /也不在模块根目录创建 `index\.ts` 或 `index\.js`/)
+  assert.match(standard, /除简单组件文件、单个业务模块根目录和 `styles\/` 目录外，其他代码目录一旦创建/)
+  assert.match(standard, /api\/index\.ts` 或 `api\/index\.js`/)
+  assert.match(standard, /components\/index\.ts` 或 `components\/index\.js`/)
+  assert.match(standard, /styles\/index\.css`、`styles\/index\.scss` 或 `styles\/index\.less`/)
+  assert.match(standard, /模块根目录只保留 `index\.vue` \/ `index\.tsx` \/ `index\.jsx` 作为唯一实现入口/)
+  assert.match(standard, /简单组件应直接使用 `ComponentName\.vue`、`ComponentName\.tsx` 或 `ComponentName\.jsx`/)
+  assert.match(standard, /复杂组件包或项目级组件封装必须使用独立组件包结构/)
+  assert.ok(standard.includes('api/\n      index.ts\n      purchase-order-api.ts\n    components/\n      index.ts\n      StatusBadge.vue\n      AuditDialog/\n        README.md\n        index.ts\n        src/\n          index.vue\n          api/\n            index.ts\n            audit-dialog-api.ts'))
+  assert.ok(standard.includes('styles/\n      index.scss\n      purchase-order.scss\n    assets/\n      index.ts\n      empty-state.png'))
+  assert.match(standard, /Sparkline\.jsx/)
   assert.ok(standard.includes('DataTable/\n  README.md - [必填] 描述组件用途、使用方式和 Props/Events/Expose/Slots 等接口契约\n  index.ts 或 index.js - [必填] 组件包唯一公共出口\n  src/ - [必填] 组件真实实现目录\n    index.vue (或 index.tsx / index.jsx)'))
   assert.match(standard, /禁止穿透 `src\/` 引用组件内部实现/)
   assert.ok(standard.includes('BrowserToolkit/\n  README.md - [必填] 描述库用途、公开 API、使用方式和运行时边界\n  index.ts 或 index.js - [必填] 工具库唯一公共出口\n  src/ - [必填] 工具库真实实现目录\n    index.ts 或 index.js - [必填] 聚合工具库可公开模块'))
-  assert.ok(standard.includes('MoluoxixiUI/\n  README.md - [必填] 描述组件库用途、安装方式、主题约束和公共 API\n  index.ts 或 index.js - [必填] 组件库唯一公共出口\n  src/ - [必填] 组件库真实实现目录\n    index.ts 或 index.js - [必填] 聚合组件库可公开组件'))
+  assert.ok(standard.includes('MoluoxixiUI/\n  README.md - [必填] 描述组件库用途、安装方式、主题约束和公共 API\n  index.ts 或 index.js - [必填] 组件库唯一公共出口\n  src/ - [必填] 组件库真实实现目录\n    index.ts 或 index.js - [必填] 聚合组件库可公开组件\n    components/\n      index.ts 或 index.js'))
   assert.match(standard, /前端工具库必须使用库包结构/)
   assert.match(standard, /UI 组件库必须使用库包结构/)
   assert.match(standard, /禁止让消费者穿透 `src\/components\/\.\.\.`/)
-  assert.match(standard, /## 4\. 强制统一导出与路径别名优先/)
-  assert.match(standard, /必须提供一个 `index\.ts` 或 `index\.js` 文件作为唯一对外 API 入口/)
+  assert.match(standard, /## 4\. 包级导出与路径别名优先/)
+  assert.match(standard, /复杂组件包、前端工具库和 UI 组件库都必须提供 `index\.ts` 或 `index\.js`/)
+  assert.match(standard, /单个业务模块是例外/)
+  assert.match(standard, /简单组件直接以 `ComponentName\.vue`、`ComponentName\.tsx` 或 `ComponentName\.jsx` 作为文件级组件/)
   assert.match(standard, /库包出口收敛/)
   assert.match(standard, /## 5\. 高内聚、三次原则与逐级上浮/)
   assert.match(standard, /依赖流向限制/)
@@ -146,16 +170,27 @@ it('前端编码规范 - skill 自带验证脚本覆盖组件结构和最近公�
   const moduleRootTs = fs.mkdtempSync(path.join(os.tmpdir(), 'airules-module-ts-'))
   const moduleRootJs = fs.mkdtempSync(path.join(os.tmpdir(), 'airules-module-js-'))
   const moduleRootWithSrc = fs.mkdtempSync(path.join(os.tmpdir(), 'airules-module-src-'))
+  const moduleRootWithPublicEntry = fs.mkdtempSync(path.join(os.tmpdir(), 'airules-module-public-entry-'))
+  const moduleRootMissingAggregateEntry = fs.mkdtempSync(path.join(os.tmpdir(), 'airules-module-missing-aggregate-entry-'))
+  const moduleRootNestedMissingAggregateEntry = fs.mkdtempSync(path.join(os.tmpdir(), 'airules-module-nested-missing-aggregate-entry-'))
+  const moduleRootWithWrongStyleEntry = fs.mkdtempSync(path.join(os.tmpdir(), 'airules-module-wrong-style-entry-'))
+  const moduleRootWithDuplicateStyleEntry = fs.mkdtempSync(path.join(os.tmpdir(), 'airules-module-duplicate-style-entry-'))
+  const simpleComponentRoot = fs.mkdtempSync(path.join(os.tmpdir(), 'airules-simple-component-'))
 
   fs.writeFileSync(path.join(componentRootTs, 'README.md'), '# DataTable\n\n## Usage\n\nProps and Events are documented here.\n')
   fs.writeFileSync(path.join(componentRootTs, 'index.ts'), 'export * from \'./src\'\n')
   fs.mkdirSync(path.join(componentRootTs, 'src'))
   fs.writeFileSync(path.join(componentRootTs, 'src', 'index.tsx'), 'export function DataTable() { return null }\n')
+  fs.mkdirSync(path.join(componentRootTs, 'src', 'utils'))
+  fs.writeFileSync(path.join(componentRootTs, 'src', 'utils', 'index.ts'), 'export * from \'./format-column\'\n')
+  fs.writeFileSync(path.join(componentRootTs, 'src', 'utils', 'format-column.ts'), 'export function formatColumn() {}\n')
 
   fs.writeFileSync(path.join(componentRootJs, 'README.md'), '# DataTable\n\n## Usage\n\nProps and Events are documented here.\n')
   fs.writeFileSync(path.join(componentRootJs, 'index.js'), 'export * from \'./src/index.js\'\n')
   fs.mkdirSync(path.join(componentRootJs, 'src'))
   fs.writeFileSync(path.join(componentRootJs, 'src', 'index.jsx'), 'export function DataTable() { return null }\n')
+  fs.mkdirSync(path.join(componentRootJs, 'src', 'styles'))
+  fs.writeFileSync(path.join(componentRootJs, 'src', 'styles', 'index.css'), '.data-table {}\n')
 
   fs.writeFileSync(path.join(componentRootDuplicate, 'README.md'), '# DataTable\n\n## Usage\n\nProps and Events are documented here.\n')
   fs.writeFileSync(path.join(componentRootDuplicate, 'index.ts'), 'export * from \'./src\'\n')
@@ -175,12 +210,16 @@ it('前端编码规范 - skill 自带验证脚本覆盖组件结构和最近公�
   fs.writeFileSync(path.join(utilityLibraryRoot, 'src', 'index.ts'), 'export * from \'./clipboard\'\n')
   fs.mkdirSync(path.join(utilityLibraryRoot, 'src', 'clipboard'))
   fs.writeFileSync(path.join(utilityLibraryRoot, 'src', 'clipboard', 'index.ts'), 'export function copyText() {}\n')
+  fs.mkdirSync(path.join(utilityLibraryRoot, 'src', 'clipboard', 'utils'))
+  fs.writeFileSync(path.join(utilityLibraryRoot, 'src', 'clipboard', 'utils', 'index.ts'), 'export * from \'./normalize-text\'\n')
+  fs.writeFileSync(path.join(utilityLibraryRoot, 'src', 'clipboard', 'utils', 'normalize-text.ts'), 'export function normalizeText() {}\n')
 
   fs.writeFileSync(path.join(uiLibraryRoot, 'README.md'), '# MoluoxixiUI\n\n## Usage\n\nComponents and API are documented here.\n')
   fs.writeFileSync(path.join(uiLibraryRoot, 'index.ts'), 'export * from \'./src\'\n')
   fs.mkdirSync(path.join(uiLibraryRoot, 'src'))
   fs.writeFileSync(path.join(uiLibraryRoot, 'src', 'index.ts'), 'export * from \'./components/DataTable\'\n')
   fs.mkdirSync(path.join(uiLibraryRoot, 'src', 'components'))
+  fs.writeFileSync(path.join(uiLibraryRoot, 'src', 'components', 'index.ts'), 'export * from \'./DataTable\'\n')
   fs.mkdirSync(path.join(uiLibraryRoot, 'src', 'components', 'DataTable'))
   fs.writeFileSync(path.join(uiLibraryRoot, 'src', 'components', 'DataTable', 'README.md'), '# DataTable\n\n## Usage\n\nProps and Slots are documented here.\n')
   fs.writeFileSync(path.join(uiLibraryRoot, 'src', 'components', 'DataTable', 'index.ts'), 'export * from \'./src\'\n')
@@ -196,15 +235,48 @@ it('前端编码规范 - skill 自带验证脚本覆盖组件结构和最近公�
   fs.mkdirSync(path.join(uiLibraryRootMissingComponents, 'src'))
   fs.writeFileSync(path.join(uiLibraryRootMissingComponents, 'src', 'index.ts'), 'export {}\n')
 
-  fs.writeFileSync(path.join(moduleRootTs, 'index.ts'), 'export { AuditDialog } from \'./index.vue\'\n')
   fs.writeFileSync(path.join(moduleRootTs, 'index.vue'), '<template />\n')
+  fs.mkdirSync(path.join(moduleRootTs, 'api'))
+  fs.writeFileSync(path.join(moduleRootTs, 'api', 'index.ts'), 'export * from \'./purchase-order-api\'\n')
+  fs.writeFileSync(path.join(moduleRootTs, 'api', 'purchase-order-api.ts'), 'export function getPurchaseOrder() {}\n')
+  fs.mkdirSync(path.join(moduleRootTs, 'components'))
+  fs.writeFileSync(path.join(moduleRootTs, 'components', 'index.ts'), 'export { default as StatusBadge } from \'./StatusBadge.vue\'\n')
+  fs.writeFileSync(path.join(moduleRootTs, 'components', 'StatusBadge.vue'), '<template />\n')
+  fs.mkdirSync(path.join(moduleRootTs, 'utils'))
+  fs.writeFileSync(path.join(moduleRootTs, 'utils', 'index.ts'), 'export * from \'./format-purchase-order\'\n')
+  fs.writeFileSync(path.join(moduleRootTs, 'utils', 'format-purchase-order.ts'), 'export function formatPurchaseOrder() {}\n')
+  fs.mkdirSync(path.join(moduleRootTs, 'styles'))
+  fs.writeFileSync(path.join(moduleRootTs, 'styles', 'index.scss'), '.purchase-order {}\n')
+  fs.writeFileSync(path.join(moduleRootTs, 'styles', 'purchase-order.scss'), '.purchase-order {}\n')
 
-  fs.writeFileSync(path.join(moduleRootJs, 'index.js'), 'export { AuditDialog } from \'./index.jsx\'\n')
   fs.writeFileSync(path.join(moduleRootJs, 'index.jsx'), 'export function AuditDialog() { return null }\n')
 
-  fs.writeFileSync(path.join(moduleRootWithSrc, 'index.ts'), 'export { AuditDialog } from \'./index.vue\'\n')
   fs.writeFileSync(path.join(moduleRootWithSrc, 'index.vue'), '<template />\n')
   fs.mkdirSync(path.join(moduleRootWithSrc, 'src'))
+
+  fs.writeFileSync(path.join(moduleRootWithPublicEntry, 'index.ts'), 'export { default } from \'./index.vue\'\n')
+  fs.writeFileSync(path.join(moduleRootWithPublicEntry, 'index.vue'), '<template />\n')
+
+  fs.writeFileSync(path.join(moduleRootMissingAggregateEntry, 'index.vue'), '<template />\n')
+  fs.mkdirSync(path.join(moduleRootMissingAggregateEntry, 'api'))
+  fs.writeFileSync(path.join(moduleRootMissingAggregateEntry, 'api', 'purchase-order-api.ts'), 'export function getPurchaseOrder() {}\n')
+
+  fs.writeFileSync(path.join(moduleRootNestedMissingAggregateEntry, 'index.vue'), '<template />\n')
+  fs.mkdirSync(path.join(moduleRootNestedMissingAggregateEntry, 'utils'))
+  fs.writeFileSync(path.join(moduleRootNestedMissingAggregateEntry, 'utils', 'index.ts'), 'export * from \'./formatters\'\n')
+  fs.mkdirSync(path.join(moduleRootNestedMissingAggregateEntry, 'utils', 'formatters'))
+  fs.writeFileSync(path.join(moduleRootNestedMissingAggregateEntry, 'utils', 'formatters', 'date.ts'), 'export function formatDate() {}\n')
+
+  fs.writeFileSync(path.join(moduleRootWithWrongStyleEntry, 'index.vue'), '<template />\n')
+  fs.mkdirSync(path.join(moduleRootWithWrongStyleEntry, 'styles'))
+  fs.writeFileSync(path.join(moduleRootWithWrongStyleEntry, 'styles', 'index.ts'), 'export const styleEntries = []\n')
+
+  fs.writeFileSync(path.join(moduleRootWithDuplicateStyleEntry, 'index.vue'), '<template />\n')
+  fs.mkdirSync(path.join(moduleRootWithDuplicateStyleEntry, 'styles'))
+  fs.writeFileSync(path.join(moduleRootWithDuplicateStyleEntry, 'styles', 'index.css'), '.purchase-order {}\n')
+  fs.writeFileSync(path.join(moduleRootWithDuplicateStyleEntry, 'styles', 'index.scss'), '.purchase-order {}\n')
+
+  fs.writeFileSync(path.join(simpleComponentRoot, 'StatusBadge.vue'), '<template />\n')
 
   assert.ok(fs.existsSync(scriptPath))
   assert.ok(!fs.existsSync(path.join(rootDir, 'scripts', 'verify-skill-rules.mjs')))
@@ -216,7 +288,7 @@ it('前端编码规范 - skill 自带验证脚本覆盖组件结构和最近公�
       '--root',
       componentRootTs,
     ], { cwd: rootDir, encoding: 'utf8' }),
-    /PASS frontend component package structure is valid/,
+    /PASS frontend complex component package structure is valid/,
   )
   assert.match(
     execFileSync(process.execPath, [
@@ -225,7 +297,7 @@ it('前端编码规范 - skill 自带验证脚本覆盖组件结构和最近公�
       '--root',
       componentRootJs,
     ], { cwd: rootDir, encoding: 'utf8' }),
-    /PASS frontend component package structure is valid/,
+    /PASS frontend complex component package structure is valid/,
   )
   assert.match(
     execFileSync(process.execPath, [
@@ -271,7 +343,7 @@ it('前端编码规范 - skill 自带验证脚本覆盖组件结构和最近公�
   ], { cwd: rootDir, encoding: 'utf8' })
 
   assert.notEqual(duplicateResult.status, 0)
-  assert.match(duplicateResult.stderr, /组件包根目录公共入口 只能存在一个入口：index\.ts、index\.js/)
+  assert.match(duplicateResult.stderr, /复杂组件包根目录公共入口 只能存在一个入口：index\.ts、index\.js/)
   const rootImplementationResult = spawnSync(process.execPath, [
     scriptPath,
     'component',
@@ -280,7 +352,7 @@ it('前端编码规范 - skill 自带验证脚本覆盖组件结构和最近公�
   ], { cwd: rootDir, encoding: 'utf8' })
 
   assert.notEqual(rootImplementationResult.status, 0)
-  assert.match(rootImplementationResult.stderr, /组件包根目录不得放置实现入口：index\.vue/)
+  assert.match(rootImplementationResult.stderr, /复杂组件包根目录不得放置实现入口：index\.vue/)
   const moduleWithSrcResult = spawnSync(process.execPath, [
     scriptPath,
     'module',
@@ -290,6 +362,60 @@ it('前端编码规范 - skill 自带验证脚本覆盖组件结构和最近公�
 
   assert.notEqual(moduleWithSrcResult.status, 0)
   assert.match(moduleWithSrcResult.stderr, /单个模块不得再嵌套 src\/ 目录/)
+  const moduleWithPublicEntryResult = spawnSync(process.execPath, [
+    scriptPath,
+    'module',
+    '--root',
+    moduleRootWithPublicEntry,
+  ], { cwd: rootDir, encoding: 'utf8' })
+
+  assert.notEqual(moduleWithPublicEntryResult.status, 0)
+  assert.match(moduleWithPublicEntryResult.stderr, /单个模块根目录不得创建公共入口：index\.ts/)
+  const moduleMissingAggregateEntryResult = spawnSync(process.execPath, [
+    scriptPath,
+    'module',
+    '--root',
+    moduleRootMissingAggregateEntry,
+  ], { cwd: rootDir, encoding: 'utf8' })
+
+  assert.notEqual(moduleMissingAggregateEntryResult.status, 0)
+  assert.match(moduleMissingAggregateEntryResult.stderr, /目录 api\/ 聚合入口 缺少唯一入口：index\.ts、index\.js/)
+  const moduleNestedMissingAggregateEntryResult = spawnSync(process.execPath, [
+    scriptPath,
+    'module',
+    '--root',
+    moduleRootNestedMissingAggregateEntry,
+  ], { cwd: rootDir, encoding: 'utf8' })
+
+  assert.notEqual(moduleNestedMissingAggregateEntryResult.status, 0)
+  assert.match(moduleNestedMissingAggregateEntryResult.stderr, /目录 utils\/formatters\/ 聚合入口 缺少唯一入口：index\.ts、index\.js/)
+  const moduleWithWrongStyleEntryResult = spawnSync(process.execPath, [
+    scriptPath,
+    'module',
+    '--root',
+    moduleRootWithWrongStyleEntry,
+  ], { cwd: rootDir, encoding: 'utf8' })
+
+  assert.notEqual(moduleWithWrongStyleEntryResult.status, 0)
+  assert.match(moduleWithWrongStyleEntryResult.stderr, /样式目录 styles\/ 入口 缺少唯一入口：index\.css、index\.scss、index\.less/)
+  const moduleWithDuplicateStyleEntryResult = spawnSync(process.execPath, [
+    scriptPath,
+    'module',
+    '--root',
+    moduleRootWithDuplicateStyleEntry,
+  ], { cwd: rootDir, encoding: 'utf8' })
+
+  assert.notEqual(moduleWithDuplicateStyleEntryResult.status, 0)
+  assert.match(moduleWithDuplicateStyleEntryResult.stderr, /样式目录 styles\/ 入口 只能存在一个入口：index\.css、index\.scss、index\.less/)
+  assert.match(
+    execFileSync(process.execPath, [
+      scriptPath,
+      'simple-component',
+      '--root',
+      path.join(simpleComponentRoot, 'StatusBadge.vue'),
+    ], { cwd: rootDir, encoding: 'utf8' }),
+    /PASS frontend simple component structure is valid/,
+  )
   const missingSrcEntryResult = spawnSync(process.execPath, [
     scriptPath,
     'utility',
@@ -337,7 +463,8 @@ it('前端编码规范 - 类型按 props expose ref emit 拆分', () => {
   assert.match(standard, /仅限 Vue/)
   assert.match(standard, /export type \* from '\.\/props'/)
   assert.match(standard, /export type \* from '\.\/ref'/)
-  assert.match(standard, /必须通过此文件统一导出上述所有类型/)
+  assert.match(standard, /`types\/index\.ts`：必须通过此文件统一导出上述所有类型/)
+  assert.ok(standard.includes('DataTable/\n  index.ts\n  src/\n    index.tsx\n    types/\n      props.ts\n      ref.ts\n      index.ts'))
 })
 
 it('前端编码规范 - Barrel、路径别名、三次原则和逐级上浮为硬约束', () => {
@@ -345,8 +472,12 @@ it('前端编码规范 - Barrel、路径别名、三次原则和逐级上浮为�
 
   assert.match(standard, /路径别名优先/)
   assert.match(standard, /@\/components\/DataTable\/utils\/date/)
-  assert.match(standard, /@\/components\/DataTable\/utils/)
-  assert.match(standard, /必须提供一个 `index\.ts` 或 `index\.js` 文件作为唯一对外 API 入口/)
+  assert.match(standard, /@\/components\/DataTable/)
+  assert.match(standard, /组件包内部实现文件之间/)
+  assert.doesNotMatch(standard, /必须生成：\n\n```ts\nimport \{ formatDate \} from '@\/components\/DataTable\/utils'/)
+  assert.match(standard, /复杂组件包、前端工具库和 UI 组件库都必须提供 `index\.ts` 或 `index\.js`/)
+  assert.match(standard, /单个业务模块是例外/)
+  assert.match(standard, /简单组件直接以 `ComponentName\.vue`、`ComponentName\.tsx` 或 `ComponentName\.jsx`/)
   assert.match(standard, /Deep Imports 零容忍/)
   assert.match(standard, /至少 3 个独立的地方/)
   assert.match(standard, /最近公共父级目录/)
@@ -413,6 +544,7 @@ it('后端编码规范 - 入口引用轻量 Node 与 NestJS 规范', () => {
   assert.match(skill, /不得用仓库根级共享脚本替代/)
   assert.match(workflowSkill, /Node\.js 后端实现标准：`backend-code-standard`/)
   assert.match(workflowSkill, /Fastify、Express、Koa、Nitro 和 NestJS/)
+  assert.match(workflowSkill, /Java 后端实现标准：`java-code-standard`/)
   assert.match(workflowSkill, /后端测试标准尚未提供/)
 })
 
@@ -454,9 +586,11 @@ it('后端编码规范 - 单文件主规范覆盖目录、契约和依赖边界'
   assert.match(standard, /Zod 或 TypeBox/)
   assert.match(standard, /export \* from '\.\/create-order'/)
   assert.match(standard, /export type \* from '\.\/order'/)
-  assert.match(standard, /## 4\. 强制统一导出与路径别名优先/)
+  assert.match(standard, /## 4\. 公共入口与路径别名优先/)
   assert.match(standard, /@\/modules\/orders\/service/)
   assert.match(standard, /@\/modules\/orders/)
+  assert.match(standard, /需要形成稳定公共 API/)
+  assert.match(standard, /模块私有子目录不强制创建 `index\.ts`/)
   assert.match(standard, /绝不允许暴露或穿透引用内部的 Repository/)
   assert.match(standard, /## 5\. 高内聚、三次原则与逐级上浮/)
   assert.match(standard, /orders\/utils\//)
@@ -495,18 +629,20 @@ it('后端编码规范 - NestJS 主规范覆盖模块、DI、DTO 和异常边界
   assert.match(standard, /@IsString\(\)/)
   assert.match(standard, /@IsNotEmpty\(\)/)
   assert.match(standard, /@nestjs\/swagger/)
-  assert.match(standard, /## 4\. 强制统一导出与路径别名优先/)
+  assert.match(standard, /## 4\. 公共入口与路径别名优先/)
   assert.match(standard, /@\/modules\/orders\/orders\.module/)
   assert.match(standard, /@\/modules\/orders/)
   assert.match(standard, /@Module\(\{ exports: \[\.\.\.\] \}\)/)
+  assert.match(standard, /需要形成稳定公共 API/)
   assert.match(standard, /## 5\. 高内聚、三次原则与逐级上浮/)
   assert.match(standard, /Guard、Interceptor、Pipe/)
   assert.match(standard, /modules\/orders\/pipes\//)
   assert.match(standard, /src\/common\//)
   assert.match(standard, /## 6\. 注释与异常处理规范/)
   assert.match(standard, /Service 层的类方法必须包含 JSDoc 注释/)
-  assert.match(standard, /BadRequestException/)
-  assert.match(standard, /Controller 层无需手动 `try-catch`/)
+  assert.match(standard, /领域错误或应用错误/)
+  assert.match(standard, /Controller、Filter 或全局异常过滤器/)
+  assert.doesNotMatch(standard, /Service 层遇到业务阻断时，必须抛出 Nest 内置的 `HttpException`/)
   assert.match(standard, /## 7\. 依赖流向限制/)
   assert.match(standard, /禁止绕过 DI/)
   assert.match(standard, /new Service\(\)/)
@@ -520,15 +656,97 @@ it('后端编码规范 - README 描述同步 Node 与 NestJS 范围且后端测�
 
   assert.ok(fs.existsSync(path.join(rootDir, 'skills', 'workflow', 'backend-code-standard', 'SKILL.md')))
   assert.ok(!fs.existsSync(path.join(rootDir, 'skills', 'workflow', 'backend-testing-standard', 'SKILL.md')))
+  assert.ok(fs.existsSync(path.join(rootDir, 'skills', 'workflow', 'java-code-standard', 'SKILL.md')))
   assert.match(readme, /backend-code-standard/)
   assert.match(readme, /Node\.js backend code standards/)
   assert.match(readme, /NestJS/)
   assert.match(readme, /strict DI/)
+  assert.match(readme, /java-code-standard/)
+  assert.match(readme, /Java and Spring Boot backend code standards/)
+  assert.match(readme, /constructor injection/)
   assert.match(readmeZh, /backend-code-standard/)
   assert.match(readmeZh, /Node\.js 后端编码标准/)
   assert.match(readmeZh, /NestJS/)
   assert.match(readmeZh, /严格 DI/)
+  assert.match(readmeZh, /java-code-standard/)
+  assert.match(readmeZh, /Java 与 Spring Boot 后端编码标准/)
+  assert.match(readmeZh, /构造函数注入/)
   assert.doesNotMatch(readme, /backend-testing-standard/)
   assert.doesNotMatch(readmeZh, /backend-testing-standard/)
   assert.doesNotMatch(workflowSkill, /`backend-testing-standard`/)
+})
+
+it('java 编码规范 - 入口引用 Java 与 Spring Boot 最佳实践', () => {
+  const skill = readProjectFile('skills', 'workflow', 'java-code-standard', 'SKILL.md')
+  const workflowSkill = readProjectFile('skills', 'workflow', 'software-development-workflow', 'SKILL.md')
+
+  assert.match(skill, /Java/)
+  assert.match(skill, /Spring Boot/)
+  assert.match(skill, /Maven/)
+  assert.match(skill, /Gradle/)
+  assert.match(skill, /java-backend-standard\.md/)
+  assert.match(skill, /构造函数注入/)
+  assert.match(skill, /Bean Validation/)
+  assert.match(skill, /ControllerAdvice/)
+  assert.match(skill, /Flyway/)
+  assert.match(skill, /Liquibase/)
+  assert.match(skill, /scripts\/verify-rules\.mjs/)
+  assert.match(skill, /不得用仓库根级共享脚本替代/)
+  assert.match(workflowSkill, /Java 后端实现标准：`java-code-standard`/)
+})
+
+it('java 编码规范 - 主规范覆盖包结构、契约、事务和持久化边界', () => {
+  const standard = readProjectFile('skills', 'workflow', 'java-code-standard', 'references', 'java-backend-standard.md').replace(/\r\n/g, '\n')
+
+  assert.match(standard, /Java 17\+ 基线/)
+  assert.match(standard, /优先选择 Java 21 或 Java 25 LTS/)
+  assert.match(standard, /Spring Boot/)
+  assert.match(standard, /## 1\. 核心原则：领域模块与应用边界/)
+  assert.match(standard, /按业务领域组织 package/)
+  assert.match(standard, /Controller 不承载业务规则/)
+  assert.match(standard, /Service 或 Application Service 编排业务用例/)
+  assert.match(standard, /## 2\. 目录形态标准/)
+  assert.ok(standard.includes('src/main/java/com/example/order/\n  api/\n    OrderController.java\n    request/\n      CreateOrderRequest.java\n    response/\n      OrderResponse.java'))
+  assert.match(standard, /domain\//)
+  assert.match(standard, /application\//)
+  assert.match(standard, /infrastructure\//)
+  assert.match(standard, /## 3\. Java 语言与类型实践/)
+  assert.match(standard, /record/)
+  assert.match(standard, /Optional/)
+  assert.match(standard, /禁止把 `Optional` 用作字段、DTO 属性或方法参数/)
+  assert.match(standard, /## 4\. API 契约与校验/)
+  assert.match(standard, /jakarta\.validation/)
+  assert.match(standard, /禁止把 JPA Entity 直接作为 API Request 或 Response/)
+  assert.match(standard, /## 5\. 依赖注入、事务和错误语义/)
+  assert.match(standard, /构造函数注入/)
+  assert.match(standard, /@Transactional/)
+  assert.match(standard, /ControllerAdvice/)
+  assert.match(standard, /ProblemDetail/)
+  assert.match(standard, /## 6\. 持久化、迁移和配置/)
+  assert.match(standard, /Flyway 或 Liquibase/)
+  assert.match(standard, /@ConfigurationProperties/)
+  assert.match(standard, /## 7\. 依赖流向与复用/)
+  assert.match(standard, /三次原则/)
+  assert.match(standard, /最近公共父级/)
+  assert.match(standard, /## 9\. AI 执行验证检查清单/)
+})
+
+it('java 编码规范 - skill 自带验证脚本覆盖最近公共父级', () => {
+  const scriptPath = path.join(rootDir, 'skills', 'workflow', 'java-code-standard', 'scripts', 'verify-rules.mjs')
+
+  assert.ok(fs.existsSync(scriptPath))
+  assert.match(runNodeScript('skills', 'workflow', 'java-code-standard', 'scripts', 'verify-rules.mjs'), /PASS java-code-standard self rules are valid/)
+  assert.match(
+    execFileSync(process.execPath, [
+      scriptPath,
+      'hoist',
+      '--target',
+      'src/main/java/com/example/order/support',
+      '--uses',
+      'src/main/java/com/example/order/create/CreateOrderService.java',
+      'src/main/java/com/example/order/update/UpdateOrderService.java',
+      'src/main/java/com/example/order/cancel/CancelOrderService.java',
+    ], { cwd: rootDir, encoding: 'utf8' }),
+    /PASS java hoist target stays under nearest common ancestor/,
+  )
 })

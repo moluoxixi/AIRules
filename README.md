@@ -41,7 +41,7 @@ AIRules is a **composable AI skill distribution system**. The core idea is simpl
 
 ## What You Get
 
-- 🔥 **23+ curated** frontend/backend/general AI Skills out of the box
+- 🔥 **24+ curated** frontend/backend/general AI Skills out of the box
 - 🧱 **Reserved first-party expansion slots** so you can add your own top-level skills later without changing the distribution model
 - 🌐 **Multi-agent sync**: configure once, works across Claude / Cursor / Codex / Qoder / Tare / OpenCode / CC-Switch
 - 🔄 **Continuous updates**: one command pulls latest upstream skills
@@ -136,6 +136,7 @@ Moluoxixi AIRules supports a growing ecosystem of AI agents through automated pr
 | **frontend-code-standard** | Vue 3 and React TypeScript/JavaScript standards for frontend apps, utility libraries, and UI component libraries with fractal architecture, headless logic, path aliases, nearest-common-ancestor hoisting, type contracts, barrels, and side-effect comments |
 | **frontend-testing-standard** | Frontend testing standards for type checks, unit/component/page integration, interaction, browser, responsive, accessibility, and coverage verification |
 | **backend-code-standard** | Node.js backend code standards for Fastify, Express, Koa, Nitro, and NestJS with vertical slice domains, strict DI, barrels, runtime DTO validation, and service-layer contracts |
+| **java-code-standard** | Java and Spring Boot backend code standards for Java 17+ baseline, Java 21/25 LTS, Maven, and Gradle with domain packages, constructor injection, Bean Validation, transaction boundaries, migrations, and error mapping |
 
 > Reserved top-level first-party skill slots are intentionally kept empty in the current config so new custom skills can be added later without reshaping the projection model.
 
@@ -158,7 +159,8 @@ Moluoxixi AIRules supports a growing ecosystem of AI agents through automated pr
 │       ├── software-development-workflow/
 │       ├── frontend-code-standard/
 │       ├── frontend-testing-standard/
-│       └── backend-code-standard/
+│       ├── backend-code-standard/
+│       └── java-code-standard/
 ├── vendor/
 │   ├── repos/               # Cloned third-party source repos
 │   └── skills/              # Extracted third-party skills

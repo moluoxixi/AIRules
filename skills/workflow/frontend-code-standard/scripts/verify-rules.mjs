@@ -5,6 +5,7 @@ import { fileURLToPath } from 'node:url'
 
 const skillRoot = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..')
 const PUBLIC_ENTRY_FILENAMES = ['index.ts', 'index.js']
+const STYLE_ENTRY_FILENAMES = ['index.css', 'index.scss', 'index.less']
 const MODULE_IMPLEMENTATION_FILENAMES = ['index.vue', 'index.tsx', 'index.jsx']
 
 function readSkillFile(...segments) {
@@ -18,6 +19,12 @@ function assertContains(content, pattern, message) {
 
 function findExistingFiles(directory, filenames) {
   return filenames.filter(filename => fs.existsSync(path.join(directory, filename)))
+}
+
+function relativeDirectory(root, directory) {
+  const relative = path.relative(root, directory)
+
+  return relative === '' ? '.' : relative.split(path.sep).join('/')
 }
 
 function assertSingleExistingFile(directory, filenames, label) {
@@ -105,33 +112,59 @@ function assertTargetInsideAncestor(target, ancestor) {
   throw new Error(`抽离目标必须位于最近公共父级目录下：${ancestor}`)
 }
 
+function assertCodeDirectoryEntries(directory, root, options = {}) {
+  const entries = fs.readdirSync(directory, { withFileTypes: true })
+  const parentHasPublicEntry = findExistingFiles(directory, PUBLIC_ENTRY_FILENAMES).length > 0
+
+  for (const entry of entries) {
+    if (!entry.isDirectory())
+      continue
+
+    const childDirectory = path.join(directory, entry.name)
+    const relative = relativeDirectory(root, childDirectory)
+    const childPublicEntries = findExistingFiles(childDirectory, PUBLIC_ENTRY_FILENAMES)
+    const childImplementationEntries = findExistingFiles(childDirectory, MODULE_IMPLEMENTATION_FILENAMES)
+    const isImplementationSrc = entry.name === 'src' && parentHasPublicEntry && childImplementationEntries.length === 1
+
+    if (entry.name === 'styles')
+      assertSingleExistingFile(childDirectory, STYLE_ENTRY_FILENAMES, `样式目录 ${relative}/ 入口`)
+    else if (!isImplementationSrc)
+      assertSingleExistingFile(childDirectory, PUBLIC_ENTRY_FILENAMES, `目录 ${relative}/ 聚合入口`)
+
+    if (childPublicEntries.length > 0 || isImplementationSrc || options.descendIntoMissingEntryDirectory)
+      assertCodeDirectoryEntries(childDirectory, root, options)
+  }
+}
+
 function assertComponentPackage(root) {
   const componentRoot = path.resolve(process.cwd(), root)
   const readmePath = path.join(componentRoot, 'README.md')
   const srcPath = path.join(componentRoot, 'src')
-  const publicEntry = assertSingleExistingFile(componentRoot, PUBLIC_ENTRY_FILENAMES, '组件包根目录公共入口')
+  const publicEntry = assertSingleExistingFile(componentRoot, PUBLIC_ENTRY_FILENAMES, '复杂组件包根目录公共入口')
   const rootImplementationEntries = findExistingFiles(componentRoot, MODULE_IMPLEMENTATION_FILENAMES)
 
   if (!fs.existsSync(readmePath))
-    throw new Error('组件包根目录缺少 README.md')
+    throw new Error('复杂组件包根目录缺少 README.md')
 
   if (!fs.existsSync(srcPath) || !fs.statSync(srcPath).isDirectory())
-    throw new Error('组件包根目录缺少 src/ 实现目录')
+    throw new Error('复杂组件包根目录缺少 src/ 实现目录')
 
   if (rootImplementationEntries.length > 0)
-    throw new Error(`组件包根目录不得放置实现入口：${rootImplementationEntries.join('、')}`)
+    throw new Error(`复杂组件包根目录不得放置实现入口：${rootImplementationEntries.join('、')}`)
 
-  const srcImplementationEntry = assertSingleExistingFile(srcPath, MODULE_IMPLEMENTATION_FILENAMES, '组件包 src/ 实现入口')
+  const srcImplementationEntry = assertSingleExistingFile(srcPath, MODULE_IMPLEMENTATION_FILENAMES, '复杂组件包 src/ 实现入口')
 
   const readme = fs.readFileSync(readmePath, 'utf8').trim()
 
   if (readme.length === 0)
-    throw new Error('组件 README.md 不得为空，必须描述组件如何使用')
+    throw new Error('复杂组件 README.md 不得为空，必须描述组件如何使用')
 
   if (!/(使用|用法|Usage|Props|Events|Emits|Expose|Slots|API)/.test(readme))
-    throw new Error('组件 README.md 必须包含使用方式或接口契约说明')
+    throw new Error('复杂组件 README.md 必须包含使用方式或接口契约说明')
 
-  printPass('frontend component package structure is valid', {
+  assertCodeDirectoryEntries(componentRoot, componentRoot)
+
+  printPass('frontend complex component package structure is valid', {
     componentRoot,
     entry: publicEntry,
     implementationEntry: srcImplementationEntry,
@@ -173,11 +206,13 @@ function assertLibraryPackage(root, options = {}) {
       .filter(entry => entry.isDirectory())
 
     if (componentDirs.length === 0)
-      throw new Error('UI 组件库 src/components/ 下至少需要一个组件包')
+      throw new Error('UI 组件库 src/components/ 下至少需要一个复杂组件包')
 
     for (const componentDir of componentDirs)
       assertComponentPackage(path.join(componentsPath, componentDir.name))
   }
+
+  assertCodeDirectoryEntries(libraryRoot, libraryRoot)
 
   printPass(options.requireComponents ? 'frontend UI component library structure is valid' : 'frontend utility library structure is valid', {
     libraryRoot,
@@ -189,16 +224,35 @@ function assertLibraryPackage(root, options = {}) {
 function assertModule(root) {
   const moduleRoot = path.resolve(process.cwd(), root)
   const srcPath = path.join(moduleRoot, 'src')
-  const publicEntry = assertSingleExistingFile(moduleRoot, PUBLIC_ENTRY_FILENAMES, '模块根目录公共入口')
   const implementationEntry = assertSingleExistingFile(moduleRoot, MODULE_IMPLEMENTATION_FILENAMES, '模块根目录实现入口')
+  const publicEntries = findExistingFiles(moduleRoot, PUBLIC_ENTRY_FILENAMES)
 
   if (fs.existsSync(srcPath))
     throw new Error('单个模块不得再嵌套 src/ 目录')
 
+  if (publicEntries.length > 0)
+    throw new Error(`单个模块根目录不得创建公共入口：${publicEntries.join('、')}`)
+
+  assertCodeDirectoryEntries(moduleRoot, moduleRoot)
+
   printPass('frontend module structure is valid', {
     moduleRoot,
-    entry: publicEntry,
     implementationEntry,
+  })
+}
+
+function assertSimpleComponent(root) {
+  const componentPath = path.resolve(process.cwd(), root)
+  const filename = path.basename(componentPath)
+
+  if (!/^[A-Z][\w-]*\.(vue|tsx|jsx)$/.test(filename))
+    throw new Error('简单组件必须使用 ComponentName.vue、ComponentName.tsx 或 ComponentName.jsx 文件')
+
+  if (!fs.existsSync(componentPath) || !fs.statSync(componentPath).isFile())
+    throw new Error('简单组件路径必须指向真实文件')
+
+  printPass('frontend simple component structure is valid', {
+    componentPath,
   })
 }
 
@@ -211,12 +265,24 @@ function verifySelf() {
   assertContains(skill, /工具库和 UI 组件库/, '前端规范入口必须覆盖前端工具库和 UI 组件库')
   assertContains(standard, /至少 3 个独立的地方/, '前端规范必须保留三次原则')
   assertContains(standard, /最近公共父级目录/, '前端规范必须保留最近公共父级约束')
-  assertContains(standard, /README\.md/, '前端组件包结构必须强制 README.md')
-  assertContains(standard, /index\.(ts|js)/, '前端组件包结构必须强制单一公共入口')
-  assertContains(standard, /src\//, '前端组件包结构必须强制 src/ 实现目录')
+  assertContains(skill, /简单组件结构、复杂组件包结构、前端工具库结构和 UI 组件库结构/, 'SKILL.md 必须同时声明简单组件和复杂组件包结构校验')
+  assertContains(skill, /只有复杂组件包、前端工具库和 UI 组件库允许通过 `index\.ts` 或 `index\.js`/, 'SKILL.md 必须限制公共入口只属于包级结构')
+  assertContains(skill, /目录入口/, 'SKILL.md 必须声明目录入口规则')
+  assertContains(skill, /除简单组件文件、单个业务模块根目录和 `styles\/` 目录外/, 'SKILL.md 必须声明目录入口例外')
+  assertContains(skill, /`styles\/` 目录一旦创建，必须提供唯一 `index\.css`、`index\.scss` 或 `index\.less`/, 'SKILL.md 必须声明 styles 样式入口')
+  assertContains(standard, /README\.md/, '前端复杂组件包结构必须强制 README.md')
+  assertContains(standard, /index\.(ts|js)/, '前端复杂组件包结构必须强制单一公共入口')
+  assertContains(standard, /src\//, '前端复杂组件包结构必须强制 src/ 实现目录')
   assertContains(standard, /index\.(vue|tsx|jsx)/, '前端规范必须覆盖 Vue、TypeScript 和 JSX 入口')
   assertContains(standard, /单个业务模块直接在根目录组织，不再额外创建 `src\/`/, '前端规范必须区分单个模块与组件包的目录层级')
-  assertContains(standard, /禁止穿透 `src\/`/, '前端组件包必须禁止外部穿透 src/')
+  assertContains(standard, /除简单组件文件、单个业务模块根目录和 `styles\/` 目录外/, '前端规范必须声明通用目录入口规则')
+  assertContains(standard, /styles\/index\.css`、`styles\/index\.scss` 或 `styles\/index\.less`/, '前端规范必须要求 styles 样式入口')
+  assertContains(standard, /模块根目录只保留 `index\.vue` \/ `index\.tsx` \/ `index\.jsx` 作为唯一实现入口/, '单个模块必须只保留实现入口')
+  assertContains(standard, /简单组件应直接使用 `ComponentName\.vue`、`ComponentName\.tsx` 或 `ComponentName\.jsx`/, '简单组件必须使用文件级组件结构')
+  assertContains(standard, /Sparkline\.jsx/, '简单组件示例必须覆盖 JSX 文件形态')
+  assertContains(standard, /复杂组件包或项目级组件封装必须使用独立组件包结构/, '前端规范必须用复杂组件包区分简单组件')
+  assertContains(standard, /AuditDialog\/\n        README\.md\n        index\.ts\n        src\/\n          index\.vue/, '复杂子组件示例必须使用 index.ts + src/ 结构')
+  assertContains(standard, /禁止穿透 `src\/`/, '前端复杂组件包必须禁止外部穿透 src/')
   assertContains(standard, /前端工具库必须使用库包结构/, '前端规范必须覆盖工具库结构')
   assertContains(standard, /UI 组件库必须使用库包结构/, '前端规范必须覆盖 UI 组件库结构')
   assertContains(standard, /src\/index\.ts` 或 `src\/index\.js/, '前端库包必须声明 src 聚合入口')
@@ -248,6 +314,9 @@ function main() {
 
   if (command === 'module')
     return assertModule(getOption(args, '--root'))
+
+  if (command === 'simple-component' || command === 'simple')
+    return assertSimpleComponent(getOption(args, '--root'))
 
   if (command === 'component' || command === 'package' || command === 'project')
     return assertComponentPackage(getOption(args, '--root'))

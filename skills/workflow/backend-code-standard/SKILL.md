@@ -1,6 +1,6 @@
 ---
 name: backend-code-standard
-description: 用于编写、修改或评审 Node.js 后端代码，适用于 Fastify、Express、Koa、Nitro、NestJS，并强制执行垂直切片、领域模块化、严格 DI、严格 Barrel、路径别名、逐级上浮和 API 契约注释。
+description: 用于编写、修改或评审 Node.js 后端代码，适用于 Fastify、Express、Koa、Nitro 和 NestJS。
 ---
 
 # 后端编码规范
@@ -36,10 +36,10 @@ description: 用于编写、修改或评审 Node.js 后端代码，适用于 Fas
 - NestJS DI 隔离：跨模块协作必须通过 `imports`、`exports` 和构造函数注入完成，禁止 `new Service()` 或直接导入私有 Service。
 - 数据契约拆分：`dtos/` 负责 Request/Response 和运行时校验，`types/` 负责内部领域模型与数据库模型。
 - NestJS DTO：Controller 请求入参必须使用 `class` DTO 和 `class-validator`，禁止使用 `any` 或松散 `interface` 接收请求数据。
-- 统一导出：任意功能集目录必须提供 `index.ts` 作为唯一对外 API 入口。
+- 公共入口：业务模块或需要稳定公共 API 的功能集目录必须提供 `index.ts` 作为对外入口；模块私有子目录不强制创建 barrel。
 - 路径别名优先：跨模块引用或多层向上查找时，必须优先使用项目配置的路径别名。
 - Deep Imports 零容忍：跨领域只能依赖目标模块入口，不得穿透引用内部 Repository 或底层数据结构。
 - 逐级上浮：满足三次原则后只能提取到最近公共父级，只有跨顶级业务域复用才允许进入 `src/common/` 或 `src/utils/`。
 - 注释解释业务契约：Service 公共方法和外部 DTO 必须写清参数、返回值、业务异常、业务规则和边界条件。
-- 标准异常：NestJS Service 层遇到业务阻断时必须抛出 Nest 内置 `HttpException` 或其子类，Controller 不手动吞掉标准异常。
-- 数据一致性闭环：当修改涉及底层数据模型或领域实体时，必须同时考虑并生成/执行数据库迁移脚本（Migrations），不可只改代码不改表结构定义。
+- 标准异常：NestJS Service 层优先抛出领域错误或应用错误，由 Controller、Filter 或全局异常过滤器映射 HTTP 响应；禁止吞掉标准异常或把失败改写成成功路径。
+- 数据一致性闭环：当修改涉及底层数据模型或领域实体时，必须判断是否影响持久化结构；涉及表结构、索引、约束或枚举值变化时必须补充并执行数据库迁移脚本（Migrations）。

@@ -6,9 +6,9 @@
 
 每一个复杂组件、业务模块、工具库功能域或组件库组件都被视为一个高度自治的“微型应用”。
 
-- 逻辑与 UI 分离：倡导 Headless 模式，核心业务状态和交互逻辑必须从视图层中剥离。
+- 逻辑与 UI 分离：倡导 Headless 模式，复杂状态、跨组件复用逻辑或副作用编排必须从视图层中剥离；简单局部交互状态可留在视图入口，避免制造无意义的 `composables/` 或 `hooks/` 文件。
 - 禁止扁平化：不得将模块专用的类型、工具类或状态逻辑盲目提升到全局（`src/types`、`src/utils`）。
-- 递归结构：组件内部的子组件必须拥有与父级完全一致的目录层级能力，包含自己的私有作用域。
+- 递归结构：组件内部的复杂子组件必须使用复杂组件包结构承载私有作用域；简单展示组件只能保持单文件形态。
 - 适用范围：只要代码服务于前端运行时、浏览器能力、Vue/React 组件、样式系统或前端构建产物，无论位于应用、工具库还是 UI 组件库，都必须遵循本规范。
 
 ## 2. 目录形态标准
@@ -19,13 +19,21 @@
 [ModuleName]/
   index.vue (或 index.tsx / index.jsx) - [必填] UI 视图/组件入口，仅负责渲染和组装
   api/ - [可选] 仅限本模块调用的接口定义
-  components/ - [可选] 模块私有子组件（可继续递归此结构）
+    index.ts 或 index.js - [必填] 当前 api 目录聚合入口
+  components/ - [可选] 模块私有子组件；简单组件用单文件，复杂组件用复杂组件包结构
+    index.ts 或 index.js - [必填] 当前 components 目录聚合入口
   composables/ (Vue) 或 hooks/ (React) - [可选] 模块私有状态与无头业务逻辑
+    index.ts 或 index.js - [必填] 当前逻辑目录聚合入口
   constants/ - [可选] 模块私有常量字典
+    index.ts 或 index.js - [必填] 当前 constants 目录聚合入口
   styles/ - [可选] 模块私有样式文件
+    index.css 或 index.scss 或 index.less - [必填] 当前 styles 目录样式入口
+  assets/ - [可选] 模块私有静态资源声明或资源索引
+    index.ts 或 index.js - [必填] 当前 assets 目录聚合入口
   types/ - [可选] 模块私有类型定义
+    index.ts 或 index.js - [必填] 当前 types 目录聚合入口
   utils/ - [可选] 模块私有纯函数与工具
-  index.ts 或 index.js - [必填] 模块的唯一公共出口
+    index.ts 或 index.js - [必填] 当前 utils 目录聚合入口
 ```
 
 完整结构示例：
@@ -36,42 +44,69 @@ views/
     index.vue
     api/
       index.ts
+      purchase-order-api.ts
     components/
       index.ts
+      StatusBadge.vue
       AuditDialog/
-        index.vue
-        api/
-          index.ts
-        components/
-          index.ts
-        composables/
-          index.ts
-        constants/
-          index.ts
-        types/
-          props.ts
-          emit.ts
-          expose.ts
-          index.ts
-        utils/
-          index.ts
+        README.md
         index.ts
+        src/
+          index.vue
+          api/
+            index.ts
+            audit-dialog-api.ts
+          composables/
+            index.ts
+            use-audit-dialog.ts
+          constants/
+            index.ts
+            audit-dialog-options.ts
+          types/
+            props.ts
+            emit.ts
+            expose.ts
+            index.ts
+          utils/
+            index.ts
+            normalize-audit-record.ts
     composables/
       index.ts
+      use-purchase-order.ts
     constants/
       index.ts
+      purchase-order-status.ts
+    styles/
+      index.scss
+      purchase-order.scss
+    assets/
+      index.ts
+      empty-state.png
     types/
       index.ts
+      purchase-order.ts
     utils/
       index.ts
-    index.ts
+      format-purchase-order.ts
 ```
 
 React 模块使用同一结构，将 `index.vue` 替换为 `index.tsx` 或 `index.jsx`，将 `composables/` 替换为 `hooks/`。
 
-单个业务模块直接在根目录组织，不再额外创建 `src/`；只有组件包或项目级封装才使用 `src/` 作为实现目录。
+单个业务模块直接在根目录组织，不再额外创建 `src/`，也不在模块根目录创建 `index.ts` 或 `index.js`；模块根目录只保留 `index.vue` / `index.tsx` / `index.jsx` 作为唯一实现入口。只有复杂组件包、前端工具库、UI 组件库或项目级封装才使用“统一公共入口 + `src/` 实现目录”。
 
-单组件包或项目级复杂组件封装必须使用独立组件包结构，组件根目录只承载使用说明与公共出口，真实实现必须放入 `src/`：
+除简单组件文件、单个业务模块根目录和 `styles/` 目录外，其他代码目录一旦创建，必须提供当前目录自己的唯一聚合入口：`api/index.ts` 或 `api/index.js`、`components/index.ts` 或 `components/index.js`、`composables/index.ts` 或 `hooks/index.ts`、`constants/index.ts`、`types/index.ts`、`utils/index.ts` 等。`styles/` 目录必须提供唯一样式入口：`styles/index.css`、`styles/index.scss` 或 `styles/index.less`。这个要求适用于业务模块子目录、复杂组件包内部目录、工具库功能目录和 UI 组件库内部目录，不改变“模块根目录不创建 `index.ts` / `index.js`”的规则。
+
+简单组件不使用包结构。无内部状态、无复杂交互、无需暴露实例能力的简单组件应直接使用 `ComponentName.vue`、`ComponentName.tsx` 或 `ComponentName.jsx`：
+
+```text
+components/
+  StatusBadge.vue
+  InlineChart.tsx
+  Sparkline.jsx
+  UserAvatar.vue
+```
+
+复杂组件包或项目级组件封装必须使用独立组件包结构，组件根目录只承载使用说明与公共出口，真实实现必须放入 `src/`：
 
 ```text
 DataTable/
@@ -86,7 +121,7 @@ DataTable/
       index.ts
 ```
 
-外部消费者只能从组件根目录的 `index.ts` 或 `index.js` 导入，禁止穿透 `src/` 引用组件内部实现。
+组件包外部调用方只能从组件根目录的 `index.ts` 或 `index.js` 导入，禁止穿透 `src/` 引用组件内部实现。
 
 前端工具库必须使用库包结构，库根目录只承载说明、公共出口和实现目录；真实功能按工具域在 `src/` 内组织：
 
@@ -110,7 +145,7 @@ BrowserToolkit/
 
 工具库消费者只能从库根目录导入；`src/clipboard`、`src/storage`、`src/utils` 等目录属于库内部结构，只有被 `src/index.ts` 或 `src/index.js` 聚合后才允许对外暴露。
 
-UI 组件库必须使用库包结构，库根目录承载说明和公共出口，`src/index.ts` 或 `src/index.js` 聚合组件库对外 API，每个组件继续使用单组件包结构：
+UI 组件库必须使用库包结构，库根目录承载说明和公共出口，`src/index.ts` 或 `src/index.js` 聚合组件库对外 API，每个复杂组件继续使用复杂组件包结构：
 
 ```text
 MoluoxixiUI/
@@ -119,6 +154,7 @@ MoluoxixiUI/
   src/ - [必填] 组件库真实实现目录
     index.ts 或 index.js - [必填] 聚合组件库可公开组件
     components/
+      index.ts 或 index.js
       DataTable/
         README.md
         index.ts 或 index.js
@@ -142,12 +178,12 @@ MoluoxixiUI/
 - `props.ts`：仅定义组件的入参 Props 接口。
 - `expose.ts`（或 `ref.ts`）：仅定义组件对外暴露的实例方法与属性接口。
 - `emit.ts`：仅限 Vue，定义组件 Emits 事件接口。
-- `index.ts`：必须通过此文件统一导出上述所有类型。
+- `types/index.ts`：必须通过此文件统一导出上述所有类型。
 
-> **粒度豁免（逃生舱原则）**：对于代码量极少、无状态逻辑的纯展示型原子组件（如简单按钮），允许直接在 `index.vue` / `index.tsx` 中内联定义 Props 和类型。只有当组件包含内部状态、复杂交互或暴露实例方法时，才强制拆分 `types/` 目录，防止过度工程化。
+> **粒度豁免（逃生舱原则）**：对于代码量极少、无状态逻辑的纯展示型原子组件（如简单按钮），允许直接在当前实现入口或简单组件文件中内联定义 Props 和类型。只有当组件包含内部状态、复杂交互或暴露实例方法时，才强制拆分 `types/` 目录，防止过度工程化。
 
 ```text
-AuditDialog/
+purchaseOrder/
   index.vue
   types/
     props.ts
@@ -158,11 +194,13 @@ AuditDialog/
 
 ```text
 DataTable/
-  index.tsx
-  types/
-    props.ts
-    ref.ts
-    index.ts
+  index.ts
+  src/
+    index.tsx
+    types/
+      props.ts
+      ref.ts
+      index.ts
 ```
 
 ```ts
@@ -178,12 +216,12 @@ export type * from './props'
 export type * from './ref'
 ```
 
-## 4. 强制统一导出与路径别名优先
+## 4. 包级导出与路径别名优先
 
-对于任意层级下的功能集目录，必须提供一个 `index.ts` 或 `index.js` 文件作为唯一对外 API 入口。
+复杂组件包、前端工具库和 UI 组件库都必须提供 `index.ts` 或 `index.js` 作为唯一对外 API 入口，并把真实实现放入 `src/`。单个业务模块是例外，只保留 `index.vue` / `index.tsx` / `index.jsx` 实现入口；简单组件直接以 `ComponentName.vue`、`ComponentName.tsx` 或 `ComponentName.jsx` 作为文件级组件，不额外创建目录入口。
 
 - 路径别名优先：跨模块引用或涉及多层向上查找（如 `../../`）时，必须优先使用项目配置的路径别名（如 `@/`）。
-- Deep Imports 零容忍：无论使用相对路径还是别名，路径必须且只能止步于该资源所在的根目录名称（默认命中 `index.ts` 或 `index.js`）。绝对禁止穿透目录直接引用具体文件。
+- Deep Imports 零容忍：对于复杂组件包、前端工具库和 UI 组件库，外部消费者的导入路径必须止步于该资源所在的根目录名称（默认命中 `index.ts` 或 `index.js`）。复杂组件包内部实现文件之间允许按项目解析规则引用内部目录，但不得把这些路径扩散给外部消费者。
 - 库包出口收敛：前端工具库和 UI 组件库必须由库根 `index.ts` 或 `index.js` 定义唯一公共 surface，内部 `src/index.ts` 或 `src/index.js` 只能聚合稳定模块，不得让使用方依赖内部文件路径。
 
 禁止生成：
@@ -191,12 +229,13 @@ export type * from './ref'
 ```ts
 import { formatDate } from '../../utils/date'
 import { formatDate } from '@/components/DataTable/utils/date'
+import { formatDate } from '@/components/DataTable/utils'
 ```
 
 必须生成：
 
 ```ts
-import { formatDate } from '@/components/DataTable/utils'
+import { formatDate } from '@/components/DataTable'
 ```
 
 ## 5. 高内聚、三次原则与逐级上浮
@@ -230,10 +269,13 @@ import { formatDate } from '@/components/DataTable/utils'
 
 在每次生成代码或修改文件前，必须在内心执行以下自检，不输出自检过程。
 
-1. 复杂组件的接口定义是否按照 `props`、`expose` 拆分并由 `types/index.ts` 导出了？
+1. 复杂组件包的接口定义是否按照 `props`、`expose` 拆分并由 `types/index.ts` 导出了？
 2. 能从组件实现、Hook、Composable、API 响应、Schema 或常量对象推导出的类型，是否已经优先推导而不是重复手写？
-3. 前端工具库和 UI 组件库是否都有库根公共入口、`src/index.ts` 或 `src/index.js` 聚合入口，并阻止消费者穿透 `src/`？
-4. 我是否优先使用了路径别名（`@/`）？`import` 语句是否全部指向了目标的 `index.ts` 或 `index.js`，没有发生穿透？
-5. 我是否严格遵守了“三次原则”？在没有 3 处以上调用的情况下，我是否克制住了抽离公共代码的冲动？
-6. 触发抽离时，我是否精确地将其提取到了“最近的公共父级”目录，而不是错误地塞进全局 `src/`？
-7. 涉及依赖数组/响应式追踪的复杂副作用是否添加了“Why over What”级别的高质量注释？
+3. 普通业务模块是否只保留了唯一实现入口 `index.vue` / `index.tsx` / `index.jsx`，且没有额外创建 `src/` 或模块根 `index.ts` / `index.js`？
+4. 除简单组件文件、单个业务模块根目录和 `styles/` 目录外，其他已创建的代码目录是否都有自己的唯一 `index.ts` 或 `index.js` 聚合入口？
+5. 已创建的 `styles/` 目录是否只有一个 `index.css` / `index.scss` / `index.less` 样式入口？
+6. 复杂组件包、前端工具库和 UI 组件库是否都有包级公共入口，且真实实现放在 `src/`，并阻止消费者穿透 `src/`？
+7. 我是否优先使用了路径别名（`@/`）？包级 import 是否止步于允许暴露公共 API 的包根目录，没有发生穿透？
+8. 我是否严格遵守了“三次原则”？在没有 3 处以上调用的情况下，我是否克制住了抽离公共代码的冲动？
+9. 触发抽离时，我是否精确地将其提取到了“最近的公共父级”目录，而不是错误地塞进全局 `src/`？
+10. 涉及依赖数组/响应式追踪的复杂副作用是否添加了“Why over What”级别的高质量注释？
