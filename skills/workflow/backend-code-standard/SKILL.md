@@ -18,12 +18,13 @@ description: 用于编写、修改或评审 Node.js 后端代码，适用于 Fas
 - 评审后端目录结构、数据契约、运行时校验、统一导出、import 路径和依赖流向。
 - 判断工具函数、中间件、类型和数据访问逻辑应该留在当前领域，还是满足三次原则后逐级上浮。
 
-## 必读规范
+## 规则源与辅助材料
 
-后端目录创建、业务分层和编码约束不可拆开理解，必须按项目框架读取对应规范。
+本文件是 Node.js 后端编码规范的唯一规则源。需要辅助材料时按需读取：
 
-- Fastify / Express / Koa / Nitro：读取 [vertical-slice-backend-standard.md](references/vertical-slice-backend-standard.md)。
-- NestJS：读取 [nest-backend-standard.md](references/nest-backend-standard.md)。
+- Fastify / Express / Koa / Nitro 示例：[node-backend-structure.md](examples/node-backend-structure.md)
+- NestJS 示例：[nestjs-module-structure.md](examples/nestjs-module-structure.md)
+- 校验脚本用法与检查清单：[checklist.md](validation/checklist.md)
 
 ## 验证辅助
 
@@ -36,10 +37,12 @@ description: 用于编写、修改或评审 Node.js 后端代码，适用于 Fas
 - NestJS DI 隔离：跨模块协作必须通过 `imports`、`exports` 和构造函数注入完成，禁止 `new Service()` 或直接导入私有 Service。
 - 数据契约拆分：`dtos/` 负责 Request/Response 和运行时校验，`types/` 负责内部领域模型与数据库模型。
 - NestJS DTO：Controller 请求入参必须使用 `class` DTO 和 `class-validator`，禁止使用 `any` 或松散 `interface` 接收请求数据。
+- 运行时校验：Fastify/Nitro/H3 优先使用框架支持的 schema 或 validator；Express/Koa 必须在路由边界显式校验输入；NestJS 必须使用 class DTO、`class-validator` 和 ValidationPipe。
+- 协议错误边界：HTTP 层负责把领域错误映射为框架错误响应；Service 保留领域语义，禁止吞异常、伪造成功或在核心业务里硬绑定 HTTP 状态。
 - 公共入口：业务模块或需要稳定公共 API 的功能集目录必须提供 `index.ts` 作为对外入口；模块私有子目录不强制创建 barrel。
 - 路径别名优先：跨模块引用或多层向上查找时，必须优先使用项目配置的路径别名。
 - Deep Imports 零容忍：跨领域只能依赖目标模块入口，不得穿透引用内部 Repository 或底层数据结构。
 - 逐级上浮：满足三次原则后只能提取到最近公共父级，只有跨顶级业务域复用才允许进入 `src/common/` 或 `src/utils/`。
 - 注释解释业务契约：Service 公共方法和外部 DTO 必须写清参数、返回值、业务异常、业务规则和边界条件。
-- 标准异常：NestJS Service 层优先抛出领域错误或应用错误，由 Controller、Filter 或全局异常过滤器映射 HTTP 响应；禁止吞掉标准异常或把失败改写成成功路径。
+- 生产边界：必须显式处理安全头、CORS、速率限制、请求体大小、超时、日志脱敏和异步错误传播；优先使用框架推荐插件或中间件。
 - 数据一致性闭环：当修改涉及底层数据模型或领域实体时，必须判断是否影响持久化结构；涉及表结构、索引、约束或枚举值变化时必须补充并执行数据库迁移脚本（Migrations）。

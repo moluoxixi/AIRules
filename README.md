@@ -41,7 +41,7 @@ AIRules is a **composable AI skill distribution system**. The core idea is simpl
 
 ## What You Get
 
-- 🔥 **24+ curated** frontend/backend/general AI Skills out of the box
+- 🔥 **25+ curated** frontend/backend/general AI Skills out of the box
 - 🧱 **Reserved first-party expansion slots** so you can add your own top-level skills later without changing the distribution model
 - 🌐 **Multi-agent sync**: configure once, works across Claude / Cursor / Codex / Qoder / Tare / OpenCode / CC-Switch
 - 🔄 **Continuous updates**: one command pulls latest upstream skills
@@ -137,8 +137,9 @@ Moluoxixi AIRules supports a growing ecosystem of AI agents through automated pr
 | **frontend-testing-standard** | Frontend testing standards for type checks, unit/component/page integration, interaction, browser, responsive, accessibility, and coverage verification |
 | **backend-code-standard** | Node.js backend code standards for Fastify, Express, Koa, Nitro, and NestJS with vertical slice domains, strict DI, barrels, runtime DTO validation, and service-layer contracts |
 | **java-code-standard** | Java and Spring Boot backend code standards for Java 17+ baseline, Java 21/25 LTS, Maven, and Gradle with domain packages, constructor injection, Bean Validation, transaction boundaries, migrations, and error mapping |
+| **skill-validation-standard** | General skill validation standard for generated or modified Claude/Codex skills, covering SKILL.md metadata, trigger descriptions, resources, links, scripts, and content quality |
 
-> Reserved top-level first-party skill slots are intentionally kept empty in the current config so new custom skills can be added later without reshaping the projection model.
+> Workflow standards are projected as a namespace. Top-level first-party skills are projected explicitly, currently including `skill-validation-standard`.
 
 ### Third-Party Skills (Curated)
 
@@ -155,6 +156,7 @@ Moluoxixi AIRules supports a growing ecosystem of AI agents through automated pr
 ```
 ~/.moluoxixi/
 ├── skills/                  # First-party skills (your core assets)
+│   ├── skill-validation-standard/
 │   └── workflow/
 │       ├── software-development-workflow/
 │       ├── frontend-code-standard/
@@ -169,7 +171,7 @@ Moluoxixi AIRules supports a growing ecosystem of AI agents through automated pr
 └── tests/                   # Automated verification tests
 ```
 
-> The top-level first-party `skills/` projection list is intentionally empty for now and reserved for future custom skill additions.
+> Top-level first-party skills are projected explicitly, while workflow standards stay grouped under the `workflow/` namespace.
 
 ## Why Not Just Another AI Rules Repo?
 

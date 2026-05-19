@@ -17,9 +17,12 @@ description: 用于编写、修改或评审 Java 后端代码，适用于 Java 1
 - 评审 Java package 结构、API 契约、Bean Validation、事务边界、异常映射、依赖注入、配置绑定、数据库迁移和依赖流向。
 - 判断工具类、转换器、领域类型、配置对象和基础设施代码应该留在当前领域，还是满足三次原则后逐级上浮。
 
-## 必读规范
+## 规则源与辅助材料
 
-Java 目录创建、业务分层和编码约束不可拆开理解，必须完整读取 [java-backend-standard.md](references/java-backend-standard.md)。
+本文件是 Java 后端编码规范的唯一规则源。需要辅助材料时按需读取：
+
+- 领域包、DTO、事务和导入示例：[spring-boot-structure.md](examples/spring-boot-structure.md)
+- 校验脚本用法与检查清单：[checklist.md](validation/checklist.md)
 
 ## 验证辅助
 
@@ -29,11 +32,13 @@ Java 目录创建、业务分层和编码约束不可拆开理解，必须完整
 
 - 领域模块化：代码必须按业务领域组织 package，不得按 Controller、Service、Repository 做全局扁平分层。
 - API 与领域隔离：Request、Response、Entity 和领域模型必须分离；禁止把 JPA Entity 直接作为外部 API 契约。
+- 类型实践：Java 17+ 可优先用 `record` 表达不可变 DTO 和轻量值对象；`Optional` 只用于返回值，禁止用于字段、DTO 属性或方法参数。
 - 构造函数注入：Spring Bean 必须使用构造函数注入；禁止字段注入和无依据的 `@Autowired` 散落。
 - 校验前置：外部输入必须使用 `jakarta.validation` 或等价机制显式校验，禁止把宽松对象传入业务层后再靠空判断兜底。
 - 事务边界清晰：事务必须放在应用用例或 Service 编排边界，避免 Controller、Repository 或私有 helper 上随意扩散。
 - 错误语义透明：业务失败必须以领域异常或应用异常暴露，由 `ControllerAdvice` 或统一异常处理映射 HTTP 响应。
 - 持久化迁移闭环：涉及表结构、索引、约束、枚举值或数据修复时，必须补充 Flyway 或 Liquibase 迁移。
 - 配置类型安全：外部配置必须通过 `@ConfigurationProperties` 或等价类型化配置承载，禁止在业务代码中散落读取字符串配置。
+- 外部依赖边界：外部 Client、消息队列、缓存和任务调度必须有明确超时、重试和错误传播策略；禁止静默 fallback 或伪造成功响应。
 - 逐级上浮：满足三次原则后只能提取到最近公共父级；只有跨顶级业务域复用才允许进入全局 shared/common package。
 - 注释解释契约：公共 Service、复杂事务、领域异常和外部 DTO 必须写清业务契约、边界条件和失败语义，禁止翻译代码。

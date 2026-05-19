@@ -177,6 +177,7 @@ export const vendors: VendorsConfig = [
         kind: 'skills',
         sourceBaseDir: 'skills',
         skills: [
+          'skill-validation-standard',
         ],
       },
     ],

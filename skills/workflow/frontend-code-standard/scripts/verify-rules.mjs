@@ -102,14 +102,31 @@ function nearestCommonAncestor(paths) {
   return commonParts.join(path.sep)
 }
 
-function assertTargetInsideAncestor(target, ancestor) {
+function assertTargetInsideAncestor(target, ancestor, uses) {
   const resolvedTarget = path.resolve(process.cwd(), target)
   const relative = path.relative(ancestor, resolvedTarget)
 
-  if (relative === '' || (!relative.startsWith('..') && !path.isAbsolute(relative)))
+  if (relative.startsWith('..') || path.isAbsolute(relative))
+    throw new Error(`抽离目标必须位于最近公共父级目录下：${ancestor}`)
+
+  if (relative === '')
     return
 
-  throw new Error(`抽离目标必须位于最近公共父级目录下：${ancestor}`)
+  const directSegments = relative.split(path.sep).filter(Boolean)
+
+  if (uses.some((usePath) => {
+    const useRelative = path.relative(ancestor, normalizeDirectory(usePath))
+    const [firstSegment] = useRelative.split(path.sep).filter(Boolean)
+
+    return firstSegment === directSegments[0]
+  })) {
+    throw new Error(`抽离目标必须位于最近公共父级的直接共享目录：${ancestor}`)
+  }
+
+  if (directSegments.length === 1)
+    return
+
+  throw new Error(`抽离目标必须位于最近公共父级的直接共享目录：${ancestor}`)
 }
 
 function assertCodeDirectoryEntries(directory, root, options = {}) {
@@ -258,13 +275,18 @@ function assertSimpleComponent(root) {
 
 function verifySelf() {
   const skill = readSkillFile('SKILL.md')
-  const examples = readSkillFile('examples', 'directory-structure.md')
+  const businessModuleExample = readSkillFile('examples', 'business-module.md')
+  const componentExample = readSkillFile('examples', 'component.md')
+  const utilityExample = readSkillFile('examples', 'utility.md')
   const checklist = readSkillFile('validation', 'checklist.md')
 
   assertContains(skill, /scripts\/verify-rules\.mjs/, 'SKILL.md 必须声明本 skill 自带的验证脚本')
   assertContains(skill, /JavaScript/, '前端规范说明必须声明 JavaScript 支持范围')
   assertContains(skill, /工具库和 UI 组件库/, '前端规范入口必须覆盖前端工具库和 UI 组件库')
-  assertContains(skill, /examples\/directory-structure\.md/, 'SKILL.md 必须声明示例目录')
+  assertContains(skill, /examples\/business-module\.md/, 'SKILL.md 必须声明业务模块示例')
+  assertContains(skill, /examples\/component\.md/, 'SKILL.md 必须声明组件示例')
+  assertContains(skill, /examples\/utility\.md/, 'SKILL.md 必须声明工具示例')
+  assertContains(skill, /examples\/types-and-imports\.md/, 'SKILL.md 必须声明类型与导入示例')
   assertContains(skill, /validation\/checklist\.md/, 'SKILL.md 必须声明校验清单')
   assertContains(skill, /入口模型：前端目录统一遵循“单一入口，按需拆分”/, 'SKILL.md 必须声明入口模型')
   assertContains(skill, /满足三次原则后只能提取到最近公共父级/, 'SKILL.md 必须保留三次原则和最近公共父级约束')
@@ -273,9 +295,20 @@ function verifySelf() {
   assertContains(skill, /普通代码目录用 `index\.ts` \/ `\.js`/, 'SKILL.md 必须声明普通代码目录入口')
   assertContains(skill, /`styles\/` 用 `index\.css` \/ `\.scss` \/ `\.less`/, 'SKILL.md 必须声明 styles 样式入口')
   assertContains(skill, /类型边界：复杂组件的 Props、Emits、Expose、Ref/, 'SKILL.md 必须声明类型边界')
-  assertContains(examples, /本文件只提供示例，不定义新规则/, '示例文件不得定义新规则')
-  assertContains(examples, /Sparkline\.jsx/, '简单组件示例必须覆盖 JSX 文件形态')
-  assertContains(examples, /AuditDialog\/\n        README\.md\n        index\.ts\n        src\/\n          index\.vue/, '复杂子组件示例必须使用 index.ts + src/ 结构')
+  assertContains(businessModuleExample, /本文件只提供示例，不定义新规则/, '业务模块示例文件不得定义新规则')
+  assertContains(componentExample, /本文件只提供示例，不定义新规则/, '组件示例文件不得定义新规则')
+  assertContains(utilityExample, /本文件只提供示例，不定义新规则/, '工具示例文件不得定义新规则')
+  assertContains(componentExample, /Sparkline\.jsx/, '简单组件示例必须覆盖 JSX 文件形态')
+  assertContains(componentExample, /HeaderCell\.vue/, '复杂组件示例必须覆盖内部子组件')
+  assertContains(componentExample, /normalize-column\.ts/, '复杂组件示例必须覆盖内部工具目录')
+  assertContains(componentExample, /DataTableReact\/\n {2}README\.md\n {2}index\.ts\n {2}src\/\n {4}index\.tsx\n {4}hooks\//, '组件示例必须覆盖 React 复杂组件形态')
+  assertContains(utilityExample, /## 简单工具/, '工具示例必须区分简单工具')
+  assertContains(utilityExample, /## 复杂工具/, '工具示例必须区分复杂工具')
+  assertContains(utilityExample, /ClipboardToolkit\/\n {2}README\.md\n {2}index\.ts\n {2}src\/\n {4}index\.ts\n {4}clipboard\/\n {6}index\.ts/, '复杂工具示例必须使用 index.ts + src/ 结构')
+  assertContains(utilityExample, /utils\/\n {8}index\.ts\n {8}normalize-text\.ts\n {8}copy-text\.ts/, '复杂工具示例必须把内部工具放入 utils/ 目录')
+  assertContains(utilityExample, /clipboard-api\.ts/, '复杂工具示例必须覆盖 API 子目录')
+  assertContains(utilityExample, /clipboard-options\.ts/, '复杂工具示例必须覆盖 constants 子目录')
+  assertContains(businessModuleExample, /AuditDialog\/\n {8}README\.md\n {8}index\.ts\n {8}src\/\n {10}index\.vue/, '复杂子组件示例必须使用 index.ts + src/ 结构')
   assertContains(checklist, /本文件只提供校验脚本用法和检查清单，不定义新规则/, '校验文件不得定义新规则')
   assertContains(checklist, /node skills\/workflow\/frontend-code-standard\/scripts\/verify-rules\.mjs module --root/, '校验文件必须提供脚本用法')
   assertContains(checklist, /入口是否唯一/, '校验文件必须提供检查清单')
@@ -288,7 +321,7 @@ function verifyHoist(args) {
   const uses = getListAfter(args, '--uses')
   const ancestor = nearestCommonAncestor(uses)
 
-  assertTargetInsideAncestor(target, ancestor)
+  assertTargetInsideAncestor(target, ancestor, uses)
 
   printPass('frontend hoist target stays under nearest common ancestor', {
     nearestCommonAncestor: ancestor,

@@ -17,13 +17,15 @@ description: 用于测试、验证或评审前端变更，适用于 UI 行为、
 - 需要判断验证范围，而不是默认跑所有测试。
 - 需要报告哪些验证已运行、哪些缺失、哪些不相关。
 
-## 读取参考
+## 规则源与辅助材料
 
-- 测试维度：读 [test-dimensions.md](references/test-dimensions.md)。
-- 命令发现：读 [command-discovery.md](references/command-discovery.md)。
-- 浏览器、交互、响应式、视觉和 canvas 检查：读 [browser-verification.md](references/browser-verification.md)。
-- 可访问性检查：读 [accessibility.md](references/accessibility.md)。
-- 覆盖率和风险：读 [coverage-and-risk.md](references/coverage-and-risk.md)。
+本文件是前端测试规范的唯一规则源。需要辅助材料时按需读取：
+
+- 测试维度：[test-dimensions.md](validation/test-dimensions.md)
+- 命令发现：[command-discovery.md](validation/command-discovery.md)
+- 浏览器、交互、响应式、视觉和 canvas 检查：[browser-verification.md](validation/browser-verification.md)
+- 可访问性检查：[accessibility.md](validation/accessibility.md)
+- 覆盖率和风险：[coverage-and-risk.md](validation/coverage-and-risk.md)
 
 ## 核心判断
 

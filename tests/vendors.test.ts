@@ -311,7 +311,7 @@ it('walkVendorTree - 单个 vendor 支持 namespace 与 skills projections 混�
         {
           kind: 'skills',
           sourceBaseDir: 'skills',
-          skills: [],
+          skills: ['skill-validation-standard'],
         },
       ],
     },
@@ -319,7 +319,7 @@ it('walkVendorTree - 单个 vendor 支持 namespace 与 skills projections 混�
 
   walkVendorTree(mockConfig, [], vendors)
 
-  assert.strictEqual(vendors.moluoxixi.links.length, 1)
+  assert.strictEqual(vendors.moluoxixi.links.length, 2)
   assert.deepStrictEqual(
     vendors.moluoxixi.links.map((link: any) => ({ kind: link.kind, source: link.source, target: link.target })),
     [
@@ -327,6 +327,11 @@ it('walkVendorTree - 单个 vendor 支持 namespace 与 skills projections 混�
         kind: 'namespace-dir',
         source: 'skills/workflow',
         target: 'vendor/skills/workflow',
+      },
+      {
+        kind: 'skill',
+        source: 'skills/skill-validation-standard',
+        target: 'vendor/skills/skill-validation-standard',
       },
     ],
   )
@@ -428,5 +433,9 @@ it('vendors 配置 - 使用 OpenAI Playwright 并移除过时技能', () => {
   assert.ok(
     vendors.moluoxixi.links.some((link: any) => link.target === 'vendor/skills/workflow'),
     'workflow 类技能应作为 namespace 统一安装',
+  )
+  assert.ok(
+    vendors.moluoxixi.links.some((link: any) => link.target === 'vendor/skills/skill-validation-standard'),
+    'skill-validation-standard 应作为通用第一方 skill 安装',
   )
 })

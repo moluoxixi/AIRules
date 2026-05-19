@@ -41,7 +41,7 @@ AIRules 是一个**可组合的 AI 技能分发系统**。它的核心思想很�
 
 ## 你能得到什么？
 
-- 🔥 **开箱即得** 24+ 精选前端/后端/通用 AI Skills
+- 🔥 **开箱即得** 25+ 精选前端/后端/通用 AI Skills
 - 🧱 **预留第一方扩展位**：保留顶层自定义 skills 投影入口，后续补充时无需调整整体分发模型
 - 🌐 **多代理同步**：一次配置，Claude / Cursor / Codex / Qoder / Tare / OpenCode / CC-Switch 全部生效
 - 🔄 **持续更新**：上游 skills 更新后，一条命令同步最新版本
@@ -137,8 +137,9 @@ Moluoxixi AIRules 通过自动化投影，支持不断增长的 AI 代理生态�
 | **frontend-testing-standard** | 前端测试标准：类型检查、单元/组件/页面集成、交互、浏览器、响应式、可访问性与覆盖率 |
 | **backend-code-standard** | Node.js 后端编码标准：适用于 Fastify、Express、Koa、Nitro、NestJS，覆盖垂直切片领域、严格 DI、Barrel、运行时 DTO 校验与 Service 契约 |
 | **java-code-standard** | Java 与 Spring Boot 后端编码标准：适用于 Java 17+ 基线、Java 21/25 LTS、Maven 和 Gradle，覆盖领域包、构造函数注入、Bean Validation、事务边界、迁移与错误映射 |
+| **skill-validation-standard** | 通用 Skill 产物校验标准：校验生成或修改后的 Claude/Codex skill 的 SKILL.md 元数据、触发描述、资源组织、链接、脚本和内容质量 |
 
-> 当前配置刻意保留了顶层第一方 skills 的空投影入口，后续新增自定义 skill 时无需调整整体投影模型。
+> workflow 标准以命名空间整体投影；顶层第一方 skills 通过精确列表投影，当前包含 `skill-validation-standard`。
 
 ### 第三方 Skills（精选）
 
@@ -155,6 +156,7 @@ Moluoxixi AIRules 通过自动化投影，支持不断增长的 AI 代理生态�
 ```
 ~/.moluoxixi/
 ├── skills/                  # 第一方 skills（你的核心资产）
+│   ├── skill-validation-standard/
 │   └── workflow/
 │       ├── software-development-workflow/
 │       ├── frontend-code-standard/
@@ -169,7 +171,7 @@ Moluoxixi AIRules 通过自动化投影，支持不断增长的 AI 代理生态�
 └── tests/                   # 自动化验证测试
 ```
 
-> 当前顶层第一方 `skills/` 投影列表刻意保持为空，用作后续自定义 skill 扩展预留位。
+> 顶层第一方 skills 通过精确列表投影，workflow 标准继续归入 `workflow/` 命名空间。
 
 ## 为什么不是另一个 AI Rules 集合？
 

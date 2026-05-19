@@ -11,6 +11,8 @@ description: 用于软件开发任务的可复用流程规范。适用于功能�
 
 它不替代 `AGENTS.md`、用户指令或 CI 规则：硬约束由这些上层规则管理，本 Skill 只提供可迁移的工作标准。
 
+本文件是软件开发流程规范的唯一规则源；示例放 `examples/`，验证与拆分清单放 `validation/`。
+
 ## 适用场景
 
 - 功能开发、Bug 修复、重构、接口调整、测试补充、交付前检查。
@@ -24,9 +26,9 @@ description: 用于软件开发任务的可复用流程规范。适用于功能�
 3. **选择级别**：按场景和风险选择轻量、相关或完整流程。
 4. **设计边界**：影响文件、数据契约、错误语义、兼容性和副作用。
 5. **实施变更**：优先沿用项目既有模式，保持改动范围清晰。
-6. **执行验证**：参考 [quality-gate.md](references/quality-gate.md) 选择匹配的验证范围。
+6. **执行验证**：参考 [quality-gate.md](validation/quality-gate.md) 选择匹配的验证范围。
 7. **复核差异**：检查正确性、测试缺口、无关 churn 和失败掩盖。
-8. **交付报告**：参考 [delivery-report.md](references/delivery-report.md) 汇报结果和风险。
+8. **交付报告**：参考 [delivery-report.md](examples/delivery-report.md) 汇报结果和风险。
 
 ## 场景分级
 
@@ -48,7 +50,7 @@ description: 用于软件开发任务的可复用流程规范。适用于功能�
 - Java 后端实现标准：`java-code-standard`，覆盖 Java 17+ 基线、Java 21/25 LTS、Spring Boot、Maven 和 Gradle。
 - 后端测试标准尚未提供；收到对应规范前，不引用旧后端测试 skill，也不自行补写相关规则。
 - Vue、Vitest、Playwright 等技术细节：按项目实际栈加载对应技术 Skill。
-- 拆分和并行判断：参考 [task-splitting.md](references/task-splitting.md)。
+- 拆分和并行判断：参考 [task-splitting.md](validation/task-splitting.md)。
 
 ## 输出语言与注释风格
 
@@ -60,10 +62,10 @@ description: 用于软件开发任务的可复用流程规范。适用于功能�
 
 推荐保留真实失败原因。捕获错误适合用于补充上下文、清理资源或转换为等价失败结果，不适合把失败改写成成功路径。
 
-交付报告中的验证状态建议使用 `PASS`、`FAIL`、`MISSING`、`NOT RUN` 和 `N/A`，含义见 [quality-gate.md](references/quality-gate.md)。
+交付报告中的验证状态建议使用 `PASS`、`FAIL`、`MISSING`、`NOT RUN` 和 `N/A`，含义见 [quality-gate.md](validation/quality-gate.md)。
 
 ## 相关文件
 
-- [task-splitting.md](references/task-splitting.md)：任务拆分、并行和保持单任务的判断。
-- [quality-gate.md](references/quality-gate.md)：场景化验证矩阵和状态定义。
-- [delivery-report.md](references/delivery-report.md)：交付报告建议格式。
+- [task-splitting.md](validation/task-splitting.md)：任务拆分、并行和保持单任务的判断。
+- [quality-gate.md](validation/quality-gate.md)：场景化验证矩阵和状态定义。
+- [delivery-report.md](examples/delivery-report.md)：交付报告建议格式。

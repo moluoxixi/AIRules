@@ -77,32 +77,54 @@ function nearestCommonAncestor(paths) {
   return commonParts.join(path.sep)
 }
 
-function assertTargetInsideAncestor(target, ancestor) {
+function assertTargetInsideAncestor(target, ancestor, uses) {
   const resolvedTarget = path.resolve(process.cwd(), target)
   const relative = path.relative(ancestor, resolvedTarget)
 
-  if (relative === '' || (!relative.startsWith('..') && !path.isAbsolute(relative)))
+  if (relative.startsWith('..') || path.isAbsolute(relative))
+    throw new Error(`抽离目标必须位于最近公共父级目录下：${ancestor}`)
+
+  if (relative === '')
     return
 
-  throw new Error(`抽离目标必须位于最近公共父级目录下：${ancestor}`)
+  const directSegments = relative.split(path.sep).filter(Boolean)
+
+  if (uses.some((usePath) => {
+    const useRelative = path.relative(ancestor, normalizeDirectory(usePath))
+    const [firstSegment] = useRelative.split(path.sep).filter(Boolean)
+
+    return firstSegment === directSegments[0]
+  })) {
+    throw new Error(`抽离目标必须位于最近公共父级的直接共享目录：${ancestor}`)
+  }
+
+  if (directSegments.length === 1)
+    return
+
+  throw new Error(`抽离目标必须位于最近公共父级的直接共享目录：${ancestor}`)
 }
 
 function verifySelf() {
   const skill = readSkillFile('SKILL.md')
-  const verticalSlice = readSkillFile('references', 'vertical-slice-backend-standard.md')
-  const nest = readSkillFile('references', 'nest-backend-standard.md')
+  const nodeExamples = readSkillFile('examples', 'node-backend-structure.md')
+  const nestExamples = readSkillFile('examples', 'nestjs-module-structure.md')
+  const checklist = readSkillFile('validation', 'checklist.md')
 
   assertContains(skill, /scripts\/verify-rules\.mjs/, 'SKILL.md 必须声明本 skill 自带的验证脚本')
-
-  for (const [name, standard] of [
-    ['vertical-slice-backend-standard.md', verticalSlice],
-    ['nest-backend-standard.md', nest],
-  ]) {
-    assertContains(standard, /至少 3 个独立的地方/, `${name} 必须保留三次原则`)
-    assertContains(standard, /最近公共父级目录/, `${name} 必须保留最近公共父级约束`)
-    assertContains(standard, /全局门槛/, `${name} 必须保留全局上浮门槛`)
-    assertContains(standard, /禁止同级跨域/, `${name} 必须保留跨域私有访问限制`)
-  }
+  assertContains(skill, /examples\/node-backend-structure\.md/, 'SKILL.md 必须声明 Node 示例目录')
+  assertContains(skill, /examples\/nestjs-module-structure\.md/, 'SKILL.md 必须声明 NestJS 示例目录')
+  assertContains(skill, /validation\/checklist\.md/, 'SKILL.md 必须声明校验清单')
+  assertContains(skill, /满足三次原则后只能提取到最近公共父级/, 'SKILL.md 必须保留三次原则和最近公共父级约束')
+  assertContains(skill, /运行时校验/, 'SKILL.md 必须声明后端运行时校验')
+  assertContains(skill, /协议错误边界/, 'SKILL.md 必须声明协议错误边界')
+  assertContains(skill, /生产边界/, 'SKILL.md 必须声明生产边界')
+  assertContains(skill, /NestJS 必须使用 class DTO、`class-validator` 和 ValidationPipe/, 'SKILL.md 必须声明 NestJS DTO 校验契约')
+  assertContains(nodeExamples, /本文件只提供 Fastify、Express、Koa、Nitro\/H3 示例，不定义新规则/, 'Node 示例文件不得定义新规则')
+  assertContains(nodeExamples, /modules\/\n {2}orders\/\n {4}controller\.ts/, 'Node 示例必须覆盖垂直切片结构')
+  assertContains(nestExamples, /本文件只提供示例，不定义新规则/, 'NestJS 示例文件不得定义新规则')
+  assertContains(nestExamples, /src\/modules\/orders\/\n {2}orders\.controller\.ts/, 'NestJS 示例必须覆盖模块结构')
+  assertContains(checklist, /本文件只提供校验脚本用法和检查清单，不定义新规则/, '校验文件不得定义新规则')
+  assertContains(checklist, /node skills\/workflow\/backend-code-standard\/scripts\/verify-rules\.mjs hoist --target/, '校验文件必须提供脚本用法')
 
   printPass('backend-code-standard self rules are valid')
 }
@@ -112,7 +134,7 @@ function verifyHoist(args) {
   const uses = getListAfter(args, '--uses')
   const ancestor = nearestCommonAncestor(uses)
 
-  assertTargetInsideAncestor(target, ancestor)
+  assertTargetInsideAncestor(target, ancestor, uses)
 
   printPass('backend hoist target stays under nearest common ancestor', {
     nearestCommonAncestor: ancestor,

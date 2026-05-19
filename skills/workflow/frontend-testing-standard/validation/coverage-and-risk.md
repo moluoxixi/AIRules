@@ -1,5 +1,7 @@
 # 覆盖率与风险
 
+本文件只提供校验脚本用法和检查清单，不定义新规则；规则以 `SKILL.md` 为准。
+
 ## 基线
 
 优先使用项目覆盖率阈值。若项目没有定义，可参考 80% statements、branches、functions 和 lines。

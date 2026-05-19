@@ -21,7 +21,10 @@ description: 用于编写、修改或评审 Vue 3 或 React TypeScript/JavaScrip
 
 本文件是前端编码规范的唯一规则源。需要辅助材料时按需读取：
 
-- 目录、类型和导入示例：[directory-structure.md](examples/directory-structure.md)
+- 业务模块示例：[business-module.md](examples/business-module.md)
+- 组件示例：[component.md](examples/component.md)
+- 工具示例：[utility.md](examples/utility.md)
+- 类型出口与导入示例：[types-and-imports.md](examples/types-and-imports.md)
 - 校验脚本用法与检查清单：[checklist.md](validation/checklist.md)
 
 ## 验证辅助

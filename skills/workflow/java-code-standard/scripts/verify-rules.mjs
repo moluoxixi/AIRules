@@ -77,29 +77,53 @@ function nearestCommonAncestor(paths) {
   return commonParts.join(path.sep)
 }
 
-function assertTargetInsideAncestor(target, ancestor) {
+function assertTargetInsideAncestor(target, ancestor, uses) {
   const resolvedTarget = path.resolve(process.cwd(), target)
   const relative = path.relative(ancestor, resolvedTarget)
 
-  if (relative === '' || (!relative.startsWith('..') && !path.isAbsolute(relative)))
+  if (relative.startsWith('..') || path.isAbsolute(relative))
+    throw new Error(`抽离目标必须位于最近公共父级目录下：${ancestor}`)
+
+  if (relative === '')
     return
 
-  throw new Error(`抽离目标必须位于最近公共父级目录下：${ancestor}`)
+  const directSegments = relative.split(path.sep).filter(Boolean)
+
+  if (uses.some((usePath) => {
+    const useRelative = path.relative(ancestor, normalizeDirectory(usePath))
+    const [firstSegment] = useRelative.split(path.sep).filter(Boolean)
+
+    return firstSegment === directSegments[0]
+  })) {
+    throw new Error(`抽离目标必须位于最近公共父级的直接共享 package：${ancestor}`)
+  }
+
+  if (directSegments.length === 1)
+    return
+
+  throw new Error(`抽离目标必须位于最近公共父级的直接共享 package：${ancestor}`)
 }
 
 function verifySelf() {
   const skill = readSkillFile('SKILL.md')
-  const standard = readSkillFile('references', 'java-backend-standard.md')
+  const examples = readSkillFile('examples', 'spring-boot-structure.md')
+  const checklist = readSkillFile('validation', 'checklist.md')
 
   assertContains(skill, /scripts\/verify-rules\.mjs/, 'SKILL.md 必须声明本 skill 自带的验证脚本')
   assertContains(skill, /不得用仓库根级共享脚本替代/, 'SKILL.md 必须声明验证脚本保持 skill-local')
-  assertContains(standard, /Java 17\+ 基线、Java 21\/25 LTS 或 Spring Boot/, 'Java 规范必须声明 Java 与 Spring Boot 适用范围')
-  assertContains(standard, /构造函数注入/, 'Java 规范必须保留构造函数注入约束')
-  assertContains(standard, /jakarta\.validation/, 'Java 规范必须保留 Bean Validation 契约')
-  assertContains(standard, /禁止把 JPA Entity 直接作为 API Request 或 Response/, 'Java 规范必须隔离 Entity 与 API DTO')
-  assertContains(standard, /Flyway 或 Liquibase/, 'Java 规范必须保留迁移要求')
-  assertContains(standard, /三次原则/, 'Java 规范必须保留三次原则')
-  assertContains(standard, /最近公共父级/, 'Java 规范必须保留最近公共父级约束')
+  assertContains(skill, /examples\/spring-boot-structure\.md/, 'SKILL.md 必须声明示例目录')
+  assertContains(skill, /validation\/checklist\.md/, 'SKILL.md 必须声明校验清单')
+  assertContains(skill, /Java 17\+ 基线、Java 21\/25 LTS、Spring Boot/, 'Java 规范必须声明 Java 与 Spring Boot 适用范围')
+  assertContains(skill, /构造函数注入/, 'Java 规范必须保留构造函数注入约束')
+  assertContains(skill, /jakarta\.validation/, 'Java 规范必须保留 Bean Validation 契约')
+  assertContains(skill, /禁止把 JPA Entity 直接作为外部 API 契约/, 'Java 规范必须隔离 Entity 与 API DTO')
+  assertContains(skill, /Flyway 或 Liquibase/, 'Java 规范必须保留迁移要求')
+  assertContains(skill, /三次原则/, 'Java 规范必须保留三次原则')
+  assertContains(skill, /最近公共父级/, 'Java 规范必须保留最近公共父级约束')
+  assertContains(examples, /本文件只提供示例，不定义新规则/, '示例文件不得定义新规则')
+  assertContains(examples, /src\/main\/java\/com\/example\/order\//, 'Java 示例必须覆盖领域包结构')
+  assertContains(checklist, /本文件只提供校验脚本用法和检查清单，不定义新规则/, '校验文件不得定义新规则')
+  assertContains(checklist, /node skills\/workflow\/java-code-standard\/scripts\/verify-rules\.mjs hoist --target/, '校验文件必须提供脚本用法')
 
   printPass('java-code-standard self rules are valid')
 }
@@ -109,7 +133,7 @@ function verifyHoist(args) {
   const uses = getListAfter(args, '--uses')
   const ancestor = nearestCommonAncestor(uses)
 
-  assertTargetInsideAncestor(target, ancestor)
+  assertTargetInsideAncestor(target, ancestor, uses)
 
   printPass('java hoist target stays under nearest common ancestor', {
     nearestCommonAncestor: ancestor,
