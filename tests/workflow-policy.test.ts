@@ -579,44 +579,40 @@ it('前端编码规范 - README 描述同步 Vue 与 React 范围', () => {
   assert.match(readmeZh, /最近公共父级上浮/)
 })
 
-it('后端编码规范 - 入口引用 Node 与 NestJS 实现标准', () => {
-  const skill = readProjectFile('skills', 'workflow', 'backend-code-standard', 'SKILL.md')
+it('node 编码规范 - 入口引用 Node 后端实现标准', () => {
+  const skill = readProjectFile('skills', 'workflow', 'node-code-standard', 'SKILL.md')
   const workflowSkill = readProjectFile('skills', 'workflow', 'software-development-workflow', 'SKILL.md')
 
   assert.match(skill, /Node\.js/)
-  assert.match(skill, /Fastify、Express、Koa、Nitro\/H3 和 NestJS/)
-  assert.match(skill, /用于新写、重构或评审 Node\.js 后端代码/)
-  assert.match(skill, /把代码实现对/)
-  assert.match(skill, /而不是“把目录摆像某种模板”/)
+  assert.match(skill, /TypeScript 与 JavaScript/)
+  assert.match(skill, /用于新写或重构 Node\.js 后端代码/)
+  assert.match(skill, /不面向兼容式修补/)
   assert.match(skill, /examples\/node-backend-structure\.md/)
-  assert.match(skill, /examples\/nestjs-module-structure\.md/)
+  assert.match(skill, /examples\/review-output\.md/)
   assert.match(skill, /validation\/checklist\.md/)
   assert.match(skill, /契约优先/)
   assert.match(skill, /边界清晰/)
   assert.match(skill, /失败显性/)
   assert.match(skill, /共享逐级上浮/)
-  assert.match(skill, /输入、输出与配置契约/)
-  assert.match(skill, /业务编排、事务与一致性/)
-  assert.match(skill, /持久化与外部依赖/)
-  assert.match(skill, /目录与导入/)
-  assert.match(skill, /NestJS 专项/)
-  assert.match(skill, /class DTO、`class-validator` 和 `ValidationPipe`/)
-  assert.match(skill, /目标分类：`entrypoint`、`application-module`、`domain-module`、`infrastructure-adapter`、`shared-support` 或 `mixed-module`/)
+  assert.match(skill, /Zod、Valibot、TypeBox、AJV/)
+  assert.match(skill, /Prisma Migrate、Drizzle Kit、Knex migration、TypeORM migration 或 Sequelize migration/)
+  assert.match(skill, /目标分类/)
+  assert.match(skill, /`entrypoint`/)
+  assert.match(skill, /`transport-module`/)
   assert.match(skill, /scripts\/verify-rules\.mjs/)
   assert.doesNotMatch(skill, /vertical-slice-backend-standard\.md/)
   assert.doesNotMatch(skill, /nest-backend-standard\.md/)
-  assert.match(workflowSkill, /Node\.js 后端实现标准：`backend-code-standard`/)
-  assert.match(workflowSkill, /Fastify、Express、Koa、Nitro\/H3 和 NestJS/)
+  assert.match(workflowSkill, /Node\.js 后端实现标准：`node-code-standard`/)
+  assert.match(workflowSkill, /NestJS 后端实现标准：`nestjs-code-standard`/)
   assert.match(workflowSkill, /Java 后端实现标准：`java-code-standard`/)
-  assert.match(workflowSkill, /后端测试标准尚未提供/)
 })
 
-it('后端编码规范 - skill 自带验证脚本覆盖最近公共父级', () => {
-  const scriptPath = path.join(rootDir, 'skills', 'workflow', 'backend-code-standard', 'scripts', 'verify-rules.mjs')
+it('node 编码规范 - skill 自带验证脚本覆盖最近公共父级', () => {
+  const scriptPath = path.join(rootDir, 'skills', 'workflow', 'node-code-standard', 'scripts', 'verify-rules.mjs')
 
   assert.ok(fs.existsSync(scriptPath))
   assert.ok(!fs.existsSync(path.join(rootDir, 'scripts', 'verify-skill-rules.mjs')))
-  assert.match(runNodeScript('skills', 'workflow', 'backend-code-standard', 'scripts', 'verify-rules.mjs'), /PASS backend-code-standard self rules are valid/)
+  assert.match(runNodeScript('skills', 'workflow', 'node-code-standard', 'scripts', 'verify-rules.mjs'), /PASS node-code-standard self rules are valid/)
   assert.match(
     execFileSync(process.execPath, [
       scriptPath,
@@ -645,70 +641,137 @@ it('后端编码规范 - skill 自带验证脚本覆盖最近公共父级', () =
   assert.match(nestedHoistResult.stderr, /抽离目标必须位于最近公共父级的直接共享目录/)
 })
 
-it('后端编码规范 - examples 和 validation 承载示例与清单', () => {
-  const nodeExamples = readProjectFile('skills', 'workflow', 'backend-code-standard', 'examples', 'node-backend-structure.md').replace(/\r\n/g, '\n')
-  const nestExamples = readProjectFile('skills', 'workflow', 'backend-code-standard', 'examples', 'nestjs-module-structure.md').replace(/\r\n/g, '\n')
-  const checklist = readProjectFile('skills', 'workflow', 'backend-code-standard', 'validation', 'checklist.md')
+it('node 编码规范 - examples 和 validation 承载示例与清单', () => {
+  const nodeExamples = readProjectFile('skills', 'workflow', 'node-code-standard', 'examples', 'node-backend-structure.md').replace(/\r\n/g, '\n')
+  const checklist = readProjectFile('skills', 'workflow', 'node-code-standard', 'validation', 'checklist.md')
 
-  assert.match(nodeExamples, /本文件只提供 Fastify、Express、Koa、Nitro\/H3 示例，不定义新规则/)
+  assert.match(nodeExamples, /本文件只提供示例，不定义新规则/)
   assert.match(nodeExamples, /src\/modules\/orders\//)
-  assert.match(nodeExamples, /http\//)
+  assert.match(nodeExamples, /transport\//)
   assert.match(nodeExamples, /application\//)
   assert.match(nodeExamples, /domain\//)
   assert.match(nodeExamples, /infrastructure\//)
-  assert.match(nodeExamples, /contracts\//)
-  assert.match(nodeExamples, /扁平模块同样可接受/)
-  assert.match(nodeExamples, /JSON Schema、Zod、TypeBox/)
-  assert.match(nodeExamples, /@\/modules\/orders\/application\/create-order/)
-  assert.match(nodeExamples, /@\/modules\/orders\/domain\/order-errors/)
-  assert.match(nodeExamples, /orders\/shared\//)
-  assert.match(nestExamples, /本文件只提供示例，不定义新规则/)
-  assert.match(nestExamples, /src\/modules\/orders\//)
-  assert.match(nestExamples, /orders\.module\.ts/)
-  assert.match(nestExamples, /@Module/)
-  assert.match(nestExamples, /class DTO、`class-validator` 和 `ValidationPipe`/)
-  assert.match(nestExamples, /构造函数注入/)
-  assert.match(nestExamples, /Service 抛出领域错误或应用错误/)
+  assert.match(nodeExamples, /FastifyInstance/)
+  assert.match(nodeExamples, /zod/)
+  assert.match(nodeExamples, /Service 只做用例编排与事务边界/)
+  assert.match(nodeExamples, /repository 负责持久化访问和映射/)
   assert.match(checklist, /本文件只提供校验脚本用法和检查清单，不定义新规则/)
-  assert.match(checklist, /目标分类和本次检查范围/)
-  assert.match(checklist, /运行时校验/)
-  assert.match(checklist, /事务边界/)
-  assert.match(checklist, /幂等语义/)
-  assert.match(checklist, /脚本 `PASS` 只代表结构通过，不代表实现整体通过/)
+  assert.match(checklist, /schema 方案/)
+  assert.match(checklist, /构造参数、工厂参数或模块装配/)
+  assert.match(checklist, /事务要求/)
+  assert.match(checklist, /脚本 `PASS` 只代表抽离位置通过，不代表实现整体通过/)
 })
 
-it('后端编码规范 - 不再保留 references 主规范', () => {
-  assert.ok(!fs.existsSync(path.join(rootDir, 'skills', 'workflow', 'backend-code-standard', 'references', 'vertical-slice-backend-standard.md')))
-  assert.ok(!fs.existsSync(path.join(rootDir, 'skills', 'workflow', 'backend-code-standard', 'references', 'nest-backend-standard.md')))
+it('node 编码规范 - 不再保留 references 主规范', () => {
+  assert.ok(!fs.existsSync(path.join(rootDir, 'skills', 'workflow', 'node-code-standard', 'references', 'vertical-slice-backend-standard.md')))
+  assert.ok(!fs.existsSync(path.join(rootDir, 'skills', 'workflow', 'node-code-standard', 'references', 'nest-backend-standard.md')))
 })
 
-it('后端编码规范 - README 描述同步 Node 与 NestJS 范围且后端测试暂不分发', () => {
+it('nestJS 编码规范 - 入口引用 NestJS 最佳实践', () => {
+  const skill = readProjectFile('skills', 'workflow', 'nestjs-code-standard', 'SKILL.md')
+  const workflowSkill = readProjectFile('skills', 'workflow', 'software-development-workflow', 'SKILL.md')
+
+  assert.match(skill, /NestJS/)
+  assert.match(skill, /DTO 校验/)
+  assert.match(skill, /唯一规则源/)
+  assert.match(skill, /ValidationPipe/)
+  assert.match(skill, /class-validator/)
+  assert.match(skill, /构造函数注入/)
+  assert.match(skill, /事务边界/)
+  assert.match(skill, /持久化封装/)
+  assert.match(skill, /examples\/nestjs-backend-structure\.md/)
+  assert.match(skill, /validation\/checklist\.md/)
+  assert.match(skill, /scripts\/verify-rules\.mjs/)
+  assert.doesNotMatch(skill, /nest-backend-standard\.md/)
+  assert.match(workflowSkill, /NestJS 后端实现标准：`nestjs-code-standard`/)
+})
+
+it('nestJS 编码规范 - examples 和 validation 承载示例与清单', () => {
+  const examples = readProjectFile('skills', 'workflow', 'nestjs-code-standard', 'examples', 'nestjs-backend-structure.md').replace(/\r\n/g, '\n')
+  const checklist = readProjectFile('skills', 'workflow', 'nestjs-code-standard', 'validation', 'checklist.md')
+
+  assert.match(examples, /本文件只提供示例，不定义新规则/)
+  assert.match(examples, /src\/modules\/orders\//)
+  assert.match(examples, /orders\.module\.ts/)
+  assert.match(examples, /@Module/)
+  assert.match(examples, /ValidationPipe/)
+  assert.match(examples, /class-validator/)
+  assert.match(examples, /Service 只做用例编排与事务边界/)
+  assert.match(examples, /repository 负责持久化访问和映射/)
+  assert.match(checklist, /本文件只提供校验脚本用法和检查清单，不定义新规则/)
+  assert.match(checklist, /ValidationPipe/)
+  assert.match(checklist, /class-validator/)
+  assert.match(checklist, /构造函数注入/)
+  assert.match(checklist, /事务要求/)
+  assert.match(checklist, /脚本 `PASS` 只代表抽离位置通过，不代表实现整体通过/)
+})
+
+it('nestJS 编码规范 - skill 自带验证脚本覆盖最近公共父级', () => {
+  const scriptPath = path.join(rootDir, 'skills', 'workflow', 'nestjs-code-standard', 'scripts', 'verify-rules.mjs')
+
+  assert.ok(fs.existsSync(scriptPath))
+  assert.match(runNodeScript('skills', 'workflow', 'nestjs-code-standard', 'scripts', 'verify-rules.mjs'), /PASS nestjs-code-standard self rules are valid/)
+  assert.match(
+    execFileSync(process.execPath, [
+      scriptPath,
+      'hoist',
+      '--target',
+      'src/modules/orders/shared',
+      '--uses',
+      'src/modules/orders/create/create-order.service.ts',
+      'src/modules/orders/update/update-order.service.ts',
+      'src/modules/orders/cancel/cancel-order.service.ts',
+    ], { cwd: rootDir, encoding: 'utf8' }),
+    /PASS nestjs hoist target stays under nearest common ancestor/,
+  )
+  const nestedHoistResult = spawnSync(process.execPath, [
+    scriptPath,
+    'hoist',
+    '--target',
+    'src/modules/orders/create/shared',
+    '--uses',
+    'src/modules/orders/create/create-order.service.ts',
+    'src/modules/orders/update/update-order.service.ts',
+    'src/modules/orders/cancel/cancel-order.service.ts',
+  ], { cwd: rootDir, encoding: 'utf8' })
+
+  assert.notEqual(nestedHoistResult.status, 0)
+  assert.match(nestedHoistResult.stderr, /抽离目标必须位于最近公共父级的直接共享目录/)
+})
+
+it('后端编码规范 - README 描述同步技术栈命名且后端测试暂不分发', () => {
   const readme = readProjectFile('README.md')
   const readmeZh = readProjectFile('README-zh.md')
   const workflowSkill = readProjectFile('skills', 'workflow', 'software-development-workflow', 'SKILL.md')
 
-  assert.ok(fs.existsSync(path.join(rootDir, 'skills', 'workflow', 'backend-code-standard', 'SKILL.md')))
+  assert.ok(fs.existsSync(path.join(rootDir, 'skills', 'workflow', 'node-code-standard', 'SKILL.md')))
+  assert.ok(fs.existsSync(path.join(rootDir, 'skills', 'workflow', 'nestjs-code-standard', 'SKILL.md')))
+  assert.ok(!fs.existsSync(path.join(rootDir, 'skills', 'workflow', 'backend-code-standard', 'SKILL.md')))
+  assert.ok(!fs.existsSync(path.join(rootDir, 'skills', 'workflow', 'nestjs-backend-standard', 'SKILL.md')))
   assert.ok(!fs.existsSync(path.join(rootDir, 'skills', 'workflow', 'backend-testing-standard', 'SKILL.md')))
   assert.ok(fs.existsSync(path.join(rootDir, 'skills', 'workflow', 'java-code-standard', 'SKILL.md')))
-  assert.match(readme, /backend-code-standard/)
+  assert.match(readme, /node-code-standard/)
   assert.match(readme, /Node\.js backend implementation standards/)
-  assert.match(readme, /Nitro\/H3/)
   assert.match(readme, /explicit contracts/)
-  assert.match(readme, /transaction and consistency rules/)
+  assert.match(readme, /nestjs-code-standard/)
+  assert.match(readme, /NestJS backend implementation and review standards/)
   assert.match(readme, /java-code-standard/)
   assert.match(readme, /Java and Spring Boot backend code standards/)
   assert.match(readme, /constructor injection/)
-  assert.match(readmeZh, /backend-code-standard/)
+  assert.match(readmeZh, /node-code-standard/)
   assert.match(readmeZh, /Node\.js 后端实现标准/)
-  assert.match(readmeZh, /Nitro\/H3/)
   assert.match(readmeZh, /显式契约/)
-  assert.match(readmeZh, /事务与一致性/)
+  assert.match(readmeZh, /nestjs-code-standard/)
+  assert.match(readmeZh, /NestJS 后端实现与评审标准/)
   assert.match(readmeZh, /java-code-standard/)
   assert.match(readmeZh, /Java 与 Spring Boot 后端编码标准/)
   assert.match(readmeZh, /构造函数注入/)
+  assert.doesNotMatch(readme, /backend-code-standard|nestjs-backend-standard/)
+  assert.doesNotMatch(readmeZh, /backend-code-standard|nestjs-backend-standard/)
   assert.doesNotMatch(readme, /backend-testing-standard/)
   assert.doesNotMatch(readmeZh, /backend-testing-standard/)
   assert.doesNotMatch(workflowSkill, /`backend-testing-standard`/)
+  assert.doesNotMatch(workflowSkill, /`backend-code-standard`|`nestjs-backend-standard`/)
 })
 
 it('java 编码规范 - 入口引用 Java 与 Spring Boot 最佳实践', () => {
