@@ -44,9 +44,12 @@ description: 用于软件开发任务的可复用流程规范。适用于功能�
 
 ## 关联标准
 
-- 前端实现标准：`frontend-code-standard`。
+- 前端组件实现标准：`frontend-component-standard`。
+- 前端模块实现标准：`frontend-module-standard`。
+- 前端库实现标准：`frontend-library-standard`。
+- 前端评审输出标准：`frontend-review-standard`。
 - 前端验证标准：`frontend-testing-standard`。
-- Node.js 后端实现标准：`backend-code-standard`，覆盖 Fastify、Express、Koa、Nitro 和 NestJS。
+- Node.js 后端实现标准：`backend-code-standard`，覆盖 Fastify、Express、Koa、Nitro/H3 和 NestJS，强调边界、契约、事务、一致性与可观测性。
 - Java 后端实现标准：`java-code-standard`，覆盖 Java 17+ 基线、Java 21/25 LTS、Spring Boot、Maven 和 Gradle。
 - 后端测试标准尚未提供；收到对应规范前，不引用旧后端测试 skill，也不自行补写相关规则。
 - Vue、Vitest、Playwright 等技术细节：按项目实际栈加载对应技术 Skill。

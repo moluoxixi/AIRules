@@ -1,42 +1,65 @@
 ---
 name: skill-validation-standard
-description: 用于创建、修改或评审任意 Claude/Codex skill 后，校验 SKILL.md、触发描述、资源组织、链接、脚本语义和内容质量是否符合 Skills 规范。
+description: 校验 Claude/Codex skill 是否符合官方最佳实践。用于创建、修改或评审 skill 后，检查 SKILL.md 元数据、触发描述、正文精简度、资源组织和脚本语义。
 ---
 
-# Skill 校验规范
+# Skill 校验流程
 
-## 用途
+## 执行步骤
 
-本 Skill 用于校验新建或修改后的 AI skill 产物，确保其元数据、触发描述、资源组织、链接、脚本语义和内容质量符合 AI Skills 规范基线。
+1. 运行结构校验脚本，确认硬约束全部 PASS：
+   ```bash
+   node skills/skill-validation-standard/scripts/verify-rules.mjs --root path/to/skill
+   ```
+2. 按下方 rubric 逐项审查，对每项给出 PASS / FAIL / WARN 并附证据。
+3. 汇总结果，FAIL 项必须修复，WARN 项建议改进。
 
-## 核心检查
+## 内容质量 rubric
 
-1. `SKILL.md` 必须存在，并以 YAML frontmatter 开头。
-2. frontmatter 必须包含非空 `name` 和 `description`；`name` 使用小写字母、数字和连字符，并与目录名一致。
-3. `description` 是触发入口，必须说明何时使用该 skill，包含具体任务、场景或症状；不得只总结流程。
-4. frontmatter 后必须有 Markdown 指令主体，主体只写触发后必须立即知道的流程、约束和资源索引。
-5. `scripts/`、`references/`、`assets/` 是合法可选资源；只在能降低重复、承载长文档或提供输出素材时创建。
-6. `SKILL.md` 引用的相对链接必须真实存在；长资源应从 `SKILL.md` 直接索引，避免深层跳转。
-7. 不得添加 README、安装指南、快速参考、变更日志等和 skill 执行无关的杂项文档。
-8. 存在可执行脚本时，必须具备可见成功/失败语义；失败不能静默吞掉。
+### 触发描述
 
-## 内容质量
+| # | 检查项 | FAIL 条件 |
+|---|--------|-----------|
+| Q1 | description 同时覆盖"做什么"和"何时使用" | 缺少任一 |
+| Q2 | 关键 use case 在 description 最前面 | 次要信息在前（WARN） |
+| Q3 | 使用第三人称 | 出现 "I can" / "You can" / "我能" |
+| Q4 | description ≤160 字符，when_to_use ≤512 字符 | 超出（WARN） |
 
-- 只写 AI 执行任务所需的信息，删除创建过程、历史叙述和泛泛解释。
-- 规则、流程和资源职责不得互相重复；同一信息只能有一个权威位置。
-- 示例要短、具体、可迁移；不要用多语言示例堆数量。
-- 对复杂或高风险 skill，应补充可运行脚本、测试场景或检查清单。
+### 正文精简度
 
-## 资源
+| # | 检查项 | FAIL 条件 |
+|---|--------|-----------|
+| Q5 | 只写触发后必须立即知道的流程、约束和资源索引 | 包含创建历史、泛泛解释（WARN） |
+| Q6 | 不重复 Claude 已有的通用知识 | 解释 JSON 格式、PDF 是什么等（WARN） |
+| Q7 | 同一信息只有一个权威位置 | 规则/流程在多处重复 |
 
-- 结构示例：[skill-structure.md](examples/skill-structure.md)
-- 校验清单：[checklist.md](validation/checklist.md)
-- 通用校验脚本：`scripts/verify-rules.mjs`
+### 资源组织
 
-## 校验命令
+| # | 检查项 | FAIL 条件 |
+|---|--------|-----------|
+| Q8 | 长内容（>100 行）拆到独立 reference 文件 | 全堆在 SKILL.md（WARN） |
+| Q9 | reference 文件从 SKILL.md 直接索引 | 需要跳两层才能到达 |
+| Q10 | 长 reference 文件（>100 行）有目录 | 缺少（WARN） |
+| Q11 | 文件名语义化 | 使用 doc1.md / file2.md（WARN） |
 
-```bash
-node skills/skill-validation-standard/scripts/verify-rules.mjs --root path/to/skill
-```
+### 示例与脚本
 
-未传 `--root` 时默认校验本 Skill。
+| # | 检查项 | FAIL 条件 |
+|---|--------|-----------|
+| Q12 | 示例具体、可迁移，最好是输入/输出对 | 只有抽象描述（WARN） |
+| Q13 | 脚本用于确定性操作，正文区分"执行"还是"阅读" | 含糊不清（WARN） |
+| Q14 | 脚本错误处理显式、信息清晰 | 静默吞错 |
+| Q15 | 复杂工作流有验证闭环 | 高风险操作无验证（WARN） |
+
+### 整体质量
+
+| # | 检查项 | FAIL 条件 |
+|---|--------|-----------|
+| Q16 | 术语一致 | 同一概念多个名称（WARN） |
+| Q17 | 不含时效性信息 | 硬编码日期判断 |
+| Q18 | 给出默认推荐而非罗列等价方案 | 列举 3+ 方案无推荐（WARN） |
+
+## 辅助资源
+
+- [examples/skill-structure.md](examples/skill-structure.md)：结构示例与反模式
+- [examples/validation-output.md](examples/validation-output.md)：校验输出示例

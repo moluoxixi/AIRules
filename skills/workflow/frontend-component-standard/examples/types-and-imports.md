@@ -4,15 +4,13 @@
 
 ## 类型出口
 
-Vue 类型出口：
-
 ```ts
 export type * from './props'
-export type * from './expose'
 export type * from './emit'
+export type * from './expose'
 ```
 
-React 类型结构：
+React ref 契约：
 
 ```text
 DataTable/
@@ -30,19 +28,19 @@ export type * from './props'
 export type * from './ref'
 ```
 
-## 导入示例
+## 导入边界
 
 禁止导入：
 
 ```ts
 import { formatDate } from '../../utils/date'
+import { formatDate } from '@/components/DataTable/src/utils/date'
 import { formatDate } from '@/components/DataTable/utils/date'
-import { formatDate } from '@/components/DataTable/utils'
 import { formatDate } from '../../../utils'
 ```
 
 允许导入：
 
 ```ts
-import { formatDate } from '@/components/DataTable'
+import { DataTable, type DataTableProps } from '@/components/DataTable'
 ```

@@ -133,9 +133,12 @@ Moluoxixi AIRules supports a growing ecosystem of AI agents through automated pr
 | Name | Description |
 |------|-------------|
 | **software-development-workflow** | Standard software development workflow for requirements, splitting, design, implementation, verification, review, and delivery reports |
-| **frontend-code-standard** | Vue 3 and React TypeScript/JavaScript standards for frontend apps, utility libraries, and UI component libraries with fractal architecture, headless logic, path aliases, nearest-common-ancestor hoisting, type contracts, barrels, and side-effect comments |
+| **frontend-component-standard** | Vue 3 and React TypeScript/JavaScript standards for frontend apps, utility libraries, and UI component libraries with path aliases, nearest-common-ancestor hoisting, explicit contracts, and delivery checks |
+| **frontend-module-standard** | Vue 3 and React TypeScript/JavaScript module implementation standards for new builds and rewrites with nearest-common-ancestor sharing, state locality, path aliases, and no legacy compatibility layers |
+| **frontend-library-standard** | Frontend utility library and UI component library standards for new builds and rewrites with README contracts, stable public exports, explicit side effects, and no transitional barrels |
+| **frontend-review-standard** | Frontend review output standard for evidence-based classification, scope reporting, actionable findings, and implementation-ready change lists |
 | **frontend-testing-standard** | Frontend testing standards for type checks, unit/component/page integration, interaction, browser, responsive, accessibility, and coverage verification |
-| **backend-code-standard** | Node.js backend code standards for Fastify, Express, Koa, Nitro, and NestJS with vertical slice domains, strict DI, barrels, runtime DTO validation, and service-layer contracts |
+| **backend-code-standard** | Node.js backend implementation standards for Fastify, Express, Koa, Nitro/H3, and NestJS with explicit contracts, boundary isolation, transaction and consistency rules, persistence encapsulation, and delivery checks |
 | **java-code-standard** | Java and Spring Boot backend code standards for Java 17+ baseline, Java 21/25 LTS, Maven, and Gradle with domain packages, constructor injection, Bean Validation, transaction boundaries, migrations, and error mapping |
 | **skill-validation-standard** | General skill validation standard for generated or modified Claude/Codex skills, covering SKILL.md metadata, trigger descriptions, resources, links, scripts, and content quality |
 
@@ -159,7 +162,10 @@ Moluoxixi AIRules supports a growing ecosystem of AI agents through automated pr
 │   ├── skill-validation-standard/
 │   └── workflow/
 │       ├── software-development-workflow/
-│       ├── frontend-code-standard/
+│       ├── frontend-component-standard/
+│       ├── frontend-module-standard/
+│       ├── frontend-library-standard/
+│       ├── frontend-review-standard/
 │       ├── frontend-testing-standard/
 │       ├── backend-code-standard/
 │       └── java-code-standard/
