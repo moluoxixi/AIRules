@@ -49,7 +49,8 @@ description: 用于软件开发任务的可复用流程规范。适用于功能�
 - 前端库实现标准：`frontend-library-standard`。
 - 前端评审输出标准：`frontend-review-standard`。
 - 前端验证标准：`frontend-testing-standard`。
-- NestJS 后端实现标准：`nestjs-backend-standard`。
+- Node.js 后端实现标准：`node-code-standard`。
+- NestJS 后端实现标准：`nestjs-code-standard`。
 - Java 后端实现标准：`java-code-standard`。
 - Vue、Vitest、Playwright 等技术细节：按项目实际栈加载对应技术 Skill。
 - 拆分和并行判断：参考 [task-splitting.md](validation/task-splitting.md)。

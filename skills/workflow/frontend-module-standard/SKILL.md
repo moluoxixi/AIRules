@@ -52,6 +52,9 @@ description: 用于新写或重构 Vue 3 / React TypeScript/JavaScript 业务模
 
 ## 导入与类型
 
+- Vue 模块中的 props 默认值优先使用 `withDefaults(defineProps(...), ...)`，避免在模块页面或业务逻辑层补伪默认值。
+- Vue 模块中的标准双向绑定优先使用 `defineModel`，减少 `modelValue` / `update:modelValue` 样板并保持契约集中。
+- Vue 模块中的模板 ref 优先使用 `useTemplateRef`，只有工具链或场景限制不支持时才回退到 `ref()`。
 - 路径别名优先：跨模块引用或多层级向上查找时，优先使用项目配置的路径别名。
 - 禁止 deep import；外部不得穿透到具体实现文件、私有目录或伪共享层。
 - 简单类型优先贴近使用点；只有跨文件或跨职责共享时才抽离类型文件。

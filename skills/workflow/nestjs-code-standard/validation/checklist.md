@@ -5,8 +5,8 @@
 ## 脚本用法
 
 ```bash
-node skills/workflow/nestjs-backend-standard/scripts/verify-rules.mjs
-node skills/workflow/nestjs-backend-standard/scripts/verify-rules.mjs hoist --target src/modules/orders/shared --uses src/modules/orders/create/create-order.service.ts src/modules/orders/update/update-order.service.ts src/modules/orders/cancel/cancel-order.service.ts
+node skills/workflow/nestjs-code-standard/scripts/verify-rules.mjs
+node skills/workflow/nestjs-code-standard/scripts/verify-rules.mjs hoist --target src/modules/orders/shared --uses src/modules/orders/create/create-order.service.ts src/modules/orders/update/update-order.service.ts src/modules/orders/cancel/cancel-order.service.ts
 ```
 
 ## 检查清单

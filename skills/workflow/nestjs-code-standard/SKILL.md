@@ -1,5 +1,5 @@
 ---
-name: nestjs-backend-standard
+name: nestjs-code-standard
 description: 用于新写、重构或评审 NestJS 后端代码时，按统一 NestJS 最佳实践重建模块、契约、校验、事务、持久化边界和评审输出；默认不依赖仓库中的其它 project skills。
 ---
 

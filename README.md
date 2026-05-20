@@ -138,7 +138,8 @@ Moluoxixi AIRules supports a growing ecosystem of AI agents through automated pr
 | **frontend-library-standard** | Frontend utility library and UI component library standards for new builds and rewrites with README contracts, stable public exports, explicit side effects, and no transitional barrels |
 | **frontend-review-standard** | Frontend review output standard for evidence-based classification, scope reporting, actionable findings, and implementation-ready change lists |
 | **frontend-testing-standard** | Frontend testing standards for type checks, unit/component/page integration, interaction, browser, responsive, accessibility, and coverage verification |
-| **nestjs-backend-standard** | NestJS backend implementation and review standards for new code, rewrites, and code reviews with DTO contracts, ValidationPipe, constructor injection, transaction boundaries, persistence encapsulation, and evidence-based review output |
+| **node-code-standard** | Node.js backend implementation standards for TypeScript/JavaScript services with explicit contracts, runtime validation, dependency injection, transaction boundaries, persistence encapsulation, and delivery checks |
+| **nestjs-code-standard** | NestJS backend implementation and review standards for new code, rewrites, and code reviews with DTO contracts, ValidationPipe, constructor injection, transaction boundaries, persistence encapsulation, and evidence-based review output |
 | **java-code-standard** | Java and Spring Boot backend code standards for Java 17+ baseline, Java 21/25 LTS, Maven, and Gradle with domain packages, constructor injection, Bean Validation, transaction boundaries, migrations, and error mapping |
 | **skill-validation-standard** | General skill validation standard for generated or modified Claude/Codex skills, covering SKILL.md metadata, trigger descriptions, resources, links, scripts, and content quality |
 
@@ -167,7 +168,8 @@ Moluoxixi AIRules supports a growing ecosystem of AI agents through automated pr
 │       ├── frontend-library-standard/
 │       ├── frontend-review-standard/
 │       ├── frontend-testing-standard/
-│       ├── nestjs-backend-standard/
+│       ├── node-code-standard/
+│       ├── nestjs-code-standard/
 │       └── java-code-standard/
 ├── vendor/
 │   ├── repos/               # Cloned third-party source repos

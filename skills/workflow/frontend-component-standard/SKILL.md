@@ -33,6 +33,9 @@ description: 用于新写或重构 Vue 3 / React TypeScript/JavaScript 组件时
 
 - 默认使用 Composition API 和 `<script setup>`。
 - `defineProps`、`defineEmits`、`defineSlots`、`defineExpose` 的类型与运行时行为必须一致。
+- props 默认值优先使用 `withDefaults(defineProps(...), ...)`，不要在业务逻辑里用二次合并或 `??`/`||` 伪造默认契约。
+- 组件需要标准 `v-model` 契约时优先使用 `defineModel`；只有多路 model、第三方契约或现有项目约定明确要求时，才回到手写 `modelValue` / `update:modelValue`。
+- 模板 ref 优先使用 `useTemplateRef`；只有当前 Vue 版本、工具链或非模板场景不支持时，才退回 `ref()`。
 - `computed` 用于派生状态，`watch` 用于同步外部副作用，不用 `watch` 复制可计算状态。
 - 模板只保留可读的展示与绑定；复杂映射、格式化和条件判断放回脚本区的具名计算或函数。
 
