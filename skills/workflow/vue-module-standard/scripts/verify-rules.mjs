@@ -6,7 +6,7 @@ import { fileURLToPath } from 'node:url'
 const skillRoot = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..')
 const PUBLIC_ENTRY_FILENAMES = ['index.ts', 'index.js']
 const STYLE_ENTRY_FILENAMES = ['index.css', 'index.scss', 'index.less']
-const MODULE_IMPLEMENTATION_FILENAMES = ['index.vue', 'index.tsx', 'index.jsx']
+const MODULE_IMPLEMENTATION_FILENAMES = ['index.vue']
 
 function readSkillFile(...segments) {
   return fs.readFileSync(path.join(skillRoot, ...segments), 'utf8')
@@ -151,7 +151,7 @@ function assertCodeDirectoryEntries(directory, root) {
 function assertModule(root) {
   const moduleRoot = path.resolve(process.cwd(), root)
   const srcPath = path.join(moduleRoot, 'src')
-  const implementationEntry = assertSingleExistingFile(moduleRoot, MODULE_IMPLEMENTATION_FILENAMES, '模块根目录实现入口')
+  const implementationEntry = assertSingleExistingFile(moduleRoot, MODULE_IMPLEMENTATION_FILENAMES, 'Vue 模块根目录实现入口')
   const publicEntries = findExistingFiles(moduleRoot, PUBLIC_ENTRY_FILENAMES)
 
   if (fs.existsSync(srcPath))
@@ -162,7 +162,7 @@ function assertModule(root) {
 
   assertCodeDirectoryEntries(moduleRoot, moduleRoot)
 
-  printPass('frontend module structure is valid', {
+  printPass('vue module structure is valid', {
     moduleRoot,
     implementationEntry,
   })
@@ -181,13 +181,23 @@ function verifySelf() {
   assertContains(skill, /最近公共父级/, 'SKILL.md 必须覆盖最近公共父级')
   assertContains(skill, /路径别名优先/, 'SKILL.md 必须覆盖路径别名规则')
   assertContains(skill, /禁止 deep import/, 'SKILL.md 必须覆盖 deep import 规则')
+  assertContains(skill, /Vue 3\.4\+/, 'SKILL.md 必须声明 Vue 3.4+ 版本要求')
+  assertContains(skill, /Vue 3\.5\+/, 'SKILL.md 必须声明 Vue 3.5+ 版本要求')
+  assertContains(skill, /defineModel/, 'SKILL.md 必须覆盖 defineModel')
+  assertContains(skill, /useTemplateRef/, 'SKILL.md 必须覆盖 useTemplateRef')
+  assertContains(skill, /composable/, 'SKILL.md 必须覆盖 composable 规则')
+  assertContains(skill, /provide\/inject/, 'SKILL.md 必须覆盖 provide/inject')
   assertContains(skill, /scripts\/verify-rules\.mjs/, 'SKILL.md 必须声明本 skill 自带的验证脚本')
   assertContains(businessModuleExample, /views\//, '模块示例必须覆盖页面模块结构')
   assertContains(businessModuleExample, /最近公共父级/, '模块示例必须覆盖最近公共父级说明')
+  assertContains(businessModuleExample, /composables\//, '模块示例必须覆盖 composables 目录')
+  assertContains(businessModuleExample, /provide/, '模块示例必须覆盖 provide')
+  assertContains(businessModuleExample, /inject/, '模块示例必须覆盖 inject')
   assertContains(checklist, /只为兼容旧路径存在的中间层目录、双出口或伪共享目录/, '校验文件必须覆盖兼容路径检查')
   assertContains(checklist, /公共代码抽离是否满足三次原则，并落在最近公共父级/, '校验文件必须覆盖三次原则检查')
+  assertContains(checklist, /Vue 3\.4\+/, '校验文件必须覆盖 Vue 版本检查')
 
-  printPass('frontend-module-standard self rules are valid')
+  printPass('vue-module-standard self rules are valid')
 }
 
 function verifyHoist(args) {
@@ -197,7 +207,7 @@ function verifyHoist(args) {
 
   assertTargetInsideAncestor(target, ancestor, uses)
 
-  printPass('frontend module hoist target stays under nearest common ancestor', {
+  printPass('vue module hoist target stays under nearest common ancestor', {
     nearestCommonAncestor: ancestor,
     target: path.resolve(process.cwd(), target),
   })
