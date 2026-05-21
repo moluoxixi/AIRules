@@ -11,8 +11,8 @@ description: 用于评审 Vue 3 / React 组件、模块和前端库改动时，�
 
 本 Skill 只规定评审输出格式和证据要求，不定义组件、模块或库本身的实现规则。实现规则分别来自：
 
-- `frontend-component-standard`
-- `frontend-module-standard`
+- `vue-component-standard` 或 `react-component-standard`
+- `vue-module-standard` 或 `react-module-standard`
 - `frontend-library-standard`
 
 ## 工作顺序

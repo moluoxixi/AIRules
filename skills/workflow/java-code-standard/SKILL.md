@@ -114,8 +114,20 @@ src/main/java/com/example/order/
 - 是否通过迁移脚本表达数据库变更，并保持 Repository 与 API 契约解耦。
 - 是否运行了与风险匹配的现有检查、测试、构建或启动验证。
 
+## GraphQL 场景说明
+
+本 Skill 主要面向 REST/HTTP API 场景。Spring GraphQL 项目可参考以下适配：
+
+- `@QueryMapping`/`@MutationMapping` 对应 api 层：负责参数提取和响应映射，不直接编排跨仓储流程。
+- 输入校验：GraphQL Input Type 配合 `@Valid` 和 `jakarta.validation` 仍然有效。
+- DataFetcher/BatchLoader：用于解决 N+1 问题，属于 infrastructure 层的数据访问优化。
+- Subscription：使用 `@SubscriptionMapping`，协议适配属于 api 层，事件产生属于 application 层。
+
+分层原则（api → application → domain → infrastructure）同样适用，只是入口从 `@RestController` 变为 `@Controller` + GraphQL mapping 注解。
+
 ## 辅助资源
 
 - 示例：`examples/spring-boot-structure.md`
+- 评审示例：`examples/review-output.md`
 - 校验清单：`validation/checklist.md`
 - 自校验脚本：`scripts/verify-rules.mjs`

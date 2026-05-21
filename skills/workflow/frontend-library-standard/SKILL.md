@@ -46,7 +46,7 @@ description: 用于新写或重构前端工具包、UI 组件库和公共库时�
 ### component-package
 
 - 当独立组件需要稳定包级 API、README 和内部目录边界时，也使用本标准。
-- 复杂组件包结构与 `frontend-component-standard` 保持一致。
+- 复杂组件包结构与 `vue-component-standard` 或 `react-component-standard` 保持一致。
 
 ## 目录与导出
 

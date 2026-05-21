@@ -7,6 +7,8 @@ const skillRoot = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..
 const PUBLIC_ENTRY_FILENAMES = ['index.ts', 'index.js']
 const REACT_IMPLEMENTATION_FILENAMES = ['index.tsx', 'index.jsx']
 const STYLE_ENTRY_FILENAMES = ['index.css', 'index.scss', 'index.less']
+const MAX_DEPTH = 10
+const IGNORED_DIRECTORIES = ['node_modules', '.git', 'dist', 'build', '.next', '.turbo']
 
 function readSkillFile(...segments) {
   return fs.readFileSync(path.join(skillRoot, ...segments), 'utf8')
@@ -60,12 +62,18 @@ function getOption(args, name) {
   return value
 }
 
-function assertCodeDirectoryEntries(directory, root) {
+function assertCodeDirectoryEntries(directory, root, depth = 0) {
+  if (depth > MAX_DEPTH)
+    throw new Error(`目录深度超过 ${MAX_DEPTH} 层，可能存在循环引用或目录结构异常`)
+
   const entries = fs.readdirSync(directory, { withFileTypes: true })
   const parentHasPublicEntry = findExistingFiles(directory, PUBLIC_ENTRY_FILENAMES).length > 0
 
   for (const entry of entries) {
     if (!entry.isDirectory())
+      continue
+
+    if (IGNORED_DIRECTORIES.includes(entry.name))
       continue
 
     const childDirectory = path.join(directory, entry.name)
@@ -80,7 +88,7 @@ function assertCodeDirectoryEntries(directory, root) {
       assertSingleExistingFile(childDirectory, PUBLIC_ENTRY_FILENAMES, `目录 ${relative}/ 聚合入口`)
 
     if (childPublicEntries.length > 0 || isImplementationSrc)
-      assertCodeDirectoryEntries(childDirectory, root)
+      assertCodeDirectoryEntries(childDirectory, root, depth + 1)
   }
 }
 
@@ -133,6 +141,25 @@ function assertSimpleComponent(root) {
   })
 }
 
+function printHelp() {
+  console.log(`用法: node verify-rules.mjs [command] [options]
+
+命令:
+  self                        校验本 skill 的规则完整性（默认）
+  simple-component, simple    校验简单组件结构
+  component, package          校验复杂组件包结构
+  --help                      显示帮助信息
+
+选项:
+  --root <path>               指定组件根目录或文件路径
+
+示例:
+  node scripts/verify-rules.mjs
+  node scripts/verify-rules.mjs simple-component --root src/components/StatusBadge.tsx
+  node scripts/verify-rules.mjs component --root src/components/DataTable
+`)
+}
+
 function verifySelf() {
   const skill = readSkillFile('SKILL.md')
   const componentExample = readSkillFile('examples', 'component.md')
@@ -158,6 +185,11 @@ function verifySelf() {
   assertContains(skill, /类型出口优先使用 type-only re-export/, 'SKILL.md 必须覆盖类型出口规则')
   assertContains(skill, /禁止 deep import/, 'SKILL.md 必须覆盖 deep import 约束')
   assertContains(skill, /scripts\/verify-rules\.mjs/, 'SKILL.md 必须声明本 skill 自带的验证脚本')
+
+  assertContains(skill, /低于 19 时.*forwardRef/s, 'SKILL.md 必须说明 React 18 的 forwardRef 回退')
+  assertContains(skill, /19\+.*ref.*prop/s, 'SKILL.md 必须说明 React 19 的 ref as prop')
+  assertContains(skill, /Context\.Provider/, 'SKILL.md 必须覆盖 Context.Provider 用法')
+
   assertContains(componentExample, /useImperativeHandle/, '组件示例必须覆盖 useImperativeHandle')
   assertContains(componentExample, /forwardRef/, '组件示例必须覆盖 forwardRef')
   assertContains(componentExample, /Error Boundary|ErrorBoundary/, '组件示例必须覆盖 Error Boundary')
@@ -168,11 +200,17 @@ function verifySelf() {
   assertContains(checklist, /脚本 `PASS` 只代表结构通过，不代表实现整体通过/, '校验文件必须声明脚本边界')
   assertContains(checklist, /React 19/, '校验文件必须覆盖 React 版本检查')
 
+  assertContains(checklist, /forwardRef/, '校验文件必须覆盖 forwardRef 检查')
+  assertContains(checklist, /Context\.Provider/, '校验文件必须覆盖 Context.Provider 检查')
+
   printPass('react-component-standard self rules are valid')
 }
 
 function main() {
   const [command = 'self', ...args] = process.argv.slice(2)
+
+  if (command === '--help' || command === '-h')
+    return printHelp()
 
   if (command === 'self')
     return verifySelf()
@@ -183,7 +221,7 @@ function main() {
   if (command === 'component' || command === 'package' || command === 'project')
     return assertComponentPackage(getOption(args, '--root'))
 
-  throw new Error(`未知命令：${command}`)
+  throw new Error(`未知命令：${command}，使用 --help 查看帮助`)
 }
 
 try {

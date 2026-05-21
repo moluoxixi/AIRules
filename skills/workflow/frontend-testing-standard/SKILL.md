@@ -34,6 +34,7 @@ description: 用于测试、验证或评审前端变更，适用于 UI 行为、
 - 类型正确性；
 - 单元逻辑；
 - 组件行为；
+- Storybook 交互测试（如项目使用 Storybook）；
 - 页面或路由集成；
 - 关键用户交互；
 - 浏览器运行时健康；
@@ -51,6 +52,33 @@ description: 用于测试、验证或评审前端变更，适用于 UI 行为、
 - Playwright 或浏览器驱动检查可结合 `playwright` 或可用浏览器工具。
 - UI 可访问性或视觉质量评审可结合 `web-design-guidelines`。
 
+## Storybook 交互测试
+
+当项目使用 Storybook 时，可利用 Storybook 的交互测试能力作为组件测试的补充：
+
+- **play 函数**：在 Story 中定义 `play` 函数，使用 `@storybook/testing-library` 模拟用户交互。
+- **测试运行**：通过 `@storybook/test-runner` 在 CI 中运行所有 Story 的交互测试。
+- **可视化调试**：在 Storybook UI 中逐步查看交互过程，便于调试复杂交互流程。
+- **与单元测试互补**：Storybook 交互测试侧重真实渲染环境下的用户交互，单元测试侧重逻辑隔离验证。
+
+```ts
+// Button.stories.ts 示例
+export const ClickTest: Story = {
+  play: async ({ canvasElement }) => {
+    const canvas = within(canvasElement)
+    const button = canvas.getByRole('button')
+    await userEvent.click(button)
+    await expect(button).toHaveTextContent('Clicked')
+  },
+}
+```
+
+Storybook 交互测试不替代单元测试和 E2E 测试，而是作为组件行为验证的可视化补充。
+
 ## 反模式
 
 不要为了通过报告而降低阈值、删除断言、排除关键文件、mock 掉被测行为，或用静态猜测替代失败的浏览器检查。
+
+## 辅助资源
+
+- 自校验脚本：`scripts/verify-rules.mjs`

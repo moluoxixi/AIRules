@@ -22,6 +22,24 @@ function printPass(message, details = {}) {
     console.log(`${key}: ${value}`)
 }
 
+function printHelp() {
+  console.log(`用法: node verify-rules.mjs [command] [options]
+
+命令:
+  self                        校验本 skill 的规则完整性（默认）
+  hoist                       校验公共代码抽离位置是否符合最近公共父级 package 约束
+  --help                      显示帮助信息
+
+选项:
+  --target <path>             指定抽离目标 package
+  --uses <path1> <path2> ...  指定至少 2 个使用点路径
+
+示例:
+  node scripts/verify-rules.mjs
+  node scripts/verify-rules.mjs hoist --target src/main/java/com/example/order/shared --uses src/main/java/com/example/order/create/CreateOrderService.java src/main/java/com/example/order/update/UpdateOrderService.java
+`)
+}
+
 function getOption(args, name) {
   const index = args.indexOf(name)
 
@@ -92,6 +110,7 @@ function assertHoistTarget(args) {
 function verifySelf() {
   const skill = readSkillFile('SKILL.md')
   const examples = readSkillFile('examples', 'spring-boot-structure.md')
+  const reviewExample = readSkillFile('examples', 'review-output.md')
   const checklist = readSkillFile('validation', 'checklist.md')
 
   assertContains(skill, /Java/, 'SKILL.md 必须覆盖 Java')
@@ -100,6 +119,7 @@ function verifySelf() {
   assertContains(skill, /Gradle/, 'SKILL.md 必须覆盖 Gradle')
   assertContains(skill, /唯一规则源/, 'SKILL.md 必须声明唯一规则源')
   assertContains(skill, /examples\/spring-boot-structure\.md/, 'SKILL.md 必须索引结构示例')
+  assertContains(skill, /examples\/review-output\.md/, 'SKILL.md 必须索引评审示例')
   assertContains(skill, /validation\/checklist\.md/, 'SKILL.md 必须索引校验清单')
   assertContains(skill, /构造函数注入/, 'SKILL.md 必须覆盖构造函数注入')
   assertContains(skill, /Bean Validation/, 'SKILL.md 必须覆盖 Bean Validation')
@@ -115,6 +135,14 @@ function verifySelf() {
   assertContains(examples, /infrastructure\//, '示例文件必须覆盖 infrastructure package')
   assertContains(examples, /record CreateOrderRequest/, '示例文件必须覆盖 record request')
   assertContains(examples, /@ConfigurationProperties/, '示例文件必须覆盖配置绑定示例')
+
+  assertContains(reviewExample, /本文件只提供示例，不定义新规则/, '评审示例必须声明不定义新规则')
+  assertContains(reviewExample, /目标分类：`application-module`/, '评审示例必须包含目标分类')
+  assertContains(reviewExample, /总结论：`FAIL`/, '评审示例必须包含总结论')
+  assertContains(reviewExample, /规则点：/, '评审示例必须包含规则点')
+  assertContains(reviewExample, /证据：`src\/main\/java\/com\/example\/order/, '评审示例必须包含文件级证据')
+  assertContains(reviewExample, /改动建议汇总/, '评审示例必须包含改动建议汇总')
+
   assertContains(checklist, /本文件只提供校验脚本用法和检查清单，不定义新规则/, '校验清单必须声明不定义新规则')
   assertContains(checklist, /jakarta\.validation/, '校验清单必须覆盖 jakarta.validation')
   assertContains(checklist, /Flyway 或 Liquibase/, '校验清单必须覆盖迁移工具')
@@ -126,13 +154,16 @@ function verifySelf() {
 function main() {
   const [command = 'self', ...args] = process.argv.slice(2)
 
+  if (command === '--help' || command === '-h')
+    return printHelp()
+
   if (command === 'self')
     return verifySelf()
 
   if (command === 'hoist')
     return assertHoistTarget(args)
 
-  throw new Error(`未知命令：${command}`)
+  throw new Error(`未知命令：${command}，使用 --help 查看帮助`)
 }
 
 try {

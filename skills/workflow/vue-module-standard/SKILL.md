@@ -105,6 +105,18 @@ description: 用于新写或重构 Vue 3 TypeScript/JavaScript 业务模块、�
 - 状态是否就近保留，没有无依据上浮到 store、provide/inject 或 composable。
 - 是否运行了与风险匹配的现有 lint、vue-tsc、test、build 或浏览器验证。
 
+## SSR/SSG 场景注意事项
+
+使用 Nuxt 或其他 SSR 框架时，模块组织需额外注意：
+
+- 服务端与客户端边界：composable 和状态初始化需区分 `onMounted`（仅客户端）与 `setup`（双端执行）。
+- 数据获取：优先使用框架提供的数据获取机制（如 Nuxt 的 `useFetch`、`useAsyncData`），而非在 `onMounted` 中手动请求。
+- 浏览器 API：`window`、`document`、`localStorage` 等仅在客户端可用，需用 `import.meta.client` 或 `onMounted` 保护。
+- 状态序列化：跨端传递的状态必须可序列化，不能包含函数、Symbol 或循环引用。
+- 路由与中间件：页面级权限和重定向优先使用框架路由中间件，而非组件内判断。
+
+本 Skill 的模块结构规则同样适用于 SSR 项目，但需结合框架约定（如 Nuxt 的 `pages/`、`composables/`、`server/` 目录）调整具体落点。
+
 ## 辅助资源
 
 - 示例：`examples/`

@@ -154,6 +154,17 @@ src/modules/orders/
 - 共享抽离是否满足至少三个独立使用点，并且位于最近公共父级的直接共享目录。
 - 是否运行了与风险匹配的现有 lint、typecheck、test、build、启动验证或集成测试。
 
+## GraphQL 场景说明
+
+本 Skill 主要面向 REST/HTTP API 场景。GraphQL 项目可参考以下适配：
+
+- Resolver 对应 transport 层：负责参数提取、认证上下文读取和响应映射，不直接编排跨仓储流程。
+- Query/Mutation 输入校验：优先使用 GraphQL schema 的类型约束，复杂业务校验仍需在 application 层补充。
+- DataLoader：用于解决 N+1 问题，属于 infrastructure 层的数据访问优化，不承载业务逻辑。
+- Subscription：长连接和事件推送的协议适配属于 transport 层，事件产生和订阅管理属于 application 层。
+
+分层原则（transport → application → domain → infrastructure）同样适用，只是 transport 入口从 HTTP route 变为 GraphQL resolver。
+
 ## 辅助资源
 
 - 示例：`examples/node-backend-structure.md`

@@ -118,6 +118,17 @@ description: 用于新写、重构或评审 NestJS 后端代码时，按统一 N
 - 共享抽离是否满足至少三个独立使用点，并且位于最近公共父级的直接共享目录。
 - 是否运行了与风险匹配的现有 lint、test、build、启动验证或集成测试。
 
+## GraphQL 场景说明
+
+本 Skill 主要面向 REST/HTTP API 场景。NestJS GraphQL 项目可参考以下适配：
+
+- Resolver 对应 controller 层：使用 `@Resolver`、`@Query`、`@Mutation` 装饰器，负责参数提取和响应映射。
+- 输入校验：GraphQL Input Type 配合 `class-validator` 和 `ValidationPipe` 仍然有效。
+- DataLoader：使用 `@nestjs/dataloader` 或手动实现，属于 infrastructure 层的数据访问优化。
+- Subscription：使用 `@Subscription` 装饰器，协议适配属于 transport 层，事件产生属于 application 层。
+
+分层原则（controller/resolver → application → domain → infrastructure）同样适用，只是入口从 `@Controller` 变为 `@Resolver`。
+
 ## 辅助资源
 
 - 示例：`examples/nestjs-backend-structure.md`

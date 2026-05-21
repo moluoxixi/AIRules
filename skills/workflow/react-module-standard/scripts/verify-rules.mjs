@@ -7,6 +7,8 @@ const skillRoot = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..
 const PUBLIC_ENTRY_FILENAMES = ['index.ts', 'index.js']
 const STYLE_ENTRY_FILENAMES = ['index.css', 'index.scss', 'index.less']
 const MODULE_IMPLEMENTATION_FILENAMES = ['index.tsx', 'index.jsx']
+const MAX_DEPTH = 10
+const IGNORED_DIRECTORIES = ['node_modules', '.git', 'dist', 'build', '.next', '.turbo']
 
 function readSkillFile(...segments) {
   return fs.readFileSync(path.join(skillRoot, ...segments), 'utf8')
@@ -129,11 +131,17 @@ function assertTargetInsideAncestor(target, ancestor, uses) {
   throw new Error(`抽离目标必须位于最近公共父级的直接共享目录：${ancestor}`)
 }
 
-function assertCodeDirectoryEntries(directory, root) {
+function assertCodeDirectoryEntries(directory, root, depth = 0) {
+  if (depth > MAX_DEPTH)
+    throw new Error(`目录深度超过 ${MAX_DEPTH} 层，可能存在循环引用或目录结构异常`)
+
   const entries = fs.readdirSync(directory, { withFileTypes: true })
 
   for (const entry of entries) {
     if (!entry.isDirectory())
+      continue
+
+    if (IGNORED_DIRECTORIES.includes(entry.name))
       continue
 
     const childDirectory = path.join(directory, entry.name)
@@ -144,7 +152,7 @@ function assertCodeDirectoryEntries(directory, root) {
     else
       assertSingleExistingFile(childDirectory, PUBLIC_ENTRY_FILENAMES, `目录 ${relative}/ 聚合入口`)
 
-    assertCodeDirectoryEntries(childDirectory, root)
+    assertCodeDirectoryEntries(childDirectory, root, depth + 1)
   }
 }
 
@@ -168,6 +176,27 @@ function assertModule(root) {
   })
 }
 
+function printHelp() {
+  console.log(`用法: node verify-rules.mjs [command] [options]
+
+命令:
+  self                        校验本 skill 的规则完整性（默认）
+  module                      校验模块结构
+  hoist                       校验公共代码抽离位置是否符合三次原则
+  --help                      显示帮助信息
+
+选项:
+  --root <path>               指定模块根目录
+  --target <path>             指定抽离目标目录
+  --uses <path1> <path2> ...  指定至少 3 个使用点路径
+
+示例:
+  node scripts/verify-rules.mjs
+  node scripts/verify-rules.mjs module --root src/pages/order
+  node scripts/verify-rules.mjs hoist --target src/pages/shared --uses src/pages/order/index.tsx src/pages/product/index.tsx src/pages/user/index.tsx
+`)
+}
+
 function verifySelf() {
   const skill = readSkillFile('SKILL.md')
   const businessModuleExample = readSkillFile('examples', 'business-module.md')
@@ -188,6 +217,10 @@ function verifySelf() {
   assertContains(skill, /custom hook/, 'SKILL.md 必须覆盖 custom hook 规则')
   assertContains(skill, /useEffect/, 'SKILL.md 必须覆盖 useEffect')
   assertContains(skill, /scripts\/verify-rules\.mjs/, 'SKILL.md 必须声明本 skill 自带的验证脚本')
+
+  assertContains(skill, /低于 19 时.*forwardRef/s, 'SKILL.md 必须说明 React 18 的 forwardRef 回退')
+  assertContains(skill, /Context\.Provider/, 'SKILL.md 必须覆盖 Context.Provider 用法')
+
   assertContains(businessModuleExample, /pages\//, '模块示例必须覆盖页面模块结构')
   assertContains(businessModuleExample, /最近公共父级/, '模块示例必须覆盖最近公共父级说明')
   assertContains(businessModuleExample, /hooks\//, '模块示例必须覆盖 hooks 目录')
@@ -196,6 +229,8 @@ function verifySelf() {
   assertContains(checklist, /只为兼容旧路径存在的中间层目录、双出口或伪共享目录/, '校验文件必须覆盖兼容路径检查')
   assertContains(checklist, /公共代码抽离是否满足三次原则，并落在最近公共父级/, '校验文件必须覆盖三次原则检查')
   assertContains(checklist, /React 18/, '校验文件必须覆盖 React 版本检查')
+
+  assertContains(checklist, /forwardRef/, '校验文件必须覆盖 forwardRef 检查')
 
   printPass('react-module-standard self rules are valid')
 }
@@ -216,6 +251,9 @@ function verifyHoist(args) {
 function main() {
   const [command = 'self', ...args] = process.argv.slice(2)
 
+  if (command === '--help' || command === '-h')
+    return printHelp()
+
   if (command === 'self')
     return verifySelf()
 
@@ -225,7 +263,7 @@ function main() {
   if (command === 'hoist')
     return verifyHoist(args)
 
-  throw new Error(`未知命令：${command}`)
+  throw new Error(`未知命令：${command}，使用 --help 查看帮助`)
 }
 
 try {

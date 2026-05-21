@@ -22,6 +22,24 @@ function printPass(message, details = {}) {
     console.log(`${key}: ${value}`)
 }
 
+function printHelp() {
+  console.log(`用法: node verify-rules.mjs [command] [options]
+
+命令:
+  self                        校验本 skill 的规则完整性（默认）
+  hoist                       校验公共代码抽离位置是否符合最近公共父级约束
+  --help                      显示帮助信息
+
+选项:
+  --target <path>             指定抽离目标目录
+  --uses <path1> <path2> ...  指定至少 2 个使用点路径
+
+示例:
+  node scripts/verify-rules.mjs
+  node scripts/verify-rules.mjs hoist --target src/modules/orders/shared --uses src/modules/orders/create/create-order.service.ts src/modules/orders/update/update-order.service.ts
+`)
+}
+
 function getOption(args, name) {
   const index = args.indexOf(name)
 
@@ -144,13 +162,16 @@ function verifySelf() {
 function main() {
   const [command = 'self', ...args] = process.argv.slice(2)
 
+  if (command === '--help' || command === '-h')
+    return printHelp()
+
   if (command === 'self')
     return verifySelf()
 
   if (command === 'hoist')
     return assertHoistTarget(args)
 
-  throw new Error(`未知命令：${command}`)
+  throw new Error(`未知命令：${command}，使用 --help 查看帮助`)
 }
 
 try {
