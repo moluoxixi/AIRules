@@ -566,6 +566,7 @@ it('前端编码规范 - 约束实现质量但不机械抽离', () => {
 it('前端编码规范 - README 描述同步 Vue 与 React 范围', () => {
   const readme = readProjectFile('README.md')
   const readmeZh = readProjectFile('README-zh.md')
+  const workflowSkill = readProjectFile('skills', 'workflow', 'software-development-workflow', 'SKILL.md')
 
   assert.match(readme, /Vue 3 and React TypeScript\/JavaScript frontend code standards for components, modules, utility libraries, UI component libraries, review output, and delivery checks/)
   assert.match(readme, /frontend-code-standard/)
@@ -573,6 +574,8 @@ it('前端编码规范 - README 描述同步 Vue 与 React 范围', () => {
   assert.match(readmeZh, /frontend-code-standard/)
   assert.match(readme, /frontend-code-standard\//)
   assert.match(readmeZh, /frontend-code-standard\//)
+  assert.match(workflowSkill, /前端编码标准：`frontend-code-standard`/)
+  assert.match(workflowSkill, /新建、编写、重构、拆分、优化、评审或校验 Vue\/React 前端组件/)
   assert.doesNotMatch(readme, /frontend-review-standard|frontend-testing-standard|frontend-library-standard|vue-component-standard|react-component-standard|vue-module-standard|react-module-standard/)
   assert.doesNotMatch(readmeZh, /frontend-review-standard|frontend-testing-standard|frontend-library-standard|vue-component-standard|react-component-standard|vue-module-standard|react-module-standard/)
 })
