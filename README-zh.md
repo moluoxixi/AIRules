@@ -133,11 +133,7 @@ Moluoxixi AIRules 通过自动化投影，支持不断增长的 AI 代理生态�
 | 名称 | 描述 |
 |------|------|
 | **software-development-workflow** | 通用软件开发标准流程：需求、拆分、设计、实现、验证、复核与交付报告 |
-| **frontend-component-standard** | Vue 3 与 React TypeScript/JavaScript 前端应用、工具库和 UI 组件库编码标准，覆盖路径别名、最近公共父级上浮、显式契约与交付检查 |
-| **frontend-module-standard** | Vue 3 与 React TypeScript/JavaScript 模块实现标准：面向新写与重构，强调最近公共父级上浮、状态就近、路径别名与去除历史兼容中间层 |
-| **frontend-library-standard** | 前端工具库与 UI 组件库实现标准：面向新写与重构，强调 README 契约、稳定公开导出、副作用边界与去除过渡 barrel |
-| **frontend-review-standard** | 前端评审输出标准：强调目标分类、检查范围、基于证据的问题说明与可直接执行的改动单 |
-| **frontend-testing-standard** | 前端测试标准：类型检查、单元/组件/页面集成、交互、浏览器、响应式、可访问性与覆盖率 |
+| **frontend-code-standard** | Vue 3 与 React TypeScript/JavaScript 前端编码标准：统一组件、模块、工具库和 UI 组件库规则，覆盖评审输出、边界、导出、import 路径、类型契约与交付检查 |
 | **node-code-standard** | Node.js 后端实现标准：适用于 TypeScript/JavaScript 服务，覆盖显式契约、运行时校验、依赖注入、事务边界、持久化封装与交付检查 |
 | **nestjs-code-standard** | NestJS 后端实现与评审标准：面向新写、重构和代码评审，覆盖 DTO 契约、ValidationPipe、构造函数注入、事务边界、持久化封装和基于证据的评审输出 |
 | **java-code-standard** | Java 与 Spring Boot 后端编码标准：适用于 Java 17+ 基线、Java 21/25 LTS、Maven 和 Gradle，覆盖领域包、构造函数注入、Bean Validation、事务边界、迁移与错误映射 |
@@ -163,11 +159,7 @@ Moluoxixi AIRules 通过自动化投影，支持不断增长的 AI 代理生态�
 │   ├── skill-validation-standard/
 │   └── workflow/
 │       ├── software-development-workflow/
-│       ├── frontend-component-standard/
-│       ├── frontend-module-standard/
-│       ├── frontend-library-standard/
-│       ├── frontend-review-standard/
-│       ├── frontend-testing-standard/
+│       ├── frontend-code-standard/
 │       ├── node-code-standard/
 │       ├── nestjs-code-standard/
 │       └── java-code-standard/

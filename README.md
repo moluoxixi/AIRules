@@ -133,11 +133,7 @@ Moluoxixi AIRules supports a growing ecosystem of AI agents through automated pr
 | Name | Description |
 |------|-------------|
 | **software-development-workflow** | Standard software development workflow for requirements, splitting, design, implementation, verification, review, and delivery reports |
-| **frontend-component-standard** | Vue 3 and React TypeScript/JavaScript standards for frontend apps, utility libraries, and UI component libraries with path aliases, nearest-common-ancestor hoisting, explicit contracts, and delivery checks |
-| **frontend-module-standard** | Vue 3 and React TypeScript/JavaScript module implementation standards for new builds and rewrites with nearest-common-ancestor sharing, state locality, path aliases, and no legacy compatibility layers |
-| **frontend-library-standard** | Frontend utility library and UI component library standards for new builds and rewrites with README contracts, stable public exports, explicit side effects, and no transitional barrels |
-| **frontend-review-standard** | Frontend review output standard for evidence-based classification, scope reporting, actionable findings, and implementation-ready change lists |
-| **frontend-testing-standard** | Frontend testing standards for type checks, unit/component/page integration, interaction, browser, responsive, accessibility, and coverage verification |
+| **frontend-code-standard** | Vue 3 and React TypeScript/JavaScript frontend code standards for components, modules, utility libraries, UI component libraries, review output, and delivery checks |
 | **node-code-standard** | Node.js backend implementation standards for TypeScript/JavaScript services with explicit contracts, runtime validation, dependency injection, transaction boundaries, persistence encapsulation, and delivery checks |
 | **nestjs-code-standard** | NestJS backend implementation and review standards for new code, rewrites, and code reviews with DTO contracts, ValidationPipe, constructor injection, transaction boundaries, persistence encapsulation, and evidence-based review output |
 | **java-code-standard** | Java and Spring Boot backend code standards for Java 17+ baseline, Java 21/25 LTS, Maven, and Gradle with domain packages, constructor injection, Bean Validation, transaction boundaries, migrations, and error mapping |
@@ -163,11 +159,7 @@ Moluoxixi AIRules supports a growing ecosystem of AI agents through automated pr
 │   ├── skill-validation-standard/
 │   └── workflow/
 │       ├── software-development-workflow/
-│       ├── frontend-component-standard/
-│       ├── frontend-module-standard/
-│       ├── frontend-library-standard/
-│       ├── frontend-review-standard/
-│       ├── frontend-testing-standard/
+│       ├── frontend-code-standard/
 │       ├── node-code-standard/
 │       ├── nestjs-code-standard/
 │       └── java-code-standard/

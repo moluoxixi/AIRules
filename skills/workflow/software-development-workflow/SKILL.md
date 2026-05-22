@@ -44,13 +44,7 @@ description: 用于软件开发任务的可复用流程规范。适用于功能�
 
 ## 关联标准
 
-- Vue 组件实现标准：`vue-component-standard`。
-- React 组件实现标准：`react-component-standard`。
-- Vue 模块实现标准：`vue-module-standard`。
-- React 模块实现标准：`react-module-standard`。
-- 前端库实现标准：`frontend-library-standard`。
-- 前端评审输出标准：`frontend-review-standard`。
-- 前端验证标准：`frontend-testing-standard`。
+- 前端编码标准：`frontend-code-standard`。
 - Node.js 后端实现标准：`node-code-standard`。
 - NestJS 后端实现标准：`nestjs-code-standard`。
 - Java 后端实现标准：`java-code-standard`。

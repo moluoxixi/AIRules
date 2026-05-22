@@ -27,7 +27,7 @@ it('入口策略 - AGENTS 保留公共硬规则并保持简洁入口边界', () 
   const agents = readProjectFile('AGENTS.md')
 
   assert.match(agents, /## 核心规则/)
-  assert.match(agents, /禁止防御式编程/)
+  assert.match(agents, /禁止冗余校验/)
   assert.match(agents, /禁止错误回退/)
   assert.match(agents, /禁止 lint 绕行/)
   assert.match(agents, /不得通过 `--no-verify`、关闭或弱化 lint 规则、扩大 ignore、跳过 lint 脚本/)
@@ -84,6 +84,7 @@ it('工作流策略 - workflow skills 使用中文规范结构', () => {
 it('前端编码规范 - SKILL.md 是唯一规则源', () => {
   const skill = readProjectFile('skills', 'workflow', 'frontend-code-standard', 'SKILL.md')
 
+  assert.match(skill, /frontend-code-standard/)
   assert.match(skill, /Vue 3 \/ React TypeScript\/JavaScript/)
   assert.match(skill, /组件、业务模块、前端工具包和 UI 组件库/)
   assert.match(skill, /实现质量、目录边界、公共导出、import 路径、类型契约和交付检查/)
@@ -96,22 +97,36 @@ it('前端编码规范 - SKILL.md 是唯一规则源', () => {
   assert.match(skill, /业务模块标准/)
   assert.match(skill, /工具包与 UI 组件库标准/)
   assert.match(skill, /契约优先/)
+  assert.match(skill, /物理边界约束/)
+  assert.match(skill, /文件与目录命名约束/)
+  assert.match(skill, /UI 与逻辑解耦/)
+  assert.match(skill, /配置与元数据隔离/)
+  assert.match(skill, /就近内聚/)
   assert.match(skill, /状态就近/)
   assert.match(skill, /逻辑贴近使用点/)
   assert.match(skill, /失败显性/)
-  assert.match(skill, /类型从事实来/)
+  assert.match(skill, /类型扩展性与显式返回/)
   assert.match(skill, /抽象要付账/)
   assert.match(skill, /注释解释意图/)
   assert.doesNotMatch(skill, /必须把 script 抽成 Hook/)
+  assert.match(skill, /## 示例/)
+  assert.match(skill, /## 检查清单/)
+  assert.match(skill, /## 自校验脚本/)
+  assert.match(skill, /工具包（utility-library）/)
+  assert.match(skill, /UI 组件库（ui-library）/)
+  assert.match(skill, /简单组件（simple-component）/)
+  assert.match(skill, /复杂组件包（component-package）/)
+  assert.match(skill, /页面模块/)
+  assert.match(skill, /类型组织与导入隔离/)
   assert.match(skill, /## 评审输出/)
-  assert.match(skill, /目标分类：`simple-component`、`business-module`、`component-package`、`utility-library`、`ui-library` 或 `ordinary-module`/)
-  assert.match(skill, /检查范围：说明本次实际阅读和检查的文件、目录、调用方或验证命令；未检查部分明确标记 `NOT RUN`/)
-  assert.match(skill, /总结论：只能使用 `PASS`、`FAIL`、`MISSING` 或 `NOT RUN`/)
-  assert.match(skill, /严重级别：`critical`、`major` 或 `minor`/)
-  assert.match(skill, /改动建议汇总：按文件归并，整理成可以直接交给其他 AI 实现的改动单/)
+  assert.match(skill, /### 目标分类/)
+  assert.match(skill, /### 检查范围/)
+  assert.match(skill, /### 总结论/)
+  assert.match(skill, /### 问题列表/)
+  assert.match(skill, /### 改动建议汇总/)
   assert.match(skill, /只复述规则，不指出当前代码哪里不符合/)
   assert.match(skill, /只写“建议优化”“建议调整”“建议规范化”这类空泛建议/)
-  assert.match(skill, /结构校验脚本：`scripts\/verify-rules\.mjs`（只覆盖结构约束，不替代实现审查）/)
+  assert.match(skill, /node scripts\/verify-rules\.mjs/)
   assert.doesNotMatch(skill, /examples\/directory-structure\.md/)
   assert.doesNotMatch(skill, /examples\/package-structure\.md/)
   assert.doesNotMatch(skill, /fractal-frontend-standard\.md/)
@@ -120,84 +135,60 @@ it('前端编码规范 - SKILL.md 是唯一规则源', () => {
   assert.doesNotMatch(skill, /Headless 状态逻辑/)
   assert.doesNotMatch(skill, /复杂状态、跨组件复用逻辑和副作用编排必须从视图层剥离/)
   assert.doesNotMatch(skill, /复杂业务状态、跨组件复用逻辑和副作用编排必须进入/)
-  assert.match(skill, /组件私有逻辑默认留在组件内/)
+  assert.match(skill, /私有逻辑默认留在组件或模块内部/)
   assert.match(skill, /路径别名优先/)
   assert.match(skill, /禁止 deep import/)
   assert.match(skill, /scripts\/verify-rules\.mjs/)
   assert.match(skill, /前端目录遵循单一入口、按需拆分/)
-  assert.match(skill, /普通业务模块不得在根目录额外创建 `index\.ts` \/ `index\.js`/)
+  assert.match(skill, /普通模块根目录不得额外创建 `index\.ts` \/ `index\.js`/)
   assert.match(skill, /只有 `component-package`、`utility-library` 和 `ui-library` 允许/)
   assert.match(skill, /`styles\/` 只使用一个 `index\.css`、`index\.scss` 或 `index\.less`/)
   assert.match(skill, /复杂组件可按职责拆分/)
-  assert.match(skill, /简单组件和普通模块的类型优先贴近使用点/)
-  assert.match(skill, /缺少脚本时标记 `MISSING`，失败时标记 `FAIL`/)
+  assert.match(skill, /简单组件的类型优先贴近使用点/)
+  assert.match(skill, /export type \* from '\.\/props'/)
+  assert.match(skill, /@\/components\/DataTable\/src\/composables\/use-table-sort/)
+  assert.match(skill, /@\/components\/DataTable/)
+  assert.match(skill, /缺少脚本时标记 `MISSING`，失败标记 `FAIL`，未执行标记 `NOT RUN`/)
   assert.doesNotMatch(skill, /react\.md|typescript-javascript\.md|common\.md|vue\.md/)
 })
 
-it('前端编码规范 - examples 按可复用单元拆分', () => {
-  const exampleRoot = path.join(rootDir, 'skills', 'workflow', 'frontend-code-standard', 'examples')
-  const businessModule = readProjectFile('skills', 'workflow', 'frontend-code-standard', 'examples', 'business-module.md').replace(/\r\n/g, '\n')
-  const component = readProjectFile('skills', 'workflow', 'frontend-code-standard', 'examples', 'component.md').replace(/\r\n/g, '\n')
-  const utility = readProjectFile('skills', 'workflow', 'frontend-code-standard', 'examples', 'utility.md').replace(/\r\n/g, '\n')
-  const typesAndImports = readProjectFile('skills', 'workflow', 'frontend-code-standard', 'examples', 'types-and-imports.md').replace(/\r\n/g, '\n')
-  const reviewOutput = readProjectFile('skills', 'workflow', 'frontend-code-standard', 'examples', 'review-output.md').replace(/\r\n/g, '\n')
-  const exampleFiles = fs.readdirSync(exampleRoot).filter(file => file.endsWith('.md')).sort()
+it('前端编码规范 - SKILL.md 内联示例按可复用单元拆分', () => {
+  const skill = readProjectFile('skills', 'workflow', 'frontend-code-standard', 'SKILL.md').replace(/\r\n/g, '\n')
 
-  assert.deepEqual(exampleFiles, [
-    'business-module.md',
-    'component.md',
-    'review-output.md',
-    'types-and-imports.md',
-    'utility.md',
-  ])
-
-  for (const content of [businessModule, component, utility, typesAndImports, reviewOutput]) {
-    assert.match(content, /本文件只提供示例/)
-    assert.match(content, /不定义新规则/)
-    assert.doesNotMatch(content, /最高优先级/)
-    assert.doesNotMatch(content, /核心原则：/)
-    assert.doesNotMatch(content, /校验脚本/)
-    assert.doesNotMatch(content, /检查清单/)
-  }
-
-  assert.match(businessModule, /## 页面模块/)
-  assert.ok(businessModule.includes('views/\n  purchaseOrder/\n    index.vue\n    api/\n      index.ts\n      purchase-order-api.ts'))
-  assert.ok(businessModule.includes('components/\n      index.ts\n      StatusBadge.vue\n      AuditDialog/\n        README.md\n        index.ts\n        src/\n          index.vue'))
-  assert.ok(businessModule.includes('styles/\n      index.scss\n      purchase-order.scss\n    types/\n      index.ts\n      purchase-order.ts'))
-  assert.match(businessModule, /位置判断/)
-  assert.match(businessModule, /最近公共父级/)
-  assert.match(component, /Sparkline\.jsx/)
-  assert.ok(component.includes('DataTable/\n  README.md\n  index.ts\n  src/\n    index.vue'))
-  assert.ok(component.includes('components/\n      index.ts\n      HeaderCell.vue\n      EmptyState.vue'))
-  assert.ok(component.includes('utils/\n      index.ts\n      normalize-column.ts'))
-  assert.ok(component.includes('styles/\n      index.scss\n      data-table.scss'))
-  assert.ok(component.includes('DataTableReact/\n  README.md\n  index.ts\n  src/\n    index.tsx\n    types/\n      props.ts\n      ref.ts'))
-  assert.ok(!component.includes('hooks/'))
-  assert.ok(!component.includes('composables/'))
-  assert.ok(!businessModule.includes('composables/'))
-  assert.match(component, /公共 props 表达调用契约/)
-  assert.match(utility, /## 简单工具/)
-  assert.match(utility, /## 工具包/)
-  assert.ok(utility.includes('normalize-text.ts\ncopy-text.ts'))
-  assert.ok(utility.includes('ClipboardToolkit/\n  README.md\n  index.ts\n  src/\n    index.ts\n    clipboard/\n      index.ts'))
-  assert.ok(utility.includes('utils/\n        index.ts\n        normalize-text.ts\n        copy-text.ts'))
-  assert.ok(utility.includes('api/\n        index.ts\n        clipboard-api.ts'))
-  assert.ok(utility.includes('constants/\n        index.ts\n        clipboard-options.ts'))
-  assert.match(utility, /涉及浏览器 API 的工具显式接收依赖/)
-  assert.match(reviewOutput, /目标分类：component-package/)
-  assert.match(reviewOutput, /总结论：FAIL/)
-  assert.match(reviewOutput, /规则点：/)
-  assert.match(reviewOutput, /证据：`src\/views\/order\/index\.vue:12`/)
-  assert.match(reviewOutput, /改动建议汇总：/)
-  assert.match(reviewOutput, /不得只写“建议优化”“建议调整”“建议规范化”/)
-  assert.ok(reviewOutput.includes('src/components/DataTable/index.ts'))
-  assert.ok(reviewOutput.includes('packages/ClipboardToolkit/src/clipboard/api/clipboard-api.ts'))
-  assert.ok(!reviewOutput.includes('校验脚本'))
-  assert.ok(!reviewOutput.includes('检查清单'))
-  assert.ok(!utility.includes('BrowserToolkit/'))
-  assert.ok(!utility.includes('MoluoxixiUI/'))
-  assert.ok(!businessModule.includes('views/ or pages/ or modules/'))
-  assert.ok(!businessModule.includes('columnSettings'))
+  assert.match(skill, /## 示例/)
+  assert.match(skill, /## 工具包（utility-library）/)
+  assert.match(skill, /## UI 组件库（ui-library）/)
+  assert.match(skill, /### 简单组件（simple-component）/)
+  assert.match(skill, /### 复杂组件包（component-package）/)
+  assert.match(skill, /### 页面模块/)
+  assert.match(skill, /### 类型组织与导入隔离/)
+  assert.match(skill, /### 评审输出示例/)
+  assert.match(skill, /## 检查清单/)
+  assert.match(skill, /## 自校验脚本/)
+  assert.doesNotMatch(skill, /examples\/|validation\//)
+  assert.match(skill, /公共代码上浮到最近公共祖先，同时遵从领域通用性质判断是否继续上浮至全局/)
+  assert.match(skill, /公开契约（props、emits、slots、ref、expose）/)
+  assert.match(skill, /必须显式传入 navigator，不依赖全局对象。/)
+  assert.ok(skill.includes('clipboard-toolkit/\n├── README.md\n├── package.json'))
+  assert.ok(skill.includes('api/\n    │   │   ├── index.ts\n    │   │   └── clipboard-api.ts'))
+  assert.ok(skill.includes('constants/\n    │       ├── index.ts\n    │       └── clipboard-options.ts'))
+  assert.ok(skill.includes('MoluoxixiUI/\n├── README.md\n├── package.json\n├── index.ts'))
+  assert.ok(skill.includes('DataTable/\n    │       ├── README.md\n    │       ├── index.ts\n    │       └── src/...'))
+  assert.ok(skill.includes('views/\n└── purchase-order/\n    ├── index.vue'))
+  assert.ok(skill.includes('AuditDialog/\n    │       ├── README.md\n    │       ├── index.ts\n    │       └── src/'))
+  assert.ok(skill.includes('// types/index.ts\nexport type * from \'./props\'\nexport type * from \'./ref\'\nexport type * from \'./emit\'\nexport type * from \'./expose\''))
+  assert.match(skill, /### 目标分类/)
+  assert.match(skill, /### 检查范围/)
+  assert.match(skill, /### 总结论/)
+  assert.match(skill, /### 问题列表/)
+  assert.match(skill, /### 改动建议汇总/)
+  assert.match(skill, /1\. \[major\] 规则点：层级导入契约禁止绕过顶层 API/)
+  assert.match(skill, /证据：src\/views\/purchase-order\/index\.vue:12/)
+  assert.match(skill, /只写“建议优化”“建议调整”“建议规范化”这类空泛建议/)
+  assert.ok(skill.includes('src/components/DataTable/index.ts'))
+  assert.ok(!skill.includes('BrowserToolkit/'))
+  assert.ok(!skill.includes('views/ or pages/ or modules/'))
+  assert.ok(!skill.includes('columnSettings'))
 })
 
 it('前端编码规范 - skill 自带验证脚本覆盖组件结构和最近公共父级', () => {
@@ -459,6 +450,16 @@ it('前端编码规范 - skill 自带验证脚本覆盖组件结构和最近公�
     ], { cwd: rootDir, encoding: 'utf8' }),
     /PASS frontend simple component structure is valid/,
   )
+  fs.writeFileSync(path.join(simpleComponentRoot, 'format-status.ts'), 'export function formatStatus() {}\n')
+  const simpleComponentSiblingResult = spawnSync(process.execPath, [
+    scriptPath,
+    'simple-component',
+    '--root',
+    path.join(simpleComponentRoot, 'StatusBadge.vue'),
+  ], { cwd: rootDir, encoding: 'utf8' })
+
+  assert.notEqual(simpleComponentSiblingResult.status, 0)
+  assert.match(simpleComponentSiblingResult.stderr, /简单组件同级存在专属附属文件：format-status\.ts/)
   const missingSrcEntryResult = spawnSync(process.execPath, [
     scriptPath,
     'utility',
@@ -482,11 +483,10 @@ it('前端编码规范 - skill 自带验证脚本覆盖组件结构和最近公�
       scriptPath,
       'hoist',
       '--target',
-      'src/views/purchaseOrder/utils',
+      'src/views/purchase-order/utils',
       '--uses',
-      'src/views/purchaseOrder/create/index.tsx',
-      'src/views/purchaseOrder/update/index.tsx',
-      'src/views/purchaseOrder/delete/index.tsx',
+      'src/views/purchase-order/create/index.tsx',
+      'src/views/purchase-order/update/index.tsx',
     ], { cwd: rootDir, encoding: 'utf8' }),
     /PASS frontend hoist target stays under nearest common ancestor/,
   )
@@ -494,11 +494,10 @@ it('前端编码规范 - skill 自带验证脚本覆盖组件结构和最近公�
     scriptPath,
     'hoist',
     '--target',
-    'src/views/purchaseOrder/create/utils',
+    'src/views/purchase-order/create/utils',
     '--uses',
-    'src/views/purchaseOrder/create/index.tsx',
-    'src/views/purchaseOrder/update/index.tsx',
-    'src/views/purchaseOrder/delete/index.tsx',
+    'src/views/purchase-order/create/index.tsx',
+    'src/views/purchase-order/update/index.tsx',
   ], { cwd: rootDir, encoding: 'utf8' })
 
   assert.notEqual(nestedHoistResult.status, 0)
@@ -507,76 +506,75 @@ it('前端编码规范 - skill 自带验证脚本覆盖组件结构和最近公�
 
 it('前端编码规范 - 类型组织示例保持建议口径', () => {
   const skill = readProjectFile('skills', 'workflow', 'frontend-code-standard', 'SKILL.md')
-  const examples = readProjectFile('skills', 'workflow', 'frontend-code-standard', 'examples', 'types-and-imports.md')
 
-  assert.match(skill, /类型从事实来/)
-  assert.match(skill, /简单组件和普通模块的类型优先贴近使用点/)
-  assert.match(skill, /复杂组件可按职责拆分/)
-  assert.match(skill, /类型出口优先使用 type-only re-export/)
+  assert.match(skill, /类型扩展性与显式返回/)
+  assert.match(skill, /interface/)
+  assert.match(skill, /显式声明返回类型/)
+  assert.match(skill, /简单组件的类型优先贴近使用点/)
+  assert.match(skill, /复杂组件可按职责拆分 `types\/props\.ts`、`types\/emit\.ts`、`types\/ref\.ts`、`types\/expose\.ts`、`types\/context\.ts` 和 `types\/index\.ts`/)
+  assert.match(skill, /强制使用 `export type` 或 `export type \*`/)
   assert.match(skill, /props\.ts/)
   assert.match(skill, /ref\.ts/)
   assert.match(skill, /emit\.ts/)
   assert.match(skill, /expose\.ts/)
-  assert.match(skill, /不用 `any`、宽泛对象或可选字段掩盖契约不清/)
-  assert.match(examples, /export type \* from '\.\/props'/)
-  assert.match(examples, /export type \* from '\.\/ref'/)
-  assert.ok(examples.includes('DataTable/\n  index.ts\n  src/\n    index.tsx\n    types/\n      props.ts\n      ref.ts\n      index.ts'))
+  assert.match(skill, /export type \* from '\.\/props'/)
+  assert.match(skill, /export type \* from '\.\/ref'/)
+  assert.ok(skill.includes('export type * from \'./emit\'\nexport type * from \'./expose\''))
 })
 
-it('前端编码规范 - Barrel、路径别名、三次原则和逐级上浮为硬约束', () => {
+it('前端编码规范 - Barrel、路径别名、复用阈值和领域提升为硬约束', () => {
   const skill = readProjectFile('skills', 'workflow', 'frontend-code-standard', 'SKILL.md')
-  const examples = readProjectFile('skills', 'workflow', 'frontend-code-standard', 'examples', 'types-and-imports.md')
-  const checklist = readProjectFile('skills', 'workflow', 'frontend-code-standard', 'validation', 'checklist.md')
 
   assert.match(skill, /路径别名优先/)
   assert.match(skill, /禁止 deep import/)
   assert.match(skill, /只有 `component-package`、`utility-library` 和 `ui-library` 允许/)
-  assert.match(skill, /公共代码上浮到最近公共父级/)
-  assert.match(skill, /满足三次原则/)
-  assert.match(examples, /@\/components\/DataTable\/utils\/date/)
-  assert.match(examples, /@\/components\/DataTable\/src\/utils\/date/)
-  assert.match(examples, /@\/components\/DataTable/)
-  assert.doesNotMatch(examples, /允许：\n\n```ts\nimport \{ formatDate \} from '@\/components\/DataTable\/utils'/)
-  assert.match(checklist, /node skills\/workflow\/frontend-code-standard\/scripts\/verify-rules\.mjs hoist --target/)
-  assert.match(checklist, /公共代码抽离是否满足三次原则，并落在最近公共父级/)
+  assert.match(skill, /摒弃死板的“三次法则”/)
+  assert.match(skill, /出现 \*\*2 个\*\*明确的独立使用点/)
+  assert.match(skill, /按领域边界而非物理交集提升/)
+  assert.match(skill, /公共代码上浮到最近公共祖先/)
+  assert.match(skill, /@\/components\/DataTable\/src\/composables\/use-table-sort/)
+  assert.match(skill, /@\/components\/DataTable/)
+  assert.doesNotMatch(skill, /允许：\n\n```ts\nimport \{ formatDate \} from '@\/components\/DataTable\/utils'/)
+  assert.match(skill, /node scripts\/verify-rules\.mjs hoist --target src\/views\/order-shared\/utils --uses/)
+  assert.match(skill, /\[HOIST_WARNING\]` 警告/)
 })
 
 it('前端编码规范 - 约束实现质量但不机械抽离', () => {
   const skill = readProjectFile('skills', 'workflow', 'frontend-code-standard', 'SKILL.md')
-  const checklist = readProjectFile('skills', 'workflow', 'frontend-code-standard', 'validation', 'checklist.md')
 
   assert.match(skill, /状态就近/)
   assert.match(skill, /逻辑贴近使用点/)
-  assert.match(skill, /组件私有逻辑默认留在组件内/)
+  assert.match(skill, /私有逻辑默认留在组件或模块内部/)
   assert.match(skill, /只有复用、测试或复杂度收益明确时才抽到 hook、composable 或普通函数/)
-  assert.match(skill, /涉及浏览器、时间、随机数、网络和存储时显式表达副作用/)
+  assert.match(skill, /涉及浏览器、时间、随机数、网络和存储时显式表达依赖和失败语义/)
   assert.match(skill, /注释解释意图/)
   assert.match(skill, /不复述实现步骤/)
   assert.match(skill, /不要因为文件变长就机械拆分/)
   assert.doesNotMatch(skill, /复杂副作用必须/)
-  assert.match(checklist, /状态是否就近保留/)
-  assert.match(checklist, /指出缺失状态出现在哪条交互路径/)
-  assert.match(checklist, /建议回收到哪个文件或组件边界/)
-  assert.match(checklist, /新目录、新抽象和公共 API 是否都有真实职责/)
-  assert.match(checklist, /指出具体类型声明和建议替换方式；不得只写“补充类型”/)
-  assert.match(checklist, /实现是否覆盖当前职责下真实存在的 loading、empty、error、disabled、readonly 等状态/)
-  assert.match(checklist, /脚本 `PASS` 只代表结构通过，不代表实现整体通过/)
-  assert.match(checklist, /必须给出具体 import 语句、文件位置和应改用的公开入口；不得只写“避免 deep import”/)
-  assert.match(checklist, /先写目标分类和本次检查范围/)
-  assert.match(checklist, /每个问题都要包含：规则点、证据（文件路径和位置）、问题说明、可执行的改动建议/)
-  assert.match(checklist, /是否运行了与风险匹配的现有 lint、typecheck、test、build 或浏览器验证/)
+  assert.match(skill, /是否检查了简单组件的\*\*物理边界阈值\*\*/)
+  assert.match(skill, /是否检查了\*\*文件命名约束\*\*/)
+  assert.match(skill, /状态清理契约/)
+  assert.match(skill, /sideEffects/)
+  assert.match(skill, /peerDependencies/)
+  assert.match(skill, /公共代码是否按照\*\*领域边界\*\*正确提升/)
+  assert.match(skill, /结构校验脚本的 `PASS`.*实现整体 `PASS`/)
+  assert.match(skill, /是否先写了目标分类/)
+  assert.match(skill, /每个问题是否都包含规则点、证据、问题说明和可执行改动建议/)
+  assert.match(skill, /是否运行了与风险匹配的现有 lint、typecheck、test、build 或浏览器验证/)
 })
 
 it('前端编码规范 - README 描述同步 Vue 与 React 范围', () => {
   const readme = readProjectFile('README.md')
   const readmeZh = readProjectFile('README-zh.md')
 
-  assert.match(readme, /Vue 3 and React TypeScript\/JavaScript standards for frontend apps, utility libraries, and UI component libraries/)
-  assert.match(readme, /path aliases/)
-  assert.match(readme, /nearest-common-ancestor hoisting/)
-  assert.match(readmeZh, /Vue 3 与 React TypeScript\/JavaScript 前端应用、工具库和 UI 组件库编码标准/)
-  assert.match(readmeZh, /路径别名/)
-  assert.match(readmeZh, /最近公共父级上浮/)
+  assert.match(readme, /Vue 3 and React TypeScript\/JavaScript frontend code standards for components, modules, utility libraries, UI component libraries, review output, and delivery checks/)
+  assert.match(readme, /frontend-code-standard/)
+  assert.match(readmeZh, /Vue 3 与 React TypeScript\/JavaScript 前端编码标准：统一组件、模块、工具库和 UI 组件库规则，覆盖评审输出、边界、导出、import 路径、类型契约与交付检查/)
+  assert.match(readmeZh, /frontend-code-standard/)
+  assert.match(readme, /frontend-code-standard\//)
+  assert.match(readmeZh, /frontend-code-standard\//)
+  assert.doesNotMatch(readme, /frontend-review-standard|frontend-testing-standard|frontend-library-standard|vue-component-standard|react-component-standard|vue-module-standard|react-module-standard/)
+  assert.doesNotMatch(readmeZh, /frontend-review-standard|frontend-testing-standard|frontend-library-standard|vue-component-standard|react-component-standard|vue-module-standard|react-module-standard/)
 })
 
 it('node 编码规范 - 入口引用 Node 后端实现标准', () => {
@@ -855,21 +853,27 @@ it('skill 校验规范 - 校验生成后的 skill 结构', () => {
   const readme = readProjectFile('README.md')
   const readmeZh = readProjectFile('README-zh.md')
 
-  assert.match(skill, /Skill 校验规范/)
-  assert.match(skill, /校验新建或修改后的 AI skill 产物/)
-  assert.match(skill, /AI Skills 规范基线/)
+  assert.match(skill, /Skill 校验流程/)
+  assert.match(skill, /校验 Claude\/Codex skill 是否符合官方最佳实践/)
+  assert.match(skill, /创建、修改或评审 skill 后/)
   assert.doesNotMatch(skill, /服务所有 skills/)
   assert.doesNotMatch(skill, /不属于 `workflow`/)
   assert.match(skill, /examples\/skill-structure\.md/)
-  assert.match(skill, /validation\/checklist\.md/)
+  assert.match(skill, /examples\/validation-output\.md/)
   assert.match(skill, /scripts\/verify-rules\.mjs/)
   assert.match(skill, /触发描述/)
-  assert.match(skill, /内容质量/)
+  assert.match(skill, /内容质量 rubric/)
+  assert.match(skill, /正文精简度/)
+  assert.match(skill, /资源组织/)
+  assert.match(skill, /示例与脚本/)
+  assert.match(skill, /整体质量/)
   assert.doesNotMatch(skill, /airules-workflow/)
-  assert.match(examples, /本文件只提供示例，不定义新规则/)
+  assert.match(examples, /Skill 结构示例与反模式/)
   assert.match(examples, /my-skill\/\n {2}SKILL\.md/)
-  assert.match(examples, /references\/\n {4}api-schema\.md/)
-  assert.match(checklist, /本文件只提供校验脚本用法和检查清单，不定义新规则/)
+  assert.match(examples, /examples\/sample-output\.md/)
+  assert.match(examples, /validation\/checklist\.md/)
+  assert.match(checklist, /校验脚本用法/)
+  assert.match(checklist, /本文件只提供脚本用法/)
   assert.match(checklist, /node skills\/skill-validation-standard\/scripts\/verify-rules\.mjs --root/)
   assert.doesNotMatch(checklist, /airules-workflow/)
   assert.match(runNodeScript('skills', 'skill-validation-standard', 'scripts', 'verify-rules.mjs'), /PASS skill is valid/)
@@ -882,11 +886,11 @@ it('skill 校验规范 - 校验生成后的 skill 结构', () => {
     /PASS skill is valid/,
   )
   const claudeSkillTemp = fs.mkdtempSync(path.join(os.tmpdir(), 'airules-claude-skill-'))
-  const claudeSkillRoot = path.join(claudeSkillTemp, 'claude-reference-skill')
+  const claudeSkillRoot = path.join(claudeSkillTemp, 'reference-skill')
   fs.mkdirSync(claudeSkillRoot)
   fs.writeFileSync(path.join(claudeSkillRoot, 'SKILL.md'), [
     '---',
-    'name: claude-reference-skill',
+    'name: reference-skill',
     'description: Use when checking generated skill packages that include bundled reference material or reusable scripts.',
     '---',
     '',
@@ -923,7 +927,7 @@ it('skill 校验规范 - 校验生成后的 skill 结构', () => {
     invalidDescriptionRoot,
   ], { cwd: rootDir, encoding: 'utf8' })
   assert.notEqual(invalidDescriptionResult.status, 0)
-  assert.match(invalidDescriptionResult.stderr, /frontmatter description 不得描述内部投影、分类或自身位置/)
+  assert.match(invalidDescriptionResult.stdout, /description 不得描述内部投影或自身位置/)
 
   const unknownArgResult = spawnSync(process.execPath, [
     scriptPath,
@@ -931,7 +935,7 @@ it('skill 校验规范 - 校验生成后的 skill 结构', () => {
     'skills/workflow/frontend-code-standard',
   ], { cwd: rootDir, encoding: 'utf8' })
   assert.notEqual(unknownArgResult.status, 0)
-  assert.match(unknownArgResult.stderr, /未知参数：--rooot/)
+  assert.match(unknownArgResult.stdout, /未知参数：--rooot/)
 
   assert.doesNotMatch(workflowSkill, /不属于 workflow namespace/)
   assert.match(readme, /skill-validation-standard/)
