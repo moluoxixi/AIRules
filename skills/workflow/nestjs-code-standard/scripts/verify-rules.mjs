@@ -22,12 +22,19 @@ function printPass(message, details = {}) {
     console.log(`${key}: ${value}`)
 }
 
+function printHoistWarning(message, details = {}) {
+  console.log(`WARN [HOIST_WARNING] ${message}`)
+
+  for (const [key, value] of Object.entries(details))
+    console.log(`${key}: ${value}`)
+}
+
 function printHelp() {
   console.log(`用法: node verify-rules.mjs [command] [options]
 
 命令:
   self                        校验本 skill 的规则完整性（默认）
-  hoist                       校验公共代码抽离位置是否符合最近公共父级约束
+  hoist                       执行领域提升风险扫描（LCA 仅作机械线索）
   --help                      显示帮助信息
 
 选项:
@@ -76,8 +83,15 @@ function nearestCommonAncestor(paths) {
   return shared
 }
 
-// Ensure extracted shared code stays exactly one level under the nearest common directory.
-function assertHoistTarget(args) {
+function isUnderAncestor(targetSegments, ancestorSegments) {
+  if (targetSegments.length < ancestorSegments.length)
+    return false
+
+  return ancestorSegments.every((segment, index) => targetSegments[index] === segment)
+}
+
+// Use LCA as a warning signal only; semantic ownership still comes from domain boundaries.
+function scanHoistTarget(args) {
   const target = getOption(args, '--target')
   const usesIndex = args.indexOf('--uses')
 
@@ -91,18 +105,26 @@ function assertHoistTarget(args) {
 
   const ancestorSegments = nearestCommonAncestor(uses)
   const targetSegments = normalizeSegments(target)
+  const targetPath = path.resolve(process.cwd(), target)
+  const ancestor = ancestorSegments.join('/')
 
-  if (targetSegments.length !== ancestorSegments.length + 1)
-    throw new Error('抽离目标必须位于最近公共父级的直接共享目录')
-
-  for (let index = 0; index < ancestorSegments.length; index += 1) {
-    if (ancestorSegments[index] !== targetSegments[index])
-      throw new Error('抽离目标必须位于最近公共父级的直接共享目录')
+  if (!isUnderAncestor(targetSegments, ancestorSegments)) {
+    printHoistWarning('抽离目标不在使用点的物理最近公共父级下，请人工确认它是否属于全局基础设施或跨域业务资产', {
+      target: targetPath,
+      nearestCommonAncestor: ancestor,
+    })
+  }
+  else if (targetSegments.length !== ancestorSegments.length + 1) {
+    printHoistWarning('抽离目标位于更深层级，请人工确认它是否应留在局部业务内部或提升为跨域共享资产', {
+      target: targetPath,
+      nearestCommonAncestor: ancestor,
+    })
   }
 
-  printPass('nestjs hoist target stays under nearest common ancestor', {
-    target: path.resolve(process.cwd(), target),
-    nearestCommonAncestor: ancestorSegments.join('/'),
+  printPass('nestjs hoist domain-boundary scan completed', {
+    target: targetPath,
+    nearestCommonAncestor: ancestor,
+    advisory: 'LCA is mechanical only; review domain semantics before changing ownership.',
   })
 }
 
@@ -114,9 +136,9 @@ function verifySelf() {
   const checklist = readSkillFile('validation', 'checklist.md')
 
   assertContains(skill, /name: nestjs-code-standard/, 'SKILL.md 必须声明正确的 skill name')
-  assertContains(skill, /用于新写、重构或评审 NestJS 后端代码时/, 'SKILL.md 必须声明触发场景')
+  assertContains(skill, /用于新建、编写、重构、拆分、优化、评审或校验 NestJS 后端代码/, 'SKILL.md 必须声明完整触发场景')
   assertContains(skill, /唯一规则源/, 'SKILL.md 必须声明唯一规则源')
-  assertContains(skill, /不依赖仓库中的其它 project skills/, 'SKILL.md 必须声明不依赖其它 project skills')
+  assertContains(skill, /不要跳转到仓库中的其它 project skills/, 'SKILL.md 必须声明不依赖其它 project skills')
   assertContains(skill, /契约优先/, 'SKILL.md 必须覆盖契约优先')
   assertContains(skill, /失败显性/, 'SKILL.md 必须覆盖失败显性')
   assertContains(skill, /构造函数注入/, 'SKILL.md 必须覆盖构造函数注入')
@@ -124,7 +146,7 @@ function verifySelf() {
   assertContains(skill, /class-validator/, 'SKILL.md 必须覆盖 class-validator')
   assertContains(skill, /事务边界/, 'SKILL.md 必须覆盖事务边界')
   assertContains(skill, /持久化封装/, 'SKILL.md 必须覆盖持久化封装')
-  assertContains(skill, /最近公共父级/, 'SKILL.md 必须覆盖最近公共父级')
+  assertContains(skill, /按领域边界提升/, 'SKILL.md 必须覆盖按领域边界提升')
   assertContains(skill, /目标分类/, 'SKILL.md 必须包含评审目标分类')
   assertContains(skill, /总结论只能使用 `PASS`、`FAIL`、`MISSING`、`NOT RUN` 或 `N\/A`/, 'SKILL.md 必须约束评审总结论状态')
   assertContains(skill, /examples\/nestjs-backend-structure\.md/, 'SKILL.md 必须索引结构示例')
@@ -153,8 +175,8 @@ function verifySelf() {
   assertContains(checklist, /class-validator/, '校验清单必须覆盖 class-validator')
   assertContains(checklist, /构造函数注入/, '校验清单必须覆盖构造函数注入')
   assertContains(checklist, /事务要求/, '校验清单必须覆盖事务要求')
-  assertContains(checklist, /最近公共父级的直接共享目录/, '校验清单必须覆盖最近公共父级约束')
-  assertContains(checklist, /脚本 `PASS` 只代表抽离位置通过，不代表实现整体通过/, '校验清单必须声明脚本 PASS 边界')
+  assertContains(checklist, /领域边界/, '校验清单必须覆盖领域边界提升')
+  assertContains(checklist, /\[HOIST_WARNING\]/, '校验清单必须覆盖 HOIST_WARNING 人工复核')
 
   printPass('nestjs-code-standard self rules are valid')
 }
@@ -169,7 +191,7 @@ function main() {
     return verifySelf()
 
   if (command === 'hoist')
-    return assertHoistTarget(args)
+    return scanHoistTarget(args)
 
   throw new Error(`未知命令：${command}，使用 --help 查看帮助`)
 }

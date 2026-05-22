@@ -1,6 +1,6 @@
 ---
 name: software-development-workflow
-description: 用于软件开发任务的可复用流程规范。适用于功能开发、Bug 修复、重构、评审、任务拆分、质量门选择和交付报告。
+description: 用于软件开发任务的通用流程规范，适用于功能开发、Bug 修复、重构、评审、任务拆分、质量门选择、交付报告，并按前端、Node、NestJS、Java 场景关联对应代码标准。
 ---
 
 # 软件开发流程规范
@@ -21,7 +21,7 @@ description: 用于软件开发任务的可复用流程规范。适用于功能�
 
 ## 流程骨架
 
-1. **识别上下文**：项目类型、技术栈、相关文件、已有脚本、当前 git 状态。
+1. **识别上下文**：项目类型、技术栈、相关文件、已有脚本、当前 git 状态，并选择下方关联代码标准。
 2. **确认目标**：任务目标、验收标准、非目标、风险、未知项。
 3. **选择级别**：按场景和风险选择轻量、相关或完整流程。
 4. **设计边界**：影响文件、数据契约、错误语义、兼容性和副作用。
@@ -44,10 +44,11 @@ description: 用于软件开发任务的可复用流程规范。适用于功能�
 
 ## 关联标准
 
-- 前端编码标准：`frontend-code-standard`。
-- Node.js 后端实现标准：`node-code-standard`。
-- NestJS 后端实现标准：`nestjs-code-standard`。
-- Java 后端实现标准：`java-code-standard`。
+- 本 Skill 只决定软件开发流程、任务拆分、质量门和交付报告；目录结构、公共 API、类型契约、事务、持久化和评审输出以对应代码标准为准。
+- 前端编码标准：`frontend-code-standard`。新建、编写、重构、拆分、优化、评审或校验 Vue/React 前端组件、业务模块、工具库和 UI 组件库时使用。
+- Node.js 后端实现标准：`node-code-standard`。新建、编写、重构、拆分、优化、评审或校验非 NestJS 的 Node.js/TypeScript/JavaScript 后端代码时使用。
+- NestJS 后端实现标准：`nestjs-code-standard`。新建、编写、重构、拆分、优化、评审或校验 NestJS 后端代码时使用。
+- Java 后端实现标准：`java-code-standard`。新建、编写、重构、拆分、优化、评审或校验 Java/Spring Boot 后端代码时使用。
 - Vue、Vitest、Playwright 等技术细节：按项目实际栈加载对应技术 Skill。
 - 拆分和并行判断：参考 [task-splitting.md](validation/task-splitting.md)。
 

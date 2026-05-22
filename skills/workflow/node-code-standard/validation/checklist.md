@@ -29,8 +29,9 @@ node skills/workflow/node-code-standard/scripts/verify-rules.mjs hoist --target 
    - 若不符合，标记 `FAIL`，指出越界逻辑和回收层次。
 9. 数据库结构变更是否通过项目现有迁移机制表达？
    - 若缺失迁移脚本，标记 `FAIL` 或 `MISSING`，并说明原因。
-10. 公共抽离是否满足至少三个独立使用点，并且落在最近公共父级的直接共享目录？
-    - 可配合 `verify-rules.mjs hoist` 校验；脚本 `PASS` 只代表抽离位置通过，不代表实现整体通过。
+10. 公共抽离是否按领域边界提升，而不是机械依据物理最近公共父级？
+    - 出现 2 个明确独立使用点，或逻辑复杂到需要独立测试边界时即可拆分；全局基础设施可直接上浮，局部业务逻辑应留在当前 feature module 内。
+    - 可配合 `verify-rules.mjs hoist` 做 LCA 风险扫描；脚本 `PASS` 只代表扫描完成，`[HOIST_WARNING]` 必须人工复核，不代表实现整体通过。
 11. 是否运行了与风险匹配的现有 lint、typecheck、test、build、启动验证或集成测试？
     - 缺少脚本或依赖时标记 `MISSING`，未执行标记 `NOT RUN`，失败标记 `FAIL`。
 

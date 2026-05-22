@@ -1,13 +1,13 @@
 ---
 name: node-code-standard
-description: 用于新写或重构 Node.js/TypeScript/JavaScript 后端代码时，按后端最佳实践重建模块、契约、校验、事务、持久化边界和集成方式；默认不依赖仓库中的其它 project skills。
+description: 用于新建、编写、重构、拆分、优化、评审或校验非 NestJS 的 Node.js/TypeScript/JavaScript 后端代码，覆盖模块边界、契约校验、事务、持久化、错误映射和集成边界。
 ---
 
 # Node 后端实现标准
 
 ## 用途
 
-本 Skill 用于新写或重构 Node.js 后端代码，覆盖 TypeScript 与 JavaScript 项目，适用于基于 Express、Fastify、Nest 以外的轻量自建分层、HTTP API、任务处理、事件消费和数据访问代码。
+本 Skill 用于新建、编写、重构、拆分、优化、评审或校验非 NestJS 的 Node.js 后端代码，覆盖 TypeScript 与 JavaScript 项目，适用于基于 Express、Fastify、Nest 以外的轻量自建分层、HTTP API、任务处理、事件消费和数据访问代码。
 
 本文件是 Node 后端实现标准的唯一规则源。不要跳转到仓库中的其它 project skills 作为实现依据；只有当前项目真实代码、当前任务约束和本 Skill 内规则生效。
 
@@ -20,7 +20,7 @@ description: 用于新写或重构 Node.js/TypeScript/JavaScript 后端代码时
 ## 工作顺序
 
 1. 先确认业务能力、外部契约、模块边界、事务要求、持久化模型、并发要求和当前项目使用的 Node 基础设施。
-2. 判断代码应留在当前 feature module 内，还是满足真实复用后再抽到最近公共父级。
+2. 判断代码应留在当前 feature module 内，还是按领域通用性提升为全局基础设施、跨域业务资产或模块内共享支持。
 3. 优先复用项目已有成熟库和框架能力，例如 HTTP 框架、schema 校验库、ORM、SQL builder、迁移工具、日志库和测试工具。
 4. 直接按目标职责重建 route、schema、application、domain、infrastructure 和装配关系，不保留无价值兼容层。
 5. 完成后按风险执行项目已有 lint、typecheck、test、build、启动验证、集成测试或契约验证；缺少脚本时标记 `MISSING`，失败标记 `FAIL`，未执行标记 `NOT RUN`。
@@ -35,7 +35,10 @@ description: 用于新写或重构 Node.js/TypeScript/JavaScript 后端代码时
 - 异步可追踪：所有 I/O、任务和事件处理都要明确成功、失败和超时语义，不丢失 Promise、不吞掉 rejection、不写后台悬空任务。
 - 事务收敛：事务只放在真正的应用用例边界；除非项目已有明确模式支撑，否则不要把远程调用和数据库事务混成隐式大事务。
 - 持久化封装：repository 和 gateway 只负责持久化或外部依赖访问，不承担 HTTP 拼装、鉴权决策、缓存编排或跨聚合业务流程。
-- 共享逐级上浮：公共代码只有满足至少三个独立使用点时才抽离，并且落在最近公共父级的直接共享目录。
+- 按领域边界提升：摒弃死板的“三次法则”。出现 2 个明确独立使用点，或逻辑复杂到需要独立测试边界时即可拆分；抽离层级由领域通用性决定，而不是调用方物理最近公共父级。
+- 全局基础设施：与具体业务解耦的配置解析、日志、时间、ID、HTTP client、schema 基础工具等，即使当前只有一个使用点，也可以直接提升到全局基础设施层。
+- 跨域业务资产：订单状态、支付状态、租户上下文等一旦发生或预期发生跨业务域复用，应提取到共享领域目录或 shared-support，而不是留在某个 feature 的物理父级下。
+- 局部业务逻辑：只服务当前 feature module 的 helper、mapper、schema、command 和测试支撑默认留在当前模块内部，不得因为物理路径相近而泄漏到全局 `common`、`shared` 或 `utils`。
 - 抽象要付账：不要为了“更像后端架构”机械增加 facade、manager、handler、assembler、util、wrapper 或空 module。
 - 注释解释意图：注释只说明事务边界、领域约束、并发保证、外部契约和非显然取舍，不复述代码流程。
 
@@ -151,7 +154,7 @@ src/modules/orders/
 - transport、application、domain、infrastructure 的职责是否混淆。
 - 输入校验、依赖注入、事务边界、错误映射和配置校验是否表达清楚。
 - repository、gateway 和外部依赖是否只承担持久化/集成职责，没有越界承载业务编排。
-- 共享抽离是否满足至少三个独立使用点，并且位于最近公共父级的直接共享目录。
+- 共享抽离是否按领域边界判断：全局基础设施、跨域业务资产和局部业务逻辑是否分别落在对应层级，而不是机械依赖物理最近公共父级或“三次法则”。
 - 是否运行了与风险匹配的现有 lint、typecheck、test、build、启动验证或集成测试。
 
 ## GraphQL 场景说明

@@ -583,7 +583,7 @@ it('node 编码规范 - 入口引用 Node 后端实现标准', () => {
 
   assert.match(skill, /Node\.js/)
   assert.match(skill, /TypeScript 与 JavaScript/)
-  assert.match(skill, /用于新写或重构 Node\.js 后端代码/)
+  assert.match(skill, /用于新建、编写、重构、拆分、优化、评审或校验非 NestJS 的 Node\.js 后端代码/)
   assert.match(skill, /不面向兼容式修补/)
   assert.match(skill, /examples\/node-backend-structure\.md/)
   assert.match(skill, /examples\/review-output\.md/)
@@ -591,7 +591,7 @@ it('node 编码规范 - 入口引用 Node 后端实现标准', () => {
   assert.match(skill, /契约优先/)
   assert.match(skill, /边界清晰/)
   assert.match(skill, /失败显性/)
-  assert.match(skill, /共享逐级上浮/)
+  assert.match(skill, /按领域边界提升/)
   assert.match(skill, /Zod、Valibot、TypeBox、AJV/)
   assert.match(skill, /Prisma Migrate、Drizzle Kit、Knex migration、TypeORM migration 或 Sequelize migration/)
   assert.match(skill, /目标分类/)
@@ -601,11 +601,12 @@ it('node 编码规范 - 入口引用 Node 后端实现标准', () => {
   assert.doesNotMatch(skill, /vertical-slice-backend-standard\.md/)
   assert.doesNotMatch(skill, /nest-backend-standard\.md/)
   assert.match(workflowSkill, /Node\.js 后端实现标准：`node-code-standard`/)
+  assert.match(workflowSkill, /非 NestJS 的 Node\.js\/TypeScript\/JavaScript 后端代码/)
   assert.match(workflowSkill, /NestJS 后端实现标准：`nestjs-code-standard`/)
   assert.match(workflowSkill, /Java 后端实现标准：`java-code-standard`/)
 })
 
-it('node 编码规范 - skill 自带验证脚本覆盖最近公共父级', () => {
+it('node 编码规范 - skill 自带验证脚本覆盖领域边界风险扫描', () => {
   const scriptPath = path.join(rootDir, 'skills', 'workflow', 'node-code-standard', 'scripts', 'verify-rules.mjs')
 
   assert.ok(fs.existsSync(scriptPath))
@@ -622,7 +623,7 @@ it('node 编码规范 - skill 自带验证脚本覆盖最近公共父级', () =>
       'src/modules/orders/update/service.ts',
       'src/modules/orders/delete/service.ts',
     ], { cwd: rootDir, encoding: 'utf8' }),
-    /PASS backend hoist target stays under nearest common ancestor/,
+    /PASS backend hoist domain-boundary scan completed/,
   )
   const nestedHoistResult = spawnSync(process.execPath, [
     scriptPath,
@@ -635,8 +636,9 @@ it('node 编码规范 - skill 自带验证脚本覆盖最近公共父级', () =>
     'src/modules/orders/delete/service.ts',
   ], { cwd: rootDir, encoding: 'utf8' })
 
-  assert.notEqual(nestedHoistResult.status, 0)
-  assert.match(nestedHoistResult.stderr, /抽离目标必须位于最近公共父级的直接共享目录/)
+  assert.equal(nestedHoistResult.status, 0)
+  assert.match(nestedHoistResult.stdout, /\[HOIST_WARNING\]/)
+  assert.match(nestedHoistResult.stdout, /PASS backend hoist domain-boundary scan completed/)
 })
 
 it('node 编码规范 - examples 和 validation 承载示例与清单', () => {
@@ -657,7 +659,8 @@ it('node 编码规范 - examples 和 validation 承载示例与清单', () => {
   assert.match(checklist, /schema 方案/)
   assert.match(checklist, /构造参数、工厂参数或模块装配/)
   assert.match(checklist, /事务要求/)
-  assert.match(checklist, /脚本 `PASS` 只代表抽离位置通过，不代表实现整体通过/)
+  assert.match(checklist, /脚本 `PASS` 只代表扫描完成/)
+  assert.match(checklist, /\[HOIST_WARNING\]/)
 })
 
 it('node 编码规范 - 不再保留 references 主规范', () => {
@@ -670,6 +673,7 @@ it('nestJS 编码规范 - 入口引用 NestJS 最佳实践', () => {
   const workflowSkill = readProjectFile('skills', 'workflow', 'software-development-workflow', 'SKILL.md')
 
   assert.match(skill, /NestJS/)
+  assert.match(skill, /用于新建、编写、重构、拆分、优化、评审或校验 NestJS 后端代码/)
   assert.match(skill, /DTO 校验/)
   assert.match(skill, /唯一规则源/)
   assert.match(skill, /ValidationPipe/)
@@ -682,6 +686,7 @@ it('nestJS 编码规范 - 入口引用 NestJS 最佳实践', () => {
   assert.match(skill, /scripts\/verify-rules\.mjs/)
   assert.doesNotMatch(skill, /nest-backend-standard\.md/)
   assert.match(workflowSkill, /NestJS 后端实现标准：`nestjs-code-standard`/)
+  assert.match(workflowSkill, /新建、编写、重构、拆分、优化、评审或校验 NestJS 后端代码/)
 })
 
 it('nestJS 编码规范 - examples 和 validation 承载示例与清单', () => {
@@ -701,10 +706,11 @@ it('nestJS 编码规范 - examples 和 validation 承载示例与清单', () => 
   assert.match(checklist, /class-validator/)
   assert.match(checklist, /构造函数注入/)
   assert.match(checklist, /事务要求/)
-  assert.match(checklist, /脚本 `PASS` 只代表抽离位置通过，不代表实现整体通过/)
+  assert.match(checklist, /脚本 `PASS` 只代表扫描完成/)
+  assert.match(checklist, /\[HOIST_WARNING\]/)
 })
 
-it('nestJS 编码规范 - skill 自带验证脚本覆盖最近公共父级', () => {
+it('nestJS 编码规范 - skill 自带验证脚本覆盖领域边界风险扫描', () => {
   const scriptPath = path.join(rootDir, 'skills', 'workflow', 'nestjs-code-standard', 'scripts', 'verify-rules.mjs')
 
   assert.ok(fs.existsSync(scriptPath))
@@ -720,7 +726,7 @@ it('nestJS 编码规范 - skill 自带验证脚本覆盖最近公共父级', () 
       'src/modules/orders/update/update-order.service.ts',
       'src/modules/orders/cancel/cancel-order.service.ts',
     ], { cwd: rootDir, encoding: 'utf8' }),
-    /PASS nestjs hoist target stays under nearest common ancestor/,
+    /PASS nestjs hoist domain-boundary scan completed/,
   )
   const nestedHoistResult = spawnSync(process.execPath, [
     scriptPath,
@@ -733,8 +739,9 @@ it('nestJS 编码规范 - skill 自带验证脚本覆盖最近公共父级', () 
     'src/modules/orders/cancel/cancel-order.service.ts',
   ], { cwd: rootDir, encoding: 'utf8' })
 
-  assert.notEqual(nestedHoistResult.status, 0)
-  assert.match(nestedHoistResult.stderr, /抽离目标必须位于最近公共父级的直接共享目录/)
+  assert.equal(nestedHoistResult.status, 0)
+  assert.match(nestedHoistResult.stdout, /\[HOIST_WARNING\]/)
+  assert.match(nestedHoistResult.stdout, /PASS nestjs hoist domain-boundary scan completed/)
 })
 
 it('后端编码规范 - README 描述同步技术栈命名且后端测试暂不分发', () => {
@@ -778,6 +785,7 @@ it('java 编码规范 - 入口引用 Java 与 Spring Boot 最佳实践', () => {
 
   assert.match(skill, /Java/)
   assert.match(skill, /Spring Boot/)
+  assert.match(skill, /用于新建、编写、重构、拆分、优化、评审或校验 Java 与 Spring Boot 后端代码/)
   assert.match(skill, /Maven/)
   assert.match(skill, /Gradle/)
   assert.match(skill, /唯一规则源/)
@@ -792,6 +800,7 @@ it('java 编码规范 - 入口引用 Java 与 Spring Boot 最佳实践', () => {
   assert.match(skill, /scripts\/verify-rules\.mjs/)
   assert.match(skill, /不得用仓库根级共享脚本替代/)
   assert.match(workflowSkill, /Java 后端实现标准：`java-code-standard`/)
+  assert.match(workflowSkill, /新建、编写、重构、拆分、优化、评审或校验 Java\/Spring Boot 后端代码/)
 })
 
 it('java 编码规范 - examples 和 validation 承载示例与清单', () => {
@@ -808,10 +817,11 @@ it('java 编码规范 - examples 和 validation 承载示例与清单', () => {
   assert.match(checklist, /本文件只提供校验脚本用法和检查清单，不定义新规则/)
   assert.match(checklist, /jakarta\.validation/)
   assert.match(checklist, /Flyway 或 Liquibase/)
-  assert.match(checklist, /最近公共父级 package/)
+  assert.match(checklist, /领域边界/)
+  assert.match(checklist, /\[HOIST_WARNING\]/)
 })
 
-it('java 编码规范 - skill 自带验证脚本覆盖最近公共父级', () => {
+it('java 编码规范 - skill 自带验证脚本覆盖领域边界风险扫描', () => {
   const scriptPath = path.join(rootDir, 'skills', 'workflow', 'java-code-standard', 'scripts', 'verify-rules.mjs')
 
   assert.ok(fs.existsSync(scriptPath))
@@ -827,7 +837,7 @@ it('java 编码规范 - skill 自带验证脚本覆盖最近公共父级', () =>
       'src/main/java/com/example/order/update/UpdateOrderService.java',
       'src/main/java/com/example/order/cancel/CancelOrderService.java',
     ], { cwd: rootDir, encoding: 'utf8' }),
-    /PASS java hoist target stays under nearest common ancestor/,
+    /PASS java hoist domain-boundary scan completed/,
   )
   const nestedHoistResult = spawnSync(process.execPath, [
     scriptPath,
@@ -840,8 +850,9 @@ it('java 编码规范 - skill 自带验证脚本覆盖最近公共父级', () =>
     'src/main/java/com/example/order/cancel/CancelOrderService.java',
   ], { cwd: rootDir, encoding: 'utf8' })
 
-  assert.notEqual(nestedHoistResult.status, 0)
-  assert.match(nestedHoistResult.stderr, /抽离目标必须位于最近公共父级的直接共享 package/)
+  assert.equal(nestedHoistResult.status, 0)
+  assert.match(nestedHoistResult.stdout, /\[HOIST_WARNING\]/)
+  assert.match(nestedHoistResult.stdout, /PASS java hoist domain-boundary scan completed/)
 })
 
 it('skill 校验规范 - 校验生成后的 skill 结构', () => {

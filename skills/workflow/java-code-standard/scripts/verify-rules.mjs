@@ -22,12 +22,19 @@ function printPass(message, details = {}) {
     console.log(`${key}: ${value}`)
 }
 
+function printHoistWarning(message, details = {}) {
+  console.log(`WARN [HOIST_WARNING] ${message}`)
+
+  for (const [key, value] of Object.entries(details))
+    console.log(`${key}: ${value}`)
+}
+
 function printHelp() {
   console.log(`用法: node verify-rules.mjs [command] [options]
 
 命令:
   self                        校验本 skill 的规则完整性（默认）
-  hoist                       校验公共代码抽离位置是否符合最近公共父级 package 约束
+  hoist                       执行领域提升风险扫描（LCA 仅作机械线索）
   --help                      显示帮助信息
 
 选项:
@@ -76,8 +83,15 @@ function nearestCommonAncestor(paths) {
   return shared
 }
 
-// Ensure extracted shared code stays exactly one level under the nearest common package.
-function assertHoistTarget(args) {
+function isUnderAncestor(targetSegments, ancestorSegments) {
+  if (targetSegments.length < ancestorSegments.length)
+    return false
+
+  return ancestorSegments.every((segment, index) => targetSegments[index] === segment)
+}
+
+// Use LCA as a warning signal only; semantic ownership still comes from domain boundaries.
+function scanHoistTarget(args) {
   const target = getOption(args, '--target')
   const usesIndex = args.indexOf('--uses')
 
@@ -91,18 +105,26 @@ function assertHoistTarget(args) {
 
   const ancestorSegments = nearestCommonAncestor(uses)
   const targetSegments = normalizeSegments(target)
+  const targetPath = path.resolve(process.cwd(), target)
+  const ancestor = ancestorSegments.join('/')
 
-  if (targetSegments.length !== ancestorSegments.length + 1)
-    throw new Error('抽离目标必须位于最近公共父级的直接共享 package')
-
-  for (let index = 0; index < ancestorSegments.length; index += 1) {
-    if (ancestorSegments[index] !== targetSegments[index])
-      throw new Error('抽离目标必须位于最近公共父级的直接共享 package')
+  if (!isUnderAncestor(targetSegments, ancestorSegments)) {
+    printHoistWarning('抽离目标不在使用点的物理最近公共父级 package 下，请人工确认它是否属于全局基础设施或跨域业务资产', {
+      target: targetPath,
+      nearestCommonAncestor: ancestor,
+    })
+  }
+  else if (targetSegments.length !== ancestorSegments.length + 1) {
+    printHoistWarning('抽离目标位于更深层级，请人工确认它是否应留在局部业务内部或提升为跨域共享资产', {
+      target: targetPath,
+      nearestCommonAncestor: ancestor,
+    })
   }
 
-  printPass('java hoist target stays under nearest common ancestor', {
-    target: path.resolve(process.cwd(), target),
-    nearestCommonAncestor: ancestorSegments.join('/'),
+  printPass('java hoist domain-boundary scan completed', {
+    target: targetPath,
+    nearestCommonAncestor: ancestor,
+    advisory: 'LCA is mechanical only; review domain semantics before changing ownership.',
   })
 }
 
@@ -113,6 +135,7 @@ function verifySelf() {
   const reviewExample = readSkillFile('examples', 'review-output.md')
   const checklist = readSkillFile('validation', 'checklist.md')
 
+  assertContains(skill, /用于新建、编写、重构、拆分、优化、评审或校验 Java\/Spring Boot 后端代码/, 'SKILL.md 必须声明完整触发场景')
   assertContains(skill, /Java/, 'SKILL.md 必须覆盖 Java')
   assertContains(skill, /Spring Boot/, 'SKILL.md 必须覆盖 Spring Boot')
   assertContains(skill, /Maven/, 'SKILL.md 必须覆盖 Maven')
@@ -122,6 +145,7 @@ function verifySelf() {
   assertContains(skill, /examples\/review-output\.md/, 'SKILL.md 必须索引评审示例')
   assertContains(skill, /validation\/checklist\.md/, 'SKILL.md 必须索引校验清单')
   assertContains(skill, /构造函数注入/, 'SKILL.md 必须覆盖构造函数注入')
+  assertContains(skill, /按领域边界提升/, 'SKILL.md 必须覆盖按领域边界提升')
   assertContains(skill, /Bean Validation/, 'SKILL.md 必须覆盖 Bean Validation')
   assertContains(skill, /ControllerAdvice/, 'SKILL.md 必须覆盖 ControllerAdvice')
   assertContains(skill, /Flyway/, 'SKILL.md 必须覆盖 Flyway')
@@ -146,7 +170,8 @@ function verifySelf() {
   assertContains(checklist, /本文件只提供校验脚本用法和检查清单，不定义新规则/, '校验清单必须声明不定义新规则')
   assertContains(checklist, /jakarta\.validation/, '校验清单必须覆盖 jakarta.validation')
   assertContains(checklist, /Flyway 或 Liquibase/, '校验清单必须覆盖迁移工具')
-  assertContains(checklist, /最近公共父级 package/, '校验清单必须覆盖最近公共父级 package')
+  assertContains(checklist, /领域边界/, '校验清单必须覆盖领域边界提升')
+  assertContains(checklist, /\[HOIST_WARNING\]/, '校验清单必须覆盖 HOIST_WARNING 人工复核')
 
   printPass('java-code-standard self rules are valid')
 }
@@ -161,7 +186,7 @@ function main() {
     return verifySelf()
 
   if (command === 'hoist')
-    return assertHoistTarget(args)
+    return scanHoistTarget(args)
 
   throw new Error(`未知命令：${command}，使用 --help 查看帮助`)
 }

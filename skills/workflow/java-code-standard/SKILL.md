@@ -1,13 +1,13 @@
 ---
 name: java-code-standard
-description: 用于新写或重构 Java / Spring Boot 后端代码时，按统一后端标准重建 package、分层职责、依赖注入、校验、事务、迁移和错误映射；默认不参考仓库中其它 project skills 的实现规则。
+description: 用于新建、编写、重构、拆分、优化、评审或校验 Java/Spring Boot 后端代码，覆盖 package 边界、分层职责、依赖注入、Bean Validation、事务、迁移和错误映射。
 ---
 
 # Java 后端实现标准
 
 ## 用途
 
-本 Skill 用于新写或重构 Java 与 Spring Boot 后端代码，覆盖 Java 17+ 基线、Java 21/25 LTS、Maven 和 Gradle 项目。
+本 Skill 用于新建、编写、重构、拆分、优化、评审或校验 Java 与 Spring Boot 后端代码，覆盖 Java 17+ 基线、Java 21/25 LTS、Maven 和 Gradle 项目。
 
 本文件是 Java 后端实现标准的唯一规则源。不要再跳转到旧的主规范文档，也不得依赖仓库中的其它 project skills 作为实现依据；只有当前项目真实代码、当前任务约束和本 Skill 内规则生效。
 
@@ -20,7 +20,7 @@ description: 用于新写或重构 Java / Spring Boot 后端代码时，按统�
 ## 工作顺序
 
 1. 先确认业务能力、外部契约、数据边界、事务要求、持久化模型和项目当前使用的 Spring Boot 基础设施。
-2. 判断代码应该留在 feature package 内，还是满足真实复用后再抽到最近公共父级 package。
+2. 判断代码应该留在 feature package 内，还是按领域通用性提升为全局基础设施、跨域业务资产或 feature 内共享支持。
 3. 优先复用项目已有成熟库和框架能力，例如 Spring Boot、Spring MVC、Spring Data、Bean Validation、Flyway、Liquibase、MapStruct、Jackson、Testcontainers。
 4. 直接按目标职责重建 package、分层职责、依赖注入、请求校验、事务边界和错误映射，不保留无价值兼容层。
 5. 完成后按风险执行项目已有 format、lint、test、build、集成测试或启动验证；缺少脚本时标记 `MISSING`，失败标记 `FAIL`，未执行标记 `NOT RUN`。
@@ -28,7 +28,7 @@ description: 用于新写或重构 Java / Spring Boot 后端代码时，按统�
 ## 实现原则
 
 - 契约优先：Controller、request、response、command、query 和事件类型必须表达真实边界，不用宽泛 Map、裸 JSON 或 `Object` 掩盖契约。
-- package 就近：功能私有类型、mapper、assembler、helper 和配置默认留在当前 feature package；只有满足真实复用时才抽到最近公共父级 package。
+- package 就近：功能私有类型、mapper、assembler、helper 和配置默认留在当前 feature package；抽离层级由领域通用性决定，而不是调用方物理最近公共父级 package。
 - 依赖显式：统一使用构造函数注入，不写字段注入，不依赖隐式可变状态。
 - 校验前置：边界输入优先用 Bean Validation，在 `jakarta.validation` 上声明清晰约束；领域不变量留在领域模型或 use case 中表达。
 - 事务收敛：`@Transactional` 只放在真正的 use case / application service 边界；除非已有明确模式支撑，否则不要把远程调用混入数据库事务。
@@ -102,9 +102,11 @@ src/main/java/com/example/order/
 
 ## 抽离与共享
 
-- 只有出现至少三个独立使用点，才把公共代码抽到最近公共父级 package。
-- 抽离目标必须位于最近公共父级的直接共享 package，不得跨过最近公共父级直接丢到更高层 `common`、`shared` 或 `utils`。
-- `support`、`common`、`shared` 这类 package 只有在真实复用成立时才创建，不能当作默认垃圾桶。
+- 按领域边界提升：摒弃死板的“三次法则”。出现 2 个明确独立使用点，或逻辑复杂到需要独立测试边界时即可拆分；抽离层级由领域通用性决定，而不是调用方物理最近公共父级 package。
+- 全局基础设施：与具体业务解耦的配置绑定、日志、时间、ID、HTTP client、Jackson 配置、Bean Validation 支撑等，即使当前只有一个使用点，也可以直接提升到全局基础设施 package。
+- 跨域业务资产：订单状态、支付状态、租户上下文等一旦发生或预期发生跨业务域复用，应提取到共享领域 package 或独立 module，而不是留在某个 feature 的物理父级下。
+- 局部业务逻辑：只服务当前 feature package 的 mapper、assembler、helper、DTO 和测试支撑默认留在当前 feature 内部，不得因为物理路径相近而泄漏到全局 `common`、`shared` 或 `utils`。
+- `support`、`common`、`shared` 这类 package 只有在语义边界成立时才创建，不能当作默认垃圾桶。
 
 ## 完成前检查
 

@@ -27,8 +27,9 @@ node skills/workflow/java-code-standard/scripts/verify-rules.mjs hoist --target 
    - 若不符合，标记 `FAIL`，指出具体泄露位置和建议的 request/response 类型。
 8. 数据库结构变更是否通过 Flyway 或 Liquibase 表达？
    - 若缺失迁移脚本，标记 `FAIL` 或 `MISSING`，并说明原因。
-9. 公共抽离是否满足至少三个独立使用点，并且落在最近公共父级 package？
-   - 可配合 `verify-rules.mjs hoist` 校验；脚本 `PASS` 只代表抽离位置通过，不代表实现整体通过。
+9. 公共抽离是否按领域边界提升，而不是机械依据物理最近公共父级 package？
+   - 出现 2 个明确独立使用点，或逻辑复杂到需要独立测试边界时即可拆分；全局基础设施可直接上浮，局部业务逻辑应留在当前 feature package 内。
+   - 可配合 `verify-rules.mjs hoist` 做 LCA 风险扫描；脚本 `PASS` 只代表扫描完成，`[HOIST_WARNING]` 必须人工复核，不代表实现整体通过。
 10. 是否运行了与风险匹配的现有 format、lint、test、build、集成测试或启动验证？
     - 缺少脚本或依赖时标记 `MISSING`，未执行标记 `NOT RUN`，失败标记 `FAIL`。
 
