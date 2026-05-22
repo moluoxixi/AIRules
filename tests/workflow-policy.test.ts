@@ -85,7 +85,7 @@ it('前端编码规范 - SKILL.md 是唯一规则源', () => {
   const skill = readProjectFile('skills', 'workflow', 'frontend-code-standard', 'SKILL.md')
 
   assert.match(skill, /frontend-code-standard/)
-  assert.match(skill, /Vue 3 \/ React TypeScript\/JavaScript/)
+  assert.match(skill, /Vue\/React 前端组件/)
   assert.match(skill, /组件、业务模块、前端工具包和 UI 组件库/)
   assert.match(skill, /实现质量、目录边界、公共导出、import 路径、类型契约和交付检查/)
   assert.match(skill, /不是只管目录拆分的窄规则/)

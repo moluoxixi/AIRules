@@ -1,6 +1,6 @@
 ---
 name: frontend-code-standard
-description: 用于 Vue 3 / React TypeScript/JavaScript 前端应用、组件、业务模块、工具库和 UI 组件库的统一实现标准，覆盖实现质量、目录边界、公共导出、import 路径、类型契约、评审输出和交付检查。
+description: 用于新建、编写、重构、拆分、优化、评审或校验 Vue/React 前端组件、业务模块、工具库和 UI 组件库，提供目录结构、就近内聚、Barrel Export、类型契约和 Deep Import 强制标准。
 ---
 
 # 前端编码规范

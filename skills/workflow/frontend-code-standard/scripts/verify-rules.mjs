@@ -335,7 +335,7 @@ function verifySelf() {
   const skill = readSkillFile('SKILL.md')
 
   assertContains(skill, /frontend-code-standard/, 'SKILL.md 必须声明 skill 名称')
-  assertContains(skill, /Vue 3 \/ React TypeScript\/JavaScript/, 'SKILL.md 必须覆盖前端技术范围')
+  assertContains(skill, /Vue\/React 前端组件/, 'SKILL.md 必须覆盖前端技术范围')
   assertContains(skill, /组件、业务模块、前端工具包和 UI 组件库/, 'SKILL.md 必须覆盖前端范围')
   assertContains(skill, /实现质量、目录边界、公共导出、import 路径、类型契约和交付检查/, 'SKILL.md 必须说明规则覆盖范围')
   assertContains(skill, /不是只管目录拆分的窄规则/, 'SKILL.md 必须说明不是窄目录规则')
