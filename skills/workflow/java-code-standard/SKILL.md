@@ -41,7 +41,7 @@ description: 用于新建、编写、重构、拆分、优化、评审或校验 
 
 优先使用 feature-first 目录，在 feature 内再表达 `api`、`application`、`domain`、`infrastructure` 职责。
 
-```text
+````text
 src/main/java/com/example/order/
   api/
     OrderController.java
@@ -59,9 +59,10 @@ src/main/java/com/example/order/
     OrderDomainService.java
   infrastructure/
     persistence/
-      JpaOrderRepository.java
-      SpringDataOrderRepository.java
-```
+      OrderRepositoryAdapter.java
+      OrderJpaEntity.java
+      OrderSpringDataRepository.java
+````
 
 已有项目若稳定使用分层 package，可以沿用，但必须保持边界清晰，不能因为沿用旧结构就放任跨层耦合。
 
@@ -72,6 +73,7 @@ src/main/java/com/example/order/
 - 处理 HTTP 路由、认证上下文读取、请求解析、参数校验和响应映射。
 - request / response 类型只表达传输契约，不承载持久化注解或领域行为。
 - 多字段入参优先使用 request DTO 或 `record`，不要堆叠长参数列表。
+- API 响应推荐直接返回 `Response DTO`，并配合 `@ResponseStatus` 控制状态码；需要更精确的头部或状态控制时返回 `ResponseEntity<T>`。不要用 HTTP 200 包装业务错误码。
 
 ### application
 
@@ -88,13 +90,15 @@ src/main/java/com/example/order/
 ### infrastructure
 
 - 放置 JPA 实体、Spring Data repository、外部网关、消息实现、第三方客户端和配置适配。
+- 持久化实现优先用 Adapter 模式：`OrderRepositoryAdapter` 实现 domain 层 `OrderRepository`，内部再委托 `OrderSpringDataRepository`；不要让 application 或 domain 直接依赖 Spring Data 细节。
 - 基础设施实现依赖 domain / application 契约，不反向让上层依赖实现细节。
 
 ## Spring Boot 具体约束
 
 - 统一使用构造函数注入；禁止 `@Autowired` 字段注入。
 - 输入校验优先使用 `@Valid`、`@Validated` 和 `jakarta.validation` 注解。
-- 全局异常映射优先收敛到 `@ControllerAdvice`，避免在 controller 内逐个 try/catch。
+- 全局异常映射优先收敛到 `@ControllerAdvice`，并优先遵循 RFC 7807，使用 Spring 6 / Spring Boot 3 原生 `ProblemDetail` 作为统一错误响应体，避免自定义五花八门的 Result / Response 包装类。
+- 统一日志与追踪：禁止使用 `System.out` 或 `e.printStackTrace()`；统一使用 SLF4J 接口打印日志，在跨层调用、异常捕获或跨系统调用时保留异常堆栈，并配合 `MDC/TraceId` 记录足够排查的上下文信息。
 - 配置绑定优先使用 `@ConfigurationProperties`，不要到处直接读裸字符串配置。
 - DTO、entity、领域对象分离；除非项目已明确接受耦合，否则不要直接把 JPA entity 暴露给 API。
 - 数据库迁移优先使用 Flyway 或 Liquibase；结构变更必须通过迁移脚本表达，不手工假设线上状态。
@@ -104,6 +108,7 @@ src/main/java/com/example/order/
 
 - 按领域边界提升：摒弃死板的“三次法则”。出现 2 个明确独立使用点，或逻辑复杂到需要独立测试边界时即可拆分；抽离层级由领域通用性决定，而不是调用方物理最近公共父级 package。
 - 全局基础设施：与具体业务解耦的配置绑定、日志、时间、ID、HTTP client、Jackson 配置、Bean Validation 支撑等，即使当前只有一个使用点，也可以直接提升到全局基础设施 package。
+- 架构边界守护：强烈推荐用 ArchUnit 编写 Architecture Tests，自动校验 `api → application → domain → infrastructure` 的单向依赖，以及防腐层不被跨层穿透；持久化集成测试优先使用 Testcontainers，不要用 H2 替代真实数据库方言。
 - 跨域业务资产：订单状态、支付状态、租户上下文等一旦发生或预期发生跨业务域复用，应提取到共享领域 package 或独立 module，而不是留在某个 feature 的物理父级下。
 - 局部业务逻辑：只服务当前 feature package 的 mapper、assembler、helper、DTO 和测试支撑默认留在当前 feature 内部，不得因为物理路径相近而泄漏到全局 `common`、`shared` 或 `utils`。
 - `support`、`common`、`shared` 这类 package 只有在语义边界成立时才创建，不能当作默认垃圾桶。
@@ -115,6 +120,7 @@ src/main/java/com/example/order/
 - 是否统一使用构造函数注入、Bean Validation、显式事务边界和稳定错误映射。
 - 是否通过迁移脚本表达数据库变更，并保持 Repository 与 API 契约解耦。
 - 是否运行了与风险匹配的现有检查、测试、构建或启动验证。
+- 是否用 ArchUnit 等 architecture tests 守住分层边界，并用 Testcontainers 验证持久化行为和 SQL 方言。
 
 ## GraphQL 场景说明
 
@@ -131,7 +137,7 @@ src/main/java/com/example/order/
 
 ### 结构示例
 
-```text
+````text
 src/main/java/com/example/order/
   api/
     OrderController.java
@@ -149,13 +155,14 @@ src/main/java/com/example/order/
     OrderDomainService.java
   infrastructure/
     persistence/
-      JpaOrderRepository.java
-      SpringDataOrderRepository.java
-```
+      OrderRepositoryAdapter.java
+      OrderJpaEntity.java
+      OrderSpringDataRepository.java
+````
 
 ### request / response
 
-```java
+````java
 package com.example.order.api.request;
 
 import jakarta.validation.constraints.NotBlank;
@@ -165,20 +172,20 @@ public record CreateOrderRequest(
     @NotBlank String customerId,
     @NotNull Long amount
 ) {}
-```
+````
 
-```java
+````java
 package com.example.order.api.response;
 
 public record OrderResponse(
     String orderId,
     String status
 ) {}
-```
+````
 
 ### 配置绑定
 
-```java
+````java
 package com.example.order.infrastructure.config;
 
 import org.springframework.boot.context.properties.ConfigurationProperties;
@@ -188,12 +195,12 @@ public record OrderProperties(
     int expireMinutes,
     boolean asyncEnabled
 ) {}
-```
+````
 
 ### 评审输出示例
 
 - 目标分类：`application-module`
-- 检查范围：`src/main/java/com/example/order/application/CreateOrderService.java`、`src/main/java/com/example/order/api/OrderController.java`、`src/main/java/com/example/order/infrastructure/persistence/JpaOrderRepository.java`
+- 检查范围：`src/main/java/com/example/order/application/CreateOrderService.java`、`src/main/java/com/example/order/api/OrderController.java`、`src/main/java/com/example/order/infrastructure/persistence/OrderRepositoryAdapter.java`
 - 总结论：`FAIL`
 
 1. `major`
@@ -205,13 +212,13 @@ public record OrderProperties(
 2. `major`
    - 规则点：Controller 不直接操作 Repository，应通过 application service 编排。
    - 证据：`src/main/java/com/example/order/api/OrderController.java:32`
-   - 问题说明：`OrderController` 直接注入并调用 `JpaOrderRepository.findById()`，绕过了 application 层的用例编排和事务边界。
+   - 问题说明：`OrderController` 直接注入并调用 `OrderRepositoryAdapter.findById()`，绕过了 application 层的用例编排和事务边界。
    - 改动建议：在 `src/main/java/com/example/order/application/` 新增 `GetOrderService` 或 `OrderQueryService`，由 Controller 调用 service 而非直接调用 repository。
 
 3. `minor`
    - 规则点：DTO、entity、领域对象分离，不直接把 JPA entity 暴露给 API。
    - 证据：`src/main/java/com/example/order/api/OrderController.java:45`
-   - 问题说明：`getOrder` 方法直接返回 `Order` JPA entity，把持久化细节暴露给 API 调用方。
+   - 问题说明：`getOrder` 方法直接返回 `OrderJpaEntity` JPA entity，把持久化细节暴露给 API 调用方。
    - 改动建议：在 `src/main/java/com/example/order/api/response/` 新增 `OrderResponse` record，由 service 或 controller 负责映射。
 
 ## 检查清单
@@ -237,6 +244,8 @@ public record OrderProperties(
    - 可配合 `verify-rules.mjs hoist` 做边界风险扫描；脚本 `PASS` 只代表扫描完成，`[HOIST_WARNING]` 必须人工复核，不代表实现整体通过。
 10. 是否运行了与风险匹配的现有 format、lint、test、build、集成测试或启动验证？
     - 缺少脚本或依赖时标记 `MISSING`，未执行标记 `NOT RUN`，失败标记 `FAIL`。
+11. 是否用 ArchUnit 等 architecture tests 守住分层边界，并用 Testcontainers 验证持久化行为和 SQL 方言？
+    - 若不符合，标记 `FAIL`，说明缺失的边界守护或数据库替身风险。
 
 ## 自校验脚本
 

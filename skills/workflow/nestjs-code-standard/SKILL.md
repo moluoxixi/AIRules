@@ -80,7 +80,11 @@ description: 用于新建、编写、重构、拆分、优化、评审或校验 
 - `ValidationPipe` 应作为统一输入校验入口；参数、body、query、param 的 DTO 校验必须可追踪。
 - DTO 使用 `class` 与 `class-validator` 表达契约，不用 interface 冒充运行时校验对象。
 - provider 依赖通过构造函数声明，不用从模块外部隐式读取实例。
+- 领域层定义的接口契约若需通过 NestJS DI 容器注入，必须定义为 `abstract class` 或使用显式的 `Inject('TOKEN')`，禁止直接注入 TypeScript `interface`。
 - `@Module` 只暴露稳定 provider 和 controller；不要把内部实现无边界 export 给外层模块。
+- 必须使用 NestJS 的 `Exception Filter`（`@Catch()`）作为统一异常映射层；Application 层和 Domain 层只允许抛出领域自定义错误或原生异常，严禁在业务逻辑中散落 `try-catch` 进行 HTTP 协议转换。
+- 环境变量与应用配置必须使用 `@nestjs/config` 配合 `class-validator` 或 `Joi` 进行启动时强类型校验；若配置缺失，必须在启动阶段快速失败（Fail Fast），禁止运行时 fallback。
+- 单元测试与集成测试必须使用 `@nestjs/testing` 的 `Test.createTestingModule` 进行上下文隔离；依赖 Mock 优先通过复写 Provider（`overrideProvider`）实现，禁止直接修改全局模块或硬编码类实例化链。
 - exception filter、interceptor、guard、pipe 要按职责拆分，不把业务规则塞进基础设施横切层。
 - repository 返回值、错误和幂等语义必须清晰；不要把 ORM 特有异常直接裸抛到 controller。
 - 需要数据库变更时，必须通过项目现有迁移机制表达；不得手工假设线上表结构。
@@ -168,6 +172,12 @@ src/shared/
 ### 模块装配
 
 ```ts
+// 必须使用 abstract class 而非 interface，才能作为 NestJS DI token
+export abstract class OrderRepository {
+  abstract findById(orderId: OrderId): Promise<OrderAggregate | null>
+  abstract save(order: OrderAggregate): Promise<void>
+}
+
 @Module({
   controllers: [OrdersController],
   providers: [
@@ -250,7 +260,33 @@ export class TypeormOrderRepository implements OrderRepository {
 ```
 
 - repository 负责持久化访问和映射，不直接返回 ORM entity 给 controller。
-- Service 抛出领域错误或应用错误，由统一异常映射层转换为外部协议语义。
+- Service 抛出领域错误或应用错误，由 NestJS `Exception Filter` 统一转换为外部协议语义，不在业务逻辑中散落 HTTP 异常转换。
+
+### 测试装配
+
+```ts
+describe('CreateOrderService', () => {
+  let module: TestingModule
+
+  beforeEach(async () => {
+    module = await Test.createTestingModule({
+      providers: [
+        CreateOrderService,
+        {
+          provide: OrderRepository,
+          useClass: TypeormOrderRepository,
+        },
+      ],
+    })
+      .overrideProvider(OrderRepository)
+      .useValue(orderRepositoryMock)
+      .compile()
+  })
+})
+```
+
+- 单元测试与集成测试都从 `Test.createTestingModule` 开始装配，保持上下文隔离。
+- Mock 优先通过 `overrideProvider` 覆写依赖，不直接 new 出整条实例化链。
 
 ### 评审输出示例
 
