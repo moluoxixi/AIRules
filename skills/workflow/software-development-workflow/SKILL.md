@@ -182,7 +182,7 @@ description: 用于软件开发任务的通用流程规范，适用于功能开�
 
 验证：
 - PASS `git diff --check`: 无 whitespace error。
-- PASS `npm test -- tests/workflow-policy.test.ts`: 策略锚点通过。
+- PASS `npx vitest run tests/skill-validation.test.ts`: Skill 产物契约通过。
 - N/A coverage/build: 本次仅修改策略文档。
 ```
 
