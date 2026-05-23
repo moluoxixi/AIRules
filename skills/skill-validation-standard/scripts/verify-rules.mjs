@@ -7,6 +7,7 @@ import path from 'node:path'
 import { fileURLToPath } from 'node:url'
 
 const ownRoot = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..')
+const MAX_SKILL_LINES = 500
 const REQUIRED_FIELDS = ['name', 'description']
 const errors = []
 
@@ -54,6 +55,19 @@ function readSkillFile(root) {
   return fs.readFileSync(skillPath, 'utf8').replace(/\r\n/g, '\n')
 }
 
+function checkLineCount(content) {
+  const lineCount = content.endsWith('\n')
+    ? content.split('\n').length - 1
+    : content.split('\n').length
+
+  if (lineCount > MAX_SKILL_LINES) {
+    fail(`SKILL.md 超过 ${MAX_SKILL_LINES} 行：${lineCount}`)
+    return
+  }
+
+  pass('SKILL.md line count valid')
+}
+
 function splitFrontmatter(content) {
   if (!content.startsWith('---\n')) {
     fail('SKILL.md 必须以 YAML frontmatter 开头')
@@ -74,10 +88,21 @@ function splitFrontmatter(content) {
   }
 }
 
+function normalizeYamlScalar(value) {
+  const hasSingleQuotes = value.startsWith('\'') && value.endsWith('\'')
+  const hasDoubleQuotes = value.startsWith('"') && value.endsWith('"')
+
+  return hasSingleQuotes || hasDoubleQuotes ? value.slice(1, -1) : value
+}
+
 function parseFrontmatter(yaml) {
   const fields = new Map()
 
   for (const rawLine of yaml.split('\n')) {
+    if (rawLine.startsWith(' ') || rawLine.startsWith('\t')) {
+      continue
+    }
+
     const line = rawLine.trim()
     if (!line || line.startsWith('#')) {
       continue
@@ -97,21 +122,28 @@ function parseFrontmatter(yaml) {
       continue
     }
 
-    fields.set(key, value)
+    fields.set(key, normalizeYamlScalar(value))
   }
 
   return fields
 }
 
-function checkRequiredFields(fields) {
+function checkFrontmatterFields(fields, root) {
   for (const field of REQUIRED_FIELDS) {
     if (!fields.get(field)) {
       fail(`frontmatter 缺少 ${field}`)
     }
   }
 
-  if (REQUIRED_FIELDS.every(field => fields.get(field))) {
+  const expectedName = path.basename(root)
+  const actualName = fields.get('name')
+  if (actualName && actualName !== expectedName) {
+    fail(`frontmatter name 必须等于目录名：${expectedName}`)
+  }
+
+  if (REQUIRED_FIELDS.every(field => fields.get(field)) && actualName === expectedName) {
     pass('frontmatter required fields present')
+    pass('frontmatter name matches folder')
   }
 }
 
@@ -130,10 +162,14 @@ function finish(fields, root) {
 
 function verify(root) {
   const content = readSkillFile(root)
+  if (content) {
+    checkLineCount(content)
+  }
+
   const parsed = content ? splitFrontmatter(content) : undefined
   const fields = parsed ? parseFrontmatter(parsed.yaml) : new Map()
 
-  checkRequiredFields(fields)
+  checkFrontmatterFields(fields, root)
 
   finish(fields, root)
 }

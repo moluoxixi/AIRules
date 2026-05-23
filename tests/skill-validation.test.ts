@@ -6,32 +6,55 @@ import { describe, it } from 'vitest'
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url))
 const rootDir = path.resolve(__dirname, '..')
+const MAX_SKILL_LINES = 500
 
-// Directories to check for skills
-const skillRoots = ['skills', 'vendor/skills']
+// 只校验本仓库第一方 skill；vendor/skills 由上游仓库维护。
+const skillRoots = ['skills']
+
+function splitFrontmatter(content: string, skillName: string) {
+  const closedBeforeContent = content.indexOf('\n---\n', 4)
+  const closedAtEnd = content.endsWith('\n---') ? content.length - 4 : -1
+  const frontmatterEnd = closedBeforeContent === -1 ? closedAtEnd : closedBeforeContent
+
+  assert.ok(content.startsWith('---\n'), `SKILL.md in ${skillName} must start with YAML frontmatter (---)`)
+  assert.notEqual(frontmatterEnd, -1, `SKILL.md in ${skillName} must close YAML frontmatter with ---`)
+
+  return content.slice(4, frontmatterEnd)
+}
+
+function normalizeYamlScalar(value: string) {
+  const hasSingleQuotes = value.startsWith('\'') && value.endsWith('\'')
+  const hasDoubleQuotes = value.startsWith('"') && value.endsWith('"')
+
+  return hasSingleQuotes || hasDoubleQuotes ? value.slice(1, -1) : value
+}
 
 /**
- * 从简单 YAML frontmatter 中读取字段值，支持单行值和缩进的多行块。
+ * 解析 SKILL.md 的最小 frontmatter 契约，正文格式由 skill 自己维护。
  */
-function readYamlField(lines: string[], key: string) {
-  const fieldIndex = lines.findIndex(line => line.startsWith(`${key}:`))
-  if (fieldIndex === -1)
-    return undefined
+function parseFrontmatter(yamlContent: string, skillName: string) {
+  const fields = new Map<string, string>()
 
-  const inlineValue = lines[fieldIndex].slice(`${key}:`.length).trim()
-  if (inlineValue)
-    return inlineValue
+  for (const rawLine of yamlContent.split('\n')) {
+    if (rawLine.startsWith(' ') || rawLine.startsWith('\t'))
+      continue
 
-  const blockLines: string[] = []
-  for (const line of lines.slice(fieldIndex + 1)) {
-    if (!line.startsWith(' ') && !line.startsWith('\t'))
-      break
-    const value = line.trim()
-    if (value)
-      blockLines.push(value)
+    const line = rawLine.trim()
+    if (!line || line.startsWith('#'))
+      continue
+
+    const separator = line.indexOf(':')
+    assert.notEqual(separator, -1, `Invalid YAML line in ${skillName}: ${rawLine}`)
+
+    const key = line.slice(0, separator).trim()
+    const value = line.slice(separator + 1).trim()
+    assert.ok(key, `YAML key cannot be empty in ${skillName}: ${rawLine}`)
+    assert.ok(value, `YAML value cannot be empty in ${skillName}: ${rawLine}`)
+
+    fields.set(key, normalizeYamlScalar(value))
   }
 
-  return blockLines.join(' ').trim()
+  return fields
 }
 
 describe('agent Skills Validation', () => {
@@ -85,25 +108,22 @@ describe('agent Skills Validation', () => {
           assert.strictEqual(skillMdFile, 'SKILL.md', `SKILL.md filename must be uppercase in ${skill.name}, got "${skillMdFile}"`)
 
           const content = fs.readFileSync(path.join(skill.path, skillMdFile!), 'utf8').replace(/\r\n/g, '\n')
+          const lineCount = content.endsWith('\n')
+            ? content.split('\n').length - 1
+            : content.split('\n').length
+          assert.ok(lineCount <= MAX_SKILL_LINES, `SKILL.md in ${skill.name} must be ${MAX_SKILL_LINES} lines or fewer`)
 
-          // 2. Validate Metadata (name and description)
-          // Extract YAML frontmatter (between --- and ---)
-          const frontmatterEnd = content.indexOf('\n---\n', 4)
-          const yamlMatch = content.startsWith('---\n') && frontmatterEnd !== -1
-            ? content.slice(4, frontmatterEnd)
-            : null
-          assert.ok(yamlMatch, `SKILL.md in ${skill.name} must start with YAML frontmatter (---)`)
-
-          const yamlContent = yamlMatch!
-          const yamlLines = yamlContent.split('\n')
-          const nameValue = readYamlField(yamlLines, 'name')
-          const descValue = readYamlField(yamlLines, 'description')
+          const yamlContent = splitFrontmatter(content, skill.name)
+          const fields = parseFrontmatter(yamlContent, skill.name)
+          const nameValue = fields.get('name')
+          const descValue = fields.get('description')
 
           assert.ok(nameValue !== undefined, `Missing 'name' in YAML frontmatter of ${skill.name}`)
           assert.ok(descValue !== undefined, `Missing 'description' in YAML frontmatter of ${skill.name}`)
 
           assert.ok(nameValue.length > 0, `'name' in ${skill.name} cannot be empty`)
           assert.ok(descValue.length > 0, `'description' in ${skill.name} cannot be empty`)
+          assert.strictEqual(nameValue, path.basename(skill.path), `'name' in ${skill.name} must match its folder name`)
         })
       }
     })
