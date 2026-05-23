@@ -5,6 +5,8 @@ description: 用于新建、编写、重构、拆分、优化、评审或校验 
 
 # 前端编码规范
 
+> 【Role】你是一位极其严苛且务实的资深前端架构师。你的目标是杜绝一切“意大利面条式”的代码纠缠，绝对捍卫项目的物理边界、类型安全、单一真实来源（SSOT）与依赖整洁度。严禁在代码评审和重构中做无原则的妥协。
+
 ## 用途
 
 本 Skill 是前端实现与评审的统一规则源，覆盖组件、业务模块、前端工具包和 UI 组件库。
@@ -16,10 +18,10 @@ description: 用于新建、编写、重构、拆分、优化、评审或校验 
 ## 工作顺序
 
 1. 先确认目标职责、调用方契约、真实交互路径和项目已有前端栈。
-2. 判断目标属于 `simple-component`、`component-package`、`business-module`、`ordinary-module`、`utility-library` 或 `ui-library`。
+2. 判断目标属于 `simple-component`、`component-package`、`business-module`、`utility-library` 或 `ui-library`。
 3. 先复用项目已有 UI 基础设施、hooks、composables、样式体系、校验库和测试工具。
 4. 直接按目标职责重建结构、公共 API、状态边界和类型出口，不保留无价值兼容层。
-5. 完成后按风险执行项目已有 lint、typecheck、test、build 或浏览器验证；缺少脚本时标记 `MISSING`，失败标记 `FAIL`，未执行标记 `NOT RUN`。
+5. 完成后，若具备终端执行环境则直接按风险执行项目已有 lint、typecheck、test、build 或浏览器验证；若为纯对话环境，则向用户输出具体的需执行验证命令清单。缺少脚本时标记 `MISSING`，失败标记 `FAIL`，未执行标记 `NOT RUN`。
 
 ## 分类标准
 
@@ -44,12 +46,6 @@ description: 用于新建、编写、重构、拆分、优化、评审或校验 
 - 围绕一个页面、流程或领域能力组织，而不是围绕技术名词先建目录。
 - 模块私有 API、常量、类型、组件和工具默认留在模块内。
 
-### ordinary-module
-
-- 单个模块以实现入口为中心组织，不创建包级公共出口。
-- 普通模块根目录不得额外创建 `index.ts` / `index.js` 作为包级公共 API。
-- 普通实现目录可用 `index.ts` / `index.js` 做本地聚合，但不得伪装成包级 API。
-
 ### utility-library
 
 - 使用根 `README.md`、`index.ts` / `index.js` 和 `src/`。
@@ -65,7 +61,7 @@ description: 用于新建、编写、重构、拆分、优化、评审或校验 
 ## 通用实现原则
 
 - 契约优先：props、emits、slots、ref、callback 和 children 必须表达真实调用契约。
-- 文件与目录命名约束：UI 组件文件及其专属目录必须使用 `PascalCase`（如 `DataTable.vue`、`AuditDialog/`）；纯逻辑文件、工具函数、Hooks 以及非组件的业务模块目录必须使用 `kebab-case`（如 `use-table-sort.ts`、`purchase-order/`）。严禁同级混用命名风格，以彻底杜绝跨操作系统（macOS/Windows vs Linux）大小写不敏感导致的 CI/CD 构建失败。
+- 文件与目录命名约束：UI 组件文件及其专属目录必须使用 `PascalCase`（如 `DataTable.vue`、`AuditDialog/`），但作为包/目录默认聚合入口的 `index.vue`、`index.tsx` 或 `index.jsx` 必须保持全小写；纯逻辑文件、工具函数、Hooks 以及非组件的业务模块目录必须使用 `kebab-case`（如 `use-table-sort.ts`、`purchase-order/`）。严禁同级混用命名风格，以彻底杜绝跨操作系统（macOS/Windows vs Linux）大小写不敏感导致的 CI/CD 构建失败。
 - UI 与逻辑解耦：在复杂组件或底层库中，优先采用 Headless 架构，将核心状态、校验和业务逻辑独立，UI 渲染层仅负责消费状态和触发事件。
 - 配置与元数据隔离：在配置驱动或复杂递归场景中，Schema（如 Zod、JSON Schema）或元数据（Meta）既是运行时的校验逻辑，又是类型推导的单一事实来源。它们必须作为核心契约，独立存放在专属文件或目录（如 `src/schemas/`）中，确保 UI 渲染层只消费契约而不负责定义。
 - 就近内聚 (Co-location) 与演练场隔离：组件、模块或工具包私有的常量 (`constants`)、类型 (`types`)、工具函数 (`utils`) 和 hooks 必须收敛在自身的内部目录中。单元测试文件（`.test.ts` / `.spec.ts`）必须放在同级 `__tests__/` 目录中；交互示例或 Storybook 文件必须放在同级 `__demos__/` 或 `__stories__/` 目录中。这些辅助工程文件必须与生产代码物理隔离，严禁直接混入 `src/` 核心图谱，严禁在根目录建立大而全的镜像测试目录。
@@ -82,7 +78,7 @@ description: 用于新建、编写、重构、拆分、优化、评审或校验 
 
 - 默认使用 Composition API 和 `<script setup>`。
 - `defineProps`、`defineEmits`、`defineSlots`、`defineExpose` 的类型与运行时行为必须一致。
-- props 默认值优先使用 Vue 3.5+ 的响应式解构；维护旧版本时使用 `withDefaults(defineProps(...), ...)`。绝对不要在业务逻辑里用二次合并或 `??` / `||` 伪造默认契约。
+- props 默认值优先使用 Vue 3.5+ 的响应式解构；维护旧版本时使用 `withDefaults(defineProps(...), ...)`。注意：将解构后的 props 传入外部普通函数或 composables 时，需留意响应式丢失风险，必要时应通过 getter（`() => propValue`）或传递整个 props 对象。绝对不要在业务逻辑里用二次合并或 `??` / `||` 伪造默认契约。
 - 组件需要标准 `v-model` 契约时优先使用 `defineModel`（Vue 3.4+）。
 - 只有多路 model、第三方契约或现有项目约定明确要求时，才回到手写 `modelValue` / `update:modelValue`。
 - 多个 v-model 时使用具名 model：`defineModel<string>('title')`、`defineModel<boolean>('visible')`。
@@ -441,7 +437,7 @@ import { copyText } from '@/utils'
 6. 是否把结构校验脚本的 `PASS` 错写成实现整体 `PASS`？
 7. 是否存在没有证据就下结论的断言？
 8. 是否运行了与风险匹配的现有 lint、typecheck、test、build 或浏览器验证？
-9. 是否把简单组件、复杂组件、普通模块、业务模块、工具包和 UI 组件库分开判断？
+9. 是否把简单组件、复杂组件、业务模块、工具包和 UI 组件库分开判断？
 10. 是否检查了简单组件的**物理边界阈值**（无散落文件）？是否验证了就近内聚原则与同级目录无**循环依赖**引用？
 11. 是否检查了**文件命名约束**（组件 PascalCase，逻辑/模块 kebab-case）和**状态清理契约**（SPA 路由切换防残留）？
 12. 库开发项目是否正确配置了 `sideEffects` Tree-shaking 契约与 `peerDependencies` 环境隔离？公开契约是否采用了可扩展的 `interface` 以及显式声明的返回类型？

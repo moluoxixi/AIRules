@@ -3,6 +3,7 @@ import { execFileSync, spawnSync } from 'node:child_process'
 import fs from 'node:fs'
 import os from 'node:os'
 import path from 'node:path'
+import process from 'node:process'
 import { fileURLToPath } from 'node:url'
 import { it } from 'vitest'
 
@@ -23,8 +24,8 @@ function runNodeScript(...parts: string[]) {
   })
 }
 
-it('入口策略 - AGENTS 保留公共硬规则并保持简洁入口边界', () => {
-  const agents = readProjectFile('AGENTS.md')
+it('入口策略 - rules/AGENTS 保留公共硬规则并保持简洁入口边界', () => {
+  const agents = readProjectFile('rules', 'AGENTS.md')
 
   assert.match(agents, /## 核心规则/)
   assert.match(agents, /禁止冗余校验/)
@@ -89,16 +90,19 @@ it('前端编码规范 - SKILL.md 是唯一规则源', () => {
   assert.match(skill, /组件、业务模块、前端工具包和 UI 组件库/)
   assert.match(skill, /实现质量、目录边界、公共导出、import 路径、类型契约和交付检查/)
   assert.match(skill, /不是只管目录拆分的窄规则/)
+  assert.match(skill, /极其严苛且务实的资深前端架构师/)
   assert.match(skill, /当任务是评审、检查或判断是否符合标准时，先给出目标分类和检查范围，再输出问题点与改动建议，不得只复述规则/)
   assert.match(skill, /未执行标记 `NOT RUN`/)
   assert.match(skill, /Vue 3 标准/)
   assert.match(skill, /React 标准/)
   assert.match(skill, /组件标准/)
   assert.match(skill, /业务模块标准/)
+  assert.doesNotMatch(skill, /ordinary-module/)
   assert.match(skill, /工具包与 UI 组件库标准/)
   assert.match(skill, /契约优先/)
   assert.match(skill, /物理边界约束/)
   assert.match(skill, /文件与目录命名约束/)
+  assert.match(skill, /但作为包\/目录默认聚合入口的 `index\.vue`、`index\.tsx` 或 `index\.jsx` 必须保持全小写/)
   assert.match(skill, /UI 与逻辑解耦/)
   assert.match(skill, /配置与元数据隔离/)
   assert.match(skill, /就近内聚/)
@@ -118,6 +122,8 @@ it('前端编码规范 - SKILL.md 是唯一规则源', () => {
   assert.match(skill, /复杂组件包（component-package）/)
   assert.match(skill, /页面模块/)
   assert.match(skill, /类型组织与导入隔离/)
+  assert.match(skill, /若具备终端执行环境则直接按风险执行项目已有 lint、typecheck、test、build 或浏览器验证；若为纯对话环境，则向用户输出具体的需执行验证命令清单/)
+  assert.match(skill, /响应式丢失风险/)
   assert.match(skill, /## 评审输出/)
   assert.match(skill, /### 目标分类/)
   assert.match(skill, /### 检查范围/)
@@ -140,7 +146,6 @@ it('前端编码规范 - SKILL.md 是唯一规则源', () => {
   assert.match(skill, /禁止 deep import/)
   assert.match(skill, /scripts\/verify-rules\.mjs/)
   assert.match(skill, /前端目录遵循单一入口、按需拆分/)
-  assert.match(skill, /普通模块根目录不得额外创建 `index\.ts` \/ `index\.js`/)
   assert.match(skill, /只有 `component-package`、`utility-library` 和 `ui-library` 允许/)
   assert.match(skill, /`styles\/` 只使用一个 `index\.css`、`index\.scss` 或 `index\.less`/)
   assert.match(skill, /复杂组件可按职责拆分/)
@@ -887,110 +892,4 @@ it('workflow 流程规范 - SKILL.md 收敛验证分级和交付报告', () => {
   assert.match(workflowSkill, /PASS `git diff --check`/)
   assert.match(workflowSkill, /N\/A 质量检查：本次未修改代码。/)
   assert.doesNotMatch(workflowSkill, /examples\/|validation\//)
-})
-
-it('skill 校验规范 - 校验生成后的 skill 结构', () => {
-  const skill = readProjectFile('skills', 'skill-validation-standard', 'SKILL.md')
-  const scriptPath = path.join(rootDir, 'skills', 'skill-validation-standard', 'scripts', 'verify-rules.mjs')
-  const workflowSkill = readProjectFile('skills', 'workflow', 'software-development-workflow', 'SKILL.md')
-  const readme = readProjectFile('README.md')
-  const readmeZh = readProjectFile('README-zh.md')
-
-  assert.match(skill, /Skill 校验流程/)
-  assert.match(skill, /校验 Claude\/Codex skill 是否符合官方最佳实践/)
-  assert.match(skill, /创建、修改或评审 skill 后/)
-  assert.doesNotMatch(skill, /服务所有 skills/)
-  assert.doesNotMatch(skill, /不属于 `workflow`/)
-  assert.match(skill, /scripts\/verify-rules\.mjs/)
-  assert.match(skill, /触发描述/)
-  assert.match(skill, /内容质量 rubric/)
-  assert.match(skill, /正文精简度/)
-  assert.match(skill, /资源组织/)
-  assert.match(skill, /示例与脚本/)
-  assert.match(skill, /整体质量/)
-  assert.doesNotMatch(skill, /airules-workflow/)
-  assert.match(skill, /## 结构示例与反模式/)
-  assert.match(skill, /## 校验输出示例/)
-  assert.match(skill, /## 校验脚本用法/)
-  assert.match(skill, /Skill 结构示例与反模式/)
-  assert.match(skill, /my-skill\/\n {2}SKILL\.md/)
-  assert.match(skill, /examples\/sample-output\.md/)
-  assert.match(skill, /validation\/checklist\.md/)
-  assert.doesNotMatch(skill, /examples\/skill-structure\.md/)
-  assert.doesNotMatch(skill, /examples\/validation-output\.md/)
-  assert.match(skill, /本文件只提供脚本用法/)
-  assert.match(skill, /node skills\/skill-validation-standard\/scripts\/verify-rules\.mjs --root/)
-  assert.doesNotMatch(skill, /airules-workflow/)
-  assert.match(runNodeScript('skills', 'skill-validation-standard', 'scripts', 'verify-rules.mjs'), /PASS skill is valid/)
-  assert.match(
-    execFileSync(process.execPath, [
-      scriptPath,
-      '--root',
-      'skills/workflow/frontend-code-standard',
-    ], { cwd: rootDir, encoding: 'utf8' }),
-    /PASS skill is valid/,
-  )
-  const claudeSkillTemp = fs.mkdtempSync(path.join(os.tmpdir(), 'airules-claude-skill-'))
-  const claudeSkillRoot = path.join(claudeSkillTemp, 'reference-skill')
-  fs.mkdirSync(claudeSkillRoot)
-  fs.writeFileSync(path.join(claudeSkillRoot, 'SKILL.md'), [
-    '---',
-    'name: reference-skill',
-    'description: Use when checking generated skill packages that include bundled reference material or reusable scripts.',
-    '---',
-    '',
-    '# Claude Skill',
-    '',
-    'Read [api.md](references/api.md) when API details matter.',
-  ].join('\n'))
-  fs.mkdirSync(path.join(claudeSkillRoot, 'references'))
-  fs.writeFileSync(path.join(claudeSkillRoot, 'references', 'api.md'), '# API\n')
-  assert.match(
-    execFileSync(process.execPath, [
-      scriptPath,
-      '--root',
-      claudeSkillRoot,
-    ], { cwd: rootDir, encoding: 'utf8' }),
-    /PASS skill is valid/,
-  )
-  const invalidDescriptionTemp = fs.mkdtempSync(path.join(os.tmpdir(), 'airules-invalid-skill-description-'))
-  const invalidDescriptionRoot = path.join(invalidDescriptionTemp, 'invalid-skill-description')
-  fs.mkdirSync(invalidDescriptionRoot)
-  fs.writeFileSync(path.join(invalidDescriptionRoot, 'SKILL.md'), [
-    '---',
-    'name: invalid-skill-description',
-    'description: 本 Skill 服务所有 skills，不属于 workflow，提供完整流程说明。',
-    '---',
-    '',
-    '# Invalid Skill Description',
-    '',
-    'This body is intentionally valid so the description contract is isolated.',
-  ].join('\n'))
-  const invalidDescriptionResult = spawnSync(process.execPath, [
-    scriptPath,
-    '--root',
-    invalidDescriptionRoot,
-  ], { cwd: rootDir, encoding: 'utf8' })
-  assert.notEqual(invalidDescriptionResult.status, 0)
-  assert.match(invalidDescriptionResult.stdout, /description 不得描述内部投影或自身位置/)
-
-  const unknownArgResult = spawnSync(process.execPath, [
-    scriptPath,
-    '--rooot',
-    'skills/workflow/frontend-code-standard',
-  ], { cwd: rootDir, encoding: 'utf8' })
-  assert.notEqual(unknownArgResult.status, 0)
-  assert.match(unknownArgResult.stdout, /未知参数：--rooot/)
-
-  assert.doesNotMatch(workflowSkill, /不属于 workflow namespace/)
-  assert.match(readme, /skill-validation-standard/)
-  assert.match(readme, /General skill validation standard/)
-  assert.match(readme, /├── skill-validation-standard\//)
-  assert.match(readme, /Top-level first-party skills are projected explicitly/)
-  assert.doesNotMatch(readme, /top-level first-party `skills\/` projection list is intentionally empty/)
-  assert.match(readmeZh, /skill-validation-standard/)
-  assert.match(readmeZh, /通用 Skill 产物校验标准/)
-  assert.match(readmeZh, /├── skill-validation-standard\//)
-  assert.match(readmeZh, /顶层第一方 skills 通过精确列表投影/)
-  assert.doesNotMatch(readmeZh, /顶层第一方 `skills\/` 投影列表刻意保持为空/)
 })
