@@ -124,6 +124,7 @@ it('前端编码规范 - SKILL.md 是唯一规则源', () => {
   assert.match(skill, /类型组织与导入隔离/)
   assert.match(skill, /若具备终端执行环境则直接按风险执行项目已有 lint、typecheck、test、build 或浏览器验证；若为纯对话环境，则向用户输出具体的需执行验证命令清单/)
   assert.match(skill, /响应式丢失风险/)
+  assert.match(skill, /watch\(\(\) => propValue, \.\.\.\)/)
   assert.match(skill, /## 评审输出/)
   assert.match(skill, /### 目标分类/)
   assert.match(skill, /### 检查范围/)
@@ -171,7 +172,7 @@ it('前端编码规范 - SKILL.md 内联示例按可复用单元拆分', () => {
   assert.match(skill, /## 检查清单/)
   assert.match(skill, /## 自校验脚本/)
   assert.doesNotMatch(skill, /examples\/|validation\//)
-  assert.match(skill, /公共代码应直接进入全局 `@\/components`、`@\/utils`、`@\/composables`、`@\/constants` 或 `@\/types`；Monorepo 场景则进入 workspace package/)
+  assert.match(skill, /公共代码应直接进入全局 `@\/components`、`@\/utils`、`@\/composables`、`@\/constants` 或 `@\/types`；Monorepo 场景则进入统一的或领域相关的共享 workspace package/)
   assert.match(skill, /公开契约（props、emits、slots、ref、expose）/)
   assert.match(skill, /必须显式传入 navigator，不依赖全局对象。/)
   assert.ok(skill.includes('clipboard-toolkit/\n├── README.md\n├── package.json'))
@@ -492,9 +493,36 @@ it('前端编码规范 - skill 自带验证脚本覆盖组件结构和共享边�
       '--uses',
       'src/views/purchase-order/create/index.tsx',
       'src/views/purchase-order/update/index.tsx',
+      'src/views/purchase-order/detail/index.tsx',
     ], { cwd: rootDir, encoding: 'utf8' }),
     /PASS frontend hoist target stays within shared boundary/,
   )
+  assert.match(
+    execFileSync(process.execPath, [
+      scriptPath,
+      'hoist',
+      '--target',
+      'src/views/purchase-order/utils',
+      '--uses',
+      'src/views/purchase-order/create/index.tsx',
+      'src/views/purchase-order/update/index.tsx',
+      '--stable-two-use',
+    ], { cwd: rootDir, encoding: 'utf8' }),
+    /PASS frontend hoist target stays within shared boundary/,
+  )
+  const prematureTwoUseHoistResult = spawnSync(process.execPath, [
+    scriptPath,
+    'hoist',
+    '--target',
+    'src/views/purchase-order/utils',
+    '--uses',
+    'src/views/purchase-order/create/index.tsx',
+    'src/views/purchase-order/update/index.tsx',
+  ], { cwd: rootDir, encoding: 'utf8' })
+
+  assert.notEqual(prematureTwoUseHoistResult.status, 0)
+  assert.match(prematureTwoUseHoistResult.stderr, /至少需要 3 个明确使用点/)
+  assert.match(prematureTwoUseHoistResult.stderr, /--stable-two-use/)
   const nestedHoistResult = spawnSync(process.execPath, [
     scriptPath,
     'hoist',
@@ -503,6 +531,7 @@ it('前端编码规范 - skill 自带验证脚本覆盖组件结构和共享边�
     '--uses',
     'src/views/purchase-order/create/index.tsx',
     'src/views/purchase-order/update/index.tsx',
+    'src/views/purchase-order/detail/index.tsx',
   ], { cwd: rootDir, encoding: 'utf8' })
 
   assert.notEqual(nestedHoistResult.status, 0)
@@ -533,10 +562,12 @@ it('前端编码规范 - Barrel、路径别名、复用阈值和领域提升为�
   assert.match(skill, /路径别名优先/)
   assert.match(skill, /禁止 deep import/)
   assert.match(skill, /只有 `component-package`、`utility-library` 和 `ui-library` 允许/)
-  assert.match(skill, /摒弃死板的“三次法则”/)
-  assert.match(skill, /出现 \*\*2 个\*\*明确的独立使用点/)
+  assert.match(skill, /避免两次重复就过早抽象/)
+  assert.match(skill, /出现 \*\*3 个\*\*明确的独立使用点/)
+  assert.match(skill, /仅有 \*\*2 个\*\*使用点，但逻辑庞大且极其稳定/)
+  assert.match(skill, /--stable-two-use/)
   assert.match(skill, /按领域边界而非物理交集提升/)
-  assert.match(skill, /公共代码应直接进入全局 `@\/components`、`@\/utils`、`@\/composables`、`@\/constants` 或 `@\/types`；Monorepo 场景则进入 workspace package/)
+  assert.match(skill, /公共代码应直接进入全局 `@\/components`、`@\/utils`、`@\/composables`、`@\/constants` 或 `@\/types`；Monorepo 场景则进入统一的或领域相关的共享 workspace package/)
   assert.match(skill, /@\/components\/DataTable\/src\/composables\/use-table-sort/)
   assert.match(skill, /@\/components\/DataTable/)
   assert.doesNotMatch(skill, /允许：\n\n```ts\nimport \{ formatDate \} from '@\/components\/DataTable\/utils'/)
@@ -908,16 +939,16 @@ it('workflow 流程规范 - SKILL.md 收敛验证分级和交付报告', () => {
   assert.doesNotMatch(workflowSkill, /examples\/|validation\//)
 })
 
-it('skill 校验规范 - 仅校验 YAML frontmatter 和正文结构', () => {
+it('skill 校验规范 - 仅校验 YAML frontmatter', () => {
   const skill = readProjectFile('skills', 'skill-validation-standard', 'SKILL.md')
   const scriptPath = path.join(rootDir, 'skills', 'skill-validation-standard', 'scripts', 'verify-rules.mjs')
 
   assert.match(skill, /YAML frontmatter/)
-  assert.match(skill, /正文/)
+  assert.doesNotMatch(skill, /正文/)
   assert.doesNotMatch(skill, /资源组织/)
   assert.doesNotMatch(skill, /脚本语义/)
   assert.doesNotMatch(skill, /examples\/|validation\/|deep reference|script semantics/)
-  assert.match(runNodeScript('skills', 'skill-validation-standard', 'scripts', 'verify-rules.mjs'), /PASS skill body and YAML are valid/)
+  assert.match(runNodeScript('skills', 'skill-validation-standard', 'scripts', 'verify-rules.mjs'), /PASS skill YAML frontmatter is valid/)
 
   const validSkillTemp = fs.mkdtempSync(path.join(os.tmpdir(), 'airules-valid-skill-'))
   const validSkillRoot = path.join(validSkillTemp, 'minimal-skill')
@@ -925,12 +956,8 @@ it('skill 校验规范 - 仅校验 YAML frontmatter 和正文结构', () => {
   fs.writeFileSync(path.join(validSkillRoot, 'SKILL.md'), [
     '---',
     'name: minimal-skill',
-    'description: 校验示例 skill 的 YAML 和正文。用于测试 skill 校验器。',
+    'description: 校验示例 skill 的 YAML。用于测试 skill 校验器。',
     '---',
-    '',
-    '# Minimal Skill',
-    '',
-    '只提供最小正文。',
   ].join('\n'))
   assert.match(
     execFileSync(process.execPath, [
@@ -938,7 +965,7 @@ it('skill 校验规范 - 仅校验 YAML frontmatter 和正文结构', () => {
       '--root',
       validSkillRoot,
     ], { cwd: rootDir, encoding: 'utf8' }),
-    /PASS skill body and YAML are valid/,
+    /PASS skill YAML frontmatter is valid/,
   )
 
   const invalidSkillTemp = fs.mkdtempSync(path.join(os.tmpdir(), 'airules-invalid-skill-'))

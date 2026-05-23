@@ -31,9 +31,9 @@ description: 用于新建、编写、重构、拆分、优化、评审或校验 
 - package 就近：功能私有类型、mapper、assembler、helper 和配置默认留在当前 feature package；抽离层级由领域通用性决定，而不是调用方物理最近公共父级 package。
 - 依赖显式：统一使用构造函数注入，不写字段注入，不依赖隐式可变状态。
 - 校验前置：边界输入优先用 Bean Validation，在 `jakarta.validation` 上声明清晰约束；领域不变量留在领域模型或 use case 中表达。
-- 事务收敛：`@Transactional` 只放在真正的 use case / application service 边界；除非已有明确模式支撑，否则不要把远程调用混入数据库事务。
+- 事务收敛：`@Transactional` 只放在真正的 use case / application service 边界；查询类 use case 或不修改数据的 application service 必须显式使用 `@Transactional(readOnly = true)`，减少 Hibernate Dirty Checking 开销，并作为读写分离路由的明确标记；除非已有明确模式支撑，否则不要把远程调用混入数据库事务。
 - 持久化封装：Repository 负责持久化访问，不承担 HTTP 拼装、鉴权决策或跨聚合业务编排。
-- 失败显性：依赖、配置、输入或状态不满足契约时暴露失败，不写吞错、伪成功、空对象回退或无依据默认值。
+- 失败显性：依赖、配置、输入或状态不满足契约时暴露失败，不写吞错、伪成功、空对象回退或无依据默认值；预期内的纯业务规则失败使用领域异常表达，并覆写 `fillInStackTrace()` 返回 `this` 以禁用堆栈抓取，系统级异常仍保留完整堆栈。
 - 抽象要付账：不要为了“更像分层架构”机械增加 facade、manager、util、converter 或 wrapper。
 - 注释解释意图：注释只说明事务边界、领域约束、兼容限制和非显然取舍，不复述代码流程。
 
@@ -80,12 +80,14 @@ src/main/java/com/example/order/
 - 承载 use case 编排、事务边界、权限决策协调和跨仓储流程。
 - command / query 模型表达用例输入，不把 Controller request 直接下传到领域或持久化层。
 - application service 返回领域结果或明确 DTO，不返回 `ResponseEntity`、Servlet API 或框架细节。
+- 处理跨聚合副作用或跨域流程时，禁止在一个事务中深度硬编码注入多个域的 Repository；优先发布 Spring `ApplicationEvent` 或使用 `@TransactionalEventListener` 承接领域事件，保持核心链路和副作用解耦。
 
 ### domain
 
 - 承载聚合、值对象、领域服务、领域规则和仓储接口。
 - 领域规则优先放入聚合或值对象，不要把核心规则散落在 controller 或 repository。
 - 领域层不依赖 Web、JPA 或传输层细节；必要时通过接口反转依赖。
+- 领域对象必须保护内部状态；对外暴露 `List`、`Set` 等集合字段时，禁止直接返回内部可变引用，必须使用 `Collections.unmodifiableList()`、`Collections.unmodifiableSet()` 或 `List.copyOf()` / `Set.copyOf()` 返回不可变视图，状态修改只能通过显式领域行为方法完成。
 
 ### infrastructure
 
@@ -96,11 +98,12 @@ src/main/java/com/example/order/
 ## Spring Boot 具体约束
 
 - 统一使用构造函数注入；禁止 `@Autowired` 字段注入。
-- 输入校验优先使用 `@Valid`、`@Validated` 和 `jakarta.validation` 注解。
+- 输入校验优先使用 `@Valid`、`@Validated` 和 `jakarta.validation` 注解；多层嵌套 DTO 或 `record` 集合必须在父级字段显式标记 `@Valid`，例如 `@Valid @NotNull List<ItemRequest> items`，否则内层约束不会级联触发。
 - 全局异常映射优先收敛到 `@ControllerAdvice`，并优先遵循 RFC 7807，使用 Spring 6 / Spring Boot 3 原生 `ProblemDetail` 作为统一错误响应体，避免自定义五花八门的 Result / Response 包装类。
 - 统一日志与追踪：禁止使用 `System.out` 或 `e.printStackTrace()`；统一使用 SLF4J 接口打印日志，在跨层调用、异常捕获或跨系统调用时保留异常堆栈，并配合 `MDC/TraceId` 记录足够排查的上下文信息。
 - 配置绑定优先使用 `@ConfigurationProperties`，不要到处直接读裸字符串配置。
 - DTO、entity、领域对象分离；除非项目已明确接受耦合，否则不要直接把 JPA entity 暴露给 API。
+- JPA Entity 必须使用普通 `class`，禁止使用 `record`，并严禁 Lombok `@Data`、`@EqualsAndHashCode`、`@ToString`；推荐仅保留 `@Getter`，需要变更的字段通过显式业务方法或必要的 `@Setter` 暴露。`equals` / `hashCode` 必须基于稳定业务唯一键手写，禁止基于数据库自增 ID 或所有字段生成。
 - 数据库迁移优先使用 Flyway 或 Liquibase；结构变更必须通过迁移脚本表达，不手工假设线上状态。
 - Maven 和 Gradle 都应依赖项目现有构建入口，不得用仓库根级共享脚本替代当前 skill 的自校验脚本。
 
@@ -165,12 +168,21 @@ src/main/java/com/example/order/
 ````java
 package com.example.order.api.request;
 
+import jakarta.validation.Valid;
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.NotNull;
+import jakarta.validation.constraints.Positive;
+
+import java.util.List;
 
 public record CreateOrderRequest(
     @NotBlank String customerId,
-    @NotNull Long amount
+    @Valid @NotNull List<ItemRequest> items
+) {}
+
+public record ItemRequest(
+    @NotBlank String sku,
+    @Positive long quantity
 ) {}
 ````
 
@@ -231,20 +243,26 @@ public record OrderProperties(
    - 若不符合，标记 `FAIL`，指出缺失校验的位置与建议落点。
 4. 是否统一使用构造函数注入，没有字段注入、可变单例状态或隐式依赖？
    - 若不符合，标记 `FAIL`，指出具体类和建议替换方式。
-5. `@Transactional` 是否只放在 application service 或明确的 use case 边界？
-   - 若不符合，标记 `FAIL`，说明错误事务边界和应迁移的位置。
-6. Repository 是否只负责持久化访问，没有掺入 HTTP、响应整形、鉴权决策或跨聚合流程？
+5. `@Transactional` 是否只放在 application service 或明确的 use case 边界，查询链路是否显式使用 `@Transactional(readOnly = true)`？
+   - 若不符合，标记 `FAIL`，说明错误事务边界、缺失只读事务的位置和应迁移的层次。
+6. 跨聚合副作用是否通过事件解耦，而不是在一个事务中硬编码注入多个域的 Repository？
+   - 若不符合，标记 `FAIL`，指出跨域耦合点，并建议发布 `ApplicationEvent` 或使用 `@TransactionalEventListener`。
+7. Repository 是否只负责持久化访问，没有掺入 HTTP、响应整形、鉴权决策或跨聚合流程？
    - 若不符合，标记 `FAIL`，指出越界逻辑和应回收的层次。
-7. DTO、entity、领域对象是否解耦，没有直接把 JPA entity 暴露给 API？
+8. DTO、entity、领域对象是否解耦，没有直接把 JPA entity 暴露给 API？
    - 若不符合，标记 `FAIL`，指出具体泄露位置和建议的 request/response 类型。
-8. 数据库结构变更是否通过 Flyway 或 Liquibase 表达？
+9. JPA Entity 是否避免 `record`、Lombok `@Data`、`@EqualsAndHashCode`、`@ToString`，并手写基于业务唯一键的 `equals` / `hashCode`？
+   - 若不符合，标记 `FAIL`，指出会触发 Lazy Loading、代理初始化或 hash 值变化风险的实体。
+10. 领域对象是否保护集合内部状态，没有通过 Getter 暴露可变 `List`、`Set` 引用？
+    - 若不符合，标记 `FAIL`，指出绕过领域行为修改状态的位置，并建议返回不可变视图。
+11. 数据库结构变更是否通过 Flyway 或 Liquibase 表达？
    - 若缺失迁移脚本，标记 `FAIL` 或 `MISSING`，并说明原因。
-9. 公共抽离是否按领域边界提升，而不是机械依据物理最近公共父级 package？
+12. 公共抽离是否按领域边界提升，而不是机械依据物理最近公共父级 package？
    - 出现 2 个明确独立使用点，或逻辑复杂到需要独立测试边界时即可拆分；全局基础设施可直接上浮，局部业务逻辑应留在当前 feature package 内。
    - 可配合 `verify-rules.mjs hoist` 做边界风险扫描；脚本 `PASS` 只代表扫描完成，`[HOIST_WARNING]` 必须人工复核，不代表实现整体通过。
-10. 是否运行了与风险匹配的现有 format、lint、test、build、集成测试或启动验证？
+13. 是否运行了与风险匹配的现有 format、lint、test、build、集成测试或启动验证？
     - 缺少脚本或依赖时标记 `MISSING`，未执行标记 `NOT RUN`，失败标记 `FAIL`。
-11. 是否用 ArchUnit 等 architecture tests 守住分层边界，并用 Testcontainers 验证持久化行为和 SQL 方言？
+14. 是否用 ArchUnit 等 architecture tests 守住分层边界，并用 Testcontainers 验证持久化行为和 SQL 方言？
     - 若不符合，标记 `FAIL`，说明缺失的边界守护或数据库替身风险。
 
 ## 自校验脚本

@@ -28,6 +28,7 @@ description: 用于新建、编写、重构、拆分、优化、评审或校验 
 ## 实现原则
 
 - 契约优先：HTTP 输入输出、command、query、事件和配置类型必须表达真实边界，不用 `any`、宽泛对象、裸 JSON 或可选字段堆砌掩盖契约。
+- OpenAPI 同步：如果项目启用了 OpenAPI（Swagger），DTO 类属性必须使用 `@ApiProperty()` 或 `@ApiPropertyOptional()` 声明字段类型、描述和必要示例；Controller 使用 `@ApiOperation()`、`@ApiResponse()` 等装饰器表达接口业务语义，确保生成文档与真实契约一致。
 - 失败显性：依赖、配置、输入或状态不满足契约时暴露失败，不写吞错、伪成功、空对象回退或无依据默认值。
 - 构造函数注入：统一使用构造函数注入 provider，不写字段注入、隐式单例状态或横向读取容器。
 - 校验前置：边界输入优先在 DTO 上通过 `class-validator` 表达，并配合 `ValidationPipe` 统一收口；领域不变量留在领域模型或 use case 中表达。
@@ -57,18 +58,21 @@ description: 用于新建、编写、重构、拆分、优化、评审或校验 
 - 处理路由、参数提取、认证上下文读取、DTO 入参校验和响应映射。
 - controller 不直接编排跨仓储流程，不直接写事务，不直接操作 ORM entity。
 - request / response DTO 只表达传输契约，不承载持久化注解或领域行为。
+- 尽量避免在 controller 中直接注入 `@Req()`、`@Res()` 或 `@Headers()`；用户身份上下文、租户 ID、Request ID 等通用数据应封装为自定义参数装饰器（Custom Route Decorator，例如 `@CurrentUser()`）后再读取。
 
 ### application
 
 - 承载 use case 编排、事务边界、权限决策协调和跨仓储流程。
 - application service 接收 command / query 或明确 DTO，不把 controller request 原样透传到 domain 或 infrastructure。
 - application service 返回领域结果或稳定响应模型，不返回 `Response`、`Request` 或其它 HTTP 宿主细节。
+- 若项目采用 CQRS 模式，优先使用官方 `@nestjs/cqrs`，由 application 层的 `CommandHandler`、`QueryHandler` 或事件处理器承载具体指令处理；不要自行实现一套 Bus 调度器，也不要把只命名为 Command 的 DTO 直接透传给普通 service 伪装成 CQRS。
 
 ### domain
 
 - 承载聚合、值对象、领域服务、领域规则、领域事件和仓储接口。
 - 领域规则优先放在聚合、值对象或领域服务中，不要散落在 controller、pipe 或 repository 实现里。
-- domain 不依赖 Nest 装饰器、Web 宿主对象或 ORM 细节；必要时通过接口反转依赖。
+- domain 不依赖 Web 宿主对象或 ORM 细节；必要时通过接口反转依赖。
+- 原则上 domain 不依赖框架装饰器；为兼顾开发效率，允许 Domain Service 使用 `@Injectable()` 接入 NestJS DI 容器，但严禁在 domain 层引入 HTTP、GraphQL、Swagger 或特定 ORM 相关注解。
 
 ### infrastructure
 
@@ -79,10 +83,12 @@ description: 用于新建、编写、重构、拆分、优化、评审或校验 
 
 - `ValidationPipe` 应作为统一输入校验入口；参数、body、query、param 的 DTO 校验必须可追踪。
 - DTO 使用 `class` 与 `class-validator` 表达契约，不用 interface 冒充运行时校验对象。
+- 响应数据必须使用 `class-transformer` 的 `@Exclude()`、`@Expose()` 配合全局或局部 `ClassSerializerInterceptor` 做序列化过滤；严禁将包含密码、密钥、内部状态、审计字段或 ORM lazy relation 的底层对象直接暴露给前端。
 - provider 依赖通过构造函数声明，不用从模块外部隐式读取实例。
 - 领域层定义的接口契约若需通过 NestJS DI 容器注入，必须定义为 `abstract class` 或使用显式的 `Inject('TOKEN')`，禁止直接注入 TypeScript `interface`。
 - `@Module` 只暴露稳定 provider 和 controller；不要把内部实现无边界 export 给外层模块。
 - 必须使用 NestJS 的 `Exception Filter`（`@Catch()`）作为统一异常映射层；Application 层和 Domain 层只允许抛出领域自定义错误或原生异常，严禁在业务逻辑中散落 `try-catch` 进行 HTTP 协议转换。
+- 领域层和应用层的自定义异常应继承统一基类（例如 `BaseDomainException` 或 `BaseApplicationException`），并在基类契约中暴露稳定错误码；全局 Exception Filter 通过识别基类特征映射 HTTP 状态码和响应体，避免在 Filter 中编写无尽的异常类型枚举。
 - 环境变量与应用配置必须使用 `@nestjs/config` 配合 `class-validator` 或 `Joi` 进行启动时强类型校验；若配置缺失，必须在启动阶段快速失败（Fail Fast），禁止运行时 fallback。
 - 单元测试与集成测试必须使用 `@nestjs/testing` 的 `Test.createTestingModule` 进行上下文隔离；依赖 Mock 优先通过复写 Provider（`overrideProvider`）实现，禁止直接修改全局模块或硬编码类实例化链。
 - exception filter、interceptor、guard、pipe 要按职责拆分，不把业务规则塞进基础设施横切层。
@@ -120,7 +126,7 @@ description: 用于新建、编写、重构、拆分、优化、评审或校验 
 
 - 模块边界是否围绕当前业务能力，而不是继续迁就旧结构。
 - controller、application、domain、infrastructure 的职责是否混淆。
-- DTO、`ValidationPipe`、构造函数注入、事务边界和错误映射是否表达清楚。
+- DTO、`ValidationPipe`、响应序列化、构造函数注入、事务边界、错误基类和错误映射是否表达清楚。
 - repository、adapter 和外部依赖是否只承担持久化/集成职责，没有越界承载业务编排。
 - 共享抽离是否按领域边界判断：全局基础设施、跨域业务资产和局部业务逻辑是否分别落在对应层级，而不是机械依赖物理最近公共父级或“三次法则”。
 - 是否运行了与风险匹配的现有 lint、test、build、启动验证或集成测试。
@@ -147,6 +153,7 @@ src/modules/orders/
     orders.controller.ts
     dto/
       create-order.dto.ts
+      order.response.ts
       list-orders.query.dto.ts
   application/
     create-order.service.ts
@@ -200,9 +207,11 @@ export class OrdersModule {}
 
 ```ts
 export class CreateOrderDto {
+  @ApiProperty({ description: '客户 ID', format: 'uuid' })
   @IsUUID()
   customerId!: string
 
+  @ApiProperty({ description: '订单明细列表', type: () => [CreateOrderItemDto] })
   @IsArray()
   @ValidateNested({ each: true })
   @Type(() => CreateOrderItemDto)
@@ -215,7 +224,31 @@ app.useGlobalPipes(new ValidationPipe({ whitelist: true, transform: true }))
 ```
 
 - DTO 使用 `class` 与 `class-validator` 表达输入契约。
+- 启用 Swagger 时，DTO 字段同步使用 `@ApiProperty()` 或 `@ApiPropertyOptional()` 表达文档契约，不让 OpenAPI 输出退化为空字段或错误类型。
 - `ValidationPipe` 统一收口边界输入校验，不把校验逻辑散落在 controller 方法体里。
+
+### 响应序列化
+
+```ts
+@Exclude()
+export class OrderResponse {
+  @Expose()
+  id!: string
+
+  @Expose()
+  status!: string
+
+  @Expose()
+  totalAmount!: number
+}
+```
+
+```ts
+app.useGlobalInterceptors(new ClassSerializerInterceptor(app.get(Reflector)))
+```
+
+- 响应 DTO 使用 `class-transformer` 明确暴露字段，敏感字段默认不暴露。
+- controller 返回响应 DTO 或经过 presenter 映射后的对象，不直接返回 ORM entity、聚合内部状态或第三方 SDK 原始响应。
 
 ### 应用服务与事务边界
 
@@ -245,6 +278,12 @@ export class CreateOrderService {
 ### 错误与持久化封装
 
 ```ts
+export abstract class BaseDomainException extends Error {
+  abstract readonly code: string
+}
+```
+
+```ts
 @Injectable()
 export class TypeormOrderRepository implements OrderRepository {
   constructor(
@@ -261,6 +300,7 @@ export class TypeormOrderRepository implements OrderRepository {
 
 - repository 负责持久化访问和映射，不直接返回 ORM entity 给 controller。
 - Service 抛出领域错误或应用错误，由 NestJS `Exception Filter` 统一转换为外部协议语义，不在业务逻辑中散落 HTTP 异常转换。
+- 自定义领域错误和应用错误继承统一基类并暴露稳定错误码，Filter 只负责协议映射，不在其中堆叠每一种业务错误的类型分支。
 
 ### 测试装配
 
@@ -320,22 +360,32 @@ describe('CreateOrderService', () => {
    - 若分类不清，标记 `FAIL`，并说明职责为什么混杂。
 3. controller 是否只处理路由、参数提取、DTO 校验和响应映射？
    - 若 controller 直接操作 repository、拼装事务或暴露 ORM 细节，标记 `FAIL`。
+   - 若直接注入 `@Req()`、`@Res()` 或散落读取 `@Headers()`，优先建议改为自定义参数装饰器。
 4. 边界输入是否通过 `class-validator` 和 `ValidationPipe` 表达运行时契约？
    - 若只存在 TypeScript 类型、没有运行时校验，标记 `FAIL`，指出缺失位置和建议补点。
 5. provider 是否统一使用构造函数注入，没有字段注入、隐式共享状态或横向读取容器？
    - 若不符合，标记 `FAIL`，指出具体类和建议替换方式。
 6. application service 是否承担用例编排与事务边界，而不是把这些职责分散在 controller、guard、interceptor 或 repository 中？
    - 若不符合，标记 `FAIL`，指出错误边界和应迁移的位置。
-7. domain 是否承载核心业务规则和仓储契约，而不是依赖 Nest 装饰器、Web 宿主对象或 ORM 细节？
+7. domain 是否承载核心业务规则和仓储契约，而不是依赖 Web 宿主对象、HTTP/GraphQL/Swagger 注解或 ORM 细节？
    - 若不符合，标记 `FAIL`，指出具体耦合点。
+   - Domain Service 可使用 `@Injectable()` 接入 DI，但不能把传输层或持久化层注解带入 domain。
 8. repository / adapter 是否只负责持久化和外部依赖访问，没有夹带 HTTP 拼装、鉴权决策或跨聚合流程？
    - 若不符合，标记 `FAIL`，指出越界逻辑和回收层次。
-9. 数据库结构变更是否通过项目现有迁移机制表达？
+9. 响应输出是否通过 response DTO、`class-transformer` 和 `ClassSerializerInterceptor` 做安全序列化？
+   - 若直接返回 ORM entity、领域对象内部状态或包含敏感字段的底层对象，标记 `FAIL`。
+10. 启用 OpenAPI 时，DTO 和 Controller 是否使用 `@ApiProperty()`、`@ApiOperation()` 等 Swagger 装饰器同步文档契约？
+    - 若生成文档缺少字段类型、描述或接口语义，标记 `FAIL`。
+11. 采用 CQRS 时，是否使用 `@nestjs/cqrs` 的 `CommandHandler` / `QueryHandler` 等官方机制承载指令处理？
+    - 若自行实现冗余 Bus，或只是把 DTO 命名为 Command 后透传普通 service，标记 `FAIL`。
+12. 自定义领域错误和应用错误是否继承统一异常基类并暴露稳定错误码？
+    - 若 Exception Filter 中枚举大量具体业务异常类型，标记 `FAIL`。
+13. 数据库结构变更是否通过项目现有迁移机制表达？
    - 若缺失迁移脚本，标记 `FAIL` 或 `MISSING`，并说明原因。
-10. 公共抽离是否按领域边界提升，而不是机械依据物理最近公共父级？
+14. 公共抽离是否按领域边界提升，而不是机械依据物理最近公共父级？
     - 出现 2 个明确独立使用点，或逻辑复杂到需要独立测试边界时即可拆分；全局基础设施可直接上浮，局部业务逻辑应留在当前 feature module 内。
     - 可配合 `verify-rules.mjs hoist` 做边界风险扫描；脚本 `PASS` 只代表扫描完成，`[HOIST_WARNING]` 必须人工复核，不代表实现整体通过。
-11. 是否运行了与风险匹配的现有 lint、test、build、启动验证或集成测试？
+15. 是否运行了与风险匹配的现有 lint、test、build、启动验证或集成测试？
     - 缺少脚本或依赖时标记 `MISSING`，未执行标记 `NOT RUN`，失败标记 `FAIL`。
 
 ## 自校验脚本

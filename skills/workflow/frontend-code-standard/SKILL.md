@@ -71,14 +71,14 @@ description: 用于新建、编写、重构、拆分、优化、评审或校验 
 - 内部引用隔离：同级目录下的内部实现文件之间，严禁通过自身的公共 `index.ts` 互相导入，必须使用直接相对路径引用，以彻底杜绝循环依赖。
 - 失败显性与异常语义化：输入、依赖或运行状态不满足契约时暴露失败，不写静默兜底或伪成功。在复杂模块或底层库抛出异常时，**严禁直接 `throw new Error('纯文本')`**，必须抛出包含特定错误码和上下文参数的自定义领域错误类（如 `FormValidationError`、`ModuleLoadError`），以便调用方精准捕获与降级。
 - 类型扩展性与显式返回：对外暴露的公共对象契约（如组件 Props、配置项）强制使用 `interface` 定义，保留 TypeScript 的声明合并（Declaration Merging）能力；仅在需要联合/交叉类型时使用 `type`。所有包级或模块级公共出口的函数、Hooks 和类，**强制显式声明返回类型**，严禁依赖自动推导，以防止私有类型意外泄漏并极大提升宿主应用的 TS 编译性能。
-- 抽象要付账：新目录、新 hook、新 composable、新 wrapper 必须减少至少两个调用方的重复代码或消除一个具体错误类别。
+- 抽象要付账：新目录、新 hook、新 composable、新 wrapper 必须减少至少三个调用方的重复代码、为庞大且稳定的双使用点逻辑建立独立测试边界，或消除一个具体错误类别。
 - 注释解释意图：注释只说明契约、边界、业务例外和非显然取舍，不复述实现步骤。
 
 ## Vue 3 标准
 
 - 默认使用 Composition API 和 `<script setup>`。
 - `defineProps`、`defineEmits`、`defineSlots`、`defineExpose` 的类型与运行时行为必须一致。
-- props 默认值优先使用 Vue 3.5+ 的响应式解构；维护旧版本时使用 `withDefaults(defineProps(...), ...)`。注意：将解构后的 props 传入外部普通函数或 composables 时，需留意响应式丢失风险，必要时应通过 getter（`() => propValue`）或传递整个 props 对象。绝对不要在业务逻辑里用二次合并或 `??` / `||` 伪造默认契约。
+- props 默认值优先使用 Vue 3.5+ 的响应式解构；维护旧版本时使用 `withDefaults(defineProps(...), ...)`。注意：将解构后的 props 传入外部普通函数或 composables 时，需通过 getter（`() => propValue`）或传递整个 props 对象，避免响应式丢失风险；使用 `watch` 监听解构后的基本类型 props 时，同样必须使用 getter 形式（`watch(() => propValue, ...)`），否则无法触发回调。绝对不要在业务逻辑里用二次合并或 `??` / `||` 伪造默认契约。
 - 组件需要标准 `v-model` 契约时优先使用 `defineModel`（Vue 3.4+）。
 - 只有多路 model、第三方契约或现有项目约定明确要求时，才回到手写 `modelValue` / `update:modelValue`。
 - 多个 v-model 时使用具名 model：`defineModel<string>('title')`、`defineModel<boolean>('visible')`。
@@ -123,13 +123,13 @@ description: 用于新建、编写、重构、拆分、优化、评审或校验 
 - `defineProps`、`defineEmits`、`defineSlots`、`defineExpose` 的类型与运行时行为必须一致。
 - 模块状态默认留在当前页面组件内（随组件卸载自动清理）；只有跨模块共享、跨页面保留或业务流程要求时才上浮到 store 或外部状态。**一旦状态上浮，必须同时提供并在对应生命周期（如 `onUnmounted`）主动调用状态清理契约**，严防 SPA 路由切换导致的状态残留或内存泄漏。
 - 模块私有常量、类型、组件和工具默认留在模块内（就近内聚原则）。
-- **务实的复用与拆分时机**：摒弃死板的“三次法则”。当逻辑满足以下任一条件时即应拆分提取：
-  1. 出现 **2 个**明确的独立使用点（贯彻 DRY 原则）。
-  2. 逻辑过于复杂（如核心正则验证、复杂数据推导），需要建立独立的单元测试边界。
+- **务实的复用与拆分时机**：避免两次重复就过早抽象。只有当逻辑满足以下任一条件时才应拆分提取：
+  1. 出现 **3 个**明确的独立使用点，已经形成稳定复用模式。
+  2. 仅有 **2 个**使用点，但逻辑庞大且极其稳定（如复杂的格式化算法、特定业务表单的核心校验），出于建立独立单元测试边界的需要允许拆分。
 - 不要因为文件变长就机械拆分；拆分必须对应可命名的职责、复用点或测试边界。
 - **按领域边界而非物理交集提升**：公共代码的落点必须由其真实复用范围决定，而不是先找一个“最近公共父级”再往上挂：
   - **单体项目**：跨模块复用的代码直接进入全局桶，例如 `@/components`、`@/utils`、`@/composables`、`@/constants`、`@/types`；不要为了“看起来规整”生造 `shared` 父目录。
-  - **Monorepo**：跨模块复用的代码必须进入独立 workspace package，由包名作为稳定边界，禁止在业务目录里制造假公共父级。
+  - **Monorepo**：跨模块复用的代码必须进入统一的或领域相关的共享 workspace package（如 `@project/shared` 或 `@project/core`），由包名作为稳定边界，禁止在业务目录里制造假公共父级。非必要不为了单一函数新建独立的微包。
   - **局部业务逻辑**：只在当前模块内复用的辅助逻辑，才留在模块内部的 `utils`、`composables`、`types` 或私有子组件中。
 - 单个模块不得再嵌套深层 `src/` 目录。
 - 前端目录遵循单一入口、按需拆分。
@@ -371,7 +371,7 @@ views/
         └── purchase-order.ts
 ````
 
-公共代码应直接进入全局 `@/components`、`@/utils`、`@/composables`、`@/constants` 或 `@/types`；Monorepo 场景则进入 workspace package。不要在页面目录之间生造一个“共享父级”。
+公共代码应直接进入全局 `@/components`、`@/utils`、`@/composables`、`@/constants` 或 `@/types`；Monorepo 场景则进入统一的或领域相关的共享 workspace package（如 `@project/shared` 或 `@project/core`），不为单一函数新建微包。不要在页面目录之间生造一个“共享父级”。
 
 ### 类型组织与导入隔离
 
@@ -415,9 +415,10 @@ import { copyText } from '@/utils'
    - 拦截 Deep Import：解析 AST，发现 import 路径绕过了层级聚合出口（如存在 `@/components/index.ts` 时使用 `@/components/DataTable/xxx`）即报错。
    - 拦截循环依赖：检查同级目录下的模块是否通过外层的 `index.ts` 聚合出口相互导入。
 4. **跨界与共享边界扫描器 (Boundary Scanner)**
-   - **注意**：脚本无法真正理解“业务语义”。它只检查抽离目标是否落在允许的共享边界内，判断依据是“单体全局桶”或“Monorepo workspace package”，不是某个物理父目录。
-   - **执行逻辑**：如果脚本发现共享逻辑被塞进页面、模块或 feature 的局部父级目录，而不是落在全局共享桶或 workspace package 中，脚本将抛出 `[HOIST_WARNING]` 警告。
-   - **人工介入**：触发警告后，必须人工核实：这段代码是否应该进入全局共享桶，或者在 Monorepo 中提升为独立 workspace package；若只是临时拼出来的共享父级，必须拆回去。
+   - **注意**：脚本无法真正理解“业务语义”。它只检查抽离目标是否落在允许的共享边界内，判断依据是“单体全局桶”或“Monorepo 共享 workspace package”，不是某个物理父目录。
+   - **执行逻辑**：如果脚本发现共享逻辑被塞进页面、模块或 feature 的局部父级目录，而不是落在全局共享桶或共享 workspace package 中，脚本将抛出 `[HOIST_WARNING]` 警告。
+   - **拆分阈值**：脚本默认要求 `--uses` 提供至少 3 个使用点；仅 2 个使用点但确属复杂且稳定逻辑时，必须显式传入 `--stable-two-use` 表示人工确认的拆分例外。
+   - **人工介入**：触发警告后，必须人工核实：这段代码是否应该进入全局共享桶，或者在 Monorepo 中提升到统一的或领域相关的共享 workspace package；若只是临时拼出来的共享父级，必须拆回去。
 
 **常用命令：**
 - `node scripts/verify-rules.mjs simple-component --root src/components/StatusBadge.vue`
@@ -441,7 +442,7 @@ import { copyText } from '@/utils'
 10. 是否检查了简单组件的**物理边界阈值**（无散落文件）？是否验证了就近内聚原则与同级目录无**循环依赖**引用？
 11. 是否检查了**文件命名约束**（组件 PascalCase，逻辑/模块 kebab-case）和**状态清理契约**（SPA 路由切换防残留）？
 12. 库开发项目是否正确配置了 `sideEffects` Tree-shaking 契约与 `peerDependencies` 环境隔离？公开契约是否采用了可扩展的 `interface` 以及显式声明的返回类型？
-13. 公共代码是否按照**领域边界**正确提升，而不是单纯受困于机械的物理最近公共父级？单体项目是否直接回到全局 `@/xxx` 桶，Monorepo 是否进入 workspace package？是否保证了层级隔离和统一顶层导入要求？
+13. 公共代码是否按照**领域边界**正确提升，而不是单纯受困于机械的物理最近公共父级？单体项目是否直接回到全局 `@/xxx` 桶，Monorepo 是否进入统一或领域相关的共享 workspace package，并避免为了单一函数新建微包？是否保证了层级隔离和统一顶层导入要求？
 
 ### 评审输出示例
 

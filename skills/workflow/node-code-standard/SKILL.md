@@ -21,7 +21,7 @@ description: 用于新建、编写、重构、拆分、优化、评审或校验�
 
 1. 先确认业务能力、外部契约、模块边界、事务要求、持久化模型、并发要求和当前项目使用的 Node 基础设施。
 2. 判断代码应留在当前 feature module 内，还是按领域通用性提升为全局基础设施、跨域业务资产或模块内共享支持。
-3. 优先复用项目已有成熟库和框架能力，例如 HTTP 框架、schema 校验库、ORM、SQL builder、迁移工具、日志库和测试工具。
+3. 优先复用项目已有成熟库和框架能力，例如 HTTP 框架、schema 校验库、ORM、SQL builder、迁移工具、日志库、安全中间件、限流组件和测试工具。
 4. 直接按目标职责重建 route、schema、application、domain、infrastructure 和装配关系，不保留无价值兼容层。
 5. 完成后按风险执行项目已有 lint、typecheck、test、build、启动验证、集成测试或契约验证；缺少脚本时标记 `MISSING`，失败标记 `FAIL`，未执行标记 `NOT RUN`。
 
@@ -31,6 +31,7 @@ description: 用于新建、编写、重构、拆分、优化、评审或校验�
 - 失败显性：依赖、配置、输入、状态或外部调用结果不满足契约时暴露失败，不写吞错、伪成功、空对象回退、静默兼容或无依据默认值。
 - 边界清晰：transport 只处理协议层；application 负责用例编排和事务边界；domain 承载业务规则；infrastructure 封装数据库、消息和第三方调用。
 - 校验前置：边界输入优先通过 schema 校验库或框架校验机制表达运行时契约；不要只靠 TypeScript 类型假设运行时输入可靠。
+- 模块统一：项目必须明确且统一采用 ESM 或 CommonJS。新 TypeScript 项目优先使用 ESM、`type: "module"` 与 `moduleResolution: "NodeNext"`；不得在业务代码中随意混用 `require` 和 `import`，避免 Dual Package Hazard、双实例状态和启动期模块解析失败。
 - 依赖显式：统一通过构造参数、工厂函数参数或模块装配显式注入依赖，不写隐式单例、全局可变状态或横向读取容器；对于复杂依赖树，鼓励引入轻量级且无侵入的 DI 容器（如 Awilix）统一装配，保持业务代码对容器零感知。
 - 异步可追踪：所有 I/O、任务和事件处理都要明确成功、失败和超时语义，不丢失 Promise、不吞掉 rejection、不写后台悬空任务。
 - 事务收敛：事务只放在真正的应用用例边界；除非项目已有明确模式支撑，否则不要把远程调用和数据库事务混成隐式大事务。
@@ -44,8 +45,8 @@ description: 用于新建、编写、重构、拆分、优化、评审或校验�
 
 ## 目标分类
 
-- `entrypoint`：服务启动、环境配置加载、全局中间件、错误处理注册、路由装配、SIGINT/SIGTERM 系统信号处理和进程生命周期管理（含 Graceful Shutdown）。
-- `transport-module`：HTTP route、controller、request/response schema、认证上下文读取和协议适配。
+- `entrypoint`：服务启动、环境配置加载、框架初始化、插件挂载、全局中间件、错误处理注册、顶层模块注册、SIGINT/SIGTERM 系统信号处理和进程生命周期管理（含 Graceful Shutdown）。entrypoint 不逐个拼装具体 controller 路由，路由注册由各 `transport-module` 暴露注册函数承接。
+- `transport-module`：HTTP route、controller、request/response schema、认证上下文读取、协议适配和模块级路由注册函数。
 - `application-module`：以某个业务能力为中心的用例编排层。
 - `domain-module`：聚合、值对象、领域服务、领域错误、仓储契约和领域规则。
 - `infrastructure-adapter`：数据库仓储实现、第三方 API client、消息实现、缓存、文件存储和任务基础设施。
@@ -115,6 +116,8 @@ src/modules/orders/
 - 运行时输入校验必须使用成熟 schema 方案或框架内建能力，例如 Zod、Valibot、TypeBox、AJV 或项目现有方案；不要手写零散 `if` 链覆盖核心契约。
 - 错误映射必须统一收敛到明确边界，例如 error middleware、全局 exception handler 或协议适配层；避免在每个 route 中重复 try/catch 拼装响应。
 - 配置读取必须集中装配并校验，不得到处直接读取未经校验的 `process.env`。
+- HTTP 安全防护基线必须在 `entrypoint` 或框架插件装配层统一启用：通过 Helmet 或同等级能力设置安全响应头，通过全局 Rate Limiting 限制滥用，通过严格 CORS allowlist 控制来源、方法、请求头与 credentials；不得用全开放 CORS 或无上限入口暴露生产 API。
+- 结构化日志必须使用 Pino、Winston 或项目既有结构化日志库，以纯 JSON 输出请求、错误和业务事件；不得用 `console.log` 拼接字符串作为服务日志。日志必须在全局 logger 层配置 Redaction，严禁明文输出密码、Token、Cookie、支付凭证、身份证件号、手机号、邮箱、地址等核心 PII 或凭证数据。
 - DTO、领域对象、持久化模型分离；除非项目已明确接受耦合，否则不要直接把 ORM model 或数据库行对象暴露给 API。
 - 数据库结构变更必须通过项目现有迁移机制表达，例如 Prisma Migrate、Drizzle Kit、Knex migration、TypeORM migration 或 Sequelize migration；不得手工假设线上表结构。
 - 防阻塞主线程：严禁在主线程执行长时间的同步 CPU 密集型操作，如超大 JSON 序列化/反序列化、大对象深拷贝、高成本加密验证或易引发 ReDoS 的复杂正则；必须采用流（Stream）分批处理，或将其移交至 `worker_threads` 及后台异步任务。
@@ -122,6 +125,12 @@ src/modules/orders/
 - 致命错误与优雅退出：区分可恢复的业务错误与不可恢复的程序错误。发生 `uncaughtException` 或 `unhandledRejection` 时，必须记录日志并主动退出进程（Crash），交由 PM2/K8s 重启，防止内存泄漏或状态污染。必须在 `entrypoint` 实现 Graceful Shutdown，保证退出前拒绝新请求并安全关闭数据库与消息队列连接。
 - 并发控制、幂等和重试必须在明确边界内设计；不要靠重复查询、静默覆盖或“多试几次”掩盖竞态。
 - 队列、定时任务和事件消费者也必须遵守相同分层：handler 负责协议入口，application 负责编排，infrastructure 负责外部系统适配。
+
+## 测试边界
+
+- domain 与 application 以纯单元测试为主：聚合、值对象、领域服务和 application service 必须在不启动 HTTP 框架、不连接真实数据库、不加载外部 SDK 的情况下验证业务规则与编排；Repository、UnitOfWork、消息发布器和外部 Client 通过接口 Mock 或 Fake 注入。
+- infrastructure 以集成测试为主：Repository、迁移、SQL builder、ORM 映射和外部适配器不得 Mock 数据库驱动来伪造通过，必须使用 Testcontainers、项目标准测试数据库或同等真实依赖验证数据库方言、约束、事务和映射行为。
+- transport 以协议边界集成测试为主：Express 路由使用 Supertest，Fastify 路由使用 `fastify.inject()` 或项目等价工具，覆盖 schema 校验、认证上下文、错误映射、状态码和响应 presenter；不要直接调用 controller 函数假装完成 HTTP 契约测试。
 
 ## 评审输出
 
@@ -155,7 +164,11 @@ src/modules/orders/
 - 模块边界是否围绕当前业务能力，而不是继续迁就旧结构。
 - transport、application、domain、infrastructure 的职责是否混淆。
 - 输入校验、依赖注入、事务边界、错误映射和配置校验是否表达清楚。
+- entrypoint 是否只做框架初始化、插件挂载与顶层模块注册，具体路由是否由 transport module 的注册函数承接。
+- HTTP 安全头、全局限流、严格 CORS、结构化 JSON 日志和日志 Redaction 是否在全局基础设施层配置。
+- ESM 或 CommonJS 模块系统是否统一，没有在业务代码中混用 `require` 与 `import`。
 - repository、gateway 和外部依赖是否只承担持久化/集成职责，没有越界承载业务编排。
+- 测试边界是否匹配分层：domain/application 使用纯单元测试，infrastructure 使用真实依赖集成测试，transport 通过 HTTP 框架测试入口验证协议契约。
 - 共享抽离是否按领域边界判断：全局基础设施、跨域业务资产和局部业务逻辑是否分别落在对应层级，而不是机械依赖物理最近公共父级或“三次法则”。
 - 是否运行了与风险匹配的现有 lint、typecheck、test、build、启动验证或集成测试。
 
@@ -328,6 +341,16 @@ export class PostgresOrderRepository implements OrderRepository {
     - 可配合 `verify-rules.mjs hoist` 做边界风险扫描；脚本 `PASS` 只代表扫描完成，`[HOIST_WARNING]` 必须人工复核，不代表实现整体通过。
 11. 是否运行了与风险匹配的现有 lint、typecheck、test、build、启动验证或集成测试？
     - 缺少脚本或依赖时标记 `MISSING`，未执行标记 `NOT RUN`，失败标记 `FAIL`。
+12. entrypoint 是否只负责框架初始化、插件挂载、全局中间件和顶层模块注册？
+    - 若 entrypoint 逐个拼装具体 controller 路由，标记 `FAIL`，建议改由各 `transport-module` 暴露路由注册函数。
+13. HTTP 安全基线是否完整覆盖 Helmet 或等价安全头、全局 Rate Limiting 和严格 CORS allowlist？
+    - 若生产 API 全开放 CORS、缺少限流或未设置安全响应头，标记 `FAIL`，指出入口装配位置。
+14. 日志是否为结构化 JSON，并在 logger 层配置密码、Token、支付凭证和核心 PII 的 Redaction？
+    - 若使用 `console.log` 拼接业务日志，或日志明文输出敏感信息，标记 `FAIL`。
+15. 模块系统是否统一为 ESM 或 CommonJS？
+    - 若业务代码混用 `require` 与 `import`，或 TypeScript ESM 项目未使用 NodeNext 解析策略，标记 `FAIL`。
+16. 测试边界是否匹配分层职责？
+    - 若 domain/application 测试依赖真实 HTTP 或数据库，或 infrastructure 通过 Mock 数据库驱动伪造 repository 测试，标记 `FAIL`。
 
 ## 自校验脚本
 

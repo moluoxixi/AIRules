@@ -1,6 +1,6 @@
 #!/usr/bin/env node
 /**
- * Skill 最小校验脚本：只检查 SKILL.md 的 YAML frontmatter 和正文结构。
+ * Skill 最小校验脚本：只检查 SKILL.md 的 YAML frontmatter。
  */
 import fs from 'node:fs'
 import path from 'node:path'
@@ -60,7 +60,9 @@ function splitFrontmatter(content) {
     return undefined
   }
 
-  const end = content.indexOf('\n---\n', 4)
+  const closedBeforeContent = content.indexOf('\n---\n', 4)
+  const closedAtEnd = content.endsWith('\n---') ? content.length - 4 : -1
+  const end = closedBeforeContent === -1 ? closedAtEnd : closedBeforeContent
   if (end === -1) {
     fail('SKILL.md 缺少 YAML frontmatter 结束标记')
     return undefined
@@ -69,7 +71,6 @@ function splitFrontmatter(content) {
   pass('frontmatter markers valid')
   return {
     yaml: content.slice(4, end),
-    body: content.slice(end + 5),
   }
 }
 
@@ -114,23 +115,6 @@ function checkRequiredFields(fields) {
   }
 }
 
-function checkBody(body) {
-  const normalizedBody = body.trim()
-  if (!normalizedBody) {
-    fail('正文不能为空')
-    return
-  }
-
-  pass('body exists')
-
-  if (!normalizedBody.split('\n').some(line => line.trim().startsWith('#'))) {
-    fail('正文必须包含 Markdown 标题')
-    return
-  }
-
-  pass('body heading exists')
-}
-
 function finish(fields, root) {
   console.log('────────────────────────────')
   if (errors.length > 0) {
@@ -139,7 +123,7 @@ function finish(fields, root) {
     return
   }
 
-  console.log('PASS skill body and YAML are valid')
+  console.log('PASS skill YAML frontmatter is valid')
   console.log(`  name: ${fields.get('name')}`)
   console.log(`  root: ${root}`)
 }
@@ -150,9 +134,6 @@ function verify(root) {
   const fields = parsed ? parseFrontmatter(parsed.yaml) : new Map()
 
   checkRequiredFields(fields)
-  if (parsed) {
-    checkBody(parsed.body)
-  }
 
   finish(fields, root)
 }

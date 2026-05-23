@@ -137,7 +137,7 @@ Moluoxixi AIRules 通过自动化投影，支持不断增长的 AI 代理生态�
 | **node-code-standard** | Node.js 后端实现标准：适用于 TypeScript/JavaScript 服务，覆盖显式契约、运行时校验、依赖注入、事务边界、持久化封装与交付检查 |
 | **nestjs-code-standard** | NestJS 后端实现与评审标准：面向新写、重构和代码评审，覆盖 DTO 契约、ValidationPipe、构造函数注入、事务边界、持久化封装和基于证据的评审输出 |
 | **java-code-standard** | Java 与 Spring Boot 后端编码标准：适用于 Java 17+ 基线、Java 21/25 LTS、Maven 和 Gradle，覆盖领域包、构造函数注入、Bean Validation、事务边界、迁移与错误映射 |
-| **skill-validation-standard** | 最小 Skill 产物校验标准：校验生成或修改后的 Claude/Codex skill 的 SKILL.md YAML frontmatter 正确性和 Markdown 正文结构 |
+| **skill-validation-standard** | 最小 Skill 产物校验标准：校验生成或修改后的 Claude/Codex skill 的 SKILL.md YAML frontmatter 正确性 |
 
 > workflow 标准以命名空间整体投影；仓库级规则位于 `rules/AGENTS.md`。
 

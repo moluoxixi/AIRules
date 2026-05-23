@@ -64,7 +64,7 @@ function getOption(args, name) {
   return value
 }
 
-function getListAfter(args, name) {
+function getListAfter(args, name, options = {}) {
   const index = args.indexOf(name)
 
   if (index === -1)
@@ -72,8 +72,11 @@ function getListAfter(args, name) {
 
   const values = args.slice(index + 1).filter(value => !value.startsWith('--'))
 
-  if (values.length < 2)
-    throw new Error(`${name} 至少需要 2 个明确使用点，用于验证复用与提升边界`)
+  if (values.length === 2 && options.allowStableTwoUse)
+    return values
+
+  if (values.length < 3)
+    throw new Error(`${name} 至少需要 3 个明确使用点；仅 2 个使用点时必须显式传入 --stable-two-use，表示这是复杂且稳定的拆分例外`)
 
   return values
 }
@@ -327,7 +330,8 @@ function printHelp() {
 选项:
   --root <path>               指定组件、模块或库根目录
   --target <path>             指定抽离目标目录
-  --uses <path1> <path2> ...  指定至少 2 个使用点路径
+  --uses <path1> <path2> ...  指定至少 3 个使用点路径
+  --stable-two-use            仅 2 个使用点时，声明这是复杂且稳定的拆分例外
 `)
 }
 
@@ -365,6 +369,7 @@ function verifySelf() {
   assertContains(skill, /注释解释意图/, 'SKILL.md 必须覆盖注释解释意图')
   assertContains(skill, /若具备终端执行环境则直接按风险执行项目已有 lint、typecheck、test、build 或浏览器验证；若为纯对话环境，则向用户输出具体的需执行验证命令清单/, 'SKILL.md 必须覆盖执行边界说明')
   assertContains(skill, /响应式丢失风险/, 'SKILL.md 必须覆盖 Vue 3.5 响应式解构提醒')
+  assertContains(skill, /watch\(\(\) => propValue, \.\.\.\)/, 'SKILL.md 必须覆盖解构 props 的 watch getter 写法')
   assertContains(skill, /## 评审输出/, 'SKILL.md 必须覆盖评审输出')
   assertContains(skill, /## 检查清单/, 'SKILL.md 必须覆盖检查清单')
   assertContains(skill, /## 示例/, 'SKILL.md 必须覆盖示例')
@@ -392,7 +397,9 @@ function verifySelf() {
 
 function verifyHoist(args) {
   const target = getOption(args, '--target')
-  const uses = getListAfter(args, '--uses')
+  const uses = getListAfter(args, '--uses', {
+    allowStableTwoUse: args.includes('--stable-two-use'),
+  })
   const ancestor = nearestCommonAncestor(uses)
 
   assertTargetInsideAncestor(target, ancestor, uses)
