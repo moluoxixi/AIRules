@@ -1,0 +1,23 @@
+{
+  "compilerOptions": {
+    "target": "ES2022",
+    "lib": ["ES2022"],
+    "module": "NodeNext",
+    "moduleResolution": "NodeNext",
+    "types": ["node"],
+    "strict": true,
+    "noEmit": true,
+    "esModuleInterop": true,
+    "skipLibCheck": true
+  },
+  "include": ["**/*.ts"],
+  "exclude": [
+    ".claude",
+    ".git",
+    ".idea",
+    "coverage",
+    "dist",
+    "node_modules",
+    "vendor"
+  ]
+}

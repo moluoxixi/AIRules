@@ -265,17 +265,17 @@ clipboard-toolkit/
 ```ts
 // 1. clipboard-toolkit/src/clipboard/index.ts
 export * from './api'
-export * from './constants'
-
 // 2. clipboard-toolkit/src/index.ts (内部核心聚合层)
 export * from './clipboard'
-export * from './utils'
-export * from './types'
 
+export * from './constants'
 // 3. clipboard-toolkit/index.ts (对外最终 API 门面)
 export { copyText, readText } from './src'
 // 使用 interface 保证公共契约的 Declaration Merging 扩展能力
 export type { CopyTextOptions, ReadTextOptions } from './src'
+
+export * from './types'
+export * from './utils'
 ````
 
 ```md
@@ -331,19 +331,19 @@ MoluoxixiUI/
 ```ts
 // 1. MoluoxixiUI/src/components/index.ts
 export { Button } from './Button'
-export { DataTable } from './DataTable'
 export type { ButtonProps } from './Button'
-export type { DataTableProps, DataTableColumn } from './DataTable'
-
-// 2. MoluoxixiUI/src/composables/index.ts
-export { useTheme } from './use-theme'
-
 // 3. MoluoxixiUI/src/index.ts (内部主聚合出口)
 export * from './components'
 export * from './composables'
 
+export { DataTable } from './DataTable'
+
+export type { DataTableColumn, DataTableProps } from './DataTable'
 // 4. MoluoxixiUI/index.ts (对外最终 API 门面)
 export * from './src'
+
+// 2. MoluoxixiUI/src/composables/index.ts
+export { useTheme } from './use-theme'
 ````
 
 ### 页面模块
@@ -376,17 +376,17 @@ views/
 ### 类型组织与导入隔离
 
 ```ts
+export type * from './emit'
+export type * from './expose'
 // types/index.ts
 export type * from './props'
 export type * from './ref'
-export type * from './emit'
-export type * from './expose'
 ````
 
 ```ts
+import type { DataTableColumn } from '@/components'
 // ✅ 正确：外部调用方严格统一只通过所在层的顶级聚合 API 入口（Barrel）干净导入
 import { DataTable } from '@/components'
-import type { DataTableColumn } from '@/components'
 import { copyText } from '@/utils'
 
 // ❌ 错误：触发禁止 deep import 规则（即使是包级别入口，若存在层级统一出口也不得绕过）

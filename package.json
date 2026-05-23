@@ -14,10 +14,13 @@
     "rules:install": "git reset --hard HEAD && git clean -fd && git pull && npm install && tsx scripts/host-setup.ts",
     "pretest": "npx tsx scripts/sync-vendors.ts",
     "test": "vitest run",
+    "typecheck": "tsc --noEmit",
     "coverage": "vitest run --coverage"
   },
   "devDependencies": {
     "@antfu/eslint-config": "^8.2.0",
+    "@commitlint/cli": "^21.0.1",
+    "@commitlint/config-conventional": "^21.0.1",
     "@types/node": "^25.9.1",
     "@vitest/coverage-v8": "4.1.4",
     "eslint": "^10.2.1",

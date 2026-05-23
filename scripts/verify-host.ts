@@ -16,8 +16,8 @@ async function main() {
   });
 
   const { values } = result;
-  const host = values.host;
-  const moluoHome = values.home ? path.resolve(values.home) : path.join(os.homedir(), '.moluoxixi');
+  const { host, home } = values as { host?: string; home?: string };
+  const moluoHome = home ? path.resolve(home) : path.join(os.homedir(), '.moluoxixi');
 
   if (!host || (host !== 'all' && !ALL_HOSTS.includes(host))) {
     console.error(`Usage: npx tsx scripts/verify-host.ts --host <name|all> [--home <dir>]`);

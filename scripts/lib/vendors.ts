@@ -169,9 +169,7 @@ export function walkVendorTree(node: any, namespaceParts: string[], vendors: Rec
 }
 
 export async function loadVendorManifest(manifestPath: string): Promise<VendorManifest> {
-  const manifestUrl = manifestPath instanceof URL
-    ? manifestPath.href
-    : pathToFileURL(path.resolve(manifestPath)).href;
+  const manifestUrl = pathToFileURL(path.resolve(manifestPath)).href;
   const module = await import(manifestUrl);
   const vendorTree = module.vendors ?? module.default?.vendors ?? module.default;
   if (!vendorTree || typeof vendorTree !== 'object') {
