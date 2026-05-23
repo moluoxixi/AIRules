@@ -19,8 +19,11 @@ import { findHostConfig, resolveHostPaths } from '../../constants/hosts.js';
 
 // ─── 路径辅助函数：集中管理重复路径模式 ──────────────────────────────────────
 
-/** 基线文件文件名（仓库根目录与 vendor 目录下均使用此名） */
+/** 基线文件文件名（宿主与 vendor 目录下均使用此名） */
 const BASELINE_FILE_NAME = 'AGENTS.md';
+
+/** 仓库内基线源文件位于 rules/ 目录 */
+const BASELINE_SOURCE_PATH = path.join('rules', BASELINE_FILE_NAME);
 
 /** 获取基线文件在 vendor 目录下的绝对路径（所有宿主软链接的统一源） */
 function vendorBaselinePath(moluoHome: string): string {
@@ -252,13 +255,13 @@ export function syncFlattenedSkills(sourceDir: string, targetDir: string, moluoH
  * 同步第一方（当前仓库内）的 agents 和基线文件到本地 moluoxixi 主目录。
  * skills 统一走 clone → vendor/skills 流程，不在此处理。
  *
- * AGENTS.md 始终复制到 vendor/ 目录下，作为所有宿主基线软链接的统一源。
+ * rules/AGENTS.md 始终复制到 vendor/ 目录下，作为所有宿主基线软链接的统一源。
  * 即使 repoRoot === moluoHome（仓库本身就是安装目录），也需要执行此步骤，
- * 因为 git clone 只会将 AGENTS.md 放在仓库根目录，而软链接指向的是 vendor/AGENTS.md。
+ * 因为软链接最终指向的是 vendor/AGENTS.md。
  */
 export function syncFirstPartyToHome(repoRoot: string, moluoHome: string) {
-  // AGENTS.md 始终同步到 vendor/ 下（所有宿主基线的软链接源）
-  copyRequiredFile(path.join(repoRoot, BASELINE_FILE_NAME), vendorBaselinePath(moluoHome));
+  // rules/AGENTS.md 始终同步到 vendor/ 下（所有宿主基线的软链接源）
+  copyRequiredFile(path.join(repoRoot, BASELINE_SOURCE_PATH), vendorBaselinePath(moluoHome));
 
   if (isSamePath(repoRoot, moluoHome)) {
     return;

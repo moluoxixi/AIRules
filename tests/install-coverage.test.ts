@@ -167,7 +167,7 @@ it('install - 同步第一方文件并按宿主投影 baseline 与 skills', () =
   const hostHome = path.join(userHome, '.codex')
   const hostBaselineFile = path.join(hostHome, 'AGENTS.md')
 
-  writeFile(path.join(repoRoot, 'AGENTS.md'), 'baseline\n')
+  writeFile(path.join(repoRoot, 'rules', 'AGENTS.md'), 'baseline\n')
   writeFile(path.join(repoRoot, 'agents', 'helper.md'), 'agent\n')
   fs.mkdirSync(path.join(moluoHome, 'vendor', 'skills', 'skill-one'), { recursive: true })
 

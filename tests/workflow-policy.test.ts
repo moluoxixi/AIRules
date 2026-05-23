@@ -893,3 +893,56 @@ it('workflow 流程规范 - SKILL.md 收敛验证分级和交付报告', () => {
   assert.match(workflowSkill, /N\/A 质量检查：本次未修改代码。/)
   assert.doesNotMatch(workflowSkill, /examples\/|validation\//)
 })
+
+it('skill 校验规范 - 仅校验 YAML frontmatter 和正文结构', () => {
+  const skill = readProjectFile('skills', 'skill-validation-standard', 'SKILL.md')
+  const scriptPath = path.join(rootDir, 'skills', 'skill-validation-standard', 'scripts', 'verify-rules.mjs')
+
+  assert.match(skill, /YAML frontmatter/)
+  assert.match(skill, /正文/)
+  assert.doesNotMatch(skill, /资源组织/)
+  assert.doesNotMatch(skill, /脚本语义/)
+  assert.doesNotMatch(skill, /examples\/|validation\/|deep reference|script semantics/)
+  assert.match(runNodeScript('skills', 'skill-validation-standard', 'scripts', 'verify-rules.mjs'), /PASS skill body and YAML are valid/)
+
+  const validSkillTemp = fs.mkdtempSync(path.join(os.tmpdir(), 'airules-valid-skill-'))
+  const validSkillRoot = path.join(validSkillTemp, 'minimal-skill')
+  fs.mkdirSync(validSkillRoot)
+  fs.writeFileSync(path.join(validSkillRoot, 'SKILL.md'), [
+    '---',
+    'name: minimal-skill',
+    'description: 校验示例 skill 的 YAML 和正文。用于测试 skill 校验器。',
+    '---',
+    '',
+    '# Minimal Skill',
+    '',
+    '只提供最小正文。',
+  ].join('\n'))
+  assert.match(
+    execFileSync(process.execPath, [
+      scriptPath,
+      '--root',
+      validSkillRoot,
+    ], { cwd: rootDir, encoding: 'utf8' }),
+    /PASS skill body and YAML are valid/,
+  )
+
+  const invalidSkillTemp = fs.mkdtempSync(path.join(os.tmpdir(), 'airules-invalid-skill-'))
+  const invalidSkillRoot = path.join(invalidSkillTemp, 'broken-skill')
+  fs.mkdirSync(invalidSkillRoot)
+  fs.writeFileSync(path.join(invalidSkillRoot, 'SKILL.md'), [
+    '---',
+    'name: broken-skill',
+    'description: 缺少结束分隔符。',
+    '',
+    '# Broken Skill',
+  ].join('\n'))
+
+  const invalidResult = spawnSync(process.execPath, [
+    scriptPath,
+    '--root',
+    invalidSkillRoot,
+  ], { cwd: rootDir, encoding: 'utf8' })
+  assert.notEqual(invalidResult.status, 0)
+  assert.match(invalidResult.stdout, /缺少 YAML frontmatter 结束标记/)
+})

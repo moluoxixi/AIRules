@@ -137,9 +137,9 @@ Moluoxixi AIRules supports a growing ecosystem of AI agents through automated pr
 | **node-code-standard** | Node.js backend implementation standards for TypeScript/JavaScript services with explicit contracts, runtime validation, dependency injection, transaction boundaries, persistence encapsulation, and delivery checks |
 | **nestjs-code-standard** | NestJS backend implementation and review standards for new code, rewrites, and code reviews with DTO contracts, ValidationPipe, constructor injection, transaction boundaries, persistence encapsulation, and evidence-based review output |
 | **java-code-standard** | Java and Spring Boot backend code standards for Java 17+ baseline, Java 21/25 LTS, Maven, and Gradle with domain packages, constructor injection, Bean Validation, transaction boundaries, migrations, and error mapping |
-| **skill-validation-standard** | General skill validation standard for generated or modified Claude/Codex skills, covering SKILL.md metadata, trigger descriptions, resources, links, scripts, and content quality |
+| **skill-validation-standard** | Minimal skill validation standard for generated or modified Claude/Codex skills, covering SKILL.md YAML frontmatter correctness and Markdown body structure |
 
-> Workflow standards are projected as a namespace. Top-level first-party skills are projected explicitly, currently including `skill-validation-standard`.
+> Workflow standards are projected as a namespace. First-party rules live in `rules/AGENTS.md`.
 
 ### Third-Party Skills (Curated)
 
@@ -155,6 +155,8 @@ Moluoxixi AIRules supports a growing ecosystem of AI agents through automated pr
 
 ```
 ~/.moluoxixi/
+├── rules/
+│   └── AGENTS.md          # Repository-level operating rules
 ├── skills/                  # First-party skills (your core assets)
 │   ├── skill-validation-standard/
 │   └── workflow/
