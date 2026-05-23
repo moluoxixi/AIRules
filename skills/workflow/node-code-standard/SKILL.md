@@ -34,7 +34,7 @@ description: 用于新建、编写、重构、拆分、优化、评审或校验�
 - 依赖显式：统一通过构造参数、工厂函数参数或模块装配显式注入依赖，不写隐式单例、全局可变状态或横向读取容器。
 - 异步可追踪：所有 I/O、任务和事件处理都要明确成功、失败和超时语义，不丢失 Promise、不吞掉 rejection、不写后台悬空任务。
 - 事务收敛：事务只放在真正的应用用例边界；除非项目已有明确模式支撑，否则不要把远程调用和数据库事务混成隐式大事务。
-- 持久化封装：repository 和 gateway 只负责持久化或外部依赖访问，不承担 HTTP 拼装、鉴权决策、缓存编排或跨聚合业务流程。
+- 持久化封装：repository 负责持久化访问和映射，gateway 只负责持久化或外部依赖访问，不承担 HTTP 拼装、鉴权决策、缓存编排或跨聚合业务流程。
 - 按领域边界提升：摒弃死板的“三次法则”。出现 2 个明确独立使用点，或逻辑复杂到需要独立测试边界时即可拆分；抽离层级由领域通用性决定，而不是调用方物理最近公共父级。
 - 全局基础设施：与具体业务解耦的配置解析、日志、时间、ID、HTTP client、schema 基础工具等，即使当前只有一个使用点，也可以直接提升到全局基础设施层。
 - 跨域业务资产：订单状态、支付状态、租户上下文等一旦发生或预期发生跨业务域复用，应提取到共享领域目录或 shared-support，而不是留在某个 feature 的物理父级下。
@@ -96,7 +96,7 @@ src/modules/orders/
 ### application
 
 - 承载 use case 编排、事务边界、权限决策协调、幂等流程和跨仓储流程。
-- application service 接收 command / query 或明确 DTO，不把原始 HTTP request 对象透传到 domain 或 infrastructure。
+- Service 只做用例编排与事务边界：application service 接收 command / query 或明确 DTO，不把原始 HTTP request 对象透传到 domain 或 infrastructure。
 - application service 返回领域结果或稳定响应模型，不返回框架特有 `req`、`res`、`reply` 或原生数据库结果对象。
 
 ### domain
@@ -168,9 +168,166 @@ src/modules/orders/
 
 分层原则（transport → application → domain → infrastructure）同样适用，只是 transport 入口从 HTTP route 变为 GraphQL resolver。
 
-## 辅助资源
+## 示例
 
-- 示例：`examples/node-backend-structure.md`
-- 评审示例：`examples/review-output.md`
-- 校验清单：`validation/checklist.md`
-- 自校验脚本：`scripts/verify-rules.mjs`
+### 结构示例
+
+```text
+src/modules/orders/
+  transport/
+    orders.controller.ts
+    schemas/
+      create-order.request.ts
+      list-orders.query.ts
+    presenters/
+      order.presenter.ts
+  application/
+    create-order.service.ts
+    list-orders.service.ts
+    commands/
+      create-order.command.ts
+  domain/
+    order.aggregate.ts
+    order.repository.ts
+    order.errors.ts
+    value-objects/
+      order-id.ts
+  infrastructure/
+    persistence/
+      postgres-order.repository.ts
+    integrations/
+      payment-gateway.client.ts
+```
+
+### 路由与错误收口
+
+```ts
+export function registerOrderRoutes(app: FastifyInstance, deps: OrderModuleDeps) {
+  app.post('/orders', async (request, reply) => {
+    const input = createOrderRequestSchema.parse(request.body)
+    const result = await deps.createOrderService.execute(input)
+    return reply.code(201).send(orderPresenter.toResponse(result))
+  })
+}
+```
+
+```ts
+app.setErrorHandler((error, request, reply) => {
+  const mapped = mapErrorToHttpResponse(error)
+  reply.code(mapped.statusCode).send(mapped.body)
+})
+```
+
+### 运行时契约
+
+```ts
+import { z } from 'zod'
+
+export const createOrderRequestSchema = z.object({
+  customerId: z.string().uuid(),
+  items: z.array(z.object({
+    sku: z.string().min(1),
+    quantity: z.number().int().positive(),
+  })).min(1),
+})
+
+const envSchema = z.object({
+  DATABASE_URL: z.string().url(),
+  PAYMENT_API_BASE_URL: z.string().url(),
+})
+
+export const env = envSchema.parse(process.env)
+```
+
+### 用例编排
+
+```ts
+export class CreateOrderService {
+  constructor(
+    private readonly unitOfWork: OrderUnitOfWork,
+    private readonly orderRepository: OrderRepository,
+    private readonly paymentGatewayClient: PaymentGatewayClient,
+  ) {}
+
+  async execute(command: CreateOrderCommand) {
+    return this.unitOfWork.run(async () => {
+      const order = OrderAggregate.create(command)
+      await this.orderRepository.save(order)
+      await this.paymentGatewayClient.reserve(order.totalAmount)
+      return order
+    })
+  }
+}
+```
+
+### 持久化封装
+
+```ts
+export class PostgresOrderRepository implements OrderRepository {
+  constructor(private readonly db: SqlClient) {}
+
+  async findById(orderId: OrderId) {
+    const row = await this.db.oneOrNone<OrderRow>(
+      'select * from orders where id = $1',
+      [orderId.value],
+    )
+
+    return row ? OrderMapper.toAggregate(row) : null
+  }
+}
+```
+
+### 评审输出示例
+
+- 目标分类：`application-module`
+- 检查范围：`src/modules/orders/application/create-order.service.ts`、`src/modules/orders/transport/orders.controller.ts`、`src/modules/orders/infrastructure/persistence/postgres-order.repository.ts`
+- 总结论：`FAIL`
+
+1. `major`
+   - 规则点：application 负责用例编排和事务边界，不把原始 HTTP request 对象透传到下层。
+   - 证据：`src/modules/orders/application/create-order.service.ts:12`
+   - 问题说明：`CreateOrderService` 直接接收 Fastify `request` 对象并从中读取 body 与 headers，导致 application 与 transport 框架强耦合。
+   - 改动建议：在 `src/modules/orders/application/commands/create-order.command.ts` 建立明确 command，由 `src/modules/orders/transport/orders.controller.ts` 负责把请求映射为 command。
+
+2. `major`
+   - 规则点：repository 只负责持久化和映射，不夹带跨聚合业务流程。
+   - 证据：`src/modules/orders/infrastructure/persistence/postgres-order.repository.ts:48`
+   - 问题说明：repository 在保存订单后直接调用支付网关预占额度，把外部集成流程藏进持久化层。
+   - 改动建议：把支付预占逻辑移回 `src/modules/orders/application/create-order.service.ts`，repository 仅保留数据库访问与映射。
+
+3. `minor`
+   - 规则点：边界输入必须有运行时校验，不能只靠 TypeScript 类型。
+   - 证据：`src/modules/orders/transport/orders.controller.ts:9`
+   - 问题说明：当前只声明了 `CreateOrderBody` TypeScript 类型，没有实际 schema 解析。
+   - 改动建议：在 `src/modules/orders/transport/schemas/create-order.request.ts` 增加 Zod schema，并在 controller 中先 parse 再下传。
+
+## 检查清单
+
+1. 是否先确认了业务能力、外部契约、模块边界、事务要求、持久化模型、并发要求和当前项目使用的 Node 基础设施？
+   - 未阅读时标记 `NOT RUN`，不得伪装成已完成审查。
+2. 当前目标分类是否明确为 `entrypoint`、`transport-module`、`application-module`、`domain-module`、`infrastructure-adapter`、`shared-support` 或 `mixed-module`？
+   - 若分类不清，标记 `FAIL`，并说明职责为什么混杂。
+3. transport 是否只处理路由、参数提取、输入校验和响应映射？
+   - 若 transport 直接操作 repository、拼装事务或暴露持久化细节，标记 `FAIL`。
+4. 边界输入与配置是否通过成熟 schema 方案或框架内建机制表达运行时契约？
+   - 若只存在 TypeScript 类型、没有运行时校验，标记 `FAIL`，指出缺失位置和建议补点。
+5. 依赖是否统一通过构造参数、工厂参数或模块装配显式注入，没有全局可变状态、隐式单例或横向读取容器？
+   - 若不符合，标记 `FAIL`，指出具体模块和建议替换方式。
+6. application service 是否承担用例编排与事务边界，而不是把这些职责分散在 transport、middleware、hook 或 repository 中？
+   - 若不符合，标记 `FAIL`，指出错误边界和应迁移的位置。
+7. domain 是否承载核心业务规则和仓储契约，而不是依赖 HTTP 框架、ORM、SDK 或消息中间件细节？
+   - 若不符合，标记 `FAIL`，指出具体耦合点。
+8. repository / gateway 是否只负责持久化和外部依赖访问，没有夹带 HTTP 拼装、鉴权决策、缓存编排或跨聚合流程？
+   - 若不符合，标记 `FAIL`，指出越界逻辑和回收层次。
+9. 数据库结构变更是否通过项目现有迁移机制表达？
+   - 若缺失迁移脚本，标记 `FAIL` 或 `MISSING`，并说明原因。
+10. 公共抽离是否按领域边界提升，而不是机械依据物理最近公共父级？
+    - 出现 2 个明确独立使用点，或逻辑复杂到需要独立测试边界时即可拆分；全局基础设施可直接上浮，局部业务逻辑应留在当前 feature module 内。
+    - 可配合 `verify-rules.mjs hoist` 做边界风险扫描；脚本 `PASS` 只代表扫描完成，`[HOIST_WARNING]` 必须人工复核，不代表实现整体通过。
+11. 是否运行了与风险匹配的现有 lint、typecheck、test、build、启动验证或集成测试？
+    - 缺少脚本或依赖时标记 `MISSING`，未执行标记 `NOT RUN`，失败标记 `FAIL`。
+
+## 自校验脚本
+
+- `node scripts/verify-rules.mjs`
+- `node scripts/verify-rules.mjs hoist --target src/shared/order-formatters --uses src/modules/orders/create/create-order.service.ts src/modules/orders/update/update-order.service.ts src/modules/orders/cancel/cancel-order.service.ts`

@@ -127,9 +127,118 @@ src/main/java/com/example/order/
 
 分层原则（api → application → domain → infrastructure）同样适用，只是入口从 `@RestController` 变为 `@Controller` + GraphQL mapping 注解。
 
-## 辅助资源
+## 示例
 
-- 示例：`examples/spring-boot-structure.md`
-- 评审示例：`examples/review-output.md`
-- 校验清单：`validation/checklist.md`
-- 自校验脚本：`scripts/verify-rules.mjs`
+### 结构示例
+
+```text
+src/main/java/com/example/order/
+  api/
+    OrderController.java
+    request/
+      CreateOrderRequest.java
+    response/
+      OrderResponse.java
+  application/
+    CreateOrderService.java
+    command/
+      CreateOrderCommand.java
+  domain/
+    Order.java
+    OrderRepository.java
+    OrderDomainService.java
+  infrastructure/
+    persistence/
+      JpaOrderRepository.java
+      SpringDataOrderRepository.java
+```
+
+### request / response
+
+```java
+package com.example.order.api.request;
+
+import jakarta.validation.constraints.NotBlank;
+import jakarta.validation.constraints.NotNull;
+
+public record CreateOrderRequest(
+    @NotBlank String customerId,
+    @NotNull Long amount
+) {}
+```
+
+```java
+package com.example.order.api.response;
+
+public record OrderResponse(
+    String orderId,
+    String status
+) {}
+```
+
+### 配置绑定
+
+```java
+package com.example.order.infrastructure.config;
+
+import org.springframework.boot.context.properties.ConfigurationProperties;
+
+@ConfigurationProperties(prefix = "order")
+public record OrderProperties(
+    int expireMinutes,
+    boolean asyncEnabled
+) {}
+```
+
+### 评审输出示例
+
+- 目标分类：`application-module`
+- 检查范围：`src/main/java/com/example/order/application/CreateOrderService.java`、`src/main/java/com/example/order/api/OrderController.java`、`src/main/java/com/example/order/infrastructure/persistence/JpaOrderRepository.java`
+- 总结论：`FAIL`
+
+1. `major`
+   - 规则点：统一使用构造函数注入，禁止 `@Autowired` 字段注入。
+   - 证据：`src/main/java/com/example/order/application/CreateOrderService.java:15-18`
+   - 问题说明：`CreateOrderService` 使用 `@Autowired` 字段注入 `OrderRepository` 和 `PaymentGateway`。
+   - 改动建议：改为构造函数注入，将字段声明为 `private final`，删除 `@Autowired` 注解。
+
+2. `major`
+   - 规则点：Controller 不直接操作 Repository，应通过 application service 编排。
+   - 证据：`src/main/java/com/example/order/api/OrderController.java:32`
+   - 问题说明：`OrderController` 直接注入并调用 `JpaOrderRepository.findById()`，绕过了 application 层的用例编排和事务边界。
+   - 改动建议：在 `src/main/java/com/example/order/application/` 新增 `GetOrderService` 或 `OrderQueryService`，由 Controller 调用 service 而非直接调用 repository。
+
+3. `minor`
+   - 规则点：DTO、entity、领域对象分离，不直接把 JPA entity 暴露给 API。
+   - 证据：`src/main/java/com/example/order/api/OrderController.java:45`
+   - 问题说明：`getOrder` 方法直接返回 `Order` JPA entity，把持久化细节暴露给 API 调用方。
+   - 改动建议：在 `src/main/java/com/example/order/api/response/` 新增 `OrderResponse` record，由 service 或 controller 负责映射。
+
+## 检查清单
+
+1. 是否先确认了业务能力、外部契约、事务要求、持久化模型和 Spring Boot 基础设施？
+   - 未阅读时标记 `NOT RUN`，不得伪装成已完成审查。
+2. 当前 package 是否围绕 feature 组织，并在内部清楚区分 `api`、`application`、`domain`、`infrastructure`？
+   - 若职责混淆，标记 `FAIL`，指出具体 package 和错误耦合点。
+3. Controller 是否只处理 HTTP 关注点，请求体是否通过 `jakarta.validation`、`@Valid` 或 `@Validated` 表达输入约束？
+   - 若不符合，标记 `FAIL`，指出缺失校验的位置与建议落点。
+4. 是否统一使用构造函数注入，没有字段注入、可变单例状态或隐式依赖？
+   - 若不符合，标记 `FAIL`，指出具体类和建议替换方式。
+5. `@Transactional` 是否只放在 application service 或明确的 use case 边界？
+   - 若不符合，标记 `FAIL`，说明错误事务边界和应迁移的位置。
+6. Repository 是否只负责持久化访问，没有掺入 HTTP、响应整形、鉴权决策或跨聚合流程？
+   - 若不符合，标记 `FAIL`，指出越界逻辑和应回收的层次。
+7. DTO、entity、领域对象是否解耦，没有直接把 JPA entity 暴露给 API？
+   - 若不符合，标记 `FAIL`，指出具体泄露位置和建议的 request/response 类型。
+8. 数据库结构变更是否通过 Flyway 或 Liquibase 表达？
+   - 若缺失迁移脚本，标记 `FAIL` 或 `MISSING`，并说明原因。
+9. 公共抽离是否按领域边界提升，而不是机械依据物理最近公共父级 package？
+   - 出现 2 个明确独立使用点，或逻辑复杂到需要独立测试边界时即可拆分；全局基础设施可直接上浮，局部业务逻辑应留在当前 feature package 内。
+   - 可配合 `verify-rules.mjs hoist` 做边界风险扫描；脚本 `PASS` 只代表扫描完成，`[HOIST_WARNING]` 必须人工复核，不代表实现整体通过。
+10. 是否运行了与风险匹配的现有 format、lint、test、build、集成测试或启动验证？
+    - 缺少脚本或依赖时标记 `MISSING`，未执行标记 `NOT RUN`，失败标记 `FAIL`。
+
+## 自校验脚本
+
+- `node scripts/verify-rules.mjs`
+- `node scripts/verify-rules.mjs hoist --target src/main/java/com/example/order/shared --uses src/main/java/com/example/order/create/CreateOrderService.java src/main/java/com/example/order/update/UpdateOrderService.java src/main/java/com/example/order/cancel/CancelOrderService.java`

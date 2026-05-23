@@ -131,10 +131,10 @@ description: 用于新建、编写、重构、拆分、优化、评审或校验 
   1. 出现 **2 个**明确的独立使用点（贯彻 DRY 原则）。
   2. 逻辑过于复杂（如核心正则验证、复杂数据推导），需要建立独立的单元测试边界。
 - 不要因为文件变长就机械拆分；拆分必须对应可命名的职责、复用点或测试边界。
-- **按领域边界而非物理交集提升**：公共代码的提取存放层级，必须由其**领域通用性**决定，而不是单纯计算调用者的**物理“最近公共父级（LCA）”**：
-  - **全局基建**（如日期处理、请求封装）：即使目前只有一个模块使用，只要其本质与具体业务解耦，应直接提升至全局 `@/utils` 或 `@/composables`。
-  - **跨域业务资产**（如订单状态字典）：一旦发生或预期发生跨业务域的复用，应提取至共享领域目录（如 `src/domain/shared/`）。
-  - **局部业务逻辑**：仅在当前模块内多处复用的辅助逻辑，才就近提升到该模块的 `src/utils/` 中。
+- **按领域边界而非物理交集提升**：公共代码的落点必须由其真实复用范围决定，而不是先找一个“最近公共父级”再往上挂：
+  - **单体项目**：跨模块复用的代码直接进入全局桶，例如 `@/components`、`@/utils`、`@/composables`、`@/constants`、`@/types`；不要为了“看起来规整”生造 `shared` 父目录。
+  - **Monorepo**：跨模块复用的代码必须进入独立 workspace package，由包名作为稳定边界，禁止在业务目录里制造假公共父级。
+  - **局部业务逻辑**：只在当前模块内复用的辅助逻辑，才留在模块内部的 `utils`、`composables`、`types` 或私有子组件中。
 - 单个模块不得再嵌套深层 `src/` 目录。
 - 前端目录遵循单一入口、按需拆分。
 - 路径别名优先：跨模块引用或多层级向上查找时，严格统一使用层级聚合入口导出。
@@ -375,7 +375,7 @@ views/
         └── purchase-order.ts
 ````
 
-公共代码上浮到最近公共祖先，同时遵从领域通用性质判断是否继续上浮至全局。
+公共代码应直接进入全局 `@/components`、`@/utils`、`@/composables`、`@/constants` 或 `@/types`；Monorepo 场景则进入 workspace package。不要在页面目录之间生造一个“共享父级”。
 
 ### 类型组织与导入隔离
 
@@ -418,10 +418,10 @@ import { copyText } from '@/utils'
 3. **导入路径 AST 分析器 (Import Path Analyzer)**
    - 拦截 Deep Import：解析 AST，发现 import 路径绕过了层级聚合出口（如存在 `@/components/index.ts` 时使用 `@/components/DataTable/xxx`）即报错。
    - 拦截循环依赖：检查同级目录下的模块是否通过外层的 `index.ts` 聚合出口相互导入。
-4. **领域与层级提升异常扫描器 (Hoist Anomaly Scanner)**
-   - **注意**：脚本无法真正理解“业务语义”。此校验器仅计算多个消费者的物理最近公共祖先 (LCA)。
-   - **执行逻辑**：如果脚本发现某段代码被放置在全局（如 `src/utils/`），但其所有调用方全部分布在同一个极深的单业务域内（如全部在 `src/views/purchase-order/` 下），脚本将抛出 `[HOIST_WARNING]` 警告。
-   - **人工介入**：触发警告后，强制要求人工 Code Review 核实：该代码究竟是“真全局通用基建”（允许通过），还是“不慎泄漏到全局的专属业务逻辑”（必须降级内聚）。
+4. **跨界与共享边界扫描器 (Boundary Scanner)**
+   - **注意**：脚本无法真正理解“业务语义”。它只检查抽离目标是否落在允许的共享边界内，判断依据是“单体全局桶”或“Monorepo workspace package”，不是某个物理父目录。
+   - **执行逻辑**：如果脚本发现共享逻辑被塞进页面、模块或 feature 的局部父级目录，而不是落在全局共享桶或 workspace package 中，脚本将抛出 `[HOIST_WARNING]` 警告。
+   - **人工介入**：触发警告后，必须人工核实：这段代码是否应该进入全局共享桶，或者在 Monorepo 中提升为独立 workspace package；若只是临时拼出来的共享父级，必须拆回去。
 
 **常用命令：**
 - `node scripts/verify-rules.mjs simple-component --root src/components/StatusBadge.vue`
@@ -429,7 +429,7 @@ import { copyText } from '@/utils'
 - `node scripts/verify-rules.mjs module --root src/views/purchase-order`
 - `node scripts/verify-rules.mjs utility --root packages/browser-toolkit`
 - `node scripts/verify-rules.mjs ui-library --root packages/MoluoxixiUI`
-- `node scripts/verify-rules.mjs hoist --target src/views/order-shared/utils --uses src/views/purchase-order/index.vue src/views/sales-order/index.vue src/views/refund-order/index.vue`
+- `node scripts/verify-rules.mjs hoist --target src/utils/order-formatters --uses src/views/purchase-order/index.vue src/views/sales-order/index.vue src/views/refund-order/index.vue`
 
 ## 检查清单
 
@@ -445,7 +445,7 @@ import { copyText } from '@/utils'
 10. 是否检查了简单组件的**物理边界阈值**（无散落文件）？是否验证了就近内聚原则与同级目录无**循环依赖**引用？
 11. 是否检查了**文件命名约束**（组件 PascalCase，逻辑/模块 kebab-case）和**状态清理契约**（SPA 路由切换防残留）？
 12. 库开发项目是否正确配置了 `sideEffects` Tree-shaking 契约与 `peerDependencies` 环境隔离？公开契约是否采用了可扩展的 `interface` 以及显式声明的返回类型？
-13. 公共代码是否按照**领域边界**正确提升，而不是单纯受困于机械的物理最近公共父级？是否保证了层级隔离和统一顶层导入要求？
+13. 公共代码是否按照**领域边界**正确提升，而不是单纯受困于机械的物理最近公共父级？单体项目是否直接回到全局 `@/xxx` 桶，Monorepo 是否进入 workspace package？是否保证了层级隔离和统一顶层导入要求？
 
 ### 评审输出示例
 

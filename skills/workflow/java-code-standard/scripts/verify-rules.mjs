@@ -34,7 +34,7 @@ function printHelp() {
 
 命令:
   self                        校验本 skill 的规则完整性（默认）
-  hoist                       执行领域提升风险扫描（LCA 仅作机械线索）
+  hoist                       执行共享边界风险扫描（只作机械线索）
   --help                      显示帮助信息
 
 选项:
@@ -65,7 +65,7 @@ function normalizeSegments(filePath) {
   return path.resolve(process.cwd(), filePath).split(path.sep)
 }
 
-// Compute the nearest shared package path for all usage sites.
+// Compute the nearest shared boundary for all usage sites.
 function nearestCommonAncestor(paths) {
   const segmentsList = paths.map(normalizeSegments)
   const first = segmentsList[0]
@@ -90,7 +90,7 @@ function isUnderAncestor(targetSegments, ancestorSegments) {
   return ancestorSegments.every((segment, index) => targetSegments[index] === segment)
 }
 
-// Use LCA as a warning signal only; semantic ownership still comes from domain boundaries.
+// Use the mechanical boundary as a warning signal only; semantic ownership still comes from architecture boundaries.
 function scanHoistTarget(args) {
   const target = getOption(args, '--target')
   const usesIndex = args.indexOf('--uses')
@@ -109,31 +109,27 @@ function scanHoistTarget(args) {
   const ancestor = ancestorSegments.join('/')
 
   if (!isUnderAncestor(targetSegments, ancestorSegments)) {
-    printHoistWarning('抽离目标不在使用点的物理最近公共父级 package 下，请人工确认它是否属于全局基础设施或跨域业务资产', {
+    printHoistWarning('抽离目标不在允许的共享边界内，请人工确认它是否应该进入全局共享层或独立共享包', {
       target: targetPath,
-      nearestCommonAncestor: ancestor,
+      sharedBoundary: ancestor,
     })
   }
   else if (targetSegments.length !== ancestorSegments.length + 1) {
-    printHoistWarning('抽离目标位于更深层级，请人工确认它是否应留在局部业务内部或提升为跨域共享资产', {
+    printHoistWarning('抽离目标位于更深层级，请人工确认它是否应留在局部业务内部，或者提升到全局共享层', {
       target: targetPath,
-      nearestCommonAncestor: ancestor,
+      sharedBoundary: ancestor,
     })
   }
 
   printPass('java hoist domain-boundary scan completed', {
     target: targetPath,
-    nearestCommonAncestor: ancestor,
-    advisory: 'LCA is mechanical only; review domain semantics before changing ownership.',
+    sharedBoundary: ancestor,
+    advisory: 'The boundary signal is mechanical only; review domain semantics before changing ownership.',
   })
 }
 
-// Verify that this skill package still carries every rule and resource required by repository tests.
 function verifySelf() {
   const skill = readSkillFile('SKILL.md')
-  const examples = readSkillFile('examples', 'spring-boot-structure.md')
-  const reviewExample = readSkillFile('examples', 'review-output.md')
-  const checklist = readSkillFile('validation', 'checklist.md')
 
   assertContains(skill, /用于新建、编写、重构、拆分、优化、评审或校验 Java\/Spring Boot 后端代码/, 'SKILL.md 必须声明完整触发场景')
   assertContains(skill, /Java/, 'SKILL.md 必须覆盖 Java')
@@ -141,9 +137,14 @@ function verifySelf() {
   assertContains(skill, /Maven/, 'SKILL.md 必须覆盖 Maven')
   assertContains(skill, /Gradle/, 'SKILL.md 必须覆盖 Gradle')
   assertContains(skill, /唯一规则源/, 'SKILL.md 必须声明唯一规则源')
-  assertContains(skill, /examples\/spring-boot-structure\.md/, 'SKILL.md 必须索引结构示例')
-  assertContains(skill, /examples\/review-output\.md/, 'SKILL.md 必须索引评审示例')
-  assertContains(skill, /validation\/checklist\.md/, 'SKILL.md 必须索引校验清单')
+  assertContains(skill, /## 示例/, 'SKILL.md 必须包含示例 section')
+  assertContains(skill, /## 检查清单/, 'SKILL.md 必须包含检查清单 section')
+  assertContains(skill, /## 自校验脚本/, 'SKILL.md 必须包含自校验脚本 section')
+  assertContains(skill, /src\/main\/java\/com\/example\/order\//, 'SKILL.md 必须包含 Spring Boot 结构示例')
+  assertContains(skill, /record CreateOrderRequest/, 'SKILL.md 必须包含 request/response 示例')
+  assertContains(skill, /@ConfigurationProperties/, 'SKILL.md 必须包含配置绑定示例')
+  assertContains(skill, /目标分类：`application-module`/, 'SKILL.md 必须包含评审示例目标分类')
+  assertContains(skill, /总结论：`FAIL`/, 'SKILL.md 必须包含评审示例总结论')
   assertContains(skill, /构造函数注入/, 'SKILL.md 必须覆盖构造函数注入')
   assertContains(skill, /按领域边界提升/, 'SKILL.md 必须覆盖按领域边界提升')
   assertContains(skill, /Bean Validation/, 'SKILL.md 必须覆盖 Bean Validation')
@@ -152,26 +153,10 @@ function verifySelf() {
   assertContains(skill, /Liquibase/, 'SKILL.md 必须覆盖 Liquibase')
   assertContains(skill, /scripts\/verify-rules\.mjs/, 'SKILL.md 必须声明自带验证脚本')
   assertContains(skill, /不得用仓库根级共享脚本替代/, 'SKILL.md 必须声明不得用仓库根级共享脚本替代')
-  assertContains(examples, /本文件只提供示例，不定义新规则/, '示例文件必须声明不定义新规则')
-  assertContains(examples, /src\/main\/java\/com\/example\/order\//, '示例文件必须包含 Spring Boot 结构示例')
-  assertContains(examples, /domain\//, '示例文件必须覆盖 domain package')
-  assertContains(examples, /application\//, '示例文件必须覆盖 application package')
-  assertContains(examples, /infrastructure\//, '示例文件必须覆盖 infrastructure package')
-  assertContains(examples, /record CreateOrderRequest/, '示例文件必须覆盖 record request')
-  assertContains(examples, /@ConfigurationProperties/, '示例文件必须覆盖配置绑定示例')
-
-  assertContains(reviewExample, /本文件只提供示例，不定义新规则/, '评审示例必须声明不定义新规则')
-  assertContains(reviewExample, /目标分类：`application-module`/, '评审示例必须包含目标分类')
-  assertContains(reviewExample, /总结论：`FAIL`/, '评审示例必须包含总结论')
-  assertContains(reviewExample, /规则点：/, '评审示例必须包含规则点')
-  assertContains(reviewExample, /证据：`src\/main\/java\/com\/example\/order/, '评审示例必须包含文件级证据')
-  assertContains(reviewExample, /改动建议汇总/, '评审示例必须包含改动建议汇总')
-
-  assertContains(checklist, /本文件只提供校验脚本用法和检查清单，不定义新规则/, '校验清单必须声明不定义新规则')
-  assertContains(checklist, /jakarta\.validation/, '校验清单必须覆盖 jakarta.validation')
-  assertContains(checklist, /Flyway 或 Liquibase/, '校验清单必须覆盖迁移工具')
-  assertContains(checklist, /领域边界/, '校验清单必须覆盖领域边界提升')
-  assertContains(checklist, /\[HOIST_WARNING\]/, '校验清单必须覆盖 HOIST_WARNING 人工复核')
+  assertContains(skill, /jakarta\.validation/, 'SKILL.md 必须覆盖 jakarta.validation')
+  assertContains(skill, /Flyway 或 Liquibase/, 'SKILL.md 必须覆盖迁移工具')
+  assertContains(skill, /领域边界/, 'SKILL.md 必须覆盖领域边界提升')
+  assertContains(skill, /\[HOIST_WARNING\]/, 'SKILL.md 必须覆盖共享边界风险扫描')
 
   printPass('java-code-standard self rules are valid')
 }

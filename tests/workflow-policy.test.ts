@@ -166,7 +166,7 @@ it('前端编码规范 - SKILL.md 内联示例按可复用单元拆分', () => {
   assert.match(skill, /## 检查清单/)
   assert.match(skill, /## 自校验脚本/)
   assert.doesNotMatch(skill, /examples\/|validation\//)
-  assert.match(skill, /公共代码上浮到最近公共祖先，同时遵从领域通用性质判断是否继续上浮至全局/)
+  assert.match(skill, /公共代码应直接进入全局 `@\/components`、`@\/utils`、`@\/composables`、`@\/constants` 或 `@\/types`；Monorepo 场景则进入 workspace package/)
   assert.match(skill, /公开契约（props、emits、slots、ref、expose）/)
   assert.match(skill, /必须显式传入 navigator，不依赖全局对象。/)
   assert.ok(skill.includes('clipboard-toolkit/\n├── README.md\n├── package.json'))
@@ -191,7 +191,7 @@ it('前端编码规范 - SKILL.md 内联示例按可复用单元拆分', () => {
   assert.ok(!skill.includes('columnSettings'))
 })
 
-it('前端编码规范 - skill 自带验证脚本覆盖组件结构和最近公共父级', () => {
+it('前端编码规范 - skill 自带验证脚本覆盖组件结构和共享边界', () => {
   const scriptPath = path.join(rootDir, 'skills', 'workflow', 'frontend-code-standard', 'scripts', 'verify-rules.mjs')
   const componentRootTs = fs.mkdtempSync(path.join(os.tmpdir(), 'airules-component-ts-'))
   const componentRootJs = fs.mkdtempSync(path.join(os.tmpdir(), 'airules-component-js-'))
@@ -488,7 +488,7 @@ it('前端编码规范 - skill 自带验证脚本覆盖组件结构和最近公�
       'src/views/purchase-order/create/index.tsx',
       'src/views/purchase-order/update/index.tsx',
     ], { cwd: rootDir, encoding: 'utf8' }),
-    /PASS frontend hoist target stays under nearest common ancestor/,
+    /PASS frontend hoist target stays within shared boundary/,
   )
   const nestedHoistResult = spawnSync(process.execPath, [
     scriptPath,
@@ -501,7 +501,7 @@ it('前端编码规范 - skill 自带验证脚本覆盖组件结构和最近公�
   ], { cwd: rootDir, encoding: 'utf8' })
 
   assert.notEqual(nestedHoistResult.status, 0)
-  assert.match(nestedHoistResult.stderr, /抽离目标必须位于最近公共父级的直接共享目录/)
+  assert.match(nestedHoistResult.stderr, /抽离目标必须位于允许的共享边界目录/)
 })
 
 it('前端编码规范 - 类型组织示例保持建议口径', () => {
@@ -531,12 +531,12 @@ it('前端编码规范 - Barrel、路径别名、复用阈值和领域提升为�
   assert.match(skill, /摒弃死板的“三次法则”/)
   assert.match(skill, /出现 \*\*2 个\*\*明确的独立使用点/)
   assert.match(skill, /按领域边界而非物理交集提升/)
-  assert.match(skill, /公共代码上浮到最近公共祖先/)
+  assert.match(skill, /公共代码应直接进入全局 `@\/components`、`@\/utils`、`@\/composables`、`@\/constants` 或 `@\/types`；Monorepo 场景则进入 workspace package/)
   assert.match(skill, /@\/components\/DataTable\/src\/composables\/use-table-sort/)
   assert.match(skill, /@\/components\/DataTable/)
   assert.doesNotMatch(skill, /允许：\n\n```ts\nimport \{ formatDate \} from '@\/components\/DataTable\/utils'/)
-  assert.match(skill, /node scripts\/verify-rules\.mjs hoist --target src\/views\/order-shared\/utils --uses/)
-  assert.match(skill, /\[HOIST_WARNING\]` 警告/)
+  assert.match(skill, /node scripts\/verify-rules\.mjs hoist --target src\/utils\/order-formatters --uses/)
+  assert.match(skill, /共享边界/)
 })
 
 it('前端编码规范 - 约束实现质量但不机械抽离', () => {
@@ -588,9 +588,16 @@ it('node 编码规范 - 入口引用 Node 后端实现标准', () => {
   assert.match(skill, /TypeScript 与 JavaScript/)
   assert.match(skill, /用于新建、编写、重构、拆分、优化、评审或校验非 NestJS 的 Node\.js 后端代码/)
   assert.match(skill, /不面向兼容式修补/)
-  assert.match(skill, /examples\/node-backend-structure\.md/)
-  assert.match(skill, /examples\/review-output\.md/)
-  assert.match(skill, /validation\/checklist\.md/)
+  assert.match(skill, /## 示例/)
+  assert.match(skill, /## 检查清单/)
+  assert.match(skill, /## 自校验脚本/)
+  assert.match(skill, /src\/modules\/orders\//)
+  assert.match(skill, /FastifyInstance/)
+  assert.match(skill, /zod/)
+  assert.match(skill, /Service 只做用例编排与事务边界/)
+  assert.match(skill, /repository 负责持久化访问和映射/)
+  assert.match(skill, /目标分类：`application-module`/)
+  assert.match(skill, /总结论：`FAIL`/)
   assert.match(skill, /契约优先/)
   assert.match(skill, /边界清晰/)
   assert.match(skill, /失败显性/)
@@ -644,26 +651,26 @@ it('node 编码规范 - skill 自带验证脚本覆盖领域边界风险扫描',
   assert.match(nestedHoistResult.stdout, /PASS backend hoist domain-boundary scan completed/)
 })
 
-it('node 编码规范 - examples 和 validation 承载示例与清单', () => {
-  const nodeExamples = readProjectFile('skills', 'workflow', 'node-code-standard', 'examples', 'node-backend-structure.md').replace(/\r\n/g, '\n')
-  const checklist = readProjectFile('skills', 'workflow', 'node-code-standard', 'validation', 'checklist.md')
+it('node 编码规范 - skill 自身承载示例与清单', () => {
+  const skill = readProjectFile('skills', 'workflow', 'node-code-standard', 'SKILL.md')
 
-  assert.match(nodeExamples, /本文件只提供示例，不定义新规则/)
-  assert.match(nodeExamples, /src\/modules\/orders\//)
-  assert.match(nodeExamples, /transport\//)
-  assert.match(nodeExamples, /application\//)
-  assert.match(nodeExamples, /domain\//)
-  assert.match(nodeExamples, /infrastructure\//)
-  assert.match(nodeExamples, /FastifyInstance/)
-  assert.match(nodeExamples, /zod/)
-  assert.match(nodeExamples, /Service 只做用例编排与事务边界/)
-  assert.match(nodeExamples, /repository 负责持久化访问和映射/)
-  assert.match(checklist, /本文件只提供校验脚本用法和检查清单，不定义新规则/)
-  assert.match(checklist, /schema 方案/)
-  assert.match(checklist, /构造参数、工厂参数或模块装配/)
-  assert.match(checklist, /事务要求/)
-  assert.match(checklist, /脚本 `PASS` 只代表扫描完成/)
-  assert.match(checklist, /\[HOIST_WARNING\]/)
+  assert.match(skill, /## 示例/)
+  assert.match(skill, /## 检查清单/)
+  assert.match(skill, /## 自校验脚本/)
+  assert.match(skill, /src\/modules\/orders\//)
+  assert.match(skill, /transport\//)
+  assert.match(skill, /application\//)
+  assert.match(skill, /domain\//)
+  assert.match(skill, /infrastructure\//)
+  assert.match(skill, /FastifyInstance/)
+  assert.match(skill, /zod/)
+  assert.match(skill, /Service 只做用例编排与事务边界/)
+  assert.match(skill, /repository 负责持久化访问和映射/)
+  assert.match(skill, /schema 方案/)
+  assert.match(skill, /构造参数、工厂参数或模块装配/)
+  assert.match(skill, /事务要求/)
+  assert.match(skill, /脚本 `PASS` 只代表扫描完成/)
+  assert.match(skill, /\[HOIST_WARNING\]/)
 })
 
 it('node 编码规范 - 不再保留 references 主规范', () => {
@@ -684,33 +691,36 @@ it('nestJS 编码规范 - 入口引用 NestJS 最佳实践', () => {
   assert.match(skill, /构造函数注入/)
   assert.match(skill, /事务边界/)
   assert.match(skill, /持久化封装/)
-  assert.match(skill, /examples\/nestjs-backend-structure\.md/)
-  assert.match(skill, /validation\/checklist\.md/)
+  assert.match(skill, /## 示例/)
+  assert.match(skill, /## 检查清单/)
+  assert.match(skill, /## 自校验脚本/)
+  assert.match(skill, /src\/modules\/orders\//)
+  assert.match(skill, /orders\.module\.ts/)
+  assert.match(skill, /@Module/)
+  assert.match(skill, /目标分类：`application-module`/)
+  assert.match(skill, /总结论：`FAIL`/)
   assert.match(skill, /scripts\/verify-rules\.mjs/)
   assert.doesNotMatch(skill, /nest-backend-standard\.md/)
   assert.match(workflowSkill, /NestJS 后端实现标准：`nestjs-code-standard`/)
   assert.match(workflowSkill, /新建、编写、重构、拆分、优化、评审或校验 NestJS 后端代码/)
 })
 
-it('nestJS 编码规范 - examples 和 validation 承载示例与清单', () => {
-  const examples = readProjectFile('skills', 'workflow', 'nestjs-code-standard', 'examples', 'nestjs-backend-structure.md').replace(/\r\n/g, '\n')
-  const checklist = readProjectFile('skills', 'workflow', 'nestjs-code-standard', 'validation', 'checklist.md')
+it('nestJS 编码规范 - skill 自身承载示例与清单', () => {
+  const skill = readProjectFile('skills', 'workflow', 'nestjs-code-standard', 'SKILL.md')
 
-  assert.match(examples, /本文件只提供示例，不定义新规则/)
-  assert.match(examples, /src\/modules\/orders\//)
-  assert.match(examples, /orders\.module\.ts/)
-  assert.match(examples, /@Module/)
-  assert.match(examples, /ValidationPipe/)
-  assert.match(examples, /class-validator/)
-  assert.match(examples, /Service 只做用例编排与事务边界/)
-  assert.match(examples, /repository 负责持久化访问和映射/)
-  assert.match(checklist, /本文件只提供校验脚本用法和检查清单，不定义新规则/)
-  assert.match(checklist, /ValidationPipe/)
-  assert.match(checklist, /class-validator/)
-  assert.match(checklist, /构造函数注入/)
-  assert.match(checklist, /事务要求/)
-  assert.match(checklist, /脚本 `PASS` 只代表扫描完成/)
-  assert.match(checklist, /\[HOIST_WARNING\]/)
+  assert.match(skill, /## 示例/)
+  assert.match(skill, /## 检查清单/)
+  assert.match(skill, /## 自校验脚本/)
+  assert.match(skill, /src\/modules\/orders\//)
+  assert.match(skill, /orders\.module\.ts/)
+  assert.match(skill, /@Module/)
+  assert.match(skill, /ValidationPipe/)
+  assert.match(skill, /class-validator/)
+  assert.match(skill, /Service 只做用例编排与事务边界/)
+  assert.match(skill, /repository 负责持久化访问和映射/)
+  assert.match(skill, /构造函数注入/)
+  assert.match(skill, /事务要求/)
+  assert.match(skill, /\[HOIST_WARNING\]/)
 })
 
 it('nestJS 编码规范 - skill 自带验证脚本覆盖领域边界风险扫描', () => {
@@ -792,8 +802,14 @@ it('java 编码规范 - 入口引用 Java 与 Spring Boot 最佳实践', () => {
   assert.match(skill, /Maven/)
   assert.match(skill, /Gradle/)
   assert.match(skill, /唯一规则源/)
-  assert.match(skill, /examples\/spring-boot-structure\.md/)
-  assert.match(skill, /validation\/checklist\.md/)
+  assert.match(skill, /## 示例/)
+  assert.match(skill, /## 检查清单/)
+  assert.match(skill, /## 自校验脚本/)
+  assert.match(skill, /src\/main\/java\/com\/example\/order\//)
+  assert.match(skill, /record CreateOrderRequest/)
+  assert.match(skill, /@ConfigurationProperties/)
+  assert.match(skill, /目标分类：`application-module`/)
+  assert.match(skill, /总结论：`FAIL`/)
   assert.doesNotMatch(skill, /java-backend-standard\.md/)
   assert.match(skill, /构造函数注入/)
   assert.match(skill, /Bean Validation/)
@@ -806,22 +822,22 @@ it('java 编码规范 - 入口引用 Java 与 Spring Boot 最佳实践', () => {
   assert.match(workflowSkill, /新建、编写、重构、拆分、优化、评审或校验 Java\/Spring Boot 后端代码/)
 })
 
-it('java 编码规范 - examples 和 validation 承载示例与清单', () => {
-  const examples = readProjectFile('skills', 'workflow', 'java-code-standard', 'examples', 'spring-boot-structure.md').replace(/\r\n/g, '\n')
-  const checklist = readProjectFile('skills', 'workflow', 'java-code-standard', 'validation', 'checklist.md')
+it('java 编码规范 - skill 自身承载示例与清单', () => {
+  const skill = readProjectFile('skills', 'workflow', 'java-code-standard', 'SKILL.md')
 
-  assert.match(examples, /本文件只提供示例，不定义新规则/)
-  assert.ok(examples.includes('src/main/java/com/example/order/\n  api/\n    OrderController.java\n    request/\n      CreateOrderRequest.java\n    response/\n      OrderResponse.java'))
-  assert.match(examples, /domain\//)
-  assert.match(examples, /application\//)
-  assert.match(examples, /infrastructure\//)
-  assert.match(examples, /record CreateOrderRequest/)
-  assert.match(examples, /@ConfigurationProperties/)
-  assert.match(checklist, /本文件只提供校验脚本用法和检查清单，不定义新规则/)
-  assert.match(checklist, /jakarta\.validation/)
-  assert.match(checklist, /Flyway 或 Liquibase/)
-  assert.match(checklist, /领域边界/)
-  assert.match(checklist, /\[HOIST_WARNING\]/)
+  assert.match(skill, /## 示例/)
+  assert.match(skill, /## 检查清单/)
+  assert.match(skill, /## 自校验脚本/)
+  assert.ok(skill.includes('src/main/java/com/example/order/\n  api/\n    OrderController.java\n    request/\n      CreateOrderRequest.java\n    response/\n      OrderResponse.java'))
+  assert.match(skill, /domain\//)
+  assert.match(skill, /application\//)
+  assert.match(skill, /infrastructure\//)
+  assert.match(skill, /record CreateOrderRequest/)
+  assert.match(skill, /@ConfigurationProperties/)
+  assert.match(skill, /jakarta\.validation/)
+  assert.match(skill, /Flyway 或 Liquibase/)
+  assert.match(skill, /领域边界/)
+  assert.match(skill, /\[HOIST_WARNING\]/)
 })
 
 it('java 编码规范 - skill 自带验证脚本覆盖领域边界风险扫描', () => {
@@ -834,7 +850,7 @@ it('java 编码规范 - skill 自带验证脚本覆盖领域边界风险扫描',
       scriptPath,
       'hoist',
       '--target',
-      'src/main/java/com/example/order/support',
+      'src/main/java/com/example/order/shared',
       '--uses',
       'src/main/java/com/example/order/create/CreateOrderService.java',
       'src/main/java/com/example/order/update/UpdateOrderService.java',
@@ -846,7 +862,7 @@ it('java 编码规范 - skill 自带验证脚本覆盖领域边界风险扫描',
     scriptPath,
     'hoist',
     '--target',
-    'src/main/java/com/example/order/create/support',
+    'src/main/java/com/example/order/create/shared',
     '--uses',
     'src/main/java/com/example/order/create/CreateOrderService.java',
     'src/main/java/com/example/order/update/UpdateOrderService.java',
@@ -858,10 +874,23 @@ it('java 编码规范 - skill 自带验证脚本覆盖领域边界风险扫描',
   assert.match(nestedHoistResult.stdout, /PASS java hoist domain-boundary scan completed/)
 })
 
+it('workflow 流程规范 - SKILL.md 收敛验证分级和交付报告', () => {
+  const workflowSkill = readProjectFile('skills', 'workflow', 'software-development-workflow', 'SKILL.md')
+
+  assert.match(workflowSkill, /软件开发流程规范/)
+  assert.match(workflowSkill, /任务拆分、验证分级和交付报告都收在本文件内/)
+  assert.match(workflowSkill, /## 质量门/)
+  assert.match(workflowSkill, /## 任务拆分/)
+  assert.match(workflowSkill, /## 交付报告/)
+  assert.match(workflowSkill, /验证分级/)
+  assert.match(workflowSkill, /场景化报告/)
+  assert.match(workflowSkill, /PASS `git diff --check`/)
+  assert.match(workflowSkill, /N\/A 质量检查：本次未修改代码。/)
+  assert.doesNotMatch(workflowSkill, /examples\/|validation\//)
+})
+
 it('skill 校验规范 - 校验生成后的 skill 结构', () => {
   const skill = readProjectFile('skills', 'skill-validation-standard', 'SKILL.md')
-  const examples = readProjectFile('skills', 'skill-validation-standard', 'examples', 'skill-structure.md')
-  const checklist = readProjectFile('skills', 'skill-validation-standard', 'validation', 'checklist.md')
   const scriptPath = path.join(rootDir, 'skills', 'skill-validation-standard', 'scripts', 'verify-rules.mjs')
   const workflowSkill = readProjectFile('skills', 'workflow', 'software-development-workflow', 'SKILL.md')
   const readme = readProjectFile('README.md')
@@ -872,8 +901,6 @@ it('skill 校验规范 - 校验生成后的 skill 结构', () => {
   assert.match(skill, /创建、修改或评审 skill 后/)
   assert.doesNotMatch(skill, /服务所有 skills/)
   assert.doesNotMatch(skill, /不属于 `workflow`/)
-  assert.match(skill, /examples\/skill-structure\.md/)
-  assert.match(skill, /examples\/validation-output\.md/)
   assert.match(skill, /scripts\/verify-rules\.mjs/)
   assert.match(skill, /触发描述/)
   assert.match(skill, /内容质量 rubric/)
@@ -882,14 +909,18 @@ it('skill 校验规范 - 校验生成后的 skill 结构', () => {
   assert.match(skill, /示例与脚本/)
   assert.match(skill, /整体质量/)
   assert.doesNotMatch(skill, /airules-workflow/)
-  assert.match(examples, /Skill 结构示例与反模式/)
-  assert.match(examples, /my-skill\/\n {2}SKILL\.md/)
-  assert.match(examples, /examples\/sample-output\.md/)
-  assert.match(examples, /validation\/checklist\.md/)
-  assert.match(checklist, /校验脚本用法/)
-  assert.match(checklist, /本文件只提供脚本用法/)
-  assert.match(checklist, /node skills\/skill-validation-standard\/scripts\/verify-rules\.mjs --root/)
-  assert.doesNotMatch(checklist, /airules-workflow/)
+  assert.match(skill, /## 结构示例与反模式/)
+  assert.match(skill, /## 校验输出示例/)
+  assert.match(skill, /## 校验脚本用法/)
+  assert.match(skill, /Skill 结构示例与反模式/)
+  assert.match(skill, /my-skill\/\n {2}SKILL\.md/)
+  assert.match(skill, /examples\/sample-output\.md/)
+  assert.match(skill, /validation\/checklist\.md/)
+  assert.doesNotMatch(skill, /examples\/skill-structure\.md/)
+  assert.doesNotMatch(skill, /examples\/validation-output\.md/)
+  assert.match(skill, /本文件只提供脚本用法/)
+  assert.match(skill, /node skills\/skill-validation-standard\/scripts\/verify-rules\.mjs --root/)
+  assert.doesNotMatch(skill, /airules-workflow/)
   assert.match(runNodeScript('skills', 'skill-validation-standard', 'scripts', 'verify-rules.mjs'), /PASS skill is valid/)
   assert.match(
     execFileSync(process.execPath, [

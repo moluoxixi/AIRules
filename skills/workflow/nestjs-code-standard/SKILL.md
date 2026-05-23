@@ -132,9 +132,177 @@ description: 用于新建、编写、重构、拆分、优化、评审或校验 
 
 分层原则（controller/resolver → application → domain → infrastructure）同样适用，只是入口从 `@Controller` 变为 `@Resolver`。
 
-## 辅助资源
+## 示例
 
-- 示例：`examples/nestjs-backend-structure.md`
-- 评审示例：`examples/review-output.md`
-- 校验清单：`validation/checklist.md`
-- 自校验脚本：`scripts/verify-rules.mjs`
+### 结构示例
+
+```text
+src/modules/orders/
+  orders.module.ts
+  controllers/
+    orders.controller.ts
+    dto/
+      create-order.dto.ts
+      list-orders.query.dto.ts
+  application/
+    create-order.service.ts
+    list-orders.service.ts
+    commands/
+      create-order.command.ts
+  domain/
+    order.aggregate.ts
+    order.repository.ts
+    order.errors.ts
+    value-objects/
+      order-id.ts
+  infrastructure/
+    persistence/
+      order.entity.ts
+      typeorm-order.repository.ts
+    integrations/
+      payment-gateway.client.ts
+src/shared/
+  order-presenter.ts
+```
+
+### 模块装配
+
+```ts
+@Module({
+  controllers: [OrdersController],
+  providers: [
+    CreateOrderService,
+    ListOrdersService,
+    {
+      provide: OrderRepository,
+      useClass: TypeormOrderRepository,
+    },
+    PaymentGatewayClient,
+  ],
+})
+export class OrdersModule {}
+```
+
+- `@Module` 负责声明稳定依赖装配，不把内部实现无边界导出给外层模块。
+- controller 留在传输层，application service 留在用例边界，repository 实现放在 infrastructure。
+
+### DTO 与 ValidationPipe
+
+```ts
+export class CreateOrderDto {
+  @IsUUID()
+  customerId!: string
+
+  @IsArray()
+  @ValidateNested({ each: true })
+  @Type(() => CreateOrderItemDto)
+  items!: CreateOrderItemDto[]
+}
+```
+
+```ts
+app.useGlobalPipes(new ValidationPipe({ whitelist: true, transform: true }))
+```
+
+- DTO 使用 `class` 与 `class-validator` 表达输入契约。
+- `ValidationPipe` 统一收口边界输入校验，不把校验逻辑散落在 controller 方法体里。
+
+### 应用服务与事务边界
+
+```ts
+@Injectable()
+export class CreateOrderService {
+  constructor(
+    private readonly unitOfWork: OrderUnitOfWork,
+    private readonly orderRepository: OrderRepository,
+    private readonly paymentGatewayClient: PaymentGatewayClient,
+  ) {}
+
+  async execute(command: CreateOrderCommand) {
+    return this.unitOfWork.run(async () => {
+      const order = OrderAggregate.create(command)
+      await this.orderRepository.save(order)
+      await this.paymentGatewayClient.reserve(order.totalAmount)
+      return order
+    })
+  }
+}
+```
+
+- Service 只做用例编排与事务边界，不直接拼装 HTTP 响应。
+- 远程调用是否进入事务必须由项目现有模式支撑，不能隐式混成大事务。
+
+### 错误与持久化封装
+
+```ts
+@Injectable()
+export class TypeormOrderRepository implements OrderRepository {
+  constructor(
+    @InjectRepository(OrderEntity)
+    private readonly repository: Repository<OrderEntity>,
+  ) {}
+
+  async findById(orderId: OrderId) {
+    const entity = await this.repository.findOne({ where: { id: orderId.value } })
+    return entity ? OrderMapper.toAggregate(entity) : null
+  }
+}
+```
+
+- repository 负责持久化访问和映射，不直接返回 ORM entity 给 controller。
+- Service 抛出领域错误或应用错误，由统一异常映射层转换为外部协议语义。
+
+### 评审输出示例
+
+- 目标分类：`application-module`
+- 检查范围：`src/modules/orders/controllers/orders.controller.ts`、`src/modules/orders/application/create-order.service.ts`、`src/modules/orders/infrastructure/persistence/typeorm-order.repository.ts`
+- 总结论：`FAIL`
+
+1. `major`
+   - 规则点：controller 只处理传输层，不直接编排跨仓储流程
+   - 证据：`src/modules/orders/controllers/orders.controller.ts:28`
+   - 问题说明：controller 直接创建 entity、写 repository 并拼装响应，导致 HTTP 层承担了 application 和 persistence 职责。
+   - 改动建议：把创建订单流程下沉到 `src/modules/orders/application/create-order.service.ts`，controller 只负责 DTO 入参、调用 service 和响应映射。
+
+2. `critical`
+   - 规则点：边界输入优先通过 `class-validator` + `ValidationPipe` 统一校验
+   - 证据：`src/main.ts:14`，`src/modules/orders/controllers/dto/create-order.dto.ts:1`
+   - 问题说明：应用未注册全局 `ValidationPipe`，`CreateOrderDto` 也没有字段级校验装饰器。
+   - 改动建议：在 `src/main.ts` 注册 `ValidationPipe`，并为 `CreateOrderDto` 增加 `class-validator` 约束与必要的 `class-transformer` 类型转换。
+
+3. `major`
+   - 规则点：repository 只负责持久化访问，不直接暴露 ORM entity 或底层异常给 controller
+   - 证据：`src/modules/orders/infrastructure/persistence/typeorm-order.repository.ts:33`
+   - 问题说明：repository 将 `OrderEntity` 直接返回给 controller，且未把唯一键冲突等数据库错误转换为领域/应用语义。
+   - 改动建议：在 repository 内完成 entity 到 aggregate/response model 的映射，并把数据库错误转换为显式领域错误或应用错误。
+
+## 检查清单
+
+1. 是否先确认了业务能力、外部契约、模块边界、事务要求、持久化模型和当前项目使用的 Nest 基础设施？
+   - 未阅读时标记 `NOT RUN`，不得伪装成已完成审查。
+2. 当前目标分类是否明确为 `entrypoint`、`application-module`、`domain-module`、`infrastructure-adapter`、`shared-support` 或 `mixed-module`？
+   - 若分类不清，标记 `FAIL`，并说明职责为什么混杂。
+3. controller 是否只处理路由、参数提取、DTO 校验和响应映射？
+   - 若 controller 直接操作 repository、拼装事务或暴露 ORM 细节，标记 `FAIL`。
+4. 边界输入是否通过 `class-validator` 和 `ValidationPipe` 表达运行时契约？
+   - 若只存在 TypeScript 类型、没有运行时校验，标记 `FAIL`，指出缺失位置和建议补点。
+5. provider 是否统一使用构造函数注入，没有字段注入、隐式共享状态或横向读取容器？
+   - 若不符合，标记 `FAIL`，指出具体类和建议替换方式。
+6. application service 是否承担用例编排与事务边界，而不是把这些职责分散在 controller、guard、interceptor 或 repository 中？
+   - 若不符合，标记 `FAIL`，指出错误边界和应迁移的位置。
+7. domain 是否承载核心业务规则和仓储契约，而不是依赖 Nest 装饰器、Web 宿主对象或 ORM 细节？
+   - 若不符合，标记 `FAIL`，指出具体耦合点。
+8. repository / adapter 是否只负责持久化和外部依赖访问，没有夹带 HTTP 拼装、鉴权决策或跨聚合流程？
+   - 若不符合，标记 `FAIL`，指出越界逻辑和回收层次。
+9. 数据库结构变更是否通过项目现有迁移机制表达？
+   - 若缺失迁移脚本，标记 `FAIL` 或 `MISSING`，并说明原因。
+10. 公共抽离是否按领域边界提升，而不是机械依据物理最近公共父级？
+    - 出现 2 个明确独立使用点，或逻辑复杂到需要独立测试边界时即可拆分；全局基础设施可直接上浮，局部业务逻辑应留在当前 feature module 内。
+    - 可配合 `verify-rules.mjs hoist` 做边界风险扫描；脚本 `PASS` 只代表扫描完成，`[HOIST_WARNING]` 必须人工复核，不代表实现整体通过。
+11. 是否运行了与风险匹配的现有 lint、test、build、启动验证或集成测试？
+    - 缺少脚本或依赖时标记 `MISSING`，未执行标记 `NOT RUN`，失败标记 `FAIL`。
+
+## 自校验脚本
+
+- `node scripts/verify-rules.mjs`
+- `node scripts/verify-rules.mjs hoist --target src/shared/order-presenter.ts --uses src/modules/orders/controllers/orders.controller.ts src/modules/orders/application/create-order.service.ts src/modules/orders/infrastructure/persistence/typeorm-order.repository.ts`

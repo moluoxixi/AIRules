@@ -101,7 +101,7 @@ function nearestCommonAncestor(paths) {
   }
 
   if (commonParts.length === 0)
-    throw new Error('无法计算最近公共父级目录，请确认使用点路径属于同一文件系统根')
+    throw new Error('无法计算共享边界，请确认使用点路径属于同一文件系统根')
 
   return commonParts.join(path.sep)
 }
@@ -111,7 +111,7 @@ function assertTargetInsideAncestor(target, ancestor, uses) {
   const relative = path.relative(ancestor, resolvedTarget)
 
   if (relative.startsWith('..') || path.isAbsolute(relative))
-    throw new Error(`抽离目标必须位于最近公共父级目录下：${ancestor}`)
+    throw new Error(`抽离目标必须位于共享边界内：${ancestor}`)
 
   if (relative === '')
     return
@@ -124,13 +124,13 @@ function assertTargetInsideAncestor(target, ancestor, uses) {
 
     return firstSegment === directSegments[0]
   })) {
-    throw new Error(`抽离目标必须位于最近公共父级的直接共享目录：${ancestor}`)
+    throw new Error(`抽离目标必须位于允许的共享边界目录：${ancestor}`)
   }
 
   if (directSegments.length === 1)
     return
 
-  throw new Error(`抽离目标必须位于最近公共父级的直接共享目录：${ancestor}`)
+  throw new Error(`抽离目标必须位于允许的共享边界目录：${ancestor}`)
 }
 
 function assertCodeDirectoryEntries(directory, root, options = {}, depth = 0) {
@@ -321,7 +321,7 @@ function printHelp() {
   module                      校验业务模块结构
   utility, tool-library       校验工具库结构
   ui-library, component-library  校验 UI 组件库结构
-  hoist                       校验公共代码抽离位置是否符合复用与提升边界
+  hoist                       校验公共代码抽离位置是否落在允许的共享边界内
   --help                      显示帮助信息
 
 选项:
@@ -393,8 +393,8 @@ function verifyHoist(args) {
 
   assertTargetInsideAncestor(target, ancestor, uses)
 
-  printPass('frontend hoist target stays under nearest common ancestor', {
-    nearestCommonAncestor: ancestor,
+  printPass('frontend hoist target stays within shared boundary', {
+    sharedBoundary: ancestor,
     target: path.resolve(process.cwd(), target),
   })
 }
