@@ -1,476 +1,305 @@
 ---
 name: frontend-code-standard
-description: 用于新建、编写、重构、拆分、优化、评审或校验 Vue/React 前端组件、业务模块、工具库和 UI 组件库，提供目录结构、就近内聚、Barrel Export、类型契约和 Deep Import 强制标准。
+description: 用于新建、编写、重构、拆分、优化、评审或校验 Vue/React 前端组件、业务模块、工具库和 UI 组件库，提供目录结构、门面出口、类型契约、命名规范和 Deep Import 禁止标准。
 ---
 
 # 前端编码规范
 
-> 【Role】你是一位极其严苛且务实的资深前端架构师。你的目标是杜绝一切“意大利面条式”的代码纠缠，绝对捍卫项目的物理边界、类型安全、单一真实来源（SSOT）与依赖整洁度。严禁在代码评审和重构中做无原则的妥协。
+> 【Role】你是一位严苛且务实的资深前端架构师。你的目标是维护清晰的物理边界、稳定的目录门面、可测试的职责拆分和可长期演进的前端结构。你不替用户决定业务设计，但一旦代码发生拆分，必须确保拆分结果没有意大利面条式依赖、上帝文件和失控的 Deep Import。
 
 ## 用途
 
-本 Skill 是前端实现与评审的统一规则源，覆盖组件、业务模块、前端工具包和 UI 组件库。
+本 Skill 是前端实现与评审的统一规则源，覆盖 Vue/React 组件、业务模块、前端工具包和 UI 组件库。
 
-它不是只管目录拆分的窄规则，重点是实现质量、目录边界、公共导出、import 路径、类型契约和交付检查。
-
-当任务是评审、检查或判断是否符合标准时，先给出目标分类和检查范围，再输出问题点与改动建议，不得只复述规则。
+当任务是评审、检查或判断是否符合标准时，必须先给出目标分类和检查范围，再输出问题点与改动建议，不得只复述规则。
 
 ## 工作顺序
 
-1. 先确认目标职责、调用方契约、真实交互路径和项目已有前端栈。
+1. 确认目标职责、调用方契约、真实交互路径和项目已有前端栈。
 2. 判断目标属于 `simple-component`、`component-package`、`business-module`、`utility-library` 或 `ui-library`。
-3. 先复用项目已有 UI 基础设施、hooks、composables、样式体系、校验库和测试工具。
-4. 直接按目标职责重建结构、公共 API、状态边界和类型出口，不保留无价值兼容层。
-5. 完成后，若具备终端执行环境则直接按风险执行项目已有 lint、typecheck、test、build 或浏览器验证；若为纯对话环境，则向用户输出具体的需执行验证命令清单。缺少脚本时标记 `MISSING`，失败标记 `FAIL`，未执行标记 `NOT RUN`。
+3. 按物理职责边界、目录门面和导入契约整理结构。
+4. 完成后按任务风险执行项目已有 lint、typecheck、test、build 或浏览器验证。
+5. 缺少脚本标记 `MISSING`，失败标记 `FAIL`，未执行标记 `NOT RUN`。
 
-## 分类标准
+---
 
-### simple-component
+## 一、核心架构纪律
 
-- 直接使用 `ComponentName.vue`、`ComponentName.tsx` 或 `ComponentName.jsx`。
-- 适用于职责单一、无独立包级 API 的组件。
-- **物理边界约束**：简单组件必须严格保持单文件（或仅伴随一个同名样式文件）。
-- **升级阈值**：一旦该组件内部逻辑膨胀，需要剥离出私有子组件（如 `SubComponent.vue`）、私有工具函数、私有常量或独立的类型声明文件时，必须立即向上重构为 `component-package` 结构，绝对禁止在简单组件同级平铺散落这些专属附属文件。
+### 1. 物理职责边界
 
-### component-package
+代码拆分必须按职责归位，不允许把业务逻辑、状态、副作用、常量、类型和视图堆在同一个入口文件中。
 
-- 使用根 `README.md`、`index.ts` / `index.js` 和 `src/`。
-- **适用场景**：作为提供复杂能力的独立包，或当简单组件突破单文件阈值（需要私有附属文件）时，必须采用此结构。
-- 根入口只暴露稳定公共 API；内部实现（包括上述私有附属文件）必须全部收敛在 `src/` 内部。
-- `src/` 下只能保留一个核心实现入口：`index.vue`、`index.tsx` 或 `index.jsx`。
-- README 必须说明使用方式、公开契约（props、emits、slots、ref、expose）、主要状态和限制条件。
+常见职责目录：
 
-### business-module
+- `components/`：UI 与视图组件。
+- `constants/`：静态配置、枚举、菜单、表格列等。
+- `utils/`：纯函数，禁止引入 Vue/React 响应式或生命周期 API。
+- `composables/` / `hooks/`：有状态逻辑、生命周期、副作用和可复用交互逻辑。
+- `api/`：HTTP 请求、接口调用和服务端交互契约。
+- `types/`：仅存放 TypeScript `interface` 和 `type`。
 
-- 根入口使用 `index.vue`、`index.tsx` 或 `index.jsx`。
-- 围绕一个页面、流程或领域能力组织，而不是围绕技术名词先建目录。
-- 模块私有 API、常量、类型、组件和工具默认留在模块内。
+组件是否拆分由用户需求、业务复杂度和项目现有结构决定。本 Skill 不强制替用户设计组件形态，但一旦拆分，拆分后的文件必须遵守职责边界和目录门面规则。
 
-### utility-library
+### 2. 默认目录门面
 
-- 使用根 `README.md`、`index.ts` / `index.js` 和 `src/`。
-- `src/` 下使用 `index.ts` / `index.js` 作为聚合入口。
-- 工具函数保持纯净、可组合、可测试；涉及副作用时显式表达依赖。
+所有代码职责目录默认必须提供 `index.ts` 作为目录门面。目录外调用方必须从目标目录的 `index.ts` 导入，禁止绕过门面 Deep Import 到具体实现文件。
 
-### ui-library
+适用目录包括但不限于：
 
-- 使用根 `README.md`、`index.ts` / `index.js` 和 `src/`。
-- `src/components/` 下至少包含一个复杂组件包。
-- UI 组件库组件之间通过公共入口协作，不互相穿透内部 `src/`。
+- `components/`
+- `constants/`
+- `utils/`
+- `composables/`
+- `hooks/`
+- `api/`
+- `types/`
+- 复杂组件包的子职责目录
 
-## 通用实现原则
+`index.ts` 是对外契约，不是导出垃圾桶。只导出当前目录允许外部使用的 API，内部实现文件不得因为存在而被无脑导出。
 
-- 契约优先：props、emits、slots、ref、callback 和 children 必须表达真实调用契约。
-- 文件与目录命名约束：UI 组件文件及其专属目录必须使用 `PascalCase`（如 `DataTable.vue`、`AuditDialog/`），但作为包/目录默认聚合入口的 `index.vue`、`index.tsx` 或 `index.jsx` 必须保持全小写；纯逻辑文件、工具函数、Hooks 以及非组件的业务模块目录必须使用 `kebab-case`（如 `use-table-sort.ts`、`purchase-order/`）。严禁同级混用命名风格，以彻底杜绝跨操作系统（macOS/Windows vs Linux）大小写不敏感导致的 CI/CD 构建失败。
-- UI 与逻辑解耦：在复杂组件或底层库中，优先采用 Headless 架构，将核心状态、校验和业务逻辑独立，UI 渲染层仅负责消费状态和触发事件。
-- 配置与元数据隔离：在配置驱动或复杂递归场景中，Schema（如 Zod、JSON Schema）或元数据（Meta）既是运行时的校验逻辑，又是类型推导的单一事实来源。它们必须作为核心契约，独立存放在专属文件或目录（如 `src/schemas/`）中，确保 UI 渲染层只消费契约而不负责定义。
-- 就近内聚 (Co-location) 与演练场隔离：组件、模块或工具包私有的常量 (`constants`)、类型 (`types`)、工具函数 (`utils`) 和 hooks 必须收敛在自身的内部目录中。单元测试文件（`.test.ts` / `.spec.ts`）必须放在同级 `__tests__/` 目录中；交互示例或 Storybook 文件必须放在同级 `__demos__/` 或 `__stories__/` 目录中。这些辅助工程文件必须与生产代码物理隔离，严禁直接混入 `src/` 核心图谱，严禁在根目录建立大而全的镜像测试目录。
-- 状态就近：组件或模块私有状态留在就近边界内；只有跨组件共享、跨页面保留或流程边界明确时才上浮到 store 或 Context。
-- 逻辑贴近使用点：私有逻辑默认留在组件或模块内部；只有复用、测试或复杂度收益明确时才抽到 hook、composable 或普通函数。
-- 聚合导出 (Barrel Export) 与防循环依赖：在公共层级（如 `src/components`、`src/utils`、`src/constants`）必须维护顶层的 `index.ts` 作为统一聚合入口。外部调用方强制按层级干净导入（如 `import { Button } from '@/components'`），严禁绕过顶层入口直接导入下级包。
-- 内部引用隔离：同级目录下的内部实现文件之间，严禁通过自身的公共 `index.ts` 互相导入，必须使用直接相对路径引用，以彻底杜绝循环依赖。
-- 失败显性与异常语义化：输入、依赖或运行状态不满足契约时暴露失败，不写静默兜底或伪成功。在复杂模块或底层库抛出异常时，**严禁直接 `throw new Error('纯文本')`**，必须抛出包含特定错误码和上下文参数的自定义领域错误类（如 `FormValidationError`、`ModuleLoadError`），以便调用方精准捕获与降级。
-- 类型扩展性与显式返回：对外暴露的公共对象契约（如组件 Props、配置项）强制使用 `interface` 定义，保留 TypeScript 的声明合并（Declaration Merging）能力；仅在需要联合/交叉类型时使用 `type`。所有包级或模块级公共出口的函数、Hooks 和类，**强制显式声明返回类型**，严禁依赖自动推导，以防止私有类型意外泄漏并极大提升宿主应用的 TS 编译性能。
-- 抽象要付账：新目录、新 hook、新 composable、新 wrapper 必须减少至少三个调用方的重复代码、为庞大且稳定的双使用点逻辑建立独立测试边界，或消除一个具体错误类别。
-- 注释解释意图：注释只说明契约、边界、业务例外和非显然取舍，不复述实现步骤。
+### 3. 门面例外
 
-## Vue 3 标准
+以下目录通常不要求提供 `index.ts`：
 
-- 默认使用 Composition API 和 `<script setup>`。
-- `defineProps`、`defineEmits`、`defineSlots`、`defineExpose` 的类型与运行时行为必须一致。
-- props 默认值优先使用 Vue 3.5+ 的响应式解构；维护旧版本时使用 `withDefaults(defineProps(...), ...)`。注意：将解构后的 props 传入外部普通函数或 composables 时，需通过 getter（`() => propValue`）或传递整个 props 对象，避免响应式丢失风险；使用 `watch` 监听解构后的基本类型 props 时，同样必须使用 getter 形式（`watch(() => propValue, ...)`），否则无法触发回调。绝对不要在业务逻辑里用二次合并或 `??` / `||` 伪造默认契约。
-- 组件需要标准 `v-model` 契约时优先使用 `defineModel`（Vue 3.4+）。
-- 只有多路 model、第三方契约或现有项目约定明确要求时，才回到手写 `modelValue` / `update:modelValue`。
-- 多个 v-model 时使用具名 model：`defineModel<string>('title')`、`defineModel<boolean>('visible')`。
-- 优先使用 `useTemplateRef`（Vue 3.5+）；只有版本或工具链不支持时才回退到 `ref()` + 模板 `ref="xxx"`。
-- `computed` 用于派生状态，`watch` 用于同步外部副作用，不用 `watch` 复制可计算状态。
-- `watchEffect` 用于自动追踪依赖的副作用；明确依赖时优先 `watch`。
-- `provide/inject` 只用于跨层级组件通信，不用于替代 props 传递。
-- 必须提供 InjectionKey 类型和默认值或显式错误。
-- 避免在 `setup` 顶层执行副作用；副作用放入生命周期钩子或 `watchEffect`。
+- 框架约定扫描目录：`pages/`、`app/`、`routes/`、`layouts/`、`middleware/`、`server/api/`。
+- 测试与样例目录：`__tests__/`、`__mocks__/`、`__fixtures__/`、`__snapshots__/`、`__stories__/`、`__demos__/`。
+- 资产与样式目录：`assets/`、`images/`、`icons/`、`fonts/`、`styles/`、`public/`。
+- 构建与生成目录：`dist/`、`build/`、`coverage/`、`generated/`、`.nuxt/`、`.output/`、`vendor/`。
+- 仅作为实现容器且已有上层门面的 `src/`。
 
-## React 标准
+如果上述目录中再出现真实代码职责目录，例如 `pages/order/components/`，该职责目录仍必须提供 `index.ts`。
 
-- 默认使用 function component 和 hooks。
-- 不使用 class component，除非维护遗留代码或需要 Error Boundary（React 19 前）。
-- 组件函数命名使用 PascalCase，hooks 使用 `use` 前缀。
-- props 使用 TypeScript interface 或 type 声明，命名为 `ComponentNameProps`。
-- `useEffect` 只用于同步外部系统（DOM、订阅、网络）；派生状态用计算或 `useMemo`。
-- `useMemo`、`useCallback`、`memo` 只用于真实稳定性或性能边界，不为“看起来优化”滥用。
-- React 19+ 时，ref 可直接作为 prop 接收；React 18 时需要暴露 DOM 或方法时使用 `forwardRef` + `useImperativeHandle`。
-- `useImperativeHandle` 只暴露调用方真正需要的方法，不泄露内部实现。
-- Context 只用于跨层级共享不频繁变化的数据（主题、locale、auth）。
-- 频繁变化的状态不放 Context，避免不必要的子树重渲染。
-- 提供 custom hook 封装 Context 消费，内含空值检查和错误提示。
+### 4. Deep Import 禁止规则
 
-## 组件标准
-
-- 组件只对外暴露必要能力；不要把内部实现、临时状态或工具函数泄露成公共 API。
-- 复杂表单、嵌套组件优先采用原子化设计与递归组合（通过 slots 组装层级），而非庞大的臃肿容器组件。
-- 交互组件必须覆盖当前职责下真实存在的 loading、disabled、empty、error、readonly、focused 等状态。
-- 表单组件必须明确受控/非受控模型、校验触发时机和错误展示来源。
-- 可访问性交互必须包含语义元素、键盘路径、焦点管理和必要 ARIA。
-- 样式优先使用项目已有样式体系（Scoped CSS、CSS Modules、UnoCSS/Tailwind、styled-components）；同一项目不混用多种样式方案。
-- 简单组件的类型优先贴近使用点，写在同一文件内。
-- 复杂组件可按职责拆分 `types/props.ts`、`types/emit.ts`、`types/ref.ts`、`types/expose.ts`、`types/context.ts` 和 `types/index.ts`。
-- 类型出口必须严格分离，**强制使用 `export type` 或 `export type *`**（例如 `export type * from './props'`）。严禁使用 `export *` 混合导出类型和值，以确保 Vite/ESBuild（`isolatedModules`）环境下的编译安全和最佳的 Tree-shaking 效果。
-- 路径别名优先；外部调用方强制只通过层级的顶层聚合入口（如 `@/components`）导入。
-- 禁止 deep import，不得穿透到组件内部 `src/`、私有目录或绕过顶层 API 去导入具体包文件。
-
-## 业务模块标准
-
-- 模块页面和组件默认使用 `<script setup>` 或 function component。
-- `defineProps`、`defineEmits`、`defineSlots`、`defineExpose` 的类型与运行时行为必须一致。
-- 模块状态默认留在当前页面组件内（随组件卸载自动清理）；只有跨模块共享、跨页面保留或业务流程要求时才上浮到 store 或外部状态。**一旦状态上浮，必须同时提供并在对应生命周期（如 `onUnmounted`）主动调用状态清理契约**，严防 SPA 路由切换导致的状态残留或内存泄漏。
-- 模块私有常量、类型、组件和工具默认留在模块内（就近内聚原则）。
-- **务实的复用与拆分时机**：避免两次重复就过早抽象。只有当逻辑满足以下任一条件时才应拆分提取：
-  1. 出现 **3 个**明确的独立使用点，已经形成稳定复用模式。
-  2. 仅有 **2 个**使用点，但逻辑庞大且极其稳定（如复杂的格式化算法、特定业务表单的核心校验），出于建立独立单元测试边界的需要允许拆分。
-- 不要因为文件变长就机械拆分；拆分必须对应可命名的职责、复用点或测试边界。
-- **按领域边界而非物理交集提升**：公共代码的落点必须由其真实复用范围决定，而不是先找一个“最近公共父级”再往上挂：
-  - **单体项目**：跨模块复用的代码直接进入全局桶，例如 `@/components`、`@/utils`、`@/composables`、`@/constants`、`@/types`；不要为了“看起来规整”生造 `shared` 父目录。
-  - **Monorepo**：跨模块复用的代码必须进入统一的或领域相关的共享 workspace package（如 `@project/shared` 或 `@project/core`），由包名作为稳定边界，禁止在业务目录里制造假公共父级。非必要不为了单一函数新建独立的微包。
-  - **局部业务逻辑**：只在当前模块内复用的辅助逻辑，才留在模块内部的 `utils`、`composables`、`types` 或私有子组件中。
-- 单个模块不得再嵌套深层 `src/` 目录。
-- 前端目录遵循单一入口、按需拆分。
-- 路径别名优先：跨模块引用或多层级向上查找时，严格统一使用层级聚合入口导出。
-- 禁止 deep import；外部不得穿透到具体实现文件、私有目录或伪共享层。
-
-## 工具包与 UI 组件库标准
-
-- 工具包、UI 组件库和独立组件包都必须把公共 API 和内部实现分层。
-- 只有 `component-package`、`utility-library` 和 `ui-library` 允许通过根 `index.ts` / `index.js` 暴露包级公共 API。
-- 根入口只暴露稳定公共 API；内部实现留在 `src/`。
-- `styles/` 只使用一个 `index.css`、`index.scss` 或 `index.less` 作为样式入口。
-- README 必须说明使用方式、公共 API、主要约束和典型示例。
-- **Tree-shaking 契约**：所有提供聚合导出（`index.ts`）的包，必须在其 `package.json` 中显式声明 `"sideEffects"` 字段。除样式文件外，纯逻辑代码必须声明为 `sideEffects: false`，确保构建工具能够安全清除死代码。
-- **依赖声明隔离**：严格管理 `package.json`。宿主环境依赖（如 `vue`, `react`, `zod` 等）必须声明为 `peerDependencies`，绝对禁止放入 `dependencies` 中，以防在宿主应用打包出多个实例导致响应式死锁或上下文断裂。
-- 禁止为了兼容旧导出路径保留双 barrel、镜像目录或重复实现。
-- UI 组件库组件之间通过公共入口协作，不互相穿透内部 `src/`。
-- 涉及浏览器、时间、随机数、网络和存储时显式表达依赖和失败语义。
-
-## 评审输出
-
-当任务是评审、检查或判断是否符合标准时，先给出目标分类和检查范围，再输出问题点与改动建议，不得只复述规则。
-
-### 必须包含
-
-1. 目标分类
-2. 检查范围
-3. 总结论
-4. 问题列表
-5. 改动建议汇总
-
-### 总结论
-
-- 只能使用 `PASS`、`FAIL`、`MISSING` 或 `NOT RUN`
-
-### 每个问题都必须包含
-
-- 编号
-- 严重级别：`critical`、`major` 或 `minor`
-- 对应规则点
-- 证据：文件路径和位置
-- 问题说明：说明为什么不符合当前目标，而不是只复述规则
-- 改动建议：给出可直接执行的修改方向、目标文件和建议落点
-
-### 禁止
-
-- 只复述规则，不指出当前代码哪里不符合。
-- 只写“建议优化”“建议调整”“建议规范化”这类空泛建议。
-- 没有证据就下结论。
-- 把未检查项、缺少脚本或未验证内容写成 `PASS`。
-- 把结构校验脚本的 `PASS` 当成实现整体 `PASS`。
-
-## 示例
-
-### 简单组件（simple-component）
-
-```text
-components/
-├── StatusBadge.vue
-├── UserAvatar.vue
-├── InlineChart.vue
-├── __tests__/
-│   └── StatusBadge.spec.ts
-└── __demos__/
-    └── StatusBadge.story.vue
-````
-
-符合物理边界约束，严禁在此同级散落如 `format-avatar.ts` 等专属逻辑文件。若需附属文件，必须触发阈值升级为复杂组件包。测试和演练场遵循就近隔离原则。
-
-### 复杂组件包（component-package）
-
-```text
-DataTable/
-├── README.md
-├── index.ts
-└── src/
-    ├── index.vue
-    ├── schemas/
-    │   └── column-schema.ts
-    ├── composables/
-    │   ├── index.ts
-    │   └── use-table-sort.ts
-    ├── components/
-    │   ├── index.ts
-    │   ├── BodyRow.vue                  <-- 简单的私有子组件（单文件）
-    │   └── AdvancedFilter/              <-- 复杂的私有子组件（触发阈值，递归套用包结构）
-    │       ├── index.ts
-    │       └── src/
-    │           ├── index.vue
-    │           └── utils/
-    │               └── filter-parser.ts
-    ├── types/
-    │   ├── index.ts
-    │   ├── props.ts
-    │   └── emit.ts
-    ├── utils/
-    │   ├── index.ts
-    │   └── normalize-column.ts
-    └── styles/
-        └── index.scss
-````
-
-**内部依赖与公共依赖边界：**
-- **私有内聚**：像 `BodyRow` 或 `AdvancedFilter` 这种**仅服务于** `DataTable` 的私有组件，必须收敛在自身 `src/components/` 内。如果私有子组件自身也突破了单文件阈值（复杂度过高），允许且应当在内部递归套用 `component-package` 结构（如上方的 `AdvancedFilter`）。
-- **公共上浮**：如果是 `Checkbox` 或 `Pagination` 等具备全局通用性的组件，**绝对禁止**强行内聚或圈养在 `DataTable` 内部。必须提取到全局公共组件库（`@/components/Pagination`），`DataTable` 仅通过顶层公共契约（`@/components`）进行外部导入。
-
-### 工具包（utility-library）
-
-```text
-clipboard-toolkit/
-├── README.md
-├── package.json        <-- 声明 peerDependencies 与 sideEffects
-├── index.ts
-└── src/
-    ├── index.ts
-    ├── clipboard/
-    │   ├── index.ts
-    │   ├── api/
-    │   │   ├── index.ts
-    │   │   └── clipboard-api.ts
-    │   └── constants/
-    │       ├── index.ts
-    │       └── clipboard-options.ts
-    ├── utils/
-    │   ├── index.ts
-    │   └── normalize-text.ts
-    └── types/
-        └── index.ts
-````
-
-**层级聚合导出示例：**
+跨职责目录调用必须经过目标目录门面。
 
 ```ts
-// 1. clipboard-toolkit/src/clipboard/index.ts
-export * from './api'
-// 2. clipboard-toolkit/src/index.ts (内部核心聚合层)
-export * from './clipboard'
+// ✅
+import { OrderStatusBadge } from './components'
+import { formatOrderCode } from './utils'
+import type { OrderPayload } from './types'
 
-export * from './constants'
-// 3. clipboard-toolkit/index.ts (对外最终 API 门面)
-export { copyText, readText } from './src'
-// 使用 interface 保证公共契约的 Declaration Merging 扩展能力
-export type { CopyTextOptions, ReadTextOptions } from './src'
-
-export * from './types'
-export * from './utils'
-````
-
-```md
-# ClipboardToolkit
-
-剪贴板操作工具包。
-
-## 使用
-
-```ts
-import { copyText } from '@example/clipboard-toolkit'
-
-await copyText({ text: 'Hello', navigator: window.navigator })
+// ❌
+import OrderStatusBadge from './components/OrderStatusBadge.vue'
+import { formatOrderCode } from './utils/format-order-code'
+import type { OrderPayload } from './types/order'
 ```
 
-## 约束
+目录内部为了避免循环依赖，可以使用就近相对导入内部实现文件，但不得把这种内部路径暴露给目录外调用方。
 
-- 必须显式传入 navigator，不依赖全局对象。
-````
+### 5. 上帝文件拆解
 
-### UI 组件库（ui-library）
+入口文件只负责组合视图、连接状态和表达主流程。以下内容不得长期堆在入口文件中：
+
+- 大段静态配置。
+- 复杂计算逻辑。
+- 可独立测试的纯函数。
+- 可复用的状态逻辑。
+- 多个独立子视图。
+- HTTP 请求细节。
+- 大量类型定义。
+
+拆分后的代码必须进入对应职责目录，并通过目录 `index.ts` 对外暴露。
+
+---
+
+## 二、目标分类与物理标准
+
+### 1. simple-component
+
+简单组件通常只包含：
+
+- `ComponentName.vue` / `ComponentName.tsx`
+- 同名样式文件
+- 可选测试、故事或演示目录
+
+如果出现专属 `utils/`、`types/`、`hooks/`、`components/` 等职责目录，应升级为 `component-package`。
+
+### 2. component-package
+
+复杂组件包必须采用以下结构：
 
 ```text
-MoluoxixiUI/
+ComponentName/
 ├── README.md
-├── package.json
 ├── index.ts
 └── src/
-    ├── index.ts
+    ├── index.vue
     ├── components/
-    │   ├── index.ts    <-- 组件层聚合入口
-    │   ├── Button/
-    │   │   ├── README.md
-    │   │   ├── index.ts
-    │   │   └── src/
-    │   │       ├── index.vue
-    │   │       └── types/
-    │   │           ├── index.ts
-    │   │           └── props.ts
-    │   └── DataTable/
-    │       ├── README.md
-    │       ├── index.ts
-    │       └── src/...
-    ├── composables/
-    │   ├── index.ts    <-- 逻辑层聚合入口
-    │   └── use-theme.ts
-    └── styles/
-        └── index.scss
-````
+    ├── constants/
+    ├── utils/
+    ├── composables/ 或 hooks/
+    └── types/
+```
 
-**层级聚合导出示例：**
+根 `index.ts` 是组件包唯一公共出口。外部禁止穿透到 `src/`。
 
-```ts
-// 1. MoluoxixiUI/src/components/index.ts
-export { Button } from './Button'
-export type { ButtonProps } from './Button'
-// 3. MoluoxixiUI/src/index.ts (内部主聚合出口)
-export * from './components'
-export * from './composables'
+### 3. business-module
 
-export { DataTable } from './DataTable'
-
-export type { DataTableColumn, DataTableProps } from './DataTable'
-// 4. MoluoxixiUI/index.ts (对外最终 API 门面)
-export * from './src'
-
-// 2. MoluoxixiUI/src/composables/index.ts
-export { useTheme } from './use-theme'
-````
-
-### 页面模块
+业务模块根目录保留主视图入口：
 
 ```text
-views/
-└── purchase-order/
-    ├── index.vue
-    ├── api/
-    │   ├── index.ts
-    │   └── purchase-order-api.ts
-    ├── components/
-    │   ├── index.ts
-    │   ├── StatusBadge.vue
-    │   └── AuditDialog/
-    │       ├── README.md
-    │       ├── index.ts
-    │       └── src/
-    │           └── index.vue
-    ├── styles/
-    │   ├── index.scss
-    │   └── purchase-order.scss
-    └── types/
-        ├── index.ts
-        └── purchase-order.ts
-````
+views/purchase-order/
+├── index.vue
+├── api/
+├── components/
+├── constants/
+├── composables/
+├── types/
+└── utils/
+```
 
-公共代码应直接进入全局 `@/components`、`@/utils`、`@/composables`、`@/constants` 或 `@/types`；Monorepo 场景则进入统一的或领域相关的共享 workspace package（如 `@project/shared` 或 `@project/core`），不为单一函数新建微包。不要在页面目录之间生造一个“共享父级”。
+业务模块内部按职责目录组织。跨模块共享代码必须进入全局共享目录或 Monorepo 共享包，禁止在业务目录之间生造伪共享父级。
 
-### 类型组织与导入隔离
+### 4. utility-library / ui-library
+
+工具包和 UI 库必须包含：
+
+- `README.md`
+- `index.ts`
+- `src/`
+- `package.json`
+
+纯逻辑包必须声明 `"sideEffects": false`。存在样式副作用的 UI 库必须明确声明 `"sideEffects"` 范围。
+
+宿主单例依赖如 `vue`、`react` 必须放入 `peerDependencies`。如果公共 API 直接暴露第三方库的类型、实例或运行时对象，该第三方库也应作为 `peerDependencies`，避免宿主多版本冲突。
+
+---
+
+## 三、类型、命名与注释
+
+### 1. 命名规范
+
+- UI 组件文件和包含 UI 的专属目录使用 `PascalCase`。
+- 纯逻辑文件和非 UI 业务目录使用 `kebab-case`。
+- 聚合入口统一使用 `index.ts`。
+- 禁止同一层级混用命名风格。
+
+### 2. 类型出口
+
+`types/index.ts` 必须只导出类型。
 
 ```ts
-export type * from './emit'
-export type * from './expose'
-// types/index.ts
-export type * from './props'
-export type * from './ref'
-````
+export type * from './purchase-order'
+```
+
+若项目 TypeScript 版本不支持 `export type *`，使用显式类型导出：
 
 ```ts
-import type { DataTableColumn } from '@/components'
-// ✅ 正确：外部调用方严格统一只通过所在层的顶级聚合 API 入口（Barrel）干净导入
-import { DataTable } from '@/components'
-import { copyText } from '@/utils'
+export type { PurchaseOrderPayload } from './purchase-order'
+```
 
-// ❌ 错误：触发禁止 deep import 规则（即使是包级别入口，若存在层级统一出口也不得绕过）
-// import { DataTable } from '@/components/DataTable'
-// import { copyText } from '@/utils/clipboard-toolkit'
+禁止在类型门面中使用 `export *` 混合导出类型和值。
 
-// ❌ 错误：触发禁止 deep import 规则（绕过所有聚合层直达实现文件）
-// import { useTableSort } from '@/components/DataTable/src/composables/use-table-sort'
+### 3. 公共 API 返回类型
 
-// ❌ 错误：同级内部文件之间触发循环依赖风险
-// 在 DataTable 组件内部文件引用自身的 utils 时：
-// import { normalizeColumn } from '@/components/DataTable' // 禁止！通过出口入口倒流
-// import { normalizeColumn } from '../utils/normalize-column' // 必须！使用物理相对路径
-````
+所有通过目录门面导出的公共函数、Hooks、Composables 和类必须显式声明返回类型，禁止公共契约依赖自动推导。
 
-## 自校验脚本与检查策略
+### 4. 注释标准
 
-根目录提供的 `scripts/verify-rules.mjs` 应作为 CI/CD 和 Git Hooks 的前置卡口，包含以下 4 个核心检查器实现：
+代码注释必须解释设计意图、API 契约、复杂业务规则或非显然取舍。禁止写重复代码含义的空洞注释。
 
-1. **物理结构与阈值检查器 (FS Structural Checker)**
-   - `simple-component`：扫描同级目录，发现除样式和 `__tests__` / `__demos__` 外的 `.ts`/`.vue` 专属文件即抛出阈值超载错误，强制升级。
-   - 复杂包 (`component-package` 等)：强制校验是否包含 `index.ts` 出口与包含唯一业务入口的 `src/` 结构。
-2. **命名规范扫描器 (Naming Convention Scanner)**
-   - 拦截系统差异：UI 文件及包含 UI 的目录硬性匹配 `PascalCase`；纯逻辑代码及业务模块硬性匹配 `kebab-case`。
-3. **导入路径 AST 分析器 (Import Path Analyzer)**
-   - 拦截 Deep Import：解析 AST，发现 import 路径绕过了层级聚合出口（如存在 `@/components/index.ts` 时使用 `@/components/DataTable/xxx`）即报错。
-   - 拦截循环依赖：检查同级目录下的模块是否通过外层的 `index.ts` 聚合出口相互导入。
-4. **跨界与共享边界扫描器 (Boundary Scanner)**
-   - **注意**：脚本无法真正理解“业务语义”。它只检查抽离目标是否落在允许的共享边界内，判断依据是“单体全局桶”或“Monorepo 共享 workspace package”，不是某个物理父目录。
-   - **执行逻辑**：如果脚本发现共享逻辑被塞进页面、模块或 feature 的局部父级目录，而不是落在全局共享桶或共享 workspace package 中，脚本将抛出 `[HOIST_WARNING]` 警告。
-   - **拆分阈值**：脚本默认要求 `--uses` 提供至少 3 个使用点；仅 2 个使用点但确属复杂且稳定逻辑时，必须显式传入 `--stable-two-use` 表示人工确认的拆分例外。
-   - **人工介入**：触发警告后，必须人工核实：这段代码是否应该进入全局共享桶，或者在 Monorepo 中提升到统一的或领域相关的共享 workspace package；若只是临时拼出来的共享父级，必须拆回去。
+---
 
-**常用命令：**
-- `node scripts/verify-rules.mjs simple-component --root src/components/StatusBadge.vue`
-- `node scripts/verify-rules.mjs component --root src/components/DataTable`
-- `node scripts/verify-rules.mjs module --root src/views/purchase-order`
-- `node scripts/verify-rules.mjs utility --root packages/browser-toolkit`
-- `node scripts/verify-rules.mjs ui-library --root packages/MoluoxixiUI`
-- `node scripts/verify-rules.mjs hoist --target src/utils/order-formatters --uses src/views/purchase-order/index.vue src/views/sales-order/index.vue src/views/refund-order/index.vue`
+## 四、Vue 标准
 
-## 检查清单
+- 默认使用 Vue 3 Composition API 和 `<script setup>`。
+- 若项目支持 Vue 3.5+，props 默认值优先使用响应式解构，模板引用优先使用 `useTemplateRef`。
+- 若项目支持 Vue 3.4+，标准双向绑定优先使用 `defineModel`。
+- 解构后的 props 传入普通函数时，必须避免响应式丢失。
+- SPA 路由状态上浮到外部 Store 时，必须提供清理契约，并在组件卸载时调用。
 
-1. 是否先写了目标分类？
-2. 是否明确写出本次实际检查范围？未检查部分是否标记 `NOT RUN`？
-3. 总结论是否只使用 `PASS`、`FAIL`、`MISSING` 或 `NOT RUN`？
-4. 每个问题是否都包含规则点、证据、问题说明和可执行改动建议？
-5. 改动建议是否具体到文件和建议落点，而不是空泛措辞？
-6. 是否把结构校验脚本的 `PASS` 错写成实现整体 `PASS`？
-7. 是否存在没有证据就下结论的断言？
-8. 是否运行了与风险匹配的现有 lint、typecheck、test、build 或浏览器验证？
-9. 是否把简单组件、复杂组件、业务模块、工具包和 UI 组件库分开判断？
-10. 是否检查了简单组件的**物理边界阈值**（无散落文件）？是否验证了就近内聚原则与同级目录无**循环依赖**引用？
-11. 是否检查了**文件命名约束**（组件 PascalCase，逻辑/模块 kebab-case）和**状态清理契约**（SPA 路由切换防残留）？
-12. 库开发项目是否正确配置了 `sideEffects` Tree-shaking 契约与 `peerDependencies` 环境隔离？公开契约是否采用了可扩展的 `interface` 以及显式声明的返回类型？
-13. 公共代码是否按照**领域边界**正确提升，而不是单纯受困于机械的物理最近公共父级？单体项目是否直接回到全局 `@/xxx` 桶，Monorepo 是否进入统一或领域相关的共享 workspace package，并避免为了单一函数新建微包？是否保证了层级隔离和统一顶层导入要求？
+---
 
-### 评审输出示例
+## 五、React 标准
 
-```md
-## 评审输出
+- 默认使用 Function Component 和 Hooks。
+- 禁止新写 Class Component，除非项目已有明确约束。
+- `useEffect` 仅用于同步外部系统，派生状态使用计算、`useMemo` 或状态建模。
+- React 19+ 可直接将 `ref` 作为 prop 接收。
+- React 18 如需暴露实例方法，使用 `forwardRef` 和 `useImperativeHandle`。
 
-### 目标分类
-component-package
+### React 全局状态防腐
 
-### 检查范围
-已检查 src/components/DataTable/index.ts、src/components/DataTable/src/types/props.ts、src/views/purchase-order/index.vue
+页面级状态不得无边界写入 Zustand、Redux 或全局 Context。
 
-### 总结论
-FAIL
+当以下状态上浮到全局 Store 或跨页面 Provider 时，必须提供明确的清理契约：
 
-### 问题列表
-1. [major] 规则点：层级导入契约禁止绕过顶层 API
-   证据：src/views/purchase-order/index.vue:12
-   问题说明：调用方绕过了 @/components 顶层聚合出口，穿透到了具体的 DataTable/src/... 路径，破坏了外部调用的无感重构体验。
-   改动建议：将对应工具方法提升并统一从 @/components/index.ts 导出，调用方修改为 import { useTableSort } from '@/components'。
+- 路由查询参数。
+- 筛选条件。
+- 分页参数。
+- 表单草稿。
+- 选中行、展开行、当前 Tab。
+- 弹窗开关与临时提交状态。
+- 页面级 Loading、Error 或异步请求状态。
 
-2. [major] 规则点：简单组件物理边界与升级阈值
-   证据：src/components/StatusBadge.vue 同级目录存在专属文件 format-status.ts
-   问题说明：简单组件打破了单文件约束，同级散落了私有工具函数，污染了外层目录树。
-   改动建议：触发升级阈值。请新建 src/components/StatusBadge/ 目录，将组件移入 src/index.vue，工具移入 src/utils/format-status.ts，并确保 @/components/index.ts 中完成导出。
+页面组件必须在卸载时调用清理契约，常见落点包括 `useEffect` cleanup、路由离开生命周期或框架提供的等价机制。
 
-### 改动建议汇总
-- src/components/index.ts：确认 StatusBadge 与 useTableSort 的统一导出。
-- src/views/purchase-order/index.vue：第 12 行导入路径由深层包引用改为层级导出 @/components。
-- 新建目录 src/components/StatusBadge/src/，移动并重构相关文件。
-````
+```tsx
+useEffect(() => {
+  return () => {
+    useOrderStore.getState().resetPageState()
+  }
+}, [])
+```
+
+Redux 场景必须提供明确的 reset action；Context 场景必须由 Provider 暴露 reset 方法或将 Provider 下沉到页面边界内。
+
+允许跨页面保留的状态必须显式命名并说明生命周期，例如 `persistent`、`session`、`cache`。不得把页面临时状态默认永久保留在全局 Store 中。
+
+---
+
+## 六、错误与校验边界
+
+前端代码不得通过默认值、空判断、静默捕获、降级路径或伪成功状态掩盖真实错误。
+
+运行时校验不属于本通用 Skill 的默认架构要求。若项目主动引入表单、接口或外部数据 schema，其规则应由项目专属规范定义；本 Skill 仅要求不要把内部已类型化状态做成冗余防御式校验。
+
+---
+
+## 七、评审输出要求
+
+执行评审时必须输出：
+
+1. **目标分类**：`simple-component`、`component-package`、`business-module`、`utility-library` 或 `ui-library`。
+2. **检查范围**：明确列出已扫描的文件或目录路径。
+3. **总结论**：`PASS`、`FAIL`、`MISSING` 或 `NOT RUN`。
+4. **问题列表**：包含编号、严重级别、规则点、证据、问题说明和具体改动落点。
+
+严重级别：
+
+- `critical`：破坏公共契约、架构边界或运行正确性。
+- `major`：导致结构劣化、Deep Import、职责混乱或测试困难。
+- `minor`：命名、出口、注释或局部组织问题。
+
+---
+
+## 八、自校验脚本建议
+
+项目可配置脚本拦截以下问题：
+
+- 代码职责目录缺少 `index.ts`。
+- 外部调用绕过目录门面 Deep Import。
+- `utils/` 引入 Vue/React 状态、生命周期或副作用 API。
+- `types/index.ts` 混合导出类型和值。
+- 文件或目录命名不符合 PascalCase / kebab-case 规则。
+- 业务模块之间通过相对路径共享代码。
+
+---
+
+## 九、检查清单
+
+提交前必须核对：
+
+- [ ] 代码职责目录是否都有 `index.ts`？
+- [ ] 跨目录调用是否只经过目标目录门面？
+- [ ] 是否存在 Deep Import 到具体实现文件？
+- [ ] `utils/` 是否保持纯函数和无状态？
+- [ ] 公共 API 是否显式声明返回类型？
+- [ ] 类型门面是否只导出类型？
+- [ ] 静态配置是否进入 `constants/`？
+- [ ] 状态逻辑是否进入 `composables/` 或 `hooks/`？
+- [ ] 入口视图是否避免成为上帝文件？
+- [ ] 页面级状态写入外部 Store 或全局 Context 时，是否提供卸载清理契约？
+- [ ] 查询参数、筛选条件、表单草稿等临时状态是否避免跨页面污染？
+- [ ] 验证命令是否按风险执行并明确标记结果？

@@ -9,8 +9,30 @@ const STYLE_ENTRY_FILENAMES = ['index.css', 'index.scss', 'index.less']
 const COMPONENT_IMPLEMENTATION_FILENAMES = ['index.vue', 'index.tsx', 'index.jsx']
 const MODULE_IMPLEMENTATION_FILENAMES = ['index.vue', 'index.tsx', 'index.jsx']
 const MAX_DEPTH = 10
-const IGNORED_DIRECTORIES = ['node_modules', '.git', 'dist', 'build', '.nuxt', '.output', '.next', '.turbo', '__tests__', '__demos__', '__stories__']
-const NON_AGGREGATE_DIRECTORIES = ['schemas']
+const IGNORED_DIRECTORIES = [
+  'node_modules',
+  '.git',
+  'dist',
+  'build',
+  'coverage',
+  'generated',
+  '.nuxt',
+  '.output',
+  '.next',
+  '.turbo',
+  '__tests__',
+  '__mocks__',
+  '__fixtures__',
+  '__snapshots__',
+  '__demos__',
+  '__stories__',
+  'assets',
+  'images',
+  'icons',
+  'fonts',
+  'styles',
+  'public',
+]
 
 function readSkillFile(...segments) {
   return fs.readFileSync(path.join(skillRoot, ...segments), 'utf8')
@@ -157,13 +179,7 @@ function assertCodeDirectoryEntries(directory, root, options = {}, depth = 0) {
     const childImplementationEntries = findExistingFiles(childDirectory, implementationEntries)
     const isImplementationSrc = entry.name === 'src' && parentHasPublicEntry && childImplementationEntries.length === 1
 
-    if (NON_AGGREGATE_DIRECTORIES.includes(entry.name)) {
-      assertCodeDirectoryEntries(childDirectory, root, options, depth + 1)
-    }
-    else if (entry.name === 'styles') {
-      assertSingleExistingFile(childDirectory, STYLE_ENTRY_FILENAMES, `样式目录 ${relative}/ 入口`)
-    }
-    else if (!isImplementationSrc) {
+    if (!isImplementationSrc) {
       assertSingleExistingFile(childDirectory, PUBLIC_ENTRY_FILENAMES, `目录 ${relative}/ 聚合入口`)
     }
 
@@ -341,9 +357,9 @@ function verifySelf() {
   assertContains(skill, /frontend-code-standard/, 'SKILL.md 必须声明 skill 名称')
   assertContains(skill, /Vue\/React 前端组件/, 'SKILL.md 必须覆盖前端技术范围')
   assertContains(skill, /组件、业务模块、前端工具包和 UI 组件库/, 'SKILL.md 必须覆盖前端范围')
-  assertContains(skill, /实现质量、目录边界、公共导出、import 路径、类型契约和交付检查/, 'SKILL.md 必须说明规则覆盖范围')
-  assertContains(skill, /不是只管目录拆分的窄规则/, 'SKILL.md 必须说明不是窄目录规则')
-  assertContains(skill, /极其严苛且务实的资深前端架构师/, 'SKILL.md 必须覆盖角色设定')
+  assertContains(skill, /门面出口、类型契约、命名规范和 Deep Import 禁止标准/, 'SKILL.md 必须说明规则覆盖范围')
+  assertContains(skill, /严苛且务实的资深前端架构师/, 'SKILL.md 必须覆盖角色设定')
+  assertContains(skill, /不替用户决定业务设计/, 'SKILL.md 必须声明不替用户决定业务设计')
   assertContains(skill, /simple-component/, 'SKILL.md 必须覆盖 simple-component')
   assertContains(skill, /component-package/, 'SKILL.md 必须覆盖 component-package')
   assertContains(skill, /business-module/, 'SKILL.md 必须覆盖 business-module')
@@ -351,46 +367,36 @@ function verifySelf() {
     throw new Error('SKILL.md 不得包含 ordinary-module')
   assertContains(skill, /utility-library/, 'SKILL.md 必须覆盖 utility-library')
   assertContains(skill, /ui-library/, 'SKILL.md 必须覆盖 ui-library')
-  assertContains(skill, /物理边界约束/, 'SKILL.md 必须覆盖简单组件物理边界')
-  assertContains(skill, /升级阈值/, 'SKILL.md 必须覆盖简单组件升级阈值')
-  assertContains(skill, /契约优先/, 'SKILL.md 必须覆盖契约优先')
-  assertContains(skill, /文件与目录命名约束/, 'SKILL.md 必须覆盖命名约束')
-  assertContains(skill, /但作为包\/目录默认聚合入口的 `index\.vue`、`index\.tsx` 或 `index\.jsx` 必须保持全小写/, 'SKILL.md 必须覆盖入口文件命名豁免')
-  assertContains(skill, /UI 与逻辑解耦/, 'SKILL.md 必须覆盖 UI 与逻辑解耦')
-  assertContains(skill, /配置与元数据隔离/, 'SKILL.md 必须覆盖配置与元数据隔离')
-  assertContains(skill, /就近内聚/, 'SKILL.md 必须覆盖就近内聚')
-  assertContains(skill, /状态就近/, 'SKILL.md 必须覆盖状态就近')
-  assertContains(skill, /逻辑贴近使用点/, 'SKILL.md 必须覆盖逻辑贴近使用点')
-  assertContains(skill, /聚合导出/, 'SKILL.md 必须覆盖聚合导出')
-  assertContains(skill, /内部引用隔离/, 'SKILL.md 必须覆盖内部引用隔离')
-  assertContains(skill, /失败显性与异常语义化/, 'SKILL.md 必须覆盖失败显性与异常语义化')
-  assertContains(skill, /类型扩展性与显式返回/, 'SKILL.md 必须覆盖类型扩展性与显式返回')
-  assertContains(skill, /抽象要付账/, 'SKILL.md 必须覆盖抽象要付账')
-  assertContains(skill, /注释解释意图/, 'SKILL.md 必须覆盖注释解释意图')
-  assertContains(skill, /若具备终端执行环境则直接按风险执行项目已有 lint、typecheck、test、build 或浏览器验证；若为纯对话环境，则向用户输出具体的需执行验证命令清单/, 'SKILL.md 必须覆盖执行边界说明')
-  assertContains(skill, /响应式丢失风险/, 'SKILL.md 必须覆盖 Vue 3.5 响应式解构提醒')
-  assertContains(skill, /watch\(\(\) => propValue, \.\.\.\)/, 'SKILL.md 必须覆盖解构 props 的 watch getter 写法')
-  assertContains(skill, /## 评审输出/, 'SKILL.md 必须覆盖评审输出')
-  assertContains(skill, /## 检查清单/, 'SKILL.md 必须覆盖检查清单')
-  assertContains(skill, /## 示例/, 'SKILL.md 必须覆盖示例')
-  assertContains(skill, /简单组件（simple-component）/, 'SKILL.md 必须覆盖简单组件示例')
-  assertContains(skill, /复杂组件包（component-package）/, 'SKILL.md 必须覆盖复杂组件包示例')
-  assertContains(skill, /工具包（utility-library）/, 'SKILL.md 必须覆盖工具包示例')
-  assertContains(skill, /UI 组件库（ui-library）/, 'SKILL.md 必须覆盖 UI 组件库示例')
-  assertContains(skill, /页面模块/, 'SKILL.md 必须覆盖页面模块示例')
-  assertContains(skill, /类型组织与导入隔离/, 'SKILL.md 必须覆盖类型组织与导入隔离示例')
-  assertContains(skill, /scripts\/verify-rules\.mjs/, 'SKILL.md 必须声明本 skill 自带的验证脚本')
-  assertContains(skill, /未执行标记 `NOT RUN`/, 'SKILL.md 必须覆盖 NOT RUN')
-  assertContains(skill, /简单组件的类型优先贴近使用点/, 'SKILL.md 必须覆盖类型贴近使用点')
-  assertContains(skill, /复杂组件可按职责拆分/, 'SKILL.md 必须覆盖复杂组件类型拆分')
-  assertContains(skill, /强制使用 `export type` 或 `export type \*`/, 'SKILL.md 必须覆盖 type-only re-export')
-  assertContains(skill, /路径别名优先/, 'SKILL.md 必须覆盖路径别名')
-  assertContains(skill, /禁止 deep import/, 'SKILL.md 必须覆盖 deep import')
-  assertContains(skill, /前端目录遵循单一入口、按需拆分/, 'SKILL.md 必须覆盖单一入口')
-  assertContains(skill, /只有 `component-package`、`utility-library` 和 `ui-library` 允许通过根 `index\.ts` \/ `index\.js` 暴露包级公共 API/, 'SKILL.md 必须覆盖公共入口限制')
-  assertContains(skill, /`styles\/` 只使用一个 `index\.css`、`index\.scss` 或 `index\.less`/, 'SKILL.md 必须覆盖样式入口限制')
-  assertContains(skill, /Tree-shaking 契约/, 'SKILL.md 必须覆盖 Tree-shaking 契约')
+  assertContains(skill, /物理职责边界/, 'SKILL.md 必须覆盖物理职责边界')
+  assertContains(skill, /所有代码职责目录默认必须提供 `index\.ts`/, 'SKILL.md 必须覆盖默认目录门面')
+  assertContains(skill, /门面例外/, 'SKILL.md 必须覆盖门面例外')
+  assertContains(skill, /Deep Import 禁止规则/, 'SKILL.md 必须覆盖 Deep Import 禁止规则')
+  assertContains(skill, /`index\.ts` 是对外契约，不是导出垃圾桶/, 'SKILL.md 必须覆盖门面契约边界')
+  assertContains(skill, /上帝文件拆解/, 'SKILL.md 必须覆盖上帝文件拆解')
+  assertContains(skill, /如果出现专属 `utils\/`、`types\/`、`hooks\/`、`components\/` 等职责目录，应升级为 `component-package`/, 'SKILL.md 必须覆盖简单组件升级条件')
+  assertContains(skill, /根 `index\.ts` 是组件包唯一公共出口/, 'SKILL.md 必须覆盖组件包公共出口')
+  assertContains(skill, /跨模块共享代码必须进入全局共享目录或 Monorepo 共享包/, 'SKILL.md 必须覆盖共享边界')
+  assertContains(skill, /sideEffects/, 'SKILL.md 必须覆盖 Tree-shaking 契约')
   assertContains(skill, /peerDependencies/, 'SKILL.md 必须覆盖依赖声明隔离')
+  assertContains(skill, /命名规范/, 'SKILL.md 必须覆盖命名规范')
+  assertContains(skill, /`types\/index\.ts` 必须只导出类型/, 'SKILL.md 必须覆盖类型门面')
+  assertContains(skill, /export type \*/, 'SKILL.md 必须覆盖 type-only re-export')
+  assertContains(skill, /显式声明返回类型/, 'SKILL.md 必须覆盖公共 API 返回类型')
+  assertContains(skill, /注释标准/, 'SKILL.md 必须覆盖注释标准')
+  assertContains(skill, /Vue 3 Composition API/, 'SKILL.md 必须覆盖 Vue 3 标准')
+  assertContains(skill, /useTemplateRef/, 'SKILL.md 必须覆盖 Vue 3.5 模板引用')
+  assertContains(skill, /defineModel/, 'SKILL.md 必须覆盖 Vue 3.4 双向绑定')
+  assertContains(skill, /SPA 路由状态上浮到外部 Store 时，必须提供清理契约/, 'SKILL.md 必须覆盖 Vue 状态清理')
+  assertContains(skill, /React 全局状态防腐/, 'SKILL.md 必须覆盖 React 全局状态防腐')
+  assertContains(skill, /Zustand、Redux 或全局 Context/, 'SKILL.md 必须覆盖 React 全局状态工具')
+  assertContains(skill, /useEffect` cleanup/, 'SKILL.md 必须覆盖 React 卸载清理')
+  assertContains(skill, /reset action/, 'SKILL.md 必须覆盖 Redux reset action')
+  assertContains(skill, /运行时校验不属于本通用 Skill 的默认架构要求/, 'SKILL.md 必须覆盖 schema 边界说明')
+  assertContains(skill, /## 七、评审输出要求/, 'SKILL.md 必须覆盖评审输出')
+  assertContains(skill, /## 八、自校验脚本建议/, 'SKILL.md 必须覆盖自校验脚本建议')
+  assertContains(skill, /## 九、检查清单/, 'SKILL.md 必须覆盖检查清单')
+  assertContains(skill, /未执行标记 `NOT RUN`/, 'SKILL.md 必须覆盖 NOT RUN')
+  assertContains(skill, /页面级状态写入外部 Store 或全局 Context 时，是否提供卸载清理契约/, 'SKILL.md 必须覆盖全局状态清理检查项')
 
   printPass('frontend-code-standard self rules are valid')
 }
