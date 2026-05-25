@@ -26,6 +26,7 @@ const IGNORED_DIRECTORIES = [
   '__snapshots__',
   '__demos__',
   '__stories__',
+  '__e2e__',
   'assets',
   'images',
   'icons',
@@ -388,10 +389,15 @@ function verifySelf() {
   assertContains(skill, /sideEffects/, 'SKILL.md 必须覆盖 Tree-shaking 契约')
   assertContains(skill, /peerDependencies/, 'SKILL.md 必须覆盖依赖声明隔离')
   assertContains(skill, /测试与质量边界/, 'SKILL.md 必须覆盖测试质量边界')
-  assertContains(skill, /单元测试统一放置在就近的 `__test__\/` 目录/, 'SKILL.md 必须覆盖 __test__ 单元测试目录')
+  assertContains(skill, /单元\/非浏览器集成测试/, 'SKILL.md 必须覆盖单元与非浏览器集成测试边界')
+  assertContains(skill, /Vitest/, 'SKILL.md 必须覆盖 Vitest 测试栈')
+  assertContains(skill, /jsdom\/happy-dom/, 'SKILL.md 必须覆盖基础渲染契约环境')
+  assertContains(skill, /props、事件回调、组件状态/, 'SKILL.md 必须覆盖通用组件挂载测试契约')
+  assertContains(skill, /统一放置在目标目录就近的 `__test__\/`/, 'SKILL.md 必须覆盖 __test__ 单元测试目录')
   assertContains(skill, /@playwright\/test/, 'SKILL.md 必须覆盖 Playwright 交互测试')
-  assertContains(skill, /DOM Mock 或快照（Snapshot）伪造交互覆盖/, 'SKILL.md 必须禁止伪造交互覆盖')
-  assertContains(skill, /缺少 `@playwright\/test`，必须将验证状态标记为 `MISSING`/, 'SKILL.md 必须覆盖 Playwright 缺失阻断')
+  assertContains(skill, /Snapshot 或 DOM Mock 替代/, 'SKILL.md 必须禁止伪造交互覆盖')
+  assertContains(skill, /项目根级的 `__e2e__\/` 目录/, 'SKILL.md 必须覆盖全局 E2E 目录')
+  assertContains(skill, /缺少 Vitest 或 `@playwright\/test`/, 'SKILL.md 必须覆盖测试依赖缺失阻断')
   assertContains(skill, /工作流与交付契约/, 'SKILL.md 必须覆盖工作流与交付契约')
   assertContains(skill, /按任务风险执行项目已有的 `lint`、`typecheck`、`test`、`build` 或浏览器验证/, 'SKILL.md 必须覆盖验证命令范围')
   assertContains(skill, /FAIL > MISSING > NOT RUN > PASS/, 'SKILL.md 必须覆盖最终状态优先级')
