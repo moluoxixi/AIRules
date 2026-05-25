@@ -62,7 +62,7 @@ description: 用于新建、编写、重构、拆分、优化、评审或校验 
 以下目录通常不要求提供 `index.ts`：
 
 - 框架约定扫描目录：`pages/`、`app/`、`routes/`、`layouts/`、`middleware/`、`server/api/`。
-- 测试与样例目录：`__tests__/`、`__mocks__/`、`__fixtures__/`、`__snapshots__/`、`__stories__/`、`__demos__/`。
+- 测试与样例目录：`__test__/`、`__mocks__/`、`__fixtures__/`、`__snapshots__/`、`__stories__/`、`__demos__/`。
 - 资产与样式目录：`assets/`、`images/`、`icons/`、`fonts/`、`styles/`、`public/`。
 - 构建与生成目录：`dist/`、`build/`、`coverage/`、`generated/`、`.nuxt/`、`.output/`、`vendor/`。
 - 仅作为实现容器且已有上层门面的 `src/`。
@@ -111,7 +111,7 @@ import type { OrderPayload } from './types/order'
 
 - `ComponentName.vue` / `ComponentName.tsx`
 - 同名样式文件
-- 可选测试、故事或演示目录
+- 可选 `__test__/`、`__stories__/` 或 `__demos__/` 目录
 
 如果出现专属 `utils/`、`types/`、`hooks/`、`components/` 等职责目录，应升级为 `component-package`。
 
@@ -201,7 +201,28 @@ export type { PurchaseOrderPayload } from './purchase-order'
 
 ---
 
-## 四、Vue 标准
+## 四、测试标准
+
+单元测试统一放在目标代码就近的 `__test__/` 目录中。禁止把 `.test.ts`、`.spec.ts`、测试夹具或测试辅助函数散落在生产代码目录里，也禁止建立与源码镜像的大而全根级测试目录。
+
+单元测试只覆盖纯函数、Hooks、Composables、组件渲染契约、状态分支和边界行为。测试工具优先使用项目已有的 Vitest/Jest、Vue Test Utils、React Testing Library 或等价栈。
+
+涉及真实浏览器交互的测试必须使用 `@playwright/test`，包括但不限于：
+
+- 鼠标、键盘、拖拽、焦点管理。
+- 弹窗、Popover、Dropdown、Tooltip 等浮层交互。
+- 路由跳转、跨页面流程和 URL 状态同步。
+- 表单填写、校验提示、提交反馈。
+- 真实浏览器布局、可见性、滚动和响应式行为。
+- 网络时序、加载态、失败态和重试路径。
+
+Playwright 测试同样放在就近 `__test__/` 目录中，文件名应显式表达交互属性，例如 `*.playwright.spec.ts` 或 `*.e2e.spec.ts`。
+
+如果任务涉及交互验证但项目缺少 `@playwright/test`，必须标记为 `MISSING` 并说明缺失依赖，不得用单元测试、手写 DOM mock 或快照测试伪造交互覆盖。
+
+---
+
+## 五、Vue 标准
 
 - 默认使用 Vue 3 Composition API 和 `<script setup>`。
 - 若项目支持 Vue 3.5+，props 默认值优先使用响应式解构，模板引用优先使用 `useTemplateRef`。
@@ -211,7 +232,7 @@ export type { PurchaseOrderPayload } from './purchase-order'
 
 ---
 
-## 五、React 标准
+## 六、React 标准
 
 - 默认使用 Function Component 和 Hooks。
 - 禁止新写 Class Component，除非项目已有明确约束。
@@ -249,7 +270,7 @@ Redux 场景必须提供明确的 reset action；Context 场景必须由 Provide
 
 ---
 
-## 六、错误与校验边界
+## 七、错误与校验边界
 
 前端代码不得通过默认值、空判断、静默捕获、降级路径或伪成功状态掩盖真实错误。
 
@@ -257,7 +278,7 @@ Redux 场景必须提供明确的 reset action；Context 场景必须由 Provide
 
 ---
 
-## 七、评审输出要求
+## 八、评审输出要求
 
 执行评审时必须输出：
 
@@ -274,7 +295,7 @@ Redux 场景必须提供明确的 reset action；Context 场景必须由 Provide
 
 ---
 
-## 八、自校验脚本建议
+## 九、自校验脚本建议
 
 项目可配置脚本拦截以下问题：
 
@@ -287,7 +308,7 @@ Redux 场景必须提供明确的 reset action；Context 场景必须由 Provide
 
 ---
 
-## 九、检查清单
+## 十、检查清单
 
 提交前必须核对：
 
@@ -299,6 +320,8 @@ Redux 场景必须提供明确的 reset action；Context 场景必须由 Provide
 - [ ] 类型门面是否只导出类型？
 - [ ] 静态配置是否进入 `constants/`？
 - [ ] 状态逻辑是否进入 `composables/` 或 `hooks/`？
+- [ ] 单元测试是否统一放在就近 `__test__/` 目录？
+- [ ] 涉及真实交互的测试是否使用 `@playwright/test`？
 - [ ] 入口视图是否避免成为上帝文件？
 - [ ] 页面级状态写入外部 Store 或全局 Context 时，是否提供卸载清理契约？
 - [ ] 查询参数、筛选条件、表单草稿等临时状态是否避免跨页面污染？

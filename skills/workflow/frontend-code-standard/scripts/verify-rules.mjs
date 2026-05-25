@@ -20,7 +20,7 @@ const IGNORED_DIRECTORIES = [
   '.output',
   '.next',
   '.turbo',
-  '__tests__',
+  '__test__',
   '__mocks__',
   '__fixtures__',
   '__snapshots__',
@@ -309,8 +309,8 @@ function assertSimpleComponent(root) {
       continue
 
     if (entry.isDirectory()) {
-      if (!['__tests__', '__demos__', '__stories__'].includes(entry.name) && entry.name === componentName)
-        throw new Error('简单组件出现同名目录，必须升级为 component-package 结构')
+      if (!['__test__', '__demos__', '__stories__'].includes(entry.name))
+        throw new Error(`简单组件同级只允许 __test__、__demos__、__stories__ 目录；发现：${entry.name}`)
 
       continue
     }
@@ -383,6 +383,10 @@ function verifySelf() {
   assertContains(skill, /export type \*/, 'SKILL.md 必须覆盖 type-only re-export')
   assertContains(skill, /显式声明返回类型/, 'SKILL.md 必须覆盖公共 API 返回类型')
   assertContains(skill, /注释标准/, 'SKILL.md 必须覆盖注释标准')
+  assertContains(skill, /## 四、测试标准/, 'SKILL.md 必须覆盖测试标准')
+  assertContains(skill, /单元测试统一放在目标代码就近的 `__test__\/` 目录/, 'SKILL.md 必须覆盖 __test__ 单元测试目录')
+  assertContains(skill, /@playwright\/test/, 'SKILL.md 必须覆盖 Playwright 交互测试')
+  assertContains(skill, /不得用单元测试、手写 DOM mock 或快照测试伪造交互覆盖/, 'SKILL.md 必须禁止伪造交互覆盖')
   assertContains(skill, /Vue 3 Composition API/, 'SKILL.md 必须覆盖 Vue 3 标准')
   assertContains(skill, /useTemplateRef/, 'SKILL.md 必须覆盖 Vue 3.5 模板引用')
   assertContains(skill, /defineModel/, 'SKILL.md 必须覆盖 Vue 3.4 双向绑定')
@@ -392,9 +396,9 @@ function verifySelf() {
   assertContains(skill, /useEffect` cleanup/, 'SKILL.md 必须覆盖 React 卸载清理')
   assertContains(skill, /reset action/, 'SKILL.md 必须覆盖 Redux reset action')
   assertContains(skill, /运行时校验不属于本通用 Skill 的默认架构要求/, 'SKILL.md 必须覆盖 schema 边界说明')
-  assertContains(skill, /## 七、评审输出要求/, 'SKILL.md 必须覆盖评审输出')
-  assertContains(skill, /## 八、自校验脚本建议/, 'SKILL.md 必须覆盖自校验脚本建议')
-  assertContains(skill, /## 九、检查清单/, 'SKILL.md 必须覆盖检查清单')
+  assertContains(skill, /## 八、评审输出要求/, 'SKILL.md 必须覆盖评审输出')
+  assertContains(skill, /## 九、自校验脚本建议/, 'SKILL.md 必须覆盖自校验脚本建议')
+  assertContains(skill, /## 十、检查清单/, 'SKILL.md 必须覆盖检查清单')
   assertContains(skill, /未执行标记 `NOT RUN`/, 'SKILL.md 必须覆盖 NOT RUN')
   assertContains(skill, /页面级状态写入外部 Store 或全局 Context 时，是否提供卸载清理契约/, 'SKILL.md 必须覆盖全局状态清理检查项')
 
