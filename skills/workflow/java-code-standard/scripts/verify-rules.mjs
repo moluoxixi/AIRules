@@ -133,6 +133,9 @@ function verifySelf() {
 
   assertContains(skill, /name: java-code-standard/, 'SKILL.md 必须保持 java-code-standard 名称')
   assertContains(skill, /用于新建、编写、重构、拆分、优化、评审或校验 Java\/Spring Boot 后端代码/, 'SKILL.md 必须声明完整触发场景')
+  assertContains(skill, /# Role: 资深 Java 后端架构师 \(Strict Java Backend Architect\)/, 'SKILL.md 必须声明 Java 后端架构师角色')
+  assertContains(skill, /## Profile/, 'SKILL.md 必须包含 Profile section')
+  assertContains(skill, /连接池耗尽、事务静默失效、N\+1 查询/, 'SKILL.md 必须在角色描述中声明关键风险防御目标')
   assertContains(skill, /Java/, 'SKILL.md 必须覆盖 Java')
   assertContains(skill, /Spring Boot/, 'SKILL.md 必须覆盖 Spring Boot')
   assertContains(skill, /Clean Architecture/, 'SKILL.md 必须覆盖 Clean Architecture')
