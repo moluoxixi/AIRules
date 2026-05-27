@@ -4,10 +4,11 @@ import path from 'node:path'
 import { fileURLToPath } from 'node:url'
 
 const skillRoot = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..')
-const PUBLIC_ENTRY_FILENAMES = ['index.ts', 'index.js']
+const PUBLIC_ENTRY_FILENAMES = ['index.ts']
 const STYLE_ENTRY_FILENAMES = ['index.css', 'index.scss', 'index.less']
-const COMPONENT_IMPLEMENTATION_FILENAMES = ['index.vue', 'index.tsx', 'index.jsx']
-const MODULE_IMPLEMENTATION_FILENAMES = ['index.vue', 'index.tsx', 'index.jsx']
+const COMPONENT_IMPLEMENTATION_FILENAMES = ['index.vue', 'index.tsx']
+const MODULE_IMPLEMENTATION_FILENAMES = ['index.vue', 'index.tsx']
+const HOST_FRAMEWORK_DEPENDENCIES = ['vue', 'react', 'react-dom']
 const MAX_DEPTH = 10
 const IGNORED_DIRECTORIES = [
   'node_modules',
@@ -64,6 +65,39 @@ function assertSingleExistingFile(directory, filenames, label) {
     throw new Error(`${label} 只能存在一个入口：${filenames.join('、')}`)
 
   return existingFiles[0]
+}
+
+function assertExplicitValueExports(filePath, label) {
+  const content = fs.readFileSync(filePath, 'utf8')
+  const wildcardExportLine = content
+    .split('\n')
+    .map(line => line.trimStart())
+    .find(line => line.startsWith('export *'))
+
+  if (wildcardExportLine)
+    throw new Error(`${label} 严禁使用 value wildcard export，请改为显式命名导出或 export type *`)
+}
+
+function assertEntryContract(directory, entryFilename, label) {
+  assertExplicitValueExports(path.join(directory, entryFilename), label)
+}
+
+function readPackageJson(directory, label) {
+  const packagePath = path.join(directory, 'package.json')
+
+  if (!fs.existsSync(packagePath))
+    throw new Error(`${label} 缺少 package.json`)
+
+  return JSON.parse(fs.readFileSync(packagePath, 'utf8'))
+}
+
+function assertHostFrameworkDepsInPeerDependencies(packageJson, label) {
+  const dependencies = packageJson.dependencies ?? {}
+
+  for (const dependencyName of HOST_FRAMEWORK_DEPENDENCIES) {
+    if (Object.hasOwn(dependencies, dependencyName))
+      throw new Error(`${label} 宿主框架依赖 ${dependencyName} 必须放在 peerDependencies 中`)
+  }
 }
 
 function printPass(message, details = {}) {
@@ -181,7 +215,8 @@ function assertCodeDirectoryEntries(directory, root, options = {}, depth = 0) {
     const isImplementationSrc = entry.name === 'src' && parentHasPublicEntry && childImplementationEntries.length === 1
 
     if (!isImplementationSrc) {
-      assertSingleExistingFile(childDirectory, PUBLIC_ENTRY_FILENAMES, `目录 ${relative}/ 聚合入口`)
+      const childEntry = assertSingleExistingFile(childDirectory, PUBLIC_ENTRY_FILENAMES, `目录 ${relative}/ 聚合入口`)
+      assertEntryContract(childDirectory, childEntry, `目录 ${relative}/ 聚合入口`)
     }
 
     if (childPublicEntries.length > 0 || isImplementationSrc || options.descendIntoMissingEntryDirectory)
@@ -189,15 +224,18 @@ function assertCodeDirectoryEntries(directory, root, options = {}, depth = 0) {
   }
 }
 
-function assertComponentPackage(root) {
+function assertComponentPackage(root, options = {}) {
   const componentRoot = path.resolve(process.cwd(), root)
   const readmePath = path.join(componentRoot, 'README.md')
   const srcPath = path.join(componentRoot, 'src')
   const publicEntry = assertSingleExistingFile(componentRoot, PUBLIC_ENTRY_FILENAMES, '复杂组件包根目录公共入口')
   const rootImplementationEntries = findExistingFiles(componentRoot, COMPONENT_IMPLEMENTATION_FILENAMES)
+  const requiresReadme = !options.privatePackage
 
-  if (!fs.existsSync(readmePath))
-    throw new Error('复杂组件包根目录缺少 README.md')
+  assertEntryContract(componentRoot, publicEntry, '复杂组件包根目录公共入口')
+
+  if (requiresReadme && !fs.existsSync(readmePath))
+    throw new Error('独立公共组件包根目录缺少 README.md')
 
   if (!fs.existsSync(srcPath) || !fs.statSync(srcPath).isDirectory())
     throw new Error('复杂组件包根目录缺少 src/ 实现目录')
@@ -206,17 +244,20 @@ function assertComponentPackage(root) {
     throw new Error(`复杂组件包根目录不得放置实现入口：${rootImplementationEntries.join('、')}`)
 
   const srcImplementationEntry = assertSingleExistingFile(srcPath, COMPONENT_IMPLEMENTATION_FILENAMES, '复杂组件包 src/ 实现入口')
-  const readme = fs.readFileSync(readmePath, 'utf8').trim()
 
-  if (readme.length === 0)
-    throw new Error('复杂组件 README.md 不得为空，必须描述组件如何使用')
+  if (fs.existsSync(readmePath)) {
+    const readme = fs.readFileSync(readmePath, 'utf8').trim()
 
-  if (!/(使用|用法|Usage|Props|Events|Emits|Expose|Slots|API|Ref|Children)/.test(readme))
-    throw new Error('复杂组件 README.md 必须包含使用方式或接口契约说明')
+    if (readme.length === 0)
+      throw new Error('复杂组件 README.md 不得为空，必须描述组件如何使用')
+
+    if (!/(使用|用法|Usage|Props|Events|Emits|Expose|Slots|API|Ref|Children)/.test(readme))
+      throw new Error('复杂组件 README.md 必须包含使用方式或接口契约说明')
+  }
 
   assertCodeDirectoryEntries(componentRoot, componentRoot, { implementationEntries: COMPONENT_IMPLEMENTATION_FILENAMES })
 
-  printPass('frontend complex component package structure is valid', {
+  printPass(options.privatePackage ? 'frontend private complex component package structure is valid' : 'frontend complex component package structure is valid', {
     componentRoot,
     entry: publicEntry,
     implementationEntry: srcImplementationEntry,
@@ -229,6 +270,7 @@ function assertLibraryPackage(root, options = {}) {
   const srcPath = path.join(libraryRoot, 'src')
   const publicEntry = assertSingleExistingFile(libraryRoot, PUBLIC_ENTRY_FILENAMES, '库根目录公共入口')
   const rootImplementationEntries = findExistingFiles(libraryRoot, COMPONENT_IMPLEMENTATION_FILENAMES)
+  const packageJson = readPackageJson(libraryRoot, '库根目录')
 
   if (!fs.existsSync(readmePath))
     throw new Error('库根目录缺少 README.md')
@@ -240,6 +282,19 @@ function assertLibraryPackage(root, options = {}) {
     throw new Error(`库根目录不得放置组件实现入口：${rootImplementationEntries.join('、')}`)
 
   const srcEntry = assertSingleExistingFile(srcPath, PUBLIC_ENTRY_FILENAMES, '库 src/ 聚合入口')
+
+  assertEntryContract(libraryRoot, publicEntry, '库根目录公共入口')
+  assertEntryContract(srcPath, srcEntry, '库 src/ 聚合入口')
+  assertHostFrameworkDepsInPeerDependencies(packageJson, '库 package.json')
+
+  if (options.requireComponents) {
+    if (!Object.hasOwn(packageJson, 'sideEffects'))
+      throw new Error('UI 组件库 package.json 必须明确声明 sideEffects 范围')
+  }
+  else if (packageJson.sideEffects !== false) {
+    throw new Error('工具库 package.json 必须声明 "sideEffects": false')
+  }
+
   const readme = fs.readFileSync(readmePath, 'utf8').trim()
 
   if (readme.length === 0)
@@ -299,8 +354,8 @@ function assertSimpleComponent(root) {
   const componentDirectory = path.dirname(componentPath)
   const componentName = path.basename(filename, path.extname(filename))
 
-  if (!/^[A-Z][\w-]*\.(vue|tsx|jsx)$/.test(filename))
-    throw new Error('简单组件必须使用 ComponentName.vue、ComponentName.tsx 或 ComponentName.jsx 文件')
+  if (!/^[A-Z][\w-]*\.(vue|tsx)$/.test(filename))
+    throw new Error('简单组件必须使用 ComponentName.vue 或 ComponentName.tsx 文件')
 
   if (!fs.existsSync(componentPath) || !fs.statSync(componentPath).isFile())
     throw new Error('简单组件路径必须指向真实文件')
@@ -319,7 +374,7 @@ function assertSimpleComponent(root) {
     const siblingExt = path.extname(entry.name)
     const siblingBase = path.basename(entry.name, siblingExt)
     const isSameNameStyle = siblingBase === componentName && STYLE_ENTRY_FILENAMES.includes(`index${siblingExt}`)
-    const isAnotherSimpleComponent = /^[A-Z][\w-]*\.(vue|tsx|jsx)$/.test(entry.name)
+    const isAnotherSimpleComponent = /^[A-Z][\w-]*\.(vue|tsx)$/.test(entry.name)
     const isDedicatedCodeFile = /\.(ts|js|vue|tsx|jsx)$/.test(entry.name)
 
     if (!isSameNameStyle && !isAnotherSimpleComponent && isDedicatedCodeFile)
@@ -346,6 +401,7 @@ function printHelp() {
 
 选项:
   --root <path>               指定组件、模块或库根目录
+  --private                   将复杂组件包按模块或组件内部私有子组件校验，README.md 不强制
   --target <path>             指定抽离目标目录
   --uses <path1> <path2> ...  指定至少 3 个使用点路径
   --stable-two-use            仅 2 个使用点时，声明这是复杂且稳定的拆分例外
@@ -381,10 +437,14 @@ function verifySelf() {
   assertContains(skill, /快速失败/, 'SKILL.md 必须覆盖快速失败')
   assertContains(skill, /正常的 UI 状态分支、可选渲染和加载态不属于错误绕行/, 'SKILL.md 必须覆盖 UI 状态分支例外')
   assertContains(skill, /公共 API（导出函数、Hooks、Composables、类的公共方法）必须显式声明返回类型/, 'SKILL.md 必须覆盖公共 API 返回类型')
-  assertContains(skill, /目标代码必须严格匹配以下五个标签之一/, 'SKILL.md 必须覆盖目标分类要求')
-  assertContains(skill, /若内部演化出专属的 `utils\/`、`types\/`、`hooks\/`、`composables\/` 或 `components\/` 等职责目录，必须升级为 `component-package`/, 'SKILL.md 必须覆盖简单组件升级条件')
-  assertContains(skill, /根 `index\.ts`（包的唯一公共出口）/, 'SKILL.md 必须覆盖组件包公共出口')
-  assertContains(skill, /不包含 `src\/` 容器/, 'SKILL.md 必须覆盖业务模块结构边界')
+  assertContains(skill, /目标目录必须严格匹配以下五个标签之一/, 'SKILL.md 必须覆盖目标分类要求')
+  assertContains(skill, /若生产实现拆分出专属 `types\/`、`constants\/`、`utils\/`、`hooks\/`、`composables\/`、`components\/` 等职责目录，必须立即升级为 `component-package`/, 'SKILL.md 必须覆盖简单组件升级条件')
+  assertContains(skill, /根目录必须提供 `index\.ts` 作为唯一公共出口/, 'SKILL.md 必须覆盖组件包公共出口')
+  assertContains(skill, /独立公共组件包还必须提供 `README\.md`；模块或组件内部的私有复杂子组件不强制提供 `README\.md`/, 'SKILL.md 必须覆盖组件包 README 例外')
+  assertContains(skill, /内部所有实现必须收敛于 `src\/` 目录中/, 'SKILL.md 必须覆盖组件包 src 实现目录')
+  assertContains(skill, /`src\/types\/index\.ts` 统一导出/, 'SKILL.md 必须覆盖类型门面')
+  assertContains(skill, /必须以 `index\.vue` \/ `index\.tsx` 作为根级主视图，严禁使用 `src\/` 容器/, 'SKILL.md 必须覆盖业务模块结构边界')
+  assertContains(skill, /所有代码职责目录必须包含 `index\.ts` 门面/, 'SKILL.md 必须覆盖业务模块职责目录门面')
   assertContains(skill, /`README\.md`、根 `index\.ts`、`src\/` 和 `package\.json`/, 'SKILL.md 必须覆盖库结构入口')
   assertContains(skill, /sideEffects/, 'SKILL.md 必须覆盖 Tree-shaking 契约')
   assertContains(skill, /peerDependencies/, 'SKILL.md 必须覆盖依赖声明隔离')
@@ -438,7 +498,7 @@ function main() {
     return assertSimpleComponent(getOption(args, '--root'))
 
   if (command === 'component' || command === 'package' || command === 'project')
-    return assertComponentPackage(getOption(args, '--root'))
+    return assertComponentPackage(getOption(args, '--root'), { privatePackage: args.includes('--private') })
 
   if (command === 'module')
     return assertModule(getOption(args, '--root'))

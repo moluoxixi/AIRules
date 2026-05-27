@@ -31,12 +31,25 @@ description: 用于新建、编写、重构、拆分、优化、评审或校验 
 
 ## 二、目标分类与物理标准 (Target Classifications & Standards)
 
-目标代码必须严格匹配以下五个标签之一，并遵守对应形态：
+目标目录必须严格匹配以下五个标签之一，并完全遵守对应的骨架形态。嵌套目录可按自身职责递归匹配对应标签。
 
-1. **`simple-component`**：仅包含单文件（如 `.vue`/`.tsx`）、可选的同名样式文件，以及可选的 `__test__/`、`__stories__/`、`__demos__/` 目录。若内部演化出专属的 `utils/`、`types/`、`hooks/`、`composables/` 或 `components/` 等职责目录，必须升级为 `component-package`。
-2. **`component-package`**：必须包含 `README.md` 和根 `index.ts`（包的唯一公共出口），内部实现收敛于 `src/` 目录中。外部调用严禁穿透至 `src/`。
-3. **`business-module`**：按业务内聚组织目录（包含主视图及就近的 `api/`, `components/`, `utils/` 等），不包含 `src/` 容器。
+1. **`simple-component`**：仅包含单文件（如 `.vue`/`.tsx`）、可选的同名样式文件，以及可选的测试/演示目录。若生产实现拆分出专属 `types/`、`constants/`、`utils/`、`hooks/`、`composables/`、`components/` 等职责目录，必须立即升级为 `component-package`。
+
+2. **`component-package`（复杂组件 / 递归子组件）**：
+   无论是独立 UI 包，还是模块/组件内部演化出的复杂局部组件（如 `AuditDialog`、`Toolbar`），只要发生生产实现拆分，必须严格遵循以下骨架：
+   - **门面隔离**：根目录必须提供 `index.ts` 作为唯一公共出口。独立公共组件包还必须提供 `README.md`；模块或组件内部的私有复杂子组件不强制提供 `README.md`。内部所有实现必须收敛于 `src/` 目录中，外部严禁穿透至 `src/`。
+   - **类型拆分**：存在对应公共契约时，`src/types/` 必须按职责细化拆分，例如 `props.ts`、`emit.ts`、`expose.ts`，并通过 `src/types/index.ts` 统一导出。
+   - **递归嵌套**：`src/components/` 内的子组件若保持简单，可使用单文件；若继续拆分职责目录，必须递归套用此标准，即 `子组件名/index.ts` + `子组件名/src/...`。
+
+3. **`business-module`（业务模块）**：
+   必须以 `index.vue` / `index.tsx` 作为根级主视图，严禁使用 `src/` 容器。关联逻辑必须按职责拆分至同级标准目录，骨架如下：
+   - 主视图：`模块名/index.vue` 或 `模块名/index.tsx`。
+   - 职责目录：`components/`、`composables/`、`types/`、`constants/`、`utils/`、`api/` 等。
+   - **组件递归**：`components/` 目录下的业务子组件，同样必须根据复杂度，严格匹配 `simple-component` 单文件标准或 `component-package` 嵌套门面标准进行物理隔离。
+   - 门面约束：所有代码职责目录必须包含 `index.ts` 门面，测试、样式、资产等非逻辑目录按全局的“门面例外”规则处理。
+
 4. **`utility-library`**：必须包含 `README.md`、根 `index.ts`、`src/` 和 `package.json`，且必须声明 `"sideEffects": false`。宿主框架依赖置于 `peerDependencies` 中。
+
 5. **`ui-library`**：必须包含 `README.md`、根 `index.ts`、`src/` 和 `package.json`，且需明确声明 `"sideEffects"` 范围（如样式副作用）。宿主框架依赖置于 `peerDependencies` 中。
 
 ## 三、测试与质量边界 (Testing Boundaries)
