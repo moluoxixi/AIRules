@@ -53,6 +53,11 @@ export const HOST_CONFIGS: HostConfig[] = [
     baselineFileName: 'AGENTS.md',
   },
   {
+    id: 'tare-cn',
+    homeRelPath: '.tare-cn',
+    baselineFileName: 'AGENTS.md',
+  },
+  {
     id: 'opencode',
     homeRelPath: path.join('.config', 'opencode'),
     baselineFileName: 'AGENTS.md',
