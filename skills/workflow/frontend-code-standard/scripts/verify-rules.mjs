@@ -82,6 +82,24 @@ function assertEntryContract(directory, entryFilename, label) {
   assertExplicitValueExports(path.join(directory, entryFilename), label)
 }
 
+// 组件包的类型门面属于公共 API 契约，必须由根入口显式暴露。
+function assertComponentTypeFacade(componentRoot, srcPath) {
+  const typesPath = path.join(srcPath, 'types')
+
+  if (!fs.existsSync(typesPath) || !fs.statSync(typesPath).isDirectory())
+    throw new Error('组件包缺少 src/types/ 类型契约目录')
+
+  const typeEntry = assertSingleExistingFile(typesPath, PUBLIC_ENTRY_FILENAMES, '组件包 src/types 类型门面')
+  const rootEntryContent = fs.readFileSync(path.join(componentRoot, 'index.ts'), 'utf8')
+
+  assertEntryContract(typesPath, typeEntry, '组件包 src/types 类型门面')
+
+  if (!rootEntryContent.includes('export type') || !rootEntryContent.includes('./src/types'))
+    throw new Error('组件包根目录 index.ts 必须通过 export type * from \'./src/types\' 暴露类型契约')
+
+  return typeEntry
+}
+
 function readPackageJson(directory, label) {
   const packagePath = path.join(directory, 'package.json')
 
@@ -244,6 +262,7 @@ function assertComponentPackage(root, options = {}) {
     throw new Error(`复杂组件包根目录不得放置实现入口：${rootImplementationEntries.join('、')}`)
 
   const srcImplementationEntry = assertSingleExistingFile(srcPath, COMPONENT_IMPLEMENTATION_FILENAMES, '复杂组件包 src/ 实现入口')
+  const typeEntry = assertComponentTypeFacade(componentRoot, srcPath)
 
   if (fs.existsSync(readmePath)) {
     const readme = fs.readFileSync(readmePath, 'utf8').trim()
@@ -261,6 +280,7 @@ function assertComponentPackage(root, options = {}) {
     componentRoot,
     entry: publicEntry,
     implementationEntry: srcImplementationEntry,
+    typeEntry,
   })
 }
 
@@ -348,17 +368,18 @@ function assertModule(root) {
   })
 }
 
-function assertSimpleComponent(root) {
+// 私有叶子例外只校验文件边界；源码级 API 识别应交给成熟 SFC/AST 工具。
+function assertPrivateLeafComponent(root) {
   const componentPath = path.resolve(process.cwd(), root)
   const filename = path.basename(componentPath)
   const componentDirectory = path.dirname(componentPath)
   const componentName = path.basename(filename, path.extname(filename))
 
   if (!/^[A-Z][\w-]*\.(vue|tsx)$/.test(filename))
-    throw new Error('简单组件必须使用 ComponentName.vue 或 ComponentName.tsx 文件')
+    throw new Error('私有叶子组件例外必须使用 ComponentName.vue 或 ComponentName.tsx 文件')
 
   if (!fs.existsSync(componentPath) || !fs.statSync(componentPath).isFile())
-    throw new Error('简单组件路径必须指向真实文件')
+    throw new Error('私有叶子组件例外路径必须指向真实文件')
 
   for (const entry of fs.readdirSync(componentDirectory, { withFileTypes: true })) {
     if (entry.name === filename)
@@ -366,7 +387,7 @@ function assertSimpleComponent(root) {
 
     if (entry.isDirectory()) {
       if (!['__test__', '__demos__', '__stories__'].includes(entry.name))
-        throw new Error(`简单组件同级只允许 __test__、__demos__、__stories__ 目录；发现：${entry.name}`)
+        throw new Error(`私有叶子组件例外同级只允许 __test__、__demos__、__stories__ 目录；发现：${entry.name}，必须升级为 component-package`)
 
       continue
     }
@@ -378,10 +399,10 @@ function assertSimpleComponent(root) {
     const isDedicatedCodeFile = /\.(ts|js|vue|tsx|jsx)$/.test(entry.name)
 
     if (!isSameNameStyle && !isAnotherSimpleComponent && isDedicatedCodeFile)
-      throw new Error(`简单组件同级存在专属附属文件：${entry.name}，必须升级为 component-package`)
+      throw new Error(`私有叶子组件例外同级存在专属附属文件：${entry.name}，必须升级为 component-package`)
   }
 
-  printPass('frontend simple component structure is valid', {
+  printPass('frontend private leaf component exception is valid', {
     componentPath,
   })
 }
@@ -391,7 +412,7 @@ function printHelp() {
 
 命令:
   self                        校验本 skill 的规则完整性（默认）
-  simple-component, simple    校验简单组件结构
+  leaf, private-leaf          校验私有叶子组件例外
   component, package          校验复杂组件包结构
   module                      校验业务模块结构
   utility, tool-library       校验工具库结构
@@ -410,6 +431,7 @@ function printHelp() {
 
 function verifySelf() {
   const skill = readSkillFile('SKILL.md')
+  const componentExample = readSkillFile('examples', 'component-classification.md')
 
   assertContains(skill, /frontend-code-standard/, 'SKILL.md 必须声明 skill 名称')
   assertContains(skill, /Vue\/React 前端组件/, 'SKILL.md 必须覆盖前端技术范围')
@@ -417,13 +439,14 @@ function verifySelf() {
   assertContains(skill, /门面出口、类型契约、测试边界和 Deep Import 禁止标准/, 'SKILL.md 必须说明规则覆盖范围')
   assertContains(skill, /严苛且务实的资深前端架构师/, 'SKILL.md 必须覆盖角色设定')
   assertContains(skill, /主动防御架构腐化/, 'SKILL.md 必须覆盖架构防腐职责')
-  assertContains(skill, /simple-component/, 'SKILL.md 必须覆盖 simple-component')
   assertContains(skill, /component-package/, 'SKILL.md 必须覆盖 component-package')
   assertContains(skill, /business-module/, 'SKILL.md 必须覆盖 business-module')
   if (/ordinary-module/.test(skill))
     throw new Error('SKILL.md 不得包含 ordinary-module')
   assertContains(skill, /utility-library/, 'SKILL.md 必须覆盖 utility-library')
   assertContains(skill, /ui-library/, 'SKILL.md 必须覆盖 ui-library')
+  assertContains(skill, /以下四个正式标签之一/, 'SKILL.md 必须声明四个正式分类')
+  assertContains(skill, /私有叶子例外/, 'SKILL.md 必须覆盖私有叶子组件例外')
   assertContains(skill, /物理职责边界与防腐/, 'SKILL.md 必须覆盖物理职责边界')
   assertContains(skill, /拆解巨石文件/, 'SKILL.md 必须覆盖巨石文件拆解')
   assertContains(skill, /抽离出的工具函数必须被严格放置在专属的 `utils\/` 文件夹/, 'SKILL.md 必须覆盖 utils 纯函数归位')
@@ -437,12 +460,22 @@ function verifySelf() {
   assertContains(skill, /快速失败/, 'SKILL.md 必须覆盖快速失败')
   assertContains(skill, /正常的 UI 状态分支、可选渲染和加载态不属于错误绕行/, 'SKILL.md 必须覆盖 UI 状态分支例外')
   assertContains(skill, /公共 API（导出函数、Hooks、Composables、类的公共方法）必须显式声明返回类型/, 'SKILL.md 必须覆盖公共 API 返回类型')
-  assertContains(skill, /目标目录必须严格匹配以下五个标签之一/, 'SKILL.md 必须覆盖目标分类要求')
-  assertContains(skill, /若生产实现拆分出专属 `types\/`、`constants\/`、`utils\/`、`hooks\/`、`composables\/`、`components\/` 等职责目录，必须立即升级为 `component-package`/, 'SKILL.md 必须覆盖简单组件升级条件')
+  assertContains(skill, /目标目录必须严格匹配以下四个正式标签之一/, 'SKILL.md 必须覆盖目标分类要求')
+  assertContains(skill, /该例外不是正式分类/, 'SKILL.md 必须声明私有叶子例外不是正式分类')
+  assertContains(skill, /一旦出现 `types\/`、`constants\/`、`utils\/`、`hooks\/`、`composables\/`、`components\/` 等职责目录，必须立即升级为 `component-package`/, 'SKILL.md 必须覆盖私有叶子例外升级条件')
   assertContains(skill, /根目录必须提供 `index\.ts` 作为唯一公共出口/, 'SKILL.md 必须覆盖组件包公共出口')
-  assertContains(skill, /独立公共组件包还必须提供 `README\.md`；模块或组件内部的私有复杂子组件不强制提供 `README\.md`/, 'SKILL.md 必须覆盖组件包 README 例外')
+  assertContains(skill, /独立公共组件包还必须提供 `README\.md`；模块或组件内部的私有组件包不强制提供 `README\.md`/, 'SKILL.md 必须覆盖组件包 README 例外')
   assertContains(skill, /内部所有实现必须收敛于 `src\/` 目录中/, 'SKILL.md 必须覆盖组件包 src 实现目录')
+  assertContains(skill, /组件包必须提供 `src\/types\/index\.ts` 作为类型契约入口/, 'SKILL.md 必须覆盖组件包类型入口')
+  assertContains(skill, /export type \* from '\.\/src\/types'/, 'SKILL.md 必须覆盖根类型门面导出')
   assertContains(skill, /`src\/types\/index\.ts` 统一导出/, 'SKILL.md 必须覆盖类型门面')
+  assertContains(skill, /Vue 契约归位/, 'SKILL.md 必须覆盖 Vue 组件 API 契约')
+  assertContains(skill, /React 契约归位/, 'SKILL.md 必须覆盖 React 组件 API 契约')
+  assertContains(skill, /defineProps/, 'SKILL.md 必须覆盖 Vue props 契约')
+  assertContains(skill, /defineEmits/, 'SKILL.md 必须覆盖 Vue emits 契约')
+  assertContains(skill, /defineExpose/, 'SKILL.md 必须覆盖 Vue expose 契约')
+  assertContains(skill, /受控与非受控值/, 'SKILL.md 必须覆盖 React 受控契约')
+  assertContains(skill, /examples\/component-classification\.md/, 'SKILL.md 必须引用组件分类正反例')
   assertContains(skill, /必须以 `index\.vue` \/ `index\.tsx` 作为根级主视图，严禁使用 `src\/` 容器/, 'SKILL.md 必须覆盖业务模块结构边界')
   assertContains(skill, /所有代码职责目录必须包含 `index\.ts` 门面/, 'SKILL.md 必须覆盖业务模块职责目录门面')
   assertContains(skill, /`README\.md`、根 `index\.ts`、`src\/` 和 `package\.json`/, 'SKILL.md 必须覆盖库结构入口')
@@ -466,6 +499,11 @@ function verifySelf() {
   assertContains(skill, /按任务风险执行项目已有的 `lint`、`typecheck`、`test`、`build` 或浏览器验证/, 'SKILL.md 必须覆盖验证命令范围')
   assertContains(skill, /FAIL > MISSING > NOT RUN > PASS/, 'SKILL.md 必须覆盖最终状态优先级')
   assertContains(skill, /Playwright、验证脚本入口/, 'SKILL.md 必须覆盖验证入口缺失状态')
+  assertContains(componentExample, /正例：私有叶子例外/, '组件分类示例必须包含私有叶子正例')
+  assertContains(componentExample, /正例：组件包/, '组件分类示例必须包含组件包正例')
+  assertContains(componentExample, /反例：单文件承载稳定契约/, '组件分类示例必须包含单文件契约反例')
+  assertContains(componentExample, /反例：有类型文件但没有组件包门面/, '组件分类示例必须包含类型目录反例')
+  assertContains(componentExample, /反例：跨模块复用但深藏在业务目录/, '组件分类示例必须包含跨模块复用反例')
 
   printPass('frontend-code-standard self rules are valid')
 }
@@ -494,8 +532,8 @@ function main() {
   if (command === 'self')
     return verifySelf()
 
-  if (command === 'simple-component' || command === 'simple')
-    return assertSimpleComponent(getOption(args, '--root'))
+  if (command === 'leaf' || command === 'private-leaf')
+    return assertPrivateLeafComponent(getOption(args, '--root'))
 
   if (command === 'component' || command === 'package' || command === 'project')
     return assertComponentPackage(getOption(args, '--root'), { privatePackage: args.includes('--private') })

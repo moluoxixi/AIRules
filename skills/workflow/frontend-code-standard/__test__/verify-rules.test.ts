@@ -29,7 +29,11 @@ it('verify-rules 校验组件、模块和共享边界', () => {
   const componentRoot = fs.mkdtempSync(path.join(os.tmpdir(), 'airules-component-'))
   const privateComponentRoot = fs.mkdtempSync(path.join(os.tmpdir(), 'airules-component-private-'))
   const missingReadmeComponentRoot = fs.mkdtempSync(path.join(os.tmpdir(), 'airules-component-missing-readme-'))
+  const missingTypesComponentRoot = fs.mkdtempSync(path.join(os.tmpdir(), 'airules-component-missing-types-'))
+  const missingTypeExportComponentRoot = fs.mkdtempSync(path.join(os.tmpdir(), 'airules-component-missing-type-export-'))
   const wildcardComponentRoot = fs.mkdtempSync(path.join(os.tmpdir(), 'airules-component-wildcard-'))
+  const leafComponentRoot = fs.mkdtempSync(path.join(os.tmpdir(), 'airules-leaf-component-'))
+  const brokenLeafComponentRoot = fs.mkdtempSync(path.join(os.tmpdir(), 'airules-leaf-component-broken-'))
   const moduleRoot = fs.mkdtempSync(path.join(os.tmpdir(), 'airules-module-'))
   const brokenModuleRoot = fs.mkdtempSync(path.join(os.tmpdir(), 'airules-module-broken-'))
   const utilityRoot = fs.mkdtempSync(path.join(os.tmpdir(), 'airules-utility-'))
@@ -43,15 +47,29 @@ it('verify-rules 校验组件、模块和共享边界', () => {
   writeFile(componentRoot, 'src/utils/index.ts', 'export { formatColumn } from \'./format-column\'\n')
   writeFile(componentRoot, 'src/utils/format-column.ts', 'export function formatColumn() {}\n')
 
-  writeFile(privateComponentRoot, 'index.ts', 'export { AuditDialog } from \'./src\'\n')
+  writeFile(privateComponentRoot, 'index.ts', 'export { AuditDialog } from \'./src\'\nexport type * from \'./src/types\'\n')
   writeFile(privateComponentRoot, 'src/index.vue', '<template />\n')
+  writeFile(privateComponentRoot, 'src/types/index.ts', 'export interface AuditDialogContract {}\n')
 
   writeFile(missingReadmeComponentRoot, 'index.ts', 'export { DataTable } from \'./src\'\n')
   writeFile(missingReadmeComponentRoot, 'src/index.tsx', 'export function DataTable() { return null }\n')
 
+  writeFile(missingTypesComponentRoot, 'README.md', '# DataTable\n\n## Usage\n\nProps and Events are documented here.\n')
+  writeFile(missingTypesComponentRoot, 'index.ts', 'export { DataTable } from \'./src\'\n')
+  writeFile(missingTypesComponentRoot, 'src/index.tsx', 'export function DataTable() { return null }\n')
+
+  writeFile(missingTypeExportComponentRoot, 'README.md', '# DataTable\n\n## Usage\n\nProps and Events are documented here.\n')
+  writeFile(missingTypeExportComponentRoot, 'index.ts', 'export { DataTable } from \'./src\'\n')
+  writeFile(missingTypeExportComponentRoot, 'src/index.tsx', 'export function DataTable() { return null }\n')
+  writeFile(missingTypeExportComponentRoot, 'src/types/index.ts', 'export interface DataTableProps {}\n')
+
   writeFile(wildcardComponentRoot, 'README.md', '# DataTable\n\n## Usage\n\nProps and Events are documented here.\n')
   writeFile(wildcardComponentRoot, 'index.ts', 'export * from \'./src\'\n')
   writeFile(wildcardComponentRoot, 'src/index.vue', '<template />\n')
+
+  writeFile(leafComponentRoot, 'StatusDot.vue', '<template />\n')
+  writeFile(brokenLeafComponentRoot, 'UserPicker.vue', '<template />\n')
+  writeFile(brokenLeafComponentRoot, 'types/props.ts', 'export interface UserPickerProps {}\n')
 
   writeFile(moduleRoot, 'index.vue', '<template />\n')
   writeFile(moduleRoot, 'api/index.ts', 'export { getPurchaseOrder } from \'./purchase-order-api\'\n')
@@ -76,6 +94,7 @@ it('verify-rules 校验组件、模块和共享边界', () => {
   assert.match(runScript(), /PASS frontend-code-standard self rules are valid/)
   assert.match(runScript('component', '--root', componentRoot), /PASS frontend complex component package structure is valid/)
   assert.match(runScript('component', '--root', privateComponentRoot, '--private'), /PASS frontend private complex component package structure is valid/)
+  assert.match(runScript('leaf', '--root', path.join(leafComponentRoot, 'StatusDot.vue')), /PASS frontend private leaf component exception is valid/)
   assert.match(runScript('module', '--root', moduleRoot), /PASS frontend module structure is valid/)
   assert.match(runScript('utility', '--root', utilityRoot), /PASS frontend utility library structure is valid/)
 
@@ -88,6 +107,24 @@ it('verify-rules 校验组件、模块和共享边界', () => {
   assert.notEqual(missingReadmeResult.status, 0)
   assert.match(missingReadmeResult.stderr, /独立公共组件包根目录缺少 README\.md/)
 
+  const missingTypesResult = spawnSync(process.execPath, [
+    scriptPath,
+    'component',
+    '--root',
+    missingTypesComponentRoot,
+  ], { cwd: projectRoot, encoding: 'utf8' })
+  assert.notEqual(missingTypesResult.status, 0)
+  assert.match(missingTypesResult.stderr, /组件包缺少 src\/types\/ 类型契约目录/)
+
+  const missingTypeExportResult = spawnSync(process.execPath, [
+    scriptPath,
+    'component',
+    '--root',
+    missingTypeExportComponentRoot,
+  ], { cwd: projectRoot, encoding: 'utf8' })
+  assert.notEqual(missingTypeExportResult.status, 0)
+  assert.match(missingTypeExportResult.stderr, /根目录 index\.ts 必须通过 export type/)
+
   const wildcardResult = spawnSync(process.execPath, [
     scriptPath,
     'component',
@@ -96,6 +133,15 @@ it('verify-rules 校验组件、模块和共享边界', () => {
   ], { cwd: projectRoot, encoding: 'utf8' })
   assert.notEqual(wildcardResult.status, 0)
   assert.match(wildcardResult.stderr, /严禁使用 value wildcard export/)
+
+  const brokenLeafResult = spawnSync(process.execPath, [
+    scriptPath,
+    'leaf',
+    '--root',
+    path.join(brokenLeafComponentRoot, 'UserPicker.vue'),
+  ], { cwd: projectRoot, encoding: 'utf8' })
+  assert.notEqual(brokenLeafResult.status, 0)
+  assert.match(brokenLeafResult.stderr, /必须升级为 component-package/)
 
   const brokenModuleResult = spawnSync(process.execPath, [
     scriptPath,

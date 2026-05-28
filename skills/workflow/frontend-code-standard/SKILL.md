@@ -31,28 +31,34 @@ description: 用于新建、编写、重构、拆分、优化、评审或校验 
 
 ## 二、目标分类与物理标准 (Target Classifications & Standards)
 
-目标目录必须严格匹配以下五个标签之一，并完全遵守对应的骨架形态。嵌套目录可按自身职责递归匹配对应标签。
+目标目录必须严格匹配以下四个正式标签之一，并完全遵守对应的骨架形态。嵌套目录可按自身职责递归匹配对应标签。
 
-1. **`simple-component`**：仅包含单文件（如 `.vue`/`.tsx`）、可选的同名样式文件，以及可选的测试/演示目录。若生产实现拆分出专属 `types/`、`constants/`、`utils/`、`hooks/`、`composables/`、`components/` 等职责目录，必须立即升级为 `component-package`。
+1. **`component-package`（组件包 / 递归子组件）**：
+   无论是独立 UI 包，还是模块/组件内部演化出的局部组件（如 `AuditDialog`、`Toolbar`），只要组件存在稳定 API 契约或发生生产实现拆分，必须严格遵循以下骨架：
+   - **门面隔离**：根目录必须提供 `index.ts` 作为唯一公共出口。独立公共组件包还必须提供 `README.md`；模块或组件内部的私有组件包不强制提供 `README.md`。内部所有实现必须收敛于 `src/` 目录中，外部严禁穿透至 `src/`。
+   - **类型门面**：组件包必须提供 `src/types/index.ts` 作为类型契约入口，并由根 `index.ts` 通过 `export type * from './src/types'` 暴露。出现对应契约时，必须按职责细化拆分为 `props.ts`、`emit.ts`、`expose.ts`、`slots.ts`、`model.ts` 或 `ref.ts`。
+   - **私有叶子例外**：只有私有、叶子、无 props/emits/expose/slot/model/ref API、无导出类型、无跨目录复用、无生产职责拆分的展示组件，才允许保持单个 `.vue` 或 `.tsx` 文件。该例外不是正式分类；一旦出现 `types/`、`constants/`、`utils/`、`hooks/`、`composables/`、`components/` 等职责目录，必须立即升级为 `component-package`。
+   - **递归嵌套**：`src/components/` 内的子组件默认递归套用 `component-package`，仅满足私有叶子例外时才允许使用单文件。
 
-2. **`component-package`（复杂组件 / 递归子组件）**：
-   无论是独立 UI 包，还是模块/组件内部演化出的复杂局部组件（如 `AuditDialog`、`Toolbar`），只要发生生产实现拆分，必须严格遵循以下骨架：
-   - **门面隔离**：根目录必须提供 `index.ts` 作为唯一公共出口。独立公共组件包还必须提供 `README.md`；模块或组件内部的私有复杂子组件不强制提供 `README.md`。内部所有实现必须收敛于 `src/` 目录中，外部严禁穿透至 `src/`。
-   - **类型拆分**：存在对应公共契约时，`src/types/` 必须按职责细化拆分，例如 `props.ts`、`emit.ts`、`expose.ts`，并通过 `src/types/index.ts` 统一导出。
-   - **递归嵌套**：`src/components/` 内的子组件若保持简单，可使用单文件；若继续拆分职责目录，必须递归套用此标准，即 `子组件名/index.ts` + `子组件名/src/...`。
-
-3. **`business-module`（业务模块）**：
+2. **`business-module`（业务模块）**：
    必须以 `index.vue` / `index.tsx` 作为根级主视图，严禁使用 `src/` 容器。关联逻辑必须按职责拆分至同级标准目录，骨架如下：
    - 主视图：`模块名/index.vue` 或 `模块名/index.tsx`。
    - 职责目录：`components/`、`composables/`、`types/`、`constants/`、`utils/`、`api/` 等。
-   - **组件递归**：`components/` 目录下的业务子组件，同样必须根据复杂度，严格匹配 `simple-component` 单文件标准或 `component-package` 嵌套门面标准进行物理隔离。
+   - **组件递归**：`components/` 目录下的业务子组件默认按 `component-package` 建立门面和类型契约；仅满足私有叶子例外时才允许使用单文件。
    - 门面约束：所有代码职责目录必须包含 `index.ts` 门面，测试、样式、资产等非逻辑目录按全局的“门面例外”规则处理。
 
-4. **`utility-library`**：必须包含 `README.md`、根 `index.ts`、`src/` 和 `package.json`，且必须声明 `"sideEffects": false`。宿主框架依赖置于 `peerDependencies` 中。
+3. **`utility-library`**：必须包含 `README.md`、根 `index.ts`、`src/` 和 `package.json`，且必须声明 `"sideEffects": false`。宿主框架依赖置于 `peerDependencies` 中。
 
-5. **`ui-library`**：必须包含 `README.md`、根 `index.ts`、`src/` 和 `package.json`，且需明确声明 `"sideEffects"` 范围（如样式副作用）。宿主框架依赖置于 `peerDependencies` 中。
+4. **`ui-library`**：必须包含 `README.md`、根 `index.ts`、`src/` 和 `package.json`，且需明确声明 `"sideEffects"` 范围（如样式副作用）。宿主框架依赖置于 `peerDependencies` 中。
 
-## 三、测试与质量边界 (Testing Boundaries)
+## 三、组件 API 契约 (Component API Contracts)
+
+- **Vue 契约归位**：`defineProps`、`defineEmits`、`defineExpose`、slot、`defineModel` 和模板 ref 对外能力都属于组件 API；只要它们形成可复用或可依赖契约，就必须进入 `src/types/`，并由 `src/types/index.ts` 统一导出。
+- **React 契约归位**：`Props`、回调事件、`children`/slot-like 内容、受控与非受控值、`ref`/imperative handle 都属于组件 API；公共类型不得长期滞留在 `.tsx` 实现文件中。
+- **单文件限制**：私有叶子组件允许存在极少量仅服务当前渲染的 inline 类型，但不得导出、不得跨目录复用、不得承载可命名公共契约。契约一旦稳定，必须升级为 `component-package`。
+- **示例边界**：组件分类正反例集中维护在 `examples/component-classification.md`；示例只解释规则，不定义新规则。
+
+## 四、测试与质量边界 (Testing Boundaries)
 
 - **测试技术栈**：
   - **单元/非浏览器集成测试**：统一采用 **Vitest**。逻辑单元及组件基础挂载测试均需通过 Vitest 执行。允许使用 jsdom/happy-dom 环境进行基础渲染契约验证（如 props、事件回调、组件状态），但绝对禁止用其伪造真实浏览器交互。
@@ -63,12 +69,12 @@ description: 用于新建、编写、重构、拆分、优化、评审或校验 
   - **全局边界**：跨越多业务模块的全局 E2E 测试，必须放置在项目根级的 `__e2e__/` 目录中。
 - **缺失阻断**：若任务需要对应的验证但当前项目缺少必要依赖（缺少 Vitest 或 `@playwright/test`），必须将验证状态标记为 `MISSING` 并说明缺失项。
 
-## 四、工作流与交付契约 (Workflow & Delivery)
+## 五、工作流与交付契约 (Workflow & Delivery)
 
 当接收到新建、重构或评审请求时，严格按以下步骤执行：
 
 1. **上下文分析**：确认目标职责、调用方契约以及工程框架栈。
-2. **定级与归位**：将目标归类为上述五个分类标签之一，按门面规则整理物理结构，拦截越界调用。
+2. **定级与归位**：将目标归类为上述四个正式分类标签之一，或明确标记为私有叶子例外，按门面规则整理物理结构，拦截越界调用。
 3. **执行验证**：按任务风险执行项目已有的 `lint`、`typecheck`、`test`、`build` 或浏览器验证；缺少入口时标记为 `MISSING`，不得伪造成已通过。
 4. **交付输出**：交付时必须列出每条实际执行命令的逐项状态；最终总结论按以下优先级取最高风险状态：`FAIL > MISSING > NOT RUN > PASS`。
    - `FAIL`：发现违规，必须列出严重级别（Critical / Major / Minor）、违规规则、证据及具体修改落点。
