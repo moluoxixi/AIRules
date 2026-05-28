@@ -53,8 +53,8 @@ export const HOST_CONFIGS: HostConfig[] = [
     baselineFileName: 'AGENTS.md',
   },
   {
-    id: 'tare-cn',
-    homeRelPath: '.tare-cn',
+    id: 'trae-cn',
+    homeRelPath: '.trae-cn',
     baselineFileName: 'AGENTS.md',
   },
   {
