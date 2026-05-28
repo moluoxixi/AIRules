@@ -23,7 +23,7 @@ AIRules is a **composable AI skill distribution system**. The core idea is simpl
 │  software-development-workflow / standards   │
 ├─────────────────────────────────────────────┤
 │  📦 Third-Party Skills (cloned from mature  │ ← Stand on the shoulders
-│  repos) antfu/vue · anthropic/testing · ... │   of giants
+│  repos) antfu/vue · anthropic/design · ... │   of giants
 ├─────────────────────────────────────────────┤
 │  🚀 Distribution Engine (one-command deploy │ ← Automated infrastructure
 │  to all AI agents)                          │
@@ -145,11 +145,13 @@ Moluoxixi AIRules supports a growing ecosystem of AI agents through automated pr
 
 | Source | Skills | Description |
 |--------|--------|-------------|
-| **antfu** | vue, nuxt, pinia, vite, vitest, unocss, pnpm, vitepress, slidev, tsdown, turborepo + 6 more | Vue ecosystem + frontend toolchain best practices |
+| **antfu** | vue, nuxt, pinia, vite, vitest, unocss, pnpm, vitepress, slidev, tsdown, turborepo + 4 more | Vue ecosystem + frontend toolchain best practices |
 | **Google Gemini** | code-reviewer, pr-creator | Automated code review and PR creation |
 | **Vercel Labs** | find-skills | Open ecosystem skill discovery and installation |
+| **Vercel Agent Skills** | react-best-practices, react-native-skills, web-design-guidelines | React/React Native implementation guidance and Web UI review |
+| **Anthropic** | frontend-design | Production-grade frontend visual design guidance |
 | **OpenAI** | playwright | Browser automation and UI-flow debugging |
-| **Superpowers** | Full skill set | Foundation engineering skills (TDD, subagent-driven, etc.) |
+| **Superpowers** | systematic-debugging, verification-before-completion, receiving-code-review, writing-skills, using-git-worktrees, writing-plans | Selected codebase workflow skills without default TDD or subagent execution |
 
 ## Project Structure
 

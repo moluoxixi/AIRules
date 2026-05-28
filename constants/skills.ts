@@ -78,6 +78,8 @@ export type VendorsConfig = VendorNode[]
  * @see https://github.com/facebook/react.git react官方仓库
  * @see https://github.com/antfu/skills.git antfu的技能仓库，收集了很多前端技能
  * @see https://github.com/facebook/react/tree/main/.claude/skills react官方用于claude的skills
+ * @see https://github.com/vercel-labs/agent-skills.git Vercel官方面向AI代理的React/React Native技能仓库
+ * @see https://github.com/vercel-labs/web-interface-guidelines.git Vercel官方Web界面规范
  * @see https://github.com/Shubhamsaboo/awesome-llm-apps/tree/main/awesome_agent_skills awesome-agent-skills仓库，收集了很多技能
  * @see https://github.com/anthropics/skills.git anthropic（claude）官方技能仓库
  * @see https://github.com/google-gemini/gemini-cli.git gemini官方技能仓库
@@ -110,6 +112,42 @@ export const vendors: VendorsConfig = [
     ],
   },
   {
+    name: 'vercelAgentSkills',
+    official: true,
+    source: 'https://github.com/vercel-labs/agent-skills.git',
+    projections: [
+      {
+        kind: 'skills',
+        sourceBaseDir: 'skills',
+        skills: [
+          {
+            name: 'react-best-practices',
+            output: 'vercel-react-best-practices',
+          },
+          {
+            name: 'react-native-skills',
+            output: 'vercel-react-native-skills',
+          },
+          'web-design-guidelines',
+        ],
+      },
+    ],
+  },
+  {
+    name: 'anthropic',
+    official: true,
+    source: 'https://github.com/anthropics/skills.git',
+    projections: [
+      {
+        kind: 'skills',
+        sourceBaseDir: 'skills',
+        skills: [
+          'frontend-design',
+        ],
+      },
+    ],
+  },
+  {
     name: 'antfu',
     official: true,
     source: 'https://github.com/antfu/skills.git',
@@ -118,7 +156,7 @@ export const vendors: VendorsConfig = [
         kind: 'skills',
         sourceBaseDir: 'skills',
         skills: [
-          'antfu',
+          // 只保留具体技术栈技能，避免顶层个人偏好规则抢占代码库第一方 workflow。
           'pnpm',
           'slidev',
           'tsdown',
@@ -134,7 +172,6 @@ export const vendors: VendorsConfig = [
           'vue-router-best-practices',
           'vue-testing-best-practices',
           'vueuse-functions',
-          'web-design-guidelines',
         ],
       },
     ],
@@ -157,9 +194,17 @@ export const vendors: VendorsConfig = [
     source: 'https://github.com/obra/superpowers.git',
     projections: [
       {
-        kind: 'namespace',
-        sourceDir: 'skills',
-        output: 'superpowers',
+        kind: 'skills',
+        sourceBaseDir: 'skills',
+        // 投影代码库常用工作流子集；TDD、子代理执行与分支收尾仍由第一方 workflow 按风险显式触发。
+        skills: [
+          'systematic-debugging',
+          'verification-before-completion',
+          'receiving-code-review',
+          'writing-skills',
+          'using-git-worktrees',
+          'writing-plans',
+        ],
       },
     ],
   },

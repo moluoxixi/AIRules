@@ -439,3 +439,137 @@ it('vendors 配置 - 使用 OpenAI Playwright 并移除过时技能', () => {
     'skill-validation-standard 应作为通用第一方 skill 安装',
   )
 })
+
+it('vendors 配置 - 接入 Vercel Agent Skills 的代码库前端技能', () => {
+  const vendors: Record<string, any> = {}
+
+  walkVendorTree(configuredVendors, [], vendors)
+
+  assert.ok(vendors.vercelAgentSkills, 'Vercel Agent Skills 供应商应存在')
+  assert.strictEqual(
+    vendors.vercelAgentSkills.repo,
+    'https://github.com/vercel-labs/agent-skills.git',
+  )
+  assert.deepStrictEqual(
+    vendors.vercelAgentSkills.links.map((link: any) => ({
+      source: link.source,
+      target: link.target,
+      setup: link.setup,
+    })),
+    [
+      {
+        source: 'skills/react-best-practices',
+        target: 'vendor/skills/vercel-react-best-practices',
+        setup: undefined,
+      },
+      {
+        source: 'skills/react-native-skills',
+        target: 'vendor/skills/vercel-react-native-skills',
+        setup: undefined,
+      },
+      {
+        source: 'skills/web-design-guidelines',
+        target: 'vendor/skills/web-design-guidelines',
+        setup: undefined,
+      },
+    ],
+    '应从 Vercel agent-skills 精确投影 React、React Native 与 Web UI 审查技能',
+  )
+})
+
+it('vendors 配置 - 仅接入 Anthropic 的前端视觉设计技能', () => {
+  const vendors: Record<string, any> = {}
+
+  walkVendorTree(configuredVendors, [], vendors)
+
+  assert.ok(vendors.anthropic, 'Anthropic Skills 供应商应存在')
+  assert.strictEqual(vendors.anthropic.repo, 'https://github.com/anthropics/skills.git')
+  assert.deepStrictEqual(
+    vendors.anthropic.links.map((link: any) => ({
+      source: link.source,
+      target: link.target,
+      setup: link.setup,
+    })),
+    [
+      {
+        source: 'skills/frontend-design',
+        target: 'vendor/skills/frontend-design',
+        setup: undefined,
+      },
+    ],
+    '代码库默认只需要 frontend-design，不应默认安装品牌或主题 artifact 技能',
+  )
+})
+
+it('vendors 配置 - antfu 只保留具体技术栈技能', () => {
+  const vendors: Record<string, any> = {}
+
+  walkVendorTree(configuredVendors, [], vendors)
+
+  assert.ok(vendors.antfu, 'antfu 供应商应存在')
+  const targets = vendors.antfu.links.map((link: any) => link.target)
+  assert.ok(!targets.includes('vendor/skills/antfu'), '不应默认安装顶层 antfu 个人偏好 skill')
+  assert.ok(
+    !targets.includes('vendor/skills/web-design-guidelines'),
+    'web-design-guidelines 应由 Vercel Agent Skills 提供 canonical 来源',
+  )
+  assert.ok(targets.includes('vendor/skills/vue'), 'Vue 技术栈 skill 应保留')
+  assert.ok(targets.includes('vendor/skills/vite'), 'Vite 技术栈 skill 应保留')
+  assert.ok(targets.includes('vendor/skills/vitest'), 'Vitest 技术栈 skill 应保留')
+})
+
+it('vendors 配置 - Superpowers 只安装代码库常用工作流子集', () => {
+  const vendors: Record<string, any> = {}
+
+  walkVendorTree(configuredVendors, [], vendors)
+
+  assert.ok(vendors.superpowers, 'superpowers 供应商应存在')
+  assert.strictEqual(vendors.superpowers.repo, 'https://github.com/obra/superpowers.git')
+  assert.deepStrictEqual(
+    vendors.superpowers.links.map((link: any) => ({
+      kind: link.kind,
+      source: link.source,
+      target: link.target,
+      setup: link.setup,
+    })),
+    [
+      {
+        kind: 'skill',
+        source: 'skills/systematic-debugging',
+        target: 'vendor/skills/systematic-debugging',
+        setup: undefined,
+      },
+      {
+        kind: 'skill',
+        source: 'skills/verification-before-completion',
+        target: 'vendor/skills/verification-before-completion',
+        setup: undefined,
+      },
+      {
+        kind: 'skill',
+        source: 'skills/receiving-code-review',
+        target: 'vendor/skills/receiving-code-review',
+        setup: undefined,
+      },
+      {
+        kind: 'skill',
+        source: 'skills/writing-skills',
+        target: 'vendor/skills/writing-skills',
+        setup: undefined,
+      },
+      {
+        kind: 'skill',
+        source: 'skills/using-git-worktrees',
+        target: 'vendor/skills/using-git-worktrees',
+        setup: undefined,
+      },
+      {
+        kind: 'skill',
+        source: 'skills/writing-plans',
+        target: 'vendor/skills/writing-plans',
+        setup: undefined,
+      },
+    ],
+    '不应把 using-superpowers、TDD、子代理执行或分支收尾重流程作为默认代码库技能安装',
+  )
+})

@@ -23,7 +23,7 @@ AIRules 是一个**可组合的 AI 技能分发系统**。它的核心思想很�
 │  software-development-workflow / 标准集合      │
 ├─────────────────────────────────────────────┤
 │  📦 第三方 Skills（克隆成熟仓库）              │ ← 站在巨人肩膀上
-│  antfu/vue · anthropic/testing · gemini/... │
+│  antfu/vue · anthropic/design · gemini/... │
 ├─────────────────────────────────────────────┤
 │  🚀 分发引擎（一键安装到所有 AI 代理）         │ ← 自动化基础设施
 │  Claude · Cursor · Codex · Gemini · ...     │
@@ -145,11 +145,13 @@ Moluoxixi AIRules 通过自动化投影，支持不断增长的 AI 代理生态�
 
 | 来源 | Skills | 说明 |
 |------|--------|------|
-| **antfu** | vue, nuxt, pinia, vite, vitest, unocss, pnpm, vitepress, slidev, tsdown, turborepo 等 17 个 | Vue 全家桶 + 前端工具链最佳实践 |
+| **antfu** | vue, nuxt, pinia, vite, vitest, unocss, pnpm, vitepress, slidev, tsdown, turborepo 等 15 个 | Vue 全家桶 + 前端工具链最佳实践 |
 | **Google Gemini** | code-reviewer, pr-creator | 代码审查与 PR 自动创建 |
 | **Vercel Labs** | find-skills | 开源生态 Skill 发现与安装 |
+| **Vercel Agent Skills** | react-best-practices, react-native-skills, web-design-guidelines | React/React Native 实现指导与 Web UI 审查 |
+| **Anthropic** | frontend-design | 生产级前端视觉设计指导 |
 | **OpenAI** | playwright | 浏览器自动化与 UI 流程调试 |
-| **Superpowers** | 完整技能集 | 基础工程技能（TDD、子代理驱动等） |
+| **Superpowers** | systematic-debugging, verification-before-completion, receiving-code-review, writing-skills, using-git-worktrees, writing-plans | 精选代码库工作流技能，不默认启用 TDD 或子代理执行重流程 |
 
 ## 项目结构
 
