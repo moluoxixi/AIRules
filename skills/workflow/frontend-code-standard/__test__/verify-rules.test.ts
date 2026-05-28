@@ -36,6 +36,7 @@ it('verify-rules 校验组件、模块和共享边界', () => {
   const brokenLeafComponentRoot = fs.mkdtempSync(path.join(os.tmpdir(), 'airules-leaf-component-broken-'))
   const moduleRoot = fs.mkdtempSync(path.join(os.tmpdir(), 'airules-module-'))
   const brokenModuleRoot = fs.mkdtempSync(path.join(os.tmpdir(), 'airules-module-broken-'))
+  const nestedSrcModuleRoot = fs.mkdtempSync(path.join(os.tmpdir(), 'airules-module-nested-src-'))
   const utilityRoot = fs.mkdtempSync(path.join(os.tmpdir(), 'airules-utility-'))
   const brokenUtilityRoot = fs.mkdtempSync(path.join(os.tmpdir(), 'airules-utility-broken-'))
 
@@ -78,6 +79,9 @@ it('verify-rules 校验组件、模块和共享边界', () => {
 
   writeFile(brokenModuleRoot, 'index.vue', '<template />\n')
   writeFile(brokenModuleRoot, 'api/purchase-order-api.ts', 'export function getPurchaseOrder() {}\n')
+
+  writeFile(nestedSrcModuleRoot, 'index.vue', '<template />\n')
+  writeFile(nestedSrcModuleRoot, 'src/index.ts', 'export const internal = true\n')
 
   writeFile(utilityRoot, 'README.md', '# Formatters\n\n## Usage\n\nAPI docs.\n')
   writeFile(utilityRoot, 'package.json', '{ "name": "@demo/formatters", "sideEffects": false, "peerDependencies": { "vue": "^3.0.0" } }\n')
@@ -151,6 +155,15 @@ it('verify-rules 校验组件、模块和共享边界', () => {
   ], { cwd: projectRoot, encoding: 'utf8' })
   assert.notEqual(brokenModuleResult.status, 0)
   assert.match(brokenModuleResult.stderr, /目录 api\/ 聚合入口 缺少唯一入口：index\.ts/)
+
+  const nestedSrcModuleResult = spawnSync(process.execPath, [
+    scriptPath,
+    'module',
+    '--root',
+    nestedSrcModuleRoot,
+  ], { cwd: projectRoot, encoding: 'utf8' })
+  assert.notEqual(nestedSrcModuleResult.status, 0)
+  assert.match(nestedSrcModuleResult.stderr, /单个模块不得再嵌套 src\/ 目录/)
 
   const brokenUtilityResult = spawnSync(process.execPath, [
     scriptPath,

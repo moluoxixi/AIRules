@@ -40,10 +40,10 @@ description: 用于新建、编写、重构、拆分、优化、评审或校验 
    - **私有叶子例外**：只有私有、叶子、无 props/emits/expose/slot/model/ref API、无导出类型、无跨目录复用、无生产职责拆分的展示组件，才允许保持单个 `.vue` 或 `.tsx` 文件。该例外不是正式分类；一旦出现 `types/`、`constants/`、`utils/`、`hooks/`、`composables/`、`components/` 等职责目录，必须立即升级为 `component-package`。
    - **递归嵌套**：`src/components/` 内的子组件默认递归套用 `component-package`，仅满足私有叶子例外时才允许使用单文件。
 
-2. **`business-module`（业务模块）**：
-   必须以 `index.vue` / `index.tsx` 作为根级主视图，严禁使用 `src/` 容器。关联逻辑必须按职责拆分至同级标准目录，骨架如下：
-   - 主视图：`模块名/index.vue` 或 `模块名/index.tsx`。
-   - 职责目录：`components/`、`composables/`、`types/`、`constants/`、`utils/`、`api/` 等。
+2. **`business-module`（业务模块 / 页面级模块）**：
+   指代存在于宿主应用路由目录（如 `views/`、`pages/`、`app/`）下的具体业务页面聚合（如 `views/OrderManagement/`）。由于其已经处于项目源码层内部，模块内部严禁再嵌套 `src/` 容器。关联逻辑必须按职责拆分至与主视图同级的标准目录，拒绝无意义的物理层级加深，骨架如下：
+   - 主视图：必须以 `index.vue` 或 `index.tsx` 作为根级主视图。
+   - 职责目录：直接平铺 `components/`、`composables/`、`types/`、`constants/`、`utils/`、`api/` 等。
    - **组件递归**：`components/` 目录下的业务子组件默认按 `component-package` 建立门面和类型契约；仅满足私有叶子例外时才允许使用单文件。
    - 门面约束：所有代码职责目录必须包含 `index.ts` 门面，测试、样式、资产等非逻辑目录按全局的“门面例外”规则处理。
 
@@ -56,7 +56,7 @@ description: 用于新建、编写、重构、拆分、优化、评审或校验 
 - **Vue 契约归位**：`defineProps`、`defineEmits`、`defineExpose`、slot、`defineModel` 和模板 ref 对外能力都属于组件 API；只要它们形成可复用或可依赖契约，就必须进入 `src/types/`，并由 `src/types/index.ts` 统一导出。
 - **React 契约归位**：`Props`、回调事件、`children`/slot-like 内容、受控与非受控值、`ref`/imperative handle 都属于组件 API；公共类型不得长期滞留在 `.tsx` 实现文件中。
 - **单文件限制**：私有叶子组件允许存在极少量仅服务当前渲染的 inline 类型，但不得导出、不得跨目录复用、不得承载可命名公共契约。契约一旦稳定，必须升级为 `component-package`。
-- **示例边界**：组件分类正反例集中维护在 `examples/component-classification.md`；示例只解释规则，不定义新规则。
+- **AI 判定优先级**：分类以目录位置、公开契约和职责拆分为准，不以文件数量为准。先识别页面级 `business-module`，再识别组件 API 或生产拆分形成的 `component-package`；只有无 API、无复用、无职责拆分的私有叶子组件才允许单文件。
 
 ## 四、测试与质量边界 (Testing Boundaries)
 

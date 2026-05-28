@@ -431,7 +431,6 @@ function printHelp() {
 
 function verifySelf() {
   const skill = readSkillFile('SKILL.md')
-  const componentExample = readSkillFile('examples', 'component-classification.md')
 
   assertContains(skill, /frontend-code-standard/, 'SKILL.md 必须声明 skill 名称')
   assertContains(skill, /Vue\/React 前端组件/, 'SKILL.md 必须覆盖前端技术范围')
@@ -475,8 +474,13 @@ function verifySelf() {
   assertContains(skill, /defineEmits/, 'SKILL.md 必须覆盖 Vue emits 契约')
   assertContains(skill, /defineExpose/, 'SKILL.md 必须覆盖 Vue expose 契约')
   assertContains(skill, /受控与非受控值/, 'SKILL.md 必须覆盖 React 受控契约')
-  assertContains(skill, /examples\/component-classification\.md/, 'SKILL.md 必须引用组件分类正反例')
-  assertContains(skill, /必须以 `index\.vue` \/ `index\.tsx` 作为根级主视图，严禁使用 `src\/` 容器/, 'SKILL.md 必须覆盖业务模块结构边界')
+  assertContains(skill, /AI 判定优先级/, 'SKILL.md 必须覆盖 AI 分类判定顺序')
+  assertContains(skill, /分类以目录位置、公开契约和职责拆分为准，不以文件数量为准/, 'SKILL.md 必须声明分类不按文件数量判断')
+  assertContains(skill, /宿主应用路由目录（如 `views\/`、`pages\/`、`app\/`）/, 'SKILL.md 必须覆盖业务模块所在路由目录')
+  assertContains(skill, /具体业务页面聚合/, 'SKILL.md 必须覆盖业务模块页面聚合语义')
+  assertContains(skill, /模块内部严禁再嵌套 `src\/` 容器/, 'SKILL.md 必须覆盖业务模块 src 容器禁令')
+  assertContains(skill, /拒绝无意义的物理层级加深/, 'SKILL.md 必须覆盖业务模块平铺职责目录')
+  assertContains(skill, /必须以 `index\.vue` 或 `index\.tsx` 作为根级主视图/, 'SKILL.md 必须覆盖业务模块主视图入口')
   assertContains(skill, /所有代码职责目录必须包含 `index\.ts` 门面/, 'SKILL.md 必须覆盖业务模块职责目录门面')
   assertContains(skill, /`README\.md`、根 `index\.ts`、`src\/` 和 `package\.json`/, 'SKILL.md 必须覆盖库结构入口')
   assertContains(skill, /sideEffects/, 'SKILL.md 必须覆盖 Tree-shaking 契约')
@@ -499,12 +503,6 @@ function verifySelf() {
   assertContains(skill, /按任务风险执行项目已有的 `lint`、`typecheck`、`test`、`build` 或浏览器验证/, 'SKILL.md 必须覆盖验证命令范围')
   assertContains(skill, /FAIL > MISSING > NOT RUN > PASS/, 'SKILL.md 必须覆盖最终状态优先级')
   assertContains(skill, /Playwright、验证脚本入口/, 'SKILL.md 必须覆盖验证入口缺失状态')
-  assertContains(componentExample, /正例：私有叶子例外/, '组件分类示例必须包含私有叶子正例')
-  assertContains(componentExample, /正例：组件包/, '组件分类示例必须包含组件包正例')
-  assertContains(componentExample, /反例：单文件承载稳定契约/, '组件分类示例必须包含单文件契约反例')
-  assertContains(componentExample, /反例：有类型文件但没有组件包门面/, '组件分类示例必须包含类型目录反例')
-  assertContains(componentExample, /反例：跨模块复用但深藏在业务目录/, '组件分类示例必须包含跨模块复用反例')
-
   printPass('frontend-code-standard self rules are valid')
 }
 
