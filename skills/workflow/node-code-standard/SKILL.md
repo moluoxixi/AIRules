@@ -38,6 +38,7 @@ description: 用于新建、编写、重构、拆分、优化、评审或校验�
 ### 1. Contract Boundaries
 
 - HTTP、RPC、Event、Job、Config 等 Contract Boundary 必须由 Schema（如 Zod、TypeBox）保证运行时强校验。
+- Schema 校验只用于外部不可信 Contract Boundary；已通过边界的内部 Command、Query、Domain 对象和强类型调用链禁止重复编写 `typeof`、空值判断、正则格式检查或 `.trim()` 等运行时防御。
 - 此边界内的 TypeScript 静态类型必须由 Schema 推导（如 `z.infer`），绝对禁止手写同名 Interface。
 - Domain 层 Entity、Value Object 以及 Application 层 UseCase Command 必须是纯粹的业务语义类型，不应强制从 Transport Schema 推导，避免业务层被底层校验框架绑架。
 

@@ -42,7 +42,7 @@ it('verify-rules 校验自检和领域提升扫描', () => {
     'src/main/java/com/example/order/update/UpdateOrderService.java',
     'src/main/java/com/example/order/cancel/CancelOrderService.java',
   ], { cwd: projectRoot, encoding: 'utf8' })
-  assert.equal(nestedHoistResult.status, 0)
-  assert.match(nestedHoistResult.stdout, /\[HOIST_WARNING\]/)
-  assert.match(nestedHoistResult.stdout, /PASS java hoist domain-boundary scan completed/)
+  assert.equal(nestedHoistResult.status, 1)
+  assert.match(nestedHoistResult.stderr, /FAIL \[HOIST_BOUNDARY_RISK\]/)
+  assert.doesNotMatch(nestedHoistResult.stdout, /PASS java hoist domain-boundary scan completed/)
 })

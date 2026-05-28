@@ -40,6 +40,7 @@ description: 用于新建、编写、重构、拆分、优化、评审或校验 
 
 - **强制构造器注入 (Constructor Injection)**：全局禁用 `@Autowired` 字段注入。依赖关系必须显式声明，使用 `final` 修饰并由构造器初始化。
 - **输入校验前置 (Bean Validation)**：Controller 的 `@RequestBody`、`@ModelAttribute`、复杂 request DTO、多字段入参或嵌套入参，必须在入口参数处显式添加 `@Valid` 或 `@Validated`。嵌套 DTO 必须在父级字段标注以触发级联校验，例如集合字段应写为 `@Valid @NotNull List<ItemRequest> items`。
+- Bean Validation 只用于外部不可信入口契约；已进入 Application/Domain 的强类型对象禁止重复编写空值判断、正则格式检查、`.trim()` 等运行时防御。
 - **严禁事务自调用 (No Self-Invocation)**：事务方法必须由 Controller 或其他 Application Service 通过注入的 Spring Bean 从外部调用。若需拆分事务边界，必须提取独立的 Service 类，严禁使用 `this.xxx()` 内部调用或通过 `AopContext.currentProxy()` 等 Hack 手段绕过代理。
 - **事务边界显式**：`@Transactional` 只放在真正的 use case / application service 边界；查询类 use case 或不修改数据的 application service 必须显式使用 `@Transactional(readOnly = true)`，减少 Hibernate Dirty Checking 开销，并作为读写分离路由的明确标记。
 - **配置强类型绑定**：使用 `@ConfigurationProperties` 映射配置，禁止代码中散落 `@Value` 裸字符串读取。

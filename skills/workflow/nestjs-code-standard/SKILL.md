@@ -25,6 +25,7 @@ description: 用于新建、编写、重构、拆分、优化、评审或校验 
 ### 1. 输入防污染与查询边界 (Payload Pollution & Query Boundary)
 
 - 强制启用全局 `ValidationPipe` 并配置 `whitelist: true`、`forbidNonWhitelisted: true`、`transform: true`，阻断一切未声明字段进入业务层。
+- `ValidationPipe`、`class-validator` 与 Zod 只用于外部不可信传输边界；已进入 Application/Domain 的强类型对象禁止重复编写 `typeof`、空值判断、正则格式检查或 `.trim()` 等运行时防御。
 - DTO 严禁使用 `any`、`Record<string, any>` 或开放索引签名。
   - **严控例外：** 仅当外部契约明确要求任意 JSON（如 Webhook payload、动态表单元数据）时，必须通过专用 Value Object 承载，并辅以 `class-validator` 嵌套 DTO、Zod 等成熟工具进行严格 Schema 校验，严禁手写 ad hoc 校验。
 - **Query 安全边界：** 列表查询 DTO 必须设置分页最大上限，排序字段必须采用 Allowlist，筛选条件必须严格 DTO 化。严禁将任意外部 Query 对象直接透传给底层 ORM Builder。
@@ -198,4 +199,4 @@ const response = plainToInstance(OrderResponseDto, plainData, { excludeExtraneou
 - 为保障规则不退化，本 Skill 的自动化架构守卫脚本统一放置于当前 Skill 根目录下的 `scripts/verify-rules.mjs`。
 - 执行验证时应覆盖 Token 检查，并视情况逐步补充 AST 级别的拦截规则。
 - Token 检查至少覆盖：`forbidNonWhitelisted`、`Payload Pollution`、`Scope.REQUEST`、`REQUEST`、`AsyncLocalStorage`、`forwardRef()`、`EntityManager`、`QueryRunner`、`TransactionClient`、`Transactional Outbox`、`Saga`、`Tenant-scoped data`、`process.env`、`Exception Filter`、`Testcontainers`、`E2E Contract Test`、`excludeExtraneousValues`。
-- `verify-rules.mjs hoist` 的 `[HOIST_WARNING]` 只表示共享边界存在机械风险信号，必须人工结合领域语义复核，不能把扫描 `PASS` 当作实现整体通过。
+- `verify-rules.mjs hoist` 的 `[HOIST_BOUNDARY_RISK]` 表示共享边界存在机械风险信号，必须以 `FAIL` 显式暴露并由人工结合领域语义复核，不能把风险扫描转写为 `PASS`。

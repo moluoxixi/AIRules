@@ -42,7 +42,7 @@ it('verify-rules 校验自检和领域提升扫描', () => {
     'src/modules/orders/update/update-order.service.ts',
     'src/modules/orders/cancel/cancel-order.service.ts',
   ], { cwd: projectRoot, encoding: 'utf8' })
-  assert.equal(nestedHoistResult.status, 0)
-  assert.match(nestedHoistResult.stdout, /\[HOIST_WARNING\]/)
-  assert.match(nestedHoistResult.stdout, /PASS nestjs hoist domain-boundary scan completed/)
+  assert.equal(nestedHoistResult.status, 1)
+  assert.match(nestedHoistResult.stderr, /FAIL \[HOIST_BOUNDARY_RISK\]/)
+  assert.doesNotMatch(nestedHoistResult.stdout, /PASS nestjs hoist domain-boundary scan completed/)
 })

@@ -22,11 +22,13 @@ function printPass(message, details = {}) {
     console.log(`${key}: ${value}`)
 }
 
-function printHoistWarning(message, details = {}) {
-  console.log(`WARN [HOIST_WARNING] ${message}`)
+function createHoistBoundaryError(message, details) {
+  // Hoist risk signals are explicit failures so automated checks cannot report a risky scan as PASS.
+  const detailLines = Object.entries(details)
+    .map(([key, value]) => `${key}: ${value}`)
+    .join('\n')
 
-  for (const [key, value] of Object.entries(details))
-    console.log(`${key}: ${value}`)
+  return new Error(`[HOIST_BOUNDARY_RISK] ${message}\n${detailLines}`)
 }
 
 function printHelp() {
@@ -90,7 +92,7 @@ function isUnderAncestor(targetSegments, ancestorSegments) {
   return ancestorSegments.every((segment, index) => targetSegments[index] === segment)
 }
 
-// Use the mechanical boundary as a warning signal only; semantic ownership still comes from architecture boundaries.
+// Use the mechanical boundary as an explicit failure signal; semantic ownership still needs human review.
 function scanHoistTarget(args) {
   const target = getOption(args, '--target')
   const usesIndex = args.indexOf('--uses')
@@ -109,13 +111,13 @@ function scanHoistTarget(args) {
   const ancestor = ancestorSegments.join('/')
 
   if (!isUnderAncestor(targetSegments, ancestorSegments)) {
-    printHoistWarning('抽离目标不在允许的共享边界内，请人工确认它是否应该进入全局共享层或独立共享包', {
+    throw createHoistBoundaryError('抽离目标不在允许的共享边界内，请人工确认它是否应该进入全局共享层或独立共享包', {
       target: targetPath,
       sharedBoundary: ancestor,
     })
   }
   else if (targetSegments.length !== ancestorSegments.length + 1) {
-    printHoistWarning('抽离目标位于更深层级，请人工确认它是否应留在局部业务内部，或者提升到全局共享层', {
+    throw createHoistBoundaryError('抽离目标位于更深层级，请人工确认它是否应留在局部业务内部，或者提升到全局共享层', {
       target: targetPath,
       sharedBoundary: ancestor,
     })
@@ -216,6 +218,6 @@ try {
   main()
 }
 catch (error) {
-  console.error(`FAIL ${error instanceof Error ? error.message : String(error)}`)
+  console.error(`FAIL ${error.message}`)
   process.exitCode = 1
 }
