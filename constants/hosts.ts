@@ -43,6 +43,11 @@ export const HOST_CONFIGS: HostConfig[] = [
   //   baselineFileName: 'AGENTS.md',
   // },
   {
+    id: 'qoderwork',
+    homeRelPath: '.qoderwork',
+    baselineFileName: 'AGENTS.md',
+  },
+  {
     id: 'tare',
     homeRelPath: '.tare',
     baselineFileName: 'AGENTS.md',
