@@ -51,16 +51,14 @@ description: 用于软件开发任务的通用流程规范，适用于功能开�
 - Java 后端实现标准：`java-code-standard`。新建、编写、重构、拆分、优化、评审或校验 Java/Spring Boot 后端代码时使用；规则、示例和检查清单都收敛在各自的 `SKILL.md` 中。
 - Vue、Vitest、Playwright 等技术细节：按项目实际栈加载对应技术 Skill。
 - 拆分和并行判断：见下方“任务拆分”。
-- 项目知识读取工作流：`project-knowledge-read-workflow`。开发任务、需求分析或代码审查开始前，若项目存在 `docs/AI项目知识/项目概览.md`，必须使用它按需读取项目知识。
-- 项目知识刷新工作流：`project-knowledge-refresh-workflow`。开发任务完成后需要按 commit 范围刷新 `docs/AI项目知识/` 时使用。
+- 项目知识读取工作流：`project-knowledge-read-workflow`。开发任务、需求分析或代码审查开始前，若项目存在 `docs/AI项目知识/项目概览.md`，使用它按需读取项目知识；若知识库不存在，只报告 `MISSING`，不创建知识库。
+- 项目知识刷新工作流：`project-knowledge-refresh-workflow`。开发任务完成后刷新 `docs/AI项目知识/`；若知识库不存在，由该工作流创建基线知识库，若已存在则按 commit 增量刷新。
 
 ## 项目知识接入
 
-当项目启用 `docs/AI项目知识/` 时，先读取 `项目概览.md` 和 `总索引.md`，再按领域 `索引.md` 命中结果加载少量原子知识文件。禁止无目标扫描整个项目知识目录。
+开发任务开始前，若项目存在 `docs/AI项目知识/项目概览.md` 和 `总索引.md`，先读取这两个路由文件，再按领域 `索引.md` 命中结果加载少量原子知识文件。若知识库不存在，项目知识读取状态为 `MISSING`，继续依赖源码、测试、配置和用户指令，不在前置读取阶段创建知识库。禁止无目标扫描整个项目知识目录。
 
-开发任务完成且必要验证结束后，必须触发 `project-knowledge-refresh-workflow` 做知识刷新检查；若当前环境没有触发结果，交付报告必须标记 `NOT RUN` 或 `MISSING` 并说明原因。
-
-generated docs 只作为索引和候选理解。
+开发任务完成且必要验证结束后，必须触发 `project-knowledge-refresh-workflow` 做知识刷新检查。该工作流负责处理无知识库时的 bootstrap 和有知识库时的 commit 增量刷新；若当前环境没有触发结果，交付报告必须标记 `NOT RUN` 或 `MISSING` 并说明原因。
 
 ## 质量门
 
