@@ -31,10 +31,18 @@ it('verify-rules 只校验 YAML、目录名和长度', () => {
   writeSkill(validSkillRoot, [
     '---',
     'name: minimal-skill',
-    'description: 校验示例 skill 的 YAML。',
     '---',
   ])
   assert.match(runScript('--root', validSkillRoot), /PASS skill YAML frontmatter is valid/)
+
+  const validDescribedSkillRoot = path.join(fs.mkdtempSync(path.join(os.tmpdir(), 'airules-valid-described-skill-')), 'described-skill')
+  writeSkill(validDescribedSkillRoot, [
+    '---',
+    'name: described-skill',
+    'description: 用于创建、修改或评审 skill 时校验 YAML。',
+    '---',
+  ])
+  assert.match(runScript('--root', validDescribedSkillRoot), /PASS skill YAML frontmatter is valid/)
 
   const invalidSkillRoot = path.join(fs.mkdtempSync(path.join(os.tmpdir(), 'airules-invalid-skill-')), 'broken-skill')
   writeSkill(invalidSkillRoot, [
@@ -67,11 +75,26 @@ it('verify-rules 只校验 YAML、目录名和长度', () => {
   assert.notEqual(mismatchedNameResult.status, 0)
   assert.match(mismatchedNameResult.stdout, /frontmatter name 必须等于目录名：folder-name/)
 
+  const vagueDescriptionRoot = path.join(fs.mkdtempSync(path.join(os.tmpdir(), 'airules-vague-description-skill-')), 'vague-description-skill')
+  writeSkill(vagueDescriptionRoot, [
+    '---',
+    'name: vague-description-skill',
+    'description: 这是一个很有用的 skill。',
+    '---',
+  ])
+  const vagueDescriptionResult = spawnSync(process.execPath, [
+    scriptPath,
+    '--root',
+    vagueDescriptionRoot,
+  ], { cwd: projectRoot, encoding: 'utf8' })
+  assert.notEqual(vagueDescriptionResult.status, 0)
+  assert.match(vagueDescriptionResult.stdout, /frontmatter description 必须说明触发时机或触发场景/)
+
   const oversizedSkillRoot = path.join(fs.mkdtempSync(path.join(os.tmpdir(), 'airules-oversized-skill-')), 'oversized-skill')
   writeSkill(oversizedSkillRoot, [
     '---',
     'name: oversized-skill',
-    'description: 超过 500 行。',
+    'description: 用于校验超过 500 行的 skill。',
     '---',
     ...Array.from({ length: 501 }, (_, index) => `line ${index + 1}`),
   ])

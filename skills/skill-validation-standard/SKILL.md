@@ -13,10 +13,11 @@ description: 校验 Claude/Codex skill 的 YAML frontmatter。用于创建、修
 
 1. 读取目标 skill 根目录下的 `SKILL.md`。
 2. 检查文件是否以 YAML frontmatter 开始，并使用 `---` 正确闭合。
-3. 检查 frontmatter 至少包含非空 `name` 与 `description`。
+3. 检查 frontmatter 至少包含非空 `name`。
 4. 检查 `name` 与 skill 文件夹名称一致。
-5. 检查 `SKILL.md` 不超过 500 行。
-6. 汇总 `PASS` / `FAIL` 结果，`FAIL` 项必须修复。
+5. 若存在 `description`，检查它必须说明触发时机或触发场景。
+6. 检查 `SKILL.md` 不超过 500 行。
+7. 汇总 `PASS` / `FAIL` 结果，`FAIL` 项必须修复。
 
 ## 判定标准
 
@@ -27,8 +28,9 @@ description: 校验 Claude/Codex skill 的 YAML frontmatter。用于创建、修
 | Y1 | `SKILL.md` 以 YAML frontmatter 开头 | 文件不是以 `---` 开头 |
 | Y2 | frontmatter 正确闭合 | 找不到第二个 `---` 分隔符 |
 | Y3 | frontmatter 行是 `key: value` 结构 | 非空行缺少 key、冒号或 value |
-| Y4 | `name` 与 `description` 均存在 | 任一字段缺失或为空 |
+| Y4 | `name` 存在 | `name` 缺失或为空 |
 | Y5 | `name` 与 skill 文件夹名称一致 | `name` 不等于当前目录名 |
+| Y6 | 若存在 `description`，必须描述触发时机或触发场景 | `description` 泛泛描述能力而不说明何时触发 |
 
 ### 文件长度
 

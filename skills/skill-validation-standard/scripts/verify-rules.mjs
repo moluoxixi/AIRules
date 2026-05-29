@@ -8,7 +8,7 @@ import { fileURLToPath } from 'node:url'
 
 const ownRoot = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..')
 const MAX_SKILL_LINES = 500
-const REQUIRED_FIELDS = ['name', 'description']
+const DESCRIPTION_TRIGGER_PATTERN = /(用于|适用于|当|在.+时|开始前|完成后|明确要求|Use when|Triggers? on|when)/i
 const errors = []
 
 function fail(message) {
@@ -129,21 +129,29 @@ function parseFrontmatter(yaml) {
 }
 
 function checkFrontmatterFields(fields, root) {
-  for (const field of REQUIRED_FIELDS) {
-    if (!fields.get(field)) {
-      fail(`frontmatter 缺少 ${field}`)
-    }
+  const actualName = fields.get('name')
+  if (!actualName) {
+    fail('frontmatter 缺少 name')
   }
 
   const expectedName = path.basename(root)
-  const actualName = fields.get('name')
   if (actualName && actualName !== expectedName) {
     fail(`frontmatter name 必须等于目录名：${expectedName}`)
   }
 
-  if (REQUIRED_FIELDS.every(field => fields.get(field)) && actualName === expectedName) {
+  const description = fields.get('description')
+  if (description && !DESCRIPTION_TRIGGER_PATTERN.test(description)) {
+    fail('frontmatter description 必须说明触发时机或触发场景')
+  }
+
+  if (actualName && actualName === expectedName) {
     pass('frontmatter required fields present')
     pass('frontmatter name matches folder')
+    if (description) {
+      pass('frontmatter description trigger contract valid')
+    } else {
+      pass('frontmatter description omitted')
+    }
   }
 }
 

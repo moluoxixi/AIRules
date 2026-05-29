@@ -7,6 +7,7 @@ import { describe, it } from 'vitest'
 const __dirname = path.dirname(fileURLToPath(import.meta.url))
 const rootDir = path.resolve(__dirname, '..')
 const MAX_SKILL_LINES = 500
+const DESCRIPTION_TRIGGER_PATTERN = /(用于|适用于|当|在.+时|开始前|完成后|明确要求|Use when|Triggers? on|when)/i
 
 // 只校验本仓库第一方 skill；vendor/skills 由上游仓库维护。
 const skillRoots = ['skills']
@@ -119,10 +120,16 @@ describe('agent Skills Validation', () => {
           const descValue = fields.get('description')
 
           assert.ok(nameValue !== undefined, `Missing 'name' in YAML frontmatter of ${skill.name}`)
-          assert.ok(descValue !== undefined, `Missing 'description' in YAML frontmatter of ${skill.name}`)
 
           assert.ok(nameValue.length > 0, `'name' in ${skill.name} cannot be empty`)
-          assert.ok(descValue.length > 0, `'description' in ${skill.name} cannot be empty`)
+          if (descValue !== undefined) {
+            assert.ok(descValue.length > 0, `'description' in ${skill.name} cannot be empty when present`)
+            assert.match(
+              descValue,
+              DESCRIPTION_TRIGGER_PATTERN,
+              `'description' in ${skill.name} must describe trigger timing or trigger scenarios when present`,
+            )
+          }
           assert.strictEqual(nameValue, path.basename(skill.path), `'name' in ${skill.name} must match its folder name`)
         })
       }
