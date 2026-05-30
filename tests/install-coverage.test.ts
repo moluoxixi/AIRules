@@ -136,6 +136,22 @@ it('install - 初始化安装目录并同步全局技能链接', () => withTempD
   assert.equal(realLinkPath(globalSkill), realLinkPath(sourceSkill))
 }))
 
+it('install - 全局技能链接从嵌套源目录展平到叶子 skill 名', () => withTempDir('airules-global-flat-', (tmpDir) => {
+  const userHome = path.join(tmpDir, 'user')
+  const paths = getDefaultInstallPaths(userHome)
+
+  ensureInstallRoot(paths)
+  const nestedSkill = path.join(paths.moluoHome, 'vendor', 'skills', 'workflow', 'backend', 'node-code-standard')
+  writeFile(path.join(nestedSkill, 'SKILL.md'), 'node\n')
+
+  ensureGlobalSkillLink(paths)
+
+  const globalSkill = path.join(paths.globalAgentSkillsHome, 'node-code-standard')
+  assert.ok(fs.lstatSync(globalSkill).isSymbolicLink())
+  assert.equal(realLinkPath(globalSkill), realLinkPath(nestedSkill))
+  assert.equal(fs.existsSync(path.join(paths.globalAgentSkillsHome, 'workflow')), false)
+}))
+
 it('install - replaceWithSymlink 跳过同路径、复用正确链接并替换错误目标', () => withTempDir('airules-link-', (tmpDir) => {
   const source = path.join(tmpDir, 'source')
   const target = path.join(tmpDir, 'target')
@@ -243,6 +259,51 @@ export const vendors = [
   })
 })
 
+it('install - rebuildVendorSkillLinks 递归展开 namespace 为扁平 vendor skills', async () => {
+  await withTempDirAsync('airules-rebuild-flat-', async (tmpDir) => {
+    const homeDir = path.join(tmpDir, 'home')
+    const manifestPath = path.join(tmpDir, 'manifest.mjs')
+    const workflowRoot = path.join(homeDir, 'vendor', 'repos', 'demo', 'skills', 'workflow')
+    const frontendSkill = path.join(workflowRoot, 'frontend', 'frontend-code-standard')
+    const nodeSkill = path.join(workflowRoot, 'backend', 'node-code-standard')
+
+    writeFile(path.join(frontendSkill, 'SKILL.md'), 'frontend\n')
+    writeFile(path.join(nodeSkill, 'SKILL.md'), 'node\n')
+    writeFile(path.join(workflowRoot, 'README.md'), 'namespace docs\n')
+    writeFile(manifestPath, `
+export const vendors = [
+  {
+    name: 'demo',
+    official: true,
+    source: 'https://example.test/demo.git',
+    projections: [
+      {
+        kind: 'namespace',
+        sourceDir: 'skills/workflow',
+        output: 'workflow',
+      },
+    ],
+  },
+]
+`)
+
+    const plan = await rebuildVendorSkillLinks({ homeDir, manifestPath })
+    assert.equal(plan.length, 1)
+    assert.ok(fs.lstatSync(path.join(homeDir, 'vendor', 'skills', 'frontend-code-standard')).isSymbolicLink())
+    assert.ok(fs.lstatSync(path.join(homeDir, 'vendor', 'skills', 'node-code-standard')).isSymbolicLink())
+    assert.equal(fs.existsSync(path.join(homeDir, 'vendor', 'skills', 'workflow')), false)
+    assert.equal(
+      realLinkPath(path.join(homeDir, 'vendor', 'skills', 'frontend-code-standard')),
+      realLinkPath(frontendSkill),
+    )
+
+    const gitignore = fs.readFileSync(path.join(homeDir, 'vendor', 'skills', '.gitignore'), 'utf8')
+    assert.match(gitignore, /frontend-code-standard/)
+    assert.match(gitignore, /node-code-standard/)
+    assert.doesNotMatch(gitignore, /^workflow$/m)
+  })
+})
+
 it('install - runSkillSetupCommands 执行 setup 并保留失败语义为告警', () => {
   const manifest = {
     version: 1,
@@ -332,8 +393,8 @@ it('vendors - 合并重复供应商、拒绝本地供应商和未知 projection'
 
   assert.equal(merged.demo.official, true)
   assert.deepEqual(merged.demo.links.map((link: any) => link.target), [
-    'vendor/skills/group/a',
-    'vendor/skills/group/b',
+    'vendor/skills/a',
+    'vendor/skills/b',
   ])
 
   assert.throws(

@@ -24,14 +24,15 @@ export type SkillDef = string | SkillConfig
 
 /**
  * 单个供应商仓库内的一条安装投影规则。
- * namespace 用于整体目录投影；skills 用于按 skill 精确投影。
+ * namespace 用于递归扫描目录中的叶子 skills；skills 用于按 skill 精确投影。
+ * 两者安装到 vendor/skills 时都只保留叶子 skill 名称，不继承源目录层级。
  */
 export type VendorProjection
   = | {
     kind: 'namespace'
-    /** 仓库内要整体投影的目录 */
+    /** 仓库内要递归扫描的目录 */
     sourceDir: string
-    /** 安装后的 namespace 目录名 */
+    /** 清单中的占位名；实际 vendor 目录由叶子 skill 名称决定 */
     output: string
     /** namespace 级安装前置命令 */
     setup?: string[]
@@ -68,7 +69,7 @@ export type VendorNode = VendorRepo | { [category: string]: VendorNode[] }
  * 供应商配置：必须是一个 VendorNode 数组。
  * 这种结构提供了极大的灵活性：
  * - 如果直接放入 VendorRepo，安装时会扁平化到顶级。
- * - 如果放入 { "category": [...] }，安装时会创建分类文件夹。
+ * - 如果放入 { "category": [...] }，category 只作为配置分组，不进入 vendor/skills 路径。
  */
 export type VendorsConfig = VendorNode[]
 

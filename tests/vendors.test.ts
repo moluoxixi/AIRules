@@ -201,7 +201,7 @@ it('walkVendorTree - 数组中的嵌套分类对象', () => {
   assert.ok(vendors['base-vendor'], 'base-vendor 应在根级别')
   assert.ok(vendors['nested-vendor'], 'nested-vendor 应被提取')
   assert.strictEqual(vendors['base-vendor'].links[0].target, 'vendor/skills/base')
-  assert.strictEqual(vendors['nested-vendor'].links[0].target, 'vendor/skills/category-1/n1')
+  assert.strictEqual(vendors['nested-vendor'].links[0].target, 'vendor/skills/n1')
 })
 
 it('walkVendorTree - 深度嵌套递归', () => {
@@ -234,13 +234,53 @@ it('walkVendorTree - 深度嵌套递归', () => {
   assert.ok(vendors['deep-vendor'], '深度嵌套的 vendor 应被找到')
   assert.strictEqual(
     vendors['deep-vendor'].links[0].target,
-    'vendor/skills/level-1/level-2/deep-skill',
+    'vendor/skills/deep-skill',
   )
 })
 
-// ─── namespace projection 整体目录模式 ───────────────────────────────────────
+it('walkVendorTree - skills projection 嵌套源路径安装为扁平目标', () => {
+  const vendors: Record<string, any> = {}
+  const mockConfig: VendorsConfig = [
+    {
+      name: 'nested-source',
+      official: true,
+      source: 'https://github.com/nested-source.git',
+      projections: [
+        {
+          kind: 'skills',
+          sourceBaseDir: 'skills',
+          skills: [
+            'workflow/deep-skill',
+            { name: 'rules/review/code-reviewer' },
+          ],
+        },
+      ],
+    },
+  ]
 
-it('walkVendorTree - namespace projection 整体目录作为一个 skill namespace', () => {
+  walkVendorTree(mockConfig, [], vendors)
+
+  assert.deepStrictEqual(
+    vendors['nested-source'].links.map((link: any) => ({
+      source: link.source,
+      target: link.target,
+    })),
+    [
+      {
+        source: 'skills/workflow/deep-skill',
+        target: 'vendor/skills/deep-skill',
+      },
+      {
+        source: 'skills/rules/review/code-reviewer',
+        target: 'vendor/skills/code-reviewer',
+      },
+    ],
+  )
+})
+
+// ─── namespace projection 递归扫描入口 ───────────────────────────────────────
+
+it('walkVendorTree - namespace projection 保留递归扫描入口', () => {
   const vendors: Record<string, any> = {}
   const mockConfig: VendorsConfig = [
     {
@@ -432,7 +472,7 @@ it('vendors 配置 - 使用 OpenAI Playwright 并移除过时技能', () => {
   )
   assert.ok(
     vendors.moluoxixi.links.some((link: any) => link.target === 'vendor/skills/workflow'),
-    'workflow 类技能应作为 namespace 统一安装',
+    'workflow 类技能应通过 namespace 入口递归扫描后展平安装',
   )
   assert.ok(
     vendors.moluoxixi.links.some((link: any) => link.target === 'vendor/skills/skill-validation-standard'),

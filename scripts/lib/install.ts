@@ -1,3 +1,6 @@
+import type { LinkEntry } from './links.js'
+import type { VendorManifest } from './vendors.js'
+import { execSync } from 'node:child_process'
 import {
   cpSync,
   existsSync,
@@ -7,42 +10,42 @@ import {
   realpathSync,
   rmSync,
   symlinkSync,
-  writeFileSync
-} from 'node:fs';
-import { execSync } from 'node:child_process';
-import os from 'node:os';
-import path from 'node:path';
+  writeFileSync,
+} from 'node:fs'
 
-import { buildLinkPlan, type LinkEntry } from './links.js';
-import { loadVendorManifest, type VendorManifest } from './vendors.js';
-import { findHostConfig, resolveHostPaths } from '../../constants/hosts.js';
+import os from 'node:os'
+import path from 'node:path'
+import { findHostConfig, resolveHostPaths } from '../../constants/hosts.js'
+import { buildLinkPlan } from './links.js'
+import { collectFlattenedSkillSources, flattenedSkillName } from './skill-projection.js'
+import { loadVendorManifest } from './vendors.js'
 
 // ─── 路径辅助函数：集中管理重复路径模式 ──────────────────────────────────────
 
 /** 基线文件文件名（宿主与 vendor 目录下均使用此名） */
-const BASELINE_FILE_NAME = 'AGENTS.md';
+const BASELINE_FILE_NAME = 'AGENTS.md'
 
 /** 仓库内基线源文件位于 rules/ 目录 */
-const BASELINE_SOURCE_PATH = path.join('rules', BASELINE_FILE_NAME);
+const BASELINE_SOURCE_PATH = path.join('rules', BASELINE_FILE_NAME)
 
 /** 获取基线文件在 vendor 目录下的绝对路径（所有宿主软链接的统一源） */
 function vendorBaselinePath(moluoHome: string): string {
-  return path.join(moluoHome, 'vendor', BASELINE_FILE_NAME);
+  return path.join(moluoHome, 'vendor', BASELINE_FILE_NAME)
 }
 
 /** 获取 vendor 技能目录的绝对路径 */
 function vendorSkillsPath(homeDir: string): string {
-  return path.join(homeDir, 'vendor', 'skills');
+  return path.join(homeDir, 'vendor', 'skills')
 }
 
 /** 获取全局 .agents/skills 目录的绝对路径 */
 function agentsSkillsPath(userHome: string): string {
-  return path.join(userHome, '.agents', 'skills');
+  return path.join(userHome, '.agents', 'skills')
 }
 
 function resetDir(targetDir: string) {
-  rmSync(targetDir, { recursive: true, force: true });
-  mkdirSync(targetDir, { recursive: true });
+  rmSync(targetDir, { recursive: true, force: true })
+  mkdirSync(targetDir, { recursive: true })
 }
 
 /**
@@ -54,17 +57,19 @@ function resetDir(targetDir: string) {
 export function runSkillSetupCommands(manifest: VendorManifest): void {
   for (const [vendorName, vendor] of Object.entries(manifest.vendors)) {
     for (const link of vendor.links) {
-      if (!link.setup || link.setup.length === 0) continue;
+      if (!link.setup || link.setup.length === 0)
+        continue
 
-      const skillName = path.basename(link.target);
-      console.log(`\n[setup] 执行 ${vendorName}/${skillName} 的安装前置命令...`);
+      const skillName = path.basename(link.target)
+      console.log(`\n[setup] 执行 ${vendorName}/${skillName} 的安装前置命令...`)
       for (const cmd of link.setup) {
-        console.log(`[setup] > ${cmd}`);
+        console.log(`[setup] > ${cmd}`)
         try {
-          execSync(cmd, { stdio: 'inherit' });
-        } catch (err: any) {
-          console.warn(`[setup][warn] 命令执行失败，已跳过: ${cmd}`);
-          console.warn(`[setup][warn] 失败原因: ${err?.message ?? String(err)}`);
+          execSync(cmd, { stdio: 'inherit' })
+        }
+        catch (err: any) {
+          console.warn(`[setup][warn] 命令执行失败，已跳过: ${cmd}`)
+          console.warn(`[setup][warn] 失败原因: ${err?.message ?? String(err)}`)
         }
       }
     }
@@ -72,105 +77,115 @@ export function runSkillSetupCommands(manifest: VendorManifest): void {
 }
 
 function copyDirContents(sourceDir: string, targetDir: string, options: { skipSymlinks?: boolean } = {}) {
-  mkdirSync(targetDir, { recursive: true });
+  mkdirSync(targetDir, { recursive: true })
 
   for (const entry of readdirSync(sourceDir, { withFileTypes: true })) {
-    const source = path.join(sourceDir, entry.name);
-    const target = path.join(targetDir, entry.name);
-    const sourceStats = lstatSync(source);
+    const source = path.join(sourceDir, entry.name)
+    const target = path.join(targetDir, entry.name)
+    const sourceStats = lstatSync(source)
 
     if (options.skipSymlinks && sourceStats.isSymbolicLink()) {
-      continue;
+      continue
     }
 
-    const copySource = sourceStats.isSymbolicLink() ? realpathSync(source) : source;
+    const copySource = sourceStats.isSymbolicLink() ? realpathSync(source) : source
 
-    rmSync(target, { recursive: true, force: true });
-    cpSync(copySource, target, { recursive: true });
+    rmSync(target, { recursive: true, force: true })
+    cpSync(copySource, target, { recursive: true })
   }
 }
 
 function copyRequiredFile(sourceFile: string, targetFile: string) {
-  mkdirSync(path.dirname(targetFile), { recursive: true });
-  rmSync(targetFile, { recursive: true, force: true });
-  cpSync(sourceFile, targetFile);
+  mkdirSync(path.dirname(targetFile), { recursive: true })
+  rmSync(targetFile, { recursive: true, force: true })
+  cpSync(sourceFile, targetFile)
 }
 
 function syncOptionalDir(sourceDir: string, targetDir: string) {
   if (!existsSync(sourceDir)) {
-    rmSync(targetDir, { recursive: true, force: true });
-    return;
+    rmSync(targetDir, { recursive: true, force: true })
+    return
   }
 
-  resetDir(targetDir);
-  copyDirContents(sourceDir, targetDir);
+  resetDir(targetDir)
+  copyDirContents(sourceDir, targetDir)
+}
+
+function rememberFlattenedTarget(targets: Map<string, string>, target: string, source: string) {
+  const targetKey = path.resolve(target).toLowerCase()
+  const previousSource = targets.get(targetKey)
+  if (previousSource && !isSamePath(previousSource, source)) {
+    throw new Error(`Flattened skill target collision "${target}": ${previousSource} conflicts with ${source}`)
+  }
+
+  targets.set(targetKey, source)
 }
 
 export function isSamePath(p1: string, p2: string): boolean {
-  if (!p1 || !p2) return false;
-  const n1 = path.resolve(p1).toLowerCase().replace(/\\/g, '/').replace(/\/$/, '');
-  const n2 = path.resolve(p2).toLowerCase().replace(/\\/g, '/').replace(/\/$/, '');
-  return n1 === n2;
+  if (!p1 || !p2)
+    return false
+  const n1 = path.resolve(p1).toLowerCase().replace(/\\/g, '/').replace(/\/$/, '')
+  const n2 = path.resolve(p2).toLowerCase().replace(/\\/g, '/').replace(/\/$/, '')
+  return n1 === n2
 }
 
-
-
-
 function linkTypeForCurrentPlatform(): 'junction' | 'dir' {
-  return process.platform === 'win32' ? 'junction' : 'dir';
+  return process.platform === 'win32' ? 'junction' : 'dir'
 }
 
 function linkFileForCurrentPlatform(): 'file' {
-  return 'file';
+  return 'file'
 }
 
 export function replaceWithSymlink(source: string, target: string, type: 'junction' | 'dir' | 'file') {
   if (isSamePath(source, target)) {
-    return;
+    return
   }
-  
+
   // 如果目标已经是一个软链接并指向了源码，则无需重复创建
   if (existsSync(target) && lstatSync(target).isSymbolicLink()) {
     try {
       if (isSamePath(realpathSync(target), source)) {
-        return;
+        return
       }
-    } catch {
+    }
+    catch {
       // ignore
     }
   }
-  
-  mkdirSync(path.dirname(target), { recursive: true });
-  rmSync(target, { recursive: true, force: true });
+
+  mkdirSync(path.dirname(target), { recursive: true })
+  rmSync(target, { recursive: true, force: true })
   try {
-    symlinkSync(source, target, type);
-  } catch (error: any) {
+    symlinkSync(source, target, type)
+  }
+  catch (error: any) {
     if (type === 'file' && error?.code === 'EPERM' && process.platform === 'win32') {
-      cpSync(source, target);
-      return;
+      cpSync(source, target)
+      return
     }
-    throw error;
+    throw error
   }
 }
 
 export interface InstallPaths {
-  userHome: string;
-  moluoHome: string;
-  repoRoot: string;
-  moluoBaselineFile: string;
-  globalAgentSkillsHome: string;
-  [key: string]: string;
+  userHome: string
+  moluoHome: string
+  repoRoot: string
+  moluoBaselineFile: string
+  globalAgentSkillsHome: string
+  [key: string]: string
 }
 
 export function getDefaultInstallPaths(userHome = os.homedir()): InstallPaths {
-  const moluoHome = path.join(userHome, '.moluoxixi');
+  const moluoHome = path.join(userHome, '.moluoxixi')
   return {
     userHome,
     moluoHome,
     repoRoot: moluoHome,
     moluoBaselineFile: vendorBaselinePath(moluoHome),
     globalAgentSkillsHome: agentsSkillsPath(userHome),
-  };
+  }
 }
 
 export function ensureInstallRoot(paths: InstallPaths) {
@@ -179,9 +194,9 @@ export function ensureInstallRoot(paths: InstallPaths) {
     path.join(paths.moluoHome, 'vendor'),
     path.join(paths.moluoHome, 'vendor', 'repos'),
     vendorSkillsPath(paths.moluoHome),
-    paths.globalAgentSkillsHome
+    paths.globalAgentSkillsHome,
   ]) {
-    mkdirSync(dir, { recursive: true });
+    mkdirSync(dir, { recursive: true })
   }
 }
 
@@ -192,10 +207,10 @@ export function ensureInstallRoot(paths: InstallPaths) {
  * 遵循层级自愈同步逻辑。
  */
 export function ensureGlobalSkillLink(paths: InstallPaths) {
-  const sourceSkillsDir = vendorSkillsPath(paths.moluoHome);
-  const targetLinkDir = paths.globalAgentSkillsHome;
+  const sourceSkillsDir = vendorSkillsPath(paths.moluoHome)
+  const targetLinkDir = paths.globalAgentSkillsHome
 
-  syncFlattenedSkills(sourceSkillsDir, targetLinkDir, paths.moluoHome);
+  syncFlattenedSkills(sourceSkillsDir, targetLinkDir, paths.moluoHome)
 }
 
 /**
@@ -206,48 +221,49 @@ export function ensureGlobalSkillLink(paths: InstallPaths) {
  */
 export function syncFlattenedSkills(sourceDir: string, targetDir: string, moluoHome: string) {
   if (!existsSync(sourceDir)) {
-    return;
+    return
   }
-  mkdirSync(targetDir, { recursive: true });
+  mkdirSync(targetDir, { recursive: true })
 
-  const currentSkills = new Set(readdirSync(sourceDir).filter(n => n !== '.gitignore'));
-  
+  const skillSources = collectFlattenedSkillSources(sourceDir)
+  const currentSkills = new Set(skillSources.map(skill => skill.name))
+
   // 自愈式同步：清理目标目录中不再需要的技能链接
   if (existsSync(targetDir)) {
     for (const entry of readdirSync(targetDir, { withFileTypes: true })) {
-      const targetPath = path.join(targetDir, entry.name);
-      
+      const targetPath = path.join(targetDir, entry.name)
+
       if (entry.isSymbolicLink()) {
-        const isBroken = !existsSync(targetPath);
+        const isBroken = !existsSync(targetPath)
 
         if (isBroken) {
-          rmSync(targetPath, { recursive: true, force: true });
-          console.log(`[cleanup] 已移除失效的死链接: ${entry.name}`);
-          continue;
+          rmSync(targetPath, { recursive: true, force: true })
+          console.log(`[cleanup] 已移除失效的死链接: ${entry.name}`)
+          continue
         }
 
-        const resolvedPath = realpathSync(targetPath);
-        const normalizedResolved = path.resolve(resolvedPath);
-        const normalizedMoluo = path.resolve(moluoHome);
-        const normalizedRepo = path.resolve(process.cwd()); // 仓库根目录
+        const resolvedPath = realpathSync(targetPath)
+        const normalizedResolved = path.resolve(resolvedPath)
+        const normalizedMoluo = path.resolve(moluoHome)
+        const normalizedRepo = path.resolve(process.cwd()) // 仓库根目录
 
-        const isInternal = normalizedResolved.startsWith(normalizedMoluo) || 
-                           normalizedResolved.startsWith(normalizedRepo);
+        const isInternal = normalizedResolved.startsWith(normalizedMoluo)
+          || normalizedResolved.startsWith(normalizedRepo)
 
         // 如果该链接指向我们的项目，但不在当前技能集合中，则视为过时并移除
         if (isInternal && !currentSkills.has(entry.name)) {
-          rmSync(targetPath, { recursive: true, force: true });
+          rmSync(targetPath, { recursive: true, force: true })
         }
       }
     }
   }
 
   // 为所有当前有效的技能创建或更新软链接
-  for (const skillName of currentSkills) {
-    const source = path.join(sourceDir, skillName);
-    const target = path.join(targetDir, skillName);
-    
-    replaceWithSymlink(source, target, linkTypeForCurrentPlatform());
+  for (const skill of skillSources) {
+    const source = skill.source
+    const target = path.join(targetDir, skill.name)
+
+    replaceWithSymlink(source, target, linkTypeForCurrentPlatform())
   }
 }
 
@@ -261,50 +277,65 @@ export function syncFlattenedSkills(sourceDir: string, targetDir: string, moluoH
  */
 export function syncFirstPartyToHome(repoRoot: string, moluoHome: string) {
   // rules/AGENTS.md 始终同步到 vendor/ 下（所有宿主基线的软链接源）
-  copyRequiredFile(path.join(repoRoot, BASELINE_SOURCE_PATH), vendorBaselinePath(moluoHome));
+  copyRequiredFile(path.join(repoRoot, BASELINE_SOURCE_PATH), vendorBaselinePath(moluoHome))
 
   if (isSamePath(repoRoot, moluoHome)) {
-    return;
+    return
   }
 
-  syncOptionalDir(path.join(repoRoot, 'agents'), path.join(moluoHome, 'agents'));
+  syncOptionalDir(path.join(repoRoot, 'agents'), path.join(moluoHome, 'agents'))
 }
 
 export async function rebuildVendorSkillLinks({ homeDir, manifestPath }: { homeDir: string, manifestPath: string }): Promise<LinkEntry[]> {
-  const manifest = await loadVendorManifest(manifestPath);
-  const plan = buildLinkPlan(manifest, homeDir);
-  const vendorSkillsDir = vendorSkillsPath(homeDir);
+  const manifest = await loadVendorManifest(manifestPath)
+  const plan = buildLinkPlan(manifest, homeDir)
+  const vendorSkillsDir = vendorSkillsPath(homeDir)
+  const targetSources = new Map<string, string>()
 
-  resetDir(vendorSkillsDir);
+  resetDir(vendorSkillsDir)
 
   for (const entry of plan) {
     if (!existsSync(entry.source)) {
-      continue;
+      continue
     }
 
-    if (isSamePath(entry.source, entry.target)) {
-      console.log(`[link] Skip (source === target): ${entry.target}`);
-      continue;
-    }
+    const linkSources = entry.kind === 'namespace-dir'
+      ? collectFlattenedSkillSources(entry.source).map(skill => ({
+          source: skill.source,
+          target: path.join(vendorSkillsDir, skill.name),
+        }))
+      : [{
+          source: entry.source,
+          target: path.join(vendorSkillsDir, flattenedSkillName(path.basename(entry.target))),
+        }]
 
-    mkdirSync(path.dirname(entry.target), { recursive: true });
-    replaceWithSymlink(entry.source, entry.target, linkTypeForCurrentPlatform());
+    for (const linkSource of linkSources) {
+      rememberFlattenedTarget(targetSources, linkSource.target, linkSource.source)
+
+      if (isSamePath(linkSource.source, linkSource.target)) {
+        console.log(`[link] Skip (source === target): ${linkSource.target}`)
+        continue
+      }
+
+      mkdirSync(path.dirname(linkSource.target), { recursive: true })
+      replaceWithSymlink(linkSource.source, linkSource.target, linkTypeForCurrentPlatform())
+    }
   }
 
   // 为 vendor/skills 生成 .gitignore
-  const projectedSkillNames = readdirSync(vendorSkillsDir).filter(n => !n.startsWith('.'));
+  const projectedSkillNames = readdirSync(vendorSkillsDir).filter(n => !n.startsWith('.'))
 
   const gitignoreContent = [
     '# 由 rebuildVendorSkillLinks 自动生成，请勿手动编辑',
     '# 这些 vendor skill 软链接应被 git 忽略',
     ...projectedSkillNames,
-    ''
-  ].join('\n');
+    '',
+  ].join('\n')
 
-  mkdirSync(vendorSkillsDir, { recursive: true });
-  writeFileSync(path.join(vendorSkillsDir, '.gitignore'), gitignoreContent, 'utf8');
+  mkdirSync(vendorSkillsDir, { recursive: true })
+  writeFileSync(path.join(vendorSkillsDir, '.gitignore'), gitignoreContent, 'utf8')
 
-  return plan;
+  return plan
 }
 
 /**
@@ -313,62 +344,62 @@ export async function rebuildVendorSkillLinks({ homeDir, manifestPath }: { homeD
  * ~/.agents 是行业标准共享层，始终存在（不存在则创建）。
  */
 export function projectSkillsToHost(userHome: string, moluoHome: string, hostSkillsHome: string) {
-  const sourceSkillsDir = vendorSkillsPath(moluoHome);
-  const agentsSkillsDir = agentsSkillsPath(userHome);
+  const sourceSkillsDir = vendorSkillsPath(moluoHome)
+  const agentsSkillsDir = agentsSkillsPath(userHome)
 
   // 1. vendor/skills → ~/.agents/skills
-  mkdirSync(path.join(userHome, '.agents'), { recursive: true });
-  syncFlattenedSkills(sourceSkillsDir, agentsSkillsDir, moluoHome);
+  mkdirSync(path.join(userHome, '.agents'), { recursive: true })
+  syncFlattenedSkills(sourceSkillsDir, agentsSkillsDir, moluoHome)
 
   // 2. ~/.agents/skills → 宿主 skills 目录
-  syncFlattenedSkills(agentsSkillsDir, hostSkillsHome, moluoHome);
+  syncFlattenedSkills(agentsSkillsDir, hostSkillsHome, moluoHome)
 }
 
 function projectSharedSkillsHost(userHome: string, hostHome: string, moluoHome: string, customSkillsDirName: string = 'skills') {
-  mkdirSync(hostHome, { recursive: true });
-  rmSync(path.join(hostHome, 'rules'), { recursive: true, force: true });
-  rmSync(path.join(hostHome, 'agents'), { recursive: true, force: true });
+  mkdirSync(hostHome, { recursive: true })
+  rmSync(path.join(hostHome, 'rules'), { recursive: true, force: true })
+  rmSync(path.join(hostHome, 'agents'), { recursive: true, force: true })
 
-  projectSkillsToHost(userHome, moluoHome, path.join(hostHome, customSkillsDirName));
+  projectSkillsToHost(userHome, moluoHome, path.join(hostHome, customSkillsDirName))
 
   if (existsSync(path.join(moluoHome, 'agents'))) {
-    const agentsSource = path.join(moluoHome, 'agents');
-    const agentsTarget = path.join(hostHome, 'agents');
-    replaceWithSymlink(agentsSource, agentsTarget, linkTypeForCurrentPlatform());
+    const agentsSource = path.join(moluoHome, 'agents')
+    const agentsTarget = path.join(hostHome, 'agents')
+    replaceWithSymlink(agentsSource, agentsTarget, linkTypeForCurrentPlatform())
   }
 }
 
-export function projectToHost({ 
-  userHome, 
-  moluoHome, 
-  hostHome, 
-  hostBaselineFile, 
-  customSkillsDirName = 'skills' 
-}: { 
-  userHome: string, 
-  moluoHome: string, 
-  hostHome: string, 
-  hostBaselineFile: string, 
-  customSkillsDirName?: string 
+export function projectToHost({
+  userHome,
+  moluoHome,
+  hostHome,
+  hostBaselineFile,
+  customSkillsDirName = 'skills',
+}: {
+  userHome: string
+  moluoHome: string
+  hostHome: string
+  hostBaselineFile: string
+  customSkillsDirName?: string
 }) {
-  projectSharedSkillsHost(userHome, hostHome, moluoHome, customSkillsDirName);
+  projectSharedSkillsHost(userHome, hostHome, moluoHome, customSkillsDirName)
   replaceWithSymlink(
     vendorBaselinePath(moluoHome),
     hostBaselineFile,
-    linkFileForCurrentPlatform()
-  );
+    linkFileForCurrentPlatform(),
+  )
 }
 
 export function linkHostBaseline({ moluoHome, host, userHome = os.homedir() }: { moluoHome: string, host: string, userHome?: string }): string {
-  const source = vendorBaselinePath(moluoHome);
-  const config = findHostConfig(host);
+  const source = vendorBaselinePath(moluoHome)
+  const config = findHostConfig(host)
   if (!config) {
-    throw new Error(`Unknown host: ${host}`);
+    throw new Error(`Unknown host: ${host}`)
   }
 
-  const { hostBaselineFile } = resolveHostPaths(config, userHome);
-  replaceWithSymlink(source, hostBaselineFile, linkFileForCurrentPlatform());
-  return hostBaselineFile;
+  const { hostBaselineFile } = resolveHostPaths(config, userHome)
+  replaceWithSymlink(source, hostBaselineFile, linkFileForCurrentPlatform())
+  return hostBaselineFile
 }
 
 /**
@@ -378,18 +409,18 @@ export function projectHostById(
   host: string,
   userHome: string,
   moluoHome: string,
-): { success: boolean; hostBaselineFile: string } {
-  const config = findHostConfig(host);
+): { success: boolean, hostBaselineFile: string } {
+  const config = findHostConfig(host)
   if (!config) {
-    throw new Error(`Unknown host: ${host}`);
+    throw new Error(`Unknown host: ${host}`)
   }
 
-  const { hostHome, hostBaselineFile, skillsDirName } = resolveHostPaths(config, userHome);
+  const { hostHome, hostBaselineFile, skillsDirName } = resolveHostPaths(config, userHome)
 
-  const hostHomePath = path.resolve(hostHome);
+  const hostHomePath = path.resolve(hostHome)
   if (!existsSync(hostHomePath)) {
-    console.warn(`[skip] 宿主目录不存在，跳过投影: ${host} (${hostHomePath})`);
-    return { success: false, hostBaselineFile };
+    console.warn(`[skip] 宿主目录不存在，跳过投影: ${host} (${hostHomePath})`)
+    return { success: false, hostBaselineFile }
   }
 
   projectToHost({
@@ -398,7 +429,7 @@ export function projectHostById(
     hostHome,
     hostBaselineFile,
     customSkillsDirName: skillsDirName,
-  });
+  })
 
-  return { success: true, hostBaselineFile };
+  return { success: true, hostBaselineFile }
 }

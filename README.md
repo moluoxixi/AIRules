@@ -139,7 +139,7 @@ Moluoxixi AIRules supports a growing ecosystem of AI agents through automated pr
 | **java-code-standard** | Java and Spring Boot backend code standards for Java 17+ baseline, Java 21/25 LTS, Maven, and Gradle with domain packages, constructor injection, Bean Validation, transaction boundaries, migrations, and error mapping |
 | **skill-validation-standard** | Minimal skill validation standard for generated or modified Claude/Codex skills, covering SKILL.md YAML frontmatter, folder-name matching, and line-count limits |
 
-> Workflow standards are projected as a namespace. First-party rules live in `rules/AGENTS.md`.
+> Workflow standards may live under nested source folders such as `skills/workflow`, but installation flattens them into `vendor/skills/<skill-name>`. First-party rules live in `rules/AGENTS.md`.
 
 ### Third-Party Skills (Curated)
 
@@ -169,13 +169,13 @@ Moluoxixi AIRules supports a growing ecosystem of AI agents through automated pr
 │       └── java-code-standard/
 ├── vendor/
 │   ├── repos/               # Cloned third-party source repos
-│   └── skills/              # Extracted third-party skills
+│   └── skills/              # Flattened extracted skills
 ├── constants/skills.ts      # Single source of truth for vendor config
 ├── scripts/                 # Install / sync / verify scripts
 └── tests/                   # Automated verification tests
 ```
 
-> Top-level first-party skills are projected explicitly, while workflow standards stay grouped under the `workflow/` namespace.
+> Source `skills/` folders may be grouped recursively; installed vendor and host skill directories are flattened by leaf skill name.
 
 ## Why Not Just Another AI Rules Repo?
 

@@ -139,7 +139,7 @@ Moluoxixi AIRules 通过自动化投影，支持不断增长的 AI 代理生态�
 | **java-code-standard** | Java 与 Spring Boot 后端编码标准：适用于 Java 17+ 基线、Java 21/25 LTS、Maven 和 Gradle，覆盖领域包、构造函数注入、Bean Validation、事务边界、迁移与错误映射 |
 | **skill-validation-standard** | 最小 Skill 产物校验标准：校验生成或修改后的 Claude/Codex skill 的 SKILL.md YAML frontmatter、文件夹命名一致性和行数限制 |
 
-> workflow 标准以命名空间整体投影；仓库级规则位于 `rules/AGENTS.md`。
+> workflow 标准可以继续放在 `skills/workflow` 等嵌套源目录下，但安装时会展平为 `vendor/skills/<skill-name>`；仓库级规则位于 `rules/AGENTS.md`。
 
 ### 第三方 Skills（精选）
 
@@ -169,13 +169,13 @@ Moluoxixi AIRules 通过自动化投影，支持不断增长的 AI 代理生态�
 │       └── java-code-standard/
 ├── vendor/
 │   ├── repos/               # 克隆的第三方源仓库
-│   └── skills/              # 提取出的第三方 skills
+│   └── skills/              # 展平后的提取 skills
 ├── constants/skills.ts      # 唯一的第三方技能配置清单
 ├── scripts/                 # 安装/同步/校验脚本
 └── tests/                   # 自动化验证测试
 ```
 
-> 顶层第一方 skills 通过精确列表投影，workflow 标准继续归入 `workflow/` 命名空间。
+> 源 `skills/` 目录允许递归分组；安装后的 vendor 与宿主 skills 目录统一按叶子 skill 名称展平。
 
 ## 为什么不是另一个 AI Rules 集合？
 
