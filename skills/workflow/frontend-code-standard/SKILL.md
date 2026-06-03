@@ -1,83 +1,58 @@
 ---
 name: frontend-code-standard
-description: 用于新建、编写、重构、拆分、优化、评审或校验 Vue/React 前端组件、业务模块、工具库和 UI 组件库，提供目录结构、门面出口、类型契约、测试边界和 Deep Import 禁止标准。
+description: 触发时机：当用户要求新建、编写、重构、拆分前端组件、业务模块、工具函数或类型声明时触发。用于强制执行目录门面模式（Facade）、禁止深度导入、规范 src/ 隔离边界、强制同步交付测试用例，并应用 Vue 3.5+ 现代语法。
 ---
 
-# Role: 资深前端架构师 (Strict Frontend Architect)
+# 前端工程架构与代码规范 (Frontend Architecture & Code Standards)
 
-## Profile
-你是一位严苛且务实的资深前端架构师。你的目标是确保代码具备清晰的物理边界、稳定的模块门面（Facade）、可测试的职责拆分以及可长期演进的架构。你不仅负责生成代码，更要主动防御架构腐化。
+在执行任何前端代码生成、重构或结构化任务时，必须没有例外地遵守以下物理架构与代码交付红线。
 
-## 一、核心架构纪律 (Core Architecture Disciplines)
+## 0. 适用边界
 
-### 1. 物理职责边界与防腐 (SRP & Boundaries)
-- **拆解巨石文件**：严禁构建上帝文件（God Object）。当发现某个文件承担了太多职责（如混杂视图、状态、API 和复杂计算）时，必须立即按物理边界进行职责拆分。
-- **纯粹性归位**：为了确保文件职责一目了然，抽离出的工具函数必须被严格放置在专属的 `utils/` 文件夹中，并保持纯函数特性（绝对禁止引入 Vue/React 响应式或生命周期 API）。允许在组件内部保留仅服务于当前渲染的极小型局部 inline helper。
-- **状态对齐**：当页面级状态（如查询参数、临时表单）发生上卷（State Hoisting）进入全局 Store 时，必须提供显式的资源回收契约（Teardown/Reset Mechanisms），严禁跨路由污染。
+- **项目事实优先**：先读取当前项目的框架版本、构建配置、测试入口和既有目录约定；不得为了套用本规范擅自升级依赖、改写项目架构或伪造验证入口。
+- **Vue 3.5+ 约束范围**：第 4 节只强制适用于已确认支持 Vue 3.5+ 与相关宏的 Vue 代码。React、非 Vue 代码或旧版 Vue 项目只适用目录、门面、测试和交付规则；若版本不匹配，必须在交付中说明约束。
+- **业务路由模块例外**：`views/`、`pages/`、`app/`、`routes/` 等框架路由扫描目录下的页面聚合模块不属于独立包根目录，严禁为了制造层级再包一层 `src/`；其内部的 `components/`、`utils/`、`types/` 等职责目录仍递归遵守门面规则。
 
-### 2. 模块门面与依赖控制 (Module Facades & Dependencies)
-- **防腐层（ACL）**：代码职责目录必须提供 `index.ts` 作为收敛对外契约的唯一出口。任何跨职责目录的调用必须通过门面，彻底杜绝 Deep Import 路径穿透。
-- **门面例外**：以下目录不强制要求提供 `index.ts`：
-  - 框架扫描目录：`pages/`, `app/`, `routes/` 等。
-  - 测试与样例：`__test__/`, `__stories__/`, `__demos__/`, `__mocks__/`、根级 `__e2e__/` 等。
-  - 资产与样式：`assets/`, `styles/`, `public/` 等。
-  - 构建与生成：`dist/`, `generated/` 等。
-  - 仅作为实现容器且已有上层门面的 `src/`。
-- **导出契约**：严格控制导出粒度。严禁无脑 `export *` 暴露内部实现（值导出优先显式命名导出）；但类型门面允许且推荐使用 `export type *`。
+## 1. 门面模式与统一入口 (Facade Pattern & Export Rules)
 
-### 3. 防御性编程红线 (Defensive Programming)
-- **快速失败（Fail-Fast）**：严禁通过空值判断掩盖真实的契约错误或伪造成功状态。**注意：** 正常的 UI 状态分支、可选渲染和加载态不属于错误绕行，不得误伤。
-- **类型完备**：公共 API（导出函数、Hooks、Composables、类的公共方法）必须显式声明返回类型，禁止依赖自动推导。
+所有代码职责集合目录（如 `components/`、`utils/`、`types/`、`composables/`、`hooks/`）必须对外部调用者表现为一个黑盒。
 
-## 二、目标分类与物理标准 (Target Classifications & Standards)
+- **强制入口**：职责目录下必须存在 `index.ts` 作为统一转发出口。
+- **禁止深度导入**：包外、模块外和跨职责目录调用方绝对禁止使用 Deep Import 路径穿透（如禁止 `import { format } from '@/utils/string/format'`）。必须通过门面引入（如 `import { format } from '@/utils'`）。
+- **内部私有实现**：同一职责目录内部允许通过相对路径引用私有实现文件；禁止让内部实现反向依赖自身公共 `index.ts`，避免循环依赖和伪公共 API。
+- **类型聚合**：类型定义必须在类型目录的 `index.ts` 中通过 `export type * from './xxx'` 统一暴露。
+- **值导出约束**：值导出优先使用显式命名导出；禁止用无差别 `export *` 暴露内部实现。
+- **门面例外**：框架扫描目录、测试目录（`__test__/`、`__e2e__/`、`__mocks__/` 等）、样例目录、资产目录、样式目录、构建产物目录和 generated 目录不强制提供 `index.ts`。
 
-目标目录必须严格匹配以下四个正式标签之一，并完全遵守对应的骨架形态。嵌套目录可按自身职责递归匹配对应标签。
+## 2. 独立模块与组件目录骨架 (Module & Package Structure)
 
-1. **`component-package`（组件包 / 递归子组件）**：
-   无论是独立 UI 包，还是模块/组件内部演化出的局部组件（如 `AuditDialog`、`Toolbar`），只要组件存在稳定 API 契约或发生生产实现拆分，必须严格遵循以下骨架：
-   - **门面隔离**：根目录必须提供 `index.ts` 作为唯一公共出口。独立公共组件包还必须提供 `README.md`；模块或组件内部的私有组件包不强制提供 `README.md`。内部所有实现必须收敛于 `src/` 目录中，外部严禁穿透至 `src/`。
-   - **类型门面**：组件包必须提供 `src/types/index.ts` 作为类型契约入口，并由根 `index.ts` 通过 `export type * from './src/types'` 暴露。出现对应契约时，必须按职责细化拆分为 `props.ts`、`emit.ts`、`expose.ts`、`slots.ts`、`model.ts` 或 `ref.ts`。
-   - **私有叶子例外**：只有私有、叶子、无 props/emits/expose/slot/model/ref API、无导出类型、无跨目录复用、无生产职责拆分的展示组件，才允许保持单个 `.vue` 或 `.tsx` 文件。该例外不是正式分类；一旦出现 `types/`、`constants/`、`utils/`、`hooks/`、`composables/`、`components/` 等职责目录，必须立即升级为 `component-package`。
-   - **递归嵌套**：`src/components/` 内的子组件默认递归套用 `component-package`，仅满足私有叶子例外时才允许使用单文件。
+具有独立复用价值的组件包、工具包或业务模块，必须严格遵守内外隔离的物理骨架。
 
-2. **`business-module`（业务模块 / 页面级模块）**：
-   指代存在于宿主应用路由目录（如 `views/`、`pages/`、`app/`）下的具体业务页面聚合（如 `views/OrderManagement/`）。由于其已经处于项目源码层内部，模块内部严禁再嵌套 `src/` 容器。关联逻辑必须按职责拆分至与主视图同级的标准目录，拒绝无意义的物理层级加深，骨架如下：
-   - 主视图：必须以 `index.vue` 或 `index.tsx` 作为根级主视图。
-   - 职责目录：直接平铺 `components/`、`composables/`、`types/`、`constants/`、`utils/`、`api/` 等。
-   - **组件递归**：`components/` 目录下的业务子组件默认按 `component-package` 建立门面和类型契约；仅满足私有叶子例外时才允许使用单文件。
-   - 门面约束：所有代码职责目录必须包含 `index.ts` 门面，测试、样式、资产等非逻辑目录按全局的“门面例外”规则处理。
+- **公共契约层（根目录）**：根目录只承载对外契约和工程配置。对外生产 API 只能通过唯一的根 `index.ts` 暴露；允许存在 `package.json`、`README.md`、构建配置、测试配置、类型配置、许可证和包管理元数据。
+- **私有实现层 (`src/`)**：所有具体逻辑、组件、样式代码必须收敛在 `src/` 内部。在 `src/` 内部按需拆分 `components/`、`utils/`、`types/` 等目录，并递归遵守第 1 条门面规则。
+- **类型契约层**：存在可复用或可依赖的 Props、Emits、Expose、Slots、Model、Ref、工具函数参数或返回类型时，必须收敛到 `src/types/`，由 `src/types/index.ts` 聚合，并由根 `index.ts` 通过 `export type * from './src/types'` 暴露。
+- **越界调用拦截**：外部应用或其他模块只能引入该包的根 `index.ts`，绝对禁止任何直接读取其 `src/` 内部文件的行为。
+- **私有叶子例外**：只有私有、叶子、无 props/emits/expose/slot/model/ref API、无导出类型、无跨目录复用、无生产职责拆分的展示组件，才允许保持单个 `.vue` 或 `.tsx` 文件。一旦出现 `types/`、`constants/`、`utils/`、`hooks/`、`composables/`、`components/` 等职责目录，必须立即升级为独立目录骨架。
 
-3. **`utility-library`**：必须包含 `README.md`、根 `index.ts`、`src/` 和 `package.json`，且必须声明 `"sideEffects": false`。宿主框架依赖置于 `peerDependencies` 中。
+## 3. 强制测试交付要求 (Mandatory Testing Deliverables)
 
-4. **`ui-library`**：必须包含 `README.md`、根 `index.ts`、`src/` 和 `package.json`，且需明确声明 `"sideEffects"` 范围（如样式副作用）。宿主框架依赖置于 `peerDependencies` 中。
+每次生成或修改组件、核心工具逻辑、公共类型契约或可复用业务模块时，必须同步交付高质量测试代码，不得留作后续任务。
 
-## 三、组件 API 契约 (Component API Contracts)
+- **同步交付**：业务代码、结构调整和测试必须在同一轮交付中完成；若项目缺少必要测试依赖、配置或脚本入口，验证状态必须标记为 `MISSING`，不得伪造成已通过。
+- **就近隔离**：测试文件必须放置在目标代码同级的 `__test__/` 目录下；跨多个业务模块的全局 E2E 才允许放在项目根级 `__e2e__/`。
+- **测试技术栈**：单元、工具函数、类型契约和组件基础挂载测试优先使用 Vitest；真实浏览器交互、焦点、弹层、路由跳转和网络时序必须使用 Playwright 或项目既有真实浏览器测试工具。
+- **禁止占位断言**：测试用例禁止只写“能渲染/能跑通”的烟雾测试。必须按目标实际存在的契约显式验证 Props、Events/Emits、Slots/Children、Model、Expose/Ref、用户交互和核心边界条件；不得为不存在的契约硬造测试。
 
-- **Vue 契约归位**：`defineProps`、`defineEmits`、`defineExpose`、slot、`defineModel` 和模板 ref 对外能力都属于组件 API；只要它们形成可复用或可依赖契约，就必须进入 `src/types/`，并由 `src/types/index.ts` 统一导出。
-- **React 契约归位**：`Props`、回调事件、`children`/slot-like 内容、受控与非受控值、`ref`/imperative handle 都属于组件 API；公共类型不得长期滞留在 `.tsx` 实现文件中。
-- **单文件限制**：私有叶子组件允许存在极少量仅服务当前渲染的 inline 类型，但不得导出、不得跨目录复用、不得承载可命名公共契约。契约一旦稳定，必须升级为 `component-package`。
-- **AI 判定优先级**：分类以目录位置、公开契约和职责拆分为准，不以文件数量为准。先识别页面级 `business-module`，再识别组件 API 或生产拆分形成的 `component-package`；只有无 API、无复用、无职责拆分的私有叶子组件才允许单文件。
+## 4. 现代 Vue 语法强制红线 (Modern Vue 3.5+ Syntax)
 
-## 四、测试与质量边界 (Testing Boundaries)
+除遵循 Vue 官方规范外，Vue 3.5+ 代码必须强制使用以下现代组合式 API 特性，严禁降级使用旧版写法。
 
-- **测试技术栈**：
-  - **单元/非浏览器集成测试**：统一采用 **Vitest**。逻辑单元及组件基础挂载测试均需通过 Vitest 执行。允许使用 jsdom/happy-dom 环境进行基础渲染契约验证（如 props、事件回调、组件状态），但绝对禁止用其伪造真实浏览器交互。
-  - **真实交互验证**：涉及真实浏览器交互（如焦点管理、弹窗浮层、跨路由跳转、网络时序）必须使用 **@playwright/test** 进行真实环境测试，禁止使用 Snapshot 或 DOM Mock 替代。Playwright 默认以 `headed` 模式执行，并保留显式切换到 `headless` 的能力。
-- **交互断言标准**：交互测试必须包含能证明目标状态成立的断言，不能只做“能跑完”的烟雾测试。断言必须覆盖用户可感知结果，例如文本、属性、可见性、URL、表单值、请求结果或存储状态。
-- **测试物理隔离**：
-  - **局部边界**：Vitest 单元测试与针对单一组件/模块的 Playwright 交互测试，统一放置在目标目录就近的 `__test__/` 中（局部交互命名建议如 `*.playwright.spec.ts`）。严禁散落在生产代码中。
-  - **全局边界**：跨越多业务模块的全局 E2E 测试，必须放置在项目根级的 `__e2e__/` 目录中。
-- **缺失阻断**：若任务需要对应的验证但当前项目缺少必要依赖（缺少 Vitest 或 `@playwright/test`），必须将验证状态标记为 `MISSING` 并说明缺失项。
+- **双向绑定**：声明 `v-model` 双向绑定契约时，强制使用 `defineModel` 宏。严禁用手写 `emit('update:xxx')` 替代 model 契约；非 model 事件仍使用 `defineEmits`。
+- **模板引用**：模板 DOM 或组件实例引用强制使用 Vue 3.5+ 的 `useTemplateRef` 绑定。严禁使用普通 `ref` 声明模板引用，以避免命名与常规响应式数据混淆。
+- **Props 声明**：强制使用基于类型的 `defineProps`；需要默认值时必须配合 `withDefaults` 提供默认值，确保类型系统严谨完备。
 
-## 五、工作流与交付契约 (Workflow & Delivery)
+## 5. 交付状态
 
-当接收到新建、重构或评审请求时，严格按以下步骤执行：
-
-1. **上下文分析**：确认目标职责、调用方契约以及工程框架栈。
-2. **定级与归位**：将目标归类为上述四个正式分类标签之一，或明确标记为私有叶子例外，按门面规则整理物理结构，拦截越界调用。
-3. **执行验证**：按任务风险执行项目已有的 `lint`、`typecheck`、`test`、`build` 或浏览器验证；缺少入口时标记为 `MISSING`，不得伪造成已通过。
-4. **交付输出**：交付时必须列出每条实际执行命令的逐项状态；最终总结论按以下优先级取最高风险状态：`FAIL > MISSING > NOT RUN > PASS`。
-   - `FAIL`：发现违规，必须列出严重级别（Critical / Major / Minor）、违规规则、证据及具体修改落点。
-   - `MISSING`：因缺少必要工具（如 Vitest、Playwright、验证脚本入口）导致无法完成完整验证。
-   - `NOT RUN`：仅作静态生成或建议，未执行实际脚本验证。
-   - `PASS`：通过所有架构约束与质量验证。
+- **执行验证**：按任务风险执行项目已有的 `lint`、`typecheck`、`test`、`build` 或浏览器验证；缺少入口时标记为 `MISSING`，不得伪造成已通过。
+- **状态优先级**：最终总结论按最高风险状态输出：`FAIL > MISSING > NOT RUN > PASS`。
+- **状态语义**：`FAIL` 表示目标范围内存在违规或验证失败；`MISSING` 表示缺少必要工具、依赖、配置或脚本入口；`NOT RUN` 表示存在入口但未实际执行，必须说明原因；`PASS` 只能用于已通过目标范围内必要检查的场景。
