@@ -1,4 +1,12 @@
 /**
+ * 安装前置命令必须以结构化参数声明，避免把配置内容拼进 shell 字符串。
+ */
+export interface SetupCommand {
+  command: string
+  args?: string[]
+}
+
+/**
  * 单个 skill 的详细配置（适用于需要重命名或前置安装命令的场景）
  */
 export interface SkillConfig {
@@ -9,10 +17,10 @@ export interface SkillConfig {
   /**
    * 该 skill 的安装前置命令。
    * 在 skill 链接建立后执行，例如安装对应的全局 CLI 工具。
-   * 例如：['npm install -g some-cli@latest']
-   * 命令按顺序执行，任一失败均会输出警告但不中断整体流程。
+   * 例如：[{ command: 'some-cli-installer', args: ['--global'] }]
+   * 命令按顺序执行，任一失败均会抛出错误并中断整体流程。
    */
-  setup?: string[]
+  setup?: SetupCommand[]
 }
 
 /**
@@ -35,7 +43,7 @@ export type VendorProjection
     /** 清单中的占位名；实际 vendor 目录由叶子 skill 名称决定 */
     output: string
     /** namespace 级安装前置命令 */
-    setup?: string[]
+    setup?: SetupCommand[]
   }
   | {
     kind: 'skills'

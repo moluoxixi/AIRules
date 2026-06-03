@@ -1,3 +1,4 @@
+import type { SetupCommand } from '../../constants/skills.js'
 import path from 'node:path'
 import { fileURLToPath, pathToFileURL } from 'node:url'
 import { flattenedSkillName, flattenedVendorSkillTarget } from './skill-projection.js'
@@ -11,7 +12,7 @@ export interface VendorLink {
   source: string
   target: string
   /** 该 skill 的安装前置命令（来自 SkillConfig.setup） */
-  setup?: string[]
+  setup?: SetupCommand[]
 }
 
 export interface Vendor {

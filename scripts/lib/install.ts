@@ -1,6 +1,7 @@
+import type { SetupCommand } from '../../constants/skills.js'
 import type { LinkEntry } from './links.js'
 import type { VendorManifest } from './vendors.js'
-import { execSync } from 'node:child_process'
+import { execFileSync } from 'node:child_process'
 import {
   cpSync,
   existsSync,
@@ -17,7 +18,7 @@ import os from 'node:os'
 import path from 'node:path'
 import { findHostConfig, resolveHostPaths } from '../../constants/hosts.js'
 import { buildLinkPlan } from './links.js'
-import { collectFlattenedSkillSources, flattenedSkillName } from './skill-projection.js'
+import { collectFlattenedSkillSources, discoverSkillDirectories, flattenedSkillName } from './skill-projection.js'
 import { loadVendorManifest } from './vendors.js'
 
 // ─── 路径辅助函数：集中管理重复路径模式 ──────────────────────────────────────
@@ -51,7 +52,7 @@ function resetDir(targetDir: string) {
 /**
  * 执行各 skill 的安装前置命令（per-skill 精度）。
  * 遍历 manifest 中所有 vendor 的 links，对具有 setup 字段的 link 执行其命令。
- * 任一命令失败均打印警告但不中断整体流程。
+ * 任一命令失败都会抛出错误，避免安装流程伪装成功。
  * @param manifest 已解析的 VendorManifest
  */
 export function runSkillSetupCommands(manifest: VendorManifest): void {
@@ -62,18 +63,22 @@ export function runSkillSetupCommands(manifest: VendorManifest): void {
 
       const skillName = path.basename(link.target)
       console.log(`\n[setup] 执行 ${vendorName}/${skillName} 的安装前置命令...`)
-      for (const cmd of link.setup) {
-        console.log(`[setup] > ${cmd}`)
+      for (const command of link.setup) {
+        const commandText = setupCommandText(command)
+        console.log(`[setup] > ${commandText}`)
         try {
-          execSync(cmd, { stdio: 'inherit' })
+          execFileSync(command.command, command.args ?? [], { stdio: 'inherit' })
         }
-        catch (err: any) {
-          console.warn(`[setup][warn] 命令执行失败，已跳过: ${cmd}`)
-          console.warn(`[setup][warn] 失败原因: ${err?.message ?? String(err)}`)
+        catch (error) {
+          throw new Error(`[setup] ${vendorName}/${skillName} 安装前置命令失败: ${commandText}\n${String(error)}`)
         }
       }
     }
   }
+}
+
+function setupCommandText(command: SetupCommand): string {
+  return [command.command, ...(command.args ?? [])].join(' ')
 }
 
 function copyDirContents(sourceDir: string, targetDir: string, options: { skipSymlinks?: boolean } = {}) {
@@ -144,13 +149,8 @@ export function replaceWithSymlink(source: string, target: string, type: 'juncti
 
   // 如果目标已经是一个软链接并指向了源码，则无需重复创建
   if (existsSync(target) && lstatSync(target).isSymbolicLink()) {
-    try {
-      if (isSamePath(realpathSync(target), source)) {
-        return
-      }
-    }
-    catch {
-      // ignore
+    if (isSamePath(realpathSync(target), source)) {
+      return
     }
   }
 
@@ -159,8 +159,9 @@ export function replaceWithSymlink(source: string, target: string, type: 'juncti
   try {
     symlinkSync(source, target, type)
   }
-  catch (error: any) {
-    if (type === 'file' && error?.code === 'EPERM' && process.platform === 'win32') {
+  catch (error) {
+    const fileSystemError = error as NodeJS.ErrnoException
+    if (type === 'file' && fileSystemError.code === 'EPERM' && process.platform === 'win32') {
       cpSync(source, target)
       return
     }
@@ -284,6 +285,60 @@ export function syncFirstPartyToHome(repoRoot: string, moluoHome: string) {
   }
 
   syncOptionalDir(path.join(repoRoot, 'agents'), path.join(moluoHome, 'agents'))
+}
+
+/**
+ * 将第一方 skills 源目录投影到 vendor/skills，作为第三方 vendor 后的本地覆盖层。
+ * 该函数只清理曾经指向同一 source skills 根目录的过时链接，不会删除第三方 vendor 技能。
+ */
+export function syncFirstPartySkillsToVendor(sourceRoot: string, moluoHome: string) {
+  const sourceSkillsDir = path.join(sourceRoot, 'skills')
+  if (!existsSync(sourceSkillsDir)) {
+    return
+  }
+
+  const vendorSkillsDir = vendorSkillsPath(moluoHome)
+  mkdirSync(vendorSkillsDir, { recursive: true })
+
+  const seenSkillNames = new Map<string, string>()
+  const skillSources = discoverSkillDirectories(sourceSkillsDir).map((source) => {
+    const name = flattenedSkillName(path.basename(source))
+    const nameKey = name.toLowerCase()
+    const previousSource = seenSkillNames.get(nameKey)
+    if (previousSource && path.resolve(previousSource) !== path.resolve(source)) {
+      throw new Error(`First-party skill name collision "${name}": ${previousSource} conflicts with ${source}`)
+    }
+
+    seenSkillNames.set(nameKey, source)
+    return { name, source }
+  })
+  const currentSkillNames = new Set(skillSources.map(skill => skill.name))
+  const normalizedSourceSkillsDir = path.resolve(sourceSkillsDir)
+
+  for (const entry of readdirSync(vendorSkillsDir, { withFileTypes: true })) {
+    const targetPath = path.join(vendorSkillsDir, entry.name)
+    if (!entry.isSymbolicLink()) {
+      continue
+    }
+
+    if (!existsSync(targetPath)) {
+      rmSync(targetPath, { recursive: true, force: true })
+      continue
+    }
+
+    const resolvedPath = path.resolve(realpathSync(targetPath))
+    if (resolvedPath.startsWith(normalizedSourceSkillsDir) && !currentSkillNames.has(entry.name)) {
+      rmSync(targetPath, { recursive: true, force: true })
+    }
+  }
+
+  for (const skill of skillSources) {
+    replaceWithSymlink(
+      skill.source,
+      path.join(vendorSkillsDir, skill.name),
+      linkTypeForCurrentPlatform(),
+    )
+  }
 }
 
 export async function rebuildVendorSkillLinks({ homeDir, manifestPath }: { homeDir: string, manifestPath: string }): Promise<LinkEntry[]> {

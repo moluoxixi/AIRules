@@ -48,6 +48,23 @@ AIRules is a **composable AI skill distribution system**. The core idea is simpl
 
 ## Installation
 
+**Use as a Node CLI (local development / npm link):**
+
+```bash
+npm install
+npm run build
+npm link
+airules sync --host all
+```
+
+Add a local skill and sync it to every host:
+
+```bash
+airules add ./my-skill --host all
+```
+
+The `add` command requires the source directory to contain `SKILL.md`. It copies the skill to `~/.moluoxixi/skills/<skill-name>` and then uses the same vendor/host projection pipeline.
+
 **macOS / Linux / Git Bash:**
 
 ```bash
@@ -73,7 +90,7 @@ npm run sync
 ```
 
 > [!TIP]
-> **All-in-One Process**: This command automatically pulls latest code, installs dependencies, cleans dead links, and **runs a full verification check**. To uninstall, simply add `--mode uninstall`.
+> **Sync Process**: This command rebuilds vendor skills, cleans dead links, and runs host verification after projection. Use `airules sync --skip-vendors` when you do not want to refresh third-party vendor repositories.
 
 ---
 
@@ -104,7 +121,29 @@ npm run rules:install -- --host <host-name> (e.g., claude)
 ```
 
 > [!TIP]
-> **All-in-One Process**: This command automatically pulls latest code, installs dependencies, cleans dead links, and **runs a full verification check**. To uninstall, simply add `--mode uninstall`.
+> Inside the cloned repository, `npm run rules:install -- --host claude` still works and now forwards to `airules sync`.
+
+---
+
+## CLI Commands
+
+| Command | Purpose |
+|---------|---------|
+| `airules sync --host all` | Sync built-in, user-defined, and third-party skills to every existing host |
+| `airules add ./my-skill --host all` | Add a local skill and sync it to every host |
+| `airules add ./my-skill --name review-plus --overwrite` | Set the installed skill name and replace an existing user skill |
+| `airules verify --host codex` | Verify skill links for one host |
+
+Common options:
+
+| Option | Description |
+|--------|-------------|
+| `--home <dir>` | AIRules install directory, defaults to `~/.moluoxixi` |
+| `--user-home <dir>` | User home used for host directories, defaults to the current OS home |
+| `--host <name\|all>` | Target host, defaults to `all` |
+| `--skip-vendors` | Do not refresh third-party vendor repos during `sync` |
+| `--skip-sync` | Add the user skill without projecting it immediately |
+| `--no-verify` | Skip host verification |
 
 ---
 

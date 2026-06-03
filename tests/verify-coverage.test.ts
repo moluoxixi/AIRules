@@ -92,3 +92,18 @@ it('verifyHost - 外部链接可访问时警告但仍视为有效', async () => 
     assert.equal(await verifyHost('codex', moluoHome), true)
   })
 })
+
+it('verifyHost - 断开的技能软链接显式判定为失败', async () => {
+  await withTempHome(async (userHome, moluoHome) => {
+    createVendorSkill(moluoHome, 'broken')
+    const missingSource = path.join(userHome, 'deleted-source')
+    const brokenLink = path.join(userHome, '.codex', 'skills', 'broken')
+
+    fs.mkdirSync(missingSource, { recursive: true })
+    linkDir(missingSource, brokenLink)
+    fs.rmSync(missingSource, { recursive: true, force: true })
+
+    assert.equal(fs.lstatSync(brokenLink).isSymbolicLink(), true)
+    assert.equal(await verifyHost('codex', moluoHome), false)
+  })
+})

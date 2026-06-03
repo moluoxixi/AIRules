@@ -1,5 +1,6 @@
 # 本项目
 vendor
+.cache-git
 .qoder
 .cursor
 *-lock.*

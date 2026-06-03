@@ -1,5 +1,5 @@
 import type { Vendor } from './lib/vendors.js'
-import { execSync } from 'node:child_process'
+import { spawnSync } from 'node:child_process'
 import { createHash } from 'node:crypto'
 import { cpSync, existsSync, mkdirSync, readdirSync, readFileSync, rmSync, writeFileSync } from 'node:fs'
 import { dirname, join, resolve } from 'node:path'
@@ -14,6 +14,7 @@ const PROJECT_ROOT = resolve(__dirname, '..')
 const VENDOR_SKILLS_DIR = join(PROJECT_ROOT, 'vendor', 'skills')
 const CACHE_DIR = join(PROJECT_ROOT, '.cache-git')
 const CONSTANTS_DIR = join(PROJECT_ROOT, 'constants')
+const REMOVE_DIR_OPTIONS = { recursive: true, force: true, maxRetries: 5, retryDelay: 200 } as const
 
 /** 同步状态文件：记录上次同步时 constants/ 的内容指纹 */
 const SYNC_FINGERPRINT_FILE = join(PROJECT_ROOT, 'vendor', '.sync-fingerprint')
@@ -56,11 +57,28 @@ function saveSyncFingerprint(fingerprint: string): void {
 }
 
 /**
- * 执行 Git 命令并实时输出
+ * 删除 Git 临时目录。Windows 上 Git 进程退出后文件句柄可能短暂滞留，
+ * 这里使用 Node 的受限重试机制；重试耗尽后仍会抛出原始文件系统错误。
  */
-function runGitQuery(cmd: string, cwd: string) {
-  console.log(`[GIT] ${cmd} (in ${cwd})`)
-  return execSync(cmd, { cwd, stdio: 'inherit' })
+function removeWorkingDir(targetDir: string): void {
+  rmSync(targetDir, REMOVE_DIR_OPTIONS)
+}
+
+/**
+ * 以参数数组执行 Git，避免把 vendor 配置拼进 shell 命令字符串。
+ */
+function runGit(args: string[], cwd: string) {
+  const printableCommand = ['git', ...args].join(' ')
+  console.log(`[GIT] ${printableCommand} (in ${cwd})`)
+
+  const result = spawnSync('git', args, { cwd, stdio: 'inherit' })
+  if (result.error) {
+    throw result.error
+  }
+
+  if (result.status !== 0) {
+    throw new Error(`Git command failed with exit code ${result.status}: ${printableCommand}`)
+  }
 }
 
 function rememberTarget(targets: Map<string, string>, target: string, source: string) {
@@ -106,10 +124,10 @@ async function main() {
 
   // 1. 清理环境
   if (existsSync(VENDOR_SKILLS_DIR)) {
-    rmSync(VENDOR_SKILLS_DIR, { recursive: true, force: true })
+    removeWorkingDir(VENDOR_SKILLS_DIR)
   }
   if (existsSync(CACHE_DIR)) {
-    rmSync(CACHE_DIR, { recursive: true, force: true })
+    removeWorkingDir(CACHE_DIR)
   }
 
   mkdirSync(VENDOR_SKILLS_DIR, { recursive: true })
@@ -129,7 +147,7 @@ async function main() {
     console.log(`\n--- 正在拉取远程供应商: ${vendorName} ---`)
 
     try {
-      runGitQuery(`git clone --filter=blob:none --no-checkout ${vendor.repo} ${vendorName}`, CACHE_DIR)
+      runGit(['clone', '--filter=blob:none', '--no-checkout', vendor.repo, vendorName], CACHE_DIR)
 
       const checkoutPaths = new Set<string>()
       for (const link of vendor.links) {
@@ -137,17 +155,16 @@ async function main() {
       }
 
       if (checkoutPaths.size > 0) {
-        runGitQuery(`git sparse-checkout set ${[...checkoutPaths].join(' ')}`, cacheTarget)
+        runGit(['sparse-checkout', 'set', ...checkoutPaths], cacheTarget)
       }
 
-      runGitQuery(`git checkout`, cacheTarget)
+      runGit(['checkout'], cacheTarget)
 
       for (const link of vendor.links) {
         const sourcePath = join(cacheTarget, link.source)
 
         if (!existsSync(sourcePath)) {
-          console.warn(`[WARN] 跳过缺失的源目录: ${link.source}`)
-          continue
+          throw new Error(`供应商 ${vendorName} 缺失配置的源目录: ${link.source}`)
         }
 
         const sources = link.kind === 'namespace-dir'
@@ -176,7 +193,7 @@ async function main() {
 
   // 4. 清除 Git 缓存
   console.log('\n[SYNC] 正在清理远程缓存...')
-  rmSync(CACHE_DIR, { recursive: true, force: true })
+  removeWorkingDir(CACHE_DIR)
 
   // 5. 保存本次同步的指纹
   saveSyncFingerprint(currentFingerprint)
@@ -185,4 +202,7 @@ async function main() {
   console.log('\n[SYNC] 供应商技能同步完成。')
 }
 
-main().catch(console.error)
+main().catch((error) => {
+  console.error(error)
+  process.exitCode = 1
+})

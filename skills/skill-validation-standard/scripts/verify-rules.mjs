@@ -149,7 +149,8 @@ function checkFrontmatterFields(fields, root) {
     pass('frontmatter name matches folder')
     if (description) {
       pass('frontmatter description trigger contract valid')
-    } else {
+    }
+    else {
       pass('frontmatter description omitted')
     }
   }

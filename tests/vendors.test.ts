@@ -75,7 +75,7 @@ it('walkVendorTree - skills projection setup 透传到 VendorLink', () => {
           skills: [
             {
               name: 'cli-skill',
-              setup: ['npm install -g some-cli@latest'],
+              setup: [{ command: 'some-cli-installer', args: ['--global'] }],
             },
             'plain-utils', // 无 setup 的普通 skill
           ],
@@ -93,7 +93,7 @@ it('walkVendorTree - skills projection setup 透传到 VendorLink', () => {
   assert.strictEqual(links[0].target, 'vendor/skills/cli-skill')
   assert.deepStrictEqual(
     links[0].setup,
-    ['npm install -g some-cli@latest'],
+    [{ command: 'some-cli-installer', args: ['--global'] }],
     'cli-skill 应携带 setup 命令',
   )
 
@@ -115,7 +115,7 @@ it('walkVendorTree - skills projection 混合数组（字符串 + 对象）', ()
           sourceBaseDir: 'skills',
           skills: [
             'plain-skill', // 字符串简写
-            { name: 'cli-skill', setup: ['npm i -g my-cli'] }, // 有 setup
+            { name: 'cli-skill', setup: [{ command: 'my-cli-installer', args: ['--global'] }] }, // 有 setup
             { name: 'renamed-skill', output: 'new-name' }, // 重命名无 setup
           ],
         },
@@ -132,7 +132,7 @@ it('walkVendorTree - skills projection 混合数组（字符串 + 对象）', ()
   assert.strictEqual(links[0].setup, undefined)
 
   assert.strictEqual(links[1].target, 'vendor/skills/cli-skill')
-  assert.deepStrictEqual(links[1].setup, ['npm i -g my-cli'])
+  assert.deepStrictEqual(links[1].setup, [{ command: 'my-cli-installer', args: ['--global'] }])
 
   assert.strictEqual(links[2].target, 'vendor/skills/new-name')
   assert.strictEqual(links[2].setup, undefined)
@@ -319,7 +319,7 @@ it('walkVendorTree - namespace projection 带 setup', () => {
           kind: 'namespace',
           sourceDir: 'skills',
           output: 'superpowers',
-          setup: ['npm install -g superpowers-cli'],
+          setup: [{ command: 'superpowers-installer', args: ['--global'] }],
         },
       ],
     },
@@ -330,7 +330,7 @@ it('walkVendorTree - namespace projection 带 setup', () => {
   const link = vendors.superpowers.links[0]
   assert.deepStrictEqual(
     link.setup,
-    ['npm install -g superpowers-cli'],
+    [{ command: 'superpowers-installer', args: ['--global'] }],
     'namespace projection 的 setup 应透传到 VendorLink',
   )
 })

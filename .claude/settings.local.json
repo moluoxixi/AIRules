@@ -3,7 +3,7 @@
     "allow": [
       "Skill(skill-validation-standard)",
       "Skill(skill-validation-standard:*)",
-      "Bash(node \"D:/project-new/AIRules/skills/workflow/java-code-standard/scripts/verify-rules.mjs\")"
+      "Bash(node skills/workflow/java-code-standard/scripts/verify-rules.mjs)"
     ]
   }
 }

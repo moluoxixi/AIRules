@@ -1,39 +1,41 @@
 #!/usr/bin/env npx tsx
-import os from 'node:os';
-import path from 'node:path';
+import os from 'node:os'
+import path from 'node:path'
 
-import kleur from 'kleur';
-import { loadVendorManifest } from './lib/vendors.js';
-import { ensureVendorRepo } from './lib/vendor-sync.js';
+import kleur from 'kleur'
+import { ALL_HOST_IDS } from '../constants/hosts.js'
 import {
-  ensureInstallRoot,
   ensureGlobalSkillLink,
+  ensureInstallRoot,
   getDefaultInstallPaths,
   linkHostBaseline,
   projectHostById,
   rebuildVendorSkillLinks,
   runSkillSetupCommands,
-  syncFirstPartyToHome
-} from './lib/install.js';
-import { verifyHost } from './lib/verify.js';
-import { ALL_HOST_IDS } from '../constants/hosts.js';
+  syncFirstPartySkillsToVendor,
+  syncFirstPartyToHome,
+} from './lib/install.js'
+import { ensureVendorRepo } from './lib/vendor-sync.js'
+import { loadVendorManifest } from './lib/vendors.js'
+import { verifyHost } from './lib/verify.js'
 
 interface Args {
-  host: string;
-  mode: string;
-  home: string;
-  skipVendors: boolean;
-  help: boolean;
+  host: string
+  mode: string
+  home: string
+  userHome?: string
+  skipVendors: boolean
+  help: boolean
 }
 
 function printHelp() {
-  const hostsLine = ALL_HOST_IDS.join('\n  ');
-  console.log(`Usage: npx tsx scripts/host-setup.ts --host <name|all> [--mode <install|uninstall>] [--home <dir>] [--skip-vendors]
+  const hostsLine = ALL_HOST_IDS.join('\n  ')
+  console.log(`Usage: npx tsx scripts/host-setup.ts --host <name|all> [--mode <install|upgrade>] [--home <dir>] [--user-home <dir>] [--skip-vendors]
 
 Hosts:
   all (安装到所有支持的代理)
   ${hostsLine}
-`);
+`)
 }
 
 function parseArgs(argv: string[]): Args {
@@ -42,132 +44,145 @@ function parseArgs(argv: string[]): Args {
     mode: 'install', // 默认安装
     home: path.join(os.homedir(), '.moluoxixi'),
     skipVendors: false,
-    help: false
-  };
+    help: false,
+  }
 
   for (let index = 0; index < argv.length; index += 1) {
-    const arg = argv[index];
+    const arg = argv[index]
     if (arg === '--help') {
-      args.help = true;
-    } else if (arg === '--host') {
-      args.host = argv[index + 1];
-      index += 1;
-    } else if (arg === '--mode') {
-      args.mode = argv[index + 1];
-      index += 1;
-    } else if (arg === '--home') {
-      args.home = argv[index + 1];
-      index += 1;
-    } else if (arg === '--skip-vendors') {
-      args.skipVendors = true;
-    } else {
-      throw new Error(`Unknown argument: ${arg}`);
+      args.help = true
+    }
+    else if (arg === '--host') {
+      args.host = argv[index + 1]
+      index += 1
+    }
+    else if (arg === '--mode') {
+      args.mode = argv[index + 1]
+      index += 1
+    }
+    else if (arg === '--home') {
+      args.home = argv[index + 1]
+      index += 1
+    }
+    else if (arg === '--user-home') {
+      args.userHome = argv[index + 1]
+      index += 1
+    }
+    else if (arg === '--skip-vendors') {
+      args.skipVendors = true
+    }
+    else {
+      throw new Error(`Unknown argument: ${arg}`)
     }
   }
 
-  return args;
+  return args
 }
 
 function assertRequiredArgs(args: Args) {
   if (!args.host) {
-    throw new Error('Missing required --host argument');
+    throw new Error('Missing required --host argument')
   }
 
   if (!args.mode || !['install', 'upgrade'].includes(args.mode)) {
-    throw new Error('Missing or invalid --mode argument (expected install or upgrade)');
+    throw new Error('Missing or invalid --mode argument (expected install or upgrade)')
   }
 }
 
 async function syncVendorsIfNeeded(homeDir: string, repoRoot: string, skipVendors: boolean) {
   if (skipVendors) {
-    return;
+    return
   }
 
-  const manifest = await loadVendorManifest(path.join(repoRoot, 'constants', 'skills.js'));
+  const manifest = await loadVendorManifest(path.join(repoRoot, 'constants', 'skills.js'))
   for (const vendor of Object.values(manifest.vendors ?? {})) {
-    ensureVendorRepo(homeDir, vendor);
+    ensureVendorRepo(homeDir, vendor)
   }
 
   // 执行各 skill 的安装前置命令
-  runSkillSetupCommands(manifest);
+  runSkillSetupCommands(manifest)
 }
 
 async function main() {
-  const args = parseArgs(process.argv.slice(2));
+  const args = parseArgs(process.argv.slice(2))
   if (args.help) {
-    printHelp();
-    return;
+    printHelp()
+    return
   }
 
-  assertRequiredArgs(args);
+  assertRequiredArgs(args)
 
-  const repoRoot = process.cwd();
-  const userHome = path.dirname(path.resolve(args.home));
-  const paths = getDefaultInstallPaths(userHome);
-  paths.moluoHome = path.resolve(args.home);
-  paths.repoRoot = repoRoot;
+  const repoRoot = process.cwd()
+  const userHome = path.resolve(args.userHome ?? os.homedir())
+  const paths = getDefaultInstallPaths(userHome)
+  paths.moluoHome = path.resolve(args.home)
+  paths.repoRoot = repoRoot
 
-  ensureInstallRoot(paths);
-  ensureGlobalSkillLink(paths);
-  syncFirstPartyToHome(repoRoot, paths.moluoHome);
-  await syncVendorsIfNeeded(paths.moluoHome, repoRoot, args.skipVendors);
+  ensureInstallRoot(paths)
+  ensureGlobalSkillLink(paths)
+  syncFirstPartyToHome(repoRoot, paths.moluoHome)
+  await syncVendorsIfNeeded(paths.moluoHome, repoRoot, args.skipVendors)
   await rebuildVendorSkillLinks({
     homeDir: paths.moluoHome,
-    manifestPath: path.join(repoRoot, 'constants', 'skills.js')
-  });
+    manifestPath: path.join(repoRoot, 'constants', 'skills.js'),
+  })
+  syncFirstPartySkillsToVendor(repoRoot, paths.moluoHome)
+  syncFirstPartySkillsToVendor(paths.moluoHome, paths.moluoHome)
 
-  const targets = args.host === 'all' ? ALL_HOST_IDS : [args.host];
-  const failedHosts: string[] = [];
-  const installErrors: string[] = [];
+  const targets = args.host === 'all' ? ALL_HOST_IDS : [args.host]
+  const failedHosts: string[] = []
+  const installErrors: string[] = []
 
   for (const host of targets) {
     try {
-      const { success } = projectHostById(host, userHome, paths.moluoHome);
+      const { success } = projectHostById(host, userHome, paths.moluoHome)
       if (success) {
         const baselineTarget = linkHostBaseline({
           moluoHome: paths.moluoHome,
-          host: host,
-          userHome
-        });
+          host,
+          userHome,
+        })
 
-        console.log(`[host] ${host} - 配置完成`);
+        console.log(`[host] ${host} - 配置完成`)
         if (baselineTarget) {
-          console.log(`[baseline] ${baselineTarget}`);
+          console.log(`[baseline] ${baselineTarget}`)
         }
 
         // 自动执行校验逻辑
-        const verified = await verifyHost(host, paths.moluoHome);
+        const verified = await verifyHost(host, paths.moluoHome, userHome)
         if (!verified) {
-          failedHosts.push(host);
+          failedHosts.push(host)
         }
       }
-    } catch (error: any) {
-      installErrors.push(host);
-      console.error(`[error] ${host} 安装过程中发生异常:`);
-      console.error(error?.message || error);
+    }
+    catch (error) {
+      installErrors.push(host)
+      console.error(`[error] ${host} 安装过程中发生异常:`)
+      console.error(String(error))
     }
   }
 
-  const allFailures = [...installErrors, ...failedHosts];
-  const allPassed = allFailures.length === 0;
+  const allFailures = [...installErrors, ...failedHosts]
+  const allPassed = allFailures.length === 0
 
   if (allPassed) {
-    console.log(`\n${kleur.green('✅ 所有宿主验证通过，安装/更新流程已完成。')}`);
-  } else {
-    console.error(`\n${kleur.red('❌ 以下宿主未通过验证，请检查上述错误信息：')}`);
+    console.log(`\n${kleur.green('✅ 所有宿主验证通过，安装/更新流程已完成。')}`)
+  }
+  else {
+    console.error(`\n${kleur.red('❌ 以下宿主未通过验证，请检查上述错误信息：')}`)
     for (const host of installErrors) {
-      console.error(`  ${kleur.red(`• ${host} — 安装异常`)}`);
+      console.error(`  ${kleur.red(`• ${host} — 安装异常`)}`)
     }
     for (const host of failedHosts) {
-      console.error(`  ${kleur.red(`• ${host} — 验证失败`)}`);
+      console.error(`  ${kleur.red(`• ${host} — 验证失败`)}`)
     }
-    process.exitCode = 1;
+    process.exitCode = 1
   }
 
-  console.log(`[home] ${paths.moluoHome}`);
+  console.log(`[home] ${paths.moluoHome}`)
 }
 
 main().catch((error) => {
-  console.error(error);
-  process.exit(1);
-});
+  console.error(error)
+  process.exit(1)
+})

@@ -1,5 +1,5 @@
 import assert from 'node:assert/strict'
-import { execSync } from 'node:child_process'
+import { execFileSync } from 'node:child_process'
 import fs from 'node:fs'
 import os from 'node:os'
 import path from 'node:path'
@@ -8,6 +8,7 @@ import { it } from 'vitest'
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url))
 const rootDir = path.resolve(__dirname, '..')
+const commitlintCli = path.join(rootDir, 'node_modules', '@commitlint', 'cli', 'cli.js')
 
 function withCommitMessage(message: string, run: (messagePath: string) => void) {
   const tempDir = fs.mkdtempSync(path.join(os.tmpdir(), 'airules-commitlint-'))
@@ -24,7 +25,7 @@ function withCommitMessage(message: string, run: (messagePath: string) => void) 
 }
 
 function runCommitlint(messagePath: string) {
-  execSync(`npm exec commitlint -- --edit ${JSON.stringify(messagePath)}`, {
+  execFileSync(process.execPath, [commitlintCli, '--edit', messagePath], {
     cwd: rootDir,
     stdio: 'pipe',
   })

@@ -4,7 +4,6 @@ import os from 'node:os'
 import path from 'node:path'
 import { it } from 'vitest'
 import {
-
   projectSkillsToHost,
 } from '../scripts/lib/install.js'
 

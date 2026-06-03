@@ -15,6 +15,7 @@ import {
   rebuildVendorSkillLinks,
   replaceWithSymlink,
   runSkillSetupCommands,
+  syncFirstPartySkillsToVendor,
   syncFirstPartyToHome,
 } from '../scripts/lib/install.js'
 import { buildLinkPlan } from '../scripts/lib/links.js'
@@ -304,7 +305,44 @@ export const vendors = [
   })
 })
 
-it('install - runSkillSetupCommands 执行 setup 并保留失败语义为告警', () => {
+it('install - 第一方 skills 覆盖层只管理本地源链接', () => withTempDir('airules-first-party-', (tmpDir) => {
+  const repoRoot = path.join(tmpDir, 'repo')
+  const moluoHome = path.join(tmpDir, 'home')
+  const localSkill = path.join(repoRoot, 'skills', 'workflow', 'local-review')
+  const vendorSkillsDir = path.join(moluoHome, 'vendor', 'skills')
+  const remoteSkill = path.join(moluoHome, 'vendor', 'repos', 'demo', 'skills', 'remote-review')
+
+  writeFile(path.join(localSkill, 'SKILL.md'), 'local\n')
+  writeFile(path.join(remoteSkill, 'SKILL.md'), 'remote\n')
+  fs.mkdirSync(vendorSkillsDir, { recursive: true })
+  fs.symlinkSync(
+    remoteSkill,
+    path.join(vendorSkillsDir, 'remote-review'),
+    process.platform === 'win32' ? 'junction' : 'dir',
+  )
+
+  syncFirstPartySkillsToVendor(repoRoot, moluoHome)
+
+  assert.equal(
+    realLinkPath(path.join(vendorSkillsDir, 'local-review')),
+    realLinkPath(localSkill),
+  )
+  assert.equal(
+    realLinkPath(path.join(vendorSkillsDir, 'remote-review')),
+    realLinkPath(remoteSkill),
+  )
+
+  fs.rmSync(localSkill, { recursive: true, force: true })
+  syncFirstPartySkillsToVendor(repoRoot, moluoHome)
+
+  assert.equal(fs.existsSync(path.join(vendorSkillsDir, 'local-review')), false)
+  assert.equal(
+    realLinkPath(path.join(vendorSkillsDir, 'remote-review')),
+    realLinkPath(remoteSkill),
+  )
+}))
+
+it('install - runSkillSetupCommands 执行 setup 成功命令', () => {
   const manifest = {
     version: 1,
     vendors: {
@@ -317,7 +355,7 @@ it('install - runSkillSetupCommands 执行 setup 并保留失败语义为告警'
             source: 'skills/demo',
             target: 'vendor/skills/demo',
             setup: [
-              'node -e "process.exit(0)"',
+              { command: 'node', args: ['-e', 'process.exit(0)'] },
             ],
           },
           {
@@ -331,6 +369,33 @@ it('install - runSkillSetupCommands 执行 setup 并保留失败语义为告警'
   }
 
   assert.doesNotThrow(() => runSkillSetupCommands(manifest))
+})
+
+it('install - runSkillSetupCommands 保留 setup 失败语义', () => {
+  const manifest = {
+    version: 1,
+    vendors: {
+      demo: {
+        repo: 'https://example.test/demo.git',
+        cloneDir: 'vendor/repos/demo',
+        links: [
+          {
+            kind: 'skill',
+            source: 'skills/demo',
+            target: 'vendor/skills/demo',
+            setup: [
+              { command: 'node', args: ['-e', 'process.exit(3)'] },
+            ],
+          },
+        ],
+      },
+    },
+  }
+
+  assert.throws(
+    () => runSkillSetupCommands(manifest),
+    /安装前置命令失败/,
+  )
 })
 
 it('vendors - loadVendorManifest 支持默认导出并显式拒绝无效清单', async () => {

@@ -48,6 +48,23 @@ AIRules 是一个**可组合的 AI 技能分发系统**。它的核心思想很�
 
 ## 安装
 
+**作为 Node CLI 使用（本地开发 / npm link）：**
+
+```bash
+npm install
+npm run build
+npm link
+airules sync --host all
+```
+
+添加本地 skill 并同步到所有宿主：
+
+```bash
+airules add ./my-skill --host all
+```
+
+`add` 命令要求源目录包含 `SKILL.md`，并会复制到 `~/.moluoxixi/skills/<skill-name>`，再通过同一套 vendor/host 投影链路同步。
+
 **macOS / Linux / Git Bash：**
 
 ```bash
@@ -73,7 +90,7 @@ npm run sync
 ```
 
 > [!TIP]
-> **全自动流程**：该命令会自动拉取最新代码、安装依赖、清理死链接，并在完成后**自动运行全量验证报告**。如果需要卸载，只需在命令后添加 `--mode uninstall`。
+> **同步流程**：该命令会重建 vendor skills、清理死链接，并在完成后自动运行宿主验证。需要避免拉取第三方供应商时，可使用 `airules sync --skip-vendors`。
 
 ---
 
@@ -104,7 +121,29 @@ npm run rules:install -- --host 宿主名（例如 claude）
 ```
 
 > [!TIP]
-> **全自动流程**：该命令会自动拉取最新代码、安装依赖、清理死链接，并在完成后**自动运行全量验证报告**。如果需要卸载，只需在命令后添加 `--mode uninstall`。
+> 仓库内也可以继续使用 `npm run rules:install -- --host claude`，该脚本现在等价转发到 `airules sync`。
+
+---
+
+## CLI 命令
+
+| 命令 | 作用 |
+|------|------|
+| `airules sync --host all` | 同步内置、用户自定义和第三方 skills 到所有已存在宿主 |
+| `airules add ./my-skill --host all` | 添加本地 skill，并同步到所有宿主 |
+| `airules add ./my-skill --name review-plus --overwrite` | 指定安装名并覆盖已有用户 skill |
+| `airules verify --host codex` | 校验指定宿主的 skills 链接完整性 |
+
+常用选项：
+
+| 选项 | 说明 |
+|------|------|
+| `--home <dir>` | 指定 AIRules 安装目录，默认 `~/.moluoxixi` |
+| `--user-home <dir>` | 指定宿主配置所在的用户目录，默认当前系统用户目录 |
+| `--host <name\|all>` | 指定宿主，默认 `all` |
+| `--skip-vendors` | `sync` 时不刷新第三方 vendor 仓库 |
+| `--skip-sync` | `add` 后只写入用户 skill，不立即同步宿主 |
+| `--no-verify` | 跳过宿主验证 |
 
 ---
 

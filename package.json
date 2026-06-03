@@ -2,20 +2,36 @@
   "name": "moluoxixi-ai-rules",
   "type": "module",
   "version": "0.1.0",
-  "private": true,
   "description": "Personal AI workflow distribution built on top of superpowers.",
   "license": "MIT",
   "repository": "https://github.com/moluoxixi/AIRules",
+  "bin": {
+    "airules": "./dist/scripts/cli.js"
+  },
+  "files": [
+    "LICENSE",
+    "README-zh.md",
+    "README.md",
+    "dist",
+    "rules",
+    "skills"
+  ],
   "scripts": {
+    "airules": "tsx scripts/cli.ts",
+    "build": "tsc -p tsconfig.build.json",
     "prepare": "husky",
+    "prepack": "npm run build",
     "lint": "eslint --fix",
-    "setup": "tsx scripts/host-setup.ts",
-    "sync": "npm run rules:install -- --host all",
-    "rules:install": "git reset --hard HEAD && git clean -fd && git pull && npm install && tsx scripts/host-setup.ts",
+    "setup": "tsx scripts/cli.ts sync",
+    "sync": "tsx scripts/cli.ts sync --host all",
+    "rules:install": "tsx scripts/cli.ts sync",
     "pretest": "npx tsx scripts/sync-vendors.ts",
     "test": "vitest run",
     "typecheck": "tsc --noEmit",
     "coverage": "vitest run --coverage"
+  },
+  "dependencies": {
+    "kleur": "^4.1.5"
   },
   "devDependencies": {
     "@antfu/eslint-config": "^8.2.0",
@@ -27,14 +43,13 @@
     "eslint-plugin-format": "^2.0.1",
     "husky": "^9.1.7",
     "jiti": "^2.6.1",
-    "kleur": "^4.1.5",
     "lint-staged": "^16.4.0",
     "tsx": "^4.21.0",
     "typescript": "^6.0.2",
     "vitest": "^4.1.4"
   },
   "lint-staged": {
-    "*.{vue,jsx,tsx,js,ts}": [
+    "*.{vue,jsx,tsx,js,ts,mjs}": [
       "eslint --fix"
     ]
   }

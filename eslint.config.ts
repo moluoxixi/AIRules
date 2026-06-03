@@ -2,10 +2,13 @@ import eslintConfig from '@antfu/eslint-config'
 
 export default eslintConfig({
   ignores: [
-    'scripts',
     'public',
     '.zed',
+    '.cache-git',
+    'coverage',
     'docs',
+    'dist',
+    'vendor',
   ],
   rules: {
     // user
