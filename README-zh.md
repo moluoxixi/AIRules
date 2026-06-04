@@ -185,6 +185,7 @@ Moluoxixi AIRules 通过自动化投影，支持不断增长的 AI 代理生态�
 
 | 名称 | 描述 |
 |------|------|
+| **init-project** | 新项目初始化技能：分析项目背景，向根 `AGENTS.md` 注入规则，创建 `CLAUDE.md` 软链接，并执行 `codegraph init -i` |
 | **skill-validation-standard** | 最小 Skill 产物校验标准：校验生成或修改后的 Claude/Codex skill 的 SKILL.md YAML frontmatter、文件夹命名一致性和行数限制 |
 
 > 第一方 skills 可以继续放在嵌套源目录下，安装时会展平为 `vendor/skills/<skill-name>`；仓库级规则位于 `rules/AGENTS.md`，CodeGraph 安装命令位于 `constants/skills.ts` 的 vendor setup。
@@ -206,6 +207,9 @@ Moluoxixi AIRules 通过自动化投影，支持不断增长的 AI 代理生态�
 ├── rules/
 │   └── AGENTS.md          # 仓库级运行规则
 ├── skills/                  # 第一方 skills（你的核心资产）
+│   ├── init-project/
+│   │   ├── references/
+│   │   └── scripts/
 │   └── skill-validation-standard/
 ├── vendor/
 │   ├── repos/               # 克隆的第三方源仓库

@@ -528,12 +528,19 @@ it('vendors 配置 - 使用 OpenAI Playwright 并移除过时技能', () => {
       target: link.target,
       setup: link.setup,
     })),
-    [{
-      source: 'skills/skill-validation-standard',
-      target: 'vendor/skills/skill-validation-standard',
-      setup: undefined,
-    }],
-    '第一方 skill 默认只投影 skill-validation-standard',
+    [
+      {
+        source: 'skills/init-project',
+        target: 'vendor/skills/init-project',
+        setup: undefined,
+      },
+      {
+        source: 'skills/skill-validation-standard',
+        target: 'vendor/skills/skill-validation-standard',
+        setup: undefined,
+      },
+    ],
+    '第一方 skill 默认投影 init-project 与 skill-validation-standard',
   )
 })
 

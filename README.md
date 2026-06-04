@@ -185,6 +185,7 @@ Moluoxixi AIRules supports a growing ecosystem of AI agents through automated pr
 
 | Name | Description |
 |------|-------------|
+| **init-project** | New-project initialization skill that analyzes project context, injects rules into root `AGENTS.md`, links `CLAUDE.md`, and runs `codegraph init -i` |
 | **skill-validation-standard** | Minimal skill validation standard for generated or modified Claude/Codex skills, covering SKILL.md YAML frontmatter, folder-name matching, and line-count limits |
 
 > First-party skills may live under nested source folders, but installation flattens them into `vendor/skills/<skill-name>`. First-party rules live in `rules/AGENTS.md`; CodeGraph install commands live in the vendor setup section of `constants/skills.ts`.
@@ -206,6 +207,9 @@ Moluoxixi AIRules supports a growing ecosystem of AI agents through automated pr
 ├── rules/
 │   └── AGENTS.md          # Repository-level operating rules
 ├── skills/                  # First-party skills (your core assets)
+│   ├── init-project/
+│   │   ├── references/
+│   │   └── scripts/
 │   └── skill-validation-standard/
 ├── vendor/
 │   ├── repos/               # Cloned third-party source repos
