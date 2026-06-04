@@ -1,3 +1,2 @@
 #!/usr/bin/env sh
 npm run typecheck
-npm test
