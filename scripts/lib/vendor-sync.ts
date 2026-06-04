@@ -23,12 +23,31 @@ function runGit(args: string[], cwd: string, options: { stdio?: StdioOptions } =
   return (result.stdout as string ?? '').trim()
 }
 
+function listOriginHeadBranches(cloneDir: string): string[] {
+  return runGit(['-C', cloneDir, 'ls-remote', '--heads', 'origin'], process.cwd())
+    .split(/\r?\n/)
+    .map(line => line.trim())
+    .filter(Boolean)
+    .map((line) => {
+      const ref = line.split('\t')[1]
+      if (!ref?.startsWith('refs/heads/')) {
+        throw new Error(`Unexpected origin branch format for ${cloneDir}: ${line}`)
+      }
+
+      return ref.slice('refs/heads/'.length)
+    })
+}
+
 export function getRemoteDefaultBranch(cloneDir: string): string {
   let symbolicRefError: unknown
+  const originHeadBranches = listOriginHeadBranches(cloneDir)
 
   try {
     const ref = runGit(['-C', cloneDir, 'symbolic-ref', 'refs/remotes/origin/HEAD'], process.cwd())
-    return ref.replace('refs/remotes/origin/', '')
+    const branch = ref.replace('refs/remotes/origin/', '')
+    if (originHeadBranches.includes(branch)) {
+      return branch
+    }
   }
   catch (error) {
     symbolicRefError = error
@@ -47,7 +66,10 @@ export function getRemoteDefaultBranch(cloneDir: string): string {
       throw new Error(`Unexpected origin HEAD format for ${cloneDir}: ${headLine}`)
     }
 
-    return headLine.slice(prefix.length, -suffix.length)
+    const branch = headLine.slice(prefix.length, -suffix.length)
+    if (originHeadBranches.includes(branch)) {
+      return branch
+    }
   }
 
   const remoteBranches = runGit(['-C', cloneDir, 'branch', '-r', '--format=%(refname:lstrip=3)'], process.cwd())
@@ -57,6 +79,11 @@ export function getRemoteDefaultBranch(cloneDir: string): string {
 
   if (remoteBranches.length === 1) {
     return remoteBranches[0].replace(/^origin\//, '')
+  }
+
+  // Sparse file:// clones can lack local origin/* refs when remote HEAD is unset.
+  if (originHeadBranches.length === 1) {
+    return originHeadBranches[0]
   }
 
   throw new Error(`Unable to determine origin default branch for ${cloneDir}; symbolic-ref failed with: ${String(symbolicRefError)}`)

@@ -194,5 +194,12 @@ export function getRepoRoot(fromFileUrl: string): string {
 }
 
 export function resolveHomePath(homeDir: string, relativePath: string): string {
-  return normalizePath(path.resolve(homeDir, relativePath))
+  // Preserve caller-provided absolute path style so tests and generated plans stay OS-neutral.
+  const pathApi = path.win32.isAbsolute(homeDir)
+    ? path.win32
+    : path.posix.isAbsolute(homeDir)
+      ? path.posix
+      : path
+
+  return normalizePath(pathApi.resolve(homeDir, relativePath))
 }
