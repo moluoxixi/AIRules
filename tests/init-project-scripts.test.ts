@@ -36,6 +36,32 @@ function runInjectRules(projectRoot: string, ...references: string[]) {
   )
 }
 
+function runLinkClaude(projectRoot: string) {
+  return spawnSync(
+    process.execPath,
+    [
+      path.join(process.cwd(), 'skills', 'init-project', 'scripts', 'link-claude.mjs'),
+      projectRoot,
+    ],
+    {
+      cwd: process.cwd(),
+      encoding: 'utf8',
+    },
+  )
+}
+
+function isManagedClaudeLink(agentsPath: string, claudePath: string): boolean {
+  const claudeStats = fs.lstatSync(claudePath)
+
+  if (claudeStats.isSymbolicLink()) {
+    const linkedPath = path.resolve(path.dirname(claudePath), fs.readlinkSync(claudePath))
+    return linkedPath === path.resolve(agentsPath)
+  }
+
+  const agentsStats = fs.statSync(agentsPath)
+  return agentsStats.dev === claudeStats.dev && agentsStats.ino === claudeStats.ino
+}
+
 it('init-project inject-rules - AGENTS.md 不存在时创建聚合规则文件', () => withTempDir('airules-inject-create-', (tmpDir) => {
   const projectRoot = path.join(tmpDir, 'project')
   const referenceFile = path.join(tmpDir, 'frontend.md')
@@ -82,4 +108,23 @@ it('init-project inject-rules - AGENTS.md 标题重复时停止写入并要求 A
   assert.match(result.stderr, /Duplicate AGENTS\.md headings detected/)
   assert.match(result.stderr, /项目规范/)
   assert.equal(fs.readFileSync(agentsPath, 'utf8'), originalContent)
+}))
+
+it('init-project link-claude - 创建 AGENTS.md 到 CLAUDE.md 的托管链接并支持重复执行', () => withTempDir('airules-link-claude-', (tmpDir) => {
+  const projectRoot = path.join(tmpDir, 'project')
+  const agentsPath = path.join(projectRoot, 'AGENTS.md')
+  const claudePath = path.join(projectRoot, 'CLAUDE.md')
+
+  writeFile(agentsPath, '# Project Rules\n')
+
+  const firstRun = runLinkClaude(projectRoot)
+
+  assert.equal(firstRun.status, 0, firstRun.stderr)
+  assert.equal(fs.readFileSync(claudePath, 'utf8'), '# Project Rules\n')
+  assert.equal(isManagedClaudeLink(agentsPath, claudePath), true)
+
+  const secondRun = runLinkClaude(projectRoot)
+
+  assert.equal(secondRun.status, 0, secondRun.stderr)
+  assert.equal(isManagedClaudeLink(agentsPath, claudePath), true)
 }))

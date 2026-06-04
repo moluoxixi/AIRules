@@ -40,13 +40,13 @@ node <init-project-skill>/scripts/inject-rules.mjs <your-project> <init-project-
 
 追加前脚本会按 Markdown 标题文本去重。若待注入规则与现有 `AGENTS.md` 出现重复标题，脚本必须停止写入并报告重复标题；AI 随后读取现有 `AGENTS.md` 与待注入 references，输出规则合并审查结论，评估应合并、保留、改名还是移动到既有章节。未经审查不得自动跳过、覆盖或重复追加同名章节。
 
-然后基于项目根目录 `AGENTS.md` 创建 `CLAUDE.md` 软链接：
+然后基于项目根目录 `AGENTS.md` 创建 `CLAUDE.md` 托管链接：
 
 ```bash
 node <init-project-skill>/scripts/link-claude.mjs <your-project>
 ```
 
-若 `CLAUDE.md` 已存在且不是指向 `AGENTS.md` 的软链接，必须停止并让用户决定，不得覆盖用户文件。
+脚本优先创建指向 `AGENTS.md` 的相对软链接。若 Windows 无管理员权限或未启用开发者模式导致文件软链接创建失败，脚本会明确创建同目录硬链接并输出说明；不得静默复制文件。若 `CLAUDE.md` 已存在且不是指向 `AGENTS.md` 的软链接或同一文件实体的硬链接，必须停止并让用户决定，不得覆盖用户文件。
 
 ## 初始化 CodeGraph
 
@@ -63,5 +63,5 @@ codegraph init -i
 
 - `AGENTS.md` 已包含本次项目背景对应的 AIRules 规则块。
 - 技术栈检测结果已按 `detect-stack.mjs` 的 `stacks`、`references` 和关键 `evidence` 报告。
-- `CLAUDE.md` 是指向 `AGENTS.md` 的软链接。
+- `CLAUDE.md` 是指向 `AGENTS.md` 的软链接；Windows 无文件软链接权限时，可为同一文件实体的硬链接，且日志必须说明。
 - `codegraph init -i` 已执行并按真实结果报告 `PASS`、`FAIL`、`MISSING` 或 `NOT RUN`。
