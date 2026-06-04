@@ -128,7 +128,7 @@ export function ensureVendorRepo(homeDir: string, vendor: Vendor): string {
 
   const defaultBranch = getRemoteDefaultBranch(cloneDir)
   const remoteRef = `origin/${defaultBranch}`
-  const fetchRefSpec = `refs/heads/${defaultBranch}:refs/remotes/${remoteRef}`
+  const fetchRefSpec = `+refs/heads/${defaultBranch}:refs/remotes/${remoteRef}`
 
   if (!isLocalRepo(vendor.repo)) {
     runGit(['-C', cloneDir, 'fetch', '--depth', '1', '--prune', 'origin', fetchRefSpec], process.cwd(), { stdio: 'inherit' })

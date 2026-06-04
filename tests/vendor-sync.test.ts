@@ -77,6 +77,48 @@ it('ensureVendorRepo - overwrites a diverged local vendor repo with remote state
   })
 })
 
+it('ensureVendorRepo - handles non-fast-forward remote branch updates', () => {
+  withTempGitDir((tempRoot) => {
+    const originRepo = path.join(tempRoot, 'origin.git')
+    const remoteWork = path.join(tempRoot, 'remote-work')
+    const homeDir = path.join(tempRoot, 'home')
+
+    git(tempRoot, ['init', '--bare', originRepo])
+    git(tempRoot, ['clone', originRepo, remoteWork])
+    git(remoteWork, ['checkout', '-b', 'main'])
+
+    const skillDir = path.join(remoteWork, 'skills', 'demo')
+    fs.mkdirSync(skillDir, { recursive: true })
+    fs.writeFileSync(path.join(skillDir, 'SKILL.md'), 'remote initial\n')
+    commitAll(remoteWork, 'initial remote skill')
+    git(remoteWork, ['push', '-u', 'origin', 'main'])
+
+    const vendor = {
+      repo: originRepo,
+      cloneDir: 'vendor/repos/demo',
+      links: [{
+        kind: 'skill',
+        source: 'skills/demo',
+        target: 'vendor/skills/demo',
+      }],
+    }
+
+    const cloneDir = ensureVendorRepo(homeDir, vendor)
+
+    fs.writeFileSync(path.join(skillDir, 'SKILL.md'), 'remote rewritten\n')
+    git(remoteWork, ['add', '.'])
+    git(remoteWork, ['-c', 'user.name=Test User', '-c', 'user.email=test@example.com', 'commit', '--amend', '-m', 'rewritten remote skill'])
+    git(remoteWork, ['push', '--force', 'origin', 'main'])
+
+    ensureVendorRepo(homeDir, vendor)
+
+    assert.strictEqual(
+      fs.readFileSync(path.join(cloneDir, 'skills', 'demo', 'SKILL.md'), 'utf8').replace(/\r\n/g, '\n'),
+      'remote rewritten\n',
+    )
+  })
+})
+
 it('getRemoteDefaultBranch - 从 origin/HEAD symbolic-ref 读取默认分支', () => {
   withTempGitDir((tempRoot) => {
     const originRepo = path.join(tempRoot, 'origin.git')
