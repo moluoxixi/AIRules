@@ -16,6 +16,7 @@ import {
   replaceWithSymlink,
   resolveSetupCommandExecutable,
   runSkillSetupCommands,
+  shouldUseShellForSetupCommand,
   syncFirstPartySkillsToVendor,
   syncFirstPartyToHome,
 } from '../scripts/lib/install.js'
@@ -400,10 +401,14 @@ it('install - runSkillSetupCommands 执行 setup 成功命令', () => {
 it('install - setup 命令在 Windows 下使用 cmd shim', () => {
   const expectedNpmCommand = process.platform === 'win32' ? 'npm.cmd' : 'npm'
   const expectedCodegraphCommand = process.platform === 'win32' ? 'codegraph.cmd' : 'codegraph'
+  const expectedShimShell = process.platform === 'win32'
 
   assert.equal(resolveSetupCommandExecutable('npm'), expectedNpmCommand)
   assert.equal(resolveSetupCommandExecutable('codegraph'), expectedCodegraphCommand)
   assert.equal(resolveSetupCommandExecutable('node'), 'node')
+  assert.equal(shouldUseShellForSetupCommand('npm'), expectedShimShell)
+  assert.equal(shouldUseShellForSetupCommand('codegraph'), expectedShimShell)
+  assert.equal(shouldUseShellForSetupCommand('node'), false)
 })
 
 it('install - runSkillSetupCommands 保留供应商级 setup 失败语义', () => {

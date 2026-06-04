@@ -513,7 +513,7 @@ it('vendors 配置 - 使用 OpenAI Playwright 并移除过时技能', () => {
       },
       {
         command: 'codegraph',
-        args: ['install'],
+        args: ['install', '--yes'],
       },
     ],
     '安装 AIRules 时应同步安装并初始化 CodeGraph',

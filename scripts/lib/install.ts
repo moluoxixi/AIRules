@@ -59,6 +59,10 @@ export function resolveSetupCommandExecutable(command: string): string {
   return command
 }
 
+export function shouldUseShellForSetupCommand(command: string): boolean {
+  return process.platform === 'win32' && windowsCommandShims.has(command)
+}
+
 /**
  * 执行供应商级和 skill 级安装前置命令。
  * 任一命令失败都会抛出错误，避免安装流程伪装成功。
@@ -72,7 +76,10 @@ export function runSkillSetupCommands(manifest: VendorManifest): void {
         const commandText = setupCommandText(command)
         console.log(`[setup] > ${commandText}`)
         try {
-          execFileSync(resolveSetupCommandExecutable(command.command), command.args ?? [], { stdio: 'inherit' })
+          execFileSync(resolveSetupCommandExecutable(command.command), command.args ?? [], {
+            shell: shouldUseShellForSetupCommand(command.command),
+            stdio: 'inherit',
+          })
         }
         catch (error) {
           throw new Error(`[setup] ${vendorName} 安装前置命令失败: ${commandText}\n${String(error)}`)
@@ -90,7 +97,10 @@ export function runSkillSetupCommands(manifest: VendorManifest): void {
         const commandText = setupCommandText(command)
         console.log(`[setup] > ${commandText}`)
         try {
-          execFileSync(resolveSetupCommandExecutable(command.command), command.args ?? [], { stdio: 'inherit' })
+          execFileSync(resolveSetupCommandExecutable(command.command), command.args ?? [], {
+            shell: shouldUseShellForSetupCommand(command.command),
+            stdio: 'inherit',
+          })
         }
         catch (error) {
           throw new Error(`[setup] ${vendorName}/${skillName} 安装前置命令失败: ${commandText}\n${String(error)}`)

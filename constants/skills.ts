@@ -97,7 +97,7 @@ const codegraphSetup: SetupCommand[] = [
   },
   {
     command: 'codegraph',
-    args: ['install'],
+    args: ['install', '--yes'],
   },
 ]
 
