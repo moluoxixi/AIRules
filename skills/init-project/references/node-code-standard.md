@@ -31,3 +31,12 @@
 - 禁止在主线程执行同步深拷贝、超大 JSON 序列化或容易引发 ReDoS 的高风险正则。
 - Entrypoint 必须拦截 `SIGINT/SIGTERM`，停止接收新请求并安全销毁数据库/Redis 连接。
 - Trace ID、Tenant ID 等横切关注点强制使用 Node 原生 `AsyncLocalStorage`，禁止侵入业务函数参数签名。
+
+## 五、强制测试交付要求
+
+- 修改 Transport、Application、Domain、Infrastructure、Schema、错误映射、事务边界或可复用工具逻辑时，必须同步交付有效测试代码。
+- 测试目录优先沿用项目既有约定；缺少约定时，单元测试放在目标代码同级 `__test__/`，跨模块 E2E 放在项目根级 `__e2e__/`。
+- Domain、UseCase、纯工具函数必须优先交付单元测试，验证业务契约、边界条件和异常路径。
+- HTTP Route、Schema、错误处理和鉴权上下文必须交付接口级测试，显式断言状态码、响应结构、校验失败和错误映射。
+- Repository、UnitOfWork、事务、数据库约束或外部 SDK 适配器必须交付集成测试；优先使用项目既有测试数据库、Testcontainers 或等价隔离环境。
+- 测试框架优先使用项目既有 Vitest、Jest 或 Node Test Runner；不得为了测试绕过真实契约、删除断言或只验证“能启动/能返回 200”。

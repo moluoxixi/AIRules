@@ -36,7 +36,7 @@ node <init-project-skill>/scripts/detect-stack.mjs <your-project>
 node <init-project-skill>/scripts/inject-rules.mjs <your-project> <init-project-skill>/references/<rule>.md [...]
 ```
 
-无法判断技术栈时不传额外语言规则，脚本只注入 `airules-base.md`。脚本会在 `AGENTS.md` 中维护一个受控规则块；重复执行会替换旧块，不追加重复内容。
+无法判断技术栈时不传额外语言规则，脚本只注入 `airules-base.md`。脚本会直接用聚合后的规则内容重写目标项目根目录 `AGENTS.md`，不添加额外包装标题、受控块注释或文件名标题。
 
 然后基于项目根目录 `AGENTS.md` 创建 `CLAUDE.md` 软链接：
 

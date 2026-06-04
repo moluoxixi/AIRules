@@ -30,3 +30,12 @@
 - JPA Entity 必须是普通 `class`，禁止在 Entity 上使用 Lombok 的 `@Data`、`@EqualsAndHashCode`、`@ToString`。
 - Entity 必须基于稳定业务唯一键手写 `equals/hashCode`。
 - Repository 仅限持久化存取，禁止混入 HTTP 上下文、权限校验或跨域编排。
+
+## 四、强制测试交付要求
+
+- 修改 Controller、DTO、Application Service、Domain、Repository、Mapper、事务边界、错误映射或持久化查询时，必须同步交付有效测试代码。
+- 测试代码必须放在 `src/test/java` 或项目既有测试目录，并保持与生产代码一致的 package 结构。
+- Domain、DTO 规则、Mapper 和 Application Service 必须交付 JUnit 5 单元测试，验证业务契约、边界条件、异常路径和不可变集合语义。
+- Controller、Validation、ExceptionHandler、权限上下文和响应 DTO 必须交付 Web 层测试，优先使用 MockMvc、WebTestClient 或项目既有接口测试工具。
+- Repository、EntityGraph、JOIN FETCH、DTO Projection、事务只读边界和懒加载行为必须交付集成测试；优先使用 `@DataJpaTest`、Testcontainers 或项目既有测试数据库。
+- 禁止只保留 `contextLoads`、Bean 能启动、接口返回 200 等低价值烟雾测试；必须显式断言数据、错误、事务和持久化契约。

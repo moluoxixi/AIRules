@@ -32,3 +32,12 @@
 - 业务逻辑禁止直接读取 `process.env`，必须通过强类型 Config Provider 注入。
 - 业务代码只抛出自定义领域/应用错误，并通过 `cause` 保留原始异常。
 - HTTP 状态码转换统一交由全局 Exception Filter 处理。
+
+## 五、强制测试交付要求
+
+- 修改 Controller、DTO、Pipe、Guard、Interceptor、Filter、Provider、UseCase、Repository、事务边界或序列化映射时，必须同步交付有效测试代码。
+- 测试目录优先沿用项目既有约定；缺少约定时，单元/模块测试放在目标代码同级 `__test__/`，跨模块 E2E 放在项目根级 `__e2e__/`。
+- Domain、UseCase 和 Provider 必须交付单元测试，验证业务契约、依赖协作、异常分支和上下文传播。
+- Controller、DTO ValidationPipe、Exception Filter、Guard 和序列化映射必须交付接口或模块级测试，显式断言状态码、响应 DTO、脱敏字段、校验失败和权限失败。
+- 涉及 TypeORM/Prisma、UnitOfWork、Transactional Outbox、Repository 或数据库约束时，必须交付集成测试；优先使用 `@nestjs/testing`、项目既有测试数据库、Testcontainers 或等价隔离环境。
+- 测试框架优先使用项目既有 Jest、Vitest、Supertest 或真实浏览器/E2E 工具；禁止只保留 `contextLoads`、模块能编译、能返回 200 等低价值烟雾测试。
