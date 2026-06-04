@@ -1,6 +1,6 @@
 import type { VendorManifest } from './vendors.js'
 import path from 'node:path'
-import { normalizePath } from './vendors.js'
+import { resolveHomePath } from './vendors.js'
 
 export interface LinkEntry {
   kind: string
@@ -14,8 +14,8 @@ export function buildLinkPlan(manifest: VendorManifest, homeDir: string): LinkEn
 
   for (const [vendorId, vendor] of Object.entries(manifest.vendors ?? {})) {
     for (const link of vendor.links ?? []) {
-      const source = normalizePath(path.resolve(homeDir, vendor.cloneDir, link.source))
-      const target = normalizePath(path.resolve(homeDir, link.target))
+      const source = resolveHomePath(homeDir, path.posix.join(vendor.cloneDir, link.source))
+      const target = resolveHomePath(homeDir, link.target)
 
       plan.push({
         kind: link.kind,
