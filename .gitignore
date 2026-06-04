@@ -5,6 +5,13 @@ vendor
 .cursor
 *-lock.*
 
+# 运行时 skill 投影；保留仓库内第一方 source skills
+skills/*
+!skills/init-project/
+!skills/init-project/**
+!skills/skill-validation-standard/
+!skills/skill-validation-standard/**
+
 # 项目
 node_modules
 .DS_Store
