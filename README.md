@@ -94,6 +94,19 @@ npm run sync
 
 ---
 
+## Publishing
+
+Publishing is handled by `.github/workflows/publish.yml`.
+
+1. Create an npm automation token with publish permission and save it as the GitHub Actions repository secret `NPM_TOKEN`.
+2. Bump `package.json` to the version you want to publish, then create a matching Git tag such as `v0.1.0`.
+3. Publish a GitHub Release for that tag, or manually run the `Publish package` workflow with the existing tag name.
+4. The workflow installs dependencies, verifies the tag matches `package.json`, runs lint/typecheck/tests, and publishes with `npm publish --provenance --access public`.
+
+The workflow uses `npm install` because this repository intentionally does not track lockfiles.
+
+---
+
 ## Specific Host Installation
 
 **macOS / Linux / Git Bash:**

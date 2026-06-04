@@ -1,0 +1,72 @@
+name: Publish package
+
+# Release-based publishing keeps npm versions tied to immutable Git tags.
+on:
+  release:
+    types: [published]
+  workflow_dispatch:
+    inputs:
+      tag:
+        description: Existing git tag to publish, for example v0.1.0
+        required: true
+        type: string
+
+permissions:
+  # npm provenance needs an OIDC token from GitHub Actions.
+  contents: read
+  id-token: write
+
+concurrency:
+  group: publish-${{ github.event_name == 'workflow_dispatch' && inputs.tag || github.event.release.tag_name }}
+  cancel-in-progress: false
+
+jobs:
+  publish:
+    name: Build, verify, and publish to npm
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout release tag
+        uses: actions/checkout@v6
+        with:
+          ref: ${{ github.event_name == 'workflow_dispatch' && inputs.tag || github.event.release.tag_name }}
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v6
+        with:
+          node-version: 24
+          registry-url: https://registry.npmjs.org
+          package-manager-cache: false
+
+      # npm install is intentional because this repository does not track lockfiles.
+      - name: Install dependencies
+        run: npm install
+
+      # Prevent publishing a tag whose version differs from the package manifest.
+      - name: Verify tag matches package version
+        env:
+          RELEASE_TAG: ${{ github.event_name == 'workflow_dispatch' && inputs.tag || github.event.release.tag_name }}
+        run: |
+          package_version="$(node -p "require('./package.json').version")"
+          tag_version="${RELEASE_TAG#refs/tags/}"
+          tag_version="${tag_version#v}"
+
+          if [ "$tag_version" != "$package_version" ]; then
+            echo "Release tag '$RELEASE_TAG' must match package.json version '$package_version'." >&2
+            exit 1
+          fi
+
+      - name: Lint
+        run: npm run lint:check
+
+      - name: Typecheck
+        run: npm run typecheck
+
+      - name: Test
+        run: npm test
+
+      - name: Publish to npm
+        env:
+          # Store an npm automation token in the repository secret NPM_TOKEN.
+          NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
+        run: npm publish --provenance --access public

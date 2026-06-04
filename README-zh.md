@@ -94,6 +94,19 @@ npm run sync
 
 ---
 
+## 发布
+
+发布由 `.github/workflows/publish.yml` 负责。
+
+1. 创建具备发布权限的 npm automation token，并保存为 GitHub Actions 仓库 secret：`NPM_TOKEN`。
+2. 将 `package.json` 升到准备发布的版本，然后创建匹配的 Git tag，例如 `v0.1.0`。
+3. 针对该 tag 发布 GitHub Release，或在 Actions 页面手动运行 `Publish package` workflow 并填写已有 tag。
+4. workflow 会安装依赖、校验 tag 与 `package.json` 版本一致、执行 lint/typecheck/tests，然后通过 `npm publish --provenance --access public` 发布到 npm。
+
+当前 workflow 使用 `npm install`，因为本仓库有意不跟踪 lockfile。
+
+---
+
 ## 特定宿主安装
 
 **macOS / Linux / Git Bash：**
