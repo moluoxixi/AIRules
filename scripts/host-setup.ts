@@ -8,7 +8,6 @@ import {
   ensureGlobalSkillLink,
   ensureInstallRoot,
   getDefaultInstallPaths,
-  isSamePath,
   linkHostBaseline,
   projectHostById,
   rebuildVendorSkillLinks,
@@ -127,9 +126,7 @@ async function main() {
     manifestPath: path.join(repoRoot, 'constants', 'skills.js'),
   })
   syncFirstPartySkillsToVendor(repoRoot, paths.moluoHome)
-  if (!isSamePath(repoRoot, paths.moluoHome)) {
-    syncFirstPartySkillsToVendor(paths.moluoHome, paths.moluoHome)
-  }
+  syncFirstPartySkillsToVendor(path.join(paths.moluoHome, 'local'), paths.moluoHome)
   ensureGlobalSkillLink(paths)
 
   const targets = args.host === 'all' ? ALL_HOST_IDS : [args.host]

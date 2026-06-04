@@ -103,15 +103,13 @@ async function syncVendorsIfNeeded(paths: ToolPaths, skipVendors: boolean) {
 
 function syncLocalSkillLayers(paths: ToolPaths) {
   syncFirstPartySkillsToVendor(paths.repoRoot, paths.moluoHome)
-  if (!isSamePath(paths.repoRoot, paths.moluoHome)) {
-    syncFirstPartySkillsToVendor(paths.moluoHome, paths.moluoHome)
-  }
+  syncFirstPartySkillsToVendor(path.join(paths.moluoHome, 'local'), paths.moluoHome)
 }
 
 export function addLocalSkill(options: AddSkillOptions): AddSkillResult {
   const sourceDir = path.resolve(options.sourceDir)
   const skillName = flattenedSkillName(options.name ?? path.basename(sourceDir))
-  const targetDir = path.join(path.resolve(options.moluoHome), 'skills', skillName)
+  const targetDir = path.join(path.resolve(options.moluoHome), 'local', 'skills', skillName)
 
   if (!existsSync(path.join(sourceDir, 'SKILL.md'))) {
     throw new Error(`Skill source must contain SKILL.md: ${sourceDir}`)

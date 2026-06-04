@@ -42,13 +42,21 @@ it('installation linking - .agents is always created as mandatory layer', () => 
     const agentsSkillsDir = path.join(userHome, '.agents', 'skills')
     assert.ok(fs.existsSync(agentsSkillsDir), '.agents/skills directory should always exist')
 
-    // Verify .agents links point to moluoxixi
+    // Verify moluoxixi skills link to vendor, then .agents links to moluoxixi.
+    const moluoSkillA = path.join(moluoHome, 'skills', 'skill-a')
+    assert.ok(fs.lstatSync(moluoSkillA).isSymbolicLink(), 'moluoxixi skill-a should be a symlink')
+    const moluoTarget = path.resolve(path.dirname(moluoSkillA), fs.readlinkSync(moluoSkillA))
+    assert.strictEqual(
+      path.normalize(moluoTarget),
+      path.normalize(path.join(moluoHome, 'vendor', 'skills', 'skill-a')),
+    )
+
     const agentSkillA = path.join(agentsSkillsDir, 'skill-a')
     assert.ok(fs.lstatSync(agentSkillA).isSymbolicLink(), 'agent skill-a should be a symlink')
     const agentTarget = path.resolve(path.dirname(agentSkillA), fs.readlinkSync(agentSkillA))
     assert.strictEqual(
       path.normalize(agentTarget),
-      path.normalize(path.join(moluoHome, 'vendor', 'skills', 'skill-a')),
+      path.normalize(moluoSkillA),
     )
 
     // Verify Claude links point to .agents
@@ -83,6 +91,33 @@ it('installation linking - Pre-existing .agents directory is preserved', () => {
     // Verify skills are properly linked
     const agentSkillA = path.join(agentsDir, 'skills', 'skill-a')
     assert.ok(fs.lstatSync(agentSkillA).isSymbolicLink(), 'agent skill-a should be a symlink')
+  }
+  finally {
+    cleanup(tmpDir)
+  }
+})
+
+it('installation linking - legacy host skills directory junction is replaced', () => {
+  const { tmpDir, userHome, moluoHome, claudeHome } = setupMockEnvironment()
+
+  try {
+    const claudeSkillsDir = path.join(claudeHome, 'skills')
+    fs.mkdirSync(path.join(moluoHome, 'skills'), { recursive: true })
+    fs.symlinkSync(
+      path.join(moluoHome, 'skills'),
+      claudeSkillsDir,
+      process.platform === 'win32' ? 'junction' : 'dir',
+    )
+
+    projectSkillsToHost(userHome, moluoHome, claudeSkillsDir)
+
+    assert.equal(fs.lstatSync(claudeSkillsDir).isSymbolicLink(), false)
+    const skillA = path.join(claudeSkillsDir, 'skill-a')
+    assert.ok(fs.lstatSync(skillA).isSymbolicLink(), 'Claude skill-a should be a symlink')
+    assert.strictEqual(
+      path.normalize(path.resolve(path.dirname(skillA), fs.readlinkSync(skillA))),
+      path.normalize(path.join(userHome, '.agents', 'skills', 'skill-a')),
+    )
   }
   finally {
     cleanup(tmpDir)

@@ -12,6 +12,33 @@ export interface DiscoverSkillOptions {
   followSymlinks?: boolean
 }
 
+const SKIPPABLE_LINK_ERROR_CODES = new Set(['ENOENT', 'ELOOP', 'ENOTDIR'])
+
+function isSkippableLinkError(error: unknown): boolean {
+  return SKIPPABLE_LINK_ERROR_CODES.has((error as NodeJS.ErrnoException).code ?? '')
+}
+
+function isTraversableDirectory(entry: import('node:fs').Dirent, childDir: string, followSymlinks: boolean): boolean {
+  if (entry.isDirectory()) {
+    return true
+  }
+
+  if (!followSymlinks || !entry.isSymbolicLink()) {
+    return false
+  }
+
+  try {
+    return statSync(childDir).isDirectory()
+  }
+  catch (error) {
+    if (isSkippableLinkError(error)) {
+      return false
+    }
+
+    throw error
+  }
+}
+
 /**
  * vendor/skills 是分发边界，只暴露叶子 skill 名称，不继承源仓库分类路径。
  */
@@ -41,7 +68,7 @@ export function discoverSkillDirectories(rootDir: string, options: DiscoverSkill
 
     for (const entry of entries) {
       const childDir = path.join(currentDir, entry.name)
-      if (entry.isDirectory() || (followSymlinks && entry.isSymbolicLink() && statSync(childDir).isDirectory())) {
+      if (isTraversableDirectory(entry, childDir, followSymlinks)) {
         visit(childDir)
       }
     }

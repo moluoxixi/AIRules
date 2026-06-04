@@ -61,7 +61,7 @@ it('tool - addLocalSkill 复制包含 SKILL.md 的本地 skill', () => withTempD
 
   assert.equal(added.skillName, 'source-skill')
   assert.equal(
-    fs.readFileSync(path.join(moluoHome, 'skills', 'source-skill', 'SKILL.md'), 'utf8'),
+    fs.readFileSync(path.join(moluoHome, 'local', 'skills', 'source-skill', 'SKILL.md'), 'utf8'),
     '---\nname: source-skill\n---\n',
   )
 
@@ -73,7 +73,7 @@ it('tool - addLocalSkill 复制包含 SKILL.md 的本地 skill', () => withTempD
   writeFile(path.join(sourceDir, 'README.md'), 'updated\n')
   addLocalSkill({ sourceDir, moluoHome, overwrite: true })
   assert.equal(
-    fs.readFileSync(path.join(moluoHome, 'skills', 'source-skill', 'README.md'), 'utf8'),
+    fs.readFileSync(path.join(moluoHome, 'local', 'skills', 'source-skill', 'README.md'), 'utf8'),
     'updated\n',
   )
 }))
@@ -103,7 +103,7 @@ it('tool - syncToHosts 同步内置和用户自定义 skills 到宿主', async (
     writeFile(path.join(repoRoot, 'constants', 'skills.js'), 'export const vendors = []\n')
     writeFile(path.join(repoRoot, 'rules', 'AGENTS.md'), 'baseline\n')
     writeFile(path.join(repoRoot, 'skills', 'workflow', 'builtin-review', 'SKILL.md'), 'builtin\n')
-    writeFile(path.join(moluoHome, 'skills', 'custom-review', 'SKILL.md'), 'custom\n')
+    writeFile(path.join(moluoHome, 'local', 'skills', 'custom-review', 'SKILL.md'), 'custom\n')
     fs.mkdirSync(codexHome, { recursive: true })
 
     const result = await syncToHosts({
@@ -123,7 +123,11 @@ it('tool - syncToHosts 同步内置和用户自定义 skills 到宿主', async (
     )
     assert.equal(
       realLinkPath(path.join(moluoHome, 'vendor', 'skills', 'custom-review')),
+      realLinkPath(path.join(moluoHome, 'local', 'skills', 'custom-review')),
+    )
+    assert.equal(
       realLinkPath(path.join(moluoHome, 'skills', 'custom-review')),
+      realLinkPath(path.join(moluoHome, 'vendor', 'skills', 'custom-review')),
     )
     assert.equal(
       realLinkPath(path.join(codexHome, 'skills', 'custom-review')),

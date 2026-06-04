@@ -11,6 +11,7 @@ import {
   realpathSync,
   rmSync,
   symlinkSync,
+  unlinkSync,
   writeFileSync,
 } from 'node:fs'
 
@@ -39,13 +40,52 @@ function vendorSkillsPath(homeDir: string): string {
   return path.join(homeDir, 'vendor', 'skills')
 }
 
+/** 获取 moluoxixi 本地技能投影目录的绝对路径 */
+function moluoSkillsPath(moluoHome: string): string {
+  return path.join(moluoHome, 'skills')
+}
+
 /** 获取全局 .agents/skills 目录的绝对路径 */
 function agentsSkillsPath(userHome: string): string {
   return path.join(userHome, '.agents', 'skills')
 }
 
 function resetDir(targetDir: string) {
-  rmSync(targetDir, { recursive: true, force: true })
+  removePath(targetDir)
+  mkdirSync(targetDir, { recursive: true })
+}
+
+function removePath(targetPath: string) {
+  try {
+    const stats = lstatSync(targetPath)
+    if (stats.isSymbolicLink()) {
+      unlinkSync(targetPath)
+      return
+    }
+  }
+  catch (error) {
+    if ((error as NodeJS.ErrnoException).code === 'ENOENT') {
+      return
+    }
+
+    throw error
+  }
+
+  rmSync(targetPath, { recursive: true, force: true })
+}
+
+function ensureManagedDirectory(targetDir: string) {
+  try {
+    if (lstatSync(targetDir).isSymbolicLink()) {
+      removePath(targetDir)
+    }
+  }
+  catch (error) {
+    if ((error as NodeJS.ErrnoException).code !== 'ENOENT') {
+      throw error
+    }
+  }
+
   mkdirSync(targetDir, { recursive: true })
 }
 
@@ -128,20 +168,20 @@ function copyDirContents(sourceDir: string, targetDir: string, options: { skipSy
 
     const copySource = sourceStats.isSymbolicLink() ? realpathSync(source) : source
 
-    rmSync(target, { recursive: true, force: true })
+    removePath(target)
     cpSync(copySource, target, { recursive: true })
   }
 }
 
 function copyRequiredFile(sourceFile: string, targetFile: string) {
   mkdirSync(path.dirname(targetFile), { recursive: true })
-  rmSync(targetFile, { recursive: true, force: true })
+  removePath(targetFile)
   cpSync(sourceFile, targetFile)
 }
 
 function syncOptionalDir(sourceDir: string, targetDir: string) {
   if (!existsSync(sourceDir)) {
-    rmSync(targetDir, { recursive: true, force: true })
+    removePath(targetDir)
     return
   }
 
@@ -188,7 +228,7 @@ export function replaceWithSymlink(source: string, target: string, type: 'juncti
   }
 
   mkdirSync(path.dirname(target), { recursive: true })
-  rmSync(target, { recursive: true, force: true })
+  removePath(target)
   try {
     symlinkSync(source, target, type)
   }
@@ -207,6 +247,7 @@ export interface InstallPaths {
   moluoHome: string
   repoRoot: string
   moluoBaselineFile: string
+  moluoSkillsHome: string
   globalAgentSkillsHome: string
   [key: string]: string
 }
@@ -218,6 +259,7 @@ export function getDefaultInstallPaths(userHome = os.homedir()): InstallPaths {
     moluoHome,
     repoRoot: moluoHome,
     moluoBaselineFile: vendorBaselinePath(moluoHome),
+    moluoSkillsHome: moluoSkillsPath(moluoHome),
     globalAgentSkillsHome: agentsSkillsPath(userHome),
   }
 }
@@ -228,6 +270,7 @@ export function ensureInstallRoot(paths: InstallPaths) {
     path.join(paths.moluoHome, 'vendor'),
     path.join(paths.moluoHome, 'vendor', 'repos'),
     vendorSkillsPath(paths.moluoHome),
+    paths.moluoSkillsHome,
     paths.globalAgentSkillsHome,
   ]) {
     mkdirSync(dir, { recursive: true })
@@ -237,14 +280,12 @@ export function ensureInstallRoot(paths: InstallPaths) {
 /**
  * 确保全局 Agent 技能目录 (~/.agents/skills) 的链接正确。
  * ~/.agents 是行业标准共享层，始终存在。
- * 直接从 vendor/skills 映射，无中间层。
+ * 链路固定为 vendor/skills → ~/.moluoxixi/skills → ~/.agents/skills。
  * 遵循层级自愈同步逻辑。
  */
 export function ensureGlobalSkillLink(paths: InstallPaths) {
-  const sourceSkillsDir = vendorSkillsPath(paths.moluoHome)
-  const targetLinkDir = paths.globalAgentSkillsHome
-
-  syncFlattenedSkills(sourceSkillsDir, targetLinkDir, paths.moluoHome)
+  syncFlattenedSkills(vendorSkillsPath(paths.moluoHome), paths.moluoSkillsHome, paths.moluoHome)
+  syncFlattenedSkills(paths.moluoSkillsHome, paths.globalAgentSkillsHome, paths.moluoHome)
 }
 
 /**
@@ -257,7 +298,7 @@ export function syncFlattenedSkills(sourceDir: string, targetDir: string, moluoH
   if (!existsSync(sourceDir)) {
     return
   }
-  mkdirSync(targetDir, { recursive: true })
+  ensureManagedDirectory(targetDir)
 
   const skillSources = collectFlattenedSkillSources(sourceDir)
   const currentSkills = new Set(skillSources.map(skill => skill.name))
@@ -271,7 +312,7 @@ export function syncFlattenedSkills(sourceDir: string, targetDir: string, moluoH
         const isBroken = !existsSync(targetPath)
 
         if (isBroken) {
-          rmSync(targetPath, { recursive: true, force: true })
+          removePath(targetPath)
           console.log(`[cleanup] 已移除失效的死链接: ${entry.name}`)
           continue
         }
@@ -286,7 +327,7 @@ export function syncFlattenedSkills(sourceDir: string, targetDir: string, moluoH
 
         // 如果该链接指向我们的项目，但不在当前技能集合中，则视为过时并移除
         if (isInternal && !currentSkills.has(entry.name)) {
-          rmSync(targetPath, { recursive: true, force: true })
+          removePath(targetPath)
         }
       }
     }
@@ -355,13 +396,13 @@ export function syncFirstPartySkillsToVendor(sourceRoot: string, moluoHome: stri
     }
 
     if (!existsSync(targetPath)) {
-      rmSync(targetPath, { recursive: true, force: true })
+      removePath(targetPath)
       continue
     }
 
     const resolvedPath = path.resolve(realpathSync(targetPath))
     if (resolvedPath.startsWith(normalizedSourceSkillsDir) && !currentSkillNames.has(entry.name)) {
-      rmSync(targetPath, { recursive: true, force: true })
+      removePath(targetPath)
     }
   }
 
@@ -428,25 +469,29 @@ export async function rebuildVendorSkillLinks({ homeDir, manifestPath }: { homeD
 
 /**
  * 将所有技能投影到宿主软件目录（如 .claude 或 .cursor）。
- * 链路：vendor/skills → ~/.agents/skills → 宿主/skills
+ * 链路：vendor/skills → ~/.moluoxixi/skills → ~/.agents/skills → 宿主/skills
  * ~/.agents 是行业标准共享层，始终存在（不存在则创建）。
  */
 export function projectSkillsToHost(userHome: string, moluoHome: string, hostSkillsHome: string) {
-  const sourceSkillsDir = vendorSkillsPath(moluoHome)
+  const vendorSourceSkillsDir = vendorSkillsPath(moluoHome)
+  const moluoTargetSkillsDir = moluoSkillsPath(moluoHome)
   const agentsSkillsDir = agentsSkillsPath(userHome)
 
-  // 1. vendor/skills → ~/.agents/skills
-  mkdirSync(path.join(userHome, '.agents'), { recursive: true })
-  syncFlattenedSkills(sourceSkillsDir, agentsSkillsDir, moluoHome)
+  // 1. vendor/skills → ~/.moluoxixi/skills
+  syncFlattenedSkills(vendorSourceSkillsDir, moluoTargetSkillsDir, moluoHome)
 
-  // 2. ~/.agents/skills → 宿主 skills 目录
+  // 2. ~/.moluoxixi/skills → ~/.agents/skills
+  mkdirSync(path.join(userHome, '.agents'), { recursive: true })
+  syncFlattenedSkills(moluoTargetSkillsDir, agentsSkillsDir, moluoHome)
+
+  // 3. ~/.agents/skills → 宿主 skills 目录
   syncFlattenedSkills(agentsSkillsDir, hostSkillsHome, moluoHome)
 }
 
 function projectSharedSkillsHost(userHome: string, hostHome: string, moluoHome: string, customSkillsDirName: string = 'skills') {
   mkdirSync(hostHome, { recursive: true })
-  rmSync(path.join(hostHome, 'rules'), { recursive: true, force: true })
-  rmSync(path.join(hostHome, 'agents'), { recursive: true, force: true })
+  removePath(path.join(hostHome, 'rules'))
+  removePath(path.join(hostHome, 'agents'))
 
   projectSkillsToHost(userHome, moluoHome, path.join(hostHome, customSkillsDirName))
 
