@@ -198,7 +198,7 @@ Moluoxixi AIRules supports a growing ecosystem of AI agents through automated pr
 | **Vercel Labs** | find-skills | Open ecosystem skill discovery and installation |
 | **Anthropic** | frontend-design | Production-grade frontend visual design guidance |
 | **OpenAI** | playwright | Browser automation and UI-flow debugging |
-| **Superpowers** | systematic-debugging, verification-before-completion, receiving-code-review, writing-skills, using-git-worktrees, writing-plans | Selected codebase workflow skills without default TDD or subagent execution |
+| **Superpowers** | All upstream skills under `skills/` | Full Superpowers namespace installation, flattened into `vendor/skills/<skill-name>` |
 
 ## Project Structure
 

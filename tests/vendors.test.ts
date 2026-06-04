@@ -577,7 +577,7 @@ it('vendors 配置 - 默认不接入静态代码规范供应商', () => {
   assert.strictEqual(vendors.vercelAgentSkills, undefined, '不应默认安装 Vercel React/React Native 代码技能')
 })
 
-it('vendors 配置 - Superpowers 只安装代码库常用工作流子集', () => {
+it('vendors 配置 - Superpowers 全量安装 skills 命名空间', () => {
   const vendors: Record<string, any> = {}
 
   walkVendorTree(configuredVendors, [], vendors)
@@ -593,42 +593,12 @@ it('vendors 配置 - Superpowers 只安装代码库常用工作流子集', () =>
     })),
     [
       {
-        kind: 'skill',
-        source: 'skills/systematic-debugging',
-        target: 'vendor/skills/systematic-debugging',
-        setup: undefined,
-      },
-      {
-        kind: 'skill',
-        source: 'skills/verification-before-completion',
-        target: 'vendor/skills/verification-before-completion',
-        setup: undefined,
-      },
-      {
-        kind: 'skill',
-        source: 'skills/receiving-code-review',
-        target: 'vendor/skills/receiving-code-review',
-        setup: undefined,
-      },
-      {
-        kind: 'skill',
-        source: 'skills/writing-skills',
-        target: 'vendor/skills/writing-skills',
-        setup: undefined,
-      },
-      {
-        kind: 'skill',
-        source: 'skills/using-git-worktrees',
-        target: 'vendor/skills/using-git-worktrees',
-        setup: undefined,
-      },
-      {
-        kind: 'skill',
-        source: 'skills/writing-plans',
-        target: 'vendor/skills/writing-plans',
+        kind: 'namespace-dir',
+        source: 'skills',
+        target: 'vendor/skills/superpowers',
         setup: undefined,
       },
     ],
-    '不应把 using-superpowers、TDD、子代理执行或分支收尾重流程作为默认代码库技能安装',
+    'Superpowers 应通过 namespace 递归扫描安装全部上游 skills',
   )
 })

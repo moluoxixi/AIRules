@@ -165,17 +165,9 @@ export const vendors: VendorsConfig = [
     source: 'https://github.com/obra/superpowers.git',
     projections: [
       {
-        kind: 'skills',
-        sourceBaseDir: 'skills',
-        // 投影代码库常用工作流子集；TDD、子代理执行与分支收尾仍由第一方 workflow 按风险显式触发。
-        skills: [
-          'systematic-debugging',
-          'verification-before-completion',
-          'receiving-code-review',
-          'writing-skills',
-          'using-git-worktrees',
-          'writing-plans',
-        ],
+        kind: 'namespace',
+        sourceDir: 'skills',
+        output: 'superpowers',
       },
     ],
   },

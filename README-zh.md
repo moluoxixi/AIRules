@@ -198,7 +198,7 @@ Moluoxixi AIRules 通过自动化投影，支持不断增长的 AI 代理生态�
 | **Vercel Labs** | find-skills | 开源生态 Skill 发现与安装 |
 | **Anthropic** | frontend-design | 生产级前端视觉设计指导 |
 | **OpenAI** | playwright | 浏览器自动化与 UI 流程调试 |
-| **Superpowers** | systematic-debugging, verification-before-completion, receiving-code-review, writing-skills, using-git-worktrees, writing-plans | 精选代码库工作流技能，不默认启用 TDD 或子代理执行重流程 |
+| **Superpowers** | `skills/` 下全部上游 skills | 全量安装 Superpowers 命名空间，并展平到 `vendor/skills/<skill-name>` |
 
 ## 项目结构
 
