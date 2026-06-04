@@ -314,7 +314,7 @@ export function syncFirstPartySkillsToVendor(sourceRoot: string, moluoHome: stri
   mkdirSync(vendorSkillsDir, { recursive: true })
 
   const seenSkillNames = new Map<string, string>()
-  const skillSources = discoverSkillDirectories(sourceSkillsDir).map((source) => {
+  const skillSources = discoverSkillDirectories(sourceSkillsDir, { followSymlinks: false }).map((source) => {
     const name = flattenedSkillName(path.basename(source))
     const nameKey = name.toLowerCase()
     const previousSource = seenSkillNames.get(nameKey)

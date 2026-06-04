@@ -342,6 +342,31 @@ it('install - 第一方 skills 覆盖层只管理本地源链接', () => withTem
   )
 }))
 
+it('install - 第一方 skills 覆盖层不跟随软链接来源', () => withTempDir('airules-first-party-symlink-', (tmpDir) => {
+  const moluoHome = path.join(tmpDir, 'home')
+  const localSkillsDir = path.join(moluoHome, 'skills')
+  const vendorSkillsDir = path.join(moluoHome, 'vendor', 'skills')
+  const realLocalSkill = path.join(localSkillsDir, 'real-local')
+  const linkedSourceSkill = path.join(tmpDir, 'agents', 'skills', 'linked-source')
+
+  writeFile(path.join(realLocalSkill, 'SKILL.md'), 'local\n')
+  writeFile(path.join(linkedSourceSkill, 'SKILL.md'), 'linked\n')
+  fs.mkdirSync(localSkillsDir, { recursive: true })
+  replaceWithSymlink(
+    linkedSourceSkill,
+    path.join(localSkillsDir, 'linked-source'),
+    process.platform === 'win32' ? 'junction' : 'dir',
+  )
+
+  syncFirstPartySkillsToVendor(moluoHome, moluoHome)
+
+  assert.equal(
+    realLinkPath(path.join(vendorSkillsDir, 'real-local')),
+    realLinkPath(realLocalSkill),
+  )
+  assert.equal(fs.existsSync(path.join(vendorSkillsDir, 'linked-source')), false)
+}))
+
 it('install - runSkillSetupCommands 执行 setup 成功命令', () => {
   const manifest = {
     version: 1,

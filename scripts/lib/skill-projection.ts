@@ -8,6 +8,10 @@ export interface FlattenedSkillSource {
   source: string
 }
 
+export interface DiscoverSkillOptions {
+  followSymlinks?: boolean
+}
+
 /**
  * vendor/skills 是分发边界，只暴露叶子 skill 名称，不继承源仓库分类路径。
  */
@@ -22,8 +26,9 @@ export function flattenedVendorSkillTarget(outputName: string): string {
 /**
  * 递归收集真实 skill 根目录；包含 SKILL.md 的目录即为叶子 skill，内部子目录不再继续展开。
  */
-export function discoverSkillDirectories(rootDir: string): string[] {
+export function discoverSkillDirectories(rootDir: string, options: DiscoverSkillOptions = {}): string[] {
   const skillDirs: string[] = []
+  const followSymlinks = options.followSymlinks ?? true
 
   function visit(currentDir: string) {
     if (existsSync(path.join(currentDir, SKILL_FILE_NAME))) {
@@ -36,7 +41,7 @@ export function discoverSkillDirectories(rootDir: string): string[] {
 
     for (const entry of entries) {
       const childDir = path.join(currentDir, entry.name)
-      if (entry.isDirectory() || (entry.isSymbolicLink() && statSync(childDir).isDirectory())) {
+      if (entry.isDirectory() || (followSymlinks && entry.isSymbolicLink() && statSync(childDir).isDirectory())) {
         visit(childDir)
       }
     }
