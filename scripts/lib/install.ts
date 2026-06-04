@@ -103,6 +103,20 @@ export function shouldUseShellForSetupCommand(command: string): boolean {
   return process.platform === 'win32' && windowsCommandShims.has(command)
 }
 
+function isSetupCommandAvailable(command: string): boolean {
+  const lookupCommand = process.platform === 'win32' ? 'where.exe' : 'which'
+
+  try {
+    execFileSync(lookupCommand, [resolveSetupCommandExecutable(command)], {
+      stdio: 'ignore',
+    })
+    return true
+  }
+  catch {
+    return false
+  }
+}
+
 /**
  * 执行供应商级和 skill 级安装前置命令。
  * 任一命令失败都会抛出错误，避免安装流程伪装成功。
@@ -114,6 +128,11 @@ export function runSkillSetupCommands(manifest: VendorManifest): void {
       console.log(`\n[setup] 执行 ${vendorName} 的安装前置命令...`)
       for (const command of vendor.setup) {
         const commandText = setupCommandText(command)
+        if (command.skipIfCommandAvailable && isSetupCommandAvailable(command.skipIfCommandAvailable)) {
+          console.log(`[setup] 跳过 ${commandText}，已检测到 ${command.skipIfCommandAvailable}`)
+          continue
+        }
+
         console.log(`[setup] > ${commandText}`)
         try {
           execFileSync(resolveSetupCommandExecutable(command.command), command.args ?? [], {
@@ -135,6 +154,11 @@ export function runSkillSetupCommands(manifest: VendorManifest): void {
       console.log(`\n[setup] 执行 ${vendorName}/${skillName} 的安装前置命令...`)
       for (const command of link.setup) {
         const commandText = setupCommandText(command)
+        if (command.skipIfCommandAvailable && isSetupCommandAvailable(command.skipIfCommandAvailable)) {
+          console.log(`[setup] 跳过 ${commandText}，已检测到 ${command.skipIfCommandAvailable}`)
+          continue
+        }
+
         console.log(`[setup] > ${commandText}`)
         try {
           execFileSync(resolveSetupCommandExecutable(command.command), command.args ?? [], {

@@ -4,6 +4,11 @@
 export interface SetupCommand {
   command: string
   args?: string[]
+  /**
+   * 当指定命令已存在于 PATH 时跳过当前 setup 命令。
+   * 适用于全局工具已安装后不应重复覆盖正在运行二进制的场景。
+   */
+  skipIfCommandAvailable?: string
 }
 
 /**
@@ -94,6 +99,7 @@ const codegraphSetup: SetupCommand[] = [
   {
     command: 'npm',
     args: ['install', '--global', '@colbymchenry/codegraph'],
+    skipIfCommandAvailable: 'codegraph',
   },
   {
     command: 'codegraph',

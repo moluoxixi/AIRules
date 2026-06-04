@@ -443,6 +443,28 @@ it('install - runSkillSetupCommands 执行 setup 成功命令', () => {
   assert.doesNotThrow(() => runSkillSetupCommands(manifest))
 })
 
+it('install - runSkillSetupCommands 支持已存在命令时跳过 setup', () => {
+  const manifest = {
+    version: 1,
+    vendors: {
+      demo: {
+        repo: 'https://example.test/demo.git',
+        cloneDir: 'vendor/repos/demo',
+        setup: [
+          {
+            command: 'node',
+            args: ['-e', 'process.exit(9)'],
+            skipIfCommandAvailable: 'node',
+          },
+        ],
+        links: [],
+      },
+    },
+  }
+
+  assert.doesNotThrow(() => runSkillSetupCommands(manifest))
+})
+
 it('install - setup 命令在 Windows 下使用 cmd shim', () => {
   const expectedNpmCommand = process.platform === 'win32' ? 'npm.cmd' : 'npm'
   const expectedCodegraphCommand = process.platform === 'win32' ? 'codegraph.cmd' : 'codegraph'

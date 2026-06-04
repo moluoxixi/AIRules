@@ -510,6 +510,7 @@ it('vendors 配置 - 使用 OpenAI Playwright 并移除过时技能', () => {
       {
         command: 'npm',
         args: ['install', '--global', '@colbymchenry/codegraph'],
+        skipIfCommandAvailable: 'codegraph',
       },
       {
         command: 'codegraph',
