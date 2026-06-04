@@ -14,6 +14,7 @@ import {
   projectToHost,
   rebuildVendorSkillLinks,
   replaceWithSymlink,
+  resolveSetupCommandExecutable,
   runSkillSetupCommands,
   syncFirstPartySkillsToVendor,
   syncFirstPartyToHome,
@@ -394,6 +395,15 @@ it('install - runSkillSetupCommands 执行 setup 成功命令', () => {
   }
 
   assert.doesNotThrow(() => runSkillSetupCommands(manifest))
+})
+
+it('install - setup 命令在 Windows 下使用 cmd shim', () => {
+  const expectedNpmCommand = process.platform === 'win32' ? 'npm.cmd' : 'npm'
+  const expectedCodegraphCommand = process.platform === 'win32' ? 'codegraph.cmd' : 'codegraph'
+
+  assert.equal(resolveSetupCommandExecutable('npm'), expectedNpmCommand)
+  assert.equal(resolveSetupCommandExecutable('codegraph'), expectedCodegraphCommand)
+  assert.equal(resolveSetupCommandExecutable('node'), 'node')
 })
 
 it('install - runSkillSetupCommands 保留供应商级 setup 失败语义', () => {

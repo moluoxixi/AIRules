@@ -26,6 +26,7 @@
     "prepack": "npm run build",
     "lint": "eslint --fix",
     "lint:check": "eslint .",
+    "presync": "git pull",
     "setup": "tsx scripts/cli.ts sync",
     "sync": "tsx scripts/cli.ts sync --host all",
     "rules:install": "tsx scripts/cli.ts sync",
