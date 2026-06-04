@@ -63,6 +63,11 @@ export interface VendorRepo {
   official: boolean
   /** Git 仓库地址 */
   source: string
+  /**
+   * 供应商级安装前置命令。
+   * 用于安装与整组 skills 相关的外部工具，不绑定到某个具体 skill 链接。
+   */
+  setup?: SetupCommand[]
   /** 从该仓库投影到 vendor/skills 的安装规则列表 */
   projections: VendorProjection[]
 }
@@ -82,13 +87,21 @@ export type VendorNode = VendorRepo | { [category: string]: VendorNode[] }
 export type VendorsConfig = VendorNode[]
 
 /**
- * @see https://github.com/vercel/next.js.git next.js官方仓库
- * @see https://github.com/vercel/next.js/tree/canary/.claude-plugin/plugins/cache-components/skills next.js官方用于claude的skills
- * @see https://github.com/facebook/react.git react官方仓库
- * @see https://github.com/antfu/skills.git antfu的技能仓库，收集了很多前端技能
- * @see https://github.com/facebook/react/tree/main/.claude/skills react官方用于claude的skills
- * @see https://github.com/vercel-labs/agent-skills.git Vercel官方面向AI代理的React/React Native技能仓库
- * @see https://github.com/vercel-labs/web-interface-guidelines.git Vercel官方Web界面规范
+ * 安装 AIRules 时同步安装 CodeGraph，并执行官方安装初始化。
+ * 该工具作为项目代码图谱和知识入口，不绑定到某个具体 skill。
+ */
+const codegraphSetup: SetupCommand[] = [
+  {
+    command: 'npm',
+    args: ['install', '--global', '@colbymchenry/codegraph'],
+  },
+  {
+    command: 'codegraph',
+    args: ['install'],
+  },
+]
+
+/**
  * @see https://github.com/Shubhamsaboo/awesome-llm-apps/tree/main/awesome_agent_skills awesome-agent-skills仓库，收集了很多技能
  * @see https://github.com/anthropics/skills.git anthropic（claude）官方技能仓库
  * @see https://github.com/google-gemini/gemini-cli.git gemini官方技能仓库
@@ -121,28 +134,6 @@ export const vendors: VendorsConfig = [
     ],
   },
   {
-    name: 'vercelAgentSkills',
-    official: true,
-    source: 'https://github.com/vercel-labs/agent-skills.git',
-    projections: [
-      {
-        kind: 'skills',
-        sourceBaseDir: 'skills',
-        skills: [
-          {
-            name: 'react-best-practices',
-            output: 'vercel-react-best-practices',
-          },
-          {
-            name: 'react-native-skills',
-            output: 'vercel-react-native-skills',
-          },
-          'web-design-guidelines',
-        ],
-      },
-    ],
-  },
-  {
     name: 'anthropic',
     official: true,
     source: 'https://github.com/anthropics/skills.git',
@@ -152,35 +143,6 @@ export const vendors: VendorsConfig = [
         sourceBaseDir: 'skills',
         skills: [
           'frontend-design',
-        ],
-      },
-    ],
-  },
-  {
-    name: 'antfu',
-    official: true,
-    source: 'https://github.com/antfu/skills.git',
-    projections: [
-      {
-        kind: 'skills',
-        sourceBaseDir: 'skills',
-        skills: [
-          // 只保留具体技术栈技能，避免顶层个人偏好规则抢占代码库第一方 workflow。
-          'pnpm',
-          'slidev',
-          'tsdown',
-          'turborepo',
-          'vitest',
-          'nuxt',
-          'pinia',
-          'unocss',
-          'vite',
-          'vitepress',
-          'vue',
-          'vue-best-practices',
-          'vue-router-best-practices',
-          'vue-testing-best-practices',
-          'vueuse-functions',
         ],
       },
     ],
@@ -221,12 +183,8 @@ export const vendors: VendorsConfig = [
     name: 'moluoxixi',
     official: true,
     source: 'https://github.com/moluoxixi/AIRules.git',
+    setup: codegraphSetup,
     projections: [
-      {
-        kind: 'namespace',
-        sourceDir: 'skills/workflow',
-        output: 'workflow',
-      },
       {
         kind: 'skills',
         sourceBaseDir: 'skills',

@@ -102,6 +102,40 @@ it('walkVendorTree - skills projection setup 透传到 VendorLink', () => {
   assert.strictEqual(links[1].setup, undefined, 'plain-utils 不应有 setup')
 })
 
+it('walkVendorTree - 供应商级 setup 透传到 Vendor', () => {
+  const vendors: Record<string, any> = {}
+  const mockConfig: VendorsConfig = [
+    {
+      name: 'tool-vendor',
+      official: true,
+      source: 'https://github.com/tool-vendor.git',
+      setup: [
+        { command: 'npm', args: ['install', '--global', '@tool/vendor'] },
+        { command: 'tool', args: ['install'] },
+      ],
+      projections: [
+        {
+          kind: 'skills',
+          sourceBaseDir: 'skills',
+          skills: ['plain-utils'],
+        },
+      ],
+    },
+  ]
+
+  walkVendorTree(mockConfig, [], vendors)
+
+  assert.deepStrictEqual(
+    vendors['tool-vendor'].setup,
+    [
+      { command: 'npm', args: ['install', '--global', '@tool/vendor'] },
+      { command: 'tool', args: ['install'] },
+    ],
+    '供应商级 setup 应保留到 Vendor manifest',
+  )
+  assert.strictEqual(vendors['tool-vendor'].links[0].setup, undefined, '供应商级 setup 不应污染 skill link')
+})
+
 it('walkVendorTree - skills projection 混合数组（字符串 + 对象）', () => {
   const vendors: Record<string, any> = {}
   const mockConfig: VendorsConfig = [
@@ -470,50 +504,36 @@ it('vendors 配置 - 使用 OpenAI Playwright 并移除过时技能', () => {
     !vendors.moluoxixi.links.some((link: any) => link.target.endsWith('/create-handless-skill')),
     '不应继续安装 create-handless-skill',
   )
-  assert.ok(
-    vendors.moluoxixi.links.some((link: any) => link.target === 'vendor/skills/workflow'),
-    'workflow 类技能应通过 namespace 入口递归扫描后展平安装',
+  assert.deepStrictEqual(
+    vendors.moluoxixi.setup,
+    [
+      {
+        command: 'npm',
+        args: ['install', '--global', '@colbymchenry/codegraph'],
+      },
+      {
+        command: 'codegraph',
+        args: ['install'],
+      },
+    ],
+    '安装 AIRules 时应同步安装并初始化 CodeGraph',
   )
   assert.ok(
-    vendors.moluoxixi.links.some((link: any) => link.target === 'vendor/skills/skill-validation-standard'),
-    'skill-validation-standard 应作为通用第一方 skill 安装',
-  )
-})
-
-it('vendors 配置 - 接入 Vercel Agent Skills 的代码库前端技能', () => {
-  const vendors: Record<string, any> = {}
-
-  walkVendorTree(configuredVendors, [], vendors)
-
-  assert.ok(vendors.vercelAgentSkills, 'Vercel Agent Skills 供应商应存在')
-  assert.strictEqual(
-    vendors.vercelAgentSkills.repo,
-    'https://github.com/vercel-labs/agent-skills.git',
+    !vendors.moluoxixi.links.some((link: any) => link.target === 'vendor/skills/workflow'),
+    '删除静态 workflow skill 后不应继续安装 workflow namespace',
   )
   assert.deepStrictEqual(
-    vendors.vercelAgentSkills.links.map((link: any) => ({
+    vendors.moluoxixi.links.map((link: any) => ({
       source: link.source,
       target: link.target,
       setup: link.setup,
     })),
-    [
-      {
-        source: 'skills/react-best-practices',
-        target: 'vendor/skills/vercel-react-best-practices',
-        setup: undefined,
-      },
-      {
-        source: 'skills/react-native-skills',
-        target: 'vendor/skills/vercel-react-native-skills',
-        setup: undefined,
-      },
-      {
-        source: 'skills/web-design-guidelines',
-        target: 'vendor/skills/web-design-guidelines',
-        setup: undefined,
-      },
-    ],
-    '应从 Vercel agent-skills 精确投影 React、React Native 与 Web UI 审查技能',
+    [{
+      source: 'skills/skill-validation-standard',
+      target: 'vendor/skills/skill-validation-standard',
+      setup: undefined,
+    }],
+    '第一方 skill 默认只投影 skill-validation-standard',
   )
 })
 
@@ -541,21 +561,13 @@ it('vendors 配置 - 仅接入 Anthropic 的前端视觉设计技能', () => {
   )
 })
 
-it('vendors 配置 - antfu 只保留具体技术栈技能', () => {
+it('vendors 配置 - 默认不接入静态代码规范供应商', () => {
   const vendors: Record<string, any> = {}
 
   walkVendorTree(configuredVendors, [], vendors)
 
-  assert.ok(vendors.antfu, 'antfu 供应商应存在')
-  const targets = vendors.antfu.links.map((link: any) => link.target)
-  assert.ok(!targets.includes('vendor/skills/antfu'), '不应默认安装顶层 antfu 个人偏好 skill')
-  assert.ok(
-    !targets.includes('vendor/skills/web-design-guidelines'),
-    'web-design-guidelines 应由 Vercel Agent Skills 提供 canonical 来源',
-  )
-  assert.ok(targets.includes('vendor/skills/vue'), 'Vue 技术栈 skill 应保留')
-  assert.ok(targets.includes('vendor/skills/vite'), 'Vite 技术栈 skill 应保留')
-  assert.ok(targets.includes('vendor/skills/vitest'), 'Vitest 技术栈 skill 应保留')
+  assert.strictEqual(vendors.antfu, undefined, '不应默认安装 Antfu 框架/工具链技能')
+  assert.strictEqual(vendors.vercelAgentSkills, undefined, '不应默认安装 Vercel React/React Native 代码技能')
 })
 
 it('vendors 配置 - Superpowers 只安装代码库常用工作流子集', () => {

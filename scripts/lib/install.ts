@@ -50,13 +50,26 @@ function resetDir(targetDir: string) {
 }
 
 /**
- * 执行各 skill 的安装前置命令（per-skill 精度）。
- * 遍历 manifest 中所有 vendor 的 links，对具有 setup 字段的 link 执行其命令。
+ * 执行供应商级和 skill 级安装前置命令。
  * 任一命令失败都会抛出错误，避免安装流程伪装成功。
  * @param manifest 已解析的 VendorManifest
  */
 export function runSkillSetupCommands(manifest: VendorManifest): void {
   for (const [vendorName, vendor] of Object.entries(manifest.vendors)) {
+    if (vendor.setup && vendor.setup.length > 0) {
+      console.log(`\n[setup] 执行 ${vendorName} 的安装前置命令...`)
+      for (const command of vendor.setup) {
+        const commandText = setupCommandText(command)
+        console.log(`[setup] > ${commandText}`)
+        try {
+          execFileSync(command.command, command.args ?? [], { stdio: 'inherit' })
+        }
+        catch (error) {
+          throw new Error(`[setup] ${vendorName} 安装前置命令失败: ${commandText}\n${String(error)}`)
+        }
+      }
+    }
+
     for (const link of vendor.links) {
       if (!link.setup || link.setup.length === 0)
         continue

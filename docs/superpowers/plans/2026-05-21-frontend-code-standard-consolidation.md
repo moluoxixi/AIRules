@@ -1,5 +1,7 @@
 # Frontend Code Standard Consolidation Implementation Plan
 
+> Superseded: 当前实现已删除静态代码规范 skill，并改为安装 CodeGraph 作为代码图谱入口；本文仅保留为历史计划记录，不再代表现行 skill 架构。
+
 > **For agentic workers:** REQUIRED SUB-SKILL: Use `superpowers:subagent-driven-development` (recommended) or `superpowers:executing-plans` to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.
 
 **Goal:** 将当前分散的前端组件、模块、工具库和 UI 库标准收敛为一个前端总 skill，统一入口判断、目录边界和评审口径，同时保留 simple / complex 的清晰分层。

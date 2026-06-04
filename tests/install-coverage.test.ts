@@ -142,12 +142,12 @@ it('install - 全局技能链接从嵌套源目录展平到叶子 skill 名', ()
   const paths = getDefaultInstallPaths(userHome)
 
   ensureInstallRoot(paths)
-  const nestedSkill = path.join(paths.moluoHome, 'vendor', 'skills', 'workflow', 'backend', 'node-code-standard')
-  writeFile(path.join(nestedSkill, 'SKILL.md'), 'node\n')
+  const nestedSkill = path.join(paths.moluoHome, 'vendor', 'skills', 'workflow', 'review', 'namespace-review')
+  writeFile(path.join(nestedSkill, 'SKILL.md'), 'review\n')
 
   ensureGlobalSkillLink(paths)
 
-  const globalSkill = path.join(paths.globalAgentSkillsHome, 'node-code-standard')
+  const globalSkill = path.join(paths.globalAgentSkillsHome, 'namespace-review')
   assert.ok(fs.lstatSync(globalSkill).isSymbolicLink())
   assert.equal(realLinkPath(globalSkill), realLinkPath(nestedSkill))
   assert.equal(fs.existsSync(path.join(paths.globalAgentSkillsHome, 'workflow')), false)
@@ -265,11 +265,11 @@ it('install - rebuildVendorSkillLinks 递归展开 namespace 为扁平 vendor sk
     const homeDir = path.join(tmpDir, 'home')
     const manifestPath = path.join(tmpDir, 'manifest.mjs')
     const workflowRoot = path.join(homeDir, 'vendor', 'repos', 'demo', 'skills', 'workflow')
-    const frontendSkill = path.join(workflowRoot, 'frontend', 'frontend-code-standard')
-    const nodeSkill = path.join(workflowRoot, 'backend', 'node-code-standard')
+    const reviewSkill = path.join(workflowRoot, 'review', 'namespace-review')
+    const validationSkill = path.join(workflowRoot, 'quality', 'skill-validation-standard')
 
-    writeFile(path.join(frontendSkill, 'SKILL.md'), 'frontend\n')
-    writeFile(path.join(nodeSkill, 'SKILL.md'), 'node\n')
+    writeFile(path.join(reviewSkill, 'SKILL.md'), 'review\n')
+    writeFile(path.join(validationSkill, 'SKILL.md'), 'validation\n')
     writeFile(path.join(workflowRoot, 'README.md'), 'namespace docs\n')
     writeFile(manifestPath, `
 export const vendors = [
@@ -290,17 +290,17 @@ export const vendors = [
 
     const plan = await rebuildVendorSkillLinks({ homeDir, manifestPath })
     assert.equal(plan.length, 1)
-    assert.ok(fs.lstatSync(path.join(homeDir, 'vendor', 'skills', 'frontend-code-standard')).isSymbolicLink())
-    assert.ok(fs.lstatSync(path.join(homeDir, 'vendor', 'skills', 'node-code-standard')).isSymbolicLink())
+    assert.ok(fs.lstatSync(path.join(homeDir, 'vendor', 'skills', 'namespace-review')).isSymbolicLink())
+    assert.ok(fs.lstatSync(path.join(homeDir, 'vendor', 'skills', 'skill-validation-standard')).isSymbolicLink())
     assert.equal(fs.existsSync(path.join(homeDir, 'vendor', 'skills', 'workflow')), false)
     assert.equal(
-      realLinkPath(path.join(homeDir, 'vendor', 'skills', 'frontend-code-standard')),
-      realLinkPath(frontendSkill),
+      realLinkPath(path.join(homeDir, 'vendor', 'skills', 'namespace-review')),
+      realLinkPath(reviewSkill),
     )
 
     const gitignore = fs.readFileSync(path.join(homeDir, 'vendor', 'skills', '.gitignore'), 'utf8')
-    assert.match(gitignore, /frontend-code-standard/)
-    assert.match(gitignore, /node-code-standard/)
+    assert.match(gitignore, /namespace-review/)
+    assert.match(gitignore, /skill-validation-standard/)
     assert.doesNotMatch(gitignore, /^workflow$/m)
   })
 })
@@ -371,6 +371,27 @@ it('install - runSkillSetupCommands 执行 setup 成功命令', () => {
   assert.doesNotThrow(() => runSkillSetupCommands(manifest))
 })
 
+it('install - runSkillSetupCommands 保留供应商级 setup 失败语义', () => {
+  const manifest = {
+    version: 1,
+    vendors: {
+      demo: {
+        repo: 'https://example.test/demo.git',
+        cloneDir: 'vendor/repos/demo',
+        setup: [
+          { command: 'node', args: ['-e', 'process.exit(4)'] },
+        ],
+        links: [],
+      },
+    },
+  }
+
+  assert.throws(
+    () => runSkillSetupCommands(manifest),
+    /安装前置命令失败/,
+  )
+})
+
 it('install - runSkillSetupCommands 保留 setup 失败语义', () => {
   const manifest = {
     version: 1,
@@ -378,6 +399,9 @@ it('install - runSkillSetupCommands 保留 setup 失败语义', () => {
       demo: {
         repo: 'https://example.test/demo.git',
         cloneDir: 'vendor/repos/demo',
+        setup: [
+          { command: 'node', args: ['-e', 'process.exit(0)'] },
+        ],
         links: [
           {
             kind: 'skill',

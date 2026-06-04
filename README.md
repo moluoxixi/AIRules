@@ -8,7 +8,7 @@
 
 AIRules is a **composable AI skill distribution system**. The core idea is simple:
 
-- **Clone** mature AI Skills from the community (antfu, Anthropic, Google Gemini, Vercel, etc.)
+- **Clone** mature AI Skills from the community (Anthropic, Google Gemini, OpenAI, Superpowers, etc.)
 - **Write** your own domain-specific Skills
 - **Compose** these small, modular units into your personalized development best practices
 - **Distribute** them to all your AI agents (Claude, Cursor, Codex, Gemini, etc.) with one command
@@ -20,10 +20,10 @@ AIRules is a **composable AI skill distribution system**. The core idea is simpl
 ```
 ┌─────────────────────────────────────────────┐
 │  🔧 First-Party Skills (your own)           │ ← Your competitive edge
-│  software-development-workflow / standards   │
+│  skill-validation-standard / CodeGraph setup │
 ├─────────────────────────────────────────────┤
 │  📦 Third-Party Skills (cloned from mature  │ ← Stand on the shoulders
-│  repos) antfu/vue · anthropic/design · ... │   of giants
+│  repos) superpowers · anthropic/design · ...│   of giants
 ├─────────────────────────────────────────────┤
 │  🚀 Distribution Engine (one-command deploy │ ← Automated infrastructure
 │  to all AI agents)                          │
@@ -36,12 +36,13 @@ AIRules is a **composable AI skill distribution system**. The core idea is simpl
 |-----------|-------------|
 | **Small, Modular Units** | Each skill does one thing — independent, testable, replaceable |
 | **Composition > Monolith** | Like Unix pipes — combine small tools to solve big problems |
-| **Third-Party First** | Use mature community skills; only write what's uniquely yours |
+| **Capability First** | Install workflow, tool, design, and verification skills by default; generate code standards from the current repository |
 | **Self-Healing Distribution** | One command syncs to all agents with auto link repair and verification |
 
 ## What You Get
 
-- 🔥 **25+ curated** frontend/backend/general AI Skills out of the box
+- 🔥 **Curated** workflow, tool, design, and verification AI Skills out of the box
+- 🧠 **Automatic CodeGraph install** via `npm install --global @colbymchenry/codegraph`, followed by `codegraph install`, during default sync
 - 🧱 **Reserved first-party expansion slots** so you can add your own top-level skills later without changing the distribution model
 - 🌐 **Multi-agent sync**: configure once, works across Claude / Cursor / Codex / Qoder / Tare / OpenCode / CC-Switch
 - 🔄 **Continuous updates**: one command pulls latest upstream skills
@@ -90,7 +91,7 @@ npm run sync
 ```
 
 > [!TIP]
-> **Sync Process**: This command rebuilds vendor skills, cleans dead links, and runs host verification after projection. Use `airules sync --skip-vendors` when you do not want to refresh third-party vendor repositories.
+> **Sync Process**: This command rebuilds vendor skills, runs setup commands, cleans dead links, and runs host verification after projection. The default setup globally installs and initializes CodeGraph; use `airules sync --skip-vendors` when you do not want to refresh third-party vendor repositories or run setup.
 
 ---
 
@@ -184,23 +185,16 @@ Moluoxixi AIRules supports a growing ecosystem of AI agents through automated pr
 
 | Name | Description |
 |------|-------------|
-| **software-development-workflow** | Standard software development workflow for requirements, splitting, design, implementation, verification, review, and delivery reports |
-| **frontend-code-standard** | Vue 3 and React TypeScript/JavaScript frontend code standards for components, modules, utility libraries, UI component libraries, review output, and delivery checks |
-| **node-code-standard** | Node.js backend implementation standards for TypeScript/JavaScript services with explicit contracts, runtime validation, dependency injection, transaction boundaries, persistence encapsulation, and delivery checks |
-| **nestjs-code-standard** | NestJS backend implementation and review standards for new code, rewrites, and code reviews with DTO contracts, ValidationPipe, constructor injection, transaction boundaries, persistence encapsulation, and evidence-based review output |
-| **java-code-standard** | Java and Spring Boot backend code standards for Java 17+ baseline, Java 21/25 LTS, Maven, and Gradle with domain packages, constructor injection, Bean Validation, transaction boundaries, migrations, and error mapping |
 | **skill-validation-standard** | Minimal skill validation standard for generated or modified Claude/Codex skills, covering SKILL.md YAML frontmatter, folder-name matching, and line-count limits |
 
-> Workflow standards may live under nested source folders such as `skills/workflow`, but installation flattens them into `vendor/skills/<skill-name>`. First-party rules live in `rules/AGENTS.md`.
+> First-party skills may live under nested source folders, but installation flattens them into `vendor/skills/<skill-name>`. First-party rules live in `rules/AGENTS.md`; CodeGraph install commands live in the vendor setup section of `constants/skills.ts`.
 
 ### Third-Party Skills (Curated)
 
 | Source | Skills | Description |
 |--------|--------|-------------|
-| **antfu** | vue, nuxt, pinia, vite, vitest, unocss, pnpm, vitepress, slidev, tsdown, turborepo + 4 more | Vue ecosystem + frontend toolchain best practices |
 | **Google Gemini** | code-reviewer, pr-creator | Automated code review and PR creation |
 | **Vercel Labs** | find-skills | Open ecosystem skill discovery and installation |
-| **Vercel Agent Skills** | react-best-practices, react-native-skills, web-design-guidelines | React/React Native implementation guidance and Web UI review |
 | **Anthropic** | frontend-design | Production-grade frontend visual design guidance |
 | **OpenAI** | playwright | Browser automation and UI-flow debugging |
 | **Superpowers** | systematic-debugging, verification-before-completion, receiving-code-review, writing-skills, using-git-worktrees, writing-plans | Selected codebase workflow skills without default TDD or subagent execution |
@@ -212,13 +206,7 @@ Moluoxixi AIRules supports a growing ecosystem of AI agents through automated pr
 ├── rules/
 │   └── AGENTS.md          # Repository-level operating rules
 ├── skills/                  # First-party skills (your core assets)
-│   ├── skill-validation-standard/
-│   └── workflow/
-│       ├── software-development-workflow/
-│       ├── frontend-code-standard/
-│       ├── node-code-standard/
-│       ├── nestjs-code-standard/
-│       └── java-code-standard/
+│   └── skill-validation-standard/
 ├── vendor/
 │   ├── repos/               # Cloned third-party source repos
 │   └── skills/              # Flattened extracted skills

@@ -19,6 +19,7 @@ export interface Vendor {
   official?: boolean
   repo: string
   cloneDir: string
+  setup?: SetupCommand[]
   links: VendorLink[]
 }
 
@@ -77,7 +78,7 @@ function buildSkillLink(sourceBaseDir: string, skillDef: any): VendorLink {
  * @param entry 供应商定义实体
  */
 function buildLinksForEntry(entry: any): VendorLink[] {
-  if (entry.sourceDir || entry.sourceBaseDir || entry.skills || entry.setup) {
+  if (entry.sourceDir || entry.sourceBaseDir || entry.skills) {
     throw new Error(`供应商 "${entry.name}" 必须使用 projections 配置`)
   }
 
@@ -121,6 +122,7 @@ function mergeVendor(vendors: Record<string, Vendor>, vendorName: string, entry:
       official: entry.official,
       repo: entry.source,
       cloneDir,
+      setup: entry.setup,
       links,
     }
     return
@@ -135,6 +137,7 @@ function mergeVendor(vendors: Record<string, Vendor>, vendorName: string, entry:
   }
 
   existing.official = existing.official || entry.official
+  existing.setup = [...(existing.setup ?? []), ...(entry.setup ?? [])]
   existing.links.push(...links)
 }
 
