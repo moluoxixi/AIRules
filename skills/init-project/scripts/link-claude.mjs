@@ -1,4 +1,5 @@
 #!/usr/bin/env node
+import { spawnSync } from 'node:child_process'
 import { existsSync, linkSync, lstatSync, readlinkSync, statSync, symlinkSync } from 'node:fs'
 import path from 'node:path'
 
@@ -21,13 +22,53 @@ function pointsToAgentsPath(linkPath) {
   return linkedPath === path.resolve(agentsPath)
 }
 
+function pathExistsIncludingBrokenLink(filePath) {
+  try {
+    lstatSync(filePath)
+    return true
+  }
+  catch (error) {
+    if (error?.code === 'ENOENT') {
+      return false
+    }
+
+    throw error
+  }
+}
+
 function isSameFileAsAgents(filePath) {
   const agentsStats = statSync(agentsPath)
   const fileStats = statSync(filePath)
   return agentsStats.dev === fileStats.dev && agentsStats.ino === fileStats.ino
 }
 
-if (existsSync(claudePath)) {
+function gitFailureMessage(result) {
+  return result.stderr?.trim() || result.error?.message || `exit code ${result.status}`
+}
+
+function configureGitSymlinks(projectRootPath) {
+  const workTreeCheck = spawnSync('git', ['-C', projectRootPath, 'rev-parse', '--is-inside-work-tree'], {
+    encoding: 'utf8',
+  })
+
+  if (workTreeCheck.error || workTreeCheck.status !== 0 || workTreeCheck.stdout.trim() !== 'true') {
+    return
+  }
+
+  const configResult = spawnSync('git', ['-C', projectRootPath, 'config', 'core.symlinks', 'true'], {
+    encoding: 'utf8',
+  })
+
+  if (configResult.error || configResult.status !== 0) {
+    throw new Error(`Failed to configure Git core.symlinks=true: ${gitFailureMessage(configResult)}`)
+  }
+
+  console.log(`[airules] Enabled Git core.symlinks for ${projectRootPath}`)
+}
+
+configureGitSymlinks(projectRoot)
+
+if (pathExistsIncludingBrokenLink(claudePath)) {
   const existingClaude = lstatSync(claudePath)
 
   if (existingClaude.isSymbolicLink() && pointsToAgentsPath(claudePath)) {
@@ -35,12 +76,17 @@ if (existsSync(claudePath)) {
     process.exit(0)
   }
 
+  if (existingClaude.isSymbolicLink()) {
+    const currentTarget = readlinkSync(claudePath)
+    throw new Error(`CLAUDE.md already links to a different target: ${claudePath} -> ${currentTarget}. Expected target: ${relativeAgentsPath}. remove or repair CLAUDE.md before rerunning init-project.`)
+  }
+
   if (!existingClaude.isSymbolicLink() && isSameFileAsAgents(claudePath)) {
     console.log(`[airules] CLAUDE.md already hard-links to AGENTS.md: ${claudePath}`)
     process.exit(0)
   }
 
-  throw new Error(`CLAUDE.md already exists and is not managed by AIRules: ${claudePath}`)
+  throw new Error(`CLAUDE.md already exists and is not managed by AIRules: ${claudePath}. remove or repair CLAUDE.md before rerunning init-project.`)
 }
 
 // Use a relative symlink so the project directory stays movable after initialization.
