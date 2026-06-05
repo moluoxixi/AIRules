@@ -187,6 +187,7 @@ Moluoxixi AIRules 通过自动化投影，支持不断增长的 AI 代理生态�
 |------|------|
 | **init-project** | 新项目初始化技能：分析项目背景，向根 `AGENTS.md` 注入规则，创建 `CLAUDE.md` 软链接，并执行 `codegraph init -i` |
 | **skill-validation-standard** | 最小 Skill 产物校验标准：校验生成或修改后的 Claude/Codex skill 的 SKILL.md YAML frontmatter、文件夹命名一致性和行数限制 |
+| **architecture-docs** | 生成或更新 `docs/architecture/` 下的架构文档、模块边界和 ADR，并维护文档导航 |
 | **prd-docs** | 生成或更新 `docs/prds/` 下的业务需求文档，并维护文档导航 |
 | **api-docs** | 生成或更新 `docs/api/` 下的接口与联调契约文档，并维护文档导航 |
 | **components-docs** | 生成或更新 `docs/components/` 下的前端组件文档，并维护文档导航 |
@@ -215,6 +216,7 @@ Moluoxixi AIRules 通过自动化投影，支持不断增长的 AI 代理生态�
 │   │   ├── references/
 │   │   └── scripts/
 │   ├── skill-validation-standard/
+│   ├── architecture-docs/
 │   ├── api-docs/
 │   ├── components-docs/
 │   ├── prd-docs/

@@ -14,16 +14,21 @@ const baseReferencePath = path.join(skillRoot, 'references', 'airules-base.md')
 const docsReferencePath = path.join(skillRoot, 'references', 'project-docs-standard.md')
 const normalizedBaseReferencePath = path.resolve(baseReferencePath)
 const normalizedDocsReferencePath = path.resolve(docsReferencePath)
+const projectRoot = path.resolve(projectRootArg)
+const agentsPath = path.join(projectRoot, 'AGENTS.md')
+const currentContent = existsSync(agentsPath) ? readFileSync(agentsPath, 'utf8') : ''
+const hasExistingAgentsContent = currentContent.trim().length > 0
 const extraReferencePaths = referenceArgs
   .map(referencePath => path.resolve(referencePath))
   .filter(referencePath =>
     referencePath !== normalizedBaseReferencePath
     && referencePath !== normalizedDocsReferencePath,
   )
-const referencePaths = [normalizedBaseReferencePath, normalizedDocsReferencePath, ...extraReferencePaths]
-
-const projectRoot = path.resolve(projectRootArg)
-const agentsPath = path.join(projectRoot, 'AGENTS.md')
+const referencePaths = [
+  ...(hasExistingAgentsContent ? [] : [normalizedBaseReferencePath]),
+  normalizedDocsReferencePath,
+  ...extraReferencePaths,
+]
 
 function normalizeHeadingTitle(title) {
   return title.trim().toLowerCase()
@@ -98,7 +103,6 @@ const ruleSections = referencePaths.map((referencePath) => {
 })
 
 const incomingRules = ruleSections.join('\n\n')
-const currentContent = existsSync(agentsPath) ? readFileSync(agentsPath, 'utf8') : ''
 const duplicateTitles = findDuplicateHeadingTitles(currentContent, incomingRules)
 
 if (duplicateTitles.length > 0) {

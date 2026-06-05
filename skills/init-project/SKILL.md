@@ -27,14 +27,21 @@ node <init-project-skill>/scripts/detect-stack.mjs <your-project>
 node <init-project-skill>/scripts/scaffold-docs.mjs <your-project> <detect-stack 输出的 stack...>
 ```
 
-- 前端项目会创建 `docs/api/`、`docs/components/`、`docs/prds/`、`docs/test/` 和 `docs/map.md`。
-- 后端项目会创建 `docs/api/`、`docs/prds/`、`docs/test/` 和 `docs/map.md`。
+- 所有项目都会创建 `docs/architecture/`、`docs/api/`、`docs/prds/`、`docs/test/` 和 `docs/map.md`。
+- `docs/architecture/` 包含 `index.md`、`overview.md` 和 `decisions/index.md`，用于承载架构事实与 ADR。
+- `docs/api/` 包含 `index.md` 和 `_protocol.md`，用于承载全局接口协议与业务接口索引。
+- 前端项目额外创建 `docs/components/`。
 - 脚本只创建缺失目录与索引文件；若用户已有同名文档，必须保留原内容。
 - `采购订单.md` 这类业务文档不在初始化时硬编码创建，必须在具体业务任务中由 `prd-docs`、`api-docs`、`components-docs` 或 `test-docs` 独立生成，并同步维护 `docs/map.md`。
+- 架构文档与 ADR 必须在具体架构任务中由 `architecture-docs` 独立生成或更新，并同步维护 `docs/architecture/index.md` 与 `docs/map.md`。
 
 ## 根据项目背景注入规则
 
-执行脚本时始终先自动注入 `references/airules-base.md` 与 `references/project-docs-standard.md`，再按检测结果选择语言规则文件，并注入目标项目根目录 `AGENTS.md`：
+执行脚本时会按目标项目现状注入规则：
+
+- 当 `AGENTS.md` 不存在或为空时，先注入 `references/airules-base.md`，为用户创建 `# 项目规范` 与项目自定义规范占位。
+- 当 `AGENTS.md` 已存在且包含用户内容时，跳过 `references/airules-base.md`，避免向用户已有规范中追加占位段。
+- 始终注入 `references/project-docs-standard.md`，再按检测结果选择语言规则文件，并注入目标项目根目录 `AGENTS.md`：
 
 | `detect-stack.mjs` 输出 stack | 追加注入 references |
 |---|---|
@@ -75,7 +82,7 @@ codegraph init -i
 ## 交付检查
 
 - `AGENTS.md` 已包含本次项目背景对应的 AIRules 规则块。
-- `docs/map.md` 与对应文档目录索引已创建；已有用户文档未被覆盖。
+- `docs/map.md`、`docs/architecture/`、`docs/api/_protocol.md` 与对应文档目录索引已创建；已有用户文档未被覆盖。
 - 技术栈检测结果已按 `detect-stack.mjs` 的 `stacks`、`references` 和关键 `evidence` 报告。
 - `CLAUDE.md` 是指向 `AGENTS.md` 的软链接；Windows 无文件软链接权限时，可为同一文件实体的硬链接，且日志必须说明。
 - `codegraph init -i` 已执行并按真实结果报告 `PASS`、`FAIL`、`MISSING` 或 `NOT RUN`。

@@ -11,6 +11,8 @@ skills/*
 !skills/init-project/**
 !skills/skill-validation-standard/
 !skills/skill-validation-standard/**
+!skills/architecture-docs/
+!skills/architecture-docs/**
 !skills/api-docs/
 !skills/api-docs/**
 !skills/components-docs/

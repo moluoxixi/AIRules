@@ -187,6 +187,7 @@ export const vendors: VendorsConfig = [
         kind: 'skills',
         sourceBaseDir: 'skills',
         skills: [
+          'architecture-docs',
           'api-docs',
           'components-docs',
           'init-project',

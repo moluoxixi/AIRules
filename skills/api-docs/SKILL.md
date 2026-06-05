@@ -9,14 +9,39 @@ description: 用于生成或更新 docs/api 下的接口文档，尤其是前后
 
 - 文档路径：`docs/api/<业务域>.md`
 - 索引路径：`docs/api/index.md`
+- 全局协议：`docs/api/_protocol.md`
 - 地图路径：`docs/map.md`
 
 ## 写作规则
 
-- 先读取 `docs/map.md`、`docs/api/index.md`、相关 PRD 和已有接口文档。
+- 先读取 `docs/map.md`、`docs/api/index.md`、`docs/api/_protocol.md`、相关 PRD、架构文档和已有接口文档。
 - 接口事实优先来自后端路由、OpenAPI/Swagger、接口实现或用户提供的契约；无法确认时标记 `MISSING`。
 - 每个接口必须包含请求方法、路径、用途、请求参数、响应结构、错误码和联调注意事项。
+- 全局返回结构、错误结构、分页、鉴权、Headers、版本策略只维护在 `docs/api/_protocol.md`；业务接口文档只能引用或声明协议偏差。
+- 新增或修改全局接口协议、错误码体系、分页策略、鉴权策略或跨业务接口拆分时，属于 L2，必须先输出《接口协议与文档拆分报告》并等待开发者确认。
 - 更新或新增文档后，同步更新 `docs/api/index.md` 和 `docs/map.md`；`docs/map.md` 必须维护业务域到 PRD/API/组件/测试文档的导航关系。
+
+## 全局协议结构
+
+```md
+# 全局接口协议
+
+## 适用范围
+
+## 成功响应
+
+## 列表分页
+
+## 错误响应
+
+## 鉴权与 Headers
+
+## 版本策略
+
+## 协议偏差
+
+## 待确认
+```
 
 ## 文档结构
 
@@ -41,6 +66,8 @@ description: 用于生成或更新 docs/api 下的接口文档，尤其是前后
 ### 错误码
 
 ### 联调说明
+
+### 协议偏差
 
 ## Mock 与测试数据
 

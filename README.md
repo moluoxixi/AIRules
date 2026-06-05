@@ -187,6 +187,7 @@ Moluoxixi AIRules supports a growing ecosystem of AI agents through automated pr
 |------|-------------|
 | **init-project** | New-project initialization skill that analyzes project context, injects rules into root `AGENTS.md`, links `CLAUDE.md`, and runs `codegraph init -i` |
 | **skill-validation-standard** | Minimal skill validation standard for generated or modified Claude/Codex skills, covering SKILL.md YAML frontmatter, folder-name matching, and line-count limits |
+| **architecture-docs** | Generates or updates architecture docs, module boundaries, and ADRs under `docs/architecture/` while maintaining docs navigation |
 | **prd-docs** | Generates or updates business PRDs under `docs/prds/` and maintains docs navigation |
 | **api-docs** | Generates or updates API and integration contracts under `docs/api/` and maintains docs navigation |
 | **components-docs** | Generates or updates frontend component docs under `docs/components/` and maintains docs navigation |
@@ -215,6 +216,7 @@ Moluoxixi AIRules supports a growing ecosystem of AI agents through automated pr
 │   │   ├── references/
 │   │   └── scripts/
 │   ├── skill-validation-standard/
+│   ├── architecture-docs/
 │   ├── api-docs/
 │   ├── components-docs/
 │   ├── prd-docs/

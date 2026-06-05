@@ -531,6 +531,11 @@ it('vendors 配置 - 使用 OpenAI Playwright 并移除过时技能', () => {
     })),
     [
       {
+        source: 'skills/architecture-docs',
+        target: 'vendor/skills/architecture-docs',
+        setup: undefined,
+      },
+      {
         source: 'skills/api-docs',
         target: 'vendor/skills/api-docs',
         setup: undefined,

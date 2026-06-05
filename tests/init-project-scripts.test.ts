@@ -88,7 +88,8 @@ it('init-project inject-rules - AGENTS.md 不存在时创建聚合规则文件',
   const agentsContent = fs.readFileSync(path.join(projectRoot, 'AGENTS.md'), 'utf8')
 
   assert.equal(result.status, 0, result.stderr)
-  assert.equal(agentsContent.startsWith('# 项目规范\n\n# 项目文档知识库\n'), true)
+  assert.equal(agentsContent.startsWith('# 项目规范\n\n## 项目自定义规范\n'), true)
+  assert.match(agentsContent, /# 项目文档知识库/)
   assert.match(agentsContent, /# Frontend Rules\n\nfrontend body/)
 }))
 
@@ -104,14 +105,16 @@ it('init-project inject-rules - AGENTS.md 已存在且无重复标题时追加�
   const agentsContent = fs.readFileSync(agentsPath, 'utf8')
 
   assert.equal(result.status, 0, result.stderr)
-  assert.equal(agentsContent.startsWith('# Existing Project Rules\n\nexisting body\n\n# 项目规范\n\n# 项目文档知识库\n'), true)
+  assert.equal(agentsContent.startsWith('# Existing Project Rules\n\nexisting body\n\n# 项目文档知识库\n'), true)
+  assert.doesNotMatch(agentsContent, /## 项目自定义规范/)
+  assert.match(agentsContent, /# 项目文档知识库/)
   assert.match(agentsContent, /# Node Rules\n\nnode body/)
 }))
 
 it('init-project inject-rules - AGENTS.md 标题重复时停止写入并要求 AI 审查', () => withTempDir('airules-inject-duplicate-', (tmpDir) => {
   const projectRoot = path.join(tmpDir, 'project')
   const agentsPath = path.join(projectRoot, 'AGENTS.md')
-  const originalContent = '# 项目规范\n\nexisting project rules\n'
+  const originalContent = '# 项目文档知识库\n\nexisting project docs rules\n'
 
   writeFile(agentsPath, originalContent)
 
@@ -119,7 +122,7 @@ it('init-project inject-rules - AGENTS.md 标题重复时停止写入并要求 A
 
   assert.notEqual(result.status, 0)
   assert.match(result.stderr, /Duplicate AGENTS\.md headings detected/)
-  assert.match(result.stderr, /项目规范/)
+  assert.match(result.stderr, /项目文档知识库/)
   assert.equal(fs.readFileSync(agentsPath, 'utf8'), originalContent)
 }))
 
@@ -131,12 +134,19 @@ it('init-project scaffold-docs - 前端项目创建组件文档目录与索引',
   const result = runScaffoldDocs(projectRoot, 'frontend')
 
   assert.equal(result.status, 0, result.stderr)
+  assert.equal(fs.existsSync(path.join(projectRoot, 'docs', 'architecture', 'index.md')), true)
+  assert.equal(fs.existsSync(path.join(projectRoot, 'docs', 'architecture', 'overview.md')), true)
+  assert.equal(fs.existsSync(path.join(projectRoot, 'docs', 'architecture', 'decisions', 'index.md')), true)
   assert.equal(fs.existsSync(path.join(projectRoot, 'docs', 'api', 'index.md')), true)
+  assert.equal(fs.existsSync(path.join(projectRoot, 'docs', 'api', '_protocol.md')), true)
   assert.equal(fs.existsSync(path.join(projectRoot, 'docs', 'components', 'index.md')), true)
   assert.equal(fs.existsSync(path.join(projectRoot, 'docs', 'prds', 'index.md')), true)
   assert.equal(fs.existsSync(path.join(projectRoot, 'docs', 'test', 'index.md')), true)
   assert.equal(fs.existsSync(path.join(projectRoot, 'docs', 'map.md')), true)
   assert.equal(fs.existsSync(path.join(projectRoot, 'docs', 'api', '采购订单.md')), false)
+  assert.match(fs.readFileSync(path.join(projectRoot, 'docs', 'api', '_protocol.md'), 'utf8'), /错误响应/)
+  assert.match(fs.readFileSync(path.join(projectRoot, 'docs', 'architecture', 'overview.md'), 'utf8'), /模块边界/)
+  assert.match(fs.readFileSync(path.join(projectRoot, 'docs', 'map.md'), 'utf8'), /docs\/architecture/)
   assert.match(fs.readFileSync(path.join(projectRoot, 'docs', 'map.md'), 'utf8'), /docs\/components/)
 }))
 
@@ -148,10 +158,15 @@ it('init-project scaffold-docs - 后端项目不创建 components 目录', () =>
   const result = runScaffoldDocs(projectRoot, 'nestjs')
 
   assert.equal(result.status, 0, result.stderr)
+  assert.equal(fs.existsSync(path.join(projectRoot, 'docs', 'architecture', 'index.md')), true)
+  assert.equal(fs.existsSync(path.join(projectRoot, 'docs', 'architecture', 'overview.md')), true)
+  assert.equal(fs.existsSync(path.join(projectRoot, 'docs', 'architecture', 'decisions', 'index.md')), true)
   assert.equal(fs.existsSync(path.join(projectRoot, 'docs', 'api', 'index.md')), true)
+  assert.equal(fs.existsSync(path.join(projectRoot, 'docs', 'api', '_protocol.md')), true)
   assert.equal(fs.existsSync(path.join(projectRoot, 'docs', 'components')), false)
   assert.equal(fs.existsSync(path.join(projectRoot, 'docs', 'prds', 'index.md')), true)
   assert.equal(fs.existsSync(path.join(projectRoot, 'docs', 'test', 'index.md')), true)
+  assert.match(fs.readFileSync(path.join(projectRoot, 'docs', 'map.md'), 'utf8'), /docs\/architecture/)
   assert.doesNotMatch(fs.readFileSync(path.join(projectRoot, 'docs', 'map.md'), 'utf8'), /docs\/components/)
 }))
 
@@ -166,6 +181,8 @@ it('init-project scaffold-docs - 已存在索引文件时不覆盖用户内容',
 
   assert.equal(result.status, 0, result.stderr)
   assert.equal(fs.readFileSync(apiIndexPath, 'utf8'), originalContent)
+  assert.equal(fs.existsSync(path.join(projectRoot, 'docs', 'api', '_protocol.md')), true)
+  assert.equal(fs.existsSync(path.join(projectRoot, 'docs', 'architecture', 'overview.md')), true)
   assert.equal(fs.existsSync(path.join(projectRoot, 'docs', 'components', 'index.md')), true)
 }))
 

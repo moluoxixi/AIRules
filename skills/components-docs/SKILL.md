@@ -13,9 +13,11 @@ description: 用于生成或更新 docs/components 下的前端组件文档，�
 
 ## 写作规则
 
-- 先读取 `docs/map.md`、`docs/components/index.md`、组件源码和已有组件文档。
+- 先读取 `docs/map.md`、`docs/components/index.md`、相关 PRD、架构文档、组件源码和已有组件文档。
 - 只描述组件对外契约，不暴露内部实现细节；内部实现变化不应影响文档契约。
 - 必须覆盖 Props、事件/回调、插槽/children、状态、可访问性、示例和测试建议。
+- 新增或拆分公共组件、组件库分类、Props/Events/Slots/Children 契约、可访问性要求或跨业务复用边界时，属于 L2，必须先输出《组件契约与拆分报告》并等待开发者确认。
+- 仅补充既有组件的已确认示例、字段说明或变更记录时，可按 L0 直接更新。
 - 更新或新增文档后，同步更新 `docs/components/index.md` 和 `docs/map.md`；`docs/map.md` 必须维护业务域到 PRD/API/组件/测试/组件文档的导航关系。
 
 ## 文档结构
