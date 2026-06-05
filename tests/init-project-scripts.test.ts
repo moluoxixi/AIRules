@@ -165,6 +165,7 @@ it('init-project scaffold-docs - 前端项目创建组件文档目录与索引',
   assert.equal(fs.existsSync(path.join(projectRoot, 'docs', 'api', 'index.md')), true)
   assert.equal(fs.existsSync(path.join(projectRoot, 'docs', 'api', '_protocol.md')), true)
   assert.equal(fs.existsSync(path.join(projectRoot, 'docs', 'components', 'index.md')), true)
+  assert.equal(fs.existsSync(path.join(projectRoot, 'docs', 'other', 'index.md')), true)
   assert.equal(fs.existsSync(path.join(projectRoot, 'docs', 'prds', 'index.md')), true)
   assert.equal(fs.existsSync(path.join(projectRoot, 'docs', 'test', 'index.md')), true)
   assert.equal(fs.existsSync(path.join(projectRoot, 'docs', 'map.md')), true)
@@ -173,6 +174,7 @@ it('init-project scaffold-docs - 前端项目创建组件文档目录与索引',
   assert.match(fs.readFileSync(path.join(projectRoot, 'docs', 'architecture', 'overview.md'), 'utf8'), /模块边界/)
   assert.match(fs.readFileSync(path.join(projectRoot, 'docs', 'map.md'), 'utf8'), /docs\/architecture/)
   assert.match(fs.readFileSync(path.join(projectRoot, 'docs', 'map.md'), 'utf8'), /docs\/components/)
+  assert.match(fs.readFileSync(path.join(projectRoot, 'docs', 'map.md'), 'utf8'), /docs\/other/)
 }))
 
 it('init-project scaffold-docs - 后端项目不创建 components 目录', () => withTempDir('airules-docs-backend-', (tmpDir) => {
@@ -189,10 +191,78 @@ it('init-project scaffold-docs - 后端项目不创建 components 目录', () =>
   assert.equal(fs.existsSync(path.join(projectRoot, 'docs', 'api', 'index.md')), true)
   assert.equal(fs.existsSync(path.join(projectRoot, 'docs', 'api', '_protocol.md')), true)
   assert.equal(fs.existsSync(path.join(projectRoot, 'docs', 'components')), false)
+  assert.equal(fs.existsSync(path.join(projectRoot, 'docs', 'other', 'index.md')), true)
   assert.equal(fs.existsSync(path.join(projectRoot, 'docs', 'prds', 'index.md')), true)
   assert.equal(fs.existsSync(path.join(projectRoot, 'docs', 'test', 'index.md')), true)
   assert.match(fs.readFileSync(path.join(projectRoot, 'docs', 'map.md'), 'utf8'), /docs\/architecture/)
+  assert.match(fs.readFileSync(path.join(projectRoot, 'docs', 'map.md'), 'utf8'), /docs\/other/)
   assert.doesNotMatch(fs.readFileSync(path.join(projectRoot, 'docs', 'map.md'), 'utf8'), /docs\/components/)
+}))
+
+it('init-project scaffold-docs - 后端项目已有 components 目录时纳入地图并保留内容', () => withTempDir('airules-docs-existing-components-', (tmpDir) => {
+  const projectRoot = path.join(tmpDir, 'project')
+  const componentsIndexPath = path.join(projectRoot, 'docs', 'components', 'index.md')
+  const originalComponentsIndex = '# Existing Components\n\nkeep component docs\n'
+
+  writeFile(componentsIndexPath, originalComponentsIndex)
+
+  const result = runScaffoldDocs(projectRoot, 'nestjs')
+  const mapContent = fs.readFileSync(path.join(projectRoot, 'docs', 'map.md'), 'utf8')
+
+  assert.equal(result.status, 0, result.stderr)
+  assert.equal(fs.readFileSync(componentsIndexPath, 'utf8'), originalComponentsIndex)
+  assert.match(mapContent, /docs\/components/)
+}))
+
+it('init-project scaffold-docs - 已有未归类 docs 时登记到 other 索引', () => withTempDir('airules-docs-existing-other-', (tmpDir) => {
+  const projectRoot = path.join(tmpDir, 'project')
+
+  writeFile(path.join(projectRoot, 'docs', 'legacy.md'), '# Legacy Docs\n')
+  writeFile(path.join(projectRoot, 'docs', 'old-guides', 'README.md'), '# Old Guides\n')
+
+  const result = runScaffoldDocs(projectRoot, 'frontend')
+  const otherIndex = fs.readFileSync(path.join(projectRoot, 'docs', 'other', 'index.md'), 'utf8')
+
+  assert.equal(result.status, 0, result.stderr)
+  assert.match(otherIndex, /legacy\.md/)
+  assert.match(otherIndex, /old-guides/)
+  assert.match(otherIndex, /\.\.\/legacy\.md/)
+  assert.match(otherIndex, /\.\.\/old-guides/)
+}))
+
+it('init-project scaffold-docs - 已有 other 索引时追加缺失的未归类文档登记', () => withTempDir('airules-docs-existing-other-index-', (tmpDir) => {
+  const projectRoot = path.join(tmpDir, 'project')
+  const otherIndexPath = path.join(projectRoot, 'docs', 'other', 'index.md')
+  const originalOtherIndex = '# Custom Other Index\n\nkeep custom notes\n'
+
+  writeFile(path.join(projectRoot, 'docs', 'legacy.md'), '# Legacy Docs\n')
+  writeFile(otherIndexPath, originalOtherIndex)
+
+  const result = runScaffoldDocs(projectRoot, 'frontend')
+  const otherIndex = fs.readFileSync(otherIndexPath, 'utf8')
+
+  assert.equal(result.status, 0, result.stderr)
+  assert.equal(otherIndex.startsWith(originalOtherIndex), true)
+  assert.match(otherIndex, /legacy\.md/)
+  assert.match(otherIndex, /\.\.\/legacy\.md/)
+}))
+
+it('init-project scaffold-docs - 已有 map 时追加缺失的文档入口', () => withTempDir('airules-docs-existing-map-', (tmpDir) => {
+  const projectRoot = path.join(tmpDir, 'project')
+  const mapPath = path.join(projectRoot, 'docs', 'map.md')
+  const componentsIndexPath = path.join(projectRoot, 'docs', 'components', 'index.md')
+  const originalMap = '# Existing Map\n\nkeep custom map\n'
+
+  writeFile(mapPath, originalMap)
+  writeFile(componentsIndexPath, '# Existing Components\n')
+
+  const result = runScaffoldDocs(projectRoot, 'nestjs')
+  const mapContent = fs.readFileSync(mapPath, 'utf8')
+
+  assert.equal(result.status, 0, result.stderr)
+  assert.equal(mapContent.startsWith(originalMap), true)
+  assert.match(mapContent, /components\/index\.md/)
+  assert.match(mapContent, /other\/index\.md/)
 }))
 
 it('init-project scaffold-docs - 已存在索引文件时不覆盖用户内容', () => withTempDir('airules-docs-existing-', (tmpDir) => {
@@ -209,6 +279,7 @@ it('init-project scaffold-docs - 已存在索引文件时不覆盖用户内容',
   assert.equal(fs.existsSync(path.join(projectRoot, 'docs', 'api', '_protocol.md')), true)
   assert.equal(fs.existsSync(path.join(projectRoot, 'docs', 'architecture', 'overview.md')), true)
   assert.equal(fs.existsSync(path.join(projectRoot, 'docs', 'components', 'index.md')), true)
+  assert.equal(fs.existsSync(path.join(projectRoot, 'docs', 'other', 'index.md')), true)
 }))
 
 it('init-project link-claude - 创建 AGENTS.md 到 CLAUDE.md 的托管链接并支持重复执行', () => withTempDir('airules-link-claude-', (tmpDir) => {

@@ -192,6 +192,7 @@ Moluoxixi AIRules 通过自动化投影，支持不断增长的 AI 代理生态�
 | **api-docs** | 生成或更新 `docs/api/` 下的接口与联调契约文档，并维护文档导航 |
 | **components-docs** | 生成或更新 `docs/components/` 下的前端组件文档，并维护文档导航 |
 | **test-docs** | 生成或更新 `docs/test/` 下的测试设计与验证文档，并维护文档导航 |
+| **retrospective-correction** | 用户指出实现偏离要求时，先输出修正计划，再归因 AI 执行错误或 skills/rules 缺口 |
 
 > 第一方 skills 可以继续放在嵌套源目录下，安装时会展平为 `vendor/skills/<skill-name>`；仓库级规则位于 `rules/AGENTS.md`，CodeGraph 安装命令位于 `constants/skills.ts` 的 vendor setup。
 
@@ -220,6 +221,7 @@ Moluoxixi AIRules 通过自动化投影，支持不断增长的 AI 代理生态�
 │   ├── api-docs/
 │   ├── components-docs/
 │   ├── prd-docs/
+│   ├── retrospective-correction/
 │   └── test-docs/
 ├── vendor/
 │   ├── repos/               # 克隆的第三方源仓库

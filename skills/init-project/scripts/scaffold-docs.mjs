@@ -1,5 +1,5 @@
 #!/usr/bin/env node
-import { existsSync, mkdirSync, statSync, writeFileSync } from 'node:fs'
+import { existsSync, mkdirSync, readdirSync, readFileSync, statSync, writeFileSync } from 'node:fs'
 import path from 'node:path'
 
 const [projectRootArg, ...stackArgs] = process.argv.slice(2)
@@ -15,8 +15,8 @@ if (!existsSync(projectRoot) || !statSync(projectRoot).isDirectory()) {
 }
 
 const stacks = new Set(stackArgs)
-const includeComponents = stacks.has('frontend')
 const docsRoot = path.join(projectRoot, 'docs')
+const includeComponents = stacks.has('frontend') || existingDirectory(path.join(docsRoot, 'components'))
 const sections = [
   {
     name: 'architecture',
@@ -50,21 +50,38 @@ const sections = [
     description: '记录测试策略、用例矩阵、数据准备、联调验证、回归范围和风险。',
     columns: '| 业务域 | 文档 | 测试范围 | 状态 |\n|---|---|---|---|',
   },
+  {
+    name: 'other',
+    title: '其它文档索引',
+    description: '登记初始化前已存在但尚未归入架构、接口、需求、组件或测试目录的项目文档。',
+    columns: '| 文档 | 类型 | 建议处理 | 状态 |\n|---|---|---|---|',
+  },
 ].filter(Boolean)
+const unmanagedDocs = collectUnmanagedDocs(docsRoot, new Set([
+  ...sections.map(section => section.name),
+  'map.md',
+]))
 
 mkdirSync(docsRoot, { recursive: true })
 
 for (const section of sections) {
   const sectionDir = path.join(docsRoot, section.name)
   mkdirSync(sectionDir, { recursive: true })
-  writeIfMissing(path.join(sectionDir, 'index.md'), indexTemplate(section))
+
+  const indexPath = path.join(sectionDir, 'index.md')
+  if (section.name === 'other') {
+    writeOrAppendOtherIndex(indexPath, section, unmanagedDocs)
+  }
+  else {
+    writeIfMissing(indexPath, indexTemplate(section))
+  }
 }
 
 writeIfMissing(path.join(docsRoot, 'architecture', 'overview.md'), architectureOverviewTemplate())
 mkdirSync(path.join(docsRoot, 'architecture', 'decisions'), { recursive: true })
 writeIfMissing(path.join(docsRoot, 'architecture', 'decisions', 'index.md'), architectureDecisionsIndexTemplate())
 writeIfMissing(path.join(docsRoot, 'api', '_protocol.md'), apiProtocolTemplate())
-writeIfMissing(path.join(docsRoot, 'map.md'), mapTemplate(sections))
+writeOrAppendMap(path.join(docsRoot, 'map.md'), sections)
 
 console.log(`[airules] Scaffolded docs in ${docsRoot}`)
 
@@ -76,6 +93,67 @@ function writeIfMissing(filePath, content) {
   writeFileSync(filePath, content, 'utf8')
 }
 
+function writeOrAppendOtherIndex(filePath, section, unmanagedDocs) {
+  if (!existsSync(filePath)) {
+    writeFileSync(filePath, otherIndexTemplate(section, unmanagedDocs), 'utf8')
+    return
+  }
+
+  const content = readFileSync(filePath, 'utf8')
+  const rows = unmanagedDocs
+    .filter(entry => !content.includes(entry.name))
+    .map(otherRow)
+
+  appendRowsIfNeeded(filePath, content, 'AIRules 待整理文档补充', section.columns, rows)
+}
+
+function writeOrAppendMap(filePath, enabledSections) {
+  if (!existsSync(filePath)) {
+    writeFileSync(filePath, mapTemplate(enabledSections), 'utf8')
+    return
+  }
+
+  const content = readFileSync(filePath, 'utf8')
+  const rows = enabledSections
+    .filter(section => !mapContainsSection(content, section.name))
+    .map(mapRow)
+
+  appendRowsIfNeeded(filePath, content, 'AIRules 文档入口补充', '| 目录 | 索引 | 用途 |\n|---|---|---|', rows)
+}
+
+function appendRowsIfNeeded(filePath, content, title, columns, rows) {
+  if (rows.length === 0) {
+    return
+  }
+
+  // Existing docs are user-owned, so initialization only appends missing inventory rows.
+  const separator = content.endsWith('\n') ? '\n' : '\n\n'
+  const addition = `${separator}## ${title}\n\n${columns}\n${rows.join('\n')}\n`
+  writeFileSync(filePath, `${content}${addition}`, 'utf8')
+}
+
+function existingDirectory(dirPath) {
+  return existsSync(dirPath) && statSync(dirPath).isDirectory()
+}
+
+function collectUnmanagedDocs(sourceDir, managedNames) {
+  if (!existsSync(sourceDir)) {
+    return []
+  }
+
+  return readdirSync(sourceDir, { withFileTypes: true })
+    .filter(entry => !entry.name.startsWith('.') && !managedNames.has(entry.name))
+    .map(entry => ({
+      name: entry.name,
+      kind: entry.isDirectory() ? 'directory' : 'file',
+    }))
+    .sort((left, right) => left.name.localeCompare(right.name))
+}
+
+function mapContainsSection(content, sectionName) {
+  return content.includes(`${sectionName}/index.md`) || content.includes(`docs/${sectionName}/index.md`)
+}
+
 function indexTemplate(section) {
   return `# ${section.title}
 
@@ -84,6 +162,25 @@ ${section.description}
 ${section.columns}
 
 `
+}
+
+function otherIndexTemplate(section, unmanagedDocs) {
+  const rows = unmanagedDocs
+    .map(otherRow)
+    .join('\n')
+
+  return `# ${section.title}
+
+${section.description}
+
+${section.columns}
+${rows ? `${rows}\n` : ''}
+
+`
+}
+
+function otherRow(entry) {
+  return `| [${entry.name}](../${entry.name}) | ${entry.kind} | 评估后迁移到 architecture/api/prds/components/test 或保留在 other | MISSING classification |`
 }
 
 function architectureOverviewTemplate() {
@@ -180,7 +277,7 @@ MISSING
 
 function mapTemplate(enabledSections) {
   const rows = enabledSections
-    .map(section => `| ${section.name} | [${section.title}](${section.name}/index.md) | ${section.description} |`)
+    .map(mapRow)
     .join('\n')
 
   return `# 项目文档地图
@@ -195,9 +292,14 @@ ${rows}
 
 - 新增业务文档时，使用稳定业务名作为文件名，例如 \`采购订单.md\`。
 - 架构文档放入 \`docs/architecture/\`，接口文档放入 \`docs/api/\`，需求文档放入 \`docs/prds/\`，测试文档放入 \`docs/test/\`${includeComponents ? '，组件文档放入 `docs/components/`' : ''}。
+- 初始化前已存在但暂未归类的文档登记到 \`docs/other/index.md\`；整理时先评估归属，不得自动移动或覆盖用户文档。
 - 全局接口协议维护在 \`docs/api/_protocol.md\`；业务接口文档不得重复定义冲突协议。
 - 新增或改名文档后，同步更新对应目录的 \`index.md\` 和本文件。
 - 文档只记录已确认事实；缺失信息标记为 \`MISSING\`，不得用代码推断伪造业务结论。
 
 `
+}
+
+function mapRow(section) {
+  return `| ${section.name} | [${section.title}](${section.name}/index.md) | ${section.description} |`
 }

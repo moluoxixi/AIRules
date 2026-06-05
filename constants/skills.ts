@@ -192,6 +192,7 @@ export const vendors: VendorsConfig = [
           'components-docs',
           'init-project',
           'prd-docs',
+          'retrospective-correction',
           'skill-validation-standard',
           'test-docs',
         ],

@@ -556,6 +556,11 @@ it('vendors 配置 - 使用 OpenAI Playwright 并移除过时技能', () => {
         setup: undefined,
       },
       {
+        source: 'skills/retrospective-correction',
+        target: 'vendor/skills/retrospective-correction',
+        setup: undefined,
+      },
+      {
         source: 'skills/skill-validation-standard',
         target: 'vendor/skills/skill-validation-standard',
         setup: undefined,

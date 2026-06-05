@@ -192,6 +192,7 @@ Moluoxixi AIRules supports a growing ecosystem of AI agents through automated pr
 | **api-docs** | Generates or updates API and integration contracts under `docs/api/` and maintains docs navigation |
 | **components-docs** | Generates or updates frontend component docs under `docs/components/` and maintains docs navigation |
 | **test-docs** | Generates or updates test design and validation docs under `docs/test/` and maintains docs navigation |
+| **retrospective-correction** | Produces a correction plan before root-cause attribution when implementation diverges from user requirements or rules |
 
 > First-party skills may live under nested source folders, but installation flattens them into `vendor/skills/<skill-name>`. First-party rules live in `rules/AGENTS.md`; CodeGraph install commands live in the vendor setup section of `constants/skills.ts`.
 
@@ -220,6 +221,7 @@ Moluoxixi AIRules supports a growing ecosystem of AI agents through automated pr
 │   ├── api-docs/
 │   ├── components-docs/
 │   ├── prd-docs/
+│   ├── retrospective-correction/
 │   └── test-docs/
 ├── vendor/
 │   ├── repos/               # Cloned third-party source repos

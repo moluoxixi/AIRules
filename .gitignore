@@ -19,6 +19,8 @@ skills/*
 !skills/components-docs/**
 !skills/prd-docs/
 !skills/prd-docs/**
+!skills/retrospective-correction/
+!skills/retrospective-correction/**
 !skills/test-docs/
 !skills/test-docs/**
 
