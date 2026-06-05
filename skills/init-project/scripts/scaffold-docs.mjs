@@ -1,5 +1,5 @@
 #!/usr/bin/env node
-import { existsSync, mkdirSync, readdirSync, readFileSync, statSync, writeFileSync } from 'node:fs'
+import { existsSync, mkdirSync, readdirSync, readFileSync, renameSync, statSync, writeFileSync } from 'node:fs'
 import path from 'node:path'
 
 const [projectRootArg, ...stackArgs] = process.argv.slice(2)
@@ -16,7 +16,11 @@ if (!existsSync(projectRoot) || !statSync(projectRoot).isDirectory()) {
 
 const stacks = new Set(stackArgs)
 const docsRoot = path.join(projectRoot, 'docs')
-const includeComponents = stacks.has('frontend') || existingDirectory(path.join(docsRoot, 'components'))
+const hadComponentsDocs = existingDirectory(path.join(docsRoot, 'components'))
+const docsInitialized = hasAirulesDocs(docsRoot)
+archiveExistingDocs(docsRoot, collectArchiveCandidates(docsRoot, docsInitialized))
+
+const includeComponents = stacks.has('frontend') || hadComponentsDocs || existingDirectory(path.join(docsRoot, 'other', 'imported', 'components'))
 const sections = [
   {
     name: 'architecture',
@@ -33,9 +37,9 @@ const sections = [
   includeComponents
     ? {
         name: 'components',
-        title: '组件文档索引',
-        description: '记录组件库契约、交互状态、Props/Events/Slots、可访问性和示例。',
-        columns: '| 组件 | 文档 | 使用场景 | 状态 |\n|---|---|---|---|',
+        title: '组件库文档索引',
+        description: '记录组件库文档入口；具体组件库文档由 components-docs 生成或更新。',
+        columns: '| 组件库/组件 | 文档 | 状态 |\n|---|---|---|',
       }
     : null,
   {
@@ -57,10 +61,7 @@ const sections = [
     columns: '| 文档 | 类型 | 建议处理 | 状态 |\n|---|---|---|---|',
   },
 ].filter(Boolean)
-const unmanagedDocs = collectUnmanagedDocs(docsRoot, new Set([
-  ...sections.map(section => section.name),
-  'map.md',
-]))
+const importedDocs = collectImportedDocs(docsRoot)
 
 mkdirSync(docsRoot, { recursive: true })
 
@@ -70,7 +71,7 @@ for (const section of sections) {
 
   const indexPath = path.join(sectionDir, 'index.md')
   if (section.name === 'other') {
-    writeOrAppendOtherIndex(indexPath, section, unmanagedDocs)
+    writeOrAppendOtherIndex(indexPath, section, importedDocs)
   }
   else {
     writeIfMissing(indexPath, indexTemplate(section))
@@ -93,15 +94,15 @@ function writeIfMissing(filePath, content) {
   writeFileSync(filePath, content, 'utf8')
 }
 
-function writeOrAppendOtherIndex(filePath, section, unmanagedDocs) {
+function writeOrAppendOtherIndex(filePath, section, importedDocs) {
   if (!existsSync(filePath)) {
-    writeFileSync(filePath, otherIndexTemplate(section, unmanagedDocs), 'utf8')
+    writeFileSync(filePath, otherIndexTemplate(section, importedDocs), 'utf8')
     return
   }
 
   const content = readFileSync(filePath, 'utf8')
-  const rows = unmanagedDocs
-    .filter(entry => !content.includes(entry.name))
+  const rows = importedDocs
+    .filter(entry => !content.includes(entry.linkPath))
     .map(otherRow)
 
   appendRowsIfNeeded(filePath, content, 'AIRules 待整理文档补充', section.columns, rows)
@@ -136,16 +137,60 @@ function existingDirectory(dirPath) {
   return existsSync(dirPath) && statSync(dirPath).isDirectory()
 }
 
-function collectUnmanagedDocs(sourceDir, managedNames) {
+function hasAirulesDocs(sourceDir) {
+  const mapPath = path.join(sourceDir, 'map.md')
+
+  return existsSync(mapPath) && readFileSync(mapPath, 'utf8').includes('# 项目文档地图')
+}
+
+function collectArchiveCandidates(sourceDir, docsInitialized) {
   if (!existsSync(sourceDir)) {
     return []
   }
 
+  const standardNames = new Set(['architecture', 'api', 'components', 'prds', 'test', 'map.md'])
+
   return readdirSync(sourceDir, { withFileTypes: true })
-    .filter(entry => !entry.name.startsWith('.') && !managedNames.has(entry.name))
+    .filter(entry => !entry.name.startsWith('.') && entry.name !== 'other')
+    .filter(entry => !docsInitialized || !standardNames.has(entry.name))
     .map(entry => ({
       name: entry.name,
       kind: entry.isDirectory() ? 'directory' : 'file',
+      sourcePath: path.join(sourceDir, entry.name),
+      targetPath: path.join(sourceDir, 'other', 'imported', entry.name),
+    }))
+    .sort((left, right) => left.name.localeCompare(right.name))
+}
+
+function archiveExistingDocs(sourceDir, archiveCandidates) {
+  if (archiveCandidates.length === 0) {
+    return
+  }
+
+  const collision = archiveCandidates.find(entry => existsSync(entry.targetPath))
+  if (collision) {
+    throw new Error(`Imported docs target already exists: ${collision.targetPath}`)
+  }
+
+  mkdirSync(path.join(sourceDir, 'other', 'imported'), { recursive: true })
+
+  for (const entry of archiveCandidates) {
+    renameSync(entry.sourcePath, entry.targetPath)
+  }
+}
+
+function collectImportedDocs(sourceDir) {
+  const importedRoot = path.join(sourceDir, 'other', 'imported')
+  if (!existsSync(importedRoot)) {
+    return []
+  }
+
+  return readdirSync(importedRoot, { withFileTypes: true })
+    .filter(entry => !entry.name.startsWith('.'))
+    .map(entry => ({
+      name: entry.name,
+      kind: entry.isDirectory() ? 'directory' : 'file',
+      linkPath: `imported/${entry.name}`,
     }))
     .sort((left, right) => left.name.localeCompare(right.name))
 }
@@ -160,27 +205,25 @@ function indexTemplate(section) {
 ${section.description}
 
 ${section.columns}
-
 `
 }
 
-function otherIndexTemplate(section, unmanagedDocs) {
-  const rows = unmanagedDocs
+function otherIndexTemplate(section, importedDocs) {
+  const rows = importedDocs
     .map(otherRow)
     .join('\n')
+  const rowSection = rows ? `\n${rows}` : ''
 
   return `# ${section.title}
 
 ${section.description}
 
-${section.columns}
-${rows ? `${rows}\n` : ''}
-
+${section.columns}${rowSection}
 `
 }
 
 function otherRow(entry) {
-  return `| [${entry.name}](../${entry.name}) | ${entry.kind} | 评估后迁移到 architecture/api/prds/components/test 或保留在 other | MISSING classification |`
+  return `| [${entry.name}](${entry.linkPath}) | ${entry.kind} | 转换为 architecture/api/prds/test 标准文档；组件库文档由 components-docs 处理 | MISSING conversion |`
 }
 
 function architectureOverviewTemplate() {
@@ -214,7 +257,6 @@ MISSING
 ## 待确认
 
 - MISSING
-
 `
 }
 
@@ -225,7 +267,6 @@ function architectureDecisionsIndexTemplate() {
 
 | ADR | 决策 | 状态 | 日期 |
 |---|---|---|---|
-
 `
 }
 
@@ -271,7 +312,6 @@ MISSING
 ## 待确认
 
 - MISSING
-
 `
 }
 
@@ -291,12 +331,11 @@ ${rows}
 ## 维护约定
 
 - 新增业务文档时，使用稳定业务名作为文件名，例如 \`采购订单.md\`。
-- 架构文档放入 \`docs/architecture/\`，接口文档放入 \`docs/api/\`，需求文档放入 \`docs/prds/\`，测试文档放入 \`docs/test/\`${includeComponents ? '，组件文档放入 `docs/components/`' : ''}。
-- 初始化前已存在但暂未归类的文档登记到 \`docs/other/index.md\`；整理时先评估归属，不得自动移动或覆盖用户文档。
+- 架构文档放入 \`docs/architecture/\`，接口文档放入 \`docs/api/\`，需求文档放入 \`docs/prds/\`，测试文档放入 \`docs/test/\`${includeComponents ? '，组件库文档放入 `docs/components/`' : ''}。
+- 初始化前已存在的旧文档归档到 \`docs/other/imported/\`；整理时先评估归属，再转换为标准分类文档。
 - 全局接口协议维护在 \`docs/api/_protocol.md\`；业务接口文档不得重复定义冲突协议。
 - 新增或改名文档后，同步更新对应目录的 \`index.md\` 和本文件。
 - 文档只记录已确认事实；缺失信息标记为 \`MISSING\`，不得用代码推断伪造业务结论。
-
 `
 }
 

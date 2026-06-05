@@ -30,11 +30,29 @@ node <init-project-skill>/scripts/scaffold-docs.mjs <your-project> <detect-stack
 - 所有项目都会创建 `docs/architecture/`、`docs/api/`、`docs/prds/`、`docs/test/`、`docs/other/` 和 `docs/map.md`。
 - `docs/architecture/` 包含 `index.md`、`overview.md` 和 `decisions/index.md`，用于承载架构事实与 ADR。
 - `docs/api/` 包含 `index.md` 和 `_protocol.md`，用于承载全局接口协议与业务接口索引。
-- 前端项目额外创建 `docs/components/`；若非前端项目初始化前已存在 `docs/components/`，脚本必须保留并纳入 `docs/map.md`。
-- 初始化前已存在但不属于 architecture/api/components/prds/test 的顶层 docs 文件或目录，登记到 `docs/other/index.md` 作为待整理入口；脚本不得自动移动或覆盖用户文档。
-- 脚本只创建缺失目录与索引文件；若用户已有同名文档，必须保留原内容。
+- 前端项目额外创建 `docs/components/`；若初始化前已存在 `docs/components/`，脚本必须重建标准组件入口并纳入 `docs/map.md`。
+- 首次接入 AIRules 时，初始化前已有的旧文档必须移动到 `docs/other/imported/` 做来源归档，并在 `docs/other/index.md` 标记为 `MISSING conversion`；不得只登记原位置后停止。
+- 旧文档归档目标已存在时，脚本必须停止并报告冲突；不得覆盖、合并或部分移动。
+- 已 AIRules 初始化的项目重复执行时，脚本只补缺失标准入口，不覆盖用户已有标准文档。
 - `采购订单.md` 这类业务文档不在初始化时硬编码创建，必须在具体业务任务中由 `prd-docs`、`api-docs`、`components-docs` 或 `test-docs` 独立生成，并同步维护 `docs/map.md`。
 - 架构文档与 ADR 必须在具体架构任务中由 `architecture-docs` 独立生成或更新，并同步维护 `docs/architecture/index.md` 与 `docs/map.md`。
+
+## 标准化转换旧文档
+
+若 `docs/other/imported/` 存在内容，初始化不得停在归档状态，必须继续执行旧文档标准化转换：
+
+1. 读取 `docs/other/index.md` 与 `docs/other/imported/` 下的来源文档，按内容和原路径识别 PRD、API、组件、测试、架构信息。
+2. 结合当前代码事实与 CodeGraph 结果校验模块、接口、组件和测试入口；文档与代码冲突时先报告冲突，不得静默选择一方。
+3. 将已确认信息转换到标准分类文档：
+   - 需求与业务流程使用 `prd-docs`，写入 `docs/prds/<业务域>.md`。
+   - 接口、联调、Mock、错误码使用 `api-docs`，写入 `docs/api/<业务域>.md`；全局协议只写 `docs/api/_protocol.md`。
+   - 组件库、公共组件、Props/Events/Slots 使用 `components-docs`，写入 `docs/components/<组件名>.md`。
+   - 测试策略、用例矩阵、验收验证使用 `test-docs`，写入 `docs/test/<业务域>.md`。
+   - 架构、模块边界、依赖方向、ADR 使用 `architecture-docs`，写入 `docs/architecture/`。
+4. 来源文档信息不足时，在目标标准文档中标记 `MISSING`；无法分类的来源继续保留在 `docs/other/imported/`，并在 `docs/other/index.md` 说明缺口。
+5. 转换完成后，同步更新各目录 `index.md`、`docs/map.md` 和 `docs/other/index.md` 的转换状态。
+
+若单个旧文档混合多个业务域或同时包含 PRD/API/组件/测试/架构，且拆分会影响公共契约、接口协议、组件库边界、测试策略或业务口径，必须先输出《旧文档标准化转换报告》并等待开发者确认；边界清晰、只做格式转换和索引更新时可直接执行。
 
 ## 根据项目背景注入规则
 
@@ -85,7 +103,8 @@ codegraph init -i
 ## 交付检查
 
 - `AGENTS.md` 已包含本次项目背景对应的 AIRules 规则块。
-- `docs/map.md`、`docs/architecture/`、`docs/api/_protocol.md`、`docs/other/` 与对应文档目录索引已创建；已有用户文档未被覆盖。
+- `docs/map.md`、`docs/architecture/`、`docs/api/_protocol.md`、`docs/other/` 与对应文档目录索引已创建；旧文档已归档到 `docs/other/imported/` 或确认无需归档。
+- 若存在旧文档，已按标准分类转换到 `docs/prds/`、`docs/api/`、`docs/components/`、`docs/test/` 或 `docs/architecture/`，无法转换的条目已标记 `MISSING conversion`。
 - 技术栈检测结果已按 `detect-stack.mjs` 的 `stacks`、`references` 和关键 `evidence` 报告。
 - `CLAUDE.md` 是指向 `AGENTS.md` 的软链接；Windows 无文件软链接权限时，可为同一文件实体的硬链接，且日志必须说明。
 - `codegraph init -i` 已执行并按真实结果报告 `PASS`、`FAIL`、`MISSING` 或 `NOT RUN`。
