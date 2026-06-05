@@ -136,3 +136,56 @@ it('tool - syncToHosts 同步内置和用户自定义 skills 到宿主', async (
     assert.equal(fs.readFileSync(path.join(codexHome, 'AGENTS.md'), 'utf8'), 'baseline\n')
   })
 })
+
+it('tool - syncToHosts 在安装目录即仓库根目录时仍从 vendor 投影第一方 skills', async () => {
+  await withTempDirAsync('airules-tool-installed-repo-', async (tmpDir) => {
+    const userHome = path.join(tmpDir, 'user')
+    const moluoHome = path.join(userHome, '.moluoxixi')
+    const codexHome = path.join(userHome, '.codex')
+    const vendorRepoSkill = path.join(moluoHome, 'vendor', 'repos', 'moluoxixi', 'skills', 'api-docs')
+
+    writeFile(path.join(moluoHome, 'package.json'), '{"type":"module"}\n')
+    writeFile(path.join(moluoHome, 'constants', 'skills.js'), `
+export const vendors = [
+  {
+    name: 'moluoxixi',
+    official: true,
+    source: 'https://example.test/AIRules.git',
+    projections: [
+      {
+        kind: 'skills',
+        sourceBaseDir: 'skills',
+        skills: ['api-docs'],
+      },
+    ],
+  },
+]
+`)
+    writeFile(path.join(moluoHome, 'rules', 'AGENTS.md'), 'baseline\n')
+    writeFile(path.join(moluoHome, 'skills', 'api-docs', 'SKILL.md'), 'repo-root-source\n')
+    writeFile(path.join(vendorRepoSkill, 'SKILL.md'), 'vendor-source\n')
+    fs.mkdirSync(codexHome, { recursive: true })
+
+    await syncToHosts({
+      repoRoot: moluoHome,
+      home: moluoHome,
+      userHome,
+      host: 'codex',
+      skipVendors: true,
+      verify: false,
+    })
+
+    assert.equal(
+      realLinkPath(path.join(moluoHome, 'vendor', 'skills', 'api-docs')),
+      realLinkPath(vendorRepoSkill),
+    )
+    assert.equal(
+      realLinkPath(path.join(moluoHome, 'skills', 'api-docs')),
+      realLinkPath(vendorRepoSkill),
+    )
+    assert.equal(
+      realLinkPath(path.join(codexHome, 'skills', 'api-docs')),
+      realLinkPath(vendorRepoSkill),
+    )
+  })
+})

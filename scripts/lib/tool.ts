@@ -102,7 +102,10 @@ async function syncVendorsIfNeeded(paths: ToolPaths, skipVendors: boolean) {
 }
 
 function syncLocalSkillLayers(paths: ToolPaths) {
-  syncFirstPartySkillsToVendor(paths.repoRoot, paths.moluoHome)
+  if (!isSamePath(paths.repoRoot, paths.moluoHome)) {
+    syncFirstPartySkillsToVendor(paths.repoRoot, paths.moluoHome)
+  }
+
   syncFirstPartySkillsToVendor(path.join(paths.moluoHome, 'local'), paths.moluoHome)
 }
 
