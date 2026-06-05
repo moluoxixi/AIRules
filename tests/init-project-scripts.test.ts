@@ -50,6 +50,21 @@ function runLinkClaude(projectRoot: string) {
   )
 }
 
+function runScaffoldDocs(projectRoot: string, ...stacks: string[]) {
+  return spawnSync(
+    process.execPath,
+    [
+      path.join(process.cwd(), 'skills', 'init-project', 'scripts', 'scaffold-docs.mjs'),
+      projectRoot,
+      ...stacks,
+    ],
+    {
+      cwd: process.cwd(),
+      encoding: 'utf8',
+    },
+  )
+}
+
 function isManagedClaudeLink(agentsPath: string, claudePath: string): boolean {
   const claudeStats = fs.lstatSync(claudePath)
 
@@ -70,12 +85,11 @@ it('init-project inject-rules - AGENTS.md 不存在时创建聚合规则文件',
   writeFile(referenceFile, '# Frontend Rules\n\nfrontend body\n')
 
   const result = runInjectRules(projectRoot, referenceFile)
+  const agentsContent = fs.readFileSync(path.join(projectRoot, 'AGENTS.md'), 'utf8')
 
   assert.equal(result.status, 0, result.stderr)
-  assert.equal(
-    fs.readFileSync(path.join(projectRoot, 'AGENTS.md'), 'utf8'),
-    '# 项目规范\n\n# Frontend Rules\n\nfrontend body\n',
-  )
+  assert.equal(agentsContent.startsWith('# 项目规范\n\n# 项目文档知识库\n'), true)
+  assert.match(agentsContent, /# Frontend Rules\n\nfrontend body/)
 }))
 
 it('init-project inject-rules - AGENTS.md 已存在且无重复标题时追加规则', () => withTempDir('airules-inject-append-', (tmpDir) => {
@@ -87,12 +101,11 @@ it('init-project inject-rules - AGENTS.md 已存在且无重复标题时追加�
   writeFile(referenceFile, '# Node Rules\n\nnode body\n')
 
   const result = runInjectRules(projectRoot, referenceFile)
+  const agentsContent = fs.readFileSync(agentsPath, 'utf8')
 
   assert.equal(result.status, 0, result.stderr)
-  assert.equal(
-    fs.readFileSync(agentsPath, 'utf8'),
-    '# Existing Project Rules\n\nexisting body\n\n# 项目规范\n\n# Node Rules\n\nnode body\n',
-  )
+  assert.equal(agentsContent.startsWith('# Existing Project Rules\n\nexisting body\n\n# 项目规范\n\n# 项目文档知识库\n'), true)
+  assert.match(agentsContent, /# Node Rules\n\nnode body/)
 }))
 
 it('init-project inject-rules - AGENTS.md 标题重复时停止写入并要求 AI 审查', () => withTempDir('airules-inject-duplicate-', (tmpDir) => {
@@ -108,6 +121,52 @@ it('init-project inject-rules - AGENTS.md 标题重复时停止写入并要求 A
   assert.match(result.stderr, /Duplicate AGENTS\.md headings detected/)
   assert.match(result.stderr, /项目规范/)
   assert.equal(fs.readFileSync(agentsPath, 'utf8'), originalContent)
+}))
+
+it('init-project scaffold-docs - 前端项目创建组件文档目录与索引', () => withTempDir('airules-docs-frontend-', (tmpDir) => {
+  const projectRoot = path.join(tmpDir, 'project')
+
+  fs.mkdirSync(projectRoot, { recursive: true })
+
+  const result = runScaffoldDocs(projectRoot, 'frontend')
+
+  assert.equal(result.status, 0, result.stderr)
+  assert.equal(fs.existsSync(path.join(projectRoot, 'docs', 'api', 'index.md')), true)
+  assert.equal(fs.existsSync(path.join(projectRoot, 'docs', 'components', 'index.md')), true)
+  assert.equal(fs.existsSync(path.join(projectRoot, 'docs', 'prds', 'index.md')), true)
+  assert.equal(fs.existsSync(path.join(projectRoot, 'docs', 'test', 'index.md')), true)
+  assert.equal(fs.existsSync(path.join(projectRoot, 'docs', 'map.md')), true)
+  assert.equal(fs.existsSync(path.join(projectRoot, 'docs', 'api', '采购订单.md')), false)
+  assert.match(fs.readFileSync(path.join(projectRoot, 'docs', 'map.md'), 'utf8'), /docs\/components/)
+}))
+
+it('init-project scaffold-docs - 后端项目不创建 components 目录', () => withTempDir('airules-docs-backend-', (tmpDir) => {
+  const projectRoot = path.join(tmpDir, 'project')
+
+  fs.mkdirSync(projectRoot, { recursive: true })
+
+  const result = runScaffoldDocs(projectRoot, 'nestjs')
+
+  assert.equal(result.status, 0, result.stderr)
+  assert.equal(fs.existsSync(path.join(projectRoot, 'docs', 'api', 'index.md')), true)
+  assert.equal(fs.existsSync(path.join(projectRoot, 'docs', 'components')), false)
+  assert.equal(fs.existsSync(path.join(projectRoot, 'docs', 'prds', 'index.md')), true)
+  assert.equal(fs.existsSync(path.join(projectRoot, 'docs', 'test', 'index.md')), true)
+  assert.doesNotMatch(fs.readFileSync(path.join(projectRoot, 'docs', 'map.md'), 'utf8'), /docs\/components/)
+}))
+
+it('init-project scaffold-docs - 已存在索引文件时不覆盖用户内容', () => withTempDir('airules-docs-existing-', (tmpDir) => {
+  const projectRoot = path.join(tmpDir, 'project')
+  const apiIndexPath = path.join(projectRoot, 'docs', 'api', 'index.md')
+  const originalContent = '# Existing API Index\n\nkeep me\n'
+
+  writeFile(apiIndexPath, originalContent)
+
+  const result = runScaffoldDocs(projectRoot, 'frontend')
+
+  assert.equal(result.status, 0, result.stderr)
+  assert.equal(fs.readFileSync(apiIndexPath, 'utf8'), originalContent)
+  assert.equal(fs.existsSync(path.join(projectRoot, 'docs', 'components', 'index.md')), true)
 }))
 
 it('init-project link-claude - 创建 AGENTS.md 到 CLAUDE.md 的托管链接并支持重复执行', () => withTempDir('airules-link-claude-', (tmpDir) => {

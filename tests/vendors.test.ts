@@ -531,8 +531,23 @@ it('vendors 配置 - 使用 OpenAI Playwright 并移除过时技能', () => {
     })),
     [
       {
+        source: 'skills/api-docs',
+        target: 'vendor/skills/api-docs',
+        setup: undefined,
+      },
+      {
+        source: 'skills/components-docs',
+        target: 'vendor/skills/components-docs',
+        setup: undefined,
+      },
+      {
         source: 'skills/init-project',
         target: 'vendor/skills/init-project',
+        setup: undefined,
+      },
+      {
+        source: 'skills/prd-docs',
+        target: 'vendor/skills/prd-docs',
         setup: undefined,
       },
       {
@@ -540,8 +555,13 @@ it('vendors 配置 - 使用 OpenAI Playwright 并移除过时技能', () => {
         target: 'vendor/skills/skill-validation-standard',
         setup: undefined,
       },
+      {
+        source: 'skills/test-docs',
+        target: 'vendor/skills/test-docs',
+        setup: undefined,
+      },
     ],
-    '第一方 skill 默认投影 init-project 与 skill-validation-standard',
+    '第一方 skill 默认投影初始化、校验与项目文档写作技能',
   )
 })
 

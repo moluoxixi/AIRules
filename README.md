@@ -187,6 +187,10 @@ Moluoxixi AIRules supports a growing ecosystem of AI agents through automated pr
 |------|-------------|
 | **init-project** | New-project initialization skill that analyzes project context, injects rules into root `AGENTS.md`, links `CLAUDE.md`, and runs `codegraph init -i` |
 | **skill-validation-standard** | Minimal skill validation standard for generated or modified Claude/Codex skills, covering SKILL.md YAML frontmatter, folder-name matching, and line-count limits |
+| **prd-docs** | Generates or updates business PRDs under `docs/prds/` and maintains docs navigation |
+| **api-docs** | Generates or updates API and integration contracts under `docs/api/` and maintains docs navigation |
+| **components-docs** | Generates or updates frontend component docs under `docs/components/` and maintains docs navigation |
+| **test-docs** | Generates or updates test design and validation docs under `docs/test/` and maintains docs navigation |
 
 > First-party skills may live under nested source folders, but installation flattens them into `vendor/skills/<skill-name>`. First-party rules live in `rules/AGENTS.md`; CodeGraph install commands live in the vendor setup section of `constants/skills.ts`.
 
@@ -210,7 +214,11 @@ Moluoxixi AIRules supports a growing ecosystem of AI agents through automated pr
 │   ├── init-project/
 │   │   ├── references/
 │   │   └── scripts/
-│   └── skill-validation-standard/
+│   ├── skill-validation-standard/
+│   ├── api-docs/
+│   ├── components-docs/
+│   ├── prd-docs/
+│   └── test-docs/
 ├── vendor/
 │   ├── repos/               # Cloned third-party source repos
 │   └── skills/              # Flattened extracted skills

@@ -187,8 +187,12 @@ export const vendors: VendorsConfig = [
         kind: 'skills',
         sourceBaseDir: 'skills',
         skills: [
+          'api-docs',
+          'components-docs',
           'init-project',
+          'prd-docs',
           'skill-validation-standard',
+          'test-docs',
         ],
       },
     ],

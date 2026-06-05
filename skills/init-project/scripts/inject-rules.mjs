@@ -11,11 +11,16 @@ if (!projectRootArg) {
 
 const skillRoot = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..')
 const baseReferencePath = path.join(skillRoot, 'references', 'airules-base.md')
+const docsReferencePath = path.join(skillRoot, 'references', 'project-docs-standard.md')
 const normalizedBaseReferencePath = path.resolve(baseReferencePath)
+const normalizedDocsReferencePath = path.resolve(docsReferencePath)
 const extraReferencePaths = referenceArgs
   .map(referencePath => path.resolve(referencePath))
-  .filter(referencePath => referencePath !== normalizedBaseReferencePath)
-const referencePaths = [normalizedBaseReferencePath, ...extraReferencePaths]
+  .filter(referencePath =>
+    referencePath !== normalizedBaseReferencePath
+    && referencePath !== normalizedDocsReferencePath,
+  )
+const referencePaths = [normalizedBaseReferencePath, normalizedDocsReferencePath, ...extraReferencePaths]
 
 const projectRoot = path.resolve(projectRootArg)
 const agentsPath = path.join(projectRoot, 'AGENTS.md')

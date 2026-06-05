@@ -11,6 +11,14 @@ skills/*
 !skills/init-project/**
 !skills/skill-validation-standard/
 !skills/skill-validation-standard/**
+!skills/api-docs/
+!skills/api-docs/**
+!skills/components-docs/
+!skills/components-docs/**
+!skills/prd-docs/
+!skills/prd-docs/**
+!skills/test-docs/
+!skills/test-docs/**
 
 # 项目
 node_modules
