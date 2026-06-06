@@ -14,12 +14,13 @@ if (!existsSync(projectRoot) || !statSync(projectRoot).isDirectory()) {
   throw new Error(`Project root must be an existing directory: ${projectRoot}`)
 }
 
-const stackOrder = ['frontend', 'node', 'nestjs', 'java']
+const stackOrder = ['frontend', 'component-library', 'node', 'nestjs', 'java']
 const stackReferences = {
-  frontend: 'frontend-code-standard.md',
-  node: 'node-code-standard.md',
-  nestjs: 'nestjs-code-standard.md',
-  java: 'java-code-standard.md',
+  'frontend': ['frontend-docs-standard.md', 'frontend-code-standard.md'],
+  'component-library': ['frontend-docs-standard.md', 'frontend-code-standard.md'],
+  'node': ['backend-docs-standard.md', 'node-code-standard.md'],
+  'nestjs': ['backend-docs-standard.md', 'nestjs-code-standard.md'],
+  'java': ['backend-docs-standard.md', 'java-code-standard.md'],
 }
 
 const ignoredDirs = new Set([
@@ -71,6 +72,14 @@ const frontendDeps = new Set([
   'vue',
 ])
 
+const componentLibraryPeerDeps = new Set([
+  '@angular/core',
+  'react',
+  'solid-js',
+  'svelte',
+  'vue',
+])
+
 const nodeBackendDeps = new Set([
   '@apollo/server',
   '@hapi/hapi',
@@ -119,6 +128,13 @@ const frontendEntryFiles = [
   'src/main.vue',
 ]
 
+const componentLibraryEntryFiles = [
+  'src/index.js',
+  'src/index.mjs',
+  'src/index.ts',
+  'src/index.tsx',
+]
+
 const nodeEntryFiles = [
   'src/server.js',
   'src/server.mjs',
@@ -140,7 +156,7 @@ const javaEntryFiles = [
 const projectRoots = discoverProjectRoots(projectRoot)
 const analyses = projectRoots.map(root => analyzeRoot(root))
 const selectedStacks = selectStacks(analyses)
-const references = selectedStacks.map(stack => stackReferences[stack])
+const references = [...new Set(selectedStacks.flatMap(stack => stackReferences[stack]))]
 const evidence = analyses.flatMap(analysis => analysis.evidence)
 
 const output = {
@@ -188,10 +204,11 @@ function analyzeRoot(root) {
   const analysis = {
     root,
     scores: {
-      frontend: 0,
-      node: 0,
-      nestjs: 0,
-      java: 0,
+      'frontend': 0,
+      'component-library': 0,
+      'node': 0,
+      'nestjs': 0,
+      'java': 0,
     },
     evidence: [],
   }
@@ -213,6 +230,7 @@ function analyzePackageJson(root, analysis) {
   const packageJson = JSON.parse(readFileSync(packagePath, 'utf8'))
   const dependencies = collectDependencyNames(packageJson)
   const source = relativeSource(root, 'package.json')
+  const peerDependencies = new Set(Object.keys(packageJson.peerDependencies ?? {}))
 
   for (const dependency of dependencies) {
     if (frontendDeps.has(dependency)) {
@@ -231,6 +249,14 @@ function analyzePackageJson(root, analysis) {
     }
   }
 
+  if (hasPublicPackageEntry(packageJson) && hasFrameworkPeerDependency(peerDependencies)) {
+    addEvidence(analysis, 'component-library', source, 'package exposes public entry and framework peerDependency', 10)
+  }
+
+  if (isComponentLibraryPackageName(packageJson.name)) {
+    addEvidence(analysis, 'component-library', source, `package name "${packageJson.name}" indicates component library`, 3)
+  }
+
   for (const [scriptName, scriptCommand] of Object.entries(packageJson.scripts ?? {})) {
     const sourceSignal = `script "${scriptName}" contains "${scriptCommand}"`
 
@@ -241,6 +267,10 @@ function analyzePackageJson(root, analysis) {
     if (scriptCommand.includes('nest start') || scriptCommand.includes('nest build')) {
       addEvidence(analysis, 'nestjs', source, sourceSignal, 8)
     }
+
+    if (scriptCommand.includes('storybook')) {
+      addEvidence(analysis, 'component-library', source, sourceSignal, 4)
+    }
   }
 }
 
@@ -250,8 +280,14 @@ function analyzeConfigFiles(root, analysis) {
   }
 
   for (const configFile of frontendConfigFiles) {
-    if (existsSync(path.join(root, configFile))) {
+    const configPath = path.join(root, configFile)
+    if (existsSync(configPath)) {
       addEvidence(analysis, 'frontend', relativeSource(root, configFile), `${configFile} exists`, 10)
+
+      const content = readFileSync(configPath, 'utf8')
+      if (hasViteLibraryBuild(content)) {
+        addEvidence(analysis, 'component-library', relativeSource(root, configFile), `${configFile} contains build.lib`, 10)
+      }
     }
   }
 }
@@ -260,6 +296,13 @@ function analyzeEntrypoints(root, analysis) {
   for (const entryFile of frontendEntryFiles) {
     if (existsSync(path.join(root, entryFile))) {
       addEvidence(analysis, 'frontend', relativeSource(root, entryFile), `${entryFile} exists`, 5)
+    }
+  }
+
+  for (const entryFile of componentLibraryEntryFiles) {
+    const entryPath = path.join(root, entryFile)
+    if (existsSync(entryPath) && readFileSync(entryPath, 'utf8').includes('export ')) {
+      addEvidence(analysis, 'component-library', relativeSource(root, entryFile), `${entryFile} exports public API`, 5)
     }
   }
 
@@ -335,6 +378,10 @@ function selectStacks(analyses) {
       selected.add('frontend')
     }
 
+    if (analysis.scores['component-library'] >= 10) {
+      selected.add('component-library')
+    }
+
     if (analysis.scores.nestjs >= 8) {
       selected.add('nestjs')
     }
@@ -349,6 +396,33 @@ function selectStacks(analyses) {
   }
 
   return stackOrder.filter(stack => selected.has(stack))
+}
+
+function hasPublicPackageEntry(packageJson) {
+  return Boolean(packageJson.exports ?? packageJson.main ?? packageJson.module ?? packageJson.types)
+}
+
+function hasFrameworkPeerDependency(peerDependencies) {
+  return [...componentLibraryPeerDeps].some(dependency => peerDependencies.has(dependency))
+}
+
+function hasViteLibraryBuild(content) {
+  return /\bbuild\s*:\s*\{[\s\S]*?\blib\s*:/.test(content)
+}
+
+function isComponentLibraryPackageName(packageName) {
+  if (typeof packageName !== 'string') {
+    return false
+  }
+
+  const normalizedName = packageName.toLowerCase().replace(/^@[^/]+\//, '')
+  const segments = normalizedName.split(/[._/-]+/)
+
+  return (
+    segments.some(segment => ['component', 'components', 'ui'].includes(segment))
+    || normalizedName.includes('design-system')
+    || normalizedName.includes('design_system')
+  )
 }
 
 function addEvidence(analysis, stack, source, signal, weight) {

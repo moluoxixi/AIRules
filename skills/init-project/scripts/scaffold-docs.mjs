@@ -16,11 +16,10 @@ if (!existsSync(projectRoot) || !statSync(projectRoot).isDirectory()) {
 
 const stacks = new Set(stackArgs)
 const docsRoot = path.join(projectRoot, 'docs')
-const hadComponentsDocs = existingDirectory(path.join(docsRoot, 'components'))
 const docsInitialized = hasAirulesDocs(docsRoot)
 archiveExistingDocs(docsRoot, collectArchiveCandidates(docsRoot, docsInitialized))
 
-const includeComponents = stacks.has('frontend') || hadComponentsDocs || existingDirectory(path.join(docsRoot, 'other', 'imported', 'components'))
+const includeComponents = stacks.has('component-library')
 const sections = [
   {
     name: 'architecture',
@@ -57,7 +56,7 @@ const sections = [
   {
     name: 'other',
     title: '其它文档索引',
-    description: '登记初始化前已存在但尚未归入架构、接口、需求、组件或测试目录的项目文档。',
+    description: '登记初始化前已存在但尚未归入架构、接口、需求、组件库或测试目录的项目文档。',
     columns: '| 文档 | 类型 | 建议处理 | 状态 |\n|---|---|---|---|',
   },
 ].filter(Boolean)

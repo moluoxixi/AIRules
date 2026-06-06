@@ -95,6 +95,20 @@ function runScaffoldDocs(projectRoot: string, ...stacks: string[]) {
   )
 }
 
+function runDetectStack(projectRoot: string) {
+  return spawnSync(
+    process.execPath,
+    [
+      path.join(process.cwd(), 'skills', 'init-project', 'scripts', 'detect-stack.mjs'),
+      projectRoot,
+    ],
+    {
+      cwd: process.cwd(),
+      encoding: 'utf8',
+    },
+  )
+}
+
 function isManagedClaudeLink(agentsPath: string, claudePath: string): boolean {
   const claudeStats = fs.lstatSync(claudePath)
 
@@ -158,7 +172,138 @@ it('init-project inject-rules - AGENTS.md 标题重复时停止写入并要求 A
   assert.equal(fs.readFileSync(agentsPath, 'utf8'), originalContent)
 }))
 
-it('init-project scaffold-docs - 前端项目创建组件库文档目录与索引', () => withTempDir('airules-docs-frontend-', (tmpDir) => {
+it('init-project detect-stack - 普通前端项目不识别为组件库', () => withTempDir('airules-detect-frontend-', (tmpDir) => {
+  const projectRoot = path.join(tmpDir, 'project')
+
+  writeFile(path.join(projectRoot, 'package.json'), JSON.stringify({
+    dependencies: {
+      '@vitejs/plugin-vue': '^6.0.0',
+      'vite': '^7.0.0',
+      'vue': '^3.5.0',
+    },
+    scripts: {
+      dev: 'vite',
+    },
+  }))
+  writeFile(path.join(projectRoot, 'index.html'), '<div id="app"></div>\n')
+
+  const result = runDetectStack(projectRoot)
+  const output = JSON.parse(result.stdout)
+
+  assert.equal(result.status, 0, result.stderr)
+  assert.deepEqual(output.stacks, ['frontend', 'vue'])
+  assert.deepEqual(output.references, ['frontend/docs.md', 'frontend/code.md', 'frontend/vue.md'])
+}))
+
+it('init-project detect-stack - React 前端项目不注入 Vue 规范', () => withTempDir('airules-detect-react-frontend-', (tmpDir) => {
+  const projectRoot = path.join(tmpDir, 'project')
+
+  writeFile(path.join(projectRoot, 'package.json'), JSON.stringify({
+    dependencies: {
+      '@vitejs/plugin-react': '^5.0.0',
+      'react': '^19.0.0',
+      'react-dom': '^19.0.0',
+      'vite': '^7.0.0',
+    },
+    scripts: {
+      dev: 'vite',
+    },
+  }))
+  writeFile(path.join(projectRoot, 'index.html'), '<div id="root"></div>\n')
+
+  const result = runDetectStack(projectRoot)
+  const output = JSON.parse(result.stdout)
+
+  assert.equal(result.status, 0, result.stderr)
+  assert.deepEqual(output.stacks, ['frontend'])
+  assert.deepEqual(output.references, ['frontend/docs.md', 'frontend/code.md'])
+}))
+
+it('init-project detect-stack - 普通前端项目包含 lib 路径时不误判为组件库', () => withTempDir('airules-detect-frontend-lib-alias-', (tmpDir) => {
+  const projectRoot = path.join(tmpDir, 'project')
+
+  writeFile(path.join(projectRoot, 'package.json'), JSON.stringify({
+    dependencies: {
+      '@vitejs/plugin-vue': '^6.0.0',
+      'vite': '^7.0.0',
+      'vue': '^3.5.0',
+    },
+    scripts: {
+      build: 'vite build',
+      dev: 'vite',
+    },
+  }))
+  writeFile(
+    path.join(projectRoot, 'vite.config.ts'),
+    'export default { build: { rollupOptions: {} }, resolve: { alias: { "@lib": "/src/lib" } } }\n',
+  )
+  writeFile(path.join(projectRoot, 'src', 'index.ts'), 'export { request } from "./lib/request"\n')
+
+  const result = runDetectStack(projectRoot)
+  const output = JSON.parse(result.stdout)
+
+  assert.equal(result.status, 0, result.stderr)
+  assert.deepEqual(output.stacks, ['frontend', 'vue'])
+  assert.deepEqual(output.references, ['frontend/docs.md', 'frontend/code.md', 'frontend/vue.md'])
+}))
+
+it('init-project detect-stack - 组件库项目识别为 component-library', () => withTempDir('airules-detect-component-library-', (tmpDir) => {
+  const projectRoot = path.join(tmpDir, 'project')
+
+  writeFile(path.join(projectRoot, 'package.json'), JSON.stringify({
+    name: '@demo/ui-components',
+    exports: {
+      '.': {
+        import: './dist/index.js',
+        types: './dist/index.d.ts',
+      },
+    },
+    peerDependencies: {
+      vue: '^3.5.0',
+    },
+    devDependencies: {
+      '@vitejs/plugin-vue': '^6.0.0',
+      'vite': '^7.0.0',
+      'vue': '^3.5.0',
+    },
+    scripts: {
+      build: 'vite build',
+    },
+  }))
+  writeFile(path.join(projectRoot, 'vite.config.ts'), 'export default { build: { lib: { entry: "src/index.ts" } } }\n')
+  writeFile(path.join(projectRoot, 'src', 'index.ts'), 'export { default as DemoButton } from "./components/DemoButton.vue"\n')
+
+  const result = runDetectStack(projectRoot)
+  const output = JSON.parse(result.stdout)
+
+  assert.equal(result.status, 0, result.stderr)
+  assert.deepEqual(output.stacks, ['frontend', 'component-library', 'vue'])
+  assert.deepEqual(output.references, ['frontend/docs.md', 'frontend/code.md', 'frontend/vue.md'])
+}))
+
+it('init-project detect-stack - NestJS 项目注入后端文档规范', () => withTempDir('airules-detect-nestjs-', (tmpDir) => {
+  const projectRoot = path.join(tmpDir, 'project')
+
+  writeFile(path.join(projectRoot, 'package.json'), JSON.stringify({
+    dependencies: {
+      '@nestjs/common': '^11.0.0',
+      '@nestjs/core': '^11.0.0',
+    },
+    scripts: {
+      build: 'nest build',
+    },
+  }))
+  writeFile(path.join(projectRoot, 'src', 'main.ts'), 'import { NestFactory } from "@nestjs/core"\n')
+
+  const result = runDetectStack(projectRoot)
+  const output = JSON.parse(result.stdout)
+
+  assert.equal(result.status, 0, result.stderr)
+  assert.deepEqual(output.stacks, ['nestjs'])
+  assert.deepEqual(output.references, ['backend/docs.md', 'backend/nestjs.md'])
+}))
+
+it('init-project scaffold-docs - 普通前端项目不创建组件库文档目录', () => withTempDir('airules-docs-frontend-', (tmpDir) => {
   const projectRoot = path.join(tmpDir, 'project')
 
   fs.mkdirSync(projectRoot, { recursive: true })
@@ -171,7 +316,7 @@ it('init-project scaffold-docs - 前端项目创建组件库文档目录与索�
   assert.equal(fs.existsSync(path.join(projectRoot, 'docs', 'architecture', 'decisions', 'index.md')), true)
   assert.equal(fs.existsSync(path.join(projectRoot, 'docs', 'api', 'index.md')), true)
   assert.equal(fs.existsSync(path.join(projectRoot, 'docs', 'api', '_protocol.md')), true)
-  assert.equal(fs.existsSync(path.join(projectRoot, 'docs', 'components', 'index.md')), true)
+  assert.equal(fs.existsSync(path.join(projectRoot, 'docs', 'components')), false)
   assert.equal(fs.existsSync(path.join(projectRoot, 'docs', 'other', 'index.md')), true)
   assert.equal(fs.existsSync(path.join(projectRoot, 'docs', 'prds', 'index.md')), true)
   assert.equal(fs.existsSync(path.join(projectRoot, 'docs', 'test', 'index.md')), true)
@@ -180,8 +325,21 @@ it('init-project scaffold-docs - 前端项目创建组件库文档目录与索�
   assert.match(fs.readFileSync(path.join(projectRoot, 'docs', 'api', '_protocol.md'), 'utf8'), /错误响应/)
   assert.match(fs.readFileSync(path.join(projectRoot, 'docs', 'architecture', 'overview.md'), 'utf8'), /模块边界/)
   assert.match(fs.readFileSync(path.join(projectRoot, 'docs', 'map.md'), 'utf8'), /docs\/architecture/)
-  assert.match(fs.readFileSync(path.join(projectRoot, 'docs', 'map.md'), 'utf8'), /docs\/components/)
+  assert.doesNotMatch(fs.readFileSync(path.join(projectRoot, 'docs', 'map.md'), 'utf8'), /docs\/components/)
   assert.match(fs.readFileSync(path.join(projectRoot, 'docs', 'map.md'), 'utf8'), /docs\/other/)
+}))
+
+it('init-project scaffold-docs - 组件库项目创建 components 文档目录与索引', () => withTempDir('airules-docs-component-library-', (tmpDir) => {
+  const projectRoot = path.join(tmpDir, 'project')
+
+  fs.mkdirSync(projectRoot, { recursive: true })
+
+  const result = runScaffoldDocs(projectRoot, 'frontend', 'component-library')
+
+  assert.equal(result.status, 0, result.stderr)
+  assert.equal(fs.existsSync(path.join(projectRoot, 'docs', 'components', 'index.md')), true)
+  assert.match(fs.readFileSync(path.join(projectRoot, 'docs', 'components', 'index.md'), 'utf8'), /# 组件库文档索引/)
+  assert.match(fs.readFileSync(path.join(projectRoot, 'docs', 'map.md'), 'utf8'), /docs\/components/)
 }))
 
 it('init-project scaffold-docs - 后端项目不创建 components 目录', () => withTempDir('airules-docs-backend-', (tmpDir) => {
@@ -211,7 +369,7 @@ it('init-project scaffold-docs - 标准模板文件不生成末尾空行', () =>
 
   fs.mkdirSync(projectRoot, { recursive: true })
 
-  const result = runScaffoldDocs(projectRoot, 'frontend')
+  const result = runScaffoldDocs(projectRoot, 'frontend', 'component-library')
 
   assert.equal(result.status, 0, result.stderr)
   for (const relativePath of [
@@ -230,7 +388,7 @@ it('init-project scaffold-docs - 标准模板文件不生成末尾空行', () =>
   }
 }))
 
-it('init-project scaffold-docs - 后端项目已有 components 目录时归档旧文档并重建标准入口', () => withTempDir('airules-docs-existing-components-', (tmpDir) => {
+it('init-project scaffold-docs - 非组件库项目已有 components 目录时仅归档旧文档', () => withTempDir('airules-docs-existing-components-', (tmpDir) => {
   const projectRoot = path.join(tmpDir, 'project')
   const componentsIndexPath = path.join(projectRoot, 'docs', 'components', 'index.md')
   const importedComponentsIndexPath = path.join(projectRoot, 'docs', 'other', 'imported', 'components', 'index.md')
@@ -243,8 +401,8 @@ it('init-project scaffold-docs - 后端项目已有 components 目录时归档�
 
   assert.equal(result.status, 0, result.stderr)
   assert.equal(fs.readFileSync(importedComponentsIndexPath, 'utf8'), originalComponentsIndex)
-  assert.match(fs.readFileSync(componentsIndexPath, 'utf8'), /# 组件库文档索引/)
-  assert.match(mapContent, /docs\/components/)
+  assert.equal(fs.existsSync(componentsIndexPath), false)
+  assert.doesNotMatch(mapContent, /docs\/components/)
 }))
 
 it('init-project scaffold-docs - 已有未归类 docs 时移动到 other imported 并登记索引', () => withTempDir('airules-docs-existing-other-', (tmpDir) => {
@@ -297,7 +455,7 @@ it('init-project scaffold-docs - 首次接入已有 map 时归档旧 map 并生�
   assert.equal(result.status, 0, result.stderr)
   assert.equal(fs.readFileSync(path.join(projectRoot, 'docs', 'other', 'imported', 'map.md'), 'utf8'), originalMap)
   assert.match(mapContent, /# 项目文档地图/)
-  assert.match(mapContent, /components\/index\.md/)
+  assert.doesNotMatch(mapContent, /components\/index\.md/)
   assert.match(mapContent, /other\/index\.md/)
 }))
 
@@ -316,7 +474,7 @@ it('init-project scaffold-docs - 已初始化项目重复执行时不覆盖用�
   assert.equal(fs.readFileSync(apiIndexPath, 'utf8'), originalContent)
   assert.equal(fs.existsSync(path.join(projectRoot, 'docs', 'api', '_protocol.md')), true)
   assert.equal(fs.existsSync(path.join(projectRoot, 'docs', 'architecture', 'overview.md')), true)
-  assert.equal(fs.existsSync(path.join(projectRoot, 'docs', 'components', 'index.md')), true)
+  assert.equal(fs.existsSync(path.join(projectRoot, 'docs', 'components')), false)
   assert.equal(fs.existsSync(path.join(projectRoot, 'docs', 'other', 'index.md')), true)
 }))
 
