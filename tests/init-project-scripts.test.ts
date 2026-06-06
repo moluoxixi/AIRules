@@ -304,6 +304,139 @@ it('init-project detect-stack - 组件库项目识别为 component-library', () 
   assert.deepEqual(output.references, ['frontend/docs.md', 'frontend/code.md', 'frontend/vue.md'])
 }))
 
+it('init-project detect-stack - monorepo 子包组件库识别为 component-library', () => withTempDir('airules-detect-monorepo-component-library-', (tmpDir) => {
+  const projectRoot = path.join(tmpDir, 'project')
+  const packageRoot = path.join(projectRoot, 'packages', 'button')
+
+  writeFile(path.join(projectRoot, 'package.json'), JSON.stringify({
+    private: true,
+    workspaces: [
+      'packages/*',
+    ],
+  }))
+  writeFile(path.join(projectRoot, 'pnpm-workspace.yaml'), 'packages:\n  - "packages/*"\n')
+  writeFile(path.join(packageRoot, 'package.json'), JSON.stringify({
+    name: '@demo/button',
+    peerDependencies: {
+      vue: '^3.5.0',
+    },
+  }))
+  writeFile(path.join(packageRoot, 'src', 'index.ts'), 'export { default as DemoButton } from "./DemoButton.vue"\n')
+
+  const result = runDetectStack(projectRoot)
+  const output = JSON.parse(result.stdout)
+
+  assert.equal(result.status, 0, result.stderr)
+  assert.deepEqual(output.stacks, ['frontend', 'component-library', 'vue'])
+  assert.match(output.projectRoots.join('\n'), /packages\/button/)
+  assert.match(JSON.stringify(output.evidence), /workspace package exposes public source entry and framework peerDependency/)
+}))
+
+it('init-project detect-stack - monorepo 同时识别前端后端和组件库子项目', () => withTempDir('airules-detect-mixed-monorepo-', (tmpDir) => {
+  const projectRoot = path.join(tmpDir, 'project')
+  const webRoot = path.join(projectRoot, 'apps', 'web')
+  const apiRoot = path.join(projectRoot, 'apps', 'api')
+  const uiRoot = path.join(projectRoot, 'packages', 'ui')
+
+  writeFile(path.join(projectRoot, 'package.json'), JSON.stringify({
+    private: true,
+    workspaces: [
+      'apps/*',
+      'packages/*',
+    ],
+  }))
+  writeFile(path.join(webRoot, 'package.json'), JSON.stringify({
+    dependencies: {
+      '@vitejs/plugin-vue': '^6.0.0',
+      'vite': '^7.0.0',
+      'vue': '^3.5.0',
+    },
+    scripts: {
+      dev: 'vite',
+    },
+  }))
+  writeFile(path.join(webRoot, 'index.html'), '<div id="app"></div>\n')
+  writeFile(path.join(apiRoot, 'package.json'), JSON.stringify({
+    dependencies: {
+      '@nestjs/common': '^11.0.0',
+      '@nestjs/core': '^11.0.0',
+    },
+    scripts: {
+      build: 'nest build',
+    },
+  }))
+  writeFile(path.join(apiRoot, 'src', 'main.ts'), 'import { NestFactory } from "@nestjs/core"\n')
+  writeFile(path.join(uiRoot, 'package.json'), JSON.stringify({
+    name: '@demo/ui',
+    peerDependencies: {
+      vue: '^3.5.0',
+    },
+  }))
+  writeFile(path.join(uiRoot, 'src', 'index.ts'), 'export { default as UiButton } from "./UiButton.vue"\n')
+
+  const result = runDetectStack(projectRoot)
+  const output = JSON.parse(result.stdout)
+  const projectStacks = Object.fromEntries(output.projects.map((project: { root: string, stacks: string[] }) => [project.root, project.stacks]))
+
+  assert.equal(result.status, 0, result.stderr)
+  assert.deepEqual(output.stacks, ['frontend', 'component-library', 'vue', 'nestjs'])
+  assert.deepEqual(output.references, ['frontend/docs.md', 'frontend/code.md', 'frontend/vue.md', 'backend/docs.md', 'backend/nestjs.md'])
+  assert.deepEqual(projectStacks['apps/web'], ['frontend', 'vue'])
+  assert.deepEqual(projectStacks['apps/api'], ['nestjs'])
+  assert.deepEqual(projectStacks['packages/ui'], ['frontend', 'component-library', 'vue'])
+}))
+
+it('init-project detect-stack - package.json workspaces 显式发现深层组件库子项目', () => withTempDir('airules-detect-package-workspaces-', (tmpDir) => {
+  const projectRoot = path.join(tmpDir, 'project')
+  const uiRoot = path.join(projectRoot, 'domains', 'commerce', 'frontend', 'packages', 'ui')
+
+  writeFile(path.join(projectRoot, 'package.json'), JSON.stringify({
+    private: true,
+    workspaces: [
+      'domains/*/frontend/packages/*',
+    ],
+  }))
+  writeFile(path.join(uiRoot, 'package.json'), JSON.stringify({
+    name: '@demo/ui',
+    peerDependencies: {
+      vue: '^3.5.0',
+    },
+  }))
+  writeFile(path.join(uiRoot, 'src', 'index.ts'), 'export { default as UiButton } from "./UiButton.vue"\n')
+
+  const result = runDetectStack(projectRoot)
+  const output = JSON.parse(result.stdout)
+  const projectStacks = Object.fromEntries(output.projects.map((project: { root: string, stacks: string[] }) => [project.root, project.stacks]))
+
+  assert.equal(result.status, 0, result.stderr)
+  assert.equal(output.monorepo, true)
+  assert.match(output.workspacePatterns.join('\n'), /domains\/\*\/frontend\/packages\/\*/)
+  assert.deepEqual(projectStacks['domains/commerce/frontend/packages/ui'], ['frontend', 'component-library', 'vue'])
+}))
+
+it('init-project detect-stack - pnpm-workspace 显式发现深层 NestJS 子项目', () => withTempDir('airules-detect-pnpm-workspace-', (tmpDir) => {
+  const projectRoot = path.join(tmpDir, 'project')
+  const apiRoot = path.join(projectRoot, 'platform', 'domains', 'purchase', 'services', 'api')
+
+  writeFile(path.join(projectRoot, 'pnpm-workspace.yaml'), 'packages:\n  - "platform/*/*/*/*"\n')
+  writeFile(path.join(apiRoot, 'package.json'), JSON.stringify({
+    dependencies: {
+      '@nestjs/common': '^11.0.0',
+      '@nestjs/core': '^11.0.0',
+    },
+  }))
+  writeFile(path.join(apiRoot, 'src', 'main.ts'), 'import { NestFactory } from "@nestjs/core"\n')
+
+  const result = runDetectStack(projectRoot)
+  const output = JSON.parse(result.stdout)
+  const projectStacks = Object.fromEntries(output.projects.map((project: { root: string, stacks: string[] }) => [project.root, project.stacks]))
+
+  assert.equal(result.status, 0, result.stderr)
+  assert.equal(output.monorepo, true)
+  assert.match(output.workspacePatterns.join('\n'), /platform\/\*\/\*\/\*\/\*/)
+  assert.deepEqual(projectStacks['platform/domains/purchase/services/api'], ['nestjs'])
+}))
+
 it('init-project detect-stack - NestJS 项目注入后端文档规范', () => withTempDir('airules-detect-nestjs-', (tmpDir) => {
   const projectRoot = path.join(tmpDir, 'project')
 

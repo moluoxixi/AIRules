@@ -48,6 +48,11 @@ const markerFiles = new Set([
   'settings.gradle.kts',
   'nest-cli.json',
   'angular.json',
+  'pnpm-workspace.yaml',
+  'lerna.json',
+  'rush.json',
+  'nx.json',
+  'turbo.json',
 ])
 
 const markerPrefixes = [
@@ -166,15 +171,25 @@ const javaEntryFiles = [
   'src/main/kotlin',
 ]
 
-const projectRoots = discoverProjectRoots(projectRoot)
+const workspacePatterns = collectWorkspacePatterns(projectRoot)
+const projectRoots = discoverProjectRoots(projectRoot, workspacePatterns)
 const analyses = projectRoots.map(root => analyzeRoot(root))
 const selectedStacks = selectStacks(analyses)
+const projects = analyses
+  .map(analysis => ({
+    root: normalizePath(path.relative(projectRoot, analysis.root) || '.'),
+    stacks: selectStacksForAnalysis(analysis),
+  }))
+  .filter(project => project.stacks.length > 0)
 const references = [...new Set(selectedStacks.flatMap(stack => stackReferences[stack]))]
 const evidence = analyses.flatMap(analysis => analysis.evidence)
 
 const output = {
   projectRoot: normalizePath(projectRoot),
+  monorepo: workspacePatterns.length > 0 || projectRoots.length > 1,
+  workspacePatterns: workspacePatterns.map(entry => entry.pattern),
   projectRoots: projectRoots.map(root => normalizePath(path.relative(projectRoot, root) || '.')),
+  projects,
   stacks: selectedStacks,
   references,
   evidence,
@@ -182,8 +197,140 @@ const output = {
 
 console.log(JSON.stringify(output, null, 2))
 
-function discoverProjectRoots(root) {
+function collectWorkspacePatterns(root) {
+  const patterns = [
+    ...collectPackageWorkspacePatterns(root),
+    ...collectPnpmWorkspacePatterns(root),
+    ...collectJsonArrayWorkspacePatterns(root, 'lerna.json', 'packages'),
+    ...collectRushWorkspacePatterns(root),
+  ]
+  const seen = new Set()
+
+  return patterns.filter((entry) => {
+    const key = entry.pattern
+    if (seen.has(key)) {
+      return false
+    }
+
+    seen.add(key)
+    return true
+  })
+}
+
+function collectPackageWorkspacePatterns(root) {
+  const packagePath = path.join(root, 'package.json')
+  if (!existsSync(packagePath)) {
+    return []
+  }
+
+  const packageJson = JSON.parse(readFileSync(packagePath, 'utf8'))
+  const workspaces = packageJson.workspaces
+  if (Array.isArray(workspaces)) {
+    return workspacePatternEntries('package.json#workspaces', workspaces)
+  }
+
+  if (Array.isArray(workspaces?.packages)) {
+    return workspacePatternEntries('package.json#workspaces.packages', workspaces.packages)
+  }
+
+  return []
+}
+
+function collectPnpmWorkspacePatterns(root) {
+  const workspacePath = path.join(root, 'pnpm-workspace.yaml')
+  if (!existsSync(workspacePath)) {
+    return []
+  }
+
+  const patterns = []
+  let inPackages = false
+  for (const line of readFileSync(workspacePath, 'utf8').split(/\r?\n/)) {
+    if (/^\s*packages\s*:/.test(line)) {
+      inPackages = true
+      continue
+    }
+
+    if (!inPackages) {
+      continue
+    }
+
+    const listItem = readYamlListItem(line)
+    if (listItem !== null) {
+      patterns.push(listItem)
+      continue
+    }
+
+    if (/^\S/.test(line)) {
+      inPackages = false
+    }
+  }
+
+  return workspacePatternEntries('pnpm-workspace.yaml#packages', patterns)
+}
+
+function readYamlListItem(line) {
+  const withoutIndent = line.trimStart()
+  if (!withoutIndent.startsWith('-')) {
+    return null
+  }
+
+  const value = withoutIndent.slice(1).trim()
+  if (
+    (value.startsWith('"') && value.endsWith('"'))
+    || (value.startsWith('\'') && value.endsWith('\''))
+  ) {
+    return value.slice(1, -1)
+  }
+
+  return value
+}
+
+function collectJsonArrayWorkspacePatterns(root, fileName, propertyName) {
+  const filePath = path.join(root, fileName)
+  if (!existsSync(filePath)) {
+    return []
+  }
+
+  const content = JSON.parse(readFileSync(filePath, 'utf8'))
+  const patterns = content[propertyName]
+
+  return Array.isArray(patterns) ? workspacePatternEntries(`${fileName}#${propertyName}`, patterns) : []
+}
+
+function collectRushWorkspacePatterns(root) {
+  const rushPath = path.join(root, 'rush.json')
+  if (!existsSync(rushPath)) {
+    return []
+  }
+
+  const rushJson = JSON.parse(readFileSync(rushPath, 'utf8'))
+  const patterns = Array.isArray(rushJson.projects)
+    ? rushJson.projects.map(project => project.projectFolder)
+    : []
+
+  return workspacePatternEntries('rush.json#projects.projectFolder', patterns)
+}
+
+function workspacePatternEntries(source, patterns) {
+  return patterns
+    .filter(pattern => typeof pattern === 'string' && !pattern.startsWith('!'))
+    .map(pattern => ({
+      source,
+      pattern: normalizeWorkspacePattern(pattern),
+    }))
+    .filter(entry => entry.pattern.length > 0)
+}
+
+function normalizeWorkspacePattern(pattern) {
+  return pattern.replace(/\\/g, '/').replace(/\/+$/g, '')
+}
+
+function discoverProjectRoots(root, workspacePatterns) {
   const roots = new Set()
+
+  for (const workspaceRoot of discoverWorkspaceProjectRoots(root, workspacePatterns)) {
+    roots.add(workspaceRoot)
+  }
 
   walk(root, 0)
 
@@ -211,6 +358,81 @@ function discoverProjectRoots(root) {
       walk(path.join(currentDir, entry.name), depth + 1)
     }
   }
+}
+
+function discoverWorkspaceProjectRoots(root, workspacePatterns) {
+  return workspacePatterns
+    .flatMap(entry => resolveWorkspacePattern(root, entry.pattern))
+    .filter(isProjectRoot)
+}
+
+function resolveWorkspacePattern(root, pattern) {
+  const segments = pattern.split('/').filter(Boolean)
+
+  return expandWorkspacePattern(root, segments)
+}
+
+function expandWorkspacePattern(currentDir, segments) {
+  if (segments.length === 0) {
+    return [currentDir]
+  }
+
+  const [segment, ...remainingSegments] = segments
+  if (segment === '**') {
+    return [
+      ...expandWorkspacePattern(currentDir, remainingSegments),
+      ...listSubdirectories(currentDir).flatMap(subdirectory => expandWorkspacePattern(subdirectory, segments)),
+    ]
+  }
+
+  if (isGlobSegment(segment)) {
+    const matcher = globSegmentMatcher(segment)
+
+    return listSubdirectories(currentDir)
+      .filter(subdirectory => matcher.test(path.basename(subdirectory)))
+      .flatMap(subdirectory => expandWorkspacePattern(subdirectory, remainingSegments))
+  }
+
+  const nextDir = path.join(currentDir, segment)
+
+  return existingDirectory(nextDir) ? expandWorkspacePattern(nextDir, remainingSegments) : []
+}
+
+function listSubdirectories(dirPath) {
+  if (!existingDirectory(dirPath)) {
+    return []
+  }
+
+  return readdirSync(dirPath, { withFileTypes: true })
+    .filter(entry => entry.isDirectory())
+    .filter(entry => !ignoredDirs.has(entry.name) && !entry.name.startsWith('.'))
+    .map(entry => path.join(dirPath, entry.name))
+}
+
+function existingDirectory(dirPath) {
+  return existsSync(dirPath) && statSync(dirPath).isDirectory()
+}
+
+function isProjectRoot(candidateRoot) {
+  if (!existingDirectory(candidateRoot)) {
+    return false
+  }
+
+  return readdirSync(candidateRoot, { withFileTypes: true })
+    .some(entry => entry.isFile() && isMarkerFile(entry.name))
+}
+
+function isGlobSegment(segment) {
+  return segment.includes('*') || segment.includes('?')
+}
+
+function globSegmentMatcher(segment) {
+  const pattern = segment
+    .replace(/[.+^${}()|[\]\\]/g, '\\$&')
+    .replace(/\*/g, '[^/]*')
+    .replace(/\?/g, '[^/]')
+
+  return new RegExp(`^${pattern}$`)
 }
 
 function analyzeRoot(root) {
@@ -269,6 +491,12 @@ function analyzePackageJson(root, analysis) {
 
   if (hasPublicPackageEntry(packageJson) && hasFrameworkPeerDependency(peerDependencies)) {
     addEvidence(analysis, 'component-library', source, 'package exposes public entry and framework peerDependency', 10)
+  }
+
+  if (hasFrameworkPeerDependency(peerDependencies) && hasPublicSourceEntry(root)) {
+    const packageScope = root === projectRoot ? 'package' : 'workspace package'
+
+    addEvidence(analysis, 'component-library', source, `${packageScope} exposes public source entry and framework peerDependency`, 6)
   }
 
   if (isComponentLibraryPackageName(packageJson.name)) {
@@ -402,31 +630,47 @@ function selectStacks(analyses) {
   const selected = new Set()
 
   for (const analysis of analyses) {
-    if (analysis.scores.frontend >= 8) {
-      selected.add('frontend')
-    }
-
-    if (analysis.scores['component-library'] >= 10) {
-      selected.add('component-library')
-    }
-
-    if (analysis.scores.vue >= 8) {
-      selected.add('vue')
-    }
-
-    if (analysis.scores.nestjs >= 8) {
-      selected.add('nestjs')
-    }
-
-    if (analysis.scores.java >= 8) {
-      selected.add('java')
-    }
-
-    if (analysis.scores.node >= 8 && analysis.scores.nestjs < 8) {
-      selected.add('node')
-    }
+    addSelectedStacks(analysis, selected)
   }
 
+  return sortStacks(selected)
+}
+
+function selectStacksForAnalysis(analysis) {
+  const selected = new Set()
+
+  addSelectedStacks(analysis, selected)
+
+  return sortStacks(selected)
+}
+
+function addSelectedStacks(analysis, selected) {
+  if (analysis.scores.frontend >= 8) {
+    selected.add('frontend')
+  }
+
+  if (analysis.scores['component-library'] >= 10) {
+    selected.add('component-library')
+  }
+
+  if (analysis.scores.vue >= 8) {
+    selected.add('vue')
+  }
+
+  if (analysis.scores.nestjs >= 8) {
+    selected.add('nestjs')
+  }
+
+  if (analysis.scores.java >= 8) {
+    selected.add('java')
+  }
+
+  if (analysis.scores.node >= 8 && analysis.scores.nestjs < 8) {
+    selected.add('node')
+  }
+}
+
+function sortStacks(selected) {
   return stackOrder.filter(stack => selected.has(stack))
 }
 
@@ -440,6 +684,14 @@ function hasFrameworkPeerDependency(peerDependencies) {
 
 function hasViteLibraryBuild(content) {
   return /\bbuild\s*:\s*\{[\s\S]*?\blib\s*:/.test(content)
+}
+
+function hasPublicSourceEntry(root) {
+  return componentLibraryEntryFiles.some((entryFile) => {
+    const entryPath = path.join(root, entryFile)
+
+    return existsSync(entryPath) && readFileSync(entryPath, 'utf8').includes('export ')
+  })
 }
 
 function scriptCommandRunsAny(scriptCommand, commandNames) {

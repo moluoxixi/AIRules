@@ -15,6 +15,7 @@ node <init-project-skill>/scripts/detect-stack.mjs <your-project>
 
 - 项目类型来自脚本输出的 `stacks` 字段，可能包含 `frontend`、`component-library`、`vue`、`node`、`nestjs`、`java`。
 - 规则文件来自脚本输出的 `references` 字段。
+- 多项目仓库、monorepo 或 workspace 项目必须读取脚本输出的 `monorepo`、`workspacePatterns`、`projects`、`projectRoots` 与 `evidence`；显式 workspace 配置优先，递归项目标记文件作为兜底；`stacks` 用于按所有子项目聚合后注入规则，`projects[].stacks` 用于说明每个子项目分别是前端、后端、组件库或其它类型，不得只根据仓库根目录判断。
 - 证据入口来自脚本输出的 `evidence` 字段；交付时保留关键证据，便于用户审计。
 - 写入边界：只修改目标项目根目录的 `AGENTS.md` 和 `CLAUDE.md`；不得改动依赖目录、构建产物、vendor 或用户未授权文件。
 - 缺失事实：脚本输出空 `stacks` 时，只注入通用 AIRules 基线；不要猜测语言规则。
