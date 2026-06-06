@@ -11,6 +11,20 @@ description: 用于生成或更新 docs/components 下的前端组件文档，�
 - 索引路径：`docs/components/index.md`
 - 地图路径：`docs/map.md`
 
+## 组件发现
+
+未指定组件名时，不得直接询问用户要写哪个组件；必须先扫描组件库项目：
+
+```bash
+node <components-docs-skill>/scripts/discover-components.mjs <your-project>
+```
+
+- 组件库项目中发现的所有组件都必须输出到 `docs/components/`，包括 `src/components/`、`components/` 和组件库入口导出的组件；不得只写公共导出组件，也不得让用户手动挑选组件。
+- monorepo 或 workspace 项目只处理组件库子项目；普通前端应用中的业务组件不写入 `docs/components/`。
+- 发现到组件时，逐个生成或更新 `docs/components/<组件名>.md`，并同步 `docs/components/index.md` 与 `docs/map.md`。
+- 未发现组件时，报告 `MISSING components discovery`，说明已扫描的项目根、组件目录和入口文件；不得在扫描前反问组件名。
+- 用户明确指定组件名时，仍需先校验该组件是否存在于组件库发现结果中；找不到时报告 `MISSING component source`。
+
 ## 写作规则
 
 - 先读取 `docs/map.md`、`docs/components/index.md`、相关 PRD、架构文档、组件源码和已有组件文档。

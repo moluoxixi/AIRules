@@ -37,7 +37,7 @@ node <init-project-skill>/scripts/scaffold-docs.mjs <your-project> <detect-stack
 - 无法归类文档的归档目标已存在时，脚本必须停止并报告冲突；不得覆盖、合并或部分移动。
 - 已 AIRules 初始化的项目重复执行时，脚本只补缺失标准入口，不覆盖用户已有标准文档。
 - `采购订单.md` 这类业务文档不在初始化时硬编码创建，必须在具体业务任务中由 `prd-docs`、`api-docs` 或 `test-docs` 独立生成，并同步维护 `docs/map.md`。
-- 组件库文档只在 `component-library` 项目中由 `components-docs` 独立生成或更新；本 skill 不描述组件契约细节。
+- 检测到 `component-library` 时，初始化不得停在创建 `docs/components/index.md`；必须继续使用 `components-docs` 扫描组件库项目，并为发现到的所有组件生成或更新 `docs/components/<组件名>.md`、`docs/components/index.md` 和 `docs/map.md`。
 - 架构文档与 ADR 必须在具体架构任务中由 `architecture-docs` 独立生成或更新，并同步维护 `docs/architecture/index.md` 与 `docs/map.md`。
 
 ## 重复初始化与标准化
@@ -125,6 +125,7 @@ codegraph init -i
 - `docs/map.md`、`docs/architecture/`、`docs/api/_protocol.md`、`docs/other/` 与对应文档目录索引已创建；旧文档已按归属转换到标准目录，无法确定归属的才归档到 `docs/other/imported/`。
 - 重复初始化时已按当前 AIRules 最新规范检查 `docs/`；需要语义迁移或标准化更新的文档已使用对应 docs skill 处理，需开发者确认的项已输出标准化更新报告。
 - 若存在旧文档，已按标准分类转换到 `docs/prds/`、`docs/api/`、`docs/test/`、`docs/architecture/`，组件库项目还应转换到 `docs/components/`；无法转换的条目已标记 `MISSING conversion`。
+- 组件库项目已通过 `components-docs` 扫描组件库源码；发现到的所有组件均已生成或更新组件文档，未发现组件时已报告 `MISSING components discovery` 和扫描范围。
 - 技术栈检测结果已按 `detect-stack.mjs` 的 `stacks`、`references` 和关键 `evidence` 报告。
 - `CLAUDE.md` 是指向 `AGENTS.md` 的软链接；Windows 无文件软链接权限时，可为同一文件实体的硬链接，且日志必须说明。
 - `codegraph init -i` 已执行并按真实结果报告 `PASS`、`FAIL`、`MISSING` 或 `NOT RUN`。
