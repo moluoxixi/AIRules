@@ -14,13 +14,14 @@ if (!existsSync(projectRoot) || !statSync(projectRoot).isDirectory()) {
   throw new Error(`Project root must be an existing directory: ${projectRoot}`)
 }
 
-const stackOrder = ['frontend', 'component-library', 'node', 'nestjs', 'java']
+const stackOrder = ['frontend', 'component-library', 'vue', 'node', 'nestjs', 'java']
 const stackReferences = {
-  'frontend': ['frontend-docs-standard.md', 'frontend-code-standard.md'],
-  'component-library': ['frontend-docs-standard.md', 'frontend-code-standard.md'],
-  'node': ['backend-docs-standard.md', 'node-code-standard.md'],
-  'nestjs': ['backend-docs-standard.md', 'nestjs-code-standard.md'],
-  'java': ['backend-docs-standard.md', 'java-code-standard.md'],
+  'frontend': ['frontend/docs.md', 'frontend/code.md'],
+  'component-library': [],
+  'vue': ['frontend/vue.md'],
+  'node': ['backend/docs.md', 'backend/node.md'],
+  'nestjs': ['backend/docs.md', 'backend/nestjs.md'],
+  'java': ['backend/docs.md', 'backend/java.md'],
 }
 
 const ignoredDirs = new Set([
@@ -69,6 +70,13 @@ const frontendDeps = new Set([
   'solid-js',
   'svelte',
   'vite',
+  'vue',
+])
+
+const vueDeps = new Set([
+  '@nuxt/kit',
+  '@vitejs/plugin-vue',
+  'nuxt',
   'vue',
 ])
 
@@ -125,6 +133,11 @@ const frontendEntryFiles = [
   'src/App.vue',
   'src/main.jsx',
   'src/main.tsx',
+  'src/main.vue',
+]
+
+const vueEntryFiles = [
+  'src/App.vue',
   'src/main.vue',
 ]
 
@@ -206,6 +219,7 @@ function analyzeRoot(root) {
     scores: {
       'frontend': 0,
       'component-library': 0,
+      'vue': 0,
       'node': 0,
       'nestjs': 0,
       'java': 0,
@@ -235,6 +249,10 @@ function analyzePackageJson(root, analysis) {
   for (const dependency of dependencies) {
     if (frontendDeps.has(dependency)) {
       addEvidence(analysis, 'frontend', source, `dependency "${dependency}"`, 10)
+    }
+
+    if (vueDeps.has(dependency)) {
+      addEvidence(analysis, 'vue', source, `Vue dependency "${dependency}"`, 10)
     }
 
     if (nodeBackendDeps.has(dependency)) {
@@ -288,6 +306,10 @@ function analyzeConfigFiles(root, analysis) {
       if (hasViteLibraryBuild(content)) {
         addEvidence(analysis, 'component-library', relativeSource(root, configFile), `${configFile} contains build.lib`, 10)
       }
+
+      if (configFile.startsWith('nuxt.config.')) {
+        addEvidence(analysis, 'vue', relativeSource(root, configFile), `${configFile} exists`, 8)
+      }
     }
   }
 }
@@ -303,6 +325,12 @@ function analyzeEntrypoints(root, analysis) {
     const entryPath = path.join(root, entryFile)
     if (existsSync(entryPath) && readFileSync(entryPath, 'utf8').includes('export ')) {
       addEvidence(analysis, 'component-library', relativeSource(root, entryFile), `${entryFile} exports public API`, 5)
+    }
+  }
+
+  for (const entryFile of vueEntryFiles) {
+    if (existsSync(path.join(root, entryFile))) {
+      addEvidence(analysis, 'vue', relativeSource(root, entryFile), `${entryFile} exists`, 5)
     }
   }
 
@@ -380,6 +408,10 @@ function selectStacks(analyses) {
 
     if (analysis.scores['component-library'] >= 10) {
       selected.add('component-library')
+    }
+
+    if (analysis.scores.vue >= 8) {
+      selected.add('vue')
     }
 
     if (analysis.scores.nestjs >= 8) {

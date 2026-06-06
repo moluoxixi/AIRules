@@ -13,7 +13,7 @@ description: 用于创建新项目、初始化项目、为已有项目首次接�
 node <init-project-skill>/scripts/detect-stack.mjs <your-project>
 ```
 
-- 项目类型来自脚本输出的 `stacks` 字段，可能包含 `frontend`、`component-library`、`node`、`nestjs`、`java`。
+- 项目类型来自脚本输出的 `stacks` 字段，可能包含 `frontend`、`component-library`、`vue`、`node`、`nestjs`、`java`。
 - 规则文件来自脚本输出的 `references` 字段。
 - 证据入口来自脚本输出的 `evidence` 字段；交付时保留关键证据，便于用户审计。
 - 写入边界：只修改目标项目根目录的 `AGENTS.md` 和 `CLAUDE.md`；不得改动依赖目录、构建产物、vendor 或用户未授权文件。
@@ -61,23 +61,26 @@ node <init-project-skill>/scripts/scaffold-docs.mjs <your-project> <detect-stack
 
 - 当 `AGENTS.md` 不存在或为空时，先注入 `references/airules-base.md`，为用户创建 `# 项目规范` 与项目自定义规范占位。
 - 当 `AGENTS.md` 已存在且包含用户内容时，跳过 `references/airules-base.md`，避免向用户已有规范中追加占位段。
-- 始终注入 `references/project-docs-standard.md`，再按检测结果选择场景文档规范与语言代码规范，并注入目标项目根目录 `AGENTS.md`：
+- 始终注入 `references/docs.md`，再按检测结果选择场景文档规范与语言代码规范，并注入目标项目根目录 `AGENTS.md`：
+- `references/` 按通用、前端、后端组织：通用文档规则为 `docs.md`，前端规则放入 `frontend/`，后端规则放入 `backend/`；各领域通用代码规则命名为 `code.md`，具体框架或语言规则使用 `vue.md`、`node.md`、`nestjs.md`、`java.md`。
 
 | `detect-stack.mjs` 输出 stack | 追加注入 references |
 |---|---|
-| `frontend` | `frontend-docs-standard.md`、`frontend-code-standard.md` |
-| `component-library` | `frontend-docs-standard.md`、`frontend-code-standard.md` |
-| `node` | `backend-docs-standard.md`、`node-code-standard.md` |
-| `nestjs` | `backend-docs-standard.md`、`nestjs-code-standard.md` |
-| `java` | `backend-docs-standard.md`、`java-code-standard.md` |
+| `frontend` | `frontend/docs.md`、`frontend/code.md` |
+| `component-library` | 不追加独立规则；依赖 `frontend/docs.md`、`frontend/code.md` 和具体框架规则 |
+| `vue` | `frontend/vue.md` |
+| `node` | `backend/docs.md`、`backend/node.md` |
+| `nestjs` | `backend/docs.md`、`backend/nestjs.md` |
+| `java` | `backend/docs.md`、`backend/java.md` |
 
 执行内容注入脚本：
 
 ```bash
 node <init-project-skill>/scripts/inject-rules.mjs <your-project> <init-project-skill>/references/<rule>.md [...]
+node <init-project-skill>/scripts/inject-rules.mjs <your-project> <init-project-skill>/references/<group>/<rule>.md [...]
 ```
 
-无法判断技术栈时不传额外语言规则，脚本只注入 `airules-base.md`。当目标项目不存在 `AGENTS.md` 时，脚本创建该文件；当文件已存在时，脚本将聚合后的规则内容直接追加到文件末尾，不添加额外包装标题、受控块注释或文件名标题。
+无法判断技术栈时不传额外语言规则，脚本只注入 `airules-base.md` 和 `docs.md`。当目标项目不存在 `AGENTS.md` 时，脚本创建该文件；当文件已存在时，脚本将聚合后的规则内容直接追加到文件末尾，不添加额外包装标题、受控块注释或文件名标题。
 
 追加前脚本会按 Markdown 标题文本去重。若待注入规则与现有 `AGENTS.md` 出现重复标题，脚本必须停止写入并报告重复标题；AI 随后读取现有 `AGENTS.md` 与待注入 references，输出规则合并审查结论，评估应合并、保留、改名还是移动到既有章节。未经审查不得自动跳过、覆盖或重复追加同名章节。
 
