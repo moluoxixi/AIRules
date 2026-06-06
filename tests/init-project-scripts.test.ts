@@ -301,7 +301,7 @@ it('init-project detect-stack - 组件库项目识别为 component-library', () 
 
   assert.equal(result.status, 0, result.stderr)
   assert.deepEqual(output.stacks, ['frontend', 'component-library', 'vue'])
-  assert.deepEqual(output.references, ['frontend/code.md', 'frontend/docs.md', 'frontend/vue.md'])
+  assert.deepEqual(output.references, ['frontend/code.md', 'frontend/out-components.md', 'frontend/vue.md'])
 }))
 
 it('init-project detect-stack - monorepo 子包组件库识别为 component-library', () => withTempDir('airules-detect-monorepo-component-library-', (tmpDir) => {
@@ -380,7 +380,7 @@ it('init-project detect-stack - monorepo 同时识别前端后端和组件库子
 
   assert.equal(result.status, 0, result.stderr)
   assert.deepEqual(output.stacks, ['frontend', 'component-library', 'vue', 'nestjs'])
-  assert.deepEqual(output.references, ['frontend/code.md', 'frontend/docs.md', 'frontend/vue.md', 'backend/docs.md', 'backend/nestjs.md'])
+  assert.deepEqual(output.references, ['frontend/code.md', 'frontend/out-components.md', 'frontend/vue.md', 'backend/out-api.md', 'backend/nestjs.md'])
   assert.deepEqual(projectStacks['apps/web'], ['frontend', 'vue'])
   assert.deepEqual(projectStacks['apps/api'], ['nestjs'])
   assert.deepEqual(projectStacks['packages/ui'], ['frontend', 'component-library', 'vue'])
@@ -456,7 +456,7 @@ it('init-project detect-stack - NestJS 项目注入后端文档规范', () => wi
 
   assert.equal(result.status, 0, result.stderr)
   assert.deepEqual(output.stacks, ['nestjs'])
-  assert.deepEqual(output.references, ['backend/docs.md', 'backend/nestjs.md'])
+  assert.deepEqual(output.references, ['backend/out-api.md', 'backend/nestjs.md'])
 }))
 
 it('init-project scaffold-docs - 普通前端项目不创建组件库文档目录', () => withTempDir('airules-docs-frontend-', (tmpDir) => {

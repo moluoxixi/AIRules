@@ -17,11 +17,11 @@ if (!existsSync(projectRoot) || !statSync(projectRoot).isDirectory()) {
 const stackOrder = ['frontend', 'component-library', 'vue', 'node', 'nestjs', 'java']
 const stackReferences = {
   'frontend': ['frontend/code.md'],
-  'component-library': ['frontend/docs.md'],
+  'component-library': ['frontend/out-components.md'],
   'vue': ['frontend/vue.md'],
-  'node': ['backend/docs.md', 'backend/node.md'],
-  'nestjs': ['backend/docs.md', 'backend/nestjs.md'],
-  'java': ['backend/docs.md', 'backend/java.md'],
+  'node': ['backend/out-api.md', 'backend/node.md'],
+  'nestjs': ['backend/out-api.md', 'backend/nestjs.md'],
+  'java': ['backend/out-api.md', 'backend/java.md'],
 }
 
 const ignoredDirs = new Set([

@@ -56,16 +56,16 @@ node <init-project-skill>/scripts/scaffold-docs.mjs <your-project> <detect-stack
 - 当 `AGENTS.md` 不存在或为空时，先注入 `references/airules-base.md`，为用户创建 `# 项目规范` 与项目自定义规范占位。
 - 当 `AGENTS.md` 已存在且包含用户内容时，跳过 `references/airules-base.md`，避免向用户已有规范中追加占位段。
 - 始终注入 `references/common/docs.md`，再按检测结果选择场景输出规范与语言代码规范，并注入目标项目根目录 `AGENTS.md`。
-- `references/` 按 `common/`、`frontend/`、`backend/` 组织：通用文档读取规则只放在 `common/docs.md`；前端 `docs.md` 只描述组件库 `out-components/` 输出；后端 `docs.md` 只描述 API `out-api/` 输出；各领域通用代码规则命名为 `code.md`，具体框架或语言规则使用 `vue.md`、`node.md`、`nestjs.md`、`java.md`。
+- `references/` 按 `common/`、`frontend/`、`backend/` 组织：通用文档读取规则只放在 `common/docs.md`；组件库对外输出规则放在 `frontend/out-components.md`；后端 API 对外输出规则放在 `backend/out-api.md`；各领域通用代码规则命名为 `code.md`，具体框架或语言规则使用 `vue.md`、`node.md`、`nestjs.md`、`java.md`。
 
 | `detect-stack.mjs` 输出 stack | 追加注入 references |
 |---|---|
 | `frontend` | `frontend/code.md` |
-| `component-library` | `frontend/docs.md` |
+| `component-library` | `frontend/out-components.md` |
 | `vue` | `frontend/vue.md` |
-| `node` | `backend/docs.md`、`backend/node.md` |
-| `nestjs` | `backend/docs.md`、`backend/nestjs.md` |
-| `java` | `backend/docs.md`、`backend/java.md` |
+| `node` | `backend/out-api.md`、`backend/node.md` |
+| `nestjs` | `backend/out-api.md`、`backend/nestjs.md` |
+| `java` | `backend/out-api.md`、`backend/java.md` |
 
 执行内容注入脚本：
 
