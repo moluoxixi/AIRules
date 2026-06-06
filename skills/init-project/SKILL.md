@@ -30,19 +30,31 @@ node <init-project-skill>/scripts/scaffold-docs.mjs <your-project> <detect-stack
 - 所有项目都会创建 `docs/architecture/`、`docs/api/`、`docs/prds/`、`docs/test/`、`docs/other/` 和 `docs/map.md`。
 - `docs/architecture/` 包含 `index.md`、`overview.md` 和 `decisions/index.md`，用于承载架构事实与 ADR。
 - `docs/api/` 包含 `index.md` 和 `_protocol.md`，用于承载全局接口协议与业务接口索引。
-- 组件库项目额外创建 `docs/components/`；普通前端应用不持续输出组件文档。
-- 首次接入 AIRules 时，初始化前已有的旧文档必须移动到 `docs/other/imported/` 做来源归档，并在 `docs/other/index.md` 标记为 `MISSING conversion`；不得只登记原位置后停止。
-- 旧文档归档目标已存在时，脚本必须停止并报告冲突；不得覆盖、合并或部分移动。
+- 组件库项目额外创建 `docs/components/`；普通前端应用不主动新增组件文档，但初始化前已存在组件库文档时必须保留并纳入标准入口。
+- 首次接入 AIRules 时，初始化前已有文档必须先判断归属；能确定属于架构、接口、需求、测试或组件库的，保留为已知归属来源，并继续用对应 docs skill 转成标准格式、按业务域拆分并补齐索引；无法确定归属的才移动到 `docs/other/imported/` 并在 `docs/other/index.md` 标记为 `MISSING conversion`。
+- 归档前必须识别特殊文档目录；例如 `docs/superpowers/` 属于外部方法论/参考资料目录，必须原位保留，不得移动到 `docs/other/imported/`，也不得作为待转换业务文档登记。
+- 无法归类文档的归档目标已存在时，脚本必须停止并报告冲突；不得覆盖、合并或部分移动。
 - 已 AIRules 初始化的项目重复执行时，脚本只补缺失标准入口，不覆盖用户已有标准文档。
 - `采购订单.md` 这类业务文档不在初始化时硬编码创建，必须在具体业务任务中由 `prd-docs`、`api-docs` 或 `test-docs` 独立生成，并同步维护 `docs/map.md`。
 - 组件库文档只在 `component-library` 项目中由 `components-docs` 独立生成或更新；本 skill 不描述组件契约细节。
 - 架构文档与 ADR 必须在具体架构任务中由 `architecture-docs` 独立生成或更新，并同步维护 `docs/architecture/index.md` 与 `docs/map.md`。
 
+## 重复初始化与标准化
+
+重复执行 `init-project` 时，不按单个文件版本判断是否升级；必须重新按当前 AIRules 最新规范检查 `docs/` 的结构、索引和内容是否符合标准。
+
+- 确定性脚本只补齐缺失的标准目录、索引和脚手架文件；已有标准文档不由脚本覆盖、重写或迁移。
+- `docs/api/_protocol.md` 只是 `docs/api/` 下的全局接口协议文档，不使用独立版本机制，也不生成协议专属升级报告。
+- 已有文档是否符合最新规范属于语义判断，必须由 AI 读取当前 `docs/`、代码事实和对应 docs skill 后评估。
+- 发现标准目录中的文档结构、内容或索引不符合最新规范时，按文档类型使用 `architecture-docs`、`prd-docs`、`api-docs`、`components-docs` 或 `test-docs` 更新。
+- 若规范升级会改变架构边界、接口协议、错误码体系、分页策略、组件库契约、PRD 拆分、测试策略或业务口径，必须先输出标准化更新报告并等待开发者确认。
+- 标准化更新完成后，同步维护对应目录 `index.md` 与 `docs/map.md`；无法确认的信息标记 `MISSING`，不得伪造业务事实。
+
 ## 标准化转换旧文档
 
-若 `docs/other/imported/` 存在内容，初始化不得停在归档状态，必须继续执行旧文档标准化转换：
+若存在初始化前旧文档，初始化不得停在目录创建、原位保留或归档状态，必须继续执行旧文档标准化转换；文档已经位于 `docs/components/`、`docs/api/`、`docs/prds/`、`docs/test/` 或 `docs/architecture/`，只代表归属较明确，不代表已经符合 AIRules 最新标准。
 
-1. 读取 `docs/other/index.md` 与 `docs/other/imported/` 下的来源文档，按内容和原路径识别 PRD、API、组件库文档、测试、架构信息。
+1. 读取 `docs/architecture/`、`docs/api/`、`docs/components/`、`docs/prds/`、`docs/test/`、`docs/other/index.md` 与 `docs/other/imported/` 下的来源文档，按内容和原路径识别 PRD、API、组件库文档、测试、架构信息；遇到 `docs/superpowers/` 这类特殊参考目录时必须原位排除，不参与业务文档转换。
 2. 结合当前代码事实与 CodeGraph 结果校验模块、接口、组件和测试入口；文档与代码冲突时先报告冲突，不得静默选择一方。
 3. 将已确认信息转换到标准分类文档：
    - 需求与业务流程使用 `prd-docs`，写入 `docs/prds/<业务域>.md`。
@@ -50,8 +62,9 @@ node <init-project-skill>/scripts/scaffold-docs.mjs <your-project> <detect-stack
    - 组件库文档使用 `components-docs`，写入 `docs/components/`；普通业务组件不生成独立组件文档。
    - 测试策略、用例矩阵、验收验证使用 `test-docs`，写入 `docs/test/<业务域>.md`。
    - 架构、模块边界、依赖方向、ADR 使用 `architecture-docs`，写入 `docs/architecture/`。
-4. 来源文档信息不足时，在目标标准文档中标记 `MISSING`；无法分类的来源继续保留在 `docs/other/imported/`，并在 `docs/other/index.md` 说明缺口。
-5. 转换完成后，同步更新各目录 `index.md`、`docs/map.md` 和 `docs/other/index.md` 的转换状态。
+4. 即使来源文档已经在目标目录，也必须按最新标准重写、拆分或补齐结构；不得因为路径正确就跳过内容标准化。
+5. 来源文档信息不足时，在目标标准文档中标记 `MISSING`；无法分类的来源继续保留在 `docs/other/imported/`，并在 `docs/other/index.md` 说明缺口。
+6. 转换完成后，同步更新各目录 `index.md`、`docs/map.md` 和 `docs/other/index.md` 的转换状态。
 
 若单个旧文档混合多个业务域或同时包含 PRD/API/组件库/测试/架构，且拆分会影响公共契约、接口协议、组件库边界、测试策略或业务口径，必须先输出《旧文档标准化转换报告》并等待开发者确认；边界清晰、只做格式转换和索引更新时可直接执行。
 
@@ -108,7 +121,8 @@ codegraph init -i
 ## 交付检查
 
 - `AGENTS.md` 已包含本次项目背景对应的 AIRules 规则块。
-- `docs/map.md`、`docs/architecture/`、`docs/api/_protocol.md`、`docs/other/` 与对应文档目录索引已创建；旧文档已归档到 `docs/other/imported/` 或确认无需归档。
+- `docs/map.md`、`docs/architecture/`、`docs/api/_protocol.md`、`docs/other/` 与对应文档目录索引已创建；旧文档已按归属转换到标准目录，无法确定归属的才归档到 `docs/other/imported/`。
+- 重复初始化时已按当前 AIRules 最新规范检查 `docs/`；需要语义迁移或标准化更新的文档已使用对应 docs skill 处理，需开发者确认的项已输出标准化更新报告。
 - 若存在旧文档，已按标准分类转换到 `docs/prds/`、`docs/api/`、`docs/test/`、`docs/architecture/`，组件库项目还应转换到 `docs/components/`；无法转换的条目已标记 `MISSING conversion`。
 - 技术栈检测结果已按 `detect-stack.mjs` 的 `stacks`、`references` 和关键 `evidence` 报告。
 - `CLAUDE.md` 是指向 `AGENTS.md` 的软链接；Windows 无文件软链接权限时，可为同一文件实体的硬链接，且日志必须说明。

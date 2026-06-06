@@ -219,6 +219,29 @@ it('init-project detect-stack - React 前端项目不注入 Vue 规范', () => w
   assert.deepEqual(output.references, ['frontend/docs.md', 'frontend/code.md'])
 }))
 
+it('init-project detect-stack - vitest 脚本不误判为 Vite 前端项目', () => withTempDir('airules-detect-vitest-tooling-', (tmpDir) => {
+  const projectRoot = path.join(tmpDir, 'project')
+
+  writeFile(path.join(projectRoot, 'package.json'), JSON.stringify({
+    name: 'tooling-project',
+    scripts: {
+      coverage: 'vitest run --coverage',
+      test: 'vitest run',
+    },
+    devDependencies: {
+      typescript: '^6.0.0',
+      vitest: '^4.0.0',
+    },
+  }))
+
+  const result = runDetectStack(projectRoot)
+  const output = JSON.parse(result.stdout)
+
+  assert.equal(result.status, 0, result.stderr)
+  assert.deepEqual(output.stacks, [])
+  assert.deepEqual(output.references, [])
+}))
+
 it('init-project detect-stack - 普通前端项目包含 lib 路径时不误判为组件库', () => withTempDir('airules-detect-frontend-lib-alias-', (tmpDir) => {
   const projectRoot = path.join(tmpDir, 'project')
 
@@ -323,6 +346,8 @@ it('init-project scaffold-docs - 普通前端项目不创建组件库文档目�
   assert.equal(fs.existsSync(path.join(projectRoot, 'docs', 'map.md')), true)
   assert.equal(fs.existsSync(path.join(projectRoot, 'docs', 'api', '采购订单.md')), false)
   assert.match(fs.readFileSync(path.join(projectRoot, 'docs', 'api', '_protocol.md'), 'utf8'), /错误响应/)
+  assert.doesNotMatch(fs.readFileSync(path.join(projectRoot, 'docs', 'api', '_protocol.md'), 'utf8'), /api-protocol-version/)
+  assert.equal(fs.existsSync(path.join(projectRoot, 'docs', 'api', '_protocol.upgrade-report.md')), false)
   assert.match(fs.readFileSync(path.join(projectRoot, 'docs', 'architecture', 'overview.md'), 'utf8'), /模块边界/)
   assert.match(fs.readFileSync(path.join(projectRoot, 'docs', 'map.md'), 'utf8'), /docs\/architecture/)
   assert.doesNotMatch(fs.readFileSync(path.join(projectRoot, 'docs', 'map.md'), 'utf8'), /docs\/components/)
@@ -388,10 +413,9 @@ it('init-project scaffold-docs - 标准模板文件不生成末尾空行', () =>
   }
 }))
 
-it('init-project scaffold-docs - 非组件库项目已有 components 目录时仅归档旧文档', () => withTempDir('airules-docs-existing-components-', (tmpDir) => {
+it('init-project scaffold-docs - 已有 components 目录时保留并纳入标准入口', () => withTempDir('airules-docs-existing-components-', (tmpDir) => {
   const projectRoot = path.join(tmpDir, 'project')
   const componentsIndexPath = path.join(projectRoot, 'docs', 'components', 'index.md')
-  const importedComponentsIndexPath = path.join(projectRoot, 'docs', 'other', 'imported', 'components', 'index.md')
   const originalComponentsIndex = '# Existing Components\n\nkeep component docs\n'
 
   writeFile(componentsIndexPath, originalComponentsIndex)
@@ -400,9 +424,9 @@ it('init-project scaffold-docs - 非组件库项目已有 components 目录时�
   const mapContent = fs.readFileSync(path.join(projectRoot, 'docs', 'map.md'), 'utf8')
 
   assert.equal(result.status, 0, result.stderr)
-  assert.equal(fs.readFileSync(importedComponentsIndexPath, 'utf8'), originalComponentsIndex)
-  assert.equal(fs.existsSync(componentsIndexPath), false)
-  assert.doesNotMatch(mapContent, /docs\/components/)
+  assert.equal(fs.readFileSync(componentsIndexPath, 'utf8'), originalComponentsIndex)
+  assert.equal(fs.existsSync(path.join(projectRoot, 'docs', 'other', 'imported', 'components')), false)
+  assert.match(mapContent, /docs\/components/)
 }))
 
 it('init-project scaffold-docs - 已有未归类 docs 时移动到 other imported 并登记索引', () => withTempDir('airules-docs-existing-other-', (tmpDir) => {
@@ -423,6 +447,20 @@ it('init-project scaffold-docs - 已有未归类 docs 时移动到 other importe
   assert.match(otherIndex, /imported\/old-guides/)
 }))
 
+it('init-project scaffold-docs - 保留 docs superpowers 特殊目录且不归档到 other', () => withTempDir('airules-docs-superpowers-', (tmpDir) => {
+  const projectRoot = path.join(tmpDir, 'project')
+  const superpowersPath = path.join(projectRoot, 'docs', 'superpowers', 'README.md')
+
+  writeFile(superpowersPath, '# Superpowers\n')
+
+  const result = runScaffoldDocs(projectRoot, 'frontend')
+
+  assert.equal(result.status, 0, result.stderr)
+  assert.equal(fs.existsSync(superpowersPath), true)
+  assert.equal(fs.existsSync(path.join(projectRoot, 'docs', 'other', 'imported', 'superpowers')), false)
+  assert.doesNotMatch(fs.readFileSync(path.join(projectRoot, 'docs', 'other', 'index.md'), 'utf8'), /superpowers/)
+}))
+
 it('init-project scaffold-docs - 已有 other 索引时追加缺失的未归类文档登记', () => withTempDir('airules-docs-existing-other-index-', (tmpDir) => {
   const projectRoot = path.join(tmpDir, 'project')
   const otherIndexPath = path.join(projectRoot, 'docs', 'other', 'index.md')
@@ -440,7 +478,7 @@ it('init-project scaffold-docs - 已有 other 索引时追加缺失的未归类�
   assert.equal(fs.existsSync(path.join(projectRoot, 'docs', 'other', 'imported', 'legacy.md')), true)
 }))
 
-it('init-project scaffold-docs - 首次接入已有 map 时归档旧 map 并生成标准地图', () => withTempDir('airules-docs-existing-map-', (tmpDir) => {
+it('init-project scaffold-docs - 首次接入已有 map 时保留并追加标准入口', () => withTempDir('airules-docs-existing-map-', (tmpDir) => {
   const projectRoot = path.join(tmpDir, 'project')
   const mapPath = path.join(projectRoot, 'docs', 'map.md')
   const componentsIndexPath = path.join(projectRoot, 'docs', 'components', 'index.md')
@@ -453,9 +491,10 @@ it('init-project scaffold-docs - 首次接入已有 map 时归档旧 map 并生�
   const mapContent = fs.readFileSync(mapPath, 'utf8')
 
   assert.equal(result.status, 0, result.stderr)
-  assert.equal(fs.readFileSync(path.join(projectRoot, 'docs', 'other', 'imported', 'map.md'), 'utf8'), originalMap)
-  assert.match(mapContent, /# 项目文档地图/)
-  assert.doesNotMatch(mapContent, /components\/index\.md/)
+  assert.equal(fs.existsSync(path.join(projectRoot, 'docs', 'other', 'imported', 'map.md')), false)
+  assert.equal(mapContent.startsWith(originalMap), true)
+  assert.match(mapContent, /## AIRules 文档入口补充/)
+  assert.match(mapContent, /components\/index\.md/)
   assert.match(mapContent, /other\/index\.md/)
 }))
 
@@ -472,7 +511,8 @@ it('init-project scaffold-docs - 已初始化项目重复执行时不覆盖用�
 
   assert.equal(result.status, 0, result.stderr)
   assert.equal(fs.readFileSync(apiIndexPath, 'utf8'), originalContent)
-  assert.equal(fs.existsSync(path.join(projectRoot, 'docs', 'api', '_protocol.md')), true)
+  assert.equal(fs.readFileSync(path.join(projectRoot, 'docs', 'api', '_protocol.md'), 'utf8'), '# 全局接口协议\n')
+  assert.equal(fs.existsSync(path.join(projectRoot, 'docs', 'api', '_protocol.upgrade-report.md')), false)
   assert.equal(fs.existsSync(path.join(projectRoot, 'docs', 'architecture', 'overview.md')), true)
   assert.equal(fs.existsSync(path.join(projectRoot, 'docs', 'components')), false)
   assert.equal(fs.existsSync(path.join(projectRoot, 'docs', 'other', 'index.md')), true)

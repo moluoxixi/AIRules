@@ -16,10 +16,10 @@ if (!existsSync(projectRoot) || !statSync(projectRoot).isDirectory()) {
 
 const stacks = new Set(stackArgs)
 const docsRoot = path.join(projectRoot, 'docs')
-const docsInitialized = hasAirulesDocs(docsRoot)
-archiveExistingDocs(docsRoot, collectArchiveCandidates(docsRoot, docsInitialized))
+const hadComponentsDocs = existingDirectory(path.join(docsRoot, 'components'))
+archiveExistingDocs(docsRoot, collectArchiveCandidates(docsRoot))
 
-const includeComponents = stacks.has('component-library')
+const includeComponents = stacks.has('component-library') || hadComponentsDocs
 const sections = [
   {
     name: 'architecture',
@@ -136,22 +136,19 @@ function existingDirectory(dirPath) {
   return existsSync(dirPath) && statSync(dirPath).isDirectory()
 }
 
-function hasAirulesDocs(sourceDir) {
-  const mapPath = path.join(sourceDir, 'map.md')
-
-  return existsSync(mapPath) && readFileSync(mapPath, 'utf8').includes('# 项目文档地图')
-}
-
-function collectArchiveCandidates(sourceDir, docsInitialized) {
+function collectArchiveCandidates(sourceDir) {
   if (!existsSync(sourceDir)) {
     return []
   }
 
   const standardNames = new Set(['architecture', 'api', 'components', 'prds', 'test', 'map.md'])
+  // These directories are reference inputs, not legacy project docs to convert.
+  const preservedNames = new Set(['other', 'superpowers'])
 
   return readdirSync(sourceDir, { withFileTypes: true })
-    .filter(entry => !entry.name.startsWith('.') && entry.name !== 'other')
-    .filter(entry => !docsInitialized || !standardNames.has(entry.name))
+    .filter(entry => !entry.name.startsWith('.'))
+    .filter(entry => !preservedNames.has(entry.name))
+    .filter(entry => !standardNames.has(entry.name))
     .map(entry => ({
       name: entry.name,
       kind: entry.isDirectory() ? 'directory' : 'file',

@@ -278,7 +278,7 @@ function analyzePackageJson(root, analysis) {
   for (const [scriptName, scriptCommand] of Object.entries(packageJson.scripts ?? {})) {
     const sourceSignal = `script "${scriptName}" contains "${scriptCommand}"`
 
-    if (scriptCommand.includes('vite') || scriptCommand.includes('next') || scriptCommand.includes('nuxt')) {
+    if (scriptCommandRunsAny(scriptCommand, ['vite', 'next', 'nuxt'])) {
       addEvidence(analysis, 'frontend', source, sourceSignal, 6)
     }
 
@@ -440,6 +440,26 @@ function hasFrameworkPeerDependency(peerDependencies) {
 
 function hasViteLibraryBuild(content) {
   return /\bbuild\s*:\s*\{[\s\S]*?\blib\s*:/.test(content)
+}
+
+function scriptCommandRunsAny(scriptCommand, commandNames) {
+  const tokens = new Set(scriptCommandTokens(scriptCommand))
+
+  return commandNames.some(commandName => tokens.has(commandName))
+}
+
+function scriptCommandTokens(scriptCommand) {
+  return scriptCommand
+    .split(/[\s;&|()]+/)
+    .map(normalizeScriptCommandToken)
+    .filter(Boolean)
+}
+
+function normalizeScriptCommandToken(token) {
+  const unquotedToken = token.replace(/^["']|["']$/g, '')
+  const commandName = path.basename(unquotedToken)
+
+  return commandName.replace(/\.(cmd|exe|ps1)$/i, '')
 }
 
 function isComponentLibraryPackageName(packageName) {
