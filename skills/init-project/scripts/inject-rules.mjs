@@ -11,7 +11,7 @@ if (!projectRootArg) {
 
 const skillRoot = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..')
 const baseReferencePath = path.join(skillRoot, 'references', 'airules-base.md')
-const docsReferencePath = path.join(skillRoot, 'references', 'docs.md')
+const docsReferencePath = path.join(skillRoot, 'references', 'common', 'docs.md')
 const normalizedBaseReferencePath = path.resolve(baseReferencePath)
 const normalizedDocsReferencePath = path.resolve(docsReferencePath)
 const projectRoot = path.resolve(projectRootArg)

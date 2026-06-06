@@ -135,7 +135,7 @@ it('init-project inject-rules - AGENTS.md 不存在时创建聚合规则文件',
 
   assert.equal(result.status, 0, result.stderr)
   assert.equal(agentsContent.startsWith('# 项目规范\n\n## 项目自定义规范\n'), true)
-  assert.match(agentsContent, /# 项目文档知识库/)
+  assert.match(agentsContent, /# 项目文档读取规范/)
   assert.match(agentsContent, /# Frontend Rules\n\nfrontend body/)
 }))
 
@@ -151,16 +151,16 @@ it('init-project inject-rules - AGENTS.md 已存在且无重复标题时追加�
   const agentsContent = fs.readFileSync(agentsPath, 'utf8')
 
   assert.equal(result.status, 0, result.stderr)
-  assert.equal(agentsContent.startsWith('# Existing Project Rules\n\nexisting body\n\n# 项目文档知识库\n'), true)
+  assert.equal(agentsContent.startsWith('# Existing Project Rules\n\nexisting body\n\n# 项目文档读取规范\n'), true)
   assert.doesNotMatch(agentsContent, /## 项目自定义规范/)
-  assert.match(agentsContent, /# 项目文档知识库/)
+  assert.match(agentsContent, /# 项目文档读取规范/)
   assert.match(agentsContent, /# Node Rules\n\nnode body/)
 }))
 
 it('init-project inject-rules - AGENTS.md 标题重复时停止写入并要求 AI 审查', () => withTempDir('airules-inject-duplicate-', (tmpDir) => {
   const projectRoot = path.join(tmpDir, 'project')
   const agentsPath = path.join(projectRoot, 'AGENTS.md')
-  const originalContent = '# 项目文档知识库\n\nexisting project docs rules\n'
+  const originalContent = '# 项目文档读取规范\n\nexisting project docs rules\n'
 
   writeFile(agentsPath, originalContent)
 
@@ -168,7 +168,7 @@ it('init-project inject-rules - AGENTS.md 标题重复时停止写入并要求 A
 
   assert.notEqual(result.status, 0)
   assert.match(result.stderr, /Duplicate AGENTS\.md headings detected/)
-  assert.match(result.stderr, /项目文档知识库/)
+  assert.match(result.stderr, /项目文档读取规范/)
   assert.equal(fs.readFileSync(agentsPath, 'utf8'), originalContent)
 }))
 
@@ -192,7 +192,7 @@ it('init-project detect-stack - 普通前端项目不识别为组件库', () => 
 
   assert.equal(result.status, 0, result.stderr)
   assert.deepEqual(output.stacks, ['frontend', 'vue'])
-  assert.deepEqual(output.references, ['frontend/docs.md', 'frontend/code.md', 'frontend/vue.md'])
+  assert.deepEqual(output.references, ['frontend/code.md', 'frontend/vue.md'])
 }))
 
 it('init-project detect-stack - React 前端项目不注入 Vue 规范', () => withTempDir('airules-detect-react-frontend-', (tmpDir) => {
@@ -216,7 +216,7 @@ it('init-project detect-stack - React 前端项目不注入 Vue 规范', () => w
 
   assert.equal(result.status, 0, result.stderr)
   assert.deepEqual(output.stacks, ['frontend'])
-  assert.deepEqual(output.references, ['frontend/docs.md', 'frontend/code.md'])
+  assert.deepEqual(output.references, ['frontend/code.md'])
 }))
 
 it('init-project detect-stack - vitest 脚本不误判为 Vite 前端项目', () => withTempDir('airules-detect-vitest-tooling-', (tmpDir) => {
@@ -267,7 +267,7 @@ it('init-project detect-stack - 普通前端项目包含 lib 路径时不误判�
 
   assert.equal(result.status, 0, result.stderr)
   assert.deepEqual(output.stacks, ['frontend', 'vue'])
-  assert.deepEqual(output.references, ['frontend/docs.md', 'frontend/code.md', 'frontend/vue.md'])
+  assert.deepEqual(output.references, ['frontend/code.md', 'frontend/vue.md'])
 }))
 
 it('init-project detect-stack - 组件库项目识别为 component-library', () => withTempDir('airules-detect-component-library-', (tmpDir) => {
@@ -301,7 +301,7 @@ it('init-project detect-stack - 组件库项目识别为 component-library', () 
 
   assert.equal(result.status, 0, result.stderr)
   assert.deepEqual(output.stacks, ['frontend', 'component-library', 'vue'])
-  assert.deepEqual(output.references, ['frontend/docs.md', 'frontend/code.md', 'frontend/vue.md'])
+  assert.deepEqual(output.references, ['frontend/code.md', 'frontend/docs.md', 'frontend/vue.md'])
 }))
 
 it('init-project detect-stack - monorepo 子包组件库识别为 component-library', () => withTempDir('airules-detect-monorepo-component-library-', (tmpDir) => {
@@ -380,7 +380,7 @@ it('init-project detect-stack - monorepo 同时识别前端后端和组件库子
 
   assert.equal(result.status, 0, result.stderr)
   assert.deepEqual(output.stacks, ['frontend', 'component-library', 'vue', 'nestjs'])
-  assert.deepEqual(output.references, ['frontend/docs.md', 'frontend/code.md', 'frontend/vue.md', 'backend/docs.md', 'backend/nestjs.md'])
+  assert.deepEqual(output.references, ['frontend/code.md', 'frontend/docs.md', 'frontend/vue.md', 'backend/docs.md', 'backend/nestjs.md'])
   assert.deepEqual(projectStacks['apps/web'], ['frontend', 'vue'])
   assert.deepEqual(projectStacks['apps/api'], ['nestjs'])
   assert.deepEqual(projectStacks['packages/ui'], ['frontend', 'component-library', 'vue'])

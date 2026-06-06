@@ -1,38 +1,39 @@
 ---
 name: components-docs
-description: 用于生成或更新 docs/components 下的前端组件文档，尤其是组件库、公共组件、Props/Events/Slots、交互状态、可访问性或示例用法需要落文档时触发。
+description: 用于生成或更新组件库 out-components 与 docs/components 文档，尤其是组件库、公共组件、Props/Events/Slots、交互状态、可访问性或示例用法需要落文档时触发。
 ---
 
 # Components Docs
 
 ## 输出位置
 
-- 文档路径：`docs/components/<组件名>.md`
-- 索引路径：`docs/components/index.md`
+- 对外文档：`out-components/<组件名>.md`
+- 对外索引：`out-components/index.md`
+- 内部知识库：`docs/components/<组件名>.md`、`docs/components/index.md`
 - 地图路径：`docs/map.md`
+- `out-components/` 是给其它项目、AI 或消费方复用的组件契约；`docs/components/` 只作为项目内部知识库入口，二者不得出现冲突。
 
 ## 组件发现
 
-未指定组件名时，不得直接询问用户要写哪个组件；必须先扫描组件库项目：
+未指定组件名时，不得直接询问用户要写哪个组件；必须先由 AI 扫描组件库项目并推导组件清单：
 
-```bash
-node <components-docs-skill>/scripts/discover-components.mjs <your-project>
-```
-
-- 组件库项目中发现的所有组件都必须输出到 `docs/components/`，包括 `src/components/`、`components/` 和组件库入口导出的组件；不得只写公共导出组件，也不得让用户手动挑选组件。
-- monorepo 或 workspace 项目只处理组件库子项目；普通前端应用中的业务组件不写入 `docs/components/`。
-- 发现到组件时，逐个生成或更新 `docs/components/<组件名>.md`，并同步 `docs/components/index.md` 与 `docs/map.md`。
+- 优先读取 `detect-stack.mjs` 输出的 `projects`、`projectRoots` 与 `evidence`，定位 `component-library` 子项目；再用 CodeGraph、`rg` 或文件读取分析组件源码、入口导出、`src/components/`、`components/`、Props/Events/Slots/Children、示例和测试。
+- `scripts/discover-components.mjs` 只能作为候选组件清单辅助工具；不得把脚本输出当作文档事实来源，也不得因为脚本不可用或结果为空就停止推导。
+- 组件库项目中发现的所有组件都必须输出到 `out-components/`，包括 `src/components/`、`components/` 和组件库入口导出的组件；不得只写公共导出组件，也不得让用户手动挑选组件。
+- monorepo 或 workspace 项目只处理组件库子项目；普通前端应用中的业务组件不写入 `out-components/` 或 `docs/components/`。
+- 发现到组件时，逐个生成或更新 `out-components/<组件名>.md`；若项目维护 `docs/components/`，同步内部组件文档、`docs/components/index.md` 与 `docs/map.md`。
 - 未发现组件时，报告 `MISSING components discovery`，说明已扫描的项目根、组件目录和入口文件；不得在扫描前反问组件名。
 - 用户明确指定组件名时，仍需先校验该组件是否存在于组件库发现结果中；找不到时报告 `MISSING component source`。
+- 文档内容必须由 AI 阅读源码和已有文档后推导生成；脚本不得生成 Props、事件、插槽、状态、可访问性或示例等文档正文。
 
 ## 写作规则
 
-- 先读取 `docs/map.md`、`docs/components/index.md`、相关 PRD、架构文档、组件源码和已有组件文档。
+- 先读取已存在的 `docs/map.md`、`docs/components/index.md`、`out-components/index.md`、相关 PRD、架构文档、组件源码和已有组件文档；目标目录或索引不存在时创建，不得因缺失停止。
 - 只描述组件对外契约，不暴露内部实现细节；内部实现变化不应影响文档契约。
 - 必须覆盖 Props、事件/回调、插槽/children、状态、可访问性、示例和测试建议。
 - 新增或拆分公共组件、组件库分类、Props/Events/Slots/Children 契约、可访问性要求或跨业务复用边界时，属于 L2，必须先输出《组件契约与拆分报告》并等待开发者确认。
 - 仅补充既有组件的已确认示例、字段说明或变更记录时，可按 L0 直接更新。
-- 更新或新增文档后，同步更新 `docs/components/index.md` 和 `docs/map.md`；`docs/map.md` 必须维护业务域到 PRD/API/组件/测试/组件文档的导航关系。
+- 更新或新增文档后，同步更新 `out-components/index.md`；若项目维护内部知识库，同步 `docs/components/index.md` 和 `docs/map.md`。
 
 ## 文档结构
 

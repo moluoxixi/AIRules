@@ -1,25 +1,27 @@
 ---
 name: api-docs
-description: 用于生成或更新 docs/api 下的接口文档，尤其是前后端联调、OpenAPI/Swagger 补充、接口契约、错误码、Mock 数据或请求响应示例需要落文档时触发。
+description: 用于生成或更新 out-api 与 docs/api 下的接口文档，尤其是前后端联调、OpenAPI/Swagger 补充、接口契约、错误码、Mock 数据或请求响应示例需要落文档时触发。
 ---
 
 # API Docs
 
 ## 输出位置
 
-- 文档路径：`docs/api/<业务域>.md`
-- 索引路径：`docs/api/index.md`
-- 全局协议：`docs/api/_protocol.md`
+- 对外文档：`out-api/<业务域>.md`
+- 对外索引：`out-api/index.md`
+- 对外全局协议：`out-api/_protocol.md`
+- 内部知识库：`docs/api/<业务域>.md`、`docs/api/index.md`、`docs/api/_protocol.md`
 - 地图路径：`docs/map.md`
+- `out-api/` 是给前端、第三方、测试代理或其它服务复用的 API 契约；`docs/api/` 只作为项目内部知识库入口，二者不得出现冲突。
 
 ## 写作规则
 
-- 先读取 `docs/map.md`、`docs/api/index.md`、`docs/api/_protocol.md`、相关 PRD、架构文档和已有接口文档。
+- 先读取已存在的 `docs/map.md`、`docs/api/index.md`、`docs/api/_protocol.md`、`out-api/index.md`、`out-api/_protocol.md`、相关 PRD、架构文档和已有接口文档；目标目录或索引不存在时创建，不得因缺失停止。
 - 接口事实优先来自后端路由、OpenAPI/Swagger、接口实现或用户提供的契约；无法确认时标记 `MISSING`。
 - 每个接口必须包含请求方法、路径、用途、请求参数、响应结构、错误码和联调注意事项。
-- 全局返回结构、错误结构、分页、鉴权、Headers、版本策略只维护在 `docs/api/_protocol.md`；业务接口文档只能引用或声明协议偏差。
+- 全局返回结构、错误结构、分页、鉴权、Headers、版本策略只维护在 `out-api/_protocol.md`；内部 `docs/api/_protocol.md` 可作为项目知识库镜像，但不得与 `out-api/_protocol.md` 冲突。
 - 新增或修改全局接口协议、错误码体系、分页策略、鉴权策略或跨业务接口拆分时，属于 L2，必须先输出《接口协议与文档拆分报告》并等待开发者确认。
-- 更新或新增文档后，同步更新 `docs/api/index.md` 和 `docs/map.md`；`docs/map.md` 必须维护业务域到 PRD/API/组件/测试文档的导航关系。
+- 更新或新增文档后，同步更新 `out-api/index.md`；若项目维护内部知识库，同步 `docs/api/index.md` 和 `docs/map.md`。
 
 ## 全局协议结构
 

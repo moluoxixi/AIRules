@@ -16,8 +16,8 @@ if (!existsSync(projectRoot) || !statSync(projectRoot).isDirectory()) {
 
 const stackOrder = ['frontend', 'component-library', 'vue', 'node', 'nestjs', 'java']
 const stackReferences = {
-  'frontend': ['frontend/docs.md', 'frontend/code.md'],
-  'component-library': [],
+  'frontend': ['frontend/code.md'],
+  'component-library': ['frontend/docs.md'],
   'vue': ['frontend/vue.md'],
   'node': ['backend/docs.md', 'backend/node.md'],
   'nestjs': ['backend/docs.md', 'backend/nestjs.md'],

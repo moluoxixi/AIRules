@@ -31,43 +31,23 @@ node <init-project-skill>/scripts/scaffold-docs.mjs <your-project> <detect-stack
 - 所有项目都会创建 `docs/architecture/`、`docs/api/`、`docs/prds/`、`docs/test/`、`docs/other/` 和 `docs/map.md`。
 - `docs/architecture/` 包含 `index.md`、`overview.md` 和 `decisions/index.md`，用于承载架构事实与 ADR。
 - `docs/api/` 包含 `index.md` 和 `_protocol.md`，用于承载全局接口协议与业务接口索引。
-- 组件库项目额外创建 `docs/components/`；普通前端应用不主动新增组件文档，但初始化前已存在组件库文档时必须保留并纳入标准入口。
-- 首次接入 AIRules 时，初始化前已有文档必须先判断归属；能确定属于架构、接口、需求、测试或组件库的，保留为已知归属来源，并继续用对应 docs skill 转成标准格式、按业务域拆分并补齐索引；无法确定归属的才移动到 `docs/other/imported/` 并在 `docs/other/index.md` 标记为 `MISSING conversion`。
+- 前端组件库项目额外创建 `docs/components/` 作为外部组件库文档。
+- `scaffold-docs.mjs` 不生成 `out-components/` 或 `out-api/`；对外复用产物必须分别由 `components-docs`、`api-docs` 基于源码和已有文档推导生成。
+- 如果项目已有文档必须先判断归属；能确定属于架构、接口、需求、测试或外部组件库的，保留为已知归属来源，按“对应文档 Skills”转成标准格式；无法确定归属的移动到 `docs/other/imported/` 并在 `docs/other/index.md` 标记为 `MISSING conversion`。
 - 归档前必须识别特殊文档目录；例如 `docs/superpowers/` 属于外部方法论/参考资料目录，必须原位保留，不得移动到 `docs/other/imported/`，也不得作为待转换业务文档登记。
 - 无法归类文档的归档目标已存在时，脚本必须停止并报告冲突；不得覆盖、合并或部分移动。
 - 已 AIRules 初始化的项目重复执行时，脚本只补缺失标准入口，不覆盖用户已有标准文档。
-- `采购订单.md` 这类业务文档不在初始化时硬编码创建，必须在具体业务任务中由 `prd-docs`、`api-docs` 或 `test-docs` 独立生成，并同步维护 `docs/map.md`。
-- 检测到 `component-library` 时，初始化不得停在创建 `docs/components/index.md`；必须继续使用 `components-docs` 扫描组件库项目，并为发现到的所有组件生成或更新 `docs/components/<组件名>.md`、`docs/components/index.md` 和 `docs/map.md`。
-- 架构文档与 ADR 必须在具体架构任务中由 `architecture-docs` 独立生成或更新，并同步维护 `docs/architecture/index.md` 与 `docs/map.md`。
 
-## 重复初始化与标准化
+## 对应文档 Skills
 
-重复执行 `init-project` 时，不按单个文件版本判断是否升级；必须重新按当前 AIRules 最新规范检查 `docs/` 的结构、索引和内容是否符合标准。
+旧文档标准化、文档更新和对外产物生成必须按内容类型调用对应 skill；不得只写“使用对应 skill”而不说明对应关系：
 
-- 确定性脚本只补齐缺失的标准目录、索引和脚手架文件；已有标准文档不由脚本覆盖、重写或迁移。
-- `docs/api/_protocol.md` 只是 `docs/api/` 下的全局接口协议文档，不使用独立版本机制，也不生成协议专属升级报告。
-- 已有文档是否符合最新规范属于语义判断，必须由 AI 读取当前 `docs/`、代码事实和对应 docs skill 后评估。
-- 发现标准目录中的文档结构、内容或索引不符合最新规范时，按文档类型使用 `architecture-docs`、`prd-docs`、`api-docs`、`components-docs` 或 `test-docs` 更新。
-- 若规范升级会改变架构边界、接口协议、错误码体系、分页策略、组件库契约、PRD 拆分、测试策略或业务口径，必须先输出标准化更新报告并等待开发者确认。
-- 标准化更新完成后，同步维护对应目录 `index.md` 与 `docs/map.md`；无法确认的信息标记 `MISSING`，不得伪造业务事实。
+- `architecture-docs`：架构边界、分层、依赖方向、部署拓扑、权限模型、技术选型、ADR。
+- `prd-docs`：业务背景、用户流程、字段口径、状态流转、验收标准、需求变更。
+- `api-docs`：接口协议、路由、DTO/schema、OpenAPI/Swagger、错误码、分页、鉴权、Mock、联调说明、`out-api/`。
+- `components-docs`：组件库公共组件、Props/Events/Slots/Children、可访问性、示例、版本兼容、`out-components/`。
+- `test-docs`：测试策略、用例矩阵、回归范围、联调验证、Mock/fixture、测试数据准备。
 
-## 标准化转换旧文档
-
-若存在初始化前旧文档，初始化不得停在目录创建、原位保留或归档状态，必须继续执行旧文档标准化转换；文档已经位于 `docs/components/`、`docs/api/`、`docs/prds/`、`docs/test/` 或 `docs/architecture/`，只代表归属较明确，不代表已经符合 AIRules 最新标准。
-
-1. 读取 `docs/architecture/`、`docs/api/`、`docs/components/`、`docs/prds/`、`docs/test/`、`docs/other/index.md` 与 `docs/other/imported/` 下的来源文档，按内容和原路径识别 PRD、API、组件库文档、测试、架构信息；遇到 `docs/superpowers/` 这类特殊参考目录时必须原位排除，不参与业务文档转换。
-2. 结合当前代码事实与 CodeGraph 结果校验模块、接口、组件和测试入口；文档与代码冲突时先报告冲突，不得静默选择一方。
-3. 将已确认信息转换到标准分类文档：
-   - 需求与业务流程使用 `prd-docs`，写入 `docs/prds/<业务域>.md`。
-   - 接口、联调、Mock、错误码使用 `api-docs`，写入 `docs/api/<业务域>.md`；全局协议只写 `docs/api/_protocol.md`。
-   - 组件库文档使用 `components-docs`，写入 `docs/components/`；普通业务组件不生成独立组件文档。
-   - 测试策略、用例矩阵、验收验证使用 `test-docs`，写入 `docs/test/<业务域>.md`。
-   - 架构、模块边界、依赖方向、ADR 使用 `architecture-docs`，写入 `docs/architecture/`。
-4. 即使来源文档已经在目标目录，也必须按最新标准重写、拆分或补齐结构；不得因为路径正确就跳过内容标准化。
-5. 来源文档信息不足时，在目标标准文档中标记 `MISSING`；无法分类的来源继续保留在 `docs/other/imported/`，并在 `docs/other/index.md` 说明缺口。
-6. 转换完成后，同步更新各目录 `index.md`、`docs/map.md` 和 `docs/other/index.md` 的转换状态。
-
-若单个旧文档混合多个业务域或同时包含 PRD/API/组件库/测试/架构，且拆分会影响公共契约、接口协议、组件库边界、测试策略或业务口径，必须先输出《旧文档标准化转换报告》并等待开发者确认；边界清晰、只做格式转换和索引更新时可直接执行。
 
 ## 根据项目背景注入规则
 
@@ -75,13 +55,13 @@ node <init-project-skill>/scripts/scaffold-docs.mjs <your-project> <detect-stack
 
 - 当 `AGENTS.md` 不存在或为空时，先注入 `references/airules-base.md`，为用户创建 `# 项目规范` 与项目自定义规范占位。
 - 当 `AGENTS.md` 已存在且包含用户内容时，跳过 `references/airules-base.md`，避免向用户已有规范中追加占位段。
-- 始终注入 `references/docs.md`，再按检测结果选择场景文档规范与语言代码规范，并注入目标项目根目录 `AGENTS.md`：
-- `references/` 按通用、前端、后端组织：通用文档规则为 `docs.md`，前端规则放入 `frontend/`，后端规则放入 `backend/`；各领域通用代码规则命名为 `code.md`，具体框架或语言规则使用 `vue.md`、`node.md`、`nestjs.md`、`java.md`。
+- 始终注入 `references/common/docs.md`，再按检测结果选择场景输出规范与语言代码规范，并注入目标项目根目录 `AGENTS.md`。
+- `references/` 按 `common/`、`frontend/`、`backend/` 组织：通用文档读取规则只放在 `common/docs.md`；前端 `docs.md` 只描述组件库 `out-components/` 输出；后端 `docs.md` 只描述 API `out-api/` 输出；各领域通用代码规则命名为 `code.md`，具体框架或语言规则使用 `vue.md`、`node.md`、`nestjs.md`、`java.md`。
 
 | `detect-stack.mjs` 输出 stack | 追加注入 references |
 |---|---|
-| `frontend` | `frontend/docs.md`、`frontend/code.md` |
-| `component-library` | 不追加独立规则；依赖 `frontend/docs.md`、`frontend/code.md` 和具体框架规则 |
+| `frontend` | `frontend/code.md` |
+| `component-library` | `frontend/docs.md` |
 | `vue` | `frontend/vue.md` |
 | `node` | `backend/docs.md`、`backend/node.md` |
 | `nestjs` | `backend/docs.md`、`backend/nestjs.md` |
@@ -90,11 +70,11 @@ node <init-project-skill>/scripts/scaffold-docs.mjs <your-project> <detect-stack
 执行内容注入脚本：
 
 ```bash
-node <init-project-skill>/scripts/inject-rules.mjs <your-project> <init-project-skill>/references/<rule>.md [...]
+node <init-project-skill>/scripts/inject-rules.mjs <your-project> <init-project-skill>/references/common/docs.md [...]
 node <init-project-skill>/scripts/inject-rules.mjs <your-project> <init-project-skill>/references/<group>/<rule>.md [...]
 ```
 
-无法判断技术栈时不传额外语言规则，脚本只注入 `airules-base.md` 和 `docs.md`。当目标项目不存在 `AGENTS.md` 时，脚本创建该文件；当文件已存在时，脚本将聚合后的规则内容直接追加到文件末尾，不添加额外包装标题、受控块注释或文件名标题。
+无法判断技术栈时不传额外语言规则，脚本只注入 `airules-base.md` 和 `common/docs.md`。当目标项目不存在 `AGENTS.md` 时，脚本创建该文件；当文件已存在时，脚本将聚合后的规则内容直接追加到文件末尾，不添加额外包装标题、受控块注释或文件名标题。
 
 追加前脚本会按 Markdown 标题文本去重。若待注入规则与现有 `AGENTS.md` 出现重复标题，脚本必须停止写入并报告重复标题；AI 随后读取现有 `AGENTS.md` 与待注入 references，输出规则合并审查结论，评估应合并、保留、改名还是移动到既有章节。未经审查不得自动跳过、覆盖或重复追加同名章节。
 
@@ -124,8 +104,9 @@ codegraph init -i
 - `AGENTS.md` 已包含本次项目背景对应的 AIRules 规则块。
 - `docs/map.md`、`docs/architecture/`、`docs/api/_protocol.md`、`docs/other/` 与对应文档目录索引已创建；旧文档已按归属转换到标准目录，无法确定归属的才归档到 `docs/other/imported/`。
 - 重复初始化时已按当前 AIRules 最新规范检查 `docs/`；需要语义迁移或标准化更新的文档已使用对应 docs skill 处理，需开发者确认的项已输出标准化更新报告。
-- 若存在旧文档，已按标准分类转换到 `docs/prds/`、`docs/api/`、`docs/test/`、`docs/architecture/`，组件库项目还应转换到 `docs/components/`；无法转换的条目已标记 `MISSING conversion`。
-- 组件库项目已通过 `components-docs` 扫描组件库源码；发现到的所有组件均已生成或更新组件文档，未发现组件时已报告 `MISSING components discovery` 和扫描范围。
+- 若存在旧文档，已按标准分类转换到 `docs/prds/`、`docs/api/`、`docs/test/`、`docs/architecture/`，组件库项目还应转换到 `docs/components/` 或 `out-components/`；无法转换的条目已标记 `MISSING conversion`。
+- 组件库项目已通过 `components-docs` 扫描组件库源码；发现到的所有组件均已生成或更新 `out-components/`，未发现组件时已报告 `MISSING components discovery` 和扫描范围。
+- 后端 API 项目已通过 `api-docs` 分析路由、DTO/schema、OpenAPI/Swagger、测试和已有接口文档；发现到的对外接口均已生成或更新 `out-api/`，未发现接口时已报告 `MISSING API contract` 和扫描范围。
 - 技术栈检测结果已按 `detect-stack.mjs` 的 `stacks`、`references` 和关键 `evidence` 报告。
 - `CLAUDE.md` 是指向 `AGENTS.md` 的软链接；Windows 无文件软链接权限时，可为同一文件实体的硬链接，且日志必须说明。
 - `codegraph init -i` 已执行并按真实结果报告 `PASS`、`FAIL`、`MISSING` 或 `NOT RUN`。
