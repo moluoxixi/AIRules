@@ -12,3 +12,4 @@
 - 具体文档结构、字段、示例和写作规则以 `components-docs` 为准，本规则不重复描述。
 - 若项目同时维护 `docs/components/`，它只作为项目内部知识库入口；对外交付以 `out-components/` 为准，二者不得出现冲突。
 - 组件契约事实必须由 AI 阅读组件源码、类型、测试、示例、构建入口和已有文档后推导；脚本只能辅助发现候选组件。
+- 更新 `out-components/` 时必须维护 `out-components/index.md` 的 `来源快照`；无法确认 commit 或工作区 dirty 时显式标记，不得伪造提交 ID。

@@ -35,7 +35,10 @@ description: 用于生成或更新组件库 out-components 与 docs/components �
 - 源码、类型、测试、示例或已有文档无法确认的信息，必须在对应组件文档中标记 `MISSING` 并说明缺口。
 - 只有用户要求修改组件库代码、重新设计公共契约或改变组件库分类时，才进入代码实现或设计评审；评审不得阻塞本 skill 对已存在源码事实的文档输出。
 - 仅补充既有组件的已确认示例、字段说明或变更记录时，可按 L0 直接更新。
-- 更新或新增文档后，同步更新 `out-components/index.md`；若项目维护内部知识库，同步 `docs/components/index.md` 和 `docs/map.md`。
+- 更新或新增文档后，同步更新 `out-components/index.md` 的组件清单和 `来源快照`；若项目维护内部知识库，同步 `docs/components/index.md` 和 `docs/map.md`。
+- `来源快照` 记录在 `out-components/index.md`，包含 `sourceCommit`、`sourceState`、`generatedBy`、`sourceRoots` 和关键 `sourceFiles`。
+- 工作区 clean 且 Git 可用时，`sourceCommit` 使用当前 `HEAD`；工作区 dirty 或无法确认提交时，必须标记 `sourceState: dirty` 或 `MISSING source commit`，并列出影响本次文档的已修改源码文件。
+- 单个组件文档只记录源码路径、导出入口、测试和示例来源，不重复记录 commit ID。
 
 ## 文档结构
 

@@ -23,7 +23,10 @@ description: 用于生成或更新 out-api 与 docs/api 下的接口文档，尤
 - 根据已有后端源码、OpenAPI/Swagger、DTO/schema、测试或 Mock 生成或更新 `out-api/` 是实时对外输出，不属于 L2，不得先输出报告等待确认，也不得以评审门槛为由跳过。
 - 源码、契约、测试或已有文档无法确认的信息，必须在对应 API 文档中标记 `MISSING` 并说明缺口。
 - 只有用户要求修改接口代码、重新设计全局协议、错误码体系、分页策略、鉴权策略或跨业务接口拆分时，才进入代码实现或协议设计评审；评审不得阻塞本 skill 对已存在源码事实的文档输出。
-- 更新或新增文档后，同步更新 `out-api/index.md`；若项目维护内部知识库，同步 `docs/api/index.md` 和 `docs/map.md`。
+- 更新或新增文档后，同步更新 `out-api/index.md` 的接口清单和 `来源快照`；若项目维护内部知识库，同步 `docs/api/index.md` 和 `docs/map.md`。
+- `来源快照` 记录在 `out-api/index.md`，包含 `sourceCommit`、`sourceState`、`generatedBy`、`sourceRoots` 和关键 `sourceFiles`。
+- 工作区 clean 且 Git 可用时，`sourceCommit` 使用当前 `HEAD`；工作区 dirty 或无法确认提交时，必须标记 `sourceState: dirty` 或 `MISSING source commit`，并列出影响本次文档的已修改源码文件。
+- 单个 API 文档只记录路由、Controller/Resolver、DTO/schema、OpenAPI/Swagger、测试和 Mock 来源，不重复记录 commit ID。
 
 ## 全局协议结构
 
