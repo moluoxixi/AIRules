@@ -13,7 +13,7 @@ description: 用于创建新项目、初始化项目、为已有项目首次接�
 node <init-project-skill>/scripts/detect-stack.mjs <your-project>
 ```
 
-- 项目类型来自脚本输出的 `stacks` 字段，可能包含 `frontend`、`component-library`、`vue`、`node`、`nestjs`、`java`。
+- 项目类型来自脚本输出的 `stacks` 字段，可能包含 `frontend`、`component-library`、`component-consumer`、`vue`、`node`、`nestjs`、`java`。
 - 规则文件来自脚本输出的 `references` 字段。
 - 多项目仓库、monorepo 或 workspace 项目必须读取脚本输出的 `monorepo`、`workspacePatterns`、`projects`、`projectRoots` 与 `evidence`；显式 workspace 配置优先，递归项目标记文件作为兜底；`stacks` 用于按所有子项目聚合后注入规则，`projects[].stacks` 用于说明每个子项目分别是前端、后端、组件库或其它类型，不得只根据仓库根目录判断。
 - 证据入口来自脚本输出的 `evidence` 字段；交付时保留关键证据，便于用户审计。
@@ -30,10 +30,11 @@ node <init-project-skill>/scripts/scaffold-docs.mjs <your-project> <detect-stack
 
 - 所有项目都会创建 `docs/architecture/`、`docs/api/`、`docs/prds/`、`docs/test/`、`docs/other/` 和 `docs/map.md`。
 - `docs/architecture/` 包含 `index.md`、`overview.md` 和 `decisions/index.md`，用于承载架构事实与 ADR。
-- `docs/api/` 包含 `index.md` 和 `_protocol.md`，用于承载全局接口协议与业务接口索引。
-- 前端组件库项目额外创建 `docs/components/` 作为外部组件库文档。
-- `scaffold-docs.mjs` 不生成 `out-components/` 或 `out-api/`；对外复用产物必须分别由 `components-docs`、`api-docs` 基于源码和已有文档推导生成。
+- `docs/api/` 包含 `index.md` 和 `_protocol.md`，用于承载当前项目消费的外部 API、上游服务或 SDK 契约。
+- `component-consumer` 项目额外创建 `docs/components/`，用于承载当前项目消费的外部组件库、Design System、UI SDK 或 workspace 组件包约束。
+- `scaffold-docs.mjs` 不生成 `docs/out-components/` 或 `docs/out-api/`；对外复用产物必须分别由 `components-docs`、`api-docs` 基于源码和已有文档推导生成。
 - 如果项目已有文档必须先判断归属；能确定属于架构、接口、需求、测试或外部组件库的，保留为已知归属来源，按“对应文档 Skills”转成标准格式；无法确定归属的移动到 `docs/other/imported/` 并在 `docs/other/index.md` 标记为 `MISSING conversion`。
+- 已有接口或组件文档必须再判断 ownership：当前项目提供的 API/组件库输出到 `docs/out-api/` 或 `docs/out-components/`；当前项目消费的外部 API/组件库输出到 `docs/api/` 或 `docs/components/`；无法确认时标记 `MISSING ownership`。
 - 归档前必须识别特殊文档目录；例如 `docs/superpowers/` 属于外部方法论/参考资料目录，必须原位保留，不得移动到 `docs/other/imported/`，也不得作为待转换业务文档登记。
 - 无法归类文档的归档目标已存在时，脚本必须停止并报告冲突；不得覆盖、合并或部分移动。
 - 已 AIRules 初始化的项目重复执行时，脚本只补缺失标准入口，不覆盖用户已有标准文档。
@@ -44,8 +45,8 @@ node <init-project-skill>/scripts/scaffold-docs.mjs <your-project> <detect-stack
 
 - `architecture-docs`：架构边界、分层、依赖方向、部署拓扑、权限模型、技术选型、ADR。
 - `prd-docs`：业务背景、用户流程、字段口径、状态流转、验收标准、需求变更。
-- `api-docs`：接口协议、路由、DTO/schema、OpenAPI/Swagger、错误码、分页、鉴权、Mock、联调说明、`out-api/`。
-- `components-docs`：组件库公共组件、Props/Events/Slots/Children、可访问性、示例、版本兼容、`out-components/`。
+- `api-docs`：当前项目提供的 API 输出到 `docs/out-api/`；当前项目消费的外部 API、上游服务、SDK 或 generated client 输出到 `docs/api/`。
+- `components-docs`：当前项目提供的组件库输出到 `docs/out-components/`；当前项目消费的外部组件库、Design System、UI SDK 或 workspace 组件包输出到 `docs/components/`。
 - `test-docs`：测试策略、用例矩阵、回归范围、联调验证、Mock/fixture、测试数据准备。
 
 
@@ -56,12 +57,13 @@ node <init-project-skill>/scripts/scaffold-docs.mjs <your-project> <detect-stack
 - 当 `AGENTS.md` 不存在或为空时，先注入 `references/airules-base.md`，为用户创建 `# 项目规范` 与项目自定义规范占位。
 - 当 `AGENTS.md` 已存在且包含用户内容时，跳过 `references/airules-base.md`，避免向用户已有规范中追加占位段。
 - 始终注入 `references/common/docs.md`，再按检测结果选择场景输出规范与语言代码规范，并注入目标项目根目录 `AGENTS.md`。
-- `references/` 按 `common/`、`frontend/`、`backend/` 组织：通用文档读取规则只放在 `common/docs.md`；组件库对外输出规则放在 `frontend/out-components.md`；后端 API 对外输出规则放在 `backend/out-api.md`；各领域通用代码规则命名为 `code.md`，具体框架或语言规则使用 `vue.md`、`node.md`、`nestjs.md`、`java.md`。
+- `references/` 按 `common/`、`frontend/`、`backend/` 组织：通用文档读取规则只放在 `common/docs.md`；组件库对外输出规则放在 `frontend/out-components.md`；外部组件库消费规则放在 `frontend/components.md`；后端 API 提供方与消费方规则放在 `backend/out-api.md`；各领域通用代码规则命名为 `code.md`，具体框架或语言规则使用 `vue.md`、`node.md`、`nestjs.md`、`java.md`。
 
 | `detect-stack.mjs` 输出 stack | 追加注入 references |
 |---|---|
 | `frontend` | `frontend/code.md` |
 | `component-library` | `frontend/out-components.md` |
+| `component-consumer` | `frontend/components.md` |
 | `vue` | `frontend/vue.md` |
 | `node` | `backend/out-api.md`、`backend/node.md` |
 | `nestjs` | `backend/out-api.md`、`backend/nestjs.md` |
@@ -102,11 +104,12 @@ codegraph init -i
 ## 交付检查
 
 - `AGENTS.md` 已包含本次项目背景对应的 AIRules 规则块。
-- `docs/map.md`、`docs/architecture/`、`docs/api/_protocol.md`、`docs/other/` 与对应文档目录索引已创建；旧文档已按归属转换到标准目录，无法确定归属的才归档到 `docs/other/imported/`。
+- `docs/map.md`、`docs/architecture/`、`docs/api/_protocol.md`、`docs/other/` 与对应文档目录索引已创建；`component-consumer` 项目已创建 `docs/components/`；旧文档已按归属转换到标准目录，无法确定归属的才归档到 `docs/other/imported/`。
 - 重复初始化时已按当前 AIRules 最新规范检查 `docs/`；需要语义迁移或标准化更新的文档已使用对应 docs skill 处理，需开发者确认的项已输出标准化更新报告。
-- 若存在旧文档，已按标准分类转换到 `docs/prds/`、`docs/api/`、`docs/test/`、`docs/architecture/`，组件库项目还应转换到 `docs/components/` 或 `out-components/`；无法转换的条目已标记 `MISSING conversion`。
-- 组件库项目已通过 `components-docs` 扫描组件库源码；发现到的所有组件均已生成或更新 `out-components/`，未发现组件时已报告 `MISSING components discovery` 和扫描范围。
-- 后端 API 项目已通过 `api-docs` 分析路由、DTO/schema、OpenAPI/Swagger、测试和已有接口文档；发现到的对外接口均已生成或更新 `out-api/`，未发现接口时已报告 `MISSING API contract` 和扫描范围。
+- 若存在旧文档，已按标准分类转换到 `docs/prds/`、`docs/api/`、`docs/test/`、`docs/architecture/`；组件库旧文档应通过 `components-docs` 判断 ownership 后转换到 `docs/components/` 或 `docs/out-components/`；无法转换的条目已标记 `MISSING conversion`。
+- 组件库项目已通过 `components-docs` 扫描组件库源码；发现到的所有组件均已生成或更新 `docs/out-components/`，未发现组件时已报告 `MISSING components discovery` 和扫描范围。
+- 组件消费项目已通过 `components-docs` 分析依赖、源码 import、全局注册、主题配置和已有文档；发现到的外部组件库均已生成或更新 `docs/components/`，未发现外部组件库时已报告 `MISSING component dependency` 和扫描范围。
+- 后端 API 项目已通过 `api-docs` 分析路由、DTO/schema、OpenAPI/Swagger、测试、外部 client、SDK/generated client、Mock 和已有接口文档；当前项目提供的接口已生成或更新 `docs/out-api/`，当前项目消费的外部接口已生成或更新 `docs/api/`，未发现接口时已报告 `MISSING API contract` 和扫描范围。
 - 技术栈检测结果已按 `detect-stack.mjs` 的 `stacks`、`references` 和关键 `evidence` 报告。
 - `CLAUDE.md` 是指向 `AGENTS.md` 的软链接；Windows 无文件软链接权限时，可为同一文件实体的硬链接，且日志必须说明。
 - `codegraph init -i` 已执行并按真实结果报告 `PASS`、`FAIL`、`MISSING` 或 `NOT RUN`。

@@ -1,30 +1,43 @@
 ---
 name: api-docs
-description: 用于生成或更新 out-api 与 docs/api 下的接口文档，尤其是前后端联调、OpenAPI/Swagger 补充、接口契约、错误码、Mock 数据或请求响应示例需要落文档时触发。
+description: 用于生成或更新 API 提供方 docs/out-api 或 API 消费方 docs/api 文档，尤其是后端接口、外部服务依赖、联调、OpenAPI/Swagger、错误码、Mock 数据或请求响应示例需要落文档时触发。
 ---
 
 # API Docs
 
 ## 输出位置
 
-- 对外文档：`out-api/<业务域>.md`
-- 对外索引：`out-api/index.md`
-- 对外全局协议：`out-api/_protocol.md`
-- 内部知识库：`docs/api/<业务域>.md`、`docs/api/index.md`、`docs/api/_protocol.md`
+- 提供方文档：`docs/out-api/<业务域>.md`
+- 提供方索引：`docs/out-api/index.md`
+- 提供方全局协议：`docs/out-api/_protocol.md`
+- 消费方文档：`docs/api/<外部服务或业务域>.md`
+- 消费方索引：`docs/api/index.md`
+- 消费方协议：`docs/api/_protocol.md`
 - 地图路径：`docs/map.md`
-- `out-api/` 是给前端、第三方、测试代理或其它服务复用的 API 契约；`docs/api/` 只作为项目内部知识库入口，二者不得出现冲突。
+- `docs/out-api/` 是当前项目作为后端、服务或 SDK 提供给外部调用方复用的 API 契约。
+- `docs/api/` 是当前项目调用外部服务、第三方 API、上游系统、OpenAPI generated client 或 SDK 时的消费方接口知识库；不得作为 `docs/out-api/` 镜像目录。
+
+## 模式选择
+
+- Provider mode：当前项目或 monorepo 子项目暴露 HTTP API、GraphQL、RPC、Webhook、消息事件或后端 SDK 时启用；输出当前项目自己的接口到 `docs/out-api/`。
+- Consumer mode：当前项目调用外部 HTTP API、GraphQL、RPC、Webhook、消息系统、SDK、generated client 或其它服务时启用；输出本项目依赖的外部接口到 `docs/api/`。
+- 同一仓库可以同时存在 provider mode 与 consumer mode；必须按接口归属分别处理，不得把当前项目自己的接口写入 `docs/api/` 作为对外契约。
+- 已有接口文档必须先判定归属：能匹配当前项目路由、Controller、Resolver、DTO/schema、OpenAPI/Swagger 或测试的，转为 `docs/out-api/`；能匹配外部 baseURL、SDK 依赖、generated client、Feign/gRPC client、Mock 上游或环境变量服务地址的，转为 `docs/api/`；无法确认时标记 `MISSING API ownership` 并保留来源路径。
 
 ## 写作规则
 
-- 先读取已存在的 `docs/map.md`、`docs/api/index.md`、`docs/api/_protocol.md`、`out-api/index.md`、`out-api/_protocol.md`、相关 PRD、架构文档和已有接口文档；目标目录或索引不存在时创建，不得因缺失停止。
+- 先读取已存在的 `docs/map.md`、`docs/api/index.md`、`docs/api/_protocol.md`、`docs/out-api/index.md`、`docs/out-api/_protocol.md`、相关 PRD、架构文档、路由源码、外部 client 源码和已有接口文档；目标目录或索引不存在时创建，不得因缺失停止。
 - 接口事实优先来自后端路由、OpenAPI/Swagger、接口实现或用户提供的契约；无法确认时标记 `MISSING`。
 - 每个接口必须包含请求方法、路径、用途、请求参数、响应结构、错误码和联调注意事项。
-- 全局返回结构、错误结构、分页、鉴权、Headers、版本策略只维护在 `out-api/_protocol.md`；内部 `docs/api/_protocol.md` 可作为项目知识库镜像，但不得与 `out-api/_protocol.md` 冲突。
-- 根据已有后端源码、OpenAPI/Swagger、DTO/schema、测试或 Mock 生成或更新 `out-api/` 是实时对外输出，不属于 L2，不得先输出报告等待确认，也不得以评审门槛为由跳过。
+- 当前项目对外提供的全局返回结构、错误结构、分页、鉴权、Headers、版本策略只维护在 `docs/out-api/_protocol.md`。
+- 当前项目调用外部服务时依赖的上游协议、鉴权、Headers、分页、错误结构和偏差记录维护在 `docs/api/_protocol.md` 或对应外部服务文档中。
+- 根据已有后端源码、OpenAPI/Swagger、DTO/schema、测试或 Mock 生成或更新 `docs/out-api/` 是实时对外输出，不属于 L2，不得先输出报告等待确认，也不得以评审门槛为由跳过。
+- 根据已有外部 client、SDK 依赖、generated client、OpenAPI 文件、Mock 或旧文档生成 `docs/api/` 是消费方知识整理，不属于 L2，不得先输出报告等待确认。
 - 源码、契约、测试或已有文档无法确认的信息，必须在对应 API 文档中标记 `MISSING` 并说明缺口。
 - 只有用户要求修改接口代码、重新设计全局协议、错误码体系、分页策略、鉴权策略或跨业务接口拆分时，才进入代码实现或协议设计评审；评审不得阻塞本 skill 对已存在源码事实的文档输出。
-- 更新或新增文档后，同步更新 `out-api/index.md` 的接口清单和 `来源快照`；若项目维护内部知识库，同步 `docs/api/index.md` 和 `docs/map.md`。
-- `来源快照` 记录在 `out-api/index.md`，包含 `sourceCommit`、`sourceState`、`generatedBy`、`sourceRoots` 和关键 `sourceFiles`。
+- 更新或新增提供方文档后，同步更新 `docs/out-api/index.md` 的接口清单和 `来源快照`。
+- 更新或新增消费方文档后，同步更新 `docs/api/index.md` 的外部服务清单、来源证据和 `docs/map.md`。
+- `来源快照` 记录在 `docs/out-api/index.md`，包含 `sourceCommit`、`sourceState`、`generatedBy`、`sourceRoots` 和关键 `sourceFiles`。
 - 工作区 clean 且 Git 可用时，`sourceCommit` 使用当前 `HEAD`；工作区 dirty 或无法确认提交时，必须标记 `sourceState: dirty` 或 `MISSING source commit`，并列出影响本次文档的已修改源码文件。
 - 单个 API 文档只记录路由、Controller/Resolver、DTO/schema、OpenAPI/Swagger、测试和 Mock 来源，不重复记录 commit ID。
 

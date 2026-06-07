@@ -5,7 +5,10 @@
 - 当任务涉及架构、模块边界、需求、接口联调、测试设计、业务流程、字段口径、验收标准或用户提到具体业务域时，必须先检索并读取 `docs/`。
 - 优先读取 `docs/map.md`，再读取相关目录的 `index.md`，最后按关键词读取命中的业务文档。
 - 涉及架构、分层、依赖方向、部署、权限模型或技术选型时，必须读取 `docs/architecture/index.md`、`docs/architecture/overview.md` 和相关 ADR。
-- 涉及接口、联调、请求封装、错误处理、分页、鉴权或 Mock 时，必须读取 `docs/api/_protocol.md` 和相关业务接口文档。
+- 涉及当前项目消费的外部接口、联调、请求封装、错误处理、分页、鉴权或 Mock 时，必须读取 `docs/api/_protocol.md` 和相关外部接口文档。
+- 涉及当前项目提供给外部调用方的 API 契约时，必须读取 `docs/out-api/_protocol.md` 和相关提供方接口文档。
+- 涉及当前项目消费的外部组件库、Design System、UI SDK 或 workspace 组件包时，必须读取 `docs/components/index.md` 和相关组件文档。
+- 涉及当前项目自身组件库对外契约时，必须读取 `docs/out-components/index.md` 和相关组件文档。
 - 若相关内容未在分类目录中找到，必须读取 `docs/other/index.md`，检查是否存在待转换的旧文档来源。
 
 ## 检索要求
@@ -17,6 +20,6 @@
 
 ## 读取边界
 
-- `docs/` 是项目内部知识库；`out-components/`、`out-api/` 是对外复用产物，不属于通用文档读取入口。
-- 只有用户任务明确涉及组件库对外契约、API 对外契约、消费方联调或场景专属规则要求时，才读取对应 `out-*` 目录。
+- `docs/api/` 与 `docs/components/` 记录当前项目消费的外部接口和外部组件库；不得写入当前项目自己提供的 API 或组件库对外契约。
+- `docs/out-api/` 与 `docs/out-components/` 记录当前项目提供给外部调用方或消费方复用的契约；不得作为内部知识库镜像目录。
 - 初始化前归档到 `docs/other/imported/` 的旧文档只能作为来源证据；未转换为标准分类文档前，不得作为长期业务事实使用。

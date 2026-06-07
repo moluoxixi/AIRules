@@ -195,6 +195,36 @@ it('init-project detect-stack - 普通前端项目不识别为组件库', () => 
   assert.deepEqual(output.references, ['frontend/code.md', 'frontend/vue.md'])
 }))
 
+it('init-project detect-stack - 使用外部组件库的前端项目识别为组件消费方', () => withTempDir('airules-detect-component-consumer-', (tmpDir) => {
+  const projectRoot = path.join(tmpDir, 'project')
+
+  writeFile(path.join(projectRoot, 'package.json'), JSON.stringify({
+    dependencies: {
+      '@vitejs/plugin-vue': '^6.0.0',
+      'element-plus': '^3.0.0',
+      'vite': '^7.0.0',
+      'vue': '^3.5.0',
+    },
+    scripts: {
+      dev: 'vite',
+    },
+  }))
+  writeFile(path.join(projectRoot, 'index.html'), '<div id="app"></div>\n')
+
+  const result = runDetectStack(projectRoot)
+  const output = JSON.parse(result.stdout)
+
+  assert.equal(result.status, 0, result.stderr)
+  assert.deepEqual(output.stacks, ['frontend', 'component-consumer', 'vue'])
+  assert.deepEqual(output.references, ['frontend/code.md', 'frontend/components.md', 'frontend/vue.md'])
+  assert.equal(
+    output.evidence.some((entry: { stack: string, signal: string }) =>
+      entry.stack === 'component-consumer' && entry.signal === 'component library dependency "element-plus"',
+    ),
+    true,
+  )
+}))
+
 it('init-project detect-stack - React 前端项目不注入 Vue 规范', () => withTempDir('airules-detect-react-frontend-', (tmpDir) => {
   const projectRoot = path.join(tmpDir, 'project')
 
@@ -487,7 +517,7 @@ it('init-project scaffold-docs - 普通前端项目不创建组件库文档目�
   assert.match(fs.readFileSync(path.join(projectRoot, 'docs', 'map.md'), 'utf8'), /docs\/other/)
 }))
 
-it('init-project scaffold-docs - 组件库项目创建 components 文档目录与索引', () => withTempDir('airules-docs-component-library-', (tmpDir) => {
+it('init-project scaffold-docs - 组件库项目不创建旧 components 文档目录', () => withTempDir('airules-docs-component-library-', (tmpDir) => {
   const projectRoot = path.join(tmpDir, 'project')
 
   fs.mkdirSync(projectRoot, { recursive: true })
@@ -495,9 +525,22 @@ it('init-project scaffold-docs - 组件库项目创建 components 文档目录�
   const result = runScaffoldDocs(projectRoot, 'frontend', 'component-library')
 
   assert.equal(result.status, 0, result.stderr)
+  assert.equal(fs.existsSync(path.join(projectRoot, 'docs', 'components')), false)
+  assert.doesNotMatch(fs.readFileSync(path.join(projectRoot, 'docs', 'map.md'), 'utf8'), /docs\/components/)
+}))
+
+it('init-project scaffold-docs - 组件消费方创建 components 文档目录与索引', () => withTempDir('airules-docs-component-consumer-', (tmpDir) => {
+  const projectRoot = path.join(tmpDir, 'project')
+
+  fs.mkdirSync(projectRoot, { recursive: true })
+
+  const result = runScaffoldDocs(projectRoot, 'frontend', 'component-consumer')
+
+  assert.equal(result.status, 0, result.stderr)
   assert.equal(fs.existsSync(path.join(projectRoot, 'docs', 'components', 'index.md')), true)
-  assert.match(fs.readFileSync(path.join(projectRoot, 'docs', 'components', 'index.md'), 'utf8'), /# 组件库文档索引/)
+  assert.match(fs.readFileSync(path.join(projectRoot, 'docs', 'components', 'index.md'), 'utf8'), /外部组件库文档索引/)
   assert.match(fs.readFileSync(path.join(projectRoot, 'docs', 'map.md'), 'utf8'), /docs\/components/)
+  assert.doesNotMatch(fs.readFileSync(path.join(projectRoot, 'docs', 'map.md'), 'utf8'), /docs\/out-components\/index\.md/)
 }))
 
 it('init-project scaffold-docs - 后端项目不创建 components 目录', () => withTempDir('airules-docs-backend-', (tmpDir) => {
@@ -536,7 +579,6 @@ it('init-project scaffold-docs - 标准模板文件不生成末尾空行', () =>
     'docs/architecture/decisions/index.md',
     'docs/api/index.md',
     'docs/api/_protocol.md',
-    'docs/components/index.md',
     'docs/other/index.md',
     'docs/prds/index.md',
     'docs/test/index.md',
@@ -546,7 +588,7 @@ it('init-project scaffold-docs - 标准模板文件不生成末尾空行', () =>
   }
 }))
 
-it('init-project scaffold-docs - 已有 components 目录时保留并纳入标准入口', () => withTempDir('airules-docs-existing-components-', (tmpDir) => {
+it('init-project scaffold-docs - 已有 components 目录时归档为旧来源', () => withTempDir('airules-docs-existing-components-', (tmpDir) => {
   const projectRoot = path.join(tmpDir, 'project')
   const componentsIndexPath = path.join(projectRoot, 'docs', 'components', 'index.md')
   const originalComponentsIndex = '# Existing Components\n\nkeep component docs\n'
@@ -557,9 +599,28 @@ it('init-project scaffold-docs - 已有 components 目录时保留并纳入标�
   const mapContent = fs.readFileSync(path.join(projectRoot, 'docs', 'map.md'), 'utf8')
 
   assert.equal(result.status, 0, result.stderr)
+  assert.equal(fs.existsSync(componentsIndexPath), false)
+  assert.equal(
+    fs.readFileSync(path.join(projectRoot, 'docs', 'other', 'imported', 'components', 'index.md'), 'utf8'),
+    originalComponentsIndex,
+  )
+  assert.doesNotMatch(mapContent, /docs\/components/)
+}))
+
+it('init-project scaffold-docs - 组件消费方保留已有 components 目录作为外部组件来源', () => withTempDir('airules-docs-existing-consumer-components-', (tmpDir) => {
+  const projectRoot = path.join(tmpDir, 'project')
+  const componentsIndexPath = path.join(projectRoot, 'docs', 'components', 'index.md')
+  const originalComponentsIndex = '# Existing External Components\n\nkeep external component docs\n'
+
+  writeFile(componentsIndexPath, originalComponentsIndex)
+
+  const result = runScaffoldDocs(projectRoot, 'frontend', 'component-consumer')
+  const mapContent = fs.readFileSync(path.join(projectRoot, 'docs', 'map.md'), 'utf8')
+
+  assert.equal(result.status, 0, result.stderr)
   assert.equal(fs.readFileSync(componentsIndexPath, 'utf8'), originalComponentsIndex)
   assert.equal(fs.existsSync(path.join(projectRoot, 'docs', 'other', 'imported', 'components')), false)
-  assert.match(mapContent, /docs\/components/)
+  assert.match(mapContent, /components\/index\.md/)
 }))
 
 it('init-project scaffold-docs - 已有未归类 docs 时移动到 other imported 并登记索引', () => withTempDir('airules-docs-existing-other-', (tmpDir) => {
@@ -625,9 +686,10 @@ it('init-project scaffold-docs - 首次接入已有 map 时保留并追加标准
 
   assert.equal(result.status, 0, result.stderr)
   assert.equal(fs.existsSync(path.join(projectRoot, 'docs', 'other', 'imported', 'map.md')), false)
+  assert.equal(fs.existsSync(path.join(projectRoot, 'docs', 'other', 'imported', 'components', 'index.md')), true)
   assert.equal(mapContent.startsWith(originalMap), true)
   assert.match(mapContent, /## AIRules 文档入口补充/)
-  assert.match(mapContent, /components\/index\.md/)
+  assert.doesNotMatch(mapContent, /components\/index\.md/)
   assert.match(mapContent, /other\/index\.md/)
 }))
 

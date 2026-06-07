@@ -16,10 +16,9 @@ if (!existsSync(projectRoot) || !statSync(projectRoot).isDirectory()) {
 
 const stacks = new Set(stackArgs)
 const docsRoot = path.join(projectRoot, 'docs')
-const hadComponentsDocs = existingDirectory(path.join(docsRoot, 'components'))
+const includeComponents = stacks.has('component-consumer')
 archiveExistingDocs(docsRoot, collectArchiveCandidates(docsRoot))
 
-const includeComponents = stacks.has('component-library') || hadComponentsDocs
 const sections = [
   {
     name: 'architecture',
@@ -36,9 +35,9 @@ const sections = [
   includeComponents
     ? {
         name: 'components',
-        title: '组件库文档索引',
-        description: '记录组件库文档入口；具体组件库文档由 components-docs 生成或更新。',
-        columns: '| 组件库/组件 | 文档 | 状态 |\n|---|---|---|',
+        title: '外部组件库文档索引',
+        description: '记录本项目消费的外部组件库、Design System 或 UI SDK 的使用约束、组件契约和版本来源。',
+        columns: '| 组件库/组件 | 文档 | 来源 | 状态 |\n|---|---|---|---|',
       }
     : null,
   {
@@ -132,16 +131,15 @@ function appendRowsIfNeeded(filePath, content, title, columns, rows) {
   writeFileSync(filePath, `${content}${addition}`, 'utf8')
 }
 
-function existingDirectory(dirPath) {
-  return existsSync(dirPath) && statSync(dirPath).isDirectory()
-}
-
 function collectArchiveCandidates(sourceDir) {
   if (!existsSync(sourceDir)) {
     return []
   }
 
-  const standardNames = new Set(['architecture', 'api', 'components', 'prds', 'test', 'map.md'])
+  const standardNames = new Set(['architecture', 'api', 'out-api', 'out-components', 'prds', 'test', 'map.md'])
+  if (includeComponents) {
+    standardNames.add('components')
+  }
   // These directories are reference inputs, not legacy project docs to convert.
   const preservedNames = new Set(['other', 'superpowers'])
 
@@ -219,7 +217,7 @@ ${section.columns}${rowSection}
 }
 
 function otherRow(entry) {
-  return `| [${entry.name}](${entry.linkPath}) | ${entry.kind} | 转换为 architecture/api/prds/test 标准文档；组件库文档由 components-docs 处理 | MISSING conversion |`
+  return `| [${entry.name}](${entry.linkPath}) | ${entry.kind} | 转换为 architecture/api/prds/test 标准文档；组件库旧文档由 components-docs 判断后转换到 docs/components 或 docs/out-components | MISSING conversion |`
 }
 
 function architectureOverviewTemplate() {
@@ -327,7 +325,8 @@ ${rows}
 ## 维护约定
 
 - 新增业务文档时，使用稳定业务名作为文件名，例如 \`采购订单.md\`。
-- 架构文档放入 \`docs/architecture/\`，接口文档放入 \`docs/api/\`，需求文档放入 \`docs/prds/\`，测试文档放入 \`docs/test/\`${includeComponents ? '，组件库文档放入 `docs/components/`' : ''}。
+- 架构文档放入 \`docs/architecture/\`，接口文档放入 \`docs/api/\`，需求文档放入 \`docs/prds/\`，测试文档放入 \`docs/test/\`${includeComponents ? '，外部组件库消费文档放入 `docs/components/`' : ''}。
+- 对外复用产物由对应 skill 生成：组件库契约写入 \`docs/out-components/\`，API 契约写入 \`docs/out-api/\`。
 - 初始化前已存在的旧文档归档到 \`docs/other/imported/\`；整理时先评估归属，再转换为标准分类文档。
 - 全局接口协议维护在 \`docs/api/_protocol.md\`；业务接口文档不得重复定义冲突协议。
 - 新增或改名文档后，同步更新对应目录的 \`index.md\` 和本文件。

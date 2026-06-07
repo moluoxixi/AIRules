@@ -14,10 +14,11 @@ if (!existsSync(projectRoot) || !statSync(projectRoot).isDirectory()) {
   throw new Error(`Project root must be an existing directory: ${projectRoot}`)
 }
 
-const stackOrder = ['frontend', 'component-library', 'vue', 'node', 'nestjs', 'java']
+const stackOrder = ['frontend', 'component-library', 'component-consumer', 'vue', 'node', 'nestjs', 'java']
 const stackReferences = {
   'frontend': ['frontend/code.md'],
   'component-library': ['frontend/out-components.md'],
+  'component-consumer': ['frontend/components.md'],
   'vue': ['frontend/vue.md'],
   'node': ['backend/out-api.md', 'backend/node.md'],
   'nestjs': ['backend/out-api.md', 'backend/nestjs.md'],
@@ -91,6 +92,29 @@ const componentLibraryPeerDeps = new Set([
   'solid-js',
   'svelte',
   'vue',
+])
+
+const componentConsumerDeps = new Set([
+  '@ant-design/icons-vue',
+  '@chakra-ui/react',
+  '@headlessui/react',
+  '@headlessui/vue',
+  '@mui/base',
+  '@mui/icons-material',
+  '@mui/material',
+  '@radix-ui/react-dialog',
+  '@radix-ui/react-dropdown-menu',
+  '@radix-ui/react-popover',
+  '@radix-ui/react-slot',
+  '@radix-ui/react-tooltip',
+  'antd',
+  'ant-design-vue',
+  'element-plus',
+  'naive-ui',
+  'primevue',
+  'quasar',
+  'vant',
+  'vuetify',
 ])
 
 const nodeBackendDeps = new Set([
@@ -441,6 +465,7 @@ function analyzeRoot(root) {
     scores: {
       'frontend': 0,
       'component-library': 0,
+      'component-consumer': 0,
       'vue': 0,
       'node': 0,
       'nestjs': 0,
@@ -475,6 +500,10 @@ function analyzePackageJson(root, analysis) {
 
     if (vueDeps.has(dependency)) {
       addEvidence(analysis, 'vue', source, `Vue dependency "${dependency}"`, 10)
+    }
+
+    if (isComponentConsumerDependencyName(dependency)) {
+      addEvidence(analysis, 'component-consumer', source, `component library dependency "${dependency}"`, 10)
     }
 
     if (nodeBackendDeps.has(dependency)) {
@@ -653,6 +682,10 @@ function addSelectedStacks(analysis, selected) {
     selected.add('component-library')
   }
 
+  if (analysis.scores['component-consumer'] >= 8) {
+    selected.add('component-consumer')
+  }
+
   if (analysis.scores.vue >= 8) {
     selected.add('vue')
   }
@@ -726,6 +759,22 @@ function isComponentLibraryPackageName(packageName) {
     segments.some(segment => ['component', 'components', 'ui'].includes(segment))
     || normalizedName.includes('design-system')
     || normalizedName.includes('design_system')
+  )
+}
+
+function isComponentConsumerDependencyName(dependencyName) {
+  if (componentConsumerDeps.has(dependencyName)) {
+    return true
+  }
+
+  const normalizedName = dependencyName.toLowerCase().replace(/^@[^/]+\//, '')
+  const segments = normalizedName.split(/[._/-]+/)
+
+  return (
+    dependencyName.startsWith('@radix-ui/react-')
+    || normalizedName.includes('design-system')
+    || normalizedName.includes('design_system')
+    || segments.some(segment => ['component', 'components', 'ui'].includes(segment))
   )
 }
 
