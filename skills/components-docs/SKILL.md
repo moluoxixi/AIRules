@@ -20,29 +20,34 @@ description: 用于生成或更新组件库提供方 docs/out-components 或组�
 - Provider mode：当前项目或 monorepo 子项目是 `component-library`、Design System、UI SDK 或对外发布组件包时启用；输出当前项目自己的组件到 `docs/out-components/`。
 - Consumer mode：当前项目依赖外部组件库、Design System、UI SDK 或 workspace 组件包时启用；输出本项目如何使用外部组件到 `docs/components/`。
 - 同一仓库可以同时存在 provider mode 与 consumer mode；必须按项目根和组件归属分别处理，不得把当前项目自己的组件写入 `docs/components/`。
-- 已有组件文档必须先判定归属：能匹配当前组件库源码、入口导出、类型或测试的，转为 `docs/out-components/`；能匹配依赖包名、源码 import、全局注册或主题配置的，转为 `docs/components/`；无法确认时标记 `MISSING component ownership` 并保留来源路径。
+- 已有组件文档必须先判定归属和维护来源：能匹配当前组件库源码、入口导出、类型、测试或示例的自维护文档，优先作为 provider 文档来源；能匹配依赖包名、源码 import、全局注册、主题配置或封装适配层的外部组件库文档，优先作为 consumer 文档来源；无法确认时标记 `MISSING component ownership` 并保留来源路径。
 
-## 组件发现
+## 文档来源与组件发现
 
-未指定组件名时，不得直接询问用户要写哪个组件；必须先由 AI 扫描组件库项目并推导组件清单：
+未指定组件名时，不得直接询问用户要写哪个组件；必须先由 AI 读取组件库自维护文档和项目事实，再决定是否需要扫描补齐：
 
-- 优先读取 `detect-stack.mjs` 输出的 `projects`、`projectRoots` 与 `evidence`，定位 `component-library` 与 `component-consumer` 子项目；再用 CodeGraph、`rg` 或文件读取分析组件源码、入口导出、`src/components/`、`components/`、依赖包、源码 import、Props/Events/Slots/Children、示例和测试。
-- `scripts/discover-components.mjs` 只能作为候选组件清单辅助工具；不得把脚本输出当作文档事实来源，也不得因为脚本不可用或结果为空就停止推导。
-- 组件库项目中发现的所有组件都必须输出到 `docs/out-components/`，包括 `src/components/`、`components/` 和组件库入口导出的组件；不得只写公共导出组件，也不得让用户手动挑选组件。
-- 组件消费项目中发现的外部组件库依赖、workspace UI 包、全局注册组件和封装适配层必须输出到 `docs/components/`；普通前端应用中的业务组件不写入 `docs/components/` 或 `docs/out-components/`。
-- 发现到当前项目自己的组件库组件时，逐个生成或更新 `docs/out-components/<组件名>.md`，并同步 `docs/out-components/index.md` 与 `docs/map.md`。
-- 发现到当前项目消费的外部组件库或 workspace UI 包时，按组件库或稳定组件名生成或更新 `docs/components/<组件库或组件名>.md`，并同步 `docs/components/index.md` 与 `docs/map.md`。
-- 未发现组件时，报告 `MISSING components discovery`，说明已扫描的项目根、组件目录和入口文件；不得在扫描前反问组件名。
-- 用户明确指定组件名时，仍需先校验该组件是否存在于组件库发现结果中；找不到时报告 `MISSING component source`。
-- 文档内容必须由 AI 阅读源码和已有文档后推导生成；脚本不得生成 Props、事件、插槽、状态、可访问性或示例等文档正文。
+- 自维护文档优先：先读取 `docs/out-components/`、包内 `docs/`、Storybook/MDX、示例页、README、变更记录和已有组件文档；这些文档能对应当前组件库公开组件时，不得用源码扫描结果覆盖其契约口径。
+- 合规校验优先级高于来源优先级：自维护文档不符合本 skill 的输出位置、文档结构、必备字段、来源证据或 `MISSING` 语义时，必须标准化到 `docs/out-components/` 或 `docs/components/`；不得因为文档由组件库维护就直接判定合格。
+- 扫描用于校验和缺口补齐：再读取 `detect-stack.mjs` 输出的 `projects`、`projectRoots` 与 `evidence`，定位 `component-library` 与 `component-consumer` 子项目；用 CodeGraph、`rg` 或文件读取核对组件源码、入口导出、`src/components/`、`components/`、依赖包、源码 import、Props/Events/Slots/Children、示例和测试。
+- `scripts/discover-components.mjs` 只能作为候选组件清单和覆盖率核对工具；不得把脚本输出当作文档事实来源，也不得因为脚本不可用或结果为空就停止推导。
+- 组件库已有自维护文档时，以合规后的自维护文档清单作为 `docs/out-components/` 的主要输出清单；扫描发现公开导出组件但文档缺失时，才为该组件补齐文档或在索引中标记 `MISSING component docs coverage`。
+- 组件库没有可用自维护文档时，基于源码、入口导出、类型、测试和示例生成或更新 `docs/out-components/<组件名>.md`，并同步 `docs/out-components/index.md` 与 `docs/map.md`。
+- 扫描发现源码、类型、测试或导出入口与自维护文档冲突时，不得静默改写文档；必须标记 `MISSING component docs drift`，列出冲突证据和待确认字段。
+- 组件消费项目优先读取外部组件库官方文档、依赖包自维护文档和本项目已有封装规则；扫描依赖、workspace UI 包、全局注册组件、源码 import 和封装适配层只用于核对实际使用范围和补齐本项目约束。
+- 发现到当前项目消费的外部组件库或 workspace UI 包且本项目没有可用消费方文档时，按组件库或稳定组件名生成或更新 `docs/components/<组件库或组件名>.md`，并同步 `docs/components/index.md` 与 `docs/map.md`。
+- 普通前端应用中的业务组件不写入 `docs/components/` 或 `docs/out-components/`。
+- 未发现自维护文档或组件事实时，报告 `MISSING components discovery`，说明已检查的文档入口、项目根、组件目录和入口文件；不得在扫描前反问组件名。
+- 用户明确指定组件名时，仍需先校验该组件是否存在于自维护文档或组件库发现结果中；找不到时报告 `MISSING component source`。
+- 文档内容必须由 AI 阅读自维护文档、源码和测试后推导生成；脚本不得生成 Props、事件、插槽、状态、可访问性或示例等文档正文。
 
 ## 写作规则
 
-- 先读取已存在的 `docs/map.md`、`docs/out-components/index.md`、`docs/components/index.md`、相关 PRD、架构文档、组件源码、依赖声明和已有组件文档；目标目录或索引不存在时创建，不得因缺失停止。
+- 先读取已存在的 `docs/map.md`、`docs/out-components/index.md`、`docs/components/index.md`、相关 PRD、架构文档、组件库自维护文档、组件源码、依赖声明和已有组件文档；目标目录或索引不存在时创建，不得因缺失停止。
 - 只描述组件对外契约，不暴露内部实现细节；内部实现变化不应影响文档契约。
 - 必须覆盖 Props、事件/回调、插槽/children、状态、可访问性、示例和测试建议。
-- 根据已有组件库源码生成或更新 `docs/out-components/` 是实时对外输出，不属于 L2，不得先输出报告等待确认，也不得以评审门槛为由跳过。
-- 根据已有外部组件库依赖、源码 import、主题配置、封装适配层或旧文档生成 `docs/components/` 是消费方知识整理，不属于 L2，不得先输出报告等待确认。
+- 自维护文档缺少上述章节、字段口径、示例、测试建议、来源路径或索引条目时，按已有事实补齐；无法从自维护文档、源码、类型、测试或示例确认的信息必须标记 `MISSING`。
+- 根据组件库自维护文档生成或更新 `docs/out-components/` 是实时对外输出，不属于 L2，不得先输出报告等待确认，也不得以评审门槛为由跳过；源码扫描只负责校验和缺口补齐。
+- 根据已有外部组件库文档、依赖、源码 import、主题配置、封装适配层或旧文档生成 `docs/components/` 是消费方知识整理，不属于 L2，不得先输出报告等待确认。
 - 源码、类型、测试、示例或已有文档无法确认的信息，必须在对应组件文档中标记 `MISSING` 并说明缺口。
 - 只有用户要求修改组件库代码、重新设计公共契约或改变组件库分类时，才进入代码实现或设计评审；评审不得阻塞本 skill 对已存在源码事实的文档输出。
 - 仅补充既有组件的已确认示例、字段说明或变更记录时，可按 L0 直接更新。

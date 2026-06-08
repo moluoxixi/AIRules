@@ -9,5 +9,5 @@
 ## 输出边界
 
 - 外部组件库消费文档输出到 `docs/components/`，用于约束本项目如何使用依赖组件库。
-- 组件消费事实必须由 AI 读取 `package.json`、lockfile、源码 import、全局注册、主题配置、已有文档和示例后推导；不得只凭目录名生成正文。
+- 外部组件库官方文档、依赖包自维护文档和本项目已有封装规则优先作为消费事实来源，但必须按 `components-docs` 的输出位置、文档结构、必备字段、来源证据和 `MISSING` 语义做合规校验；不符合 AIRules 要求时必须标准化到 `docs/components/`。AI 必须再读取 `package.json`、lockfile、源码 import、全局注册、主题配置和示例做扫描校验，缺少本项目使用约束时补齐，发现使用方式与上游文档冲突时标记 `MISSING component docs drift`。
 - 普通业务组件不得写入 `docs/components/`；无法确认是否属于外部组件库时，先标记 `MISSING component ownership`，不得伪装为已归类。

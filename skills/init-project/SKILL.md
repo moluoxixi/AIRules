@@ -32,7 +32,7 @@ node <init-project-skill>/scripts/scaffold-docs.mjs <your-project> <detect-stack
 - `docs/architecture/` 包含 `index.md`、`overview.md` 和 `decisions/index.md`，用于承载架构事实与 ADR。
 - `docs/api/` 包含 `index.md` 和 `_protocol.md`，用于承载当前项目消费的外部 API、上游服务或 SDK 契约。
 - `component-consumer` 项目额外创建 `docs/components/`，用于承载当前项目消费的外部组件库、Design System、UI SDK 或 workspace 组件包约束。
-- `scaffold-docs.mjs` 不生成 `docs/out-components/` 或 `docs/out-api/`；对外复用产物必须分别由 `components-docs`、`api-docs` 基于源码和已有文档推导生成。
+- `scaffold-docs.mjs` 不生成 `docs/out-components/` 或 `docs/out-api/`；对外复用产物必须分别由 `components-docs`、`api-docs` 基于自维护文档、源码和已有契约推导生成。
 - 如果项目已有文档必须先判断归属；能确定属于架构、接口、需求、测试或外部组件库的，保留为已知归属来源，按“对应文档 Skills”转成标准格式；无法确定归属的移动到 `docs/other/imported/` 并在 `docs/other/index.md` 标记为 `MISSING conversion`。
 - 已有接口或组件文档必须再判断 ownership：当前项目提供的 API/组件库输出到 `docs/out-api/` 或 `docs/out-components/`；当前项目消费的外部 API/组件库输出到 `docs/api/` 或 `docs/components/`；无法确认时标记 `MISSING ownership`。
 - 归档前必须识别特殊文档目录；例如 `docs/superpowers/` 属于外部方法论/参考资料目录，必须原位保留，不得移动到 `docs/other/imported/`，也不得作为待转换业务文档登记。
@@ -107,8 +107,8 @@ codegraph init -i
 - `docs/map.md`、`docs/architecture/`、`docs/api/_protocol.md`、`docs/other/` 与对应文档目录索引已创建；`component-consumer` 项目已创建 `docs/components/`；旧文档已按归属转换到标准目录，无法确定归属的才归档到 `docs/other/imported/`。
 - 重复初始化时已按当前 AIRules 最新规范检查 `docs/`；需要语义迁移或标准化更新的文档已使用对应 docs skill 处理，需开发者确认的项已输出标准化更新报告。
 - 若存在旧文档，已按标准分类转换到 `docs/prds/`、`docs/api/`、`docs/test/`、`docs/architecture/`；组件库旧文档应通过 `components-docs` 判断 ownership 后转换到 `docs/components/` 或 `docs/out-components/`；无法转换的条目已标记 `MISSING conversion`。
-- 组件库项目已通过 `components-docs` 扫描组件库源码；发现到的所有组件均已生成或更新 `docs/out-components/`，未发现组件时已报告 `MISSING components discovery` 和扫描范围。
-- 组件消费项目已通过 `components-docs` 分析依赖、源码 import、全局注册、主题配置和已有文档；发现到的外部组件库均已生成或更新 `docs/components/`，未发现外部组件库时已报告 `MISSING component dependency` 和扫描范围。
+- 组件库项目已通过 `components-docs` 优先读取组件库自维护文档，并按 AIRules 输出位置、文档结构、必备字段、来源证据和 `MISSING` 语义完成合规校验；缺少自维护文档、自维护文档不合规或公开组件存在文档缺口时，已生成、标准化或更新 `docs/out-components/`，无法确认时已报告 `MISSING component docs coverage`、`MISSING component docs drift` 或 `MISSING components discovery`。
+- 组件消费项目已通过 `components-docs` 优先读取外部组件库官方文档、依赖包自维护文档和本项目已有封装规则，并按 AIRules 输出位置、文档结构、必备字段、来源证据和 `MISSING` 语义完成合规校验；缺少消费方文档或已有文档不合规时已生成、标准化或更新 `docs/components/`，未发现外部组件库时已报告 `MISSING component dependency` 和扫描范围。
 - 后端 API 项目已通过 `api-docs` 分析路由、DTO/schema、OpenAPI/Swagger、测试、外部 client、SDK/generated client、Mock 和已有接口文档；当前项目提供的接口已生成或更新 `docs/out-api/`，当前项目消费的外部接口已生成或更新 `docs/api/`，未发现接口时已报告 `MISSING API contract` 和扫描范围。
 - 技术栈检测结果已按 `detect-stack.mjs` 的 `stacks`、`references` 和关键 `evidence` 报告。
 - `CLAUDE.md` 是指向 `AGENTS.md` 的软链接；Windows 无文件软链接权限时，可为同一文件实体的硬链接，且日志必须说明。

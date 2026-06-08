@@ -35,6 +35,21 @@ function runDiscoverComponents(projectRoot: string) {
   )
 }
 
+function readComponentsDocsSkill() {
+  return fs.readFileSync(path.join(process.cwd(), 'skills', 'components-docs', 'SKILL.md'), 'utf8')
+}
+
+it('components-docs skill - 组件库自维护文档优先于源码扫描生成', () => {
+  const skill = readComponentsDocsSkill()
+
+  assert.match(skill, /自维护文档优先/)
+  assert.match(skill, /合规校验/)
+  assert.match(skill, /不符合.*必须.*标准化/)
+  assert.match(skill, /扫描.*校验/)
+  assert.match(skill, /缺口补齐/)
+  assert.doesNotMatch(skill, /发现的所有组件都必须输出/)
+})
+
 it('components-docs discover-components - 组件库项目发现所有源码组件', () => withTempDir('airules-components-discover-library-', (tmpDir) => {
   const projectRoot = path.join(tmpDir, 'project')
 
