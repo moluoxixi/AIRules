@@ -4,3 +4,4 @@
 
 | 文档 | 用途 | 状态 |
 |---|---|---|
+| [ADR-0001 Knowledge Source Registry And Retrieval Contract](decisions/ADR-0001-knowledge-source-registry.md) | 定义 AIRules 的知识源注册、Khoj 检索层、证据状态和安全边界。 | accepted |

@@ -9,6 +9,8 @@ vendor
 skills/*
 !skills/init-project/
 !skills/init-project/**
+!skills/knowledge-search/
+!skills/knowledge-search/**
 !skills/learning-capture/
 !skills/learning-capture/**
 !skills/skill-validation-standard/

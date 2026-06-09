@@ -95,6 +95,20 @@ function runScaffoldDocs(projectRoot: string, ...stacks: string[]) {
   )
 }
 
+function runVerifyKnowledgeSources(...args: string[]) {
+  return spawnSync(
+    process.execPath,
+    [
+      path.join(process.cwd(), 'scripts', 'verify-knowledge-sources.mjs'),
+      ...args,
+    ],
+    {
+      cwd: process.cwd(),
+      encoding: 'utf8',
+    },
+  )
+}
+
 function runDetectStack(projectRoot: string) {
   return spawnSync(
     process.execPath,
@@ -135,7 +149,7 @@ it('init-project inject-rules - AGENTS.md 不存在时创建聚合规则文件',
 
   assert.equal(result.status, 0, result.stderr)
   assert.equal(agentsContent.startsWith('# 项目规范\n\n## 项目自定义规范\n'), true)
-  assert.match(agentsContent, /# 项目文档读取规范/)
+  assert.match(agentsContent, /# 项目知识源读取规范/)
   assert.match(agentsContent, /# Frontend Rules\n\nfrontend body/)
 }))
 
@@ -151,16 +165,16 @@ it('init-project inject-rules - AGENTS.md 已存在且无重复标题时追加�
   const agentsContent = fs.readFileSync(agentsPath, 'utf8')
 
   assert.equal(result.status, 0, result.stderr)
-  assert.equal(agentsContent.startsWith('# Existing Project Rules\n\nexisting body\n\n# 项目文档读取规范\n'), true)
+  assert.equal(agentsContent.startsWith('# Existing Project Rules\n\nexisting body\n\n# 项目知识源读取规范\n'), true)
   assert.doesNotMatch(agentsContent, /## 项目自定义规范/)
-  assert.match(agentsContent, /# 项目文档读取规范/)
+  assert.match(agentsContent, /# 项目知识源读取规范/)
   assert.match(agentsContent, /# Node Rules\n\nnode body/)
 }))
 
 it('init-project inject-rules - AGENTS.md 标题重复时停止写入并要求 AI 审查', () => withTempDir('airules-inject-duplicate-', (tmpDir) => {
   const projectRoot = path.join(tmpDir, 'project')
   const agentsPath = path.join(projectRoot, 'AGENTS.md')
-  const originalContent = '# 项目文档读取规范\n\nexisting project docs rules\n'
+  const originalContent = '# 项目知识源读取规范\n\nexisting project knowledge rules\n'
 
   writeFile(agentsPath, originalContent)
 
@@ -168,7 +182,7 @@ it('init-project inject-rules - AGENTS.md 标题重复时停止写入并要求 A
 
   assert.notEqual(result.status, 0)
   assert.match(result.stderr, /Duplicate AGENTS\.md headings detected/)
-  assert.match(result.stderr, /项目文档读取规范/)
+  assert.match(result.stderr, /项目知识源读取规范/)
   assert.equal(fs.readFileSync(agentsPath, 'utf8'), originalContent)
 }))
 
@@ -515,6 +529,29 @@ it('init-project scaffold-docs - 普通前端项目不创建组件库文档目�
   assert.match(fs.readFileSync(path.join(projectRoot, 'docs', 'map.md'), 'utf8'), /docs\/architecture/)
   assert.doesNotMatch(fs.readFileSync(path.join(projectRoot, 'docs', 'map.md'), 'utf8'), /docs\/components/)
   assert.match(fs.readFileSync(path.join(projectRoot, 'docs', 'map.md'), 'utf8'), /docs\/other/)
+}))
+
+it('init-project scaffold-docs - 创建项目级知识源注册表', () => withTempDir('airules-docs-knowledge-sources-', (tmpDir) => {
+  const projectRoot = path.join(tmpDir, 'project')
+
+  fs.mkdirSync(projectRoot, { recursive: true })
+  writeFile(path.join(projectRoot, 'README.md'), '# Project\n')
+
+  const result = runScaffoldDocs(projectRoot, 'frontend')
+  const registryPath = path.join(projectRoot, 'airules.knowledge.json')
+  const verify = runVerifyKnowledgeSources(registryPath)
+  const registry = JSON.parse(fs.readFileSync(registryPath, 'utf8'))
+
+  assert.equal(result.status, 0, result.stderr)
+  assert.equal(fs.existsSync(registryPath), true)
+  assert.equal(verify.status, 0, verify.stderr)
+  assert.deepEqual(
+    registry.sources.map((source: any) => source.id),
+    ['repo-overview', 'repo-docs'],
+  )
+  assert.deepEqual(registry.sources[0].include, ['README.md', 'README-zh.md', 'AGENTS.md', 'CLAUDE.md'])
+  assert.deepEqual(registry.sources[1].include, ['docs/**'])
+  assert.match(fs.readFileSync(path.join(projectRoot, 'docs', 'map.md'), 'utf8'), /airules\.knowledge\.json/)
 }))
 
 it('init-project scaffold-docs - 组件库项目不创建旧 components 文档目录', () => withTempDir('airules-docs-component-library-', (tmpDir) => {

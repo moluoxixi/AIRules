@@ -81,6 +81,7 @@ mkdirSync(path.join(docsRoot, 'architecture', 'decisions'), { recursive: true })
 writeIfMissing(path.join(docsRoot, 'architecture', 'decisions', 'index.md'), architectureDecisionsIndexTemplate())
 writeIfMissing(path.join(docsRoot, 'api', '_protocol.md'), apiProtocolTemplate())
 writeOrAppendMap(path.join(docsRoot, 'map.md'), sections)
+writeIfMissing(path.join(projectRoot, 'airules.knowledge.json'), knowledgeSourceRegistryTemplate())
 
 console.log(`[airules] Scaffolded docs in ${docsRoot}`)
 
@@ -118,6 +119,7 @@ function writeOrAppendMap(filePath, enabledSections) {
     .map(mapRow)
 
   appendRowsIfNeeded(filePath, content, 'AIRules 文档入口补充', '| 目录 | 索引 | 用途 |\n|---|---|---|', rows)
+  appendKnowledgeSourceEntryIfNeeded(filePath)
 }
 
 function appendRowsIfNeeded(filePath, content, title, columns, rows) {
@@ -129,6 +131,16 @@ function appendRowsIfNeeded(filePath, content, title, columns, rows) {
   const separator = content.endsWith('\n') ? '\n' : '\n\n'
   const addition = `${separator}## ${title}\n\n${columns}\n${rows.join('\n')}\n`
   writeFileSync(filePath, `${content}${addition}`, 'utf8')
+}
+
+function appendKnowledgeSourceEntryIfNeeded(filePath) {
+  const content = readFileSync(filePath, 'utf8')
+  if (content.includes('airules.knowledge.json')) {
+    return
+  }
+
+  const separator = content.endsWith('\n') ? '\n' : '\n\n'
+  writeFileSync(filePath, `${content}${separator}${knowledgeSourceMapSection()}`, 'utf8')
 }
 
 function collectArchiveCandidates(sourceDir) {
@@ -309,6 +321,34 @@ MISSING
 `
 }
 
+function knowledgeSourceRegistryTemplate() {
+  const registry = {
+    version: 1,
+    sources: [
+      {
+        id: 'repo-overview',
+        type: 'filesystem',
+        include: ['README.md', 'README-zh.md', 'AGENTS.md', 'CLAUDE.md'],
+        exclude: ['vendor/**', 'node_modules/**', 'dist/**', 'coverage/**', '.git/**', '.codegraph/**'],
+        purpose: 'project-overview',
+        owner: 'project-maintainer',
+        trust: 'registered',
+      },
+      {
+        id: 'repo-docs',
+        type: 'filesystem',
+        include: ['docs/**'],
+        exclude: ['vendor/**', 'node_modules/**', 'dist/**', 'coverage/**', '.git/**', '.codegraph/**'],
+        purpose: 'project-docs',
+        owner: 'project-maintainer',
+        trust: 'registered',
+      },
+    ],
+  }
+
+  return `${JSON.stringify(registry, null, 2)}\n`
+}
+
 function mapTemplate(enabledSections) {
   const rows = enabledSections
     .map(mapRow)
@@ -322,15 +362,27 @@ function mapTemplate(enabledSections) {
 |---|---|---|
 ${rows}
 
+${knowledgeSourceMapSection()}
+
 ## 维护约定
 
 - 新增业务文档时，使用稳定业务名作为文件名，例如 \`采购订单.md\`。
 - 架构文档放入 \`docs/architecture/\`，接口文档放入 \`docs/api/\`，需求文档放入 \`docs/prds/\`，测试文档放入 \`docs/test/\`${includeComponents ? '，外部组件库消费文档放入 `docs/components/`' : ''}。
 - 对外复用产物由对应 skill 生成：组件库契约写入 \`docs/out-components/\`，API 契约写入 \`docs/out-api/\`。
+- 项目知识检索优先读取根目录 \`airules.knowledge.json\`；标准 docs 是可审计输出层，不是用户资料的唯一输入格式。
 - 初始化前已存在的旧文档归档到 \`docs/other/imported/\`；整理时先评估归属，再转换为标准分类文档。
 - 全局接口协议维护在 \`docs/api/_protocol.md\`；业务接口文档不得重复定义冲突协议。
 - 新增或改名文档后，同步更新对应目录的 \`index.md\` 和本文件。
 - 文档只记录已确认事实；缺失信息标记为 \`MISSING\`，不得用代码推断伪造业务结论。
+`
+}
+
+function knowledgeSourceMapSection() {
+  return `## 知识源入口
+
+| 文件 | 用途 | 状态 |
+|---|---|---|
+| [airules.knowledge.json](../airules.knowledge.json) | 登记可被 AI 检索的项目知识源；Khoj collection、文件系统来源和外部平台来源必须先登记再使用。 | managed |
 `
 }
 

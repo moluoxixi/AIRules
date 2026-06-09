@@ -10,12 +10,19 @@
 | test | [测试文档索引](test/index.md) | 记录测试策略、用例矩阵、数据准备、联调验证、回归范围和风险。 |
 | other | [其它文档索引](other/index.md) | 登记初始化前已存在但尚未归入架构、接口、需求、组件库输出或测试目录的项目文档。 |
 
+## 知识源入口
+
+| 文件 | 用途 | 状态 |
+|---|---|---|
+| [airules.knowledge.json](../airules.knowledge.json) | 登记可被 AI 检索的项目知识源；Khoj collection、文件系统来源和外部平台来源必须先登记再使用。 | managed |
+
 ## 维护约定
 
 - 新增业务文档时，使用稳定业务名作为文件名，例如 `采购订单.md`。
 - 架构文档放入 `docs/architecture/`，接口文档放入 `docs/api/`，需求文档放入 `docs/prds/`，测试文档放入 `docs/test/`。
 - 外部组件库消费文档在存在 `component-consumer` 时放入 `docs/components/`；普通业务组件不得写入该目录。
 - 对外复用产物由对应 skill 生成：当前项目提供的组件库契约写入 `docs/out-components/`，当前项目提供的 API 契约写入 `docs/out-api/`。
+- 项目知识检索优先读取根目录 `airules.knowledge.json`；标准 docs 是可审计输出层，不是用户资料的唯一输入格式。
 - 初始化前已存在的旧文档归档到 `docs/other/imported/`；整理时先评估归属，再转换为标准分类文档。
 - 全局接口协议维护在 `docs/api/_protocol.md`；业务接口文档不得重复定义冲突协议。
 - 新增或改名文档后，同步更新对应目录的 `index.md` 和本文件。

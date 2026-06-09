@@ -4,3 +4,4 @@
 
 | ADR | 决策 | 状态 | 日期 |
 |---|---|---|---|
+| [ADR-0001](ADR-0001-knowledge-source-registry.md) | Knowledge Source Registry And Retrieval Contract | accepted | 2026-06-09 |

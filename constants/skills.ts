@@ -197,6 +197,7 @@ export const vendors: VendorsConfig = [
           'api-docs',
           'components-docs',
           'init-project',
+          'knowledge-search',
           'learning-capture',
           'prd-docs',
           'retrospective-correction',
