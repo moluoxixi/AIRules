@@ -2,7 +2,7 @@
 import { existsSync, readFileSync, statSync } from 'node:fs'
 import path from 'node:path'
 
-const VALID_SOURCE_TYPES = new Set(['filesystem', 'khoj'])
+const VALID_SOURCE_TYPES = new Set(['filesystem'])
 const VALID_EVIDENCE_STATUSES = new Set(['PASS', 'MISSING evidence', 'MISSING conflict', 'FAIL', 'NOT RUN'])
 const FORBIDDEN_FILESYSTEM_ROOTS = new Set([
   'vendor',
@@ -82,11 +82,6 @@ function verifyFilesystemSource(source) {
   }
 }
 
-function verifyKhojSource(source) {
-  if (typeof source.collection !== 'string' || source.collection.trim() === '' || /^MISSING\b/i.test(source.collection.trim()))
-    throw new Error(`source ${source.id} khoj 知识源必须声明 collection`)
-}
-
 function verifySource(source, seenIds) {
   assertRecord(source, 'knowledge source')
   assertText(source.id, 'knowledge source id')
@@ -101,13 +96,10 @@ function verifySource(source, seenIds) {
   assertText(source.trust, `source ${source.id} trust`)
 
   if (!VALID_SOURCE_TYPES.has(source.type))
-    throw new Error(`source ${source.id} type 必须是 filesystem 或 khoj`)
+    throw new Error(`source ${source.id} type 必须是 filesystem`)
 
   if (source.type === 'filesystem')
     verifyFilesystemSource(source)
-
-  if (source.type === 'khoj')
-    verifyKhojSource(source)
 }
 
 function verifyRegistry(filePath) {
@@ -137,8 +129,8 @@ function verifyEvidenceSources(sources, label) {
     assertRecord(source, `${label} source`)
     assertText(source.sourceId, `${label} sourceId`)
 
-    if (typeof source.path !== 'string' && typeof source.url !== 'string' && typeof source.collection !== 'string')
-      throw new Error(`${label} source 必须声明 path、url 或 collection`)
+    if (typeof source.path !== 'string' && typeof source.url !== 'string')
+      throw new Error(`${label} source 必须声明 path 或 url`)
   }
 }
 

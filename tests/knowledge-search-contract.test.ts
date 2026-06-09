@@ -5,6 +5,17 @@ import os from 'node:os'
 import path from 'node:path'
 import { it } from 'vitest'
 
+const knowledgeContractFiles = [
+  'skills/knowledge-search/SKILL.md',
+  'skills/init-project/SKILL.md',
+  'skills/init-project/references/common/docs.md',
+  'docs/map.md',
+  'docs/architecture/index.md',
+  'docs/architecture/overview.md',
+  'docs/architecture/decisions/ADR-0001-knowledge-source-registry.md',
+  'docs/superpowers/plans/2026-06-09-knowledge-source-registry.md',
+]
+
 function withTempDir<T>(prefix: string, run: (tmpDir: string) => T): T {
   const tmpDir = fs.mkdtempSync(path.join(os.tmpdir(), prefix))
 
@@ -118,3 +129,12 @@ it('knowledge evidence verifier - 拒绝未知状态', () => withTempDir('airule
   assert.notEqual(result.status, 0)
   assert.match(result.stderr, /status 必须是 PASS、MISSING evidence、MISSING conflict、FAIL 或 NOT RUN/)
 }))
+
+it('knowledge search contract - 不暴露未安装的 Khoj 或 MemPalace 入口', () => {
+  for (const filePath of knowledgeContractFiles) {
+    const content = fs.readFileSync(path.join(process.cwd(), filePath), 'utf8')
+
+    assert.doesNotMatch(content, /khoj/i, `${filePath} must not mention Khoj`)
+    assert.doesNotMatch(content, /MemPalace/i, `${filePath} must not mention MemPalace`)
+  }
+})

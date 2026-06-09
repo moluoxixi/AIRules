@@ -1,6 +1,6 @@
 ---
 name: knowledge-search
-description: 用于用户要求查找项目知识、历史约定、业务资料、架构/API/组件/测试来源，或需要通过 Khoj/登记知识源定位证据时触发。
+description: 用于用户要求查找项目知识、历史约定、业务资料、架构/API/组件/测试来源，或需要通过登记知识源定位证据时触发。
 ---
 
 # Knowledge Search
@@ -9,9 +9,8 @@ description: 用于用户要求查找项目知识、历史约定、业务资料�
 
 - AIRules 不强制用户按统一 docs 模板写作；只强制知识源必须登记、检索结果必须可验证。
 - `airules.knowledge.json` 是项目知识源注册表；未登记来源不得作为项目事实入口。
-- Khoj 是检索层和知识入口，不是写入端；不得让 Khoj 自动修改 `docs/`、`AGENTS.md`、规则、skills 或正式项目知识。
+- 当前只支持登记的 `filesystem` 来源；未安装、未验证或未实现适配器的外部服务不得登记为知识源类型。
 - 标准 docs 是可审计输出层；只有用户明确要求生成或更新文档时，才调用 `architecture-docs`、`prd-docs`、`api-docs`、`components-docs` 或 `test-docs` 写入。
-- MemPalace 属于代理记忆层，只保存偏好、经验和历史决策；不得替代项目文档或知识源注册表。
 
 ## 读取顺序
 
@@ -25,7 +24,6 @@ node <AIRules>/scripts/verify-knowledge-sources.mjs airules.knowledge.json
 3. 若注册表校验失败，报告 `FAIL knowledge source registry`，不得绕过校验继续伪装检索成功。
 4. 若注册表缺失，报告 `MISSING source registry`；仅可使用 `README.md`、`docs/`、`AGENTS.md`、`CLAUDE.md` 做临时本地证据，并在交付中标明未经过注册表治理。
 5. 对 `filesystem` 来源，只检索 `include` 声明的路径，并排除 `exclude` 声明的路径。
-6. 对 `khoj` 来源，使用可用的 Khoj 客户端、API、浏览器或用户提供结果查询对应 `collection`；缺少服务地址、凭证或 collection 时报告 `MISSING khoj config`。
 
 ## 禁止来源
 
@@ -51,9 +49,9 @@ node <AIRules>/scripts/verify-knowledge-sources.mjs --evidence <evidence-json>
 
 ## 输出要求
 
-- 回答必须列出来源路径、URL、collection 或文件标题；没有来源不得给确定结论。
+- 回答必须列出来源路径、URL 或文件标题；没有来源不得给确定结论。
 - 引用来源时只摘录必要短句；主要用归纳说明，避免长篇复制。
-- 若来源有时间、commit、owner 或 collection 信息，应随来源一起说明。
+- 若来源有时间、commit 或 owner 信息，应随来源一起说明。
 - 若发现来源与源码、用户口径或其它来源冲突，停止并报告 `MISSING conflict`。
 - 若需要把检索结果沉淀为正式文档，只能在用户明确要求后调用对应 docs skill；若只是沉淀代理经验，只能生成 `learning-capture` 的 `PENDING_REVIEW` 候选。
 

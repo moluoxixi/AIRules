@@ -2,9 +2,9 @@
 
 > **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.
 
-**Goal:** Add an industry-aligned knowledge source registry and evidence contract so AIRules can use Khoj-style retrieval without forcing users into a single docs template.
+**Goal:** Add an industry-aligned knowledge source registry and evidence contract so AIRules can retrieve registered filesystem knowledge without forcing users into a single docs template.
 
-**Architecture:** AIRules will treat registered knowledge sources as the search boundary, not arbitrary project files. A verifier script will validate source registry structure, forbidden paths, Khoj source requirements, and evidence contract statuses; skills and docs will route retrieval through the registry and keep formal docs as optional canonical outputs.
+**Architecture:** AIRules will treat registered knowledge sources as the search boundary, not arbitrary project files. A verifier script will validate source registry structure, forbidden paths, filesystem source requirements, and evidence contract statuses; skills and docs will route retrieval through the registry and keep formal docs as optional canonical outputs.
 
 **Tech Stack:** Node.js ESM scripts, Vitest, Markdown skills, JSON registry.
 
@@ -18,7 +18,7 @@
 
 - [ ] **Step 1: Write failing registry validation tests**
 
-Add tests for a valid registry, forbidden filesystem paths, missing owner, invalid source type, and Khoj sources missing collection.
+Add tests for a valid registry, forbidden filesystem paths, missing owner, invalid source type, and rejection of unsupported non-filesystem source types.
 
 - [ ] **Step 2: Run test to verify it fails**
 
@@ -76,7 +76,7 @@ Expected: PASS.
 
 - [ ] **Step 1: Write skill and docs contract**
 
-Add the retrieval skill, document the registry/Khoj/evidence model, and update existing docs guidance to prefer registered sources before standard docs.
+Add the retrieval skill, document the registry/evidence model, and update existing docs guidance to prefer registered filesystem sources before standard docs.
 
 - [ ] **Step 2: Validate skill frontmatter**
 

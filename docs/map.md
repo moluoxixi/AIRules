@@ -14,7 +14,7 @@
 
 | 文件 | 用途 | 状态 |
 |---|---|---|
-| [airules.knowledge.json](../airules.knowledge.json) | 登记可被 AI 检索的项目知识源；Khoj collection、文件系统来源和外部平台来源必须先登记再使用。 | managed |
+| [airules.knowledge.json](../airules.knowledge.json) | 登记可被 AI 检索的项目知识源；当前仅支持文件系统来源，非文件系统来源必须先实现安装、查询和校验合同。 | managed |
 
 ## 维护约定
 

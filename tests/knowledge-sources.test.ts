@@ -47,18 +47,10 @@ const validRegistry = {
       owner: 'docs-team',
       trust: 'registered',
     },
-    {
-      id: 'khoj-project',
-      type: 'khoj',
-      collection: 'airules-project',
-      purpose: 'project-knowledge',
-      owner: 'ai-platform',
-      trust: 'registered',
-    },
   ],
 }
 
-it('knowledge source verifier - 接受登记过的文件系统和 Khoj 知识源', () => withTempDir('airules-knowledge-source-valid-', (tmpDir) => {
+it('knowledge source verifier - 接受登记过的文件系统知识源', () => withTempDir('airules-knowledge-source-valid-', (tmpDir) => {
   const registryPath = path.join(tmpDir, 'airules.knowledge.json')
   writeJson(registryPath, validRegistry)
 
@@ -119,10 +111,10 @@ it('knowledge source verifier - 拒绝未知知识源类型', () => withTempDir(
   const result = runVerifyKnowledgeSources(registryPath)
 
   assert.notEqual(result.status, 0)
-  assert.match(result.stderr, /type 必须是 filesystem 或 khoj/)
+  assert.match(result.stderr, /type 必须是 filesystem/)
 }))
 
-it('knowledge source verifier - 拒绝缺少 collection 的 Khoj 知识源', () => withTempDir('airules-knowledge-source-khoj-', (tmpDir) => {
+it('knowledge source verifier - 拒绝未安装接入的 Khoj 知识源类型', () => withTempDir('airules-knowledge-source-khoj-', (tmpDir) => {
   const registryPath = path.join(tmpDir, 'airules.knowledge.json')
   writeJson(registryPath, {
     ...validRegistry,
@@ -130,6 +122,7 @@ it('knowledge source verifier - 拒绝缺少 collection 的 Khoj 知识源', () 
       {
         id: 'khoj-project',
         type: 'khoj',
+        collection: 'airules-project',
         purpose: 'project-knowledge',
         owner: 'ai-platform',
         trust: 'registered',
@@ -140,5 +133,5 @@ it('knowledge source verifier - 拒绝缺少 collection 的 Khoj 知识源', () 
   const result = runVerifyKnowledgeSources(registryPath)
 
   assert.notEqual(result.status, 0)
-  assert.match(result.stderr, /khoj 知识源必须声明 collection/)
+  assert.match(result.stderr, /type 必须是 filesystem/)
 }))

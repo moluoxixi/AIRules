@@ -30,7 +30,7 @@ node <init-project-skill>/scripts/scaffold-docs.mjs <your-project> <detect-stack
 
 - 所有项目都会在根目录创建 `airules.knowledge.json`，作为行业式知识源注册表；该文件登记可被 AI 检索的项目资料来源，不要求用户把原始资料统一改写成标准 docs。
 - 默认注册 `README.md`、`README-zh.md`、`AGENTS.md`、`CLAUDE.md` 和 `docs/**` 作为文件系统知识源，并排除 `vendor/**`、`node_modules/**`、`dist/**`、`coverage/**`、`.git/**`、`.codegraph/**`。
-- `airules.knowledge.json` 已存在时不得覆盖；需要新增 Khoj、Notion、Confluence、SharePoint 或其它来源时，必须显式登记并校验，不得默认索引整个项目。
+- `airules.knowledge.json` 已存在时不得覆盖；需要新增非文件系统来源时，必须先实现安装、查询、校验和测试合同，不得仅凭名称登记，也不得默认索引整个项目。
 - 知识源注册表必须通过 `node <AIRules>/scripts/verify-knowledge-sources.mjs airules.knowledge.json`；校验失败是 `FAIL`，不得降级成 warning。
 - 所有项目都会创建 `docs/architecture/`、`docs/api/`、`docs/prds/`、`docs/test/`、`docs/other/` 和 `docs/map.md`。
 - `docs/architecture/` 包含 `index.md`、`overview.md` 和 `decisions/index.md`，用于承载架构事实与 ADR。
@@ -48,7 +48,7 @@ node <init-project-skill>/scripts/scaffold-docs.mjs <your-project> <detect-stack
 旧文档标准化、文档更新和对外产物生成必须按内容类型调用对应 skill；不得只写“使用对应 skill”而不说明对应关系：
 
 - `architecture-docs`：架构边界、分层、依赖方向、部署拓扑、权限模型、技术选型、ADR。
-- `knowledge-search`：通过 `airules.knowledge.json`、Khoj collection 或登记文件系统来源查找项目知识和证据，不写正式文档。
+- `knowledge-search`：通过 `airules.knowledge.json` 和登记文件系统来源查找项目知识和证据，不写正式文档。
 - `prd-docs`：业务背景、用户流程、字段口径、状态流转、验收标准、需求变更。
 - `api-docs`：当前项目提供的 API 输出到 `docs/out-api/`；当前项目消费的外部 API、上游服务、SDK 或 generated client 输出到 `docs/api/`。
 - `components-docs`：当前项目提供的组件库输出到 `docs/out-components/`；当前项目消费的外部组件库、Design System、UI SDK 或 workspace 组件包输出到 `docs/components/`。
@@ -109,7 +109,7 @@ codegraph init -i
 ## 交付检查
 
 - `AGENTS.md` 已包含本次项目背景对应的 AIRules 规则块。
-- `airules.knowledge.json` 已创建或保留，并通过 `verify-knowledge-sources.mjs` 校验；知识源只包含登记路径或 collection，未默认索引整个项目。
+- `airules.knowledge.json` 已创建或保留，并通过 `verify-knowledge-sources.mjs` 校验；知识源只包含登记文件系统路径，未默认索引整个项目。
 - `docs/map.md`、`docs/architecture/`、`docs/api/_protocol.md`、`docs/other/` 与对应文档目录索引已创建；`component-consumer` 项目已创建 `docs/components/`；旧文档已按归属转换到标准目录，无法确定归属的才归档到 `docs/other/imported/`。
 - 重复初始化时已按当前 AIRules 最新规范检查 `docs/`；需要语义迁移或标准化更新的文档已使用对应 docs skill 处理，需开发者确认的项已输出标准化更新报告。
 - 若存在旧文档，已按标准分类转换到 `docs/prds/`、`docs/api/`、`docs/test/`、`docs/architecture/`；组件库旧文档应通过 `components-docs` 判断 ownership 后转换到 `docs/components/` 或 `docs/out-components/`；无法转换的条目已标记 `MISSING conversion`。
