@@ -48,6 +48,18 @@ it('tool - resolveToolPaths 支持显式区分 moluoHome 与 userHome', () => wi
   assert.equal(paths.userHome, path.resolve(userHome))
 }))
 
+it('tool - resolveToolPaths 在源码仓库运行 build CLI 时使用 dist manifest', () => withTempDir('airules-tool-dist-manifest-', (tmpDir) => {
+  const repoRoot = path.join(tmpDir, 'repo')
+  const moluoHome = path.join(tmpDir, 'home')
+
+  writeFile(path.join(repoRoot, 'constants', 'skills.ts'), 'export const vendors = []\n')
+  writeFile(path.join(repoRoot, 'dist', 'constants', 'skills.js'), 'export const vendors = []\n')
+
+  const paths = resolveToolPaths(repoRoot, moluoHome)
+
+  assert.equal(paths.manifestPath, path.resolve(repoRoot, 'dist', 'constants', 'skills.js'))
+}))
+
 it('tool - addLocalSkill 复制包含 SKILL.md 的本地 skill', () => withTempDir('airules-tool-add-', (tmpDir) => {
   const sourceDir = path.join(tmpDir, 'source-skill')
   const moluoHome = path.join(tmpDir, 'home')

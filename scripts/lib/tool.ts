@@ -63,9 +63,8 @@ export function getDefaultMoluoHome(): string {
 }
 
 function resolveManifestPath(repoRoot: string): string {
-  const sourceManifestTs = path.join(repoRoot, 'constants', 'skills.ts')
   const sourceManifestJs = path.join(repoRoot, 'constants', 'skills.js')
-  if (existsSync(sourceManifestTs) || existsSync(sourceManifestJs)) {
+  if (existsSync(sourceManifestJs)) {
     return sourceManifestJs
   }
 
