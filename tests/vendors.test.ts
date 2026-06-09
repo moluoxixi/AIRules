@@ -504,6 +504,11 @@ it('vendors 配置 - 使用 OpenAI Playwright 并移除过时技能', () => {
     !vendors.moluoxixi.links.some((link: any) => link.target.endsWith('/create-handless-skill')),
     '不应继续安装 create-handless-skill',
   )
+  assert.strictEqual(
+    vendors.moluoxixi.sourceMode,
+    'workspace',
+    'AIRules 第一方 skills 应从当前 workspace 同步，避免新增 skill 必须先存在于远程仓库',
+  )
   assert.deepStrictEqual(
     vendors.moluoxixi.setup,
     [
@@ -551,6 +556,11 @@ it('vendors 配置 - 使用 OpenAI Playwright 并移除过时技能', () => {
         setup: undefined,
       },
       {
+        source: 'skills/learning-capture',
+        target: 'vendor/skills/learning-capture',
+        setup: undefined,
+      },
+      {
         source: 'skills/prd-docs',
         target: 'vendor/skills/prd-docs',
         setup: undefined,
@@ -558,6 +568,11 @@ it('vendors 配置 - 使用 OpenAI Playwright 并移除过时技能', () => {
       {
         source: 'skills/retrospective-correction',
         target: 'vendor/skills/retrospective-correction',
+        setup: undefined,
+      },
+      {
+        source: 'skills/skill-evolution',
+        target: 'vendor/skills/skill-evolution',
         setup: undefined,
       },
       {

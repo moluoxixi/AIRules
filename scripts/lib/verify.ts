@@ -17,7 +17,7 @@ export async function verifyHost(host: string, moluoHome: string, userHome = os.
   if (!config)
     return false
 
-  const { hostHome, skillsDirName } = resolveHostPaths(config, userHome)
+  const { hostHome, skillsDirName, excludedSkills } = resolveHostPaths(config, userHome)
 
   const resolvedHostHome = path.resolve(hostHome)
   if (!existsSync(resolvedHostHome)) {
@@ -41,6 +41,9 @@ export async function verifyHost(host: string, moluoHome: string, userHome = os.
       if (name !== '.gitignore')
         expectedSkills.add(name)
     })
+  }
+  for (const skillName of excludedSkills) {
+    expectedSkills.delete(skillName)
   }
 
   console.log(`[info] 预期技能总数: ${expectedSkills.size}`)

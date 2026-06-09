@@ -44,7 +44,7 @@ AIRules 是一个**可组合的 AI 技能分发系统**。它的核心思想很�
 - 🔥 **开箱即得** 精选流程、工具、设计和验证类 AI Skills
 - 🧠 **CodeGraph 自动安装**：默认同步时执行 `npm install --global @colbymchenry/codegraph`，随后执行 `codegraph install`
 - 🧱 **预留第一方扩展位**：保留顶层自定义 skills 投影入口，后续补充时无需调整整体分发模型
-- 🌐 **多代理同步**：一次配置，Claude / Cursor / Codex / Qoder / Tare / OpenCode / CC-Switch 全部生效
+- 🌐 **多代理同步**：一次配置，Claude / Cursor / Codex / Hermes / Qoder / Trae / OpenCode / CC-Switch 全部生效
 - 🔄 **持续更新**：上游 skills 更新后，一条命令同步最新版本
 
 ## 安装
@@ -169,13 +169,15 @@ Moluoxixi AIRules 通过自动化投影，支持不断增长的 AI 代理生态�
 |-------|---------------|----------|----------|----------|
 | **Claude Code** | `claude` | `~/.claude/` | 软链接 | `CLAUDE.md` |
 | **Codex** | `codex` | `~/.codex/` | 软链接 | `AGENTS.md` |
+| **Hermes** | `hermes` | `~/.hermes/` | 软链接 | `SOUL.md` |
 | **Cursor** | `cursor` | `~/.cursor/` | 软链接 | `AGENTS.md` |
-| **Tare** | `tare` | `~/.tare/` | 软链接 | `AGENTS.md` |
+| **Trae** | `trae` | `~/.trae/` | 软链接 | `AGENTS.md` |
 | **OpenCode** | `opencode` | `~/.config/opencode/` | 软链接 | `AGENTS.md` |
 | **CC-Switch** | `cc-switch` | `~/.cc-switch/` | 软链接 | `AGENTS.md` |
 
 > [!NOTE]
 > 所有技能在安装过程中都会自动投影到代理专属的 skills 目录中。
+> Hermes 会刻意排除 AIRules 借鉴 Hermes 设计的 `learning-capture` 与 `skill-evolution`，不会把它们启用到 `~/.hermes/skills/`；它们仍会通过共享分发链路提供给其他宿主。
 
 ---
 
@@ -191,8 +193,10 @@ Moluoxixi AIRules 通过自动化投影，支持不断增长的 AI 代理生态�
 | **prd-docs** | 生成或更新 `docs/prds/` 下的业务需求文档，并维护文档导航 |
 | **api-docs** | 生成或更新 `docs/api/` 下的接口与联调契约文档，并维护文档导航 |
 | **components-docs** | 生成或更新 `docs/components/` 下的前端组件文档，并维护文档导航 |
+| **learning-capture** | 任务后捕获 AI 学习候选，参考 Hermes Memory，只写入 `docs/AI项目知识/待确认/` |
 | **test-docs** | 生成或更新 `docs/test/` 下的测试设计与验证文档，并维护文档导航 |
 | **retrospective-correction** | 用户指出实现偏离要求时，先输出修正计划，再归因 AI 执行错误或 skills/rules 缺口 |
+| **skill-evolution** | 参考 Hermes Curator，把 skill/rule 缺口沉淀为 `docs/skill-evolution/inbox/` 待审候选 |
 
 > 第一方 skills 可以继续放在嵌套源目录下，安装时会展平为 `vendor/skills/<skill-name>`；仓库级规则位于 `rules/AGENTS.md`，CodeGraph 安装命令位于 `constants/skills.ts` 的 vendor setup。
 
@@ -220,8 +224,10 @@ Moluoxixi AIRules 通过自动化投影，支持不断增长的 AI 代理生态�
 │   ├── architecture-docs/
 │   ├── api-docs/
 │   ├── components-docs/
+│   ├── learning-capture/
 │   ├── prd-docs/
 │   ├── retrospective-correction/
+│   ├── skill-evolution/
 │   └── test-docs/
 ├── vendor/
 │   ├── repos/               # 克隆的第三方源仓库

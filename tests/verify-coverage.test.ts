@@ -93,6 +93,21 @@ it('verifyHost - 外部链接可访问时警告但仍视为有效', async () => 
   })
 })
 
+it('verifyHost - Hermes 宿主不要求启用学习技能', async () => {
+  await withTempHome(async (userHome, moluoHome) => {
+    createVendorSkill(moluoHome, 'api-docs')
+    createVendorSkill(moluoHome, 'learning-capture')
+    createVendorSkill(moluoHome, 'skill-evolution')
+
+    linkDir(
+      path.join(moluoHome, 'vendor', 'skills', 'api-docs'),
+      path.join(userHome, '.hermes', 'skills', 'api-docs'),
+    )
+
+    assert.equal(await verifyHost('hermes', moluoHome), true)
+  })
+})
+
 it('verifyHost - 断开的技能软链接显式判定为失败', async () => {
   await withTempHome(async (userHome, moluoHome) => {
     createVendorSkill(moluoHome, 'broken')

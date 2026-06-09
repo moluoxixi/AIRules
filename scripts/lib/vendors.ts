@@ -18,6 +18,7 @@ export interface VendorLink {
 export interface Vendor {
   official?: boolean
   repo: string
+  sourceMode?: 'git' | 'workspace'
   cloneDir: string
   setup?: SetupCommand[]
   links: VendorLink[]
@@ -121,6 +122,7 @@ function mergeVendor(vendors: Record<string, Vendor>, vendorName: string, entry:
     vendors[vendorName] = {
       official: entry.official,
       repo: entry.source,
+      sourceMode: entry.sourceMode,
       cloneDir,
       setup: entry.setup,
       links,
@@ -131,6 +133,7 @@ function mergeVendor(vendors: Record<string, Vendor>, vendorName: string, entry:
   const existing = vendors[vendorName]
   if (
     existing.repo !== entry.source
+    || existing.sourceMode !== entry.sourceMode
     || existing.cloneDir !== cloneDir
   ) {
     throw new Error(`供应商 "${vendorName}" 在不同模块中的定义不一致`)

@@ -97,7 +97,7 @@ function findDuplicateHeadingTitles(currentContent, incomingContent) {
 
 const ruleSections = referencePaths.map((referencePath) => {
   const absoluteReferencePath = path.resolve(referencePath)
-  const content = readFileSync(absoluteReferencePath, 'utf8')
+  const content = readFileSync(absoluteReferencePath, 'utf8').replace(/\r\n/g, '\n')
 
   return content.trimEnd()
 })

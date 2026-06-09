@@ -95,6 +95,10 @@ async function syncVendorsIfNeeded(paths: ToolPaths, skipVendors: boolean) {
 
   const manifest = await loadVendorManifest(paths.manifestPath)
   for (const vendor of Object.values(manifest.vendors)) {
+    if (vendor.sourceMode === 'workspace') {
+      continue
+    }
+
     ensureVendorRepo(paths.moluoHome, vendor)
   }
 

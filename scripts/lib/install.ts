@@ -318,13 +318,24 @@ export function ensureGlobalSkillLink(paths: InstallPaths) {
  * @param targetDir 目标链接目录
  * @param moluoHome moluoxixi 根目录（用于识别自愈时需要删除的内部链接）
  */
-export function syncFlattenedSkills(sourceDir: string, targetDir: string, moluoHome: string) {
+interface SyncFlattenedSkillsOptions {
+  excludedSkills?: string[]
+}
+
+export function syncFlattenedSkills(
+  sourceDir: string,
+  targetDir: string,
+  moluoHome: string,
+  options: SyncFlattenedSkillsOptions = {},
+) {
   if (!existsSync(sourceDir)) {
     return
   }
   ensureManagedDirectory(targetDir)
 
+  const excludedSkills = new Set(options.excludedSkills ?? [])
   const skillSources = collectFlattenedSkillSources(sourceDir)
+    .filter(skill => !excludedSkills.has(skill.name))
   const currentSkills = new Set(skillSources.map(skill => skill.name))
 
   // 自愈式同步：清理目标目录中不再需要的技能链接
@@ -496,7 +507,12 @@ export async function rebuildVendorSkillLinks({ homeDir, manifestPath }: { homeD
  * 链路：vendor/skills → ~/.moluoxixi/skills → ~/.agents/skills → 宿主/skills
  * ~/.agents 是行业标准共享层，始终存在（不存在则创建）。
  */
-export function projectSkillsToHost(userHome: string, moluoHome: string, hostSkillsHome: string) {
+export function projectSkillsToHost(
+  userHome: string,
+  moluoHome: string,
+  hostSkillsHome: string,
+  options: SyncFlattenedSkillsOptions = {},
+) {
   const vendorSourceSkillsDir = vendorSkillsPath(moluoHome)
   const moluoTargetSkillsDir = moluoSkillsPath(moluoHome)
   const agentsSkillsDir = agentsSkillsPath(userHome)
@@ -509,15 +525,21 @@ export function projectSkillsToHost(userHome: string, moluoHome: string, hostSki
   syncFlattenedSkills(moluoTargetSkillsDir, agentsSkillsDir, moluoHome)
 
   // 3. ~/.agents/skills → 宿主 skills 目录
-  syncFlattenedSkills(agentsSkillsDir, hostSkillsHome, moluoHome)
+  syncFlattenedSkills(agentsSkillsDir, hostSkillsHome, moluoHome, options)
 }
 
-function projectSharedSkillsHost(userHome: string, hostHome: string, moluoHome: string, customSkillsDirName: string = 'skills') {
+function projectSharedSkillsHost(
+  userHome: string,
+  hostHome: string,
+  moluoHome: string,
+  customSkillsDirName: string = 'skills',
+  excludedSkills: string[] = [],
+) {
   mkdirSync(hostHome, { recursive: true })
   removePath(path.join(hostHome, 'rules'))
   removePath(path.join(hostHome, 'agents'))
 
-  projectSkillsToHost(userHome, moluoHome, path.join(hostHome, customSkillsDirName))
+  projectSkillsToHost(userHome, moluoHome, path.join(hostHome, customSkillsDirName), { excludedSkills })
 
   if (existsSync(path.join(moluoHome, 'agents'))) {
     const agentsSource = path.join(moluoHome, 'agents')
@@ -532,14 +554,16 @@ export function projectToHost({
   hostHome,
   hostBaselineFile,
   customSkillsDirName = 'skills',
+  excludedSkills = [],
 }: {
   userHome: string
   moluoHome: string
   hostHome: string
   hostBaselineFile: string
   customSkillsDirName?: string
+  excludedSkills?: string[]
 }) {
-  projectSharedSkillsHost(userHome, hostHome, moluoHome, customSkillsDirName)
+  projectSharedSkillsHost(userHome, hostHome, moluoHome, customSkillsDirName, excludedSkills)
   replaceWithSymlink(
     vendorBaselinePath(moluoHome),
     hostBaselineFile,
@@ -572,7 +596,7 @@ export function projectHostById(
     throw new Error(`Unknown host: ${host}`)
   }
 
-  const { hostHome, hostBaselineFile, skillsDirName } = resolveHostPaths(config, userHome)
+  const { hostHome, hostBaselineFile, skillsDirName, excludedSkills } = resolveHostPaths(config, userHome)
 
   const hostHomePath = path.resolve(hostHome)
   if (!existsSync(hostHomePath)) {
@@ -586,6 +610,7 @@ export function projectHostById(
     hostHome,
     hostBaselineFile,
     customSkillsDirName: skillsDirName,
+    excludedSkills,
   })
 
   return { success: true, hostBaselineFile }

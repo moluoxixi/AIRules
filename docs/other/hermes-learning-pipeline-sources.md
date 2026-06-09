@@ -1,0 +1,24 @@
+# Hermes Learning Pipeline Sources
+
+## 来源快照
+
+- Hermes Memory: https://hermes-agent.nousresearch.com/docs/user-guide/features/memory/
+- Hermes Curator: https://hermes-agent.nousresearch.com/docs/user-guide/features/curator
+- Hermes Skills overview: https://hermes-agent.nousresearch.com/docs/user-guide/features/skills
+- Hermes SOUL.md guide: https://hermes-agent.nousresearch.com/docs/guides/use-soul-with-hermes
+- Hermes repository: https://github.com/NousResearch/hermes-agent
+
+## AIRules 借鉴边界
+
+- 借鉴 Memory 的小型长期记忆、候选沉淀和安全过滤思想，但 AIRules 默认只写 `docs/AI项目知识/待确认/`。
+- 借鉴 Curator 的 dry-run、backup、rollback、pin 和只管理 agent-created skills 思想，但 AIRules 默认只写 `docs/skill-evolution/inbox/` 候选。
+- 不复制 Hermes runtime、AIAgent、provider routing、terminal backend、cron daemon 或 tool gateway。
+- 不直接修改 `vendor/`，不把第三方上游 skill 当作可写资产。
+- 正式知识库和 first-party core skills 的修改必须经过用户确认、测试和验证。
+
+## Hermes 宿主投影边界
+
+- Hermes 官方文档把全局身份文件定义为 `~/.hermes/SOUL.md`，AIRules 的 Hermes 宿主基线对应写入该文件。
+- Hermes 官方文档把 `~/.hermes/skills/` 定义为技能主目录，AIRules 的 Hermes 宿主投影对应写入该目录。
+- `learning-capture` 与 `skill-evolution` 是 AIRules 借鉴 Hermes 设计的第一方技能，不能反向启用到 Hermes 宿主自身。
+- 宿主级不安装技能必须通过 `constants/hosts.ts` 的通用配置字段表达，安装与验证脚本只读取配置，不写宿主名特判。

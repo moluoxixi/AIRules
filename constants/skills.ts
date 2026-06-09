@@ -69,6 +69,11 @@ export interface VendorRepo {
   /** Git 仓库地址 */
   source: string
   /**
+   * workspace 表示该供应商来自当前 AIRules 安装目录，而不是远程 Git checkout。
+   * 仅用于 moluoxixi 第一方 skills，避免新增 skill 必须先存在于远程仓库才能通过本地验证。
+   */
+  sourceMode?: 'git' | 'workspace'
+  /**
    * 供应商级安装前置命令。
    * 用于安装与整组 skills 相关的外部工具，不绑定到某个具体 skill 链接。
    */
@@ -181,6 +186,7 @@ export const vendors: VendorsConfig = [
     name: 'moluoxixi',
     official: true,
     source: 'https://github.com/moluoxixi/AIRules.git',
+    sourceMode: 'workspace',
     setup: codegraphSetup,
     projections: [
       {
@@ -191,8 +197,10 @@ export const vendors: VendorsConfig = [
           'api-docs',
           'components-docs',
           'init-project',
+          'learning-capture',
           'prd-docs',
           'retrospective-correction',
+          'skill-evolution',
           'skill-validation-standard',
           'test-docs',
         ],

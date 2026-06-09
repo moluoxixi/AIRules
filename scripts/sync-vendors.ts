@@ -144,24 +144,28 @@ async function main() {
       continue
 
     const cacheTarget = join(CACHE_DIR, vendorName)
-    console.log(`\n--- 正在拉取远程供应商: ${vendorName} ---`)
+    const sourceRoot = vendor.sourceMode === 'workspace' ? PROJECT_ROOT : cacheTarget
+    const vendorLabel = vendor.sourceMode === 'workspace' ? '本地 workspace 供应商' : '远程供应商'
+    console.log(`\n--- 正在同步${vendorLabel}: ${vendorName} ---`)
 
     try {
-      runGit(['clone', '--filter=blob:none', '--no-checkout', vendor.repo, vendorName], CACHE_DIR)
+      if (vendor.sourceMode !== 'workspace') {
+        runGit(['clone', '--filter=blob:none', '--no-checkout', vendor.repo, vendorName], CACHE_DIR)
 
-      const checkoutPaths = new Set<string>()
-      for (const link of vendor.links) {
-        checkoutPaths.add(link.source)
+        const checkoutPaths = new Set<string>()
+        for (const link of vendor.links) {
+          checkoutPaths.add(link.source)
+        }
+
+        if (checkoutPaths.size > 0) {
+          runGit(['sparse-checkout', 'set', ...checkoutPaths], cacheTarget)
+        }
+
+        runGit(['checkout'], cacheTarget)
       }
 
-      if (checkoutPaths.size > 0) {
-        runGit(['sparse-checkout', 'set', ...checkoutPaths], cacheTarget)
-      }
-
-      runGit(['checkout'], cacheTarget)
-
       for (const link of vendor.links) {
-        const sourcePath = join(cacheTarget, link.source)
+        const sourcePath = join(sourceRoot, link.source)
 
         if (!existsSync(sourcePath)) {
           throw new Error(`供应商 ${vendorName} 缺失配置的源目录: ${link.source}`)

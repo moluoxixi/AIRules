@@ -44,7 +44,7 @@ AIRules is a **composable AI skill distribution system**. The core idea is simpl
 - 🔥 **Curated** workflow, tool, design, and verification AI Skills out of the box
 - 🧠 **Automatic CodeGraph install** via `npm install --global @colbymchenry/codegraph`, followed by `codegraph install`, during default sync
 - 🧱 **Reserved first-party expansion slots** so you can add your own top-level skills later without changing the distribution model
-- 🌐 **Multi-agent sync**: configure once, works across Claude / Cursor / Codex / Qoder / Tare / OpenCode / CC-Switch
+- 🌐 **Multi-agent sync**: configure once, works across Claude / Cursor / Codex / Hermes / Qoder / Trae / OpenCode / CC-Switch
 - 🔄 **Continuous updates**: one command pulls latest upstream skills
 
 ## Installation
@@ -169,13 +169,15 @@ Moluoxixi AIRules supports a growing ecosystem of AI agents through automated pr
 |-------|----------------|-----------|-------------------|---------------|
 | **Claude Code** | `claude` | `~/.claude/` | Symlink | `CLAUDE.md` |
 | **Codex** | `codex` | `~/.codex/` | Symlink | `AGENTS.md` |
+| **Hermes** | `hermes` | `~/.hermes/` | Symlink | `SOUL.md` |
 | **Cursor** | `cursor` | `~/.cursor/` | Symlink | `AGENTS.md` |
-| **Tare** | `tare` | `~/.tare/` | Symlink | `AGENTS.md` |
+| **Trae** | `trae` | `~/.trae/` | Symlink | `AGENTS.md` |
 | **OpenCode** | `opencode` | `~/.config/opencode/` | Symlink | `AGENTS.md` |
 | **CC-Switch** | `cc-switch` | `~/.cc-switch/` | Symlink | `AGENTS.md` |
 
 > [!NOTE]
 > All skills are automatically projected into the agent's dedicated skills directory during installation.
+> Hermes intentionally excludes AIRules' Hermes-inspired `learning-capture` and `skill-evolution` skills from `~/.hermes/skills/`; they remain available through the shared distribution pipeline for other hosts.
 
 ---
 
@@ -191,8 +193,10 @@ Moluoxixi AIRules supports a growing ecosystem of AI agents through automated pr
 | **prd-docs** | Generates or updates business PRDs under `docs/prds/` and maintains docs navigation |
 | **api-docs** | Generates or updates API and integration contracts under `docs/api/` and maintains docs navigation |
 | **components-docs** | Generates or updates frontend component docs under `docs/components/` and maintains docs navigation |
+| **learning-capture** | Captures post-task AI learning candidates, inspired by Hermes Memory, under `docs/AI项目知识/待确认/` |
 | **test-docs** | Generates or updates test design and validation docs under `docs/test/` and maintains docs navigation |
 | **retrospective-correction** | Produces a correction plan before root-cause attribution when implementation diverges from user requirements or rules |
+| **skill-evolution** | Captures skill/rule improvement candidates, inspired by Hermes Curator, under `docs/skill-evolution/inbox/` |
 
 > First-party skills may live under nested source folders, but installation flattens them into `vendor/skills/<skill-name>`. First-party rules live in `rules/AGENTS.md`; CodeGraph install commands live in the vendor setup section of `constants/skills.ts`.
 
@@ -220,8 +224,10 @@ Moluoxixi AIRules supports a growing ecosystem of AI agents through automated pr
 │   ├── architecture-docs/
 │   ├── api-docs/
 │   ├── components-docs/
+│   ├── learning-capture/
 │   ├── prd-docs/
 │   ├── retrospective-correction/
+│   ├── skill-evolution/
 │   └── test-docs/
 ├── vendor/
 │   ├── repos/               # Cloned third-party source repos
