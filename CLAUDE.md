@@ -7,3 +7,11 @@
 - **工作区隔离**：禁止修改任何被 Git 忽略的文件或目录；可按任务需要修改已跟踪的源码、测试、配置、`skills/`、`rules/` 与文档。
 - **`vendor/` 读写红线**：`vendor/` 目录被 Git 忽略，属于测试映射生成的只读（Read-Only）沙箱区。**绝对禁止**在任何情况下直接修改、覆写或向 `vendor/` 目录内部主动写入代码。
 - **映射契约**：涉及将内容打包或安装至宿主目录时，必须严格读取并遵循 `constants/skills.ts`、`constants/hosts.ts`、`scripts/lib/skill-projection.ts`、`scripts/lib/vendors.ts` 与 `scripts/lib/install.ts` 中定义的投影和安装协议，禁止凭空捏造任何隐式文件复制逻辑。
+
+## First-Party Skill Authoring Rules
+- **适用范围**：仅在新增、修改、评审或准备发布 `skills/<name>/SKILL.md` 时应用本节；普通代码实现、业务文档、测试修复和只读 vendor skill 参考不触发。
+- **触发语义**：`description` 是给 AI 判断是否加载/触发 skill 的条件，必须说明“什么时候用”，不得写成泛泛能力摘要。
+- **正文边界**：每个 first-party skill 必须显式说明触发条件、不适合场景和输出/写入边界；涉及用户确认、脚本命令或失败处理时必须写清运行前提。
+- **示例约束**：示例、模板、候选格式和命令片段必须标明其示例/占位/待确认性质，禁止让 AI 把示例内容当作真实项目事实自动应用。
+- **禁止包装**：项目治理、候选记录和校验脚本优先放在 `docs/`、`scripts/`、`tests/` 或既有 skill 小节中；没有独立运行时触发场景的内容不得包装成默认分发 skill。
+- **校验方式**：用户要求或提交前需要检查 skill 内容时，对单个 skill 根目录运行 `node scripts/verify-skill-frontmatter.mjs --root skills/<skill-name>`；该命令不接受 `skills/` 总目录。
