@@ -1,6 +1,6 @@
 #!/usr/bin/env node
 /**
- * Skill frontmatter 校验脚本：只检查单个 SKILL.md 的 YAML frontmatter。
+ * Skill 内容校验脚本：检查单个 SKILL.md 的 frontmatter 与基础内容边界。
  */
 import fs from 'node:fs'
 import path from 'node:path'
@@ -8,6 +8,12 @@ import path from 'node:path'
 const ownRoot = process.cwd()
 const MAX_SKILL_LINES = 500
 const DESCRIPTION_TRIGGER_PATTERN = /(用于|适用于|当|在.+时|开始前|完成后|明确要求|Use when|Triggers? on|when)/i
+const TRIGGER_SECTION_PATTERN = /##\s*(触发条件|触发判断|适用时机|When to Use|使用时机)/i
+const UNSUITABLE_SECTION_PATTERN = /##\s*(不适合|拒绝|不要使用|Don't use|Do not use|Non-goals?)/i
+const BOUNDARY_SECTION_PATTERN = /##\s*(输出边界|应用边界|写入边界|边界|禁止|共同规则|核心规则|Output Boundary|Boundaries)/i
+const BOUNDARY_MARKER_PATTERN = /(占位|仅供参考|用户确认|确认后|待审|PENDING_REVIEW|不得自动|不可直接|不要直接|字段含义|运行前提|失败|placeholder|review|confirm|not automatically)/i
+const UNRESOLVED_PLACEHOLDER_PATTERN = /(TODO|FIXME|待补充|后续补充|这里写|请补充|\[补充|<待|待填写)/i
+
 const errors = []
 
 function fail(message) {
@@ -84,6 +90,7 @@ function splitFrontmatter(content) {
   pass('frontmatter markers valid')
   return {
     yaml: content.slice(4, end),
+    body: content.slice(end + 5).trim(),
   }
 }
 
@@ -139,20 +146,93 @@ function checkFrontmatterFields(fields, root) {
   }
 
   const description = fields.get('description')
-  if (description && !DESCRIPTION_TRIGGER_PATTERN.test(description)) {
-    fail('frontmatter description 必须说明触发时机或触发场景')
+  if (!description) {
+    fail('frontmatter 缺少 description；description 必须描述 AI 触发条件')
+  }
+  else if (!DESCRIPTION_TRIGGER_PATTERN.test(description)) {
+    fail('frontmatter description 必须说明 AI 触发时机或触发场景')
   }
 
   if (actualName && actualName === expectedName) {
     pass('frontmatter required fields present')
     pass('frontmatter name matches folder')
-    if (description) {
+    if (description && DESCRIPTION_TRIGGER_PATTERN.test(description)) {
       pass('frontmatter description trigger contract valid')
     }
-    else {
-      pass('frontmatter description omitted')
-    }
   }
+}
+
+function checkBodyStructure(body) {
+  if (!body) {
+    fail('SKILL.md 正文不能为空')
+    return
+  }
+
+  if (!TRIGGER_SECTION_PATTERN.test(body)) {
+    fail('正文必须包含触发条件/适用时机章节')
+  }
+  else {
+    pass('body trigger section present')
+  }
+
+  if (!UNSUITABLE_SECTION_PATTERN.test(body)) {
+    fail('正文必须包含不适合场景或拒绝使用边界')
+  }
+  else {
+    pass('body unsuitable section present')
+  }
+
+  if (!BOUNDARY_SECTION_PATTERN.test(body)) {
+    fail('正文必须包含输出/应用/写入边界或禁止事项')
+  }
+  else {
+    pass('body boundary section present')
+  }
+
+  if (UNRESOLVED_PLACEHOLDER_PATTERN.test(body)) {
+    fail('正文包含未解决占位内容或 TODO')
+  }
+}
+
+function checkExampleBoundaries(body) {
+  const lines = body.split('\n')
+  const riskyLines = []
+  let inFence = false
+
+  lines.forEach((line, index) => {
+    const fence = line.trim().match(/^`{3,}/)
+    if (fence) {
+      inFence = !inFence
+      return
+    }
+
+    if (inFence) {
+      return
+    }
+
+    const trimmed = line.trim().toLowerCase()
+    const isExampleHeading = trimmed.startsWith('##')
+      && !trimmed.startsWith('# ')
+      && ['示例', '模板', '候选', 'example', 'template', 'candidate'].some(marker => trimmed.includes(marker))
+
+    if (!isExampleHeading) {
+      return
+    }
+
+    const windowStart = Math.max(0, index - 3)
+    const windowEnd = Math.min(lines.length, index + 4)
+    const nearby = lines.slice(windowStart, windowEnd).join('\n')
+    if (!BOUNDARY_MARKER_PATTERN.test(nearby)) {
+      riskyLines.push(index + 1)
+    }
+  })
+
+  if (riskyLines.length > 0) {
+    fail(`示例/模板/候选内容必须说明边界或占位性质：正文行 ${riskyLines.join(', ')}`)
+    return
+  }
+
+  pass('examples/templates/candidates have boundary wording')
 }
 
 function finish(fields, root) {
@@ -163,7 +243,7 @@ function finish(fields, root) {
     return
   }
 
-  console.log('PASS skill YAML frontmatter is valid')
+  console.log('PASS skill content contract is valid')
   console.log(`  name: ${fields.get('name')}`)
   console.log(`  root: ${root}`)
 }
@@ -178,6 +258,10 @@ function verify(root) {
   const fields = parsed ? parseFrontmatter(parsed.yaml) : new Map()
 
   checkFrontmatterFields(fields, root)
+  if (parsed) {
+    checkBodyStructure(parsed.body)
+    checkExampleBoundaries(parsed.body)
+  }
 
   finish(fields, root)
 }

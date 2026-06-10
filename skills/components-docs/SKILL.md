@@ -5,6 +5,21 @@ description: 用于生成或更新组件库提供方 docs/out-components 或组�
 
 # Components Docs
 
+## 触发条件
+
+- 用户要求生成、更新或标准化组件库提供方/消费方文档时使用。
+- 组件库、外部 UI 依赖、Props/Events/Slots、交互状态、可访问性或示例用法需要落文档时使用。
+
+## 不适合场景
+
+- 普通业务组件、页面私有组件或只需要改 UI 代码时不要使用。
+- 脚本未发现组件或文档来源冲突时，不要猜测契约；标记 `MISSING` 并列出证据缺口。
+
+## 输出边界
+
+- 只写 `docs/components/`、`docs/out-components/`、对应索引和 `docs/map.md`。
+- 不修改组件源码、Design System 设计、第三方文档或 vendor 目录。
+
 ## 输出位置
 
 - 提供方文档：`docs/out-components/<组件名>.md`
@@ -87,6 +102,8 @@ description: 用于生成或更新组件库提供方 docs/out-components 或组�
 ```
 
 ## 示例
+
+以下内容是示例模板，仅供参考，不得作为真实业务事实自动应用。
 
 ````md
 # Button组件文档

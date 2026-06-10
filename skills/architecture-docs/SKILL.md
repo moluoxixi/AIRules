@@ -5,6 +5,21 @@ description: 用于生成或更新 docs/architecture 下的架构文档，尤其
 
 # Architecture Docs
 
+## 触发条件
+
+- 用户要求生成、更新或标准化架构文档、模块边界、部署拓扑、权限模型或 ADR 时使用。
+- 已有代码结构、架构事实或用户确认的技术决策需要沉淀到 `docs/architecture/` 时使用。
+
+## 不适合场景
+
+- 只需要改代码、修测试或解释局部实现，不需要形成架构文档时不要使用。
+- 缺少来源证据或用户确认时，不要替项目做架构决策；标记 `MISSING` 或先输出待确认项。
+
+## 输出边界
+
+- 只写 `docs/architecture/`、`docs/architecture/decisions/`、对应索引和 `docs/map.md`。
+- 不把长篇架构规范直接写入 `AGENTS.md`，不自动修改代码、部署配置或接口协议。
+
 ## 输出位置
 
 - 架构索引：`docs/architecture/index.md`
@@ -65,6 +80,8 @@ proposed | accepted | deprecated | superseded
 ```
 
 ## 示例
+
+以下内容是示例模板，仅供参考，不得作为真实业务事实自动应用。
 
 ```md
 # 采购订单模块架构
