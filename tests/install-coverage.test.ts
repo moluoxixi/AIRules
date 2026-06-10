@@ -87,8 +87,8 @@ it('hosts - 解析默认和自定义宿主路径', () => {
   assert.equal(claudePaths.skillsDirName, 'skills')
 
   const hermesPaths = resolveHostPaths(hermes, 'C:/Users/example')
-  assert.equal(normalizePath(hermesPaths.hostHome), 'C:/Users/example/.hermes')
-  assert.equal(normalizePath(hermesPaths.hostBaselineFile), 'C:/Users/example/.hermes/SOUL.md')
+  assert.equal(normalizePath(hermesPaths.hostHome), 'C:/Users/example/AppData/Local/hermes')
+  assert.equal(normalizePath(hermesPaths.hostBaselineFile), 'C:/Users/example/AppData/Local/hermes/SOUL.md')
   assert.equal(hermesPaths.skillsDirName, 'skills')
   assert.deepEqual(hermesPaths.excludedSkills, [])
 })
@@ -274,7 +274,7 @@ it('install - projectHostById 跳过缺失宿主并处理未知宿主错误', ()
 it('install - Hermes 宿主投影使用统一技能集合', () => withTempDir('airules-hermes-host-', (tmpDir) => {
   const userHome = path.join(tmpDir, 'user')
   const moluoHome = path.join(userHome, '.moluoxixi')
-  const hermesHome = path.join(userHome, '.hermes')
+  const hermesHome = path.join(userHome, 'AppData', 'Local', 'hermes')
   const vendorSkillsDir = path.join(moluoHome, 'vendor', 'skills')
   const linkType = process.platform === 'win32' ? 'junction' : 'dir'
 

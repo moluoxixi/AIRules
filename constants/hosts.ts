@@ -38,6 +38,11 @@ export const HOST_CONFIGS: HostConfig[] = [
     baselineFileName: 'SOUL.md',
   },
   {
+    id: 'hermes desktop',
+    homeRelPath: path.join('AppData', 'Local', 'hermes'),
+    baselineFileName: 'SOUL.md',
+  },
+  {
     id: 'cursor',
     homeRelPath: '.cursor',
     baselineFileName: 'AGENTS.md',

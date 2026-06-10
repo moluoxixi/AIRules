@@ -165,15 +165,16 @@ Common options:
 
 Moluoxixi AIRules supports a growing ecosystem of AI agents through automated projection:
 
-| Agent | `--host` Value | Host Path | Projection Method | Baseline File |
-|-------|----------------|-----------|-------------------|---------------|
-| **Claude Code** | `claude` | `~/.claude/` | Symlink | `CLAUDE.md` |
-| **Codex** | `codex` | `~/.codex/` | Symlink | `AGENTS.md` |
-| **Hermes** | `hermes` | `~/.hermes/` | Symlink | `SOUL.md` |
-| **Cursor** | `cursor` | `~/.cursor/` | Symlink | `AGENTS.md` |
-| **Trae** | `trae` | `~/.trae/` | Symlink | `AGENTS.md` |
-| **OpenCode** | `opencode` | `~/.config/opencode/` | Symlink | `AGENTS.md` |
-| **CC-Switch** | `cc-switch` | `~/.cc-switch/` | Symlink | `AGENTS.md` |
+| Agent              | `--host` Value | Host Path                 | Projection Method | Baseline File |
+|--------------------|----------------|---------------------------|-------------------|---------------|
+| **Claude Code**    | `claude` | `~/.claude/`              | Symlink | `CLAUDE.md` |
+| **Codex**          | `codex` | `~/.codex/`               | Symlink | `AGENTS.md` |
+| **Hermes**         | `hermes` | `~/.hermes/`              | Symlink | `SOUL.md` |
+| **Hermes Desktop** | `hermes` | `~/AppData/Local/hermes/` | Symlink | `SOUL.md` |
+| **Cursor**         | `cursor` | `~/.cursor/`              | Symlink | `AGENTS.md` |
+| **Trae**           | `trae` | `~/.trae/`                | Symlink | `AGENTS.md` |
+| **OpenCode**       | `opencode` | `~/.config/opencode/`     | Symlink | `AGENTS.md` |
+| **CC-Switch**      | `cc-switch` | `~/.cc-switch/`           | Symlink | `AGENTS.md` |
 
 > [!NOTE]
 > All first-party and curated third-party skills are automatically projected into the agent's dedicated skills directory during installation. AIRules no longer ships its former Hermes-inspired learning/curation skills by default; learning candidates remain an internal document convention, not an installed agent skill.

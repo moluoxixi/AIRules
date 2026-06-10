@@ -169,7 +169,7 @@ Moluoxixi AIRules 通过自动化投影，支持不断增长的 AI 代理生态�
 |-------|---------------|----------|----------|----------|
 | **Claude Code** | `claude` | `~/.claude/` | 软链接 | `CLAUDE.md` |
 | **Codex** | `codex` | `~/.codex/` | 软链接 | `AGENTS.md` |
-| **Hermes** | `hermes` | `~/.hermes/` | 软链接 | `SOUL.md` |
+| **Hermes** | `hermes` | `~/AppData/Local/hermes/` | 软链接 | `SOUL.md` |
 | **Cursor** | `cursor` | `~/.cursor/` | 软链接 | `AGENTS.md` |
 | **Trae** | `trae` | `~/.trae/` | 软链接 | `AGENTS.md` |
 | **OpenCode** | `opencode` | `~/.config/opencode/` | 软链接 | `AGENTS.md` |

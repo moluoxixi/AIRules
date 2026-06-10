@@ -99,7 +99,7 @@ it('verifyHost - Hermes 宿主使用统一技能集合', async () => {
 
     linkDir(
       path.join(moluoHome, 'vendor', 'skills', 'api-docs'),
-      path.join(userHome, '.hermes', 'skills', 'api-docs'),
+      path.join(userHome, 'AppData', 'Local', 'hermes', 'skills', 'api-docs'),
     )
 
     assert.equal(await verifyHost('hermes', moluoHome), true)
