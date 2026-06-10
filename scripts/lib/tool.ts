@@ -1,6 +1,7 @@
 import { cpSync, existsSync, mkdirSync, rmSync } from 'node:fs'
 import os from 'node:os'
 import path from 'node:path'
+import { fileURLToPath } from 'node:url'
 import { ALL_HOST_IDS } from '../../constants/hosts.js'
 import {
   ensureInstallRoot,
@@ -62,13 +63,35 @@ export function getDefaultMoluoHome(): string {
   return path.join(os.homedir(), '.moluoxixi')
 }
 
+function isRunningFromDist(): boolean {
+  const currentFile = fileURLToPath(import.meta.url)
+  return currentFile.split(path.sep).includes('dist')
+}
+
 function resolveManifestPath(repoRoot: string): string {
+  const sourceManifestTs = path.join(repoRoot, 'constants', 'skills.ts')
   const sourceManifestJs = path.join(repoRoot, 'constants', 'skills.js')
+  const distManifestJs = path.join(repoRoot, 'dist', 'constants', 'skills.js')
+
+  if (isRunningFromDist()) {
+    if (existsSync(distManifestJs)) {
+      return distManifestJs
+    }
+
+    if (existsSync(sourceManifestJs)) {
+      return sourceManifestJs
+    }
+  }
+
+  if (existsSync(sourceManifestTs)) {
+    return sourceManifestTs
+  }
+
   if (existsSync(sourceManifestJs)) {
     return sourceManifestJs
   }
 
-  return path.join(repoRoot, 'dist', 'constants', 'skills.js')
+  return distManifestJs
 }
 
 export function resolveToolPaths(repoRoot: string, home: string, userHome = os.homedir()): ToolPaths {

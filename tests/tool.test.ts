@@ -48,11 +48,22 @@ it('tool - resolveToolPaths 支持显式区分 moluoHome 与 userHome', () => wi
   assert.equal(paths.userHome, path.resolve(userHome))
 }))
 
-it('tool - resolveToolPaths 在源码仓库运行 build CLI 时使用 dist manifest', () => withTempDir('airules-tool-dist-manifest-', (tmpDir) => {
+it('tool - resolveToolPaths 在 tsx 源码运行时优先使用 TypeScript manifest', () => withTempDir('airules-tool-source-manifest-', (tmpDir) => {
   const repoRoot = path.join(tmpDir, 'repo')
   const moluoHome = path.join(tmpDir, 'home')
 
   writeFile(path.join(repoRoot, 'constants', 'skills.ts'), 'export const vendors = []\n')
+  writeFile(path.join(repoRoot, 'dist', 'constants', 'skills.js'), 'export const vendors = []\n')
+
+  const paths = resolveToolPaths(repoRoot, moluoHome)
+
+  assert.equal(paths.manifestPath, path.resolve(repoRoot, 'constants', 'skills.ts'))
+}))
+
+it('tool - resolveToolPaths 在缺少 TypeScript manifest 时回退到 dist manifest', () => withTempDir('airules-tool-dist-manifest-', (tmpDir) => {
+  const repoRoot = path.join(tmpDir, 'repo')
+  const moluoHome = path.join(tmpDir, 'home')
+
   writeFile(path.join(repoRoot, 'dist', 'constants', 'skills.js'), 'export const vendors = []\n')
 
   const paths = resolveToolPaths(repoRoot, moluoHome)
@@ -146,6 +157,36 @@ it('tool - syncToHosts 同步内置和用户自定义 skills 到宿主', async (
       realLinkPath(path.join(userHome, '.agents', 'skills', 'custom-review')),
     )
     assert.equal(fs.readFileSync(path.join(codexHome, 'AGENTS.md'), 'utf8'), 'baseline\n')
+  })
+})
+
+it('tool - syncToHosts 在源码安装目录缺少 dist 时可直接加载 TypeScript manifest', async () => {
+  await withTempDirAsync('airules-tool-source-no-dist-', async (tmpDir) => {
+    const repoRoot = path.join(tmpDir, 'repo')
+    const userHome = path.join(tmpDir, 'user')
+    const moluoHome = path.join(userHome, '.moluoxixi')
+    const codexHome = path.join(userHome, '.codex')
+
+    writeFile(path.join(repoRoot, 'package.json'), '{"type":"module"}\n')
+    writeFile(path.join(repoRoot, 'constants', 'skills.ts'), 'export const vendors = []\n')
+    writeFile(path.join(repoRoot, 'rules', 'AGENTS.md'), 'baseline\n')
+    writeFile(path.join(repoRoot, 'skills', 'workflow', 'source-only', 'SKILL.md'), 'source-only\n')
+    fs.mkdirSync(codexHome, { recursive: true })
+
+    const result = await syncToHosts({
+      repoRoot,
+      home: moluoHome,
+      userHome,
+      host: 'codex',
+      skipVendors: false,
+      verify: false,
+    })
+
+    assert.deepEqual(result.projectedHosts, ['codex'])
+    assert.equal(
+      realLinkPath(path.join(codexHome, 'skills', 'source-only')),
+      realLinkPath(path.join(userHome, '.agents', 'skills', 'source-only')),
+    )
   })
 })
 
