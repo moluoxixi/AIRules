@@ -90,7 +90,7 @@ it('hosts - 解析默认和自定义宿主路径', () => {
   assert.equal(normalizePath(hermesPaths.hostHome), 'C:/Users/example/.hermes')
   assert.equal(normalizePath(hermesPaths.hostBaselineFile), 'C:/Users/example/.hermes/SOUL.md')
   assert.equal(hermesPaths.skillsDirName, 'skills')
-  assert.deepEqual(hermesPaths.excludedSkills, ['learning-capture', 'skill-evolution'])
+  assert.deepEqual(hermesPaths.excludedSkills, [])
 })
 
 it('links - 构建按目标路径排序的绝对链接计划', () => {
@@ -271,7 +271,7 @@ it('install - projectHostById 跳过缺失宿主并处理未知宿主错误', ()
   )
 }))
 
-it('install - Hermes 宿主投影排除学习技能且不影响共享层', () => withTempDir('airules-hermes-host-', (tmpDir) => {
+it('install - Hermes 宿主投影使用统一技能集合', () => withTempDir('airules-hermes-host-', (tmpDir) => {
   const userHome = path.join(tmpDir, 'user')
   const moluoHome = path.join(userHome, '.moluoxixi')
   const hermesHome = path.join(userHome, '.hermes')
@@ -280,14 +280,8 @@ it('install - Hermes 宿主投影排除学习技能且不影响共享层', () =>
 
   writeFile(path.join(moluoHome, 'vendor', 'AGENTS.md'), 'baseline\n')
   fs.mkdirSync(path.join(vendorSkillsDir, 'api-docs'), { recursive: true })
-  fs.mkdirSync(path.join(vendorSkillsDir, 'learning-capture'), { recursive: true })
-  fs.mkdirSync(path.join(vendorSkillsDir, 'skill-evolution'), { recursive: true })
   fs.mkdirSync(path.join(hermesHome, 'skills'), { recursive: true })
-  fs.symlinkSync(
-    path.join(vendorSkillsDir, 'learning-capture'),
-    path.join(hermesHome, 'skills', 'learning-capture'),
-    linkType,
-  )
+  fs.symlinkSync(path.join(tmpDir, 'stale-skill'), path.join(hermesHome, 'skills', 'stale-skill'), linkType)
 
   const projected = projectHostById('hermes', userHome, moluoHome)
 
@@ -295,10 +289,8 @@ it('install - Hermes 宿主投影排除学习技能且不影响共享层', () =>
   assert.equal(normalizePath(projected.hostBaselineFile), normalizePath(path.join(hermesHome, 'SOUL.md')))
   assert.equal(fs.readFileSync(path.join(hermesHome, 'SOUL.md'), 'utf8'), 'baseline\n')
   assert.ok(fs.lstatSync(path.join(hermesHome, 'skills', 'api-docs')).isSymbolicLink())
-  assert.equal(fs.existsSync(path.join(hermesHome, 'skills', 'learning-capture')), false)
-  assert.equal(fs.existsSync(path.join(hermesHome, 'skills', 'skill-evolution')), false)
-  assert.ok(fs.lstatSync(path.join(userHome, '.agents', 'skills', 'learning-capture')).isSymbolicLink())
-  assert.ok(fs.lstatSync(path.join(userHome, '.agents', 'skills', 'skill-evolution')).isSymbolicLink())
+  assert.equal(fs.existsSync(path.join(hermesHome, 'skills', 'stale-skill')), false)
+  assert.ok(fs.lstatSync(path.join(userHome, '.agents', 'skills', 'api-docs')).isSymbolicLink())
 }))
 
 it('install - rebuildVendorSkillLinks 只链接存在的源并生成 gitignore', async () => {

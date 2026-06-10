@@ -36,7 +36,6 @@ export const HOST_CONFIGS: HostConfig[] = [
     id: 'hermes',
     homeRelPath: '.hermes',
     baselineFileName: 'SOUL.md',
-    excludedSkills: ['learning-capture', 'skill-evolution'],
   },
   {
     id: 'cursor',

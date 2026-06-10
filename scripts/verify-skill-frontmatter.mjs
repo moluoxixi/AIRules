@@ -1,12 +1,11 @@
 #!/usr/bin/env node
 /**
- * Skill 最小校验脚本：只检查 SKILL.md 的 YAML frontmatter。
+ * Skill frontmatter 校验脚本：只检查单个 SKILL.md 的 YAML frontmatter。
  */
 import fs from 'node:fs'
 import path from 'node:path'
-import { fileURLToPath } from 'node:url'
 
-const ownRoot = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..')
+const ownRoot = process.cwd()
 const MAX_SKILL_LINES = 500
 const DESCRIPTION_TRIGGER_PATTERN = /(用于|适用于|当|在.+时|开始前|完成后|明确要求|Use when|Triggers? on|when)/i
 const errors = []

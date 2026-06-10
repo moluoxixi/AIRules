@@ -131,14 +131,11 @@ it('learning candidate verifier - 拒绝指向 vendor 的 skill 候选', () => w
   assert.match(result.stderr, /不得指向 vendor\//)
 }))
 
-it('learning skills - 写明 Hermes 来源与候选边界', () => {
-  const learningSkill = fs.readFileSync(path.join(process.cwd(), 'skills', 'learning-capture', 'SKILL.md'), 'utf8')
-  const evolutionSkill = fs.readFileSync(path.join(process.cwd(), 'skills', 'skill-evolution', 'SKILL.md'), 'utf8')
+it('learning pipeline - 候选格式作为内部文档约定保留', () => {
+  const verifier = fs.readFileSync(path.join(process.cwd(), 'scripts', 'verify-learning-candidates.mjs'), 'utf8')
 
-  assert.match(learningSkill, /https:\/\/hermes-agent\.nousresearch\.com\/docs\/user-guide\/features\/memory\//)
-  assert.match(learningSkill, /docs\/AI项目知识\/待确认\//)
-  assert.match(learningSkill, /PENDING_REVIEW/)
-  assert.match(evolutionSkill, /https:\/\/hermes-agent\.nousresearch\.com\/docs\/user-guide\/features\/curator/)
-  assert.match(evolutionSkill, /docs\/skill-evolution\/inbox\//)
-  assert.match(evolutionSkill, /PENDING_REVIEW/)
+  assert.match(verifier, /learning-capture/)
+  assert.match(verifier, /skill-evolution/)
+  assert.match(verifier, /docs\/AI项目知识\/待确认\//)
+  assert.match(verifier, /docs\/skill-evolution\/inbox\//)
 })

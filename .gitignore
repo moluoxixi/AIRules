@@ -11,10 +11,6 @@ skills/*
 !skills/init-project/**
 !skills/knowledge-search/
 !skills/knowledge-search/**
-!skills/learning-capture/
-!skills/learning-capture/**
-!skills/skill-validation-standard/
-!skills/skill-validation-standard/**
 !skills/architecture-docs/
 !skills/architecture-docs/**
 !skills/api-docs/
@@ -25,8 +21,6 @@ skills/*
 !skills/prd-docs/**
 !skills/retrospective-correction/
 !skills/retrospective-correction/**
-!skills/skill-evolution/
-!skills/skill-evolution/**
 !skills/test-docs/
 !skills/test-docs/**
 

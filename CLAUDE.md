@@ -6,4 +6,4 @@
 ## Workspace Constraints & Vendor Protocol
 - **工作区隔离**：禁止修改任何被 Git 忽略的文件或目录；可按任务需要修改已跟踪的源码、测试、配置、`skills/`、`rules/` 与文档。
 - **`vendor/` 读写红线**：`vendor/` 目录被 Git 忽略，属于测试映射生成的只读（Read-Only）沙箱区。**绝对禁止**在任何情况下直接修改、覆写或向 `vendor/` 目录内部主动写入代码。
-- **映射契约**：涉及将内容打包或安装至宿主目录时，必须严格读取并遵循项目中定义的映射协议（[补充：如果协议在某个文件里，请在这里写明，例如 `参考 sync-protocol.md`]），禁止凭空捏造任何隐式文件复制逻辑。
+- **映射契约**：涉及将内容打包或安装至宿主目录时，必须严格读取并遵循 `constants/skills.ts`、`constants/hosts.ts`、`scripts/lib/skill-projection.ts`、`scripts/lib/vendors.ts` 与 `scripts/lib/install.ts` 中定义的投影和安装协议，禁止凭空捏造任何隐式文件复制逻辑。

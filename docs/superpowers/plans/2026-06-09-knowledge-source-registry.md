@@ -80,7 +80,7 @@ Add the retrieval skill, document the registry/evidence model, and update existi
 
 - [ ] **Step 2: Validate skill frontmatter**
 
-Run: `node skills/skill-validation-standard/scripts/verify-rules.mjs --root skills/knowledge-search`
+Run: `node scripts/verify-skill-frontmatter.mjs --root skills/knowledge-search`
 
 Expected: PASS.
 
@@ -93,7 +93,7 @@ Expected: PASS.
 
 Run:
 - `npx vitest run tests/knowledge-sources.test.ts tests/knowledge-search-contract.test.ts`
-- `node skills/skill-validation-standard/scripts/verify-rules.mjs --root skills/knowledge-search`
+- `node scripts/verify-skill-frontmatter.mjs --root skills/knowledge-search`
 - `npm run lint:check`
 - `npm run typecheck`
 - `git diff --check`

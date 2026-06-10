@@ -8,9 +8,8 @@ import { fileURLToPath } from 'node:url'
 import { it } from 'vitest'
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url))
-const skillRoot = path.resolve(__dirname, '..')
-const projectRoot = path.resolve(skillRoot, '..', '..')
-const scriptPath = path.join(skillRoot, 'scripts', 'verify-rules.mjs')
+const projectRoot = path.resolve(__dirname, '..')
+const scriptPath = path.join(projectRoot, 'scripts', 'verify-skill-frontmatter.mjs')
 
 function runScript(...args: string[]) {
   return execFileSync(process.execPath, [scriptPath, ...args], {
@@ -24,9 +23,7 @@ function writeSkill(root: string, lines: string[]) {
   fs.writeFileSync(path.join(root, 'SKILL.md'), lines.join('\n'))
 }
 
-it('verify-rules 只校验 YAML、目录名和长度', () => {
-  assert.match(runScript(), /PASS skill YAML frontmatter is valid/)
-
+it('verify-skill-frontmatter 只校验 YAML、目录名和长度', () => {
   const validSkillRoot = path.join(fs.mkdtempSync(path.join(os.tmpdir(), 'airules-valid-skill-')), 'minimal-skill')
   writeSkill(validSkillRoot, [
     '---',

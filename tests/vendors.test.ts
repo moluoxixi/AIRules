@@ -385,7 +385,7 @@ it('walkVendorTree - 单个 vendor 支持 namespace 与 skills projections 混�
         {
           kind: 'skills',
           sourceBaseDir: 'skills',
-          skills: ['skill-validation-standard'],
+          skills: ['knowledge-search'],
         },
       ],
     },
@@ -404,8 +404,8 @@ it('walkVendorTree - 单个 vendor 支持 namespace 与 skills projections 混�
       },
       {
         kind: 'skill',
-        source: 'skills/skill-validation-standard',
-        target: 'vendor/skills/skill-validation-standard',
+        source: 'skills/knowledge-search',
+        target: 'vendor/skills/knowledge-search',
       },
     ],
   )
@@ -561,11 +561,6 @@ it('vendors 配置 - 使用 OpenAI Playwright 并移除过时技能', () => {
         setup: undefined,
       },
       {
-        source: 'skills/learning-capture',
-        target: 'vendor/skills/learning-capture',
-        setup: undefined,
-      },
-      {
         source: 'skills/prd-docs',
         target: 'vendor/skills/prd-docs',
         setup: undefined,
@@ -576,22 +571,12 @@ it('vendors 配置 - 使用 OpenAI Playwright 并移除过时技能', () => {
         setup: undefined,
       },
       {
-        source: 'skills/skill-evolution',
-        target: 'vendor/skills/skill-evolution',
-        setup: undefined,
-      },
-      {
-        source: 'skills/skill-validation-standard',
-        target: 'vendor/skills/skill-validation-standard',
-        setup: undefined,
-      },
-      {
         source: 'skills/test-docs',
         target: 'vendor/skills/test-docs',
         setup: undefined,
       },
     ],
-    '第一方 skill 默认投影初始化、校验与项目文档写作技能',
+    '第一方 skill 默认投影初始化、知识检索、项目文档写作与偏差修正技能',
   )
 })
 

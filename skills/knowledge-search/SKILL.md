@@ -53,7 +53,7 @@ node <AIRules>/scripts/verify-knowledge-sources.mjs --evidence <evidence-json>
 - 引用来源时只摘录必要短句；主要用归纳说明，避免长篇复制。
 - 若来源有时间、commit 或 owner 信息，应随来源一起说明。
 - 若发现来源与源码、用户口径或其它来源冲突，停止并报告 `MISSING conflict`。
-- 若需要把检索结果沉淀为正式文档，只能在用户明确要求后调用对应 docs skill；若只是沉淀代理经验，只能生成 `learning-capture` 的 `PENDING_REVIEW` 候选。
+- 若需要把检索结果沉淀为正式文档，只能在用户明确要求后调用对应 docs skill；若只是沉淀代理经验，先在最终回复中建议记录要点和候选位置，用户确认后再写入待审文档。
 
 ## 最小证据 JSON
 
