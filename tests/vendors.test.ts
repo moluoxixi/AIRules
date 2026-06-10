@@ -528,6 +528,14 @@ it('vendors 配置 - 使用 OpenAI Playwright 并移除过时技能', () => {
     !vendors.moluoxixi.links.some((link: any) => link.target === 'vendor/skills/workflow'),
     '删除静态 workflow skill 后不应继续安装 workflow namespace',
   )
+  assert.ok(
+    !vendors.moluoxixi.links.some((link: any) => link.target === 'vendor/skills/learning-capture'),
+    '移除长期记忆后不应继续安装 learning-capture skill',
+  )
+  assert.ok(
+    !vendors.moluoxixi.links.some((link: any) => link.target === 'vendor/skills/skill-evolution'),
+    '移除长期记忆后不应继续安装 skill-evolution skill',
+  )
   assert.deepStrictEqual(
     vendors.moluoxixi.links.map((link: any) => ({
       source: link.source,
@@ -561,11 +569,6 @@ it('vendors 配置 - 使用 OpenAI Playwright 并移除过时技能', () => {
         setup: undefined,
       },
       {
-        source: 'skills/learning-capture',
-        target: 'vendor/skills/learning-capture',
-        setup: undefined,
-      },
-      {
         source: 'skills/prd-docs',
         target: 'vendor/skills/prd-docs',
         setup: undefined,
@@ -573,11 +576,6 @@ it('vendors 配置 - 使用 OpenAI Playwright 并移除过时技能', () => {
       {
         source: 'skills/retrospective-correction',
         target: 'vendor/skills/retrospective-correction',
-        setup: undefined,
-      },
-      {
-        source: 'skills/skill-evolution',
-        target: 'vendor/skills/skill-evolution',
         setup: undefined,
       },
       {

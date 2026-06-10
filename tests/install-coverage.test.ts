@@ -90,7 +90,6 @@ it('hosts - 解析默认和自定义宿主路径', () => {
   assert.equal(normalizePath(hermesPaths.hostHome), 'C:/Users/example/.hermes')
   assert.equal(normalizePath(hermesPaths.hostBaselineFile), 'C:/Users/example/.hermes/SOUL.md')
   assert.equal(hermesPaths.skillsDirName, 'skills')
-  assert.deepEqual(hermesPaths.excludedSkills, ['learning-capture', 'skill-evolution'])
 })
 
 it('links - 构建按目标路径排序的绝对链接计划', () => {
@@ -226,30 +225,6 @@ it('install - 同步第一方文件并按宿主投影 baseline 与 skills', () =
   )
 }))
 
-it('install - 宿主级配置可通用排除不安装的技能', () => withTempDir('airules-host-exclude-', (tmpDir) => {
-  const userHome = path.join(tmpDir, 'user')
-  const moluoHome = path.join(userHome, '.moluoxixi')
-  const hostHome = path.join(userHome, '.custom-agent')
-  const hostBaselineFile = path.join(hostHome, 'AGENTS.md')
-  const vendorSkillsDir = path.join(moluoHome, 'vendor', 'skills')
-
-  writeFile(path.join(moluoHome, 'vendor', 'AGENTS.md'), 'baseline\n')
-  fs.mkdirSync(path.join(vendorSkillsDir, 'enabled-skill'), { recursive: true })
-  fs.mkdirSync(path.join(vendorSkillsDir, 'disabled-skill'), { recursive: true })
-
-  projectToHost({
-    userHome,
-    moluoHome,
-    hostHome,
-    hostBaselineFile,
-    excludedSkills: ['disabled-skill'],
-  })
-
-  assert.ok(fs.lstatSync(path.join(hostHome, 'skills', 'enabled-skill')).isSymbolicLink())
-  assert.equal(fs.existsSync(path.join(hostHome, 'skills', 'disabled-skill')), false)
-  assert.ok(fs.lstatSync(path.join(userHome, '.agents', 'skills', 'disabled-skill')).isSymbolicLink())
-}))
-
 it('install - projectHostById 跳过缺失宿主并处理未知宿主错误', () => withTempDir('airules-host-', (tmpDir) => {
   const userHome = path.join(tmpDir, 'user')
   const moluoHome = path.join(userHome, '.moluoxixi')
@@ -271,23 +246,15 @@ it('install - projectHostById 跳过缺失宿主并处理未知宿主错误', ()
   )
 }))
 
-it('install - Hermes 宿主投影排除学习技能且不影响共享层', () => withTempDir('airules-hermes-host-', (tmpDir) => {
+it('install - Hermes 宿主使用标准技能投影', () => withTempDir('airules-hermes-host-', (tmpDir) => {
   const userHome = path.join(tmpDir, 'user')
   const moluoHome = path.join(userHome, '.moluoxixi')
   const hermesHome = path.join(userHome, '.hermes')
   const vendorSkillsDir = path.join(moluoHome, 'vendor', 'skills')
-  const linkType = process.platform === 'win32' ? 'junction' : 'dir'
 
   writeFile(path.join(moluoHome, 'vendor', 'AGENTS.md'), 'baseline\n')
   fs.mkdirSync(path.join(vendorSkillsDir, 'api-docs'), { recursive: true })
-  fs.mkdirSync(path.join(vendorSkillsDir, 'learning-capture'), { recursive: true })
-  fs.mkdirSync(path.join(vendorSkillsDir, 'skill-evolution'), { recursive: true })
   fs.mkdirSync(path.join(hermesHome, 'skills'), { recursive: true })
-  fs.symlinkSync(
-    path.join(vendorSkillsDir, 'learning-capture'),
-    path.join(hermesHome, 'skills', 'learning-capture'),
-    linkType,
-  )
 
   const projected = projectHostById('hermes', userHome, moluoHome)
 
@@ -295,10 +262,6 @@ it('install - Hermes 宿主投影排除学习技能且不影响共享层', () =>
   assert.equal(normalizePath(projected.hostBaselineFile), normalizePath(path.join(hermesHome, 'SOUL.md')))
   assert.equal(fs.readFileSync(path.join(hermesHome, 'SOUL.md'), 'utf8'), 'baseline\n')
   assert.ok(fs.lstatSync(path.join(hermesHome, 'skills', 'api-docs')).isSymbolicLink())
-  assert.equal(fs.existsSync(path.join(hermesHome, 'skills', 'learning-capture')), false)
-  assert.equal(fs.existsSync(path.join(hermesHome, 'skills', 'skill-evolution')), false)
-  assert.ok(fs.lstatSync(path.join(userHome, '.agents', 'skills', 'learning-capture')).isSymbolicLink())
-  assert.ok(fs.lstatSync(path.join(userHome, '.agents', 'skills', 'skill-evolution')).isSymbolicLink())
 }))
 
 it('install - rebuildVendorSkillLinks 只链接存在的源并生成 gitignore', async () => {

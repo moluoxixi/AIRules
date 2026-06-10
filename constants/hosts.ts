@@ -12,8 +12,6 @@ export interface HostConfig {
   baselineFileName: string
   /** 宿主内 skills 目录的名字（默认 'skills'） */
   skillsDirName?: string
-  /** 指定宿主不启用的技能名，仅影响最终宿主投影 */
-  excludedSkills?: string[]
 }
 
 /**
@@ -36,7 +34,6 @@ export const HOST_CONFIGS: HostConfig[] = [
     id: 'hermes',
     homeRelPath: '.hermes',
     baselineFileName: 'SOUL.md',
-    excludedSkills: ['learning-capture', 'skill-evolution'],
   },
   {
     id: 'cursor',
@@ -94,7 +91,6 @@ export interface ResolvedHostPaths {
   hostHome: string
   hostBaselineFile: string
   skillsDirName: string
-  excludedSkills: string[]
 }
 
 export function resolveHostPaths(config: HostConfig, userHome: string): ResolvedHostPaths {
@@ -103,6 +99,5 @@ export function resolveHostPaths(config: HostConfig, userHome: string): Resolved
     hostHome,
     hostBaselineFile: path.join(hostHome, config.baselineFileName),
     skillsDirName: config.skillsDirName ?? 'skills',
-    excludedSkills: config.excludedSkills ?? [],
   }
 }

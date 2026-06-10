@@ -12,7 +12,7 @@ AIRules 是用于构建、维护和投影 AI Prompt 工程资产的元项目。�
 | Skills Catalog | 维护第一方和 curated 第三方 skills 的投影清单。 | `constants/skills.ts`、`skills/**` | `vendor/skills/**`、宿主 skills 目录 | project-maintainer |
 | Init Project | 检测项目栈、注入规则、创建 docs 输出骨架、生成 `airules.knowledge.json`。 | 目标项目、`skills/init-project/**` | 目标项目 `AGENTS.md`、`CLAUDE.md`、`docs/**`、`airules.knowledge.json` | project-maintainer |
 | Knowledge Source Registry | 登记可检索项目知识源，约束 include/exclude、owner 和 trust。 | `airules.knowledge.json` | `knowledge-search`、docs skills、证据报告 | project-maintainer |
-| Knowledge Search | 通过登记文件系统来源或临时本地来源查找证据，并输出 `PASS`、`MISSING evidence`、`MISSING conflict`、`FAIL` 或 `NOT RUN`。 | `airules.knowledge.json`、filesystem sources | 用户回答、docs skills、learning-capture 候选 | project-maintainer |
+| Knowledge Search | 通过登记文件系统来源或临时本地来源查找证据，并输出 `PASS`、`MISSING evidence`、`MISSING conflict`、`FAIL` 或 `NOT RUN`。 | `airules.knowledge.json`、filesystem sources | 用户回答、docs skills、证据报告 | project-maintainer |
 | Docs Skills | 在用户明确要求时生成或更新标准文档输出。 | 登记知识源、源码、测试、用户确认 | `docs/architecture`、`docs/api`、`docs/prds`、`docs/test`、`docs/components`、`docs/out-*` | project-maintainer |
 
 ## 分层与依赖规则
@@ -21,7 +21,6 @@ AIRules 是用于构建、维护和投影 AI Prompt 工程资产的元项目。�
 - 初始化层可以创建 `airules.knowledge.json` 和标准 docs 输出骨架，但不得覆盖已有注册表或用户已有标准文档。
 - 检索层先校验 `airules.knowledge.json`，再查询登记源；未登记来源不得作为项目事实入口。
 - 文档输出层只能在明确触发的 docs skill 中写入正式文档；未安装或未实现适配器的外部服务不得写正式 docs。
-- 记忆层只沉淀代理经验候选，不替代项目知识源或标准文档输出。
 
 ## 数据流
 
@@ -29,7 +28,6 @@ AIRules 是用于构建、维护和投影 AI Prompt 工程资产的元项目。�
 2. `knowledge-search` 校验注册表，按 `filesystem` source 查询登记路径。
 3. 检索结果形成证据报告；无来源、冲突或工具失败分别进入 `MISSING evidence`、`MISSING conflict` 或 `FAIL`。
 4. 用户需要正式沉淀时，对应 docs skill 基于证据、源码和用户确认生成标准文档。
-5. 任务经验需要沉淀时，`learning-capture` 只写 `PENDING_REVIEW` 候选。
 
 ## 权限与安全边界
 

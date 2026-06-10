@@ -177,7 +177,6 @@ Moluoxixi AIRules 通过自动化投影，支持不断增长的 AI 代理生态�
 
 > [!NOTE]
 > 所有技能在安装过程中都会自动投影到代理专属的 skills 目录中。
-> Hermes 会刻意排除 AIRules 借鉴 Hermes 设计的 `learning-capture` 与 `skill-evolution`，不会把它们启用到 `~/.hermes/skills/`；它们仍会通过共享分发链路提供给其他宿主。
 
 ---
 
@@ -193,10 +192,9 @@ Moluoxixi AIRules 通过自动化投影，支持不断增长的 AI 代理生态�
 | **prd-docs** | 生成或更新 `docs/prds/` 下的业务需求文档，并维护文档导航 |
 | **api-docs** | 生成或更新 `docs/api/` 下的接口与联调契约文档，并维护文档导航 |
 | **components-docs** | 生成或更新 `docs/components/` 下的前端组件文档，并维护文档导航 |
-| **learning-capture** | 任务后捕获 AI 学习候选，参考 Hermes Memory，只写入 `docs/AI项目知识/待确认/` |
+| **knowledge-search** | 通过登记知识源定位项目事实证据，不强制用户先迁移到标准 docs |
 | **test-docs** | 生成或更新 `docs/test/` 下的测试设计与验证文档，并维护文档导航 |
 | **retrospective-correction** | 用户指出实现偏离要求时，先输出修正计划，再归因 AI 执行错误或 skills/rules 缺口 |
-| **skill-evolution** | 参考 Hermes Curator，把 skill/rule 缺口沉淀为 `docs/skill-evolution/inbox/` 待审候选 |
 
 > 第一方 skills 可以继续放在嵌套源目录下，安装时会展平为 `vendor/skills/<skill-name>`；仓库级规则位于 `rules/AGENTS.md`，CodeGraph 安装命令位于 `constants/skills.ts` 的 vendor setup。
 
@@ -224,10 +222,9 @@ Moluoxixi AIRules 通过自动化投影，支持不断增长的 AI 代理生态�
 │   ├── architecture-docs/
 │   ├── api-docs/
 │   ├── components-docs/
-│   ├── learning-capture/
+│   ├── knowledge-search/
 │   ├── prd-docs/
 │   ├── retrospective-correction/
-│   ├── skill-evolution/
 │   └── test-docs/
 ├── vendor/
 │   ├── repos/               # 克隆的第三方源仓库

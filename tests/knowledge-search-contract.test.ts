@@ -136,5 +136,7 @@ it('knowledge search contract - 不暴露未安装的 Khoj 或 MemPalace 入口'
 
     assert.doesNotMatch(content, /khoj/i, `${filePath} must not mention Khoj`)
     assert.doesNotMatch(content, /MemPalace/i, `${filePath} must not mention MemPalace`)
+    assert.doesNotMatch(content, /learning-capture/i, `${filePath} must not mention removed memory capture skill`)
+    assert.doesNotMatch(content, /skill-evolution/i, `${filePath} must not mention removed memory evolution skill`)
   }
 })
