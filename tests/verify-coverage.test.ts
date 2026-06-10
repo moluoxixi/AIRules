@@ -93,9 +93,11 @@ it('verifyHost - 外部链接可访问时警告但仍视为有效', async () => 
   })
 })
 
-it('verifyHost - Hermes 宿主使用标准技能清单', async () => {
+it('verifyHost - Hermes 宿主不要求启用学习技能', async () => {
   await withTempHome(async (userHome, moluoHome) => {
     createVendorSkill(moluoHome, 'api-docs')
+    createVendorSkill(moluoHome, 'learning-capture')
+    createVendorSkill(moluoHome, 'skill-evolution')
 
     linkDir(
       path.join(moluoHome, 'vendor', 'skills', 'api-docs'),

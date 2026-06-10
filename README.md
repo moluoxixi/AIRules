@@ -177,6 +177,7 @@ Moluoxixi AIRules supports a growing ecosystem of AI agents through automated pr
 
 > [!NOTE]
 > All skills are automatically projected into the agent's dedicated skills directory during installation.
+> Hermes intentionally excludes AIRules' Hermes-inspired `learning-capture` and `skill-evolution` skills from `~/.hermes/skills/`; they remain available through the shared distribution pipeline for other hosts.
 
 ---
 
@@ -192,9 +193,10 @@ Moluoxixi AIRules supports a growing ecosystem of AI agents through automated pr
 | **prd-docs** | Generates or updates business PRDs under `docs/prds/` and maintains docs navigation |
 | **api-docs** | Generates or updates API and integration contracts under `docs/api/` and maintains docs navigation |
 | **components-docs** | Generates or updates frontend component docs under `docs/components/` and maintains docs navigation |
-| **knowledge-search** | Locates project facts through registered knowledge sources without forcing users to migrate material into standard docs first |
+| **learning-capture** | Captures post-task AI learning candidates, inspired by Hermes Memory, under `docs/AI项目知识/待确认/` |
 | **test-docs** | Generates or updates test design and validation docs under `docs/test/` and maintains docs navigation |
 | **retrospective-correction** | Produces a correction plan before root-cause attribution when implementation diverges from user requirements or rules |
+| **skill-evolution** | Captures skill/rule improvement candidates, inspired by Hermes Curator, under `docs/skill-evolution/inbox/` |
 
 > First-party skills may live under nested source folders, but installation flattens them into `vendor/skills/<skill-name>`. First-party rules live in `rules/AGENTS.md`; CodeGraph install commands live in the vendor setup section of `constants/skills.ts`.
 
@@ -222,9 +224,10 @@ Moluoxixi AIRules supports a growing ecosystem of AI agents through automated pr
 │   ├── architecture-docs/
 │   ├── api-docs/
 │   ├── components-docs/
-│   ├── knowledge-search/
+│   ├── learning-capture/
 │   ├── prd-docs/
 │   ├── retrospective-correction/
+│   ├── skill-evolution/
 │   └── test-docs/
 ├── vendor/
 │   ├── repos/               # Cloned third-party source repos
