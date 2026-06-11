@@ -592,6 +592,11 @@ it('vendors 配置 - 使用 OpenAI Playwright 并移除过时技能', () => {
         setup: undefined,
       },
       {
+        source: 'skills/impl-plan',
+        target: 'vendor/skills/impl-plan',
+        setup: undefined,
+      },
+      {
         source: 'skills/init-project',
         target: 'vendor/skills/init-project',
         setup: undefined,
