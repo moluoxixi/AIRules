@@ -5,6 +5,13 @@ vendor
 .cursor
 *-lock.*
 
+# Mermaid 本地预览产物与机器相关配置（puppeteer 指向本机浏览器路径，不入库）
+.mermaid-puppeteer.json
+docs/other/sample-diagrams/
+
+# 子代理产出/调试产物目录，不入库
+docs/out/
+
 # 运行时 skill 投影；保留仓库内第一方 source skills
 skills/*
 !skills/init-project/
