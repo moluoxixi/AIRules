@@ -171,14 +171,14 @@ Moluoxixi AIRules 通过自动化投影，支持不断增长的 AI 代理生态�
 |-------|---------------|----------|----------|----------|
 | **Claude Code** | `claude` | `~/.claude/` | 软链接 | `CLAUDE.md` |
 | **Codex** | `codex` | `~/.codex/` | 软链接 | `AGENTS.md` |
-| **Hermes** | `hermes` | `~/AppData/Local/hermes/` | 仅 skills 软链接 | 不投影到 `SOUL.md` |
+| **Hermes** | `hermes` | `~/AppData/Local/hermes/` | 软链接 + 基线托管块 | 追加注入 `SOUL.md` |
 | **Cursor** | `cursor` | `~/.cursor/` | 软链接 | `AGENTS.md` |
 | **Trae** | `trae` | `~/.trae/` | 软链接 | `AGENTS.md` |
 | **OpenCode** | `opencode` | `~/.config/opencode/` | 软链接 | `AGENTS.md` |
 | **CC-Switch** | `cc-switch` | `~/.cc-switch/` | 软链接 | `AGENTS.md` |
 
 > [!NOTE]
-> 第一方与精选第三方 skills 在安装过程中都会自动投影到代理专属的 skills 目录中。Hermes `SOUL.md` 仅用于身份、语气和沟通风格，AIRules 不会把规则基线投影到该文件。AIRules 不再默认分发过去借鉴 Hermes 的学习/策展 skills；学习候选保留为内部文档约定，而不是安装到代理里的 skill。
+> 第一方与精选第三方 skills 在安装过程中都会自动投影到代理专属的 skills 目录中。Hermes `SOUL.md` 是身份/人格文件，AIRules 不整份覆盖它，而是用 `<!-- AIRULES:BASELINE:START/END -->` 托管块把规则基线幂等追加进去：每次 `sync` 先删旧块再写最新块，保证只保留一份且不破坏原有身份内容。AIRules 不再默认分发过去借鉴 Hermes 的学习/策展 skills；学习候选保留为内部文档约定，而不是安装到代理里的 skill。
 
 ---
 

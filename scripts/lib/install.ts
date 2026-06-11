@@ -8,6 +8,7 @@ import {
   lstatSync,
   mkdirSync,
   readdirSync,
+  readFileSync,
   realpathSync,
   rmSync,
   symlinkSync,
@@ -29,6 +30,47 @@ const BASELINE_FILE_NAME = 'AGENTS.md'
 
 /** 仓库内基线源文件位于 rules/ 目录 */
 const BASELINE_SOURCE_PATH = path.join('rules', BASELINE_FILE_NAME)
+
+/** append 模式托管块标记：用于幂等注入和清理，保证宿主基线文件里只存在一份 AIRules 块 */
+const BASELINE_BLOCK_START = '<!-- AIRULES:BASELINE:START -->'
+const BASELINE_BLOCK_END = '<!-- AIRULES:BASELINE:END -->'
+
+/**
+ * 以幂等托管块把 AIRules 规则注入到宿主基线文件（如 Hermes SOUL.md）。
+ * 该文件是身份/人格文件，不能整份覆盖，因此用 START/END 标记包裹规则块：
+ * 每次注入先删除已存在的旧块，再把最新规则追加到文件末尾，保证只保留一份。
+ * @param baselineSourceFile AIRules 规则源文件（vendor/AGENTS.md）
+ * @param targetFile 宿主基线文件（如 SOUL.md），不存在时创建
+ */
+function injectBaselineBlock(baselineSourceFile: string, targetFile: string) {
+  const ruleContent = readFileSync(baselineSourceFile, 'utf8').trim()
+  const managedBlock = `${BASELINE_BLOCK_START}\n${ruleContent}\n${BASELINE_BLOCK_END}`
+
+  const existing = existsSync(targetFile) ? readFileSync(targetFile, 'utf8') : ''
+
+  // 删除任何已存在的托管块（含其后多余空行），避免重复注入累积
+  const blockPattern = new RegExp(
+    `\\n*${escapeRegExp(BASELINE_BLOCK_START)}[\\s\\S]*?${escapeRegExp(BASELINE_BLOCK_END)}\\n*`,
+    'g',
+  )
+  const baseContent = existing.replace(blockPattern, '\n').trimEnd()
+
+  const nextContent = baseContent.length > 0
+    ? `${baseContent}\n\n${managedBlock}\n`
+    : `${managedBlock}\n`
+
+  mkdirSync(path.dirname(targetFile), { recursive: true })
+  // 若目标曾是软链接（历史 symlink 模式遗留），先移除链接再写入真实文件
+  if (existsSync(targetFile) && lstatSync(targetFile).isSymbolicLink()) {
+    removePath(targetFile)
+  }
+  writeFileSync(targetFile, nextContent, 'utf8')
+}
+
+/** 转义正则元字符，使 HTML 注释标记可安全用于 RegExp */
+function escapeRegExp(value: string): string {
+  return value.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')
+}
 
 /** 获取基线文件在 vendor 目录下的绝对路径（所有宿主软链接的统一源） */
 function vendorBaselinePath(moluoHome: string): string {
@@ -554,6 +596,7 @@ export function projectToHost({
   hostHome,
   hostBaselineFile,
   projectBaseline = true,
+  baselineMode = 'symlink',
   customSkillsDirName = 'skills',
   excludedSkills = [],
 }: {
@@ -562,11 +605,16 @@ export function projectToHost({
   hostHome: string
   hostBaselineFile: string
   projectBaseline?: boolean
+  baselineMode?: 'symlink' | 'append'
   customSkillsDirName?: string
   excludedSkills?: string[]
 }) {
   projectSharedSkillsHost(userHome, hostHome, moluoHome, customSkillsDirName, excludedSkills)
   if (!projectBaseline) {
+    return
+  }
+  if (baselineMode === 'append') {
+    injectBaselineBlock(vendorBaselinePath(moluoHome), hostBaselineFile)
     return
   }
   replaceWithSymlink(
@@ -583,9 +631,13 @@ export function linkHostBaseline({ moluoHome, host, userHome = os.homedir() }: {
     throw new Error(`Unknown host: ${host}`)
   }
 
-  const { hostBaselineFile, projectBaseline } = resolveHostPaths(config, userHome)
+  const { hostBaselineFile, projectBaseline, baselineMode } = resolveHostPaths(config, userHome)
   if (!projectBaseline) {
     throw new Error(`Host ${host} does not support AIRules baseline projection: ${hostBaselineFile}`)
+  }
+  if (baselineMode === 'append') {
+    injectBaselineBlock(source, hostBaselineFile)
+    return hostBaselineFile
   }
   replaceWithSymlink(source, hostBaselineFile, linkFileForCurrentPlatform())
   return hostBaselineFile
@@ -604,7 +656,7 @@ export function projectHostById(
     throw new Error(`Unknown host: ${host}`)
   }
 
-  const { hostHome, hostBaselineFile, projectBaseline, skillsDirName, excludedSkills } = resolveHostPaths(config, userHome)
+  const { hostHome, hostBaselineFile, projectBaseline, baselineMode, skillsDirName, excludedSkills } = resolveHostPaths(config, userHome)
 
   const hostHomePath = path.resolve(hostHome)
   if (!existsSync(hostHomePath)) {
@@ -618,6 +670,7 @@ export function projectHostById(
     hostHome,
     hostBaselineFile,
     projectBaseline,
+    baselineMode,
     customSkillsDirName: skillsDirName,
     excludedSkills,
   })

@@ -12,6 +12,13 @@ export interface HostConfig {
   baselineFileName: string
   /** 是否将 AIRules 规则基线投影到宿主基线文件 */
   projectBaseline?: boolean
+  /**
+   * 基线投影方式：
+   * - 'symlink'（默认）：用软链接覆盖宿主基线文件，整份替换为 AIRules 规则。
+   * - 'append'：把 AIRules 规则以幂等托管块追加进宿主基线文件，保留文件原有内容。
+   *   用于像 Hermes SOUL.md 这类身份文件——不能整份覆盖，只能注入红线块。
+   */
+  baselineMode?: 'symlink' | 'append'
   /** 宿主内 skills 目录的名字（默认 'skills'） */
   skillsDirName?: string
   /** 指定宿主不启用的技能名，仅影响最终宿主投影 */
@@ -38,13 +45,13 @@ export const HOST_CONFIGS: HostConfig[] = [
     id: 'hermes',
     homeRelPath: path.join('AppData', 'Local', 'hermes'),
     baselineFileName: 'SOUL.md',
-    projectBaseline: false,
+    baselineMode: 'append',
   },
   {
     id: 'hermes desktop',
     homeRelPath: path.join('AppData', 'Local', 'hermes'),
     baselineFileName: 'SOUL.md',
-    projectBaseline: false,
+    baselineMode: 'append',
   },
   {
     id: 'cursor',
@@ -102,6 +109,7 @@ export interface ResolvedHostPaths {
   hostHome: string
   hostBaselineFile: string
   projectBaseline: boolean
+  baselineMode: 'symlink' | 'append'
   skillsDirName: string
   excludedSkills: string[]
 }
@@ -112,6 +120,7 @@ export function resolveHostPaths(config: HostConfig, userHome: string): Resolved
     hostHome,
     hostBaselineFile: path.join(hostHome, config.baselineFileName),
     projectBaseline: config.projectBaseline ?? true,
+    baselineMode: config.baselineMode ?? 'symlink',
     skillsDirName: config.skillsDirName ?? 'skills',
     excludedSkills: config.excludedSkills ?? [],
   }

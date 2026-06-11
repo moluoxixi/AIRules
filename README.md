@@ -171,15 +171,15 @@ Moluoxixi AIRules supports a growing ecosystem of AI agents through automated pr
 |--------------------|----------------|---------------------------|-------------------|----------------|
 | **Claude Code**    | `claude` | `~/.claude/`              | Symlink | `CLAUDE.md` |
 | **Codex**          | `codex` | `~/.codex/`               | Symlink | `AGENTS.md` |
-| **Hermes**         | `hermes` | `~/AppData/Local/hermes/` | Skills symlink only | Not projected to `SOUL.md` |
-| **Hermes Desktop** | `hermes desktop` | `~/AppData/Local/hermes/` | Skills symlink only | Not projected to `SOUL.md` |
+| **Hermes**         | `hermes` | `~/AppData/Local/hermes/` | Symlink + baseline block | Appended into `SOUL.md` |
+| **Hermes Desktop** | `hermes desktop` | `~/AppData/Local/hermes/` | Symlink + baseline block | Appended into `SOUL.md` |
 | **Cursor**         | `cursor` | `~/.cursor/`              | Symlink | `AGENTS.md` |
 | **Trae**           | `trae` | `~/.trae/`                | Symlink | `AGENTS.md` |
 | **OpenCode**       | `opencode` | `~/.config/opencode/`     | Symlink | `AGENTS.md` |
 | **CC-Switch**      | `cc-switch` | `~/.cc-switch/`           | Symlink | `AGENTS.md` |
 
 > [!NOTE]
-> All first-party and curated third-party skills are automatically projected into the agent's dedicated skills directory during installation. Hermes `SOUL.md` is reserved for identity, tone, and communication style, so AIRules does not project its rules baseline into that file. AIRules no longer ships its former Hermes-inspired learning/curation skills by default; learning candidates remain an internal document convention, not an installed agent skill.
+> All first-party and curated third-party skills are automatically projected into the agent's dedicated skills directory during installation. Hermes `SOUL.md` is an identity/persona file, so AIRules never overwrites it — instead it injects the rules baseline as an idempotent managed block wrapped in `<!-- AIRULES:BASELINE:START/END -->`. Each `sync` removes the old block and rewrites the latest one, keeping exactly one copy without clobbering your identity content. AIRules no longer ships its former Hermes-inspired learning/curation skills by default; learning candidates remain an internal document convention, not an installed agent skill.
 
 ---
 

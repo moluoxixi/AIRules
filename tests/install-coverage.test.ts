@@ -90,7 +90,8 @@ it('hosts - 解析默认和自定义宿主路径', () => {
   assert.equal(normalizePath(hermesPaths.hostHome), 'C:/Users/example/AppData/Local/hermes')
   assert.equal(normalizePath(hermesPaths.hostBaselineFile), 'C:/Users/example/AppData/Local/hermes/SOUL.md')
   assert.equal(hermesPaths.skillsDirName, 'skills')
-  assert.equal(hermesPaths.projectBaseline, false)
+  assert.equal(hermesPaths.projectBaseline, true)
+  assert.equal(hermesPaths.baselineMode, 'append')
   assert.deepEqual(hermesPaths.excludedSkills, [])
 })
 
@@ -279,7 +280,9 @@ it('install - Hermes 宿主投影使用统一技能集合', () => withTempDir('a
   const vendorSkillsDir = path.join(moluoHome, 'vendor', 'skills')
   const linkType = process.platform === 'win32' ? 'junction' : 'dir'
 
-  writeFile(path.join(moluoHome, 'vendor', 'AGENTS.md'), 'baseline\n')
+  writeFile(path.join(moluoHome, 'vendor', 'AGENTS.md'), '# AIRules\n\n## 核心规则\n\n- 禁止错误绕行。\n')
+  // 预置真实 SOUL.md 身份内容，验证 append 模式不覆盖
+  writeFile(path.join(hermesHome, 'SOUL.md'), '# Soul\n\n身份与人格描述。\n')
   fs.mkdirSync(path.join(vendorSkillsDir, 'api-docs'), { recursive: true })
   fs.mkdirSync(path.join(hermesHome, 'skills'), { recursive: true })
   fs.symlinkSync(path.join(tmpDir, 'stale-skill'), path.join(hermesHome, 'skills', 'stale-skill'), linkType)
@@ -288,22 +291,40 @@ it('install - Hermes 宿主投影使用统一技能集合', () => withTempDir('a
 
   assert.equal(projected.success, true)
   assert.equal(normalizePath(projected.hostBaselineFile), normalizePath(path.join(hermesHome, 'SOUL.md')))
-  assert.equal(fs.existsSync(path.join(hermesHome, 'SOUL.md')), false)
+
+  // SOUL.md 仍是真实文件而非软链接，原有身份内容保留，红线托管块被追加
+  const soulPath = path.join(hermesHome, 'SOUL.md')
+  assert.equal(fs.lstatSync(soulPath).isSymbolicLink(), false)
+  const soul = fs.readFileSync(soulPath, 'utf8')
+  assert.match(soul, /身份与人格描述。/)
+  assert.match(soul, /<!-- AIRULES:BASELINE:START -->/)
+  assert.match(soul, /<!-- AIRULES:BASELINE:END -->/)
+  assert.match(soul, /禁止错误绕行。/)
+
   assert.ok(fs.lstatSync(path.join(hermesHome, 'skills', 'api-docs')).isSymbolicLink())
   assert.equal(fs.existsSync(path.join(hermesHome, 'skills', 'stale-skill')), false)
   assert.ok(fs.lstatSync(path.join(userHome, '.agents', 'skills', 'api-docs')).isSymbolicLink())
 }))
 
-it('install - Hermes 不支持将规则 baseline 链接到 SOUL.md', () => withTempDir('airules-hermes-baseline-', (tmpDir) => {
+it('install - Hermes append 基线幂等：重复投影只保留一份托管块', () => withTempDir('airules-hermes-idem-', (tmpDir) => {
   const userHome = path.join(tmpDir, 'user')
   const moluoHome = path.join(userHome, '.moluoxixi')
+  const hermesHome = path.join(userHome, 'AppData', 'Local', 'hermes')
 
-  writeFile(path.join(moluoHome, 'vendor', 'AGENTS.md'), 'baseline\n')
+  writeFile(path.join(moluoHome, 'vendor', 'AGENTS.md'), '# AIRules\n\n- 禁止错误绕行。\n')
+  writeFile(path.join(hermesHome, 'SOUL.md'), '# Soul\n\n身份内容。\n')
 
-  assert.throws(
-    () => linkHostBaseline({ moluoHome, host: 'hermes', userHome }),
-    /Host hermes does not support AIRules baseline projection/,
-  )
+  const target = linkHostBaseline({ moluoHome, host: 'hermes', userHome })
+  const first = fs.readFileSync(target, 'utf8')
+  linkHostBaseline({ moluoHome, host: 'hermes', userHome })
+  linkHostBaseline({ moluoHome, host: 'hermes', userHome })
+  const third = fs.readFileSync(target, 'utf8')
+
+  // 多次注入内容稳定，托管块只出现一次
+  assert.equal(first, third)
+  assert.equal((third.match(/<!-- AIRULES:BASELINE:START -->/g) ?? []).length, 1)
+  assert.equal((third.match(/<!-- AIRULES:BASELINE:END -->/g) ?? []).length, 1)
+  assert.match(third, /身份内容。/)
 }))
 
 it('install - rebuildVendorSkillLinks 只链接存在的源并生成 gitignore', async () => {
