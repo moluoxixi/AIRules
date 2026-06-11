@@ -46,6 +46,7 @@ AIRules 是一个**可组合的 AI 技能分发系统**。它的核心思想很�
 - 🧱 **预留第一方扩展位**：保留顶层自定义 skills 投影入口，后续补充时无需调整整体分发模型
 - 🌐 **多代理同步**：一次配置，Claude / Cursor / Codex / Hermes / Qoder / Trae / OpenCode / CC-Switch 全部生效
 - 🔄 **持续更新**：上游 skills 更新后，一条命令同步最新版本
+- ✅ **交付控制门禁**：通过 `docs/delivery/control-contract.md` 和 `npm run delivery:verify` 检查 rules、skills、执行脚本是否形成闭环
 
 ## 安装
 
@@ -147,6 +148,7 @@ npm run rules:install -- --host 宿主名（例如 claude）
 | `airules add ./my-skill --host all` | 添加本地 skill，并同步到所有宿主 |
 | `airules add ./my-skill --name review-plus --overwrite` | 指定安装名并覆盖已有用户 skill |
 | `airules verify --host codex` | 校验指定宿主的 skills 链接完整性 |
+| `npm run delivery:verify` | 校验 AIRules 交付包是否同时具备规则层、技能层、执行层和交付契约 |
 
 常用选项：
 
@@ -165,18 +167,18 @@ npm run rules:install -- --host 宿主名（例如 claude）
 
 Moluoxixi AIRules 通过自动化投影，支持不断增长的 AI 代理生态系统：
 
-| 代理 | `--host` 参数 | 宿主路径 | 投影方式 | 引导文件 |
+| 代理 | `--host` 参数 | 宿主路径 | 投影方式 | 规则基线 |
 |-------|---------------|----------|----------|----------|
 | **Claude Code** | `claude` | `~/.claude/` | 软链接 | `CLAUDE.md` |
 | **Codex** | `codex` | `~/.codex/` | 软链接 | `AGENTS.md` |
-| **Hermes** | `hermes` | `~/AppData/Local/hermes/` | 软链接 | `SOUL.md` |
+| **Hermes** | `hermes` | `~/AppData/Local/hermes/` | 仅 skills 软链接 | 不投影到 `SOUL.md` |
 | **Cursor** | `cursor` | `~/.cursor/` | 软链接 | `AGENTS.md` |
 | **Trae** | `trae` | `~/.trae/` | 软链接 | `AGENTS.md` |
 | **OpenCode** | `opencode` | `~/.config/opencode/` | 软链接 | `AGENTS.md` |
 | **CC-Switch** | `cc-switch` | `~/.cc-switch/` | 软链接 | `AGENTS.md` |
 
 > [!NOTE]
-> 第一方与精选第三方 skills 在安装过程中都会自动投影到代理专属的 skills 目录中。AIRules 不再默认分发过去借鉴 Hermes 的学习/策展 skills；学习候选保留为内部文档约定，而不是安装到代理里的 skill。
+> 第一方与精选第三方 skills 在安装过程中都会自动投影到代理专属的 skills 目录中。Hermes `SOUL.md` 仅用于身份、语气和沟通风格，AIRules 不会把规则基线投影到该文件。AIRules 不再默认分发过去借鉴 Hermes 的学习/策展 skills；学习候选保留为内部文档约定，而不是安装到代理里的 skill。
 
 ---
 

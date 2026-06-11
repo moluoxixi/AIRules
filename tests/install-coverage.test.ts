@@ -90,6 +90,7 @@ it('hosts - 解析默认和自定义宿主路径', () => {
   assert.equal(normalizePath(hermesPaths.hostHome), 'C:/Users/example/AppData/Local/hermes')
   assert.equal(normalizePath(hermesPaths.hostBaselineFile), 'C:/Users/example/AppData/Local/hermes/SOUL.md')
   assert.equal(hermesPaths.skillsDirName, 'skills')
+  assert.equal(hermesPaths.projectBaseline, false)
   assert.deepEqual(hermesPaths.excludedSkills, [])
 })
 
@@ -287,10 +288,22 @@ it('install - Hermes 宿主投影使用统一技能集合', () => withTempDir('a
 
   assert.equal(projected.success, true)
   assert.equal(normalizePath(projected.hostBaselineFile), normalizePath(path.join(hermesHome, 'SOUL.md')))
-  assert.equal(fs.readFileSync(path.join(hermesHome, 'SOUL.md'), 'utf8'), 'baseline\n')
+  assert.equal(fs.existsSync(path.join(hermesHome, 'SOUL.md')), false)
   assert.ok(fs.lstatSync(path.join(hermesHome, 'skills', 'api-docs')).isSymbolicLink())
   assert.equal(fs.existsSync(path.join(hermesHome, 'skills', 'stale-skill')), false)
   assert.ok(fs.lstatSync(path.join(userHome, '.agents', 'skills', 'api-docs')).isSymbolicLink())
+}))
+
+it('install - Hermes 不支持将规则 baseline 链接到 SOUL.md', () => withTempDir('airules-hermes-baseline-', (tmpDir) => {
+  const userHome = path.join(tmpDir, 'user')
+  const moluoHome = path.join(userHome, '.moluoxixi')
+
+  writeFile(path.join(moluoHome, 'vendor', 'AGENTS.md'), 'baseline\n')
+
+  assert.throws(
+    () => linkHostBaseline({ moluoHome, host: 'hermes', userHome }),
+    /Host hermes does not support AIRules baseline projection/,
+  )
 }))
 
 it('install - rebuildVendorSkillLinks 只链接存在的源并生成 gitignore', async () => {

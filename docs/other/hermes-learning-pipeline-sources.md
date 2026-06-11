@@ -18,7 +18,8 @@
 
 ## Hermes 宿主投影边界
 
-- AIRules 的 Hermes 宿主按本地客户端实际目录投影到 `~/AppData/Local/hermes/`，基线文件写入 `~/AppData/Local/hermes/SOUL.md`。
+- AIRules 的 Hermes 宿主按本地客户端实际目录投影到 `~/AppData/Local/hermes/`，但不把规则基线写入或链接到 `SOUL.md`。
+- Hermes `SOUL.md` 只承载身份、语气和沟通风格，不作为 AIRules 规则入口。
 - AIRules 的 Hermes skills 按本地客户端实际目录投影到 `~/AppData/Local/hermes/skills/<skill-name>`。
 - AIRules 不再将学习捕获或 skill 策展流程作为默认安装 skill 分发到任何宿主。
 - 若未来存在宿主级不安装技能需求，必须通过 `constants/hosts.ts` 的通用配置字段表达，安装与验证脚本只读取配置，不写宿主名特判。

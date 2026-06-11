@@ -10,6 +10,8 @@ export interface HostConfig {
   homeRelPath: string
   /** 宿主基线文件的文件名（如 CLAUDE.md / AGENTS.md） */
   baselineFileName: string
+  /** 是否将 AIRules 规则基线投影到宿主基线文件 */
+  projectBaseline?: boolean
   /** 宿主内 skills 目录的名字（默认 'skills'） */
   skillsDirName?: string
   /** 指定宿主不启用的技能名，仅影响最终宿主投影 */
@@ -34,13 +36,15 @@ export const HOST_CONFIGS: HostConfig[] = [
   },
   {
     id: 'hermes',
-    homeRelPath: '.hermes',
+    homeRelPath: path.join('AppData', 'Local', 'hermes'),
     baselineFileName: 'SOUL.md',
+    projectBaseline: false,
   },
   {
     id: 'hermes desktop',
     homeRelPath: path.join('AppData', 'Local', 'hermes'),
     baselineFileName: 'SOUL.md',
+    projectBaseline: false,
   },
   {
     id: 'cursor',
@@ -97,6 +101,7 @@ export function findHostConfig(id: string): HostConfig | undefined {
 export interface ResolvedHostPaths {
   hostHome: string
   hostBaselineFile: string
+  projectBaseline: boolean
   skillsDirName: string
   excludedSkills: string[]
 }
@@ -106,6 +111,7 @@ export function resolveHostPaths(config: HostConfig, userHome: string): Resolved
   return {
     hostHome,
     hostBaselineFile: path.join(hostHome, config.baselineFileName),
+    projectBaseline: config.projectBaseline ?? true,
     skillsDirName: config.skillsDirName ?? 'skills',
     excludedSkills: config.excludedSkills ?? [],
   }

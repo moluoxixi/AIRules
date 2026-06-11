@@ -8,7 +8,7 @@ AIRules 是用于构建、维护和投影 AI Prompt 工程资产的元项目。�
 
 | 模块 | 职责 | 上游 | 下游 | 所有者 |
 |---|---|---|---|---|
-| Rules Baseline | 维护宿主共享的 `AGENTS.md` 基线规则。 | `rules/AGENTS.md` | `vendor/AGENTS.md`、宿主 baseline 文件 | project-maintainer |
+| Rules Baseline | 维护宿主共享的 `AGENTS.md` 基线规则。 | `rules/AGENTS.md` | `vendor/AGENTS.md`、支持规则语义的宿主 baseline 文件 | project-maintainer |
 | Skills Catalog | 维护第一方和 curated 第三方 skills 的投影清单。 | `constants/skills.ts`、`skills/**` | `vendor/skills/**`、宿主 skills 目录 | project-maintainer |
 | Init Project | 检测项目栈、注入规则、创建 docs 输出骨架、生成 `airules.knowledge.json`。 | 目标项目、`skills/init-project/**` | 目标项目 `AGENTS.md`、`CLAUDE.md`、`docs/**`、`airules.knowledge.json` | project-maintainer |
 | Knowledge Source Registry | 登记可检索项目知识源，约束 include/exclude、owner 和 trust。 | `airules.knowledge.json` | `knowledge-search`、docs skills、证据报告 | project-maintainer |

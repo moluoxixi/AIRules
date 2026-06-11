@@ -16,7 +16,9 @@
     "README-zh.md",
     "README.md",
     "dist",
+    "docs",
     "rules",
+    "scripts",
     "skills"
   ],
   "scripts": {
@@ -33,7 +35,8 @@
     "pretest": "npx tsx scripts/sync-vendors.ts",
     "test": "vitest run",
     "typecheck": "tsc --noEmit",
-    "coverage": "vitest run --coverage"
+    "coverage": "vitest run --coverage",
+    "delivery:verify": "node scripts/verify-delivery-control.mjs"
   },
   "dependencies": {
     "kleur": "4.1.5"

@@ -553,6 +553,7 @@ export function projectToHost({
   moluoHome,
   hostHome,
   hostBaselineFile,
+  projectBaseline = true,
   customSkillsDirName = 'skills',
   excludedSkills = [],
 }: {
@@ -560,10 +561,14 @@ export function projectToHost({
   moluoHome: string
   hostHome: string
   hostBaselineFile: string
+  projectBaseline?: boolean
   customSkillsDirName?: string
   excludedSkills?: string[]
 }) {
   projectSharedSkillsHost(userHome, hostHome, moluoHome, customSkillsDirName, excludedSkills)
+  if (!projectBaseline) {
+    return
+  }
   replaceWithSymlink(
     vendorBaselinePath(moluoHome),
     hostBaselineFile,
@@ -578,7 +583,10 @@ export function linkHostBaseline({ moluoHome, host, userHome = os.homedir() }: {
     throw new Error(`Unknown host: ${host}`)
   }
 
-  const { hostBaselineFile } = resolveHostPaths(config, userHome)
+  const { hostBaselineFile, projectBaseline } = resolveHostPaths(config, userHome)
+  if (!projectBaseline) {
+    throw new Error(`Host ${host} does not support AIRules baseline projection: ${hostBaselineFile}`)
+  }
   replaceWithSymlink(source, hostBaselineFile, linkFileForCurrentPlatform())
   return hostBaselineFile
 }
@@ -596,7 +604,7 @@ export function projectHostById(
     throw new Error(`Unknown host: ${host}`)
   }
 
-  const { hostHome, hostBaselineFile, skillsDirName, excludedSkills } = resolveHostPaths(config, userHome)
+  const { hostHome, hostBaselineFile, projectBaseline, skillsDirName, excludedSkills } = resolveHostPaths(config, userHome)
 
   const hostHomePath = path.resolve(hostHome)
   if (!existsSync(hostHomePath)) {
@@ -609,6 +617,7 @@ export function projectHostById(
     moluoHome,
     hostHome,
     hostBaselineFile,
+    projectBaseline,
     customSkillsDirName: skillsDirName,
     excludedSkills,
   })

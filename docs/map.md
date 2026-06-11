@@ -9,6 +9,7 @@
 | prds | [需求文档索引](prds/index.md) | 记录业务背景、目标、范围、流程、字段口径、验收标准和变更历史。 |
 | test | [测试文档索引](test/index.md) | 记录测试策略、用例矩阵、数据准备、联调验证、回归范围和风险。 |
 | other | [其它文档索引](other/index.md) | 登记初始化前已存在但尚未归入架构、接口、需求、组件库输出或测试目录的项目文档。 |
+| delivery | [交付控制契约](delivery/control-contract.md) | 定义 AIRules 作为 skills + rules 分发包时的规则层、技能层、执行层控制面和质量门禁。 |
 
 ## 知识源入口
 

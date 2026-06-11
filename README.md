@@ -46,6 +46,7 @@ AIRules is a **composable AI skill distribution system**. The core idea is simpl
 - 🧱 **Reserved first-party expansion slots** so you can add your own top-level skills later without changing the distribution model
 - 🌐 **Multi-agent sync**: configure once, works across Claude / Cursor / Codex / Hermes / Qoder / Trae / OpenCode / CC-Switch
 - 🔄 **Continuous updates**: one command pulls latest upstream skills
+- ✅ **Delivery control gate**: `docs/delivery/control-contract.md` and `npm run delivery:verify` check that rules, skills, and executable verification form a closed loop
 
 ## Installation
 
@@ -147,6 +148,7 @@ npm run rules:install -- --host <host-name> (e.g., claude)
 | `airules add ./my-skill --host all` | Add a local skill and sync it to every host |
 | `airules add ./my-skill --name review-plus --overwrite` | Set the installed skill name and replace an existing user skill |
 | `airules verify --host codex` | Verify skill links for one host |
+| `npm run delivery:verify` | Verify that the AIRules package includes the rule layer, skill layer, execution layer, and delivery contract |
 
 Common options:
 
@@ -165,19 +167,19 @@ Common options:
 
 Moluoxixi AIRules supports a growing ecosystem of AI agents through automated projection:
 
-| Agent              | `--host` Value | Host Path                 | Projection Method | Baseline File |
-|--------------------|----------------|---------------------------|-------------------|---------------|
+| Agent              | `--host` Value | Host Path                 | Projection Method | Rules Baseline |
+|--------------------|----------------|---------------------------|-------------------|----------------|
 | **Claude Code**    | `claude` | `~/.claude/`              | Symlink | `CLAUDE.md` |
 | **Codex**          | `codex` | `~/.codex/`               | Symlink | `AGENTS.md` |
-| **Hermes**         | `hermes` | `~/.hermes/`              | Symlink | `SOUL.md` |
-| **Hermes Desktop** | `hermes` | `~/AppData/Local/hermes/` | Symlink | `SOUL.md` |
+| **Hermes**         | `hermes` | `~/AppData/Local/hermes/` | Skills symlink only | Not projected to `SOUL.md` |
+| **Hermes Desktop** | `hermes desktop` | `~/AppData/Local/hermes/` | Skills symlink only | Not projected to `SOUL.md` |
 | **Cursor**         | `cursor` | `~/.cursor/`              | Symlink | `AGENTS.md` |
 | **Trae**           | `trae` | `~/.trae/`                | Symlink | `AGENTS.md` |
 | **OpenCode**       | `opencode` | `~/.config/opencode/`     | Symlink | `AGENTS.md` |
 | **CC-Switch**      | `cc-switch` | `~/.cc-switch/`           | Symlink | `AGENTS.md` |
 
 > [!NOTE]
-> All first-party and curated third-party skills are automatically projected into the agent's dedicated skills directory during installation. AIRules no longer ships its former Hermes-inspired learning/curation skills by default; learning candidates remain an internal document convention, not an installed agent skill.
+> All first-party and curated third-party skills are automatically projected into the agent's dedicated skills directory during installation. Hermes `SOUL.md` is reserved for identity, tone, and communication style, so AIRules does not project its rules baseline into that file. AIRules no longer ships its former Hermes-inspired learning/curation skills by default; learning candidates remain an internal document convention, not an installed agent skill.
 
 ---
 

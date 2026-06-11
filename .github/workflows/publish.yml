@@ -66,6 +66,9 @@ jobs:
       - name: Test
         run: npm test
 
+      - name: Verify delivery control contract
+        run: npm run delivery:verify
+
       - name: Publish to npm
         env:
           # Store an npm automation token in the repository secret NPM_TOKEN.
