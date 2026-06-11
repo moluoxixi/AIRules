@@ -165,8 +165,9 @@ it('init-project inject-rules - AGENTS.md 已存在且无重复标题时追加�
   const agentsContent = fs.readFileSync(agentsPath, 'utf8')
 
   assert.equal(result.status, 0, result.stderr)
-  assert.equal(agentsContent.startsWith('# Existing Project Rules\n\nexisting body\n\n# 项目知识源读取规范\n'), true)
+  assert.equal(agentsContent.startsWith('# Existing Project Rules\n\nexisting body\n\n# 变更分级与确认门禁\n'), true)
   assert.doesNotMatch(agentsContent, /## 项目自定义规范/)
+  assert.match(agentsContent, /# 变更分级与确认门禁/)
   assert.match(agentsContent, /# 项目知识源读取规范/)
   assert.match(agentsContent, /# Node Rules\n\nnode body/)
 }))

@@ -67,13 +67,65 @@ function checkRuleLayer(root) {
   const content = fs.readFileSync(rulesPath, 'utf8')
   const hasErrorContract = content.includes('禁止错误绕行') && content.includes('失败')
   const hasDeliveryContract = content.includes('交付验证') && REQUIRED_STATUS_MARKERS.every(marker => content.includes(marker))
+  const hasGradingContract = content.includes('变更分级')
+    && ['L0', 'L1', 'L2'].every(level => content.includes(level))
+  const hasClarifyGate = content.includes('澄清门禁')
 
   if (!hasErrorContract || !hasDeliveryContract) {
     fail('rule layer incomplete: rules/AGENTS.md 必须包含错误暴露和交付验证状态契约')
     return
   }
 
+  if (!hasGradingContract || !hasClarifyGate) {
+    fail('rule layer incomplete: rules/AGENTS.md 必须定义变更分级（L0/L1/L2）和澄清门禁')
+    return
+  }
+
   pass('rule layer present')
+}
+
+/**
+ * 校验下发到下游项目的控制 reference 是否完整。
+ * control.md 承载分级闸门、澄清门禁和开发链路编排，由 init-project 注入各宿主 AGENTS.md，
+ * 是各 agent 获得需求-计划-测试-评审全程可控能力的入口。
+ */
+function checkControlReference(root) {
+  const initProjectRoot = path.join(root, 'skills', 'init-project')
+  if (!fs.existsSync(initProjectRoot)) {
+    // 交付包未携带 init-project skill 时，控制 reference 不适用，跳过该检查。
+    pass('control reference n/a: 未携带 init-project skill')
+    return
+  }
+
+  const controlPath = path.join(initProjectRoot, 'references', 'common', 'control.md')
+  if (!fs.existsSync(controlPath)) {
+    fail('control reference missing: skills/init-project/references/common/control.md')
+    return
+  }
+
+  const content = fs.readFileSync(controlPath, 'utf8')
+  const hasGrading = content.includes('变更分级') && ['L0', 'L1', 'L2'].every(level => content.includes(level))
+  const hasClarify = content.includes('澄清门禁')
+  const hasPipeline = content.includes('开发链路控制')
+
+  if (!hasGrading || !hasClarify || !hasPipeline) {
+    fail('control reference incomplete: control.md 必须包含变更分级、澄清门禁和开发链路控制')
+    return
+  }
+
+  const injectScriptPath = path.join(root, 'skills', 'init-project', 'scripts', 'inject-rules.mjs')
+  if (!fs.existsSync(injectScriptPath)) {
+    fail('control reference incomplete: 缺少 inject-rules.mjs 无法保证 control.md 注入')
+    return
+  }
+
+  const injectContent = fs.readFileSync(injectScriptPath, 'utf8')
+  if (!injectContent.includes('common\', \'control.md') && !injectContent.includes('control.md')) {
+    fail('control reference incomplete: inject-rules.mjs 未将 control.md 纳入注入链路')
+    return
+  }
+
+  pass('control reference present')
 }
 
 function checkSkillLayer(root) {
@@ -128,7 +180,7 @@ function checkDeliveryContract(root) {
   }
 
   const content = fs.readFileSync(contractPath, 'utf8')
-  const requiredSections = ['三层控制面', '环节控制矩阵', '质量门禁']
+  const requiredSections = ['三层控制面', '变更分级闸门', '澄清触发机制', '环节控制矩阵', '质量门禁']
   const missingSections = requiredSections.filter(section => !content.includes(section))
 
   if (missingSections.length > 0) {
@@ -153,6 +205,7 @@ function finish(root) {
 
 function verify(root) {
   checkRuleLayer(root)
+  checkControlReference(root)
   checkSkillLayer(root)
   checkExecutionLayer(root)
   checkDeliveryContract(root)

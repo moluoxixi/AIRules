@@ -43,11 +43,13 @@ description: 用于生成或更新 API 提供方 docs/out-api 或 API 消费方 
 
 - 先读取已存在的 `docs/map.md`、`docs/api/index.md`、`docs/api/_protocol.md`、`docs/out-api/index.md`、`docs/out-api/_protocol.md`、相关 PRD、架构文档、路由源码、外部 client 源码和已有接口文档；目标目录或索引不存在时创建，不得因缺失停止。
 - 接口事实优先来自后端路由、OpenAPI/Swagger、接口实现或用户提供的契约；无法确认时标记 `MISSING`。
+- 变更分级（L0/L1/L2）与澄清门禁的统一定义见项目 `AGENTS.md` 的「变更分级与确认门禁」「澄清门禁」两节；本 skill 的分级判定以该定义为准。
+- 命中澄清门禁时（接口归属、全局协议、鉴权、错误码、分页、请求响应语义、Mock 数据或联调边界缺少明确来源或存在歧义），必须先输出《接口契约澄清问题清单》，用苏格拉底式问题逐项暴露调用目标、消费者/提供方边界、字段语义、异常语义、兼容性、幂等性和安全风险；未确认内容必须标记为 `MISSING`，澄清未闭环前不得定稿。
 - 每个接口必须包含请求方法、路径、用途、请求参数、响应结构、错误码和联调注意事项。
 - 当前项目对外提供的全局返回结构、错误结构、分页、鉴权、Headers、版本策略只维护在 `docs/out-api/_protocol.md`。
 - 当前项目调用外部服务时依赖的上游协议、鉴权、Headers、分页、错误结构和偏差记录维护在 `docs/api/_protocol.md` 或对应外部服务文档中。
-- 根据已有后端源码、OpenAPI/Swagger、DTO/schema、测试或 Mock 生成或更新 `docs/out-api/` 是实时对外输出，不属于 L2，不得先输出报告等待确认，也不得以评审门槛为由跳过。
-- 根据已有外部 client、SDK 依赖、generated client、OpenAPI 文件、Mock 或旧文档生成 `docs/api/` 是消费方知识整理，不属于 L2，不得先输出报告等待确认。
+- 根据已有后端源码、OpenAPI/Swagger、DTO/schema、测试或 Mock 生成或更新 `docs/out-api/` 是实时对外输出，属于 L0/L1，不属于 L2，不得先输出报告等待确认，也不得以评审门槛为由跳过；但接口归属或契约事实缺失时仍须按澄清门禁标记 `MISSING`。
+- 根据已有外部 client、SDK 依赖、generated client、OpenAPI 文件、Mock 或旧文档生成 `docs/api/` 是消费方知识整理，属于 L0/L1，不属于 L2，不得先输出报告等待确认。
 - 源码、契约、测试或已有文档无法确认的信息，必须在对应 API 文档中标记 `MISSING` 并说明缺口。
 - 只有用户要求修改接口代码、重新设计全局协议、错误码体系、分页策略、鉴权策略或跨业务接口拆分时，才进入代码实现或协议设计评审；评审不得阻塞本 skill 对已存在源码事实的文档输出。
 - 更新或新增提供方文档后，同步更新 `docs/out-api/index.md` 的接口清单和 `来源快照`。

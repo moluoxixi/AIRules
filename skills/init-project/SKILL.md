@@ -76,7 +76,8 @@ node <init-project-skill>/scripts/scaffold-docs.mjs <your-project> <detect-stack
 
 - 当 `AGENTS.md` 不存在或为空时，先注入 `references/airules-base.md`，为用户创建 `# 项目规范` 与项目自定义规范占位。
 - 当 `AGENTS.md` 已存在且包含用户内容时，跳过 `references/airules-base.md`，避免向用户已有规范中追加占位段。
-- 始终注入 `references/common/docs.md`，再按检测结果选择场景输出规范与语言代码规范，并注入目标项目根目录 `AGENTS.md`。
+- 始终注入 `references/common/control.md` 和 `references/common/docs.md`，再按检测结果选择场景输出规范与语言代码规范，并注入目标项目根目录 `AGENTS.md`。
+- `references/common/control.md` 承载变更分级（L0/L1/L2）、澄清门禁和开发链路控制，是各宿主 agent 获得需求-计划-测试-评审全程可控能力的入口；不得跳过注入。
 - `references/` 按 `common/`、`frontend/`、`backend/` 组织：通用文档读取规则只放在 `common/docs.md`；组件库对外输出规则放在 `frontend/out-components.md`；外部组件库消费规则放在 `frontend/components.md`；后端 API 提供方与消费方规则放在 `backend/out-api.md`；各领域通用代码规则命名为 `code.md`，具体框架或语言规则使用 `vue.md`、`node.md`、`nestjs.md`、`java.md`。
 
 | `detect-stack.mjs` 输出 stack | 追加注入 references |
@@ -96,7 +97,7 @@ node <init-project-skill>/scripts/inject-rules.mjs <your-project> <init-project-
 node <init-project-skill>/scripts/inject-rules.mjs <your-project> <init-project-skill>/references/<group>/<rule>.md [...]
 ```
 
-无法判断技术栈时不传额外语言规则，脚本只注入 `airules-base.md` 和 `common/docs.md`。当目标项目不存在 `AGENTS.md` 时，脚本创建该文件；当文件已存在时，脚本将聚合后的规则内容直接追加到文件末尾，不添加额外包装标题、受控块注释或文件名标题。
+无法判断技术栈时不传额外语言规则，脚本仍会自动注入 `airules-base.md`（仅新建或空 `AGENTS.md` 时）、`common/control.md` 和 `common/docs.md`，无需在命令中手动传入这三个文件。当目标项目不存在 `AGENTS.md` 时，脚本创建该文件；当文件已存在时，脚本将聚合后的规则内容直接追加到文件末尾，不添加额外包装标题、受控块注释或文件名标题。
 
 追加前脚本会按 Markdown 标题文本去重。若待注入规则与现有 `AGENTS.md` 出现重复标题，脚本必须停止写入并报告重复标题；AI 随后读取现有 `AGENTS.md` 与待注入 references，输出规则合并审查结论，评估应合并、保留、改名还是移动到既有章节。未经审查不得自动跳过、覆盖或重复追加同名章节。
 

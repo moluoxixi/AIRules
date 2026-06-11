@@ -47,6 +47,10 @@ function createMinimalDeliveryRoot(): string {
     '- 禁止错误绕行，失败必须显式暴露。',
     '## 交付验证',
     '- 检查状态统一使用 `PASS`、`FAIL`、`MISSING`、`NOT RUN`、`N/A`。',
+    '## 变更分级与确认门禁',
+    '- L0 可直接执行；L1 既有边界内执行；L2 必须先确认。',
+    '## 澄清门禁',
+    '- 命中 L2 或关键事实缺失时先输出澄清问题清单。',
   ].join('\n'))
 
   fs.writeFileSync(path.join(root, 'skills', 'demo-skill', 'SKILL.md'), [
@@ -71,6 +75,10 @@ function createMinimalDeliveryRoot(): string {
     '- 规则层：定义禁止事项和失败语义。',
     '- 技能层：定义触发条件、应用边界和产出边界。',
     '- 执行层：定义脚本、CI、PR 检查和验收状态。',
+    '## 变更分级闸门',
+    '- L0/L1 可直接执行，L2 必须先确认。',
+    '## 澄清触发机制',
+    '- 命中 L2 或关键事实缺失时先输出澄清问题清单。',
     '## 环节控制矩阵',
     '| 环节 | 控制资产 | 验证方式 |',
     '|---|---|---|',
@@ -113,4 +121,44 @@ it('verify-delivery-control - 未知参数显式失败', () => {
 
   assert.notEqual(result.status, 0)
   assert.match(result.stdout, /FAIL 未知参数：--unknown/)
+})
+
+it('verify-delivery-control - 当前仓库携带 control reference', () => {
+  const output = runScript('--root', projectRoot)
+
+  assert.match(output, /PASS control reference present/)
+})
+
+it('verify-delivery-control - 规则层缺少变更分级定义时显式失败', () => {
+  const root = createMinimalDeliveryRoot()
+  fs.writeFileSync(path.join(root, 'rules', 'AGENTS.md'), [
+    '# AIRules',
+    '## 核心规则',
+    '- 禁止错误绕行，失败必须显式暴露。',
+    '## 交付验证',
+    '- 检查状态统一使用 `PASS`、`FAIL`、`MISSING`、`NOT RUN`、`N/A`。',
+  ].join('\n'))
+
+  const result = runScriptResult('--root', root)
+
+  assert.notEqual(result.status, 0)
+  assert.match(result.stdout, /FAIL rule layer incomplete: rules\/AGENTS\.md 必须定义变更分级/)
+})
+
+it('verify-delivery-control - 契约缺少澄清触发机制时显式失败', () => {
+  const root = createMinimalDeliveryRoot()
+  fs.writeFileSync(path.join(root, 'docs', 'delivery', 'control-contract.md'), [
+    '# 交付控制契约',
+    '## 三层控制面',
+    '- 规则层、技能层、执行层。',
+    '## 环节控制矩阵',
+    '- 需求到评审。',
+    '## 质量门禁',
+    '- 交付前运行校验。',
+  ].join('\n'))
+
+  const result = runScriptResult('--root', root)
+
+  assert.notEqual(result.status, 0)
+  assert.match(result.stdout, /FAIL delivery contract incomplete/)
 })
