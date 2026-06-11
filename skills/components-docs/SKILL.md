@@ -1,6 +1,6 @@
 ---
 name: components-docs
-description: 用于生成或更新组件库提供方 docs/out-components 或组件消费方 docs/components 文档，尤其是组件库、外部 UI 依赖、Props/Events/Slots、交互状态、可访问性或示例用法需要落文档时触发。
+description: 用于生成或更新组件契约文档时触发。两类：消费方 docs/components 记录外部提供给本项目消费的组件库（如 Element Plus、Ant Design、内部 UI SDK）的使用约束；提供方 docs/out-components 记录本项目自己开发对外发布的组件库契约。涉及外部 UI 依赖、Props/Events/Slots、交互状态、可访问性或示例用法落文档时触发；纯业务/页面私有组件不触发。
 ---
 
 # Components Docs
@@ -13,7 +13,14 @@ description: 用于生成或更新组件库提供方 docs/out-components 或组�
 ## 不适合场景
 
 - 普通业务组件、页面私有组件或只需要改 UI 代码时不要使用。
+- 当前项目自己拼装的业务组件（如基于 Element Plus 二次封装的业务弹框、业务表格）不写入 `docs/components/` 也不写入 `docs/out-components/`；`docs/components/` 只记录外部提供给本项目消费的组件库（如 Element Plus、Ant Design、内部 UI SDK、workspace 组件包）如何使用。
 - 脚本未发现组件或文档来源冲突时，不要猜测契约；标记 `MISSING` 并列出证据缺口。
+
+## 概念区分（先判定再写）
+
+- `docs/components/`（消费方）：外部提供给本项目、本项目依赖消费的组件库（element-plus 等），记录「本项目如何使用这些外部组件」的约束与封装规则。组件契约以外部组件库为准，本项目不拥有其契约。
+- `docs/out-components/`（提供方）：本项目自己开发、对外发布给其它项目/消费方复用的组件库，记录本项目自己组件的对外契约。
+- 二者按组件归属严格区分：外部依赖来的组件 → 消费方；本项目自产对外的组件 → 提供方；纯业务/页面私有组件 → 都不写。
 
 ## 输出边界
 
