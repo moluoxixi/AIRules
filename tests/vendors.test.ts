@@ -478,6 +478,47 @@ it('walkVendorTree - 旧版顶层 sourceDir 或 skills 配置应显式失败', (
   )
 })
 
+it('vendors 配置 - 精选第三方 skill 使用来源后缀避免跨来源裸名冲突', () => {
+  const vendors: Record<string, any> = {}
+
+  walkVendorTree(configuredVendors, [], vendors)
+
+  assert.deepStrictEqual(
+    vendors.gemini.links.map((link: any) => link.target),
+    ['vendor/skills/code-reviewer-gemini', 'vendor/skills/pr-creator-gemini'],
+    'Gemini 精选 skills 应使用来源后缀，避免与 Superpowers 或用户本地裸名冲突',
+  )
+  assert.deepStrictEqual(
+    vendors.vercelLabs.links.map((link: any) => link.target),
+    ['vendor/skills/find-skills-vercel'],
+    'Vercel 精选 skill 应使用来源后缀，避免裸名冲突',
+  )
+  assert.deepStrictEqual(
+    vendors.anthropic.links.map((link: any) => link.target),
+    ['vendor/skills/frontend-design-anthropic'],
+    'Anthropic 精选 skill 应使用来源后缀，避免裸名冲突',
+  )
+  assert.deepStrictEqual(
+    vendors.openai.links.map((link: any) => link.target),
+    ['vendor/skills/playwright-openai'],
+    'OpenAI 精选 skill 应使用来源后缀，避免裸名冲突',
+  )
+
+  const bareThirdPartyTargets = new Set([
+    'vendor/skills/code-reviewer',
+    'vendor/skills/pr-creator',
+    'vendor/skills/find-skills',
+    'vendor/skills/frontend-design',
+    'vendor/skills/playwright',
+  ])
+  const configuredTargets = Object.values(vendors)
+    .flatMap((vendor: any) => vendor.links.map((link: any) => link.target))
+  assert.ok(
+    configuredTargets.every((target: string) => !bareThirdPartyTargets.has(target)),
+    '精选第三方 skill 不应再投影为易冲突裸名',
+  )
+})
+
 it('vendors 配置 - 使用 OpenAI Playwright 并移除过时技能', () => {
   const vendors: Record<string, any> = {}
 
@@ -493,7 +534,7 @@ it('vendors 配置 - 使用 OpenAI Playwright 并移除过时技能', () => {
     })),
     [{
       source: 'skills/.curated/playwright',
-      target: 'vendor/skills/playwright',
+      target: 'vendor/skills/playwright-openai',
       setup: undefined,
     }],
     '应从 OpenAI .curated 安装 playwright skill',
@@ -596,7 +637,7 @@ it('vendors 配置 - 仅接入 Anthropic 的前端视觉设计技能', () => {
     [
       {
         source: 'skills/frontend-design',
-        target: 'vendor/skills/frontend-design',
+        target: 'vendor/skills/frontend-design-anthropic',
         setup: undefined,
       },
     ],

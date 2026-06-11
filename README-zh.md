@@ -202,11 +202,13 @@ Moluoxixi AIRules 通过自动化投影，支持不断增长的 AI 代理生态�
 
 | 来源 | Skills | 说明 |
 |------|--------|------|
-| **Google Gemini** | code-reviewer, pr-creator | 代码审查与 PR 自动创建 |
-| **Vercel Labs** | find-skills | 开源生态 Skill 发现与安装 |
-| **Anthropic** | frontend-design | 生产级前端视觉设计指导 |
-| **OpenAI** | playwright | 浏览器自动化与 UI 流程调试 |
+| **Google Gemini** | code-reviewer-gemini, pr-creator-gemini | 代码审查与 PR 自动创建 |
+| **Vercel Labs** | find-skills-vercel | 开源生态 Skill 发现与安装 |
+| **Anthropic** | frontend-design-anthropic | 生产级前端视觉设计指导 |
+| **OpenAI** | playwright-openai | 浏览器自动化与 UI 流程调试 |
 | **Superpowers** | `skills/` 下全部上游 skills | 全量安装 Superpowers 命名空间，并展平到 `vendor/skills/<skill-name>` |
+
+> 精选第三方 skills 使用来源后缀作为安装名，避免与 Superpowers、用户本地 skills 或其它供应商的同名裸目录冲突。
 
 ## 项目结构
 

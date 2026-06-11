@@ -203,11 +203,13 @@ Moluoxixi AIRules supports a growing ecosystem of AI agents through automated pr
 
 | Source | Skills | Description |
 |--------|--------|-------------|
-| **Google Gemini** | code-reviewer, pr-creator | Automated code review and PR creation |
-| **Vercel Labs** | find-skills | Open ecosystem skill discovery and installation |
-| **Anthropic** | frontend-design | Production-grade frontend visual design guidance |
-| **OpenAI** | playwright | Browser automation and UI-flow debugging |
+| **Google Gemini** | code-reviewer-gemini, pr-creator-gemini | Automated code review and PR creation |
+| **Vercel Labs** | find-skills-vercel | Open ecosystem skill discovery and installation |
+| **Anthropic** | frontend-design-anthropic | Production-grade frontend visual design guidance |
+| **OpenAI** | playwright-openai | Browser automation and UI-flow debugging |
 | **Superpowers** | All upstream skills under `skills/` | Full Superpowers namespace installation, flattened into `vendor/skills/<skill-name>` |
+
+> Curated third-party skills use source suffixes as installation names to avoid bare-name collisions with Superpowers, user-local skills, or other vendors.
 
 ## Project Structure
 

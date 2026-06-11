@@ -128,7 +128,10 @@ export const vendors: VendorsConfig = [
       {
         kind: 'skills',
         sourceBaseDir: '.gemini/skills',
-        skills: ['code-reviewer', 'pr-creator'],
+        skills: [
+          { name: 'code-reviewer', output: 'code-reviewer-gemini' },
+          { name: 'pr-creator', output: 'pr-creator-gemini' },
+        ],
       },
     ],
   },
@@ -140,7 +143,7 @@ export const vendors: VendorsConfig = [
       {
         kind: 'skills',
         sourceBaseDir: 'skills',
-        skills: ['find-skills'],
+        skills: [{ name: 'find-skills', output: 'find-skills-vercel' }],
       },
     ],
   },
@@ -153,7 +156,7 @@ export const vendors: VendorsConfig = [
         kind: 'skills',
         sourceBaseDir: 'skills',
         skills: [
-          'frontend-design',
+          { name: 'frontend-design', output: 'frontend-design-anthropic' },
         ],
       },
     ],
@@ -166,7 +169,7 @@ export const vendors: VendorsConfig = [
       {
         kind: 'skills',
         sourceBaseDir: 'skills/.curated',
-        skills: ['playwright'],
+        skills: [{ name: 'playwright', output: 'playwright-openai' }],
       },
     ],
   },
