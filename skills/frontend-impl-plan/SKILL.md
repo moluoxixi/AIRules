@@ -29,6 +29,12 @@ description: 用于在 PRD 与测试设计已就绪、正式写前端代码之�
 - 组件：`docs/components/`（外部组件库消费约束，如 Element Plus 用法）、`docs/out-components/`（本项目自有组件契约）。
 - 接口契约（只读消费）：`docs/api/`、`docs/out-api/`（如存在）——前端按契约调用，不在此设计后端接口。
 
+## 前置门禁
+
+- 本环节是实现编码前的最后一道设计门禁，前置依赖需求、API/组件契约、测试设计三者就绪：开始前必须确认对应业务域的 `docs/prds/<模块>.md` 与 `docs/test/<模块>.md` 存在且非草案、关键事实非 `MISSING`；涉及接口/组件时确认 `docs/api/`、`docs/components/`、`docs/out-components/` 对应契约就绪。
+- 上游缺失或仍为草案/大量 `MISSING` 时，报告 `MISSING blocked`（说明缺失的上游产物）并停止，不得臆造需求、用例或契约继续出实现计划。
+- 可运行 `node <AIRules>/scripts/verify-stage-gate.mjs <project-root> frontend-plan <模块>` 做确定性前置校验；校验失败按 `MISSING blocked` 处理，不得绕过。
+
 ## 输出边界
 
 - 默认只写 `docs/plan/frontend/<需求模块>.md` 和 `docs/plan/frontend/index.md`（前端自有索引）；用户显式指定其它位置时按指定位置写，并在文档开头说明实际位置与未同步索引的事实。

@@ -29,6 +29,12 @@ description: 用于在 PRD 与测试设计已就绪、正式写后端代码之�
 - 接口契约：`docs/api/`（外部接口消费约束）、`docs/out-api/`（本项目自有接口契约，如存在）。
 - 架构与数据：`docs/architecture/`（分层、模块边界、依赖方向、数据流、权限模型，如存在）。
 
+## 前置门禁
+
+- 本环节是实现编码前的最后一道设计门禁，前置依赖需求、API 契约、测试设计就绪：开始前必须确认对应业务域的 `docs/prds/<模块>.md` 与 `docs/test/<模块>.md` 存在且非草案、关键事实非 `MISSING`；涉及接口时确认 `docs/api/`、`docs/out-api/` 对应契约就绪，涉及数据/权限时确认 `docs/architecture/` 相关事实就绪。
+- 上游缺失或仍为草案/大量 `MISSING` 时，报告 `MISSING blocked`（说明缺失的上游产物）并停止，不得臆造需求、用例或契约继续出实现计划。
+- 可运行 `node <AIRules>/scripts/verify-stage-gate.mjs <project-root> backend-plan <模块>` 做确定性前置校验；校验失败按 `MISSING blocked` 处理，不得绕过。
+
 ## 输出边界
 
 - 默认只写 `docs/plan/backend/<需求模块>.md` 和 `docs/plan/backend/index.md`（后端自有索引）；用户显式指定其它位置时按指定位置写，并在文档开头说明实际位置与未同步索引的事实。

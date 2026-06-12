@@ -13,9 +13,11 @@ const skillRoot = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..
 const baseReferencePath = path.join(skillRoot, 'references', 'airules-base.md')
 const controlReferencePath = path.join(skillRoot, 'references', 'common', 'control.md')
 const docsReferencePath = path.join(skillRoot, 'references', 'common', 'docs.md')
+const subagentReferencePath = path.join(skillRoot, 'references', 'common', 'subagent.md')
 const normalizedBaseReferencePath = path.resolve(baseReferencePath)
 const normalizedControlReferencePath = path.resolve(controlReferencePath)
 const normalizedDocsReferencePath = path.resolve(docsReferencePath)
+const normalizedSubagentReferencePath = path.resolve(subagentReferencePath)
 const projectRoot = path.resolve(projectRootArg)
 const agentsPath = path.join(projectRoot, 'AGENTS.md')
 const currentContent = existsSync(agentsPath) ? readFileSync(agentsPath, 'utf8') : ''
@@ -25,12 +27,14 @@ const extraReferencePaths = referenceArgs
   .filter(referencePath =>
     referencePath !== normalizedBaseReferencePath
     && referencePath !== normalizedControlReferencePath
-    && referencePath !== normalizedDocsReferencePath,
+    && referencePath !== normalizedDocsReferencePath
+    && referencePath !== normalizedSubagentReferencePath,
   )
 const referencePaths = [
   ...(hasExistingAgentsContent ? [] : [normalizedBaseReferencePath]),
   normalizedControlReferencePath,
   normalizedDocsReferencePath,
+  normalizedSubagentReferencePath,
   ...extraReferencePaths,
 ]
 
