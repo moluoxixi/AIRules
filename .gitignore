@@ -10,26 +10,7 @@ vendor
 docs/other/sample-diagrams/
 
 # 子代理产出/调试产物目录，不入库
-docs/out/
-
-# 运行时 skill 投影；保留仓库内第一方 source skills
-skills/*
-!skills/init-project/
-!skills/init-project/**
-!skills/knowledge-search/
-!skills/knowledge-search/**
-!skills/architecture-docs/
-!skills/architecture-docs/**
-!skills/api-docs/
-!skills/api-docs/**
-!skills/components-docs/
-!skills/components-docs/**
-!skills/prd-docs/
-!skills/prd-docs/**
-!skills/retrospective-correction/
-!skills/retrospective-correction/**
-!skills/test-docs/
-!skills/test-docs/**
+docs/out
 
 # 项目
 node_modules
@@ -61,3 +42,4 @@ lerna-debug.log*
 *.sln
 *.sw?
 .zed
+.ruletest-output/

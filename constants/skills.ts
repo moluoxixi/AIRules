@@ -198,8 +198,9 @@ export const vendors: VendorsConfig = [
         skills: [
           'architecture-docs',
           'api-docs',
+          'backend-impl-plan',
           'components-docs',
-          'impl-plan',
+          'frontend-impl-plan',
           'init-project',
           'knowledge-search',
           'prd-docs',
