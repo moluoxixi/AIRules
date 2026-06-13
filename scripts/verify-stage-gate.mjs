@@ -44,6 +44,13 @@ if (!dependencies) {
   process.exit(1)
 }
 
+// 边界校验：module 来自 CLI 入参，会被拼进 docs/<类型>/<module>.md 路径模板。
+// 必须拒绝路径分隔符与上跳片段，防止 ../../etc/passwd 之类路径遍历读到项目外文件。
+if (/[\\/]/.test(moduleArg) || moduleArg.split(/[\\/]/).includes('..') || moduleArg.includes('..')) {
+  console.error(`非法 module：${moduleArg}；module 必须是单段文件名（不含路径分隔符或 ..）`)
+  process.exit(1)
+}
+
 const projectRoot = path.resolve(projectRootArg)
 
 // 评估单个上游文档的就绪度：存在性、草案标记、MISSING 占比。
@@ -59,11 +66,12 @@ function assessDocument(absolutePath) {
 
   const lines = content.split('\n')
   const totalLines = lines.filter(line => line.trim() !== '').length
-  const missingLines = lines.filter(line => /\bMISSING\b/.test(line)).length
-  const ratio = totalLines === 0 ? 1 : missingLines / totalLines
 
   if (totalLines === 0)
     return { status: 'MISSING blocked', reason: '文档为空' }
+
+  const missingLines = lines.filter(line => /\bMISSING\b/.test(line)).length
+  const ratio = missingLines / totalLines
 
   if (ratio > MISSING_LINE_RATIO_LIMIT) {
     return {
