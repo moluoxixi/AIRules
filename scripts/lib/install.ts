@@ -1,3 +1,4 @@
+import type { AgentFormat, McpProjection } from '../../constants/hosts.js'
 import type { SetupCommand } from '../../constants/skills.js'
 import type { LinkEntry } from './links.js'
 import type { VendorManifest } from './vendors.js'
@@ -436,6 +437,8 @@ export function syncFirstPartyToHome(repoRoot: string, moluoHome: string) {
   }
 
   syncOptionalDir(path.join(repoRoot, 'agents'), path.join(moluoHome, 'agents'))
+  // 中性 MCP 源（rulesync 风格 { mcpServers: {} }）同步到 home，供各宿主按格式投影。
+  syncOptionalDir(path.join(repoRoot, 'mcp'), path.join(moluoHome, 'mcp'))
 }
 
 /**
@@ -576,6 +579,7 @@ function projectSharedSkillsHost(
   moluoHome: string,
   customSkillsDirName: string = 'skills',
   excludedSkills: string[] = [],
+  agentFormat: AgentFormat = 'markdown',
 ) {
   mkdirSync(hostHome, { recursive: true })
   removePath(path.join(hostHome, 'rules'))
@@ -583,11 +587,140 @@ function projectSharedSkillsHost(
 
   projectSkillsToHost(userHome, moluoHome, path.join(hostHome, customSkillsDirName), { excludedSkills })
 
+  // 第一方 agent 当前均为 Markdown。仅 Markdown 兼容宿主直接软链；
+  // TOML（Codex）/ JSON（Kiro）宿主格式不兼容，转译层未实现前显式跳过 + 告警，不静默软链错误格式。
   if (existsSync(path.join(moluoHome, 'agents'))) {
-    const agentsSource = path.join(moluoHome, 'agents')
-    const agentsTarget = path.join(hostHome, 'agents')
-    replaceWithSymlink(agentsSource, agentsTarget, linkTypeForCurrentPlatform())
+    if (agentFormat === 'markdown') {
+      const agentsSource = path.join(moluoHome, 'agents')
+      const agentsTarget = path.join(hostHome, 'agents')
+      replaceWithSymlink(agentsSource, agentsTarget, linkTypeForCurrentPlatform())
+    }
+    else {
+      console.warn(`[skip] 宿主 agent 格式为 ${agentFormat}，与第一方 Markdown agent 不兼容，转译层未实现，跳过 agents 投影: ${hostHome}`)
+    }
   }
+}
+
+/** 转义 TOML 基础字符串字面量：反斜杠、双引号、以及换行等控制字符（TOML 基础字符串不允许裸控制字符）。 */
+function escapeTomlString(value: string): string {
+  return value
+    .replace(/\\/g, '\\\\')
+    .replace(/"/g, '\\"')
+    .replace(/\n/g, '\\n')
+    .replace(/\r/g, '\\r')
+    .replace(/\t/g, '\\t')
+    // 其余 C0 控制字符（除已处理的 \\n \\r \\t）按 TOML 规范用 \\uXXXX 转义
+    // eslint-disable-next-line no-control-regex -- 故意匹配控制字符以转义，防止裸控制字符破坏 TOML
+    .replace(/[\u0000-\u0008\v\f\u000E-\u001F]/g, c => `\\u${c.charCodeAt(0).toString(16).padStart(4, '0')}`)
+}
+
+/** TOML 裸键仅允许 A-Za-z0-9_-；否则用引号键并转义，避免 name/env-key 破坏表头结构。 */
+function tomlKey(key: string): string {
+  return /^[\w-]+$/.test(key) ? key : `"${escapeTomlString(key)}"`
+}
+
+/**
+ * 读取中性 MCP 源（~/.moluoxixi/mcp/mcp.json，rulesync 风格 { mcpServers: {...} }）。
+ * 源不存在或无服务时返回 undefined，调用方据此做 no-op（无服务可分发，非失败）。
+ */
+function readNeutralMcpServers(moluoHome: string): Record<string, unknown> | undefined {
+  const sourceFile = path.join(moluoHome, 'mcp', 'mcp.json')
+  if (!existsSync(sourceFile)) {
+    return undefined
+  }
+  const raw = readFileSync(sourceFile, 'utf8').trim()
+  if (raw.length === 0) {
+    return undefined
+  }
+  let parsed: { mcpServers?: Record<string, unknown> }
+  try {
+    parsed = JSON.parse(raw) as { mcpServers?: Record<string, unknown> }
+  }
+  catch (error) {
+    throw new Error(`中性 MCP 源解析失败 ${sourceFile}: ${String(error)}`)
+  }
+  const servers = parsed.mcpServers
+  if (!servers || Object.keys(servers).length === 0) {
+    return undefined
+  }
+  return servers
+}
+
+/**
+ * 读取宿主已有配置文件用于合并。
+ * 若目标是软链接，先移除链接再按不存在处理，避免后续 writeFileSync 写穿到链接目标污染共享配置。
+ * 返回 { content }：content 为去链接后文件的真实文本（不存在则空串）。
+ */
+function readHostConfigForMerge(targetFile: string): string {
+  if (existsSync(targetFile) && lstatSync(targetFile).isSymbolicLink()) {
+    removePath(targetFile)
+    return ''
+  }
+  return existsSync(targetFile) ? readFileSync(targetFile, 'utf8') : ''
+}
+
+/**
+ * 把中性 MCP 源按宿主规格写到宿主对应的 MCP 配置文件。
+ * - JSON 宿主：用 mcp.serversKey 作为服务表键名（多数为 mcpServers，OpenCode 为 mcp）；
+ *   保留文件已有其它顶层字段，且对 serversKey 做浅合并，不清掉用户手写的其它 server。
+ * - TOML 宿主（Codex）：以 AIRULES 托管块写 [mcp_servers.<name>] 表，幂等替换，保留块外内容。
+ * 源缺失时 no-op（不写文件、不报错）。映射依据见 docs/architecture/host-agent-mcp-mapping.md。
+ */
+function projectMcpToHost(moluoHome: string, hostHome: string, mcp: McpProjection) {
+  const servers = readNeutralMcpServers(moluoHome)
+  if (!servers) {
+    return
+  }
+
+  const targetDir = mcp.relDir === '.' ? hostHome : path.join(hostHome, mcp.relDir)
+  const targetFile = path.join(targetDir, mcp.fileName)
+  mkdirSync(targetDir, { recursive: true })
+
+  if (mcp.format === 'json') {
+    const prev = readHostConfigForMerge(targetFile)
+    let existing: Record<string, unknown> = {}
+    if (prev.trim().length > 0) {
+      try {
+        existing = JSON.parse(prev) as Record<string, unknown>
+      }
+      catch (error) {
+        throw new Error(`宿主 MCP 配置解析失败 ${targetFile}（请修复其 JSON 语法后重试）: ${String(error)}`)
+      }
+    }
+    // 浅合并：保留用户在同一 serversKey 下手写的其它 server，AIRULES 源覆盖同名项。
+    const existingServers = (typeof existing[mcp.serversKey] === 'object' && existing[mcp.serversKey] !== null)
+      ? existing[mcp.serversKey] as Record<string, unknown>
+      : {}
+    existing[mcp.serversKey] = { ...existingServers, ...servers }
+    writeFileSync(targetFile, `${JSON.stringify(existing, null, 2)}\n`, 'utf8')
+    return
+  }
+
+  // TOML（Codex）：command/args/env 三字段覆盖标准 MCP server 定义，用托管块幂等替换。
+  const tomlLines: string[] = []
+  for (const [name, value] of Object.entries(servers)) {
+    const server = value as { command?: string, args?: string[], env?: Record<string, string> }
+    tomlLines.push(`[${mcp.serversKey}.${tomlKey(name)}]`)
+    if (server.command) {
+      tomlLines.push(`command = "${escapeTomlString(server.command)}"`)
+    }
+    if (Array.isArray(server.args)) {
+      tomlLines.push(`args = [${server.args.map(a => `"${escapeTomlString(String(a))}"`).join(', ')}]`)
+    }
+    if (server.env && Object.keys(server.env).length > 0) {
+      const envLiteral = Object.entries(server.env)
+        .map(([k, v]) => `${tomlKey(k)} = "${escapeTomlString(String(v))}"`)
+        .join(', ')
+      tomlLines.push(`env = { ${envLiteral} }`)
+    }
+    tomlLines.push('')
+  }
+  const block = `# >>> AIRULES MCP >>>\n${tomlLines.join('\n')}# <<< AIRULES MCP <<<\n`
+  const prev = readHostConfigForMerge(targetFile)
+  // 托管块清理：匹配 START 到 END 或文件尾，兼容上次写入被截断（只剩 START 无 END）的残块，避免重复 server 定义。
+  const cleaned = prev.replace(/\n*# >>> AIRULES MCP >>>[\s\S]*?(?:# <<< AIRULES MCP <<<|$)\n*/g, '\n').trimEnd()
+  const next = cleaned.length > 0 ? `${cleaned}\n\n${block}` : block
+  writeFileSync(targetFile, next, 'utf8')
 }
 
 export function projectToHost({
@@ -599,6 +732,8 @@ export function projectToHost({
   baselineMode = 'symlink',
   customSkillsDirName = 'skills',
   excludedSkills = [],
+  agentFormat = 'markdown',
+  mcp,
 }: {
   userHome: string
   moluoHome: string
@@ -608,8 +743,13 @@ export function projectToHost({
   baselineMode?: 'symlink' | 'append'
   customSkillsDirName?: string
   excludedSkills?: string[]
+  agentFormat?: AgentFormat
+  mcp?: McpProjection
 }) {
-  projectSharedSkillsHost(userHome, hostHome, moluoHome, customSkillsDirName, excludedSkills)
+  projectSharedSkillsHost(userHome, hostHome, moluoHome, customSkillsDirName, excludedSkills, agentFormat)
+  if (mcp) {
+    projectMcpToHost(moluoHome, hostHome, mcp)
+  }
   if (!projectBaseline) {
     return
   }
@@ -656,7 +796,7 @@ export function projectHostById(
     throw new Error(`Unknown host: ${host}`)
   }
 
-  const { hostHome, hostBaselineFile, projectBaseline, baselineMode, skillsDirName, excludedSkills } = resolveHostPaths(config, userHome)
+  const { hostHome, hostBaselineFile, projectBaseline, baselineMode, skillsDirName, excludedSkills, agentFormat, mcp } = resolveHostPaths(config, userHome)
 
   const hostHomePath = path.resolve(hostHome)
   if (!existsSync(hostHomePath)) {
@@ -673,6 +813,8 @@ export function projectHostById(
     baselineMode,
     customSkillsDirName: skillsDirName,
     excludedSkills,
+    agentFormat,
+    mcp,
   })
 
   return { success: true, hostBaselineFile }

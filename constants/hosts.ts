@@ -1,6 +1,32 @@
 import path from 'node:path'
 
 /**
+ * 宿主 agent 文件格式。
+ * 决定第一方 Markdown agent 能否直接软链到该宿主：
+ * - 'markdown'：宿主吃 Markdown + YAML frontmatter，可直接软链（Claude / Cursor / OpenCode）。
+ * - 'toml'：宿主吃 TOML（Codex CLI），需转译，未实现前显式跳过 + 告警。
+ * - 'json'：宿主吃 JSON（Kiro），需转译，未实现前显式跳过 + 告警。
+ * 映射依据见 docs/architecture/host-agent-mcp-mapping.md（提取自 rulesync 源码）。
+ */
+export type AgentFormat = 'markdown' | 'toml' | 'json'
+
+/**
+ * 宿主 MCP 配置投影规格。
+ * 中性源 { mcpServers: {...} } 按此规格写到各宿主对应文件、键名、格式。
+ * 映射依据见 docs/architecture/host-agent-mcp-mapping.md。
+ */
+export interface McpProjection {
+  /** MCP 配置文件相对宿主 home 的目录片段（'.' 表示宿主 home 根） */
+  relDir: string
+  /** MCP 配置文件名（如 mcp.json / config.toml / .claude.json） */
+  fileName: string
+  /** 服务表的键名：多数宿主为 'mcpServers'，OpenCode 为 'mcp'，Codex TOML 为 'mcp_servers' */
+  serversKey: string
+  /** 文件格式 */
+  format: 'json' | 'toml'
+}
+
+/**
  * 单个宿主（AI 代理）的配置定义
  */
 export interface HostConfig {
@@ -23,6 +49,16 @@ export interface HostConfig {
   skillsDirName?: string
   /** 指定宿主不启用的技能名，仅影响最终宿主投影 */
   excludedSkills?: string[]
+  /**
+   * 宿主 agent 文件格式，默认 'markdown'。
+   * 第一方 agent 当前均为 Markdown：'markdown' 宿主直接软链 agents 目录；
+   * 'toml' / 'json' 宿主需转译层（暂未实现，投影时显式跳过并告警，不静默软链错误格式）。
+   */
+  agentFormat?: AgentFormat
+  /**
+   * 宿主 MCP 配置投影规格，未声明则该宿主不参与 MCP 投影。
+   */
+  mcp?: McpProjection
 }
 
 /**
@@ -35,11 +71,16 @@ export const HOST_CONFIGS: HostConfig[] = [
     id: 'claude',
     homeRelPath: '.claude',
     baselineFileName: 'CLAUDE.md',
+    agentFormat: 'markdown',
+    mcp: { relDir: '.', fileName: '.mcp.json', serversKey: 'mcpServers', format: 'json' },
   },
   {
     id: 'codex',
     homeRelPath: '.codex',
     baselineFileName: 'AGENTS.md',
+    // Codex agent 文件为 TOML，与第一方 Markdown 不兼容，转译层未实现前投影会显式跳过 + 告警。
+    agentFormat: 'toml',
+    mcp: { relDir: '.', fileName: 'config.toml', serversKey: 'mcp_servers', format: 'toml' },
   },
   {
     id: 'hermes',
@@ -58,6 +99,8 @@ export const HOST_CONFIGS: HostConfig[] = [
     homeRelPath: '.cursor',
     baselineFileName: 'AGENTS.md',
     skillsDirName: 'skills-cursor',
+    agentFormat: 'markdown',
+    mcp: { relDir: '.', fileName: 'mcp.json', serversKey: 'mcpServers', format: 'json' },
   },
   // 不需要，会自己复用.agents
   // {
@@ -84,6 +127,9 @@ export const HOST_CONFIGS: HostConfig[] = [
     id: 'opencode',
     homeRelPath: path.join('.config', 'opencode'),
     baselineFileName: 'AGENTS.md',
+    agentFormat: 'markdown',
+    // OpenCode MCP 服务键为 'mcp'（非 mcpServers），写在 opencode.json。
+    mcp: { relDir: '.', fileName: 'opencode.json', serversKey: 'mcp', format: 'json' },
   },
   {
     id: 'cc-switch',
@@ -112,6 +158,8 @@ export interface ResolvedHostPaths {
   baselineMode: 'symlink' | 'append'
   skillsDirName: string
   excludedSkills: string[]
+  agentFormat: AgentFormat
+  mcp?: McpProjection
 }
 
 export function resolveHostPaths(config: HostConfig, userHome: string): ResolvedHostPaths {
@@ -123,5 +171,7 @@ export function resolveHostPaths(config: HostConfig, userHome: string): Resolved
     baselineMode: config.baselineMode ?? 'symlink',
     skillsDirName: config.skillsDirName ?? 'skills',
     excludedSkills: config.excludedSkills ?? [],
+    agentFormat: config.agentFormat ?? 'markdown',
+    mcp: config.mcp,
   }
 }
