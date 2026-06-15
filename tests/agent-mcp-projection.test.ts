@@ -69,7 +69,7 @@ it('agent 格式门控 - markdown 宿主软链 agents 目录', () => {
   }
 })
 
-it('agent 格式门控 - toml 宿主跳过 agents 投影（不静默软链错误格式）', () => {
+it('agent 格式门控 - toml 宿主把 Markdown agents 转成 Codex TOML', () => {
   const { tmpDir, userHome, moluoHome, hostHome } = setupEnv()
   try {
     projectToHost({
@@ -80,7 +80,31 @@ it('agent 格式门控 - toml 宿主跳过 agents 投影（不静默软链错误
       projectBaseline: false,
       agentFormat: 'toml',
     })
-    assert.ok(!fs.existsSync(path.join(hostHome, 'agents')), 'toml 宿主不应投影 markdown agents')
+    const toml = fs.readFileSync(path.join(hostHome, 'agents', 'demo-agent.toml'), 'utf8')
+    assert.ok(toml.includes('name = "demo-agent"'), 'Codex TOML 应写入 name')
+    assert.ok(toml.includes('description = "x"'), 'Codex TOML 应写入 description')
+    assert.ok(toml.includes('developer_instructions'), 'Codex TOML 应把正文写入 developer_instructions')
+    assert.ok(!fs.existsSync(path.join(hostHome, 'agents', 'demo-agent.md')), 'Codex 不应安装 Markdown agent')
+  }
+  finally {
+    cleanup(tmpDir)
+  }
+})
+
+it('agent 格式门控 - agentsmd 宿主安装到 .agents/subagents', () => {
+  const { tmpDir, userHome, moluoHome, hostHome } = setupEnv()
+  try {
+    projectToHost({
+      userHome,
+      moluoHome,
+      hostHome,
+      hostBaselineFile: path.join(hostHome, 'AGENTS.md'),
+      projectBaseline: false,
+      agentFormat: 'agentsmd',
+    })
+    const subagentsTarget = path.join(userHome, '.agents', 'subagents')
+    assert.ok(fs.existsSync(path.join(subagentsTarget, 'demo-agent.md')), '.agents 应投影到 subagents')
+    assert.ok(!fs.existsSync(path.join(hostHome, 'agents')), '.agents host 不应额外生成 agents 目录')
   }
   finally {
     cleanup(tmpDir)

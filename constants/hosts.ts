@@ -4,11 +4,12 @@ import path from 'node:path'
  * 宿主 agent 文件格式。
  * 决定第一方 Markdown agent 能否直接软链到该宿主：
  * - 'markdown'：宿主吃 Markdown + YAML frontmatter，可直接软链（Claude / Cursor / OpenCode）。
- * - 'toml'：宿主吃 TOML（Codex CLI），需转译，未实现前显式跳过 + 告警。
+ * - 'toml'：宿主吃 TOML（Codex CLI），由 Markdown agent 转译生成。
  * - 'json'：宿主吃 JSON（Kiro），需转译，未实现前显式跳过 + 告警。
+ * - 'agentsmd'：agents.md 共享层，使用 .agents/subagents。
  * 映射依据见 docs/architecture/host-agent-mcp-mapping.md（提取自 rulesync 源码）。
  */
-export type AgentFormat = 'markdown' | 'toml' | 'json'
+export type AgentFormat = 'markdown' | 'toml' | 'json' | 'agentsmd'
 
 /**
  * 宿主 MCP 配置投影规格。
@@ -38,6 +39,8 @@ export interface HostConfig {
   baselineFileName: string
   /** 是否将 AIRules 规则基线投影到宿主基线文件 */
   projectBaseline?: boolean
+  /** 是否参与 --host all；用于共享层这种被其它宿主复用、但不应默认覆盖基线的目标。 */
+  includeInAll?: boolean
   /**
    * 基线投影方式：
    * - 'symlink'（默认）：用软链接覆盖宿主基线文件，整份替换为 AIRules 规则。
@@ -52,7 +55,8 @@ export interface HostConfig {
   /**
    * 宿主 agent 文件格式，默认 'markdown'。
    * 第一方 agent 当前均为 Markdown：'markdown' 宿主直接软链 agents 目录；
-   * 'toml' / 'json' 宿主需转译层（暂未实现，投影时显式跳过并告警，不静默软链错误格式）。
+   * 'toml' 宿主转译为 TOML；'agentsmd' 宿主投影到 .agents/subagents；
+   * 'json' 宿主需转译层（暂未实现，投影时显式跳过并告警，不静默软链错误格式）。
    */
   agentFormat?: AgentFormat
   /**
@@ -78,7 +82,6 @@ export const HOST_CONFIGS: HostConfig[] = [
     id: 'codex',
     homeRelPath: '.codex',
     baselineFileName: 'AGENTS.md',
-    // Codex agent 文件为 TOML，与第一方 Markdown 不兼容，转译层未实现前投影会显式跳过 + 告警。
     agentFormat: 'toml',
     mcp: { relDir: '.', fileName: 'config.toml', serversKey: 'mcp_servers', format: 'toml' },
   },
@@ -102,12 +105,14 @@ export const HOST_CONFIGS: HostConfig[] = [
     agentFormat: 'markdown',
     mcp: { relDir: '.', fileName: 'mcp.json', serversKey: 'mcpServers', format: 'json' },
   },
-  // 不需要，会自己复用.agents
-  // {
-  //   id: 'qoder',
-  //   homeRelPath: '.qoder',
-  //   baselineFileName: 'AGENTS.md',
-  // },
+  {
+    id: 'agentsmd',
+    homeRelPath: '.agents',
+    baselineFileName: 'AGENTS.md',
+    agentFormat: 'agentsmd',
+    projectBaseline: false,
+    includeInAll: true,
+  },
   {
     id: 'qoderwork',
     homeRelPath: '.qoderwork',
@@ -139,7 +144,9 @@ export const HOST_CONFIGS: HostConfig[] = [
 ]
 
 /** 所有支持的宿主 ID 列表，供 --host all 使用 */
-export const ALL_HOST_IDS: string[] = HOST_CONFIGS.map(h => h.id)
+export const ALL_HOST_IDS: string[] = HOST_CONFIGS
+  .filter(h => h.includeInAll ?? true)
+  .map(h => h.id)
 
 /**
  * 根据宿主 ID 获取配置，找不到时返回 undefined

@@ -125,6 +125,7 @@ it('tool - syncToHosts 同步内置和用户自定义 skills 到宿主', async (
     writeFile(path.join(repoRoot, 'package.json'), '{"type":"module"}\n')
     writeFile(path.join(repoRoot, 'constants', 'skills.js'), 'export const vendors = []\n')
     writeFile(path.join(repoRoot, 'rules', 'AGENTS.md'), 'baseline\n')
+    writeFile(path.join(repoRoot, 'agents', 'demo-agent.md'), '---\nname: demo-agent\ndescription: Demo agent\n---\nDo work\n')
     writeFile(path.join(repoRoot, 'skills', 'workflow', 'builtin-review', 'SKILL.md'), 'builtin\n')
     writeFile(path.join(moluoHome, 'local', 'skills', 'custom-review', 'SKILL.md'), 'custom\n')
     fs.mkdirSync(codexHome, { recursive: true })
@@ -149,6 +150,12 @@ it('tool - syncToHosts 同步内置和用户自定义 skills 到宿主', async (
       realLinkPath(path.join(moluoHome, 'local', 'skills', 'custom-review')),
     )
     assert.equal(fs.existsSync(path.join(moluoHome, 'skills')), false)
+    assert.equal(fs.existsSync(path.join(moluoHome, 'agents')), false)
+    assert.equal(fs.existsSync(path.join(moluoHome, 'mcp')), false)
+    const codexAgentToml = fs.readFileSync(path.join(codexHome, 'agents', 'demo-agent.toml'), 'utf8')
+    assert.ok(codexAgentToml.includes('name = "demo-agent"'))
+    assert.ok(codexAgentToml.includes('developer_instructions'))
+    assert.equal(fs.existsSync(path.join(codexHome, 'agents', 'demo-agent.md')), false)
     assert.equal(
       realLinkPath(path.join(codexHome, 'skills', 'custom-review')),
       realLinkPath(path.join(userHome, '.agents', 'skills', 'custom-review')),
@@ -167,6 +174,7 @@ it('tool - syncToHosts 在源码安装目录缺少 dist 时可直接加载 TypeS
     writeFile(path.join(repoRoot, 'package.json'), '{"type":"module"}\n')
     writeFile(path.join(repoRoot, 'constants', 'skills.ts'), 'export const vendors = []\n')
     writeFile(path.join(repoRoot, 'rules', 'AGENTS.md'), 'baseline\n')
+    writeFile(path.join(repoRoot, 'agents', 'demo-agent.md'), '---\nname: demo-agent\ndescription: Demo agent\n---\nDo work\n')
     writeFile(path.join(repoRoot, 'skills', 'workflow', 'source-only', 'SKILL.md'), 'source-only\n')
     fs.mkdirSync(codexHome, { recursive: true })
 
@@ -180,6 +188,7 @@ it('tool - syncToHosts 在源码安装目录缺少 dist 时可直接加载 TypeS
     })
 
     assert.deepEqual(result.projectedHosts, ['codex'])
+    assert.equal(fs.existsSync(path.join(codexHome, 'agents', 'demo-agent.toml')), true)
     assert.equal(
       realLinkPath(path.join(codexHome, 'skills', 'source-only')),
       realLinkPath(path.join(userHome, '.agents', 'skills', 'source-only')),
@@ -229,6 +238,8 @@ export const vendors = [
       realLinkPath(vendorRepoSkill),
     )
     assert.equal(fs.existsSync(path.join(moluoHome, 'skills')), false)
+    assert.equal(fs.existsSync(path.join(moluoHome, 'agents')), false)
+    assert.equal(fs.existsSync(path.join(moluoHome, 'mcp')), false)
     assert.equal(
       realLinkPath(path.join(codexHome, 'skills', 'api-docs')),
       realLinkPath(vendorRepoSkill),

@@ -19,6 +19,7 @@ import {
 
 import os from 'node:os'
 import path from 'node:path'
+import * as smolToml from 'smol-toml'
 import { findHostConfig, resolveHostPaths } from '../../constants/hosts.js'
 import { buildLinkPlan } from './links.js'
 import { collectFlattenedSkillSources, discoverSkillDirectories, flattenedSkillName } from './skill-projection.js'
@@ -96,6 +97,18 @@ function vendorMcpPath(moluoHome: string): string {
 /** 获取全局 .agents/skills 目录的绝对路径 */
 function agentsSkillsPath(userHome: string): string {
   return path.join(userHome, '.agents', 'skills')
+}
+
+function agentsMdSubagentsPath(userHome: string): string {
+  return path.join(userHome, '.agents', 'subagents')
+}
+
+interface MarkdownAgent {
+  fileName: string
+  name: string
+  description?: string
+  model?: string
+  body: string
 }
 
 function resetDir(targetDir: string) {
@@ -343,6 +356,7 @@ export function ensureInstallRoot(paths: InstallPaths) {
     vendorAgentsPath(paths.moluoHome),
     vendorMcpPath(paths.moluoHome),
     paths.globalAgentSkillsHome,
+    agentsMdSubagentsPath(paths.userHome),
   ]) {
     mkdirSync(dir, { recursive: true })
   }
@@ -565,6 +579,109 @@ export function projectSkillsToHost(
   syncFlattenedSkills(agentsSkillsDir, hostSkillsHome, moluoHome, options)
 }
 
+function parseSimpleYamlValue(value: string): string | undefined {
+  const trimmed = value.trim()
+  if (trimmed.length === 0) {
+    return ''
+  }
+  if ((trimmed.startsWith('"') && trimmed.endsWith('"')) || (trimmed.startsWith('\'') && trimmed.endsWith('\''))) {
+    return trimmed.slice(1, -1)
+  }
+  return trimmed
+}
+
+function readMarkdownAgent(sourceFile: string): MarkdownAgent {
+  const raw = readFileSync(sourceFile, 'utf8')
+  const match = /^---\r?\n([\s\S]*?)\r?\n---\r?\n?([\s\S]*)$/u.exec(raw)
+  if (!match) {
+    throw new Error(`Agent 缺少 YAML frontmatter: ${sourceFile}`)
+  }
+
+  const frontmatter: Record<string, string | undefined> = {}
+  for (const line of match[1].split(/\r?\n/u)) {
+    const colonIndex = line.indexOf(':')
+    if (colonIndex <= 0) {
+      continue
+    }
+    const key = line.slice(0, colonIndex)
+    if (!/^\w[\w-]*$/u.test(key)) {
+      continue
+    }
+    frontmatter[key] = parseSimpleYamlValue(line.slice(colonIndex + 1))
+  }
+  const name = frontmatter.name?.trim()
+  if (!name) {
+    throw new Error(`Agent frontmatter 缺少 name: ${sourceFile}`)
+  }
+
+  return {
+    fileName: path.basename(sourceFile),
+    name,
+    description: frontmatter.description?.trim(),
+    model: frontmatter.model?.trim(),
+    body: match[2].trim(),
+  }
+}
+
+function readVendorMarkdownAgents(moluoHome: string): MarkdownAgent[] {
+  const agentsDir = vendorAgentsPath(moluoHome)
+  if (!existsSync(agentsDir)) {
+    return []
+  }
+
+  return readdirSync(agentsDir, { withFileTypes: true })
+    .filter(entry => entry.isFile() && entry.name.endsWith('.md'))
+    .map(entry => readMarkdownAgent(path.join(agentsDir, entry.name)))
+}
+
+function projectMarkdownAgentsToDirectory(moluoHome: string, targetDir: string) {
+  if (!existsSync(vendorAgentsPath(moluoHome))) {
+    removePath(targetDir)
+    return
+  }
+  replaceWithSymlink(vendorAgentsPath(moluoHome), targetDir, linkTypeForCurrentPlatform())
+}
+
+function projectAgentsMdSubagents(userHome: string, moluoHome: string) {
+  projectMarkdownAgentsToDirectory(moluoHome, agentsMdSubagentsPath(userHome))
+}
+
+function stringifyCodexAgentToml(agent: MarkdownAgent): string {
+  const tomlObj: Record<string, string> = { name: agent.name }
+  if (agent.description) {
+    tomlObj.description = agent.description
+  }
+  if (agent.model) {
+    tomlObj.model = agent.model
+  }
+
+  const restToml = smolToml.stringify(tomlObj).trimEnd()
+  if (!agent.body) {
+    return restToml
+  }
+  const tripleSingleQuote = `'`.repeat(3)
+  const developerInstructionsToml = agent.body.includes(tripleSingleQuote)
+    ? smolToml.stringify({ developer_instructions: agent.body }).trimEnd()
+    : `developer_instructions = ${tripleSingleQuote}\n${agent.body}\n${tripleSingleQuote}`
+
+  return `${restToml}\n${developerInstructionsToml}`
+}
+
+function projectCodexAgents(moluoHome: string, hostHome: string) {
+  const agents = readVendorMarkdownAgents(moluoHome)
+  const targetDir = path.join(hostHome, 'agents')
+  if (agents.length === 0) {
+    removePath(targetDir)
+    return
+  }
+
+  resetDir(targetDir)
+  for (const agent of agents) {
+    const targetFile = path.join(targetDir, agent.fileName.replace(/\.md$/u, '.toml'))
+    writeFileSync(targetFile, `${stringifyCodexAgentToml(agent)}\n`, 'utf8')
+  }
+}
+
 function projectSharedSkillsHost(
   userHome: string,
   hostHome: string,
@@ -579,17 +696,23 @@ function projectSharedSkillsHost(
 
   projectSkillsToHost(userHome, moluoHome, path.join(hostHome, customSkillsDirName), { excludedSkills })
 
-  // 第一方 agent 当前均为 Markdown。仅 Markdown 兼容宿主直接软链；
-  // TOML（Codex）/ JSON（Kiro）宿主格式不兼容，转译层未实现前显式跳过 + 告警，不静默软链错误格式。
-  if (existsSync(vendorAgentsPath(moluoHome))) {
-    if (agentFormat === 'markdown') {
-      const agentsSource = vendorAgentsPath(moluoHome)
-      const agentsTarget = path.join(hostHome, 'agents')
-      replaceWithSymlink(agentsSource, agentsTarget, linkTypeForCurrentPlatform())
-    }
-    else {
-      console.warn(`[skip] 宿主 agent 格式为 ${agentFormat}，与第一方 Markdown agent 不兼容，转译层未实现，跳过 agents 投影: ${hostHome}`)
-    }
+  if (agentFormat === 'agentsmd') {
+    projectAgentsMdSubagents(userHome, moluoHome)
+    return
+  }
+
+  if (agentFormat === 'markdown') {
+    projectMarkdownAgentsToDirectory(moluoHome, path.join(hostHome, 'agents'))
+    return
+  }
+
+  if (agentFormat === 'toml') {
+    projectCodexAgents(moluoHome, hostHome)
+    return
+  }
+
+  if (agentFormat === 'json' && existsSync(vendorAgentsPath(moluoHome))) {
+    console.warn(`[skip] 宿主 agent 格式为 ${agentFormat}，转译层未实现，跳过 agents 投影: ${hostHome}`)
   }
 }
 

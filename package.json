@@ -45,7 +45,8 @@
     "purity:check": "node scripts/purity/purity-check.mjs"
   },
   "dependencies": {
-    "kleur": "4.1.5"
+    "kleur": "4.1.5",
+    "smol-toml": "^1.6.1"
   },
   "devDependencies": {
     "@antfu/eslint-config": "8.2.0",
