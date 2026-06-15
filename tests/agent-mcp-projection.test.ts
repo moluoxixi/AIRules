@@ -7,7 +7,7 @@ import { projectToHost } from '../scripts/lib/install.js'
 
 /**
  * 为 agent 格式门控 + MCP 多宿主投影搭建隔离环境。
- * 构造 ~/.moluoxixi（含 agents/ 与可选 mcp/mcp.json 中性源）与一个宿主 home。
+ * 构造 ~/.moluoxixi（含 vendor/agents 与可选 vendor/mcp/mcp.json 中性源）与一个宿主 home。
  */
 function setupEnv(options: { mcpServers?: Record<string, unknown>, withAgents?: boolean } = {}) {
   const tmpDir = fs.mkdtempSync(path.join(os.tmpdir(), 'airules-agentmcp-'))
@@ -21,15 +21,15 @@ function setupEnv(options: { mcpServers?: Record<string, unknown>, withAgents?: 
   fs.mkdirSync(path.join(moluoHome, 'vendor', 'skills'), { recursive: true })
 
   if (options.withAgents ?? true) {
-    const agentsDir = path.join(moluoHome, 'agents')
+    const agentsDir = path.join(moluoHome, 'vendor', 'agents')
     fs.mkdirSync(agentsDir, { recursive: true })
     fs.writeFileSync(path.join(agentsDir, 'demo-agent.md'), '---\nname: demo-agent\ndescription: x\n---\nbody\n')
   }
 
   if (options.mcpServers) {
-    fs.mkdirSync(path.join(moluoHome, 'mcp'), { recursive: true })
+    fs.mkdirSync(path.join(moluoHome, 'vendor', 'mcp'), { recursive: true })
     fs.writeFileSync(
-      path.join(moluoHome, 'mcp', 'mcp.json'),
+      path.join(moluoHome, 'vendor', 'mcp', 'mcp.json'),
       `${JSON.stringify({ mcpServers: options.mcpServers }, null, 2)}\n`,
     )
   }
@@ -293,8 +293,8 @@ it('mcp 投影 - 宿主已有 JSON 损坏时抛带路径的明确错误', () => 
 it('mcp 投影 - 中性源损坏时抛带路径的明确错误', () => {
   const { tmpDir, userHome, moluoHome, hostHome } = setupEnv()
   try {
-    fs.mkdirSync(path.join(moluoHome, 'mcp'), { recursive: true })
-    fs.writeFileSync(path.join(moluoHome, 'mcp', 'mcp.json'), '{ not valid,, }')
+    fs.mkdirSync(path.join(moluoHome, 'vendor', 'mcp'), { recursive: true })
+    fs.writeFileSync(path.join(moluoHome, 'vendor', 'mcp', 'mcp.json'), '{ not valid,, }')
     assert.throws(
       () => projectToHost({
         userHome,

@@ -5,6 +5,7 @@ import path from 'node:path'
 import { it } from 'vitest'
 import {
   projectSkillsToHost,
+  syncFirstPartyToHome,
 } from '../scripts/lib/install.js'
 
 function setupMockEnvironment() {
@@ -30,6 +31,32 @@ function setupMockEnvironment() {
 function cleanup(tmpDir: string) {
   fs.rmSync(tmpDir, { recursive: true, force: true })
 }
+
+it('first-party sync - agents and mcp are stored under vendor', () => {
+  const tmpDir = fs.mkdtempSync(path.join(os.tmpdir(), 'moluoxixi-firstparty-'))
+
+  try {
+    const repoRoot = path.join(tmpDir, 'repo')
+    const moluoHome = path.join(tmpDir, 'user', '.moluoxixi')
+    fs.mkdirSync(path.join(repoRoot, 'rules'), { recursive: true })
+    fs.mkdirSync(path.join(repoRoot, 'agents'), { recursive: true })
+    fs.mkdirSync(path.join(repoRoot, 'mcp'), { recursive: true })
+    fs.writeFileSync(path.join(repoRoot, 'rules', 'AGENTS.md'), '# AIRules\n')
+    fs.writeFileSync(path.join(repoRoot, 'agents', 'demo.md'), 'agent\n')
+    fs.writeFileSync(path.join(repoRoot, 'mcp', 'mcp.json'), '{"mcpServers":{}}\n')
+
+    syncFirstPartyToHome(repoRoot, moluoHome)
+
+    assert.ok(fs.existsSync(path.join(moluoHome, 'vendor', 'AGENTS.md')), 'rules/AGENTS.md should sync to vendor/AGENTS.md')
+    assert.ok(fs.existsSync(path.join(moluoHome, 'vendor', 'agents', 'demo.md')), 'agents should sync to vendor/agents')
+    assert.ok(fs.existsSync(path.join(moluoHome, 'vendor', 'mcp', 'mcp.json')), 'mcp should sync to vendor/mcp')
+    assert.ok(!fs.existsSync(path.join(moluoHome, 'agents')), 'agents must not sync to top-level moluoxixi agents')
+    assert.ok(!fs.existsSync(path.join(moluoHome, 'mcp')), 'mcp must not sync to top-level moluoxixi mcp')
+  }
+  finally {
+    cleanup(tmpDir)
+  }
+})
 
 it('installation linking - .agents is always created as mandatory layer', () => {
   const { tmpDir, userHome, moluoHome, claudeHome } = setupMockEnvironment()

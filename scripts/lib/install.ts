@@ -88,6 +88,16 @@ function moluoSkillsPath(moluoHome: string): string {
   return path.join(moluoHome, 'skills')
 }
 
+/** 获取 vendor agents 目录的绝对路径 */
+function vendorAgentsPath(moluoHome: string): string {
+  return path.join(moluoHome, 'vendor', 'agents')
+}
+
+/** 获取 vendor MCP 中性源目录的绝对路径 */
+function vendorMcpPath(moluoHome: string): string {
+  return path.join(moluoHome, 'vendor', 'mcp')
+}
+
 /** 获取全局 .agents/skills 目录的绝对路径 */
 function agentsSkillsPath(userHome: string): string {
   return path.join(userHome, '.agents', 'skills')
@@ -337,6 +347,8 @@ export function ensureInstallRoot(paths: InstallPaths) {
     path.join(paths.moluoHome, 'vendor'),
     path.join(paths.moluoHome, 'vendor', 'repos'),
     vendorSkillsPath(paths.moluoHome),
+    vendorAgentsPath(paths.moluoHome),
+    vendorMcpPath(paths.moluoHome),
     paths.moluoSkillsHome,
     paths.globalAgentSkillsHome,
   ]) {
@@ -421,24 +433,17 @@ export function syncFlattenedSkills(
 }
 
 /**
- * 同步第一方（当前仓库内）的 agents 和基线文件到本地 moluoxixi 主目录。
+ * 同步第一方（当前仓库内）的 agents、rules 和 MCP 中性源到本地 vendor 目录。
  * skills 统一走 clone → vendor/skills 流程，不在此处理。
  *
  * rules/AGENTS.md 始终复制到 vendor/ 目录下，作为所有宿主基线软链接的统一源。
- * 即使 repoRoot === moluoHome（仓库本身就是安装目录），也需要执行此步骤，
- * 因为软链接最终指向的是 vendor/AGENTS.md。
+ * agents/ 与 mcp/ 也复制到 vendor/agents、vendor/mcp，避免安装产物散落在顶层目录。
  */
 export function syncFirstPartyToHome(repoRoot: string, moluoHome: string) {
-  // rules/AGENTS.md 始终同步到 vendor/ 下（所有宿主基线的软链接源）
   copyRequiredFile(path.join(repoRoot, BASELINE_SOURCE_PATH), vendorBaselinePath(moluoHome))
-
-  if (isSamePath(repoRoot, moluoHome)) {
-    return
-  }
-
-  syncOptionalDir(path.join(repoRoot, 'agents'), path.join(moluoHome, 'agents'))
-  // 中性 MCP 源（rulesync 风格 { mcpServers: {} }）同步到 home，供各宿主按格式投影。
-  syncOptionalDir(path.join(repoRoot, 'mcp'), path.join(moluoHome, 'mcp'))
+  syncOptionalDir(path.join(repoRoot, 'agents'), vendorAgentsPath(moluoHome))
+  // 中性 MCP 源（rulesync 风格 { mcpServers: {} }）同步到 vendor，供各宿主按格式投影。
+  syncOptionalDir(path.join(repoRoot, 'mcp'), vendorMcpPath(moluoHome))
 }
 
 /**
@@ -589,9 +594,9 @@ function projectSharedSkillsHost(
 
   // 第一方 agent 当前均为 Markdown。仅 Markdown 兼容宿主直接软链；
   // TOML（Codex）/ JSON（Kiro）宿主格式不兼容，转译层未实现前显式跳过 + 告警，不静默软链错误格式。
-  if (existsSync(path.join(moluoHome, 'agents'))) {
+  if (existsSync(vendorAgentsPath(moluoHome))) {
     if (agentFormat === 'markdown') {
-      const agentsSource = path.join(moluoHome, 'agents')
+      const agentsSource = vendorAgentsPath(moluoHome)
       const agentsTarget = path.join(hostHome, 'agents')
       replaceWithSymlink(agentsSource, agentsTarget, linkTypeForCurrentPlatform())
     }
@@ -620,11 +625,11 @@ function tomlKey(key: string): string {
 }
 
 /**
- * 读取中性 MCP 源（~/.moluoxixi/mcp/mcp.json，rulesync 风格 { mcpServers: {...} }）。
+ * 读取中性 MCP 源（~/.moluoxixi/vendor/mcp/mcp.json，rulesync 风格 { mcpServers: {...} }）。
  * 源不存在或无服务时返回 undefined，调用方据此做 no-op（无服务可分发，非失败）。
  */
 function readNeutralMcpServers(moluoHome: string): Record<string, unknown> | undefined {
-  const sourceFile = path.join(moluoHome, 'mcp', 'mcp.json')
+  const sourceFile = path.join(vendorMcpPath(moluoHome), 'mcp.json')
   if (!existsSync(sourceFile)) {
     return undefined
   }
