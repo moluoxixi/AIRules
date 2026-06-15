@@ -219,6 +219,8 @@ it('install - 同步第一方文件并按宿主投影 baseline 与 skills', () =
 
   const codexBaseline = linkHostBaseline({ moluoHome, host: 'codex', userHome })
   assert.equal(codexBaseline, hostBaselineFile)
+  assert.equal(linkHostBaseline({ moluoHome, host: 'agentsmd', userHome }), undefined)
+  assert.equal(fs.existsSync(path.join(userHome, '.agents', 'AGENTS.md')), false)
   assert.throws(
     () => linkHostBaseline({ moluoHome, host: 'unknown', userHome }),
     /Unknown host: unknown/,
@@ -312,6 +314,7 @@ it('install - Hermes append 基线幂等：重复投影只保留一份托管块'
   writeFile(path.join(hermesHome, 'SOUL.md'), '# Soul\n\n身份内容。\n')
 
   const target = linkHostBaseline({ moluoHome, host: 'hermes', userHome })
+  assert.ok(target)
   const first = fs.readFileSync(target, 'utf8')
   linkHostBaseline({ moluoHome, host: 'hermes', userHome })
   linkHostBaseline({ moluoHome, host: 'hermes', userHome })

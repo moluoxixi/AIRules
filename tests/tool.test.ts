@@ -3,7 +3,7 @@ import fs from 'node:fs'
 import os from 'node:os'
 import path from 'node:path'
 import { it } from 'vitest'
-import { addLocalSkill, resolveToolPaths, syncToHosts } from '../scripts/lib/tool.js'
+import { addLocalSkill, resolveHostTargets, resolveToolPaths, syncToHosts } from '../scripts/lib/tool.js'
 
 function withTempDir<T>(prefix: string, run: (tmpDir: string) => T): T {
   const tmpDir = fs.mkdtempSync(path.join(os.tmpdir(), prefix))
@@ -35,6 +35,11 @@ function writeFile(filePath: string, content: string) {
 function realLinkPath(linkPath: string) {
   return fs.realpathSync(linkPath).replace(/\\/g, '/')
 }
+
+it('tool - resolveHostTargets all 不默认包含 agentsmd 共享层', () => {
+  assert.equal(resolveHostTargets('all').includes('agentsmd'), false)
+  assert.deepEqual(resolveHostTargets('agentsmd'), ['agentsmd'])
+})
 
 it('tool - resolveToolPaths 支持显式区分 moluoHome 与 userHome', () => withTempDir('airules-tool-paths-', (tmpDir) => {
   const repoRoot = path.join(tmpDir, 'repo')

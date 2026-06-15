@@ -23,7 +23,7 @@ function setupEnv(options: { mcpServers?: Record<string, unknown>, withAgents?: 
   if (options.withAgents ?? true) {
     const agentsDir = path.join(moluoHome, 'vendor', 'agents')
     fs.mkdirSync(agentsDir, { recursive: true })
-    fs.writeFileSync(path.join(agentsDir, 'demo-agent.md'), '---\nname: demo-agent\ndescription: x\n---\nbody\n')
+    fs.writeFileSync(path.join(agentsDir, 'demo-agent.md'), '---\nname: demo-agent\ndescription: x\nmodel: gpt-5\n---\nbody\n')
   }
 
   if (options.mcpServers) {
@@ -83,7 +83,8 @@ it('agent 格式门控 - toml 宿主把 Markdown agents 转成 Codex TOML', () =
     const toml = fs.readFileSync(path.join(hostHome, 'agents', 'demo-agent.toml'), 'utf8')
     assert.ok(toml.includes('name = "demo-agent"'), 'Codex TOML 应写入 name')
     assert.ok(toml.includes('description = "x"'), 'Codex TOML 应写入 description')
-    assert.ok(toml.includes('developer_instructions'), 'Codex TOML 应把正文写入 developer_instructions')
+    assert.ok(toml.includes('model = "gpt-5"'), 'Codex TOML 应写入 model')
+    assert.ok(toml.includes(`developer_instructions = '''\nbody\n'''`), 'Codex TOML 应把正文写入 developer_instructions')
     assert.ok(!fs.existsSync(path.join(hostHome, 'agents', 'demo-agent.md')), 'Codex 不应安装 Markdown agent')
   }
   finally {
@@ -103,6 +104,7 @@ it('agent 格式门控 - agentsmd 宿主安装到 .agents/subagents', () => {
       agentFormat: 'agentsmd',
     })
     const subagentsTarget = path.join(userHome, '.agents', 'subagents')
+    assert.ok(fs.existsSync(path.join(userHome, '.agents', 'skills')), '.agents 应保留共享 skills')
     assert.ok(fs.existsSync(path.join(subagentsTarget, 'demo-agent.md')), '.agents 应投影到 subagents')
     assert.ok(!fs.existsSync(path.join(hostHome, 'agents')), '.agents host 不应额外生成 agents 目录')
   }

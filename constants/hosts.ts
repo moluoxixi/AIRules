@@ -111,7 +111,7 @@ export const HOST_CONFIGS: HostConfig[] = [
     baselineFileName: 'AGENTS.md',
     agentFormat: 'agentsmd',
     projectBaseline: false,
-    includeInAll: true,
+    includeInAll: false,
   },
   {
     id: 'qoderwork',

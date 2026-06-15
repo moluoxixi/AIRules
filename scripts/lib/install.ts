@@ -899,7 +899,7 @@ export function projectToHost({
   )
 }
 
-export function linkHostBaseline({ moluoHome, host, userHome = os.homedir() }: { moluoHome: string, host: string, userHome?: string }): string {
+export function linkHostBaseline({ moluoHome, host, userHome = os.homedir() }: { moluoHome: string, host: string, userHome?: string }): string | undefined {
   const source = vendorBaselinePath(moluoHome)
   const config = findHostConfig(host)
   if (!config) {
@@ -908,7 +908,7 @@ export function linkHostBaseline({ moluoHome, host, userHome = os.homedir() }: {
 
   const { hostBaselineFile, projectBaseline, baselineMode } = resolveHostPaths(config, userHome)
   if (!projectBaseline) {
-    throw new Error(`Host ${host} does not support AIRules baseline projection: ${hostBaselineFile}`)
+    return undefined
   }
   if (baselineMode === 'append') {
     injectBaselineBlock(source, hostBaselineFile)
