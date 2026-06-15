@@ -148,10 +148,7 @@ it('tool - syncToHosts 同步内置和用户自定义 skills 到宿主', async (
       realLinkPath(path.join(moluoHome, 'vendor', 'skills', 'custom-review')),
       realLinkPath(path.join(moluoHome, 'local', 'skills', 'custom-review')),
     )
-    assert.equal(
-      realLinkPath(path.join(moluoHome, 'skills', 'custom-review')),
-      realLinkPath(path.join(moluoHome, 'vendor', 'skills', 'custom-review')),
-    )
+    assert.equal(fs.existsSync(path.join(moluoHome, 'skills')), false)
     assert.equal(
       realLinkPath(path.join(codexHome, 'skills', 'custom-review')),
       realLinkPath(path.join(userHome, '.agents', 'skills', 'custom-review')),
@@ -215,7 +212,6 @@ export const vendors = [
 ]
 `)
     writeFile(path.join(moluoHome, 'rules', 'AGENTS.md'), 'baseline\n')
-    writeFile(path.join(moluoHome, 'skills', 'api-docs', 'SKILL.md'), 'repo-root-source\n')
     writeFile(path.join(vendorRepoSkill, 'SKILL.md'), 'vendor-source\n')
     fs.mkdirSync(codexHome, { recursive: true })
 
@@ -232,10 +228,7 @@ export const vendors = [
       realLinkPath(path.join(moluoHome, 'vendor', 'skills', 'api-docs')),
       realLinkPath(vendorRepoSkill),
     )
-    assert.equal(
-      realLinkPath(path.join(moluoHome, 'skills', 'api-docs')),
-      realLinkPath(vendorRepoSkill),
-    )
+    assert.equal(fs.existsSync(path.join(moluoHome, 'skills')), false)
     assert.equal(
       realLinkPath(path.join(codexHome, 'skills', 'api-docs')),
       realLinkPath(vendorRepoSkill),

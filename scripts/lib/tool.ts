@@ -135,6 +135,19 @@ function syncLocalSkillLayers(paths: ToolPaths) {
   syncFirstPartySkillsToVendor(path.join(paths.moluoHome, 'local'), paths.moluoHome)
 }
 
+/**
+ * 先把所有可安装内容汇入 vendor，再从 vendor 分发到各宿主。
+ * 这一步只负责 staging，不做宿主投影。
+ */
+function syncVendorStaging(paths: ToolPaths, skipVendors: boolean) {
+  ensureInstallRoot({
+    ...getDefaultInstallPaths(paths.userHome),
+    moluoHome: paths.moluoHome,
+    repoRoot: paths.repoRoot,
+  })
+  syncFirstPartyToHome(paths.repoRoot, paths.moluoHome)
+  return syncVendorsIfNeeded(paths, skipVendors)
+}
 export function addLocalSkill(options: AddSkillOptions): AddSkillResult {
   const sourceDir = path.resolve(options.sourceDir)
   const skillName = flattenedSkillName(options.name ?? path.basename(sourceDir))
@@ -161,13 +174,8 @@ export function addLocalSkill(options: AddSkillOptions): AddSkillResult {
 
 export async function syncToHosts(options: SyncOptions): Promise<SyncResult> {
   const paths = resolveToolPaths(options.repoRoot, options.home, options.userHome)
-  const installPaths = getDefaultInstallPaths(paths.userHome)
-  installPaths.moluoHome = paths.moluoHome
-  installPaths.repoRoot = paths.repoRoot
 
-  ensureInstallRoot(installPaths)
-  syncFirstPartyToHome(paths.repoRoot, paths.moluoHome)
-  await syncVendorsIfNeeded(paths, options.skipVendors)
+  await syncVendorStaging(paths, options.skipVendors)
   await rebuildVendorSkillLinks({
     homeDir: paths.moluoHome,
     manifestPath: paths.manifestPath,
