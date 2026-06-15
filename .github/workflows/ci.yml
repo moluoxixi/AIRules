@@ -1,0 +1,48 @@
+name: CI
+
+# PR 与 main 推送阶段的质量门禁。发布门禁见 publish.yml（tag 触发）。
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  verify:
+    name: Lint, typecheck, test, and verify
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+
+      # 本仓库不跟踪 lockfile，沿用 publish.yml 的 npm install 策略。
+      - name: Install dependencies
+        run: npm install
+
+      - name: Lint
+        run: npm run lint:check
+
+      - name: Typecheck
+        run: npm run typecheck
+
+      - name: Test
+        run: npm test
+
+      - name: Verify rules baseline (no drift)
+        run: npm run rules:check
+
+      - name: Verify delivery control contract
+        run: npm run delivery:verify
+
+      - name: Verify skill frontmatter
+        run: npm run verify:skills

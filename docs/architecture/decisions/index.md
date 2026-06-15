@@ -4,3 +4,4 @@
 
 | ADR | 决策 | 状态 | 日期 |
 |---|---|---|---|
+| [ADR-0001](./ADR-0001-knowledge-source-registry.md) | 知识源注册表与检索契约 | accepted | 2026-06-09 |

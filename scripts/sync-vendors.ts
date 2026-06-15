@@ -6,6 +6,7 @@ import { dirname, join, resolve } from 'node:path'
 import { fileURLToPath } from 'node:url'
 import { vendors as vendorsConfig } from '../constants/skills.js'
 import { collectFlattenedSkillSources, flattenedSkillName } from './lib/skill-projection.js'
+import { createEmptyLock, getLockedSha, loadVendorLock, upsertLockEntry, writeVendorLock } from './lib/vendor-lock.js'
 import { walkVendorTree } from './lib/vendors.js'
 
 const __filename = fileURLToPath(import.meta.url)
@@ -18,6 +19,9 @@ const REMOVE_DIR_OPTIONS = { recursive: true, force: true, maxRetries: 5, retryD
 
 /** 同步状态文件：记录上次同步时 constants/ 的内容指纹 */
 const SYNC_FINGERPRINT_FILE = join(PROJECT_ROOT, 'vendor', '.sync-fingerprint')
+
+/** vendor 版本锁文件：固定每个 vendor 的提交 SHA，纳入 git 版本控制 */
+const VENDOR_LOCK_FILE = join(PROJECT_ROOT, 'vendor-lock.json')
 
 /**
  * 计算 constants/ 目录下所有文件的内容指纹（SHA-256）。
@@ -81,6 +85,24 @@ function runGit(args: string[], cwd: string) {
   }
 }
 
+/**
+ * 以参数数组执行 Git 并捕获 stdout（用于读取 rev-parse 等结果）。
+ * 失败时抛出带 stderr 的错误，不静默吞掉非零退出码。
+ */
+function runGitCapture(args: string[], cwd: string): string {
+  const result = spawnSync('git', args, { cwd, encoding: 'utf8', stdio: 'pipe' })
+  if (result.error) {
+    throw result.error
+  }
+
+  if (result.status !== 0) {
+    const stderr = (result.stderr ?? '').trim()
+    throw new Error(`Git command failed with exit code ${result.status}: git ${args.join(' ')}${stderr ? `: ${stderr}` : ''}`)
+  }
+
+  return (result.stdout ?? '').trim()
+}
+
 function rememberTarget(targets: Map<string, string>, target: string, source: string) {
   const key = resolve(target).toLowerCase()
   const existingSource = targets.get(key)
@@ -106,10 +128,14 @@ function rememberTarget(targets: Map<string, string>, target: string, source: st
  */
 async function main() {
   const force = process.argv.includes('--force')
+  // --update-lock：拉取默认分支最新，并把每个 vendor 的 HEAD SHA 写回 vendor-lock.json。
+  // 不带该标志时：若 vendor-lock.json 存在锁定项，则 checkout 锁定 SHA（可复现）；否则按默认分支最新同步。
+  const updateLock = process.argv.includes('--update-lock')
   const currentFingerprint = computeConstantsFingerprint()
   const savedFingerprint = readSavedFingerprint()
 
-  if (!force && currentFingerprint === savedFingerprint) {
+  // --update-lock 必须强制重新克隆，否则指纹未变会跳过同步、拿不到 HEAD。
+  if (!force && !updateLock && currentFingerprint === savedFingerprint) {
     console.log('[SYNC] constants/ 未发生变化，跳过供应商同步。')
     console.log('[SYNC] 使用 --force 可忽略缓存强制重新克隆。')
     return
@@ -118,9 +144,15 @@ async function main() {
   if (force) {
     console.log('[SYNC] --force 模式：忽略缓存，强制重新同步。')
   }
+  else if (updateLock) {
+    console.log('[SYNC] --update-lock 模式：拉取最新并更新 vendor-lock.json。')
+  }
   else {
     console.log('[SYNC] 检测到 constants/ 已变化，开始重新同步...')
   }
+
+  // vendor 版本锁：存在则读取，用于固定 SHA；--update-lock 模式下从空锁重建。
+  const vendorLock = updateLock ? createEmptyLock() : loadVendorLock(VENDOR_LOCK_FILE)
 
   // 1. 清理环境
   if (existsSync(VENDOR_SKILLS_DIR)) {
@@ -161,7 +193,22 @@ async function main() {
           runGit(['sparse-checkout', 'set', ...checkoutPaths], cacheTarget)
         }
 
-        runGit(['checkout'], cacheTarget)
+        // 版本固定：非 --update-lock 且锁文件存在该 vendor 的 SHA 时，checkout 锁定提交以保证可复现。
+        const lockedSha = updateLock ? undefined : getLockedSha(vendorLock, vendorName, vendor.repo)
+        if (lockedSha) {
+          console.log(`[LOCK] ${vendorName} 固定到 ${lockedSha.slice(0, 12)}`)
+          runGit(['checkout', lockedSha], cacheTarget)
+        }
+        else {
+          runGit(['checkout'], cacheTarget)
+        }
+
+        // --update-lock 模式：记录当前 HEAD 的 SHA，稍后统一写回 vendor-lock.json。
+        if (updateLock && vendorLock) {
+          const headSha = runGitCapture(['rev-parse', 'HEAD'], cacheTarget)
+          upsertLockEntry(vendorLock, vendorName, vendor.repo, headSha)
+          console.log(`[LOCK] 记录 ${vendorName} -> ${headSha.slice(0, 12)}`)
+        }
       }
 
       for (const link of vendor.links) {
@@ -198,6 +245,12 @@ async function main() {
   // 4. 清除 Git 缓存
   console.log('\n[SYNC] 正在清理远程缓存...')
   removeWorkingDir(CACHE_DIR)
+
+  // --update-lock 模式：把本次采集的 SHA 写回 vendor-lock.json（纳入 git diff 供 review）。
+  if (updateLock && vendorLock) {
+    writeVendorLock(VENDOR_LOCK_FILE, vendorLock)
+    console.log(`[LOCK] 已更新 vendor-lock.json（${Object.keys(vendorLock.vendors).length} 个 vendor）`)
+  }
 
   // 5. 保存本次同步的指纹
   saveSyncFingerprint(currentFingerprint)

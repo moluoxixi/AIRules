@@ -31,12 +31,16 @@
     "presync": "git pull",
     "setup": "tsx scripts/cli.ts sync",
     "sync": "tsx scripts/cli.ts sync --host all",
+    "sync:update-lock": "tsx scripts/sync-vendors.ts --update-lock",
     "rules:install": "tsx scripts/cli.ts sync",
     "pretest": "npx tsx scripts/sync-vendors.ts",
     "test": "vitest run",
     "typecheck": "tsc --noEmit",
     "coverage": "vitest run --coverage",
-    "delivery:verify": "node scripts/verify-delivery-control.mjs"
+    "delivery:verify": "node scripts/verify-delivery-control.mjs",
+    "verify:skills": "node scripts/verify-skills.mjs",
+    "rules:build": "node scripts/assemble-baseline.mjs",
+    "rules:check": "node scripts/assemble-baseline.mjs --check"
   },
   "dependencies": {
     "kleur": "4.1.5"
