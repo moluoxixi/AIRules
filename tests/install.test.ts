@@ -52,6 +52,7 @@ it('first-party sync - agents and mcp are stored under vendor', () => {
     assert.ok(fs.existsSync(path.join(moluoHome, 'vendor', 'mcp', 'mcp.json')), 'mcp should sync to vendor/mcp')
     assert.ok(!fs.existsSync(path.join(moluoHome, 'agents')), 'agents must not sync to top-level moluoxixi agents')
     assert.ok(!fs.existsSync(path.join(moluoHome, 'mcp')), 'mcp must not sync to top-level moluoxixi mcp')
+    assert.ok(!fs.existsSync(path.join(moluoHome, 'skills')), 'skills must not sync to top-level moluoxixi skills')
   }
   finally {
     cleanup(tmpDir)
@@ -69,21 +70,15 @@ it('installation linking - .agents is always created as mandatory layer', () => 
     const agentsSkillsDir = path.join(userHome, '.agents', 'skills')
     assert.ok(fs.existsSync(agentsSkillsDir), '.agents/skills directory should always exist')
 
-    // Verify moluoxixi skills link to vendor, then .agents links to moluoxixi.
-    const moluoSkillA = path.join(moluoHome, 'skills', 'skill-a')
-    assert.ok(fs.lstatSync(moluoSkillA).isSymbolicLink(), 'moluoxixi skill-a should be a symlink')
-    const moluoTarget = path.resolve(path.dirname(moluoSkillA), fs.readlinkSync(moluoSkillA))
-    assert.strictEqual(
-      path.normalize(moluoTarget),
-      path.normalize(path.join(moluoHome, 'vendor', 'skills', 'skill-a')),
-    )
+    // Verify .agents links directly to vendor/skills, and no top-level .moluoxixi/skills is created.
+    assert.ok(!fs.existsSync(path.join(moluoHome, 'skills')), 'moluoxixi top-level skills should not be created')
 
     const agentSkillA = path.join(agentsSkillsDir, 'skill-a')
     assert.ok(fs.lstatSync(agentSkillA).isSymbolicLink(), 'agent skill-a should be a symlink')
     const agentTarget = path.resolve(path.dirname(agentSkillA), fs.readlinkSync(agentSkillA))
     assert.strictEqual(
       path.normalize(agentTarget),
-      path.normalize(moluoSkillA),
+      path.normalize(path.join(moluoHome, 'vendor', 'skills', 'skill-a')),
     )
 
     // Verify Claude links point to .agents
@@ -129,9 +124,9 @@ it('installation linking - legacy host skills directory junction is replaced', (
 
   try {
     const claudeSkillsDir = path.join(claudeHome, 'skills')
-    fs.mkdirSync(path.join(moluoHome, 'skills'), { recursive: true })
+    fs.mkdirSync(path.join(moluoHome, 'vendor', 'skills'), { recursive: true })
     fs.symlinkSync(
-      path.join(moluoHome, 'skills'),
+      path.join(moluoHome, 'vendor', 'skills'),
       claudeSkillsDir,
       process.platform === 'win32' ? 'junction' : 'dir',
     )

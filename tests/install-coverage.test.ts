@@ -138,7 +138,7 @@ it('install - 初始化安装目录并同步全局技能链接', () => withTempD
   ensureInstallRoot(paths)
   assert.ok(fs.existsSync(paths.moluoHome))
   assert.ok(fs.existsSync(path.join(paths.moluoHome, 'vendor', 'repos')))
-  assert.ok(fs.existsSync(paths.moluoSkillsHome))
+  assert.equal(fs.existsSync(path.join(paths.moluoHome, 'skills')), false)
   assert.ok(fs.existsSync(paths.globalAgentSkillsHome))
 
   const sourceSkill = path.join(paths.moluoHome, 'vendor', 'skills', 'skill-one')
@@ -146,13 +146,11 @@ it('install - 初始化安装目录并同步全局技能链接', () => withTempD
 
   ensureGlobalSkillLink(paths)
 
-  const moluoSkill = path.join(paths.moluoSkillsHome, 'skill-one')
-  assert.ok(fs.lstatSync(moluoSkill).isSymbolicLink())
-  assert.equal(realLinkPath(moluoSkill), realLinkPath(sourceSkill))
+  assert.equal(fs.existsSync(path.join(paths.moluoHome, 'skills')), false)
 
   const globalSkill = path.join(paths.globalAgentSkillsHome, 'skill-one')
   assert.ok(fs.lstatSync(globalSkill).isSymbolicLink())
-  assert.equal(realLinkPath(globalSkill), realLinkPath(moluoSkill))
+  assert.equal(realLinkPath(globalSkill), realLinkPath(sourceSkill))
 }))
 
 it('install - 全局技能链接从嵌套源目录展平到叶子 skill 名', () => withTempDir('airules-global-flat-', (tmpDir) => {
@@ -165,10 +163,7 @@ it('install - 全局技能链接从嵌套源目录展平到叶子 skill 名', ()
 
   ensureGlobalSkillLink(paths)
 
-  const moluoSkill = path.join(paths.moluoSkillsHome, 'namespace-review')
-  assert.ok(fs.lstatSync(moluoSkill).isSymbolicLink())
-  assert.equal(realLinkPath(moluoSkill), realLinkPath(nestedSkill))
-  assert.equal(fs.existsSync(path.join(paths.moluoSkillsHome, 'workflow')), false)
+  assert.equal(fs.existsSync(path.join(paths.moluoHome, 'skills')), false)
 
   const globalSkill = path.join(paths.globalAgentSkillsHome, 'namespace-review')
   assert.ok(fs.lstatSync(globalSkill).isSymbolicLink())
@@ -213,7 +208,9 @@ it('install - 同步第一方文件并按宿主投影 baseline 与 skills', () =
 
   syncFirstPartyToHome(repoRoot, moluoHome)
   assert.equal(fs.readFileSync(path.join(moluoHome, 'vendor', 'AGENTS.md'), 'utf8'), 'baseline\n')
-  assert.equal(fs.readFileSync(path.join(moluoHome, 'agents', 'helper.md'), 'utf8'), 'agent\n')
+  assert.equal(fs.readFileSync(path.join(moluoHome, 'vendor', 'agents', 'helper.md'), 'utf8'), 'agent\n')
+  assert.equal(fs.existsSync(path.join(moluoHome, 'agents')), false)
+  assert.equal(fs.existsSync(path.join(moluoHome, 'skills')), false)
 
   projectToHost({ userHome, moluoHome, hostHome, hostBaselineFile })
   assert.equal(fs.readFileSync(hostBaselineFile, 'utf8'), 'baseline\n')
@@ -473,22 +470,18 @@ it('install - 宿主投影跳过循环来源链接并自愈目标死链', () => 
   const userHome = path.join(tmpDir, 'user')
   const moluoHome = path.join(userHome, '.moluoxixi')
   const vendorSkillsDir = path.join(moluoHome, 'vendor', 'skills')
-  const localSkillsDir = path.join(moluoHome, 'skills')
   const agentsSkillsDir = path.join(userHome, '.agents', 'skills')
   const claudeSkillsDir = path.join(userHome, '.claude', 'skills')
   const linkType = process.platform === 'win32' ? 'junction' : 'dir'
 
   fs.mkdirSync(vendorSkillsDir, { recursive: true })
-  fs.mkdirSync(localSkillsDir, { recursive: true })
   fs.mkdirSync(agentsSkillsDir, { recursive: true })
   fs.mkdirSync(claudeSkillsDir, { recursive: true })
 
   const vendorLink = path.join(vendorSkillsDir, 'loop-skill')
-  const localLink = path.join(localSkillsDir, 'loop-skill')
   const agentLink = path.join(agentsSkillsDir, 'loop-skill')
 
-  fs.symlinkSync(localLink, vendorLink, linkType)
-  fs.symlinkSync(agentLink, localLink, linkType)
+  fs.symlinkSync(agentLink, vendorLink, linkType)
   fs.symlinkSync(vendorLink, agentLink, linkType)
 
   assert.throws(

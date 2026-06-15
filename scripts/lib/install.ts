@@ -83,11 +83,6 @@ function vendorSkillsPath(homeDir: string): string {
   return path.join(homeDir, 'vendor', 'skills')
 }
 
-/** 获取 moluoxixi 本地技能投影目录的绝对路径 */
-function moluoSkillsPath(moluoHome: string): string {
-  return path.join(moluoHome, 'skills')
-}
-
 /** 获取 vendor agents 目录的绝对路径 */
 function vendorAgentsPath(moluoHome: string): string {
   return path.join(moluoHome, 'vendor', 'agents')
@@ -324,7 +319,6 @@ export interface InstallPaths {
   moluoHome: string
   repoRoot: string
   moluoBaselineFile: string
-  moluoSkillsHome: string
   globalAgentSkillsHome: string
   [key: string]: string
 }
@@ -336,7 +330,6 @@ export function getDefaultInstallPaths(userHome = os.homedir()): InstallPaths {
     moluoHome,
     repoRoot: moluoHome,
     moluoBaselineFile: vendorBaselinePath(moluoHome),
-    moluoSkillsHome: moluoSkillsPath(moluoHome),
     globalAgentSkillsHome: agentsSkillsPath(userHome),
   }
 }
@@ -349,7 +342,6 @@ export function ensureInstallRoot(paths: InstallPaths) {
     vendorSkillsPath(paths.moluoHome),
     vendorAgentsPath(paths.moluoHome),
     vendorMcpPath(paths.moluoHome),
-    paths.moluoSkillsHome,
     paths.globalAgentSkillsHome,
   ]) {
     mkdirSync(dir, { recursive: true })
@@ -359,12 +351,11 @@ export function ensureInstallRoot(paths: InstallPaths) {
 /**
  * 确保全局 Agent 技能目录 (~/.agents/skills) 的链接正确。
  * ~/.agents 是行业标准共享层，始终存在。
- * 链路固定为 vendor/skills → ~/.moluoxixi/skills → ~/.agents/skills。
+ * 链路固定为 vendor/skills → ~/.agents/skills。
  * 遵循层级自愈同步逻辑。
  */
 export function ensureGlobalSkillLink(paths: InstallPaths) {
-  syncFlattenedSkills(vendorSkillsPath(paths.moluoHome), paths.moluoSkillsHome, paths.moluoHome)
-  syncFlattenedSkills(paths.moluoSkillsHome, paths.globalAgentSkillsHome, paths.moluoHome)
+  syncFlattenedSkills(vendorSkillsPath(paths.moluoHome), paths.globalAgentSkillsHome, paths.moluoHome)
 }
 
 /**
@@ -554,7 +545,7 @@ export async function rebuildVendorSkillLinks({ homeDir, manifestPath }: { homeD
 
 /**
  * 将所有技能投影到宿主软件目录（如 .claude 或 .cursor）。
- * 链路：vendor/skills → ~/.moluoxixi/skills → ~/.agents/skills → 宿主/skills
+ * 链路：vendor/skills → ~/.agents/skills → 宿主/skills
  * ~/.agents 是行业标准共享层，始终存在（不存在则创建）。
  */
 export function projectSkillsToHost(
@@ -564,17 +555,13 @@ export function projectSkillsToHost(
   options: SyncFlattenedSkillsOptions = {},
 ) {
   const vendorSourceSkillsDir = vendorSkillsPath(moluoHome)
-  const moluoTargetSkillsDir = moluoSkillsPath(moluoHome)
   const agentsSkillsDir = agentsSkillsPath(userHome)
 
-  // 1. vendor/skills → ~/.moluoxixi/skills
-  syncFlattenedSkills(vendorSourceSkillsDir, moluoTargetSkillsDir, moluoHome)
-
-  // 2. ~/.moluoxixi/skills → ~/.agents/skills
+  // 1. vendor/skills → ~/.agents/skills
   mkdirSync(path.join(userHome, '.agents'), { recursive: true })
-  syncFlattenedSkills(moluoTargetSkillsDir, agentsSkillsDir, moluoHome)
+  syncFlattenedSkills(vendorSourceSkillsDir, agentsSkillsDir, moluoHome)
 
-  // 3. ~/.agents/skills → 宿主 skills 目录
+  // 2. ~/.agents/skills → 宿主 skills 目录
   syncFlattenedSkills(agentsSkillsDir, hostSkillsHome, moluoHome, options)
 }
 
