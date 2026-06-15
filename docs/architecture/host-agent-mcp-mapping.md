@@ -34,7 +34,20 @@
 
 - **agent**：宿主 home 下 `agents/` 目录（与现有 skills 投影同级）。Markdown 兼容宿主走现有软链；TOML/JSON 宿主需要转译层（当前标记为 TODO，未实现前显式跳过 + 告警，不静默软链）。
 - **MCP**：中性源置于仓库 `mcp/` 下（rulesync 风格 `{ "mcpServers": {} }`）。投影时按上表写各宿主对应文件、键名、格式；源缺失时为 no-op（无服务可分发，非失败）。
+- **冲突策略：用户优先**。投影对同名 server **绝不覆盖用户已有配置**——JSON 宿主做浅合并、用户同名项保留（只补用户未配的 server）；TOML 宿主探测用户在 AIRULES 托管块外手写的 `[mcp_servers.<name>]`（裸键或引号键），跳过同名注入。用户已调过参数的 server 在重复 sync 后保持不变。
 - 宿主格式元数据作为**数据**维护在 `constants/hosts.ts`，引擎按元数据驱动，新增宿主只加一条记录。
+
+## 默认分发的 MCP server
+
+仓库 `mcp/mcp.json` 默认携带以下 server，均通过 `npx -y` 启动、无需 API key：
+
+| server | 包 | 说明 |
+|---|---|---|
+| `playwright` | `@playwright/mcp@latest` | 真实浏览器自动化与断言 |
+| `context7` | `@upstash/context7-mcp@latest` | 拉取库/框架的最新官方文档（API key 仅提升限流，可选） |
+| `sequential-thinking` | `@modelcontextprotocol/server-sequential-thinking@latest` | 结构化分步推理 |
+
+需要增减时编辑 `mcp/mcp.json` 后运行 `pnpm sync`；用户在各宿主手写的同名 server 不会被覆盖。
 
 ## 本项目宿主覆盖情况
 

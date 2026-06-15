@@ -687,18 +687,32 @@ function projectMcpToHost(moluoHome: string, hostHome: string, mcp: McpProjectio
         throw new Error(`宿主 MCP 配置解析失败 ${targetFile}（请修复其 JSON 语法后重试）: ${String(error)}`)
       }
     }
-    // 浅合并：保留用户在同一 serversKey 下手写的其它 server，AIRULES 源覆盖同名项。
+    // 浅合并，用户优先：只补用户尚未配置的 server，绝不覆盖用户手写的同名 server（含其调过的参数）。
     const existingServers = (typeof existing[mcp.serversKey] === 'object' && existing[mcp.serversKey] !== null)
       ? existing[mcp.serversKey] as Record<string, unknown>
       : {}
-    existing[mcp.serversKey] = { ...existingServers, ...servers }
+    existing[mcp.serversKey] = { ...servers, ...existingServers }
     writeFileSync(targetFile, `${JSON.stringify(existing, null, 2)}\n`, 'utf8')
     return
   }
 
-  // TOML（Codex）：command/args/env 三字段覆盖标准 MCP server 定义，用托管块幂等替换。
+  // TOML（Codex）：先清理本工具的旧托管块，再探测用户在块外手写的 server，用户优先不覆盖。
+  const prev = readHostConfigForMerge(targetFile)
+  // 托管块清理：匹配 START 到 END 或文件尾，兼容上次写入被截断（只剩 START 无 END）的残块，避免重复 server 定义。
+  const cleaned = prev.replace(/\n*# >>> AIRULES MCP >>>[\s\S]*?(?:# <<< AIRULES MCP <<<|$)\n*/g, '\n').trimEnd()
+  // 探测块外用户已声明的 server 名（裸键或引号键），这些不再由 AIRULES 注入，避免覆盖用户配置。
+  const serversKeyPattern = mcp.serversKey.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')
+  const userDeclared = new Set<string>()
+  const tableRe = new RegExp(`^\\s*\\[${serversKeyPattern}\\.(?:"([^"]+)"|([\\w-]+))\\]`, 'gm')
+  for (const m of cleaned.matchAll(tableRe)) {
+    userDeclared.add(m[1] ?? m[2])
+  }
+
   const tomlLines: string[] = []
   for (const [name, value] of Object.entries(servers)) {
+    if (userDeclared.has(name)) {
+      continue
+    }
     const server = value as { command?: string, args?: string[], env?: Record<string, string> }
     tomlLines.push(`[${mcp.serversKey}.${tomlKey(name)}]`)
     if (server.command) {
@@ -715,10 +729,16 @@ function projectMcpToHost(moluoHome: string, hostHome: string, mcp: McpProjectio
     }
     tomlLines.push('')
   }
+
+  // 全部 server 都已被用户声明时不写空托管块。
+  if (tomlLines.length === 0) {
+    if (cleaned !== prev.trimEnd()) {
+      writeFileSync(targetFile, cleaned.length > 0 ? `${cleaned}\n` : '', 'utf8')
+    }
+    return
+  }
+
   const block = `# >>> AIRULES MCP >>>\n${tomlLines.join('\n')}# <<< AIRULES MCP <<<\n`
-  const prev = readHostConfigForMerge(targetFile)
-  // 托管块清理：匹配 START 到 END 或文件尾，兼容上次写入被截断（只剩 START 无 END）的残块，避免重复 server 定义。
-  const cleaned = prev.replace(/\n*# >>> AIRULES MCP >>>[\s\S]*?(?:# <<< AIRULES MCP <<<|$)\n*/g, '\n').trimEnd()
   const next = cleaned.length > 0 ? `${cleaned}\n\n${block}` : block
   writeFileSync(targetFile, next, 'utf8')
 }

@@ -243,6 +243,31 @@ it('mcp 投影 - JSON 宿主浅合并保留用户手写的其它 server', () => 
   }
 })
 
+it('mcp 投影 - JSON 宿主同名 server 用户优先，不覆盖用户配置', () => {
+  const { tmpDir, userHome, moluoHome, hostHome } = setupEnv({ mcpServers: demoServers })
+  try {
+    // 用户已手写同名 demo-server，且参数与 AIRULES 源不同
+    fs.writeFileSync(
+      path.join(hostHome, '.mcp.json'),
+      `${JSON.stringify({ mcpServers: { 'demo-server': { command: 'user-tuned', args: ['--custom'] } } }, null, 2)}\n`,
+    )
+    projectToHost({
+      userHome,
+      moluoHome,
+      hostHome,
+      hostBaselineFile: path.join(hostHome, 'AGENTS.md'),
+      projectBaseline: false,
+      mcp: { relDir: '.', fileName: '.mcp.json', serversKey: 'mcpServers', format: 'json' },
+    })
+    const written = JSON.parse(fs.readFileSync(path.join(hostHome, '.mcp.json'), 'utf8'))
+    assert.strictEqual(written.mcpServers['demo-server'].command, 'user-tuned', '用户同名配置不应被覆盖')
+    assert.deepStrictEqual(written.mcpServers['demo-server'].args, ['--custom'], '用户调过的参数应保留')
+  }
+  finally {
+    cleanup(tmpDir)
+  }
+})
+
 it('mcp 投影 - 宿主已有 JSON 损坏时抛带路径的明确错误', () => {
   const { tmpDir, userHome, moluoHome, hostHome } = setupEnv({ mcpServers: demoServers })
   try {
@@ -342,6 +367,92 @@ it('mcp 投影 - TOML 托管块残缺（只剩 START）时清理不残留重复�
     )
     assert.ok(toml.includes('model = "gpt"'), '应保留块外用户内容')
     assert.ok(!toml.includes('command = "old"'), '残留的旧块内容应被清理')
+  }
+  finally {
+    cleanup(tmpDir)
+  }
+})
+
+it('mcp 投影 - Codex TOML 用户块外已声明 server 时不重复注入', () => {
+  const { tmpDir, userHome, moluoHome, hostHome } = setupEnv({ mcpServers: demoServers })
+  try {
+    // 用户已在块外手写 demo-server，AIRULES 不应再注入同名
+    fs.writeFileSync(
+      path.join(hostHome, 'config.toml'),
+      'model = "gpt"\n\n[mcp_servers.demo-server]\ncommand = "user-tuned"\n',
+    )
+    projectToHost({
+      userHome,
+      moluoHome,
+      hostHome,
+      hostBaselineFile: path.join(hostHome, 'AGENTS.md'),
+      projectBaseline: false,
+      mcp: { relDir: '.', fileName: 'config.toml', serversKey: 'mcp_servers', format: 'toml' },
+    })
+    const toml = fs.readFileSync(path.join(hostHome, 'config.toml'), 'utf8')
+    assert.strictEqual(
+      (toml.match(/\[mcp_servers\.demo-server\]/g) ?? []).length,
+      1,
+      '用户已声明 demo-server，不应重复注入',
+    )
+    assert.ok(toml.includes('command = "user-tuned"'), '应保留用户配置')
+    assert.ok(!toml.includes('# >>> AIRULES MCP >>>'), '所有 server 都被用户声明时不写空托管块')
+  }
+  finally {
+    cleanup(tmpDir)
+  }
+})
+
+it('mcp 投影 - TOML 全部 server 被用户声明时清理旧 AIRULES 块', () => {
+  const { tmpDir, userHome, moluoHome, hostHome } = setupEnv({ mcpServers: { 'demo-server': { command: 'x' } } })
+  try {
+    // 文件含用户块外声明 + 一个旧 AIRULES 托管块；同步后旧块应被清理且不重建空块
+    fs.writeFileSync(
+      path.join(hostHome, 'config.toml'),
+      'model = "gpt"\n\n[mcp_servers.demo-server]\ncommand = "user-tuned"\n\n# >>> AIRULES MCP >>>\n[mcp_servers.stale]\ncommand = "old"\n# <<< AIRULES MCP <<<\n',
+    )
+    projectToHost({
+      userHome,
+      moluoHome,
+      hostHome,
+      hostBaselineFile: path.join(hostHome, 'AGENTS.md'),
+      projectBaseline: false,
+      mcp: { relDir: '.', fileName: 'config.toml', serversKey: 'mcp_servers', format: 'toml' },
+    })
+    const toml = fs.readFileSync(path.join(hostHome, 'config.toml'), 'utf8')
+    assert.ok(!toml.includes('# >>> AIRULES MCP >>>'), '全跳过时旧 AIRULES 块应被清理且不重建')
+    assert.ok(!toml.includes('stale'), '旧块内容应被移除')
+    assert.ok(toml.includes('command = "user-tuned"'), '用户块外内容应保留')
+  }
+  finally {
+    cleanup(tmpDir)
+  }
+})
+
+it('mcp 投影 - TOML 探测引号键用户声明（含点的 server 名）', () => {
+  const { tmpDir, userHome, moluoHome, hostHome } = setupEnv({ mcpServers: { 'srv.dot': { command: 'airules' } } })
+  try {
+    // 用户用引号键声明了含点的同名 server，AIRULES 不应重复注入
+    fs.writeFileSync(
+      path.join(hostHome, 'config.toml'),
+      '[mcp_servers."srv.dot"]\ncommand = "user-tuned"\n',
+    )
+    projectToHost({
+      userHome,
+      moluoHome,
+      hostHome,
+      hostBaselineFile: path.join(hostHome, 'AGENTS.md'),
+      projectBaseline: false,
+      mcp: { relDir: '.', fileName: 'config.toml', serversKey: 'mcp_servers', format: 'toml' },
+    })
+    const toml = fs.readFileSync(path.join(hostHome, 'config.toml'), 'utf8')
+    assert.strictEqual(
+      (toml.match(/\[mcp_servers\."srv\.dot"\]/g) ?? []).length,
+      1,
+      '引号键用户声明应被探测，不重复注入',
+    )
+    assert.ok(toml.includes('command = "user-tuned"'), '用户引号键配置应保留')
+    assert.ok(!toml.includes('# >>> AIRULES MCP >>>'), '唯一 server 被用户声明时不写空托管块')
   }
   finally {
     cleanup(tmpDir)
