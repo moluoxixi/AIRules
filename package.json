@@ -40,7 +40,9 @@
     "delivery:verify": "node scripts/verify-delivery-control.mjs",
     "verify:skills": "node scripts/verify-skills.mjs",
     "rules:build": "node scripts/assemble-baseline.mjs",
-    "rules:check": "node scripts/assemble-baseline.mjs --check"
+    "rules:check": "node scripts/assemble-baseline.mjs --check",
+    "purity:assemble": "node scripts/purity/purity-check.mjs",
+    "purity:check": "node scripts/purity/purity-check.mjs"
   },
   "dependencies": {
     "kleur": "4.1.5"

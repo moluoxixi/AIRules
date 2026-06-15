@@ -43,3 +43,6 @@ lerna-debug.log*
 *.sw?
 .zed
 .ruletest-output/
+
+# 纯净校验运行产物（每次组装重生成，不入库）
+.purity-runs/

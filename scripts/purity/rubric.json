@@ -1,0 +1,25 @@
+{
+  "description": "纯净校验 rubric：每个被测 skill 声明其在纯净环境下产物必须满足的可控性断言。脚本只做组装与核对，不调用任何 LLM；用什么 agent 执行纯净 run 由用户环境决定。",
+  "skills": {
+    "knowledge-search": {
+      "minimalTask": "项目根目录存在 docs/api/_protocol.md，描述了全局接口协议。请按 knowledge-search skill 的流程，回答「API 协议在哪里有文档记录」，并产出符合 skill 要求的证据结果。",
+      "assertions": [
+        {
+          "id": "evidence-status",
+          "desc": "产物必须给出 PASS / MISSING evidence / MISSING conflict / FAIL / NOT RUN 之一的证据状态",
+          "anyOf": ["PASS", "MISSING evidence", "MISSING conflict", "FAIL", "NOT RUN"]
+        },
+        {
+          "id": "source-path",
+          "desc": "产物必须列出来源路径/URL/文件标题，不得无来源下确定结论",
+          "regex": "docs/api/_protocol\\.md|来源|source|path"
+        },
+        {
+          "id": "no-fabrication",
+          "desc": "无可信来源时不得从代码命名/目录/README 愿景猜业务事实（负向断言由人工复核，脚本仅提示）",
+          "manual": true
+        }
+      ]
+    }
+  }
+}

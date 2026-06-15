@@ -15,7 +15,7 @@
 - **示例约束**：示例、模板、候选格式和命令片段必须标明其示例/占位/待确认性质，禁止让 AI 把示例内容当作真实项目事实自动应用。
 - **禁止包装**：项目治理、候选记录和校验脚本优先放在 `docs/`、`scripts/`、`tests/` 或既有 skill 小节中；没有独立运行时触发场景的内容不得包装成默认分发 skill。
 - **校验方式**：用户要求或提交前需要检查 skill 内容时，对单个 skill 根目录运行 `node scripts/verify-skill-frontmatter.mjs --root skills/<skill-name>`；该命令不接受 `skills/` 总目录。
-- **纯净测试要求**：skill 在发布或重大修改后，必须做纯净测试验证可控性——起一个干净隔离的子代理（不带本项目 `AGENTS.md`、不注入 baseline 规则、不带历史记忆），仅以「init-project `references/` 规则 + 被测 skills」作为输入，给最小任务指令，不追加任何引导性提示词，观察子代理能否仅凭规则与 skill 自身产出符合预期的产物。纯净测试暴露的缺口（缺失约定、歧义触发条件、产物结构缺项）必须先回填到 skill，再复测；不得用额外提示词在测试中"补救"掩盖 skill 缺陷。
+- **纯净测试要求**：skill 在发布或重大修改后，必须做纯净测试验证可控性——起一个干净隔离的子代理（不带本项目 `AGENTS.md`、不注入 baseline 规则、不带历史记忆），仅以「init-project `references/` 规则 + 被测 skills」作为输入，给最小任务指令，不追加任何引导性提示词，观察子代理能否仅凭规则与 skill 自身产出符合预期的产物。用 `node scripts/purity/purity-check.mjs <skill>` 组装纯净上下文包，用环境内任意干净 agent 执行（脚本执行器无关，不绑定特定 CLI），再用 `--check <产物文件>` 核对断言；完整流程见 `docs/delivery/purity-check.md`。纯净测试暴露的缺口（缺失约定、歧义触发条件、产物结构缺项）必须先回填到 skill，再复测；不得用额外提示词在测试中"补救"掩盖 skill 缺陷。
 
 ## 变更分级与确认门禁
 
