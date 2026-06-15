@@ -1,3 +1,12 @@
+---
+ruleScope: out-api
+globs:
+  - "**/*.ts"
+  - "**/*.js"
+  - "**/*.java"
+description: 设计或修改对外暴露的 HTTP/GraphQL/RPC/Webhook/事件 API 契约、错误码、鉴权或分页时遵循
+loadTiming: 设计对外接口前
+---
 # 后端 API 契约文档规范
 
 ## 触发边界

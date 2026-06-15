@@ -1,3 +1,12 @@
+---
+ruleScope: node
+globs:
+  - "**/*.ts"
+  - "**/*.js"
+  - "**/*.mjs"
+description: 编写、重构或评审非 NestJS 的 Node.js 后端代码、分层架构或防腐边界时遵循
+loadTiming: 写 Node 后端代码前
+---
 # Node.js 后端工程架构与代码规范
 
 在执行任何非 NestJS 的 Node.js 后端代码生成、重构或评审任务时，必须严格遵守以下物理边界与编码红线。

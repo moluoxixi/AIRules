@@ -38,19 +38,44 @@ function createMinimalDeliveryRoot(): string {
   const root = fs.mkdtempSync(path.join(os.tmpdir(), 'airules-delivery-'))
   fs.mkdirSync(path.join(root, 'rules'), { recursive: true })
   fs.mkdirSync(path.join(root, 'skills', 'demo-skill'), { recursive: true })
+  fs.mkdirSync(path.join(root, 'skills', 'init-project', 'references'), { recursive: true })
   fs.mkdirSync(path.join(root, 'scripts'), { recursive: true })
   fs.mkdirSync(path.join(root, 'docs', 'delivery'), { recursive: true })
 
   fs.writeFileSync(path.join(root, 'rules', 'AGENTS.md'), [
     '# AIRules',
-    '## 核心规则',
-    '- 禁止错误绕行，失败必须显式暴露。',
     '## 交付验证',
     '- 检查状态统一使用 `PASS`、`FAIL`、`MISSING`、`NOT RUN`、`N/A`。',
     '## 变更分级与确认门禁',
     '- L0 可直接执行；L1 既有边界内执行；L2 必须先确认。',
     '## 澄清门禁',
     '- 命中 L2 或关键事实缺失时先输出澄清问题清单。',
+  ].join('\n'))
+
+  // 错误暴露契约已下沉到 init-project 的按需代码核心纪律 code-core.md
+  fs.writeFileSync(path.join(root, 'skills', 'init-project', 'references', 'code-core.md'), [
+    '---',
+    'ruleScope: code',
+    'description: 写任何代码时遵循',
+    '---',
+    '# 代码实现核心纪律',
+    '- 禁止错误绕行，失败必须显式暴露。',
+  ].join('\n'))
+
+  // 引入 init-project skill 后，control reference 检查要求 common/control.md 与 inject-rules.mjs 齐备
+  fs.mkdirSync(path.join(root, 'skills', 'init-project', 'references', 'common'), { recursive: true })
+  fs.mkdirSync(path.join(root, 'skills', 'init-project', 'scripts'), { recursive: true })
+  fs.writeFileSync(path.join(root, 'skills', 'init-project', 'references', 'common', 'control.md'), [
+    '# 变更分级与确认门禁',
+    '- L0 L1 L2 分级执行。',
+    '## 澄清门禁',
+    '- 命中 L2 时先澄清。',
+    '## 开发链路控制',
+    '- 按环节顺序推进。',
+  ].join('\n'))
+  fs.writeFileSync(path.join(root, 'skills', 'init-project', 'scripts', 'inject-rules.mjs'), [
+    '#!/usr/bin/env node',
+    '// references/common/control.md 始终注入',
   ].join('\n'))
 
   fs.writeFileSync(path.join(root, 'skills', 'demo-skill', 'SKILL.md'), [

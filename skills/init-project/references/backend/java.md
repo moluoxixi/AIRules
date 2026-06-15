@@ -1,3 +1,10 @@
+---
+ruleScope: java
+globs:
+  - "**/*.java"
+description: 编写、重构或评审 Java / Spring Boot 后端代码、分层架构或设计纪律时遵循
+loadTiming: 写 Java 代码前
+---
 # Java & Spring Boot 工程架构与代码规范
 
 在执行 Java 后端代码生成、重构或评审任务时，必须在当前任务目标与改动范围内严格遵守以下物理边界与编码红线。

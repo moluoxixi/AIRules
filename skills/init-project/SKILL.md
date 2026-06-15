@@ -84,13 +84,15 @@ node <init-project-skill>/scripts/scaffold-docs.mjs <your-project> <detect-stack
 
 | `detect-stack.mjs` 输出 stack | 追加注入 references |
 |---|---|
-| `frontend` | `frontend/code.md` |
-| `component-library` | `frontend/out-components.md` |
-| `component-consumer` | `frontend/components.md` |
-| `vue` | `frontend/vue.md` |
-| `node` | `backend/out-api.md`、`backend/node.md` |
-| `nestjs` | `backend/out-api.md`、`backend/nestjs.md` |
-| `java` | `backend/out-api.md`、`backend/java.md` |
+| `frontend` | `code-core.md`、`frontend/code.md` |
+| `component-library` | `code-core.md`、`frontend/out-components.md` |
+| `component-consumer` | `code-core.md`、`frontend/components.md` |
+| `vue` | `code-core.md`、`frontend/vue.md` |
+| `node` | `code-core.md`、`backend/out-api.md`、`backend/node.md` |
+| `nestjs` | `code-core.md`、`backend/out-api.md`、`backend/nestjs.md` |
+| `java` | `code-core.md`、`backend/out-api.md`、`backend/java.md` |
+
+`code-core.md` 是语言无关的代码实现核心纪律（边界校验、禁止冗余防御、禁止错误绕行、禁止 lint 绕行、优先成熟库），凡检测到任何含生产代码的 stack 都必须注入，且只注入一次（多 stack 命中时不重复传入）。它带 `ruleScope: code` 与跨语言 globs，走按需路由表，不再常驻全局 baseline。检测不到任何代码 stack（纯文档/配置仓库）时不注入。
 
 执行内容注入脚本：
 
@@ -100,6 +102,16 @@ node <init-project-skill>/scripts/inject-rules.mjs <your-project> <init-project-
 ```
 
 无法判断技术栈时不传额外语言规则，脚本仍会自动注入 `airules-base.md`（仅新建或空 `AGENTS.md` 时）、`common/control.md`、`common/docs.md` 和 `common/subagent.md`，无需在命令中手动传入这四个文件。当目标项目不存在 `AGENTS.md` 时，脚本创建该文件；当文件已存在时，脚本将聚合后的规则内容直接追加到文件末尾，不添加额外包装标题、受控块注释或文件名标题。
+
+### 核心纪律 inline vs 语言规范按需路由
+
+`inject-rules.mjs` 按 reference 文件是否带 `ruleScope` frontmatter 分两条路径处理，目的是让常驻上下文只保留全场景核心纪律，语言/框架规范改为按场景动态加载：
+
+- **核心纪律（无 frontmatter）**：`common/control.md`、`common/docs.md`、`common/subagent.md`、`airules-base.md` 以及任何不带 `ruleScope` 的 reference，正文继续 inline 进目标项目 `AGENTS.md`，全场景常驻。
+- **语言/框架规范（带 `ruleScope` frontmatter）**：`frontend/*`、`backend/*` 等规范不再 inline，正文（剥除 frontmatter）复制到目标项目 `.airules/rules/<group>/<name>.md`，并按本次实际命中的规范在 `AGENTS.md` 末尾动态渲染一张《场景规范路由》表，每个命中规范一行（触发场景 description、匹配 globs、规范文件相对路径、加载时机）。未命中的规范既不复制也不进表，纯 Java 后端不会出现任何前端规范。
+- 规范文件 frontmatter 字段：`ruleScope`（对应 `detect-stack` 的 stack 标识）、`globs`（匹配文件模式，供路由表与未来 Cursor `.mdc` 投影共用）、`description`（触发场景，AI 据此判断是否读取）、`loadTiming`（加载时机提示）。
+- 各宿主读取方式：Codex/Claude 等读 `AGENTS.md` 全量看到路由表，按 description 命中场景时主动读取对应 `.airules/rules/**` 文件；规范文件在项目内自包含、可 git 跟踪、可审计，不依赖 npm 包安装路径。
+- 路由表章节标题为 `## 场景规范路由`，参与既有标题去重；重复初始化命中同名标题时按 dedup-halt 流程由 AI 审查合并，不自动覆盖。
 
 追加前脚本会按 Markdown 标题文本去重。若待注入规则与现有 `AGENTS.md` 出现重复标题，脚本必须停止写入并报告重复标题；AI 随后读取现有 `AGENTS.md` 与待注入 references，输出规则合并审查结论，评估应合并、保留、改名还是移动到既有章节。未经审查不得自动跳过、覆盖或重复追加同名章节。
 

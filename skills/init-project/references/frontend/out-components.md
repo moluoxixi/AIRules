@@ -1,3 +1,12 @@
+---
+ruleScope: component-library
+globs:
+  - "**/*.ts"
+  - "**/*.tsx"
+  - "**/*.vue"
+description: 开发对外发布的组件库、Design System、UI SDK，维护对外组件契约或输出文档时遵循
+loadTiming: 改动对外组件契约前
+---
 # 前端组件库输出规范
 
 ## 触发边界

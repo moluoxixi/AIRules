@@ -187,6 +187,67 @@ it('init-project inject-rules - AGENTS.md 标题重复时停止写入并要求 A
   assert.equal(fs.readFileSync(agentsPath, 'utf8'), originalContent)
 }))
 
+it('init-project inject-rules - 带 ruleScope frontmatter 的规范复制到 .airules/rules 并渲染路由表（不 inline 正文）', () => withTempDir('airules-inject-routed-', (tmpDir) => {
+  const projectRoot = path.join(tmpDir, 'project')
+  const scopedRef = path.join(tmpDir, 'references', 'frontend', 'demo-scoped.md')
+  const agentsPath = path.join(projectRoot, 'AGENTS.md')
+
+  fs.mkdirSync(projectRoot, { recursive: true })
+  writeFile(
+    scopedRef,
+    [
+      '---',
+      'ruleScope: demo-scoped',
+      'globs:',
+      '  - "**/*.demo"',
+      'description: 编辑 demo 文件时遵循',
+      'loadTiming: 写 demo 前',
+      '---',
+      '# Demo Scoped Rules',
+      '',
+      'scoped body line',
+      '',
+    ].join('\n'),
+  )
+
+  const result = runInjectRules(projectRoot, scopedRef)
+  const agentsContent = fs.readFileSync(agentsPath, 'utf8')
+  const copiedPath = path.join(projectRoot, '.airules', 'rules', 'frontend', 'demo-scoped.md')
+
+  assert.equal(result.status, 0, result.stderr)
+  // 规范文件被复制到 .airules/rules 下，且剥除 frontmatter 只留正文
+  assert.equal(fs.existsSync(copiedPath), true, 'scoped rule must be copied into .airules/rules')
+  const copiedContent = fs.readFileSync(copiedPath, 'utf8')
+  assert.match(copiedContent, /# Demo Scoped Rules\n\nscoped body line/)
+  assert.doesNotMatch(copiedContent, /ruleScope:/, 'copied file must not retain frontmatter')
+  // AGENTS.md 只出现路由表行，不 inline 规范正文
+  assert.match(agentsContent, /## 场景规范路由/)
+  assert.match(agentsContent, /编辑 demo 文件时遵循/)
+  assert.match(agentsContent, /`\.airules\/rules\/frontend\/demo-scoped\.md`/)
+  assert.match(agentsContent, /`\*\*\/\*\.demo`/)
+  assert.doesNotMatch(agentsContent, /scoped body line/, 'scoped rule body must NOT be inlined into AGENTS.md')
+}))
+
+it('init-project inject-rules - 无 frontmatter 的额外规范仍 inline 且不生成路由表', () => withTempDir('airules-inject-plain-', (tmpDir) => {
+  const projectRoot = path.join(tmpDir, 'project')
+  const plainRef = path.join(tmpDir, 'plain.md')
+
+  fs.mkdirSync(projectRoot, { recursive: true })
+  writeFile(plainRef, '# Plain Extra Rules\n\nplain inline body\n')
+
+  const result = runInjectRules(projectRoot, plainRef)
+  const agentsContent = fs.readFileSync(agentsPath(projectRoot), 'utf8')
+
+  assert.equal(result.status, 0, result.stderr)
+  assert.match(agentsContent, /# Plain Extra Rules\n\nplain inline body/)
+  assert.doesNotMatch(agentsContent, /## 场景规范路由/, 'no scoped rule means no routing table')
+  assert.equal(fs.existsSync(path.join(projectRoot, '.airules')), false, 'no .airules dir without scoped rules')
+}))
+
+function agentsPath(projectRoot: string): string {
+  return path.join(projectRoot, 'AGENTS.md')
+}
+
 it('init-project detect-stack - 普通前端项目不识别为组件库', () => withTempDir('airules-detect-frontend-', (tmpDir) => {
   const projectRoot = path.join(tmpDir, 'project')
 

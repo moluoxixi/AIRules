@@ -65,14 +65,25 @@ function checkRuleLayer(root) {
   }
 
   const content = fs.readFileSync(rulesPath, 'utf8')
-  const hasErrorContract = content.includes('禁止错误绕行') && content.includes('失败')
+
+  // 错误暴露契约已从全局 baseline 下沉到 init-project 的按需代码核心纪律（code-core.md）；
+  // 校验改为检查该文件，确保契约在分发体系中仍然存在，而非要求它常驻全局 baseline。
+  const codeCorePath = path.join(root, 'skills', 'init-project', 'references', 'code-core.md')
+  const codeCoreContent = fs.existsSync(codeCorePath) ? fs.readFileSync(codeCorePath, 'utf8') : ''
+  const hasErrorContract = codeCoreContent.includes('禁止错误绕行') && codeCoreContent.includes('失败')
+
   const hasDeliveryContract = content.includes('交付验证') && REQUIRED_STATUS_MARKERS.every(marker => content.includes(marker))
   const hasGradingContract = content.includes('变更分级')
     && ['L0', 'L1', 'L2'].every(level => content.includes(level))
   const hasClarifyGate = content.includes('澄清门禁')
 
-  if (!hasErrorContract || !hasDeliveryContract) {
-    fail('rule layer incomplete: rules/AGENTS.md 必须包含错误暴露和交付验证状态契约')
+  if (!hasErrorContract) {
+    fail('rule layer incomplete: skills/init-project/references/code-core.md 必须包含错误暴露契约（禁止错误绕行）')
+    return
+  }
+
+  if (!hasDeliveryContract) {
+    fail('rule layer incomplete: rules/AGENTS.md 必须包含交付验证状态契约')
     return
   }
 

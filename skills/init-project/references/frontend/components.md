@@ -1,3 +1,12 @@
+---
+ruleScope: component-consumer
+globs:
+  - "**/*.ts"
+  - "**/*.tsx"
+  - "**/*.vue"
+description: 消费外部组件库、Design System、UI SDK 或 workspace 组件包，需要接入/封装/查文档时遵循
+loadTiming: 接入外部组件库前
+---
 # 前端外部组件库文档规范
 
 ## 触发边界

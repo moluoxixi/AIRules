@@ -1,3 +1,10 @@
+---
+ruleScope: vue
+globs:
+  - "**/*.vue"
+description: 编辑或新增 Vue 单文件组件、组合式 API、defineProps/defineModel、组件契约或组件测试时遵循
+loadTiming: 写 Vue 代码前
+---
 # Vue 工程代码规范
 
 在执行 Vue 前端代码生成、重构或评审任务时，必须先确认当前项目的 Vue 版本、构建配置、测试入口和既有组件写法；不得为了套用本规范擅自升级依赖或伪造验证入口。

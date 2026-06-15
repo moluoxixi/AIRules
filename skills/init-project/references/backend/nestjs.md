@@ -1,3 +1,10 @@
+---
+ruleScope: nestjs
+globs:
+  - "**/*.ts"
+description: 编写、重构或评审 NestJS 模块、控制器、provider、管道或守卫等后端代码时遵循
+loadTiming: 写 NestJS 代码前
+---
 # NestJS 工程架构与代码规范
 
 在执行任何 NestJS 后端代码生成、重构或评审任务时，必须严格遵守以下物理边界与编码红线。
