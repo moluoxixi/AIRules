@@ -195,6 +195,8 @@ Moluoxixi AIRules 通过自动化投影，支持不断增长的 AI 代理生态�
 | **components-docs** | 生成或更新 `docs/components/` 下的前端组件文档，并维护文档导航 |
 | **test-docs** | 生成或更新 `docs/test/` 下的测试设计与验证文档，并维护文档导航 |
 | **retrospective-correction** | 处理实现偏差：小偏差直接修复并说明，重大偏差先确认修正计划再归因 |
+| **handoff** | 会话需中断或换 agent 接手时，把进展压缩成交接文档（写入临时目录、引用既有产物、脱敏），供新 agent 直接接力 |
+| **architecture-deepening** | 改进架构、找重构机会、消除浅模块时，基于「深模块」视角产出深化候选清单与跨缝测试策略 |
 
 > 第一方 skills 可以继续放在嵌套源目录下，安装时会展平为 `vendor/skills/<skill-name>`；仓库级规则位于 `rules/AGENTS.md`，CodeGraph 安装命令位于 `constants/skills.ts` 的 vendor setup。
 

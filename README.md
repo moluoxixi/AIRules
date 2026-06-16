@@ -196,6 +196,8 @@ Moluoxixi AIRules supports a growing ecosystem of AI agents through automated pr
 | **components-docs** | Generates or updates frontend component docs under `docs/components/` and maintains docs navigation |
 | **test-docs** | Generates or updates test design and validation docs under `docs/test/` and maintains docs navigation |
 | **retrospective-correction** | Handles implementation drift with lightweight direct fixes for minor deviations and confirmed correction plans for major deviations |
+| **handoff** | When a session must pause or hand off to another agent, compacts progress into a handoff doc (written to temp dir, references existing artifacts, redacted) for a fresh agent to pick up |
+| **architecture-deepening** | When improving architecture, finding refactor opportunities, or eliminating shallow modules, produces deepening candidates and cross-seam testing strategy based on the "deep module" lens |
 
 > First-party skills may live under nested source folders, but installation flattens them into `vendor/skills/<skill-name>`. First-party rules live in `rules/AGENTS.md`; CodeGraph install commands live in the vendor setup section of `constants/skills.ts`.
 

@@ -197,15 +197,19 @@ export const vendors: VendorsConfig = [
         sourceBaseDir: 'skills',
         skills: [
           'architecture-docs',
+          'architecture-deepening',
           'api-docs',
           'backend-impl-plan',
           'components-docs',
           'frontend-impl-plan',
+          'handoff',
           'init-project',
           'knowledge-search',
           'prd-docs',
           'retrospective-correction',
           'test-docs',
+          // TODO(未来开启): 'caveman' —— 超压缩沟通模式，用户显式触发省 token。
+          // 与项目默认结构化高密度输出规范并存，确认不冲突后再纳入默认分发。
         ],
       },
     ],
