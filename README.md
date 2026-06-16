@@ -53,8 +53,8 @@ AIRules is a **composable AI skill distribution system**. The core idea is simpl
 **Use as a Node CLI (local development / npm link):**
 
 ```bash
-npm install
-npm run build
+npm install -g pnpm
+pnpm build
 npm link
 airules sync --host all
 ```
