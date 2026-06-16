@@ -251,3 +251,59 @@ export const vendors = [
     )
   })
 })
+
+it('tool - syncToHosts 在 workspace 第一方 vendor 且安装目录即仓库根目录时不漏发第一方 skills', async () => {
+  // 回归用例：用户把仓库安装进 ~/.moluoxixi（repoRoot === moluoHome），
+  // 且第一方 vendor 为 sourceMode:"workspace"（不克隆到 vendor/repos），
+  // 此时第一方 skills 仅能经 syncFirstPartySkillsToVendor 从 repoRoot/skills 投影到 vendor/skills。
+  // 旧逻辑用 isSamePath(repoRoot, moluoHome) 守卫跳过该调用，导致第一方 skills 整体漏发。
+  await withTempDirAsync('airules-tool-workspace-installed-', async (tmpDir) => {
+    const userHome = path.join(tmpDir, 'user')
+    const moluoHome = path.join(userHome, '.moluoxixi')
+    const codexHome = path.join(userHome, '.codex')
+
+    writeFile(path.join(moluoHome, 'package.json'), '{"type":"module"}\n')
+    writeFile(path.join(moluoHome, 'constants', 'skills.js'), `
+export const vendors = [
+  {
+    name: 'moluoxixi',
+    official: true,
+    source: 'https://example.test/AIRules.git',
+    sourceMode: 'workspace',
+    projections: [
+      {
+        kind: 'skills',
+        sourceBaseDir: 'skills',
+        skills: ['api-docs'],
+      },
+    ],
+  },
+]
+`)
+    writeFile(path.join(moluoHome, 'rules', 'AGENTS.md'), 'baseline\n')
+    // 第一方 skill 源直接位于 repoRoot/skills（=== moluoHome/skills），无 vendor/repos 克隆。
+    const firstPartySkill = path.join(moluoHome, 'skills', 'api-docs')
+    writeFile(path.join(firstPartySkill, 'SKILL.md'), 'first-party-source\n')
+    fs.mkdirSync(codexHome, { recursive: true })
+
+    await syncToHosts({
+      repoRoot: moluoHome,
+      home: moluoHome,
+      userHome,
+      host: 'codex',
+      skipVendors: true,
+      verify: false,
+    })
+
+    // 第一方 skill 必须出现在 vendor/skills 并指回 repoRoot/skills 源目录。
+    assert.equal(
+      realLinkPath(path.join(moluoHome, 'vendor', 'skills', 'api-docs')),
+      realLinkPath(firstPartySkill),
+    )
+    // 并最终投影到宿主。
+    assert.equal(
+      realLinkPath(path.join(codexHome, 'skills', 'api-docs')),
+      realLinkPath(firstPartySkill),
+    )
+  })
+})

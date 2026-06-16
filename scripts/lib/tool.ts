@@ -128,9 +128,11 @@ async function syncVendorsIfNeeded(paths: ToolPaths, skipVendors: boolean) {
 }
 
 function syncLocalSkillLayers(paths: ToolPaths) {
-  if (!isSamePath(paths.repoRoot, paths.moluoHome)) {
-    syncFirstPartySkillsToVendor(paths.repoRoot, paths.moluoHome)
-  }
+  // 第一方 skills 链路恒为 <repoRoot>/skills/* → <moluoHome>/vendor/skills/*。
+  // 源目录 skills/ 与目标 vendor/skills/ 永不相同，即使仓库被安装进 ~/.moluoxixi
+  // （repoRoot === moluoHome）也不会产生自链接，因此必须无条件投影；
+  // 否则该布局下 10 个第一方 skills 会被整体漏发。
+  syncFirstPartySkillsToVendor(paths.repoRoot, paths.moluoHome)
 
   syncFirstPartySkillsToVendor(path.join(paths.moluoHome, 'local'), paths.moluoHome)
 }

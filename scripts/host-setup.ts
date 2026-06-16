@@ -8,7 +8,6 @@ import {
   ensureGlobalSkillLink,
   ensureInstallRoot,
   getDefaultInstallPaths,
-  isSamePath,
   linkHostBaseline,
   projectHostById,
   rebuildVendorSkillLinks,
@@ -126,9 +125,10 @@ async function main() {
     homeDir: paths.moluoHome,
     manifestPath: path.join(repoRoot, 'constants', 'skills.js'),
   })
-  if (!isSamePath(repoRoot, paths.moluoHome)) {
-    syncFirstPartySkillsToVendor(repoRoot, paths.moluoHome)
-  }
+  // 第一方 skills 链路恒为 <repoRoot>/skills/* → <moluoHome>/vendor/skills/*，
+  // 源与目标永不相同；即使 repoRoot === moluoHome（仓库装进 ~/.moluoxixi）也必须投影，
+  // 否则第一方 skills 会被整体漏发。
+  syncFirstPartySkillsToVendor(repoRoot, paths.moluoHome)
   syncFirstPartySkillsToVendor(path.join(paths.moluoHome, 'local'), paths.moluoHome)
   ensureGlobalSkillLink(paths)
 
