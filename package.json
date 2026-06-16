@@ -15,8 +15,10 @@
     "LICENSE",
     "README-zh.md",
     "README.md",
+    "agents",
     "dist",
     "docs",
+    "mcp",
     "rules",
     "scripts",
     "skills"
