@@ -4,6 +4,16 @@
 > 规则、不带历史记忆的干净隔离环境里，仅凭 `init-project/references/` 规则 + 被测 skill 自身，
 > 能否产出符合 skill 声明的产物。它把 `AGENTS.md` 中「纯净测试要求」的文字约定落成可执行流程。
 
+## 方法论：把 TDD 套在 skill 上（RED-GREEN-REFACTOR）
+
+纯净校验本质是「对流程文档做 TDD」，吸收自成熟的 skill 创作方法论（参考 `superpowers:writing-skills` 的 RED-GREEN-REFACTOR）。三步流程与 TDD 一一对应：
+
+- **RED（看它失败）**：写 skill 前（或重大修改前），先在干净隔离环境里跑最小任务，观察 agent 仅凭通用规则会怎么做、漏掉什么、用什么借口绕开约束。没看过裸跑失败，就不知道 skill 该堵哪个洞。
+- **GREEN（写到通过）**：针对裸跑暴露的具体缺口写/改 skill——补触发条件、输出边界、产物结构、失败处理，让干净 agent 现在能产出合规产物。只补堵到的洞，不为臆想场景堆内容。
+- **REFACTOR（堵剩余漏洞）**：纯净 run 又发现新的规避或缺口，就把对应反例和约束显式写进 skill，再重跑复测，直到产物稳定合规。
+
+对应到本流程：`assemble` 出纯净包 → 干净 agent 跑（RED/复测）→ `--check` 核对断言（GREEN 判定）→ 缺口回填 skill 再跑（REFACTOR）。核心纪律与 TDD 同：**缺口先回填 skill，绝不用额外提示词在测试里补救掩盖**。
+
 ## 何时必须跑
 
 - 新增 first-party skill 后、发布前。

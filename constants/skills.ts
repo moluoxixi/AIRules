@@ -179,9 +179,28 @@ export const vendors: VendorsConfig = [
     source: 'https://github.com/obra/superpowers.git',
     projections: [
       {
-        kind: 'namespace',
-        sourceDir: 'skills',
-        output: 'superpowers',
+        // 精选投影：只保留与项目治理链互补、且不与第一方治理 skill 冲突或重名的通用方法论。
+        // 不再 namespace 全量安装，原因：
+        // - systematic-debugging / verification-before-completion / requesting-code-review /
+        //   receiving-code-review 已第一方化（见下方 moluoxixi 投影），剥离了 Claude-Code 专用
+        //   引用并对齐本项目子代理评审协议；superpowers 原版不再分发，避免 vendor/skills 扁平
+        //   命名空间撞名。
+        // - brainstorming（HARD-GATE 强制任何实现前先出设计等用户批准）与本项目 L0/L1 可直接
+        //   执行的变更分级门禁、以及用户「直接执行、反感反复确认」的偏好冲突，不分发。
+        // - using-superpowers 是框架自指胶水（引用 Claude Code Skill 工具、1% 即必须调用），
+        //   与本项目按需加载机制重复，不分发。
+        kind: 'skills',
+        sourceBaseDir: 'skills',
+        skills: [
+          'dispatching-parallel-agents',
+          'subagent-driven-development',
+          'executing-plans',
+          'finishing-a-development-branch',
+          'using-git-worktrees',
+          'writing-plans',
+          'writing-skills',
+          'test-driven-development',
+        ],
       },
     ],
   },
@@ -208,6 +227,14 @@ export const vendors: VendorsConfig = [
           'prd-docs',
           'retrospective-correction',
           'test-docs',
+          // 第一方化的关键环节 skill：吸收 superpowers 方法论内核（根因优先调试、证据先于
+          // 声明、起评审子代理、非表演式接受反馈），剥离 Claude-Code 专用引用（Task/Skill 工具、
+          // code-reviewer.md 模板、superpowers: 前缀），对齐本项目子代理评审协议与中文结构化口径。
+          // 因 vendor/skills 为扁平命名空间，superpowers 投影已不再分发这 4 个原版以避免撞名。
+          'systematic-debugging',
+          'verification-before-completion',
+          'requesting-code-review',
+          'receiving-code-review',
           // TODO(未来开启): 'caveman' —— 超压缩沟通模式，用户显式触发省 token。
           // 与项目默认结构化高密度输出规范并存，确认不冲突后再纳入默认分发。
         ],

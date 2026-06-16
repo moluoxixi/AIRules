@@ -636,8 +636,28 @@ it('vendors 配置 - 使用 OpenAI Playwright 并移除过时技能', () => {
         target: 'vendor/skills/test-docs',
         setup: undefined,
       },
+      {
+        source: 'skills/systematic-debugging',
+        target: 'vendor/skills/systematic-debugging',
+        setup: undefined,
+      },
+      {
+        source: 'skills/verification-before-completion',
+        target: 'vendor/skills/verification-before-completion',
+        setup: undefined,
+      },
+      {
+        source: 'skills/requesting-code-review',
+        target: 'vendor/skills/requesting-code-review',
+        setup: undefined,
+      },
+      {
+        source: 'skills/receiving-code-review',
+        target: 'vendor/skills/receiving-code-review',
+        setup: undefined,
+      },
     ],
-    '第一方 skill 默认投影初始化、知识检索、项目文档写作与偏差修正技能',
+    '第一方 skill 默认投影初始化、知识检索、项目文档写作、偏差修正与第一方化的调试/验证/评审治理技能',
   )
 })
 
@@ -674,7 +694,7 @@ it('vendors 配置 - 默认不接入静态代码规范供应商', () => {
   assert.strictEqual(vendors.vercelAgentSkills, undefined, '不应默认安装 Vercel React/React Native 代码技能')
 })
 
-it('vendors 配置 - Superpowers 全量安装 skills 命名空间', () => {
+it('vendors 配置 - Superpowers 精选投影互补方法论 skills', () => {
   const vendors: Record<string, any> = {}
 
   walkVendorTree(configuredVendors, [], vendors)
@@ -689,13 +709,22 @@ it('vendors 配置 - Superpowers 全量安装 skills 命名空间', () => {
       setup: link.setup,
     })),
     [
-      {
-        kind: 'namespace-dir',
-        source: 'skills',
-        target: 'vendor/skills/superpowers',
-        setup: undefined,
-      },
+      { kind: 'skill', source: 'skills/dispatching-parallel-agents', target: 'vendor/skills/dispatching-parallel-agents', setup: undefined },
+      { kind: 'skill', source: 'skills/subagent-driven-development', target: 'vendor/skills/subagent-driven-development', setup: undefined },
+      { kind: 'skill', source: 'skills/executing-plans', target: 'vendor/skills/executing-plans', setup: undefined },
+      { kind: 'skill', source: 'skills/finishing-a-development-branch', target: 'vendor/skills/finishing-a-development-branch', setup: undefined },
+      { kind: 'skill', source: 'skills/using-git-worktrees', target: 'vendor/skills/using-git-worktrees', setup: undefined },
+      { kind: 'skill', source: 'skills/writing-plans', target: 'vendor/skills/writing-plans', setup: undefined },
+      { kind: 'skill', source: 'skills/writing-skills', target: 'vendor/skills/writing-skills', setup: undefined },
+      { kind: 'skill', source: 'skills/test-driven-development', target: 'vendor/skills/test-driven-development', setup: undefined },
     ],
-    'Superpowers 应通过 namespace 递归扫描安装全部上游 skills',
+    'Superpowers 改为精选投影：只保留通用方法论，已第一方化的调试/验证/评审与冲突的 brainstorming/using-superpowers 不再分发',
+  )
+  assert.ok(
+    !vendors.superpowers.links.some((link: any) =>
+      ['systematic-debugging', 'verification-before-completion', 'requesting-code-review', 'receiving-code-review']
+        .some(name => link.target.endsWith(`/${name}`)),
+    ),
+    '第一方化的 4 个 skill 不应再出现在 superpowers 投影中，避免 vendor/skills 扁平命名空间撞名',
   )
 })
