@@ -51,3 +51,6 @@ lerna-debug.log*
 
 # 纯净校验运行产物（每次组装重生成，不入库）
 .purity-runs/
+
+# 外部知名 skills 参考资料（对标抄优点用，只读，不入库）
+.skill-references/

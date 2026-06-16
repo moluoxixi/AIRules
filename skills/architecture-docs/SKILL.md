@@ -68,18 +68,49 @@ description: 用于生成或更新 docs/architecture 下的架构文档，尤其
 
 ## 状态
 
-proposed | accepted | deprecated | superseded
+proposed | accepted | deprecated | superseded by ADR-XXXX
 
 ## 背景
 
+（让未在场者能理解为何需要此决策；技术事实经 knowledge-search 命中后标源 ID，无源标 MISSING）
+
 ## 决策
+
+（用主动语态写「我们将……」，明确包含与不包含的范围）
 
 ## 替代方案
 
+（至少 2-3 个，每个公平描述其特征与适用条件，禁止稻草人；每个标注被否原因）
+
+## 评估标准
+
+（显式列评估维度：性能/可测试性/团队熟悉度/成本/耦合度/安全边界，及各方案对比）
+
 ## 影响
 
+（必须分三类列全：正面——什么变简单；负面——什么变难、新增约束；中性。只写正面视为不合格）
+
+## 可逆性
+
+（可逆 / 部分可逆 / 不可逆 + 回退代价说明。不可逆或高代价回退的决策强制走 L2 澄清门禁）
+
 ## 后续约束
+
+（触发重新评估的条件、需监控的指标、关联待决决策）
 ```
+
+### ADR 定稿自检（全部通过才可 accepted）
+
+- [ ] 标题为简短名词短语
+- [ ] 状态明确（proposed/accepted/deprecated/superseded by ADR-XXXX）
+- [ ] 背景让未在场者能理解为何需要此决策
+- [ ] 决策为主动语态、范围清晰
+- [ ] 影响含正/负/中性三类
+- [ ] 替代方案公平、含被否原因
+- [ ] 可逆性与回退代价已标注
+- [ ] 本 ADR 可独立成文，不依赖外部文档即可读懂
+- [ ] 每条技术事实绑定 knowledge 源 ID，无来源项标 `MISSING`
+- 「背景/约束/替代方案/评估标准」的技术事实（现有技术栈、部署拓扑、性能基线、团队约束）必须先经 `knowledge-search` 命中 `airules.knowledge.json` 登记来源后引用，ADR 内以源 ID 标注；无源标 `MISSING`，禁止用通用工程常识替代项目事实。`superseded by` 取代旧 ADR 时，须经 knowledge-search 确认旧 ADR 存在并同步更新 `docs/architecture/decisions/index.md`。
 
 ## 示例
 
