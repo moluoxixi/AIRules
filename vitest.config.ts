@@ -2,6 +2,13 @@ import { defineConfig } from 'vitest/config'
 
 export default defineConfig({
   test: {
+    exclude: [
+      '**/node_modules/**',
+      '**/dist/**',
+      '.skill-references/**',
+      'vendor/**',
+      '.cache-git/**',
+    ],
     coverage: {
       provider: 'v8',
       reporter: ['text', 'lcov'],

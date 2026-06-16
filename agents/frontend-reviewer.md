@@ -15,6 +15,8 @@ description: 前端实现编码完成、提交 PR 前需要对前端改动做独
 
 前端专项：门面/统一入口与目录边界（无 Deep Import、职责目录有 `index.ts`）、组件契约（Props/Emits/Expose/类型收敛）、状态与响应式正确性、交互与可访问性、空态/错误态/加载态处理、性能（重渲染、包体积、懒加载、大列表虚拟化）、前端交互测试是否覆盖关键路径与边界。
 
+来源可追溯：核对实现与计划中的组件用法、API 调用契约、字段口径是否可回指 `airules.knowledge.json` 登记来源（`docs/components/`、`docs/out-components/`、`docs/api/`）；凭空捏造组件用法、与上游契约冲突或无来源支撑的项判 `MISSING`/`FAIL`，不得静默放行。
+
 ## 写入边界
 
 只读评审，不改任何代码。`FAIL`/`MISSING` 项回传给编码 agent 修复后再复审。
