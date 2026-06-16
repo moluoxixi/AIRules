@@ -1,6 +1,5 @@
 ---
 name: architecture-deepening
-description: 用于用户要改进架构、找重构机会、消除浅模块、降低模块耦合、提升可测试性与 AI 可导航性，或说“深化架构/找重构点/这块太碎了”时，基于《A Philosophy of Software Design》的“深模块”视角产出深化建议。
 ---
 
 # Architecture Deepening

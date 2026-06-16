@@ -1,6 +1,5 @@
 ---
 name: components-docs
-description: 用于生成或更新组件契约文档时触发。两类：消费方 docs/components 记录外部提供给本项目消费的组件库（如 Element Plus、Ant Design、内部 UI SDK）的使用约束；提供方 docs/out-components 记录本项目自己开发对外发布的组件库契约。涉及外部 UI 依赖、Props/Events/Slots、交互状态、可访问性或示例用法落文档时触发；纯业务/页面私有组件不触发。
 ---
 
 # Components Docs

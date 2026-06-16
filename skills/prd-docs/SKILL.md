@@ -1,6 +1,5 @@
 ---
 name: prd-docs
-description: 用于生成或更新 docs/prds 下的需求文档，尤其是业务模块、用户流程、字段口径、验收标准、需求变更或联调前需要补齐 PRD 时触发。
 ---
 
 # PRD Docs

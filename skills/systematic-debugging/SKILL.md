@@ -1,6 +1,5 @@
 ---
 name: systematic-debugging
-description: 用于遇到任何 bug、测试失败、构建失败或非预期行为，在提出修复方案之前定位根因时触发；尤其在时间紧迫、想走捷径打补丁、或已经试过多次修复仍未解决时使用。
 ---
 
 # Systematic Debugging（系统化调试）

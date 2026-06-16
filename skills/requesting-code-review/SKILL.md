@@ -1,6 +1,5 @@
 ---
 name: requesting-code-review
-description: 用于实现编码完成、完成重要功能、或提交 PR 前需要由独立评审员把关时触发；起一个不继承主会话历史的评审员子代理，在问题扩散前发现它们。强调评审趁早、评审常态化。
 ---
 
 # Requesting Code Review（请求代码评审）

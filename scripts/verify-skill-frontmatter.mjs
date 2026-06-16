@@ -145,18 +145,21 @@ function checkFrontmatterFields(fields, root) {
     fail(`frontmatter name 必须等于目录名：${expectedName}`)
   }
 
+  // description 可选：skill 可由 agent 显式按名加载或由编排流程点名，不依赖 AI 扫描 description
+  // 主动触发；省略 description 即表示该 skill 不参与主代理的自动触发，避免污染主上下文。
+  // 但一旦写了 description，就必须说明触发时机/场景，不得写成泛泛能力摘要。
   const description = fields.get('description')
-  if (!description) {
-    fail('frontmatter 缺少 description；description 必须描述 AI 触发条件')
-  }
-  else if (!DESCRIPTION_TRIGGER_PATTERN.test(description)) {
+  if (description && !DESCRIPTION_TRIGGER_PATTERN.test(description)) {
     fail('frontmatter description 必须说明 AI 触发时机或触发场景')
   }
 
   if (actualName && actualName === expectedName) {
     pass('frontmatter required fields present')
     pass('frontmatter name matches folder')
-    if (description && DESCRIPTION_TRIGGER_PATTERN.test(description)) {
+    if (!description) {
+      pass('frontmatter description omitted (agent/orchestrated load only)')
+    }
+    else if (DESCRIPTION_TRIGGER_PATTERN.test(description)) {
       pass('frontmatter description trigger contract valid')
     }
   }

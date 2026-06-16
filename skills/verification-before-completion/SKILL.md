@@ -1,6 +1,5 @@
 ---
 name: verification-before-completion
-description: 用于即将声明工作已完成、已修复或已通过，以及提交、建 PR、进入下一个 task 之前触发；要求先跑验证命令、读完输出、确认结果，再做任何成功声明，证据先于断言。
 ---
 
 # Verification Before Completion（完成前验证）

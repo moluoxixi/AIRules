@@ -1,6 +1,5 @@
 ---
 name: architecture-docs
-description: 用于生成或更新 docs/architecture 下的架构文档，尤其是模块边界、分层、依赖方向、数据流、权限模型、部署拓扑、技术选型或 ADR 需要落文档时触发。
 ---
 
 # Architecture Docs

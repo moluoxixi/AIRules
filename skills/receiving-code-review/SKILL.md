@@ -1,6 +1,5 @@
 ---
 name: receiving-code-review
-description: 用于收到代码评审反馈、在落实建议之前触发，尤其当反馈不清晰或技术上存疑时；要求技术严谨与核实，而非表演式附和或盲目照搬。
 ---
 
 # Receiving Code Review（接受代码评审反馈）

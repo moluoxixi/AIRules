@@ -1,6 +1,5 @@
 ---
 name: api-docs
-description: 用于生成或更新 API 提供方 docs/out-api 或 API 消费方 docs/api 文档，尤其是后端接口、外部服务依赖、联调、OpenAPI/Swagger、错误码、Mock 数据或请求响应示例需要落文档时触发。
 ---
 
 # API Docs

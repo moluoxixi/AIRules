@@ -80,6 +80,7 @@ it('verify-skill-frontmatter 校验 YAML、目录名、description 和正文边�
   assert.notEqual(mismatchedNameResult.status, 0)
   assert.match(mismatchedNameResult.stdout, /frontmatter name 必须等于目录名：folder-name/)
 
+  // description 可选：省略时校验应通过（该 skill 由 agent 按名加载或编排点名，不靠 AI 扫描触发）。
   const missingDescriptionRoot = path.join(fs.mkdtempSync(path.join(os.tmpdir(), 'airules-missing-description-skill-')), 'missing-description-skill')
   writeSkill(missingDescriptionRoot, [
     '---',
@@ -88,8 +89,8 @@ it('verify-skill-frontmatter 校验 YAML、目录名、description 和正文边�
     ...validSkillLines('missing-description-skill').slice(4),
   ])
   const missingDescriptionResult = runScriptResult('--root', missingDescriptionRoot)
-  assert.notEqual(missingDescriptionResult.status, 0)
-  assert.match(missingDescriptionResult.stdout, /frontmatter 缺少 description/)
+  assert.strictEqual(missingDescriptionResult.status, 0)
+  assert.match(missingDescriptionResult.stdout, /frontmatter description omitted \(agent\/orchestrated load only\)/)
 
   const vagueDescriptionRoot = path.join(fs.mkdtempSync(path.join(os.tmpdir(), 'airules-vague-description-skill-')), 'vague-description-skill')
   writeSkill(vagueDescriptionRoot, validSkillLines('vague-description-skill', '这是一个很有用的 skill。'))

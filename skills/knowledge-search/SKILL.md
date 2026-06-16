@@ -1,6 +1,5 @@
 ---
 name: knowledge-search
-description: 用于用户要求查找项目知识、历史约定、业务资料、架构/API/组件/测试来源，或需要通过登记知识源定位证据时触发。
 ---
 
 # Knowledge Search

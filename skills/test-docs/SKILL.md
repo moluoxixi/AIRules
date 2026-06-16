@@ -1,6 +1,5 @@
 ---
 name: test-docs
-description: 用于生成或更新 docs/test 下的测试文档，尤其是测试策略、用例矩阵、联调验证、回归范围、数据准备或开发评审前需要测试报告时触发。
 ---
 
 # Test Docs
