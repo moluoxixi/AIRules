@@ -30,7 +30,7 @@
     "prepack": "npm run build",
     "lint": "eslint --fix",
     "lint:check": "eslint .",
-    "presync": "npm install -g pnpm && pnpm install && git pull",
+    "presync": "git pull && command -v pnpm >/dev/null 2>&1 || npm install -g pnpm && pnpm install",
     "setup": "tsx scripts/cli.ts sync",
     "sync": "tsx scripts/cli.ts sync --host all",
     "sync:update-lock": "tsx scripts/sync-vendors.ts --update-lock",
