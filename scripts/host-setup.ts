@@ -138,13 +138,15 @@ async function main() {
 
   for (const host of targets) {
     try {
-      const { success } = projectHostById(host, userHome, paths.moluoHome)
+      const { success, baselineProjected } = projectHostById(host, userHome, paths.moluoHome)
       if (success) {
-        const baselineTarget = linkHostBaseline({
-          moluoHome: paths.moluoHome,
-          host,
-          userHome,
-        })
+        const baselineTarget = baselineProjected
+          ? linkHostBaseline({
+              moluoHome: paths.moluoHome,
+              host,
+              userHome,
+            })
+          : undefined
 
         console.log(`[host] ${host} - 配置完成`)
         if (baselineTarget) {

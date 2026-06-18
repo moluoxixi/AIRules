@@ -63,6 +63,15 @@ it('verifyHost - 宿主 skills 目录缺失时返回失败', async () => {
   })
 })
 
+it('verifyHost - MCP-only Qoder 不要求 skills 目录', async () => {
+  await withTempHome(async (userHome, moluoHome) => {
+    fs.mkdirSync(path.join(userHome, 'AppData', 'Roaming', 'Qoder', 'SharedClientCache'), { recursive: true })
+    createVendorSkill(moluoHome, 'api-docs')
+
+    assert.equal(await verifyHost('qoder', moluoHome), true)
+  })
+})
+
 it('verifyHost - 校验有效链接、物理目录和缺失技能', async () => {
   await withTempHome(async (userHome, moluoHome) => {
     createVendorSkill(moluoHome, 'linked')

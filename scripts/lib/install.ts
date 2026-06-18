@@ -774,7 +774,7 @@ function readHostConfigForMerge(targetFile: string): string {
     removePath(targetFile)
     return ''
   }
-  return existsSync(targetFile) ? readFileSync(targetFile, 'utf8') : ''
+  return existsSync(targetFile) ? readFileSync(targetFile, 'utf8').replace(/^\uFEFF/u, '') : ''
 }
 
 /**
@@ -784,13 +784,34 @@ function readHostConfigForMerge(targetFile: string): string {
  * - TOML 宿主（Codex）：以 AIRULES 托管块写 [mcp_servers.<name>] 表，幂等替换，保留块外内容。
  * 源缺失时 no-op（不写文件、不报错）。映射依据见 docs/architecture/host-agent-mcp-mapping.md。
  */
-function projectMcpToHost(moluoHome: string, hostHome: string, mcp: McpProjection) {
+function applyMcpServerOverrides(servers: Record<string, unknown>, overrides: McpProjection['serverOverrides']): Record<string, unknown> {
+  if (!overrides || Object.keys(overrides).length === 0) {
+    return servers
+  }
+
+  const projected: Record<string, unknown> = {}
+  for (const [name, value] of Object.entries(servers)) {
+    const override = overrides[name]
+    if (!override) {
+      projected[name] = value
+      continue
+    }
+    const base = typeof value === 'object' && value !== null && !Array.isArray(value)
+      ? value as Record<string, unknown>
+      : {}
+    projected[name] = { ...base, ...override }
+  }
+  return projected
+}
+
+function projectMcpToHost(moluoHome: string, mcpHome: string, mcp: McpProjection) {
   const servers = readNeutralMcpServers(moluoHome)
   if (!servers) {
     return
   }
+  const projectedServers = applyMcpServerOverrides(servers, mcp.serverOverrides)
 
-  const targetDir = mcp.relDir === '.' ? hostHome : path.join(hostHome, mcp.relDir)
+  const targetDir = mcp.relDir === '.' ? mcpHome : path.join(mcpHome, mcp.relDir)
   const targetFile = path.join(targetDir, mcp.fileName)
   mkdirSync(targetDir, { recursive: true })
 
@@ -805,11 +826,14 @@ function projectMcpToHost(moluoHome: string, hostHome: string, mcp: McpProjectio
         throw new Error(`宿主 MCP 配置解析失败 ${targetFile}（请修复其 JSON 语法后重试）: ${String(error)}`)
       }
     }
+    if (mcp.defaultTopLevel) {
+      existing = { ...mcp.defaultTopLevel, ...existing }
+    }
     // 浅合并，用户优先：只补用户尚未配置的 server，绝不覆盖用户手写的同名 server（含其调过的参数）。
     const existingServers = (typeof existing[mcp.serversKey] === 'object' && existing[mcp.serversKey] !== null)
       ? existing[mcp.serversKey] as Record<string, unknown>
       : {}
-    existing[mcp.serversKey] = { ...servers, ...existingServers }
+    existing[mcp.serversKey] = { ...projectedServers, ...existingServers }
     writeFileSync(targetFile, `${JSON.stringify(existing, null, 2)}\n`, 'utf8')
     return
   }
@@ -827,7 +851,7 @@ function projectMcpToHost(moluoHome: string, hostHome: string, mcp: McpProjectio
   }
 
   const tomlLines: string[] = []
-  for (const [name, value] of Object.entries(servers)) {
+  for (const [name, value] of Object.entries(projectedServers)) {
     if (userDeclared.has(name)) {
       continue
     }
@@ -871,6 +895,8 @@ export function projectToHost({
   customSkillsDirName = 'skills',
   excludedSkills = [],
   agentFormat = 'markdown',
+  projectSharedResources = true,
+  mcpHome = hostHome,
   mcp,
 }: {
   userHome: string
@@ -882,11 +908,15 @@ export function projectToHost({
   customSkillsDirName?: string
   excludedSkills?: string[]
   agentFormat?: AgentFormat
+  projectSharedResources?: boolean
+  mcpHome?: string
   mcp?: McpProjection
 }) {
-  projectSharedSkillsHost(userHome, hostHome, moluoHome, customSkillsDirName, excludedSkills, agentFormat)
+  if (projectSharedResources) {
+    projectSharedSkillsHost(userHome, hostHome, moluoHome, customSkillsDirName, excludedSkills, agentFormat)
+  }
   if (mcp) {
-    projectMcpToHost(moluoHome, hostHome, mcp)
+    projectMcpToHost(moluoHome, mcpHome, mcp)
   }
   if (!projectBaseline) {
     return
@@ -928,18 +958,22 @@ export function projectHostById(
   host: string,
   userHome: string,
   moluoHome: string,
-): { success: boolean, hostBaselineFile: string } {
+): { success: boolean, hostBaselineFile: string, baselineProjected: boolean } {
   const config = findHostConfig(host)
   if (!config) {
     throw new Error(`Unknown host: ${host}`)
   }
 
-  const { hostHome, hostBaselineFile, projectBaseline, baselineMode, skillsDirName, excludedSkills, agentFormat, mcp } = resolveHostPaths(config, userHome)
+  const { hostHome, hostBaselineFile, projectBaseline, projectSharedResources, baselineMode, skillsDirName, excludedSkills, agentFormat, mcpHome, mcp } = resolveHostPaths(config, userHome)
 
   const hostHomePath = path.resolve(hostHome)
-  if (!existsSync(hostHomePath)) {
+  const mcpHomePath = path.resolve(mcpHome)
+  const hasHostHome = existsSync(hostHomePath)
+  const hasMcpHome = Boolean(mcp && existsSync(mcpHomePath))
+
+  if (!hasHostHome && !hasMcpHome) {
     console.warn(`[skip] 宿主目录不存在，跳过投影: ${host} (${hostHomePath})`)
-    return { success: false, hostBaselineFile }
+    return { success: false, hostBaselineFile, baselineProjected: false }
   }
 
   projectToHost({
@@ -947,13 +981,15 @@ export function projectHostById(
     moluoHome,
     hostHome,
     hostBaselineFile,
-    projectBaseline,
+    projectBaseline: projectBaseline && hasHostHome,
     baselineMode,
     customSkillsDirName: skillsDirName,
     excludedSkills,
     agentFormat,
+    projectSharedResources: projectSharedResources && hasHostHome,
+    mcpHome,
     mcp,
   })
 
-  return { success: true, hostBaselineFile }
+  return { success: true, hostBaselineFile, baselineProjected: projectBaseline && hasHostHome }
 }

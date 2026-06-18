@@ -17,6 +17,8 @@ export type AgentFormat = 'markdown' | 'toml' | 'json' | 'agentsmd'
  * 映射依据见 docs/architecture/host-agent-mcp-mapping.md。
  */
 export interface McpProjection {
+  /** MCP 配置根目录；未声明时使用宿主 home。 */
+  homeRelPath?: string
   /** MCP 配置文件相对宿主 home 的目录片段（'.' 表示宿主 home 根） */
   relDir: string
   /** MCP 配置文件名（如 mcp.json / config.toml / .claude.json） */
@@ -25,6 +27,10 @@ export interface McpProjection {
   serversKey: string
   /** 文件格式 */
   format: 'json' | 'toml'
+  /** JSON 宿主缺省顶层字段，仅在用户文件未声明时补齐。 */
+  defaultTopLevel?: Record<string, unknown>
+  /** 特定宿主对中性 server 的字段覆盖；用户同名 server 仍优先。 */
+  serverOverrides?: Record<string, Record<string, unknown>>
 }
 
 /**
@@ -39,6 +45,8 @@ export interface HostConfig {
   baselineFileName: string
   /** 是否将 AIRules 规则基线投影到宿主基线文件 */
   projectBaseline?: boolean
+  /** 是否向宿主投影 skills / agents 共享资源 */
+  projectSharedResources?: boolean
   /** 是否参与 --host all；用于共享层这种被其它宿主复用、但不应默认覆盖基线的目标。 */
   includeInAll?: boolean
   /**
@@ -122,11 +130,69 @@ export const HOST_CONFIGS: HostConfig[] = [
     id: 'trae',
     homeRelPath: '.trae',
     baselineFileName: 'AGENTS.md',
+    mcp: {
+      homeRelPath: path.join('AppData', 'Roaming', 'Trae', 'User'),
+      relDir: '.',
+      fileName: 'mcp.json',
+      serversKey: 'mcpServers',
+      format: 'json',
+      defaultTopLevel: { inputs: [] },
+    },
   },
   {
     id: 'trae-cn',
     homeRelPath: '.trae-cn',
     baselineFileName: 'AGENTS.md',
+    mcp: {
+      homeRelPath: path.join('AppData', 'Roaming', 'Trae CN', 'User'),
+      relDir: '.',
+      fileName: 'mcp.json',
+      serversKey: 'mcpServers',
+      format: 'json',
+      defaultTopLevel: { inputs: [] },
+    },
+  },
+  {
+    id: 'trae-solo',
+    homeRelPath: '.trae-solo',
+    baselineFileName: 'AGENTS.md',
+    mcp: {
+      homeRelPath: path.join('AppData', 'Roaming', 'TRAE SOLO', 'User'),
+      relDir: '.',
+      fileName: 'mcp.json',
+      serversKey: 'mcpServers',
+      format: 'json',
+      defaultTopLevel: { inputs: [] },
+    },
+  },
+  {
+    id: 'trae-solo-cn',
+    homeRelPath: '.trae-solo-cn',
+    baselineFileName: 'AGENTS.md',
+    mcp: {
+      homeRelPath: path.join('AppData', 'Roaming', 'TRAE SOLO CN', 'User'),
+      relDir: '.',
+      fileName: 'mcp.json',
+      serversKey: 'mcpServers',
+      format: 'json',
+      defaultTopLevel: { inputs: [] },
+    },
+  },
+  {
+    id: 'qoder',
+    homeRelPath: path.join('AppData', 'Roaming', 'Qoder', 'SharedClientCache'),
+    baselineFileName: 'AGENTS.md',
+    projectBaseline: false,
+    projectSharedResources: false,
+    mcp: {
+      relDir: '.',
+      fileName: 'mcp.json',
+      serversKey: 'mcpServers',
+      format: 'json',
+      serverOverrides: {
+        codegraph: { type: 'stdio' },
+      },
+    },
   },
   {
     id: 'opencode',
@@ -162,23 +228,34 @@ export interface ResolvedHostPaths {
   hostHome: string
   hostBaselineFile: string
   projectBaseline: boolean
+  projectSharedResources: boolean
   baselineMode: 'symlink' | 'append'
   skillsDirName: string
   excludedSkills: string[]
   agentFormat: AgentFormat
+  mcpHome: string
   mcp?: McpProjection
 }
 
+function resolveUserRelativePath(userHome: string, relPath: string): string {
+  return path.join(userHome, ...relPath.split(/[\\/]+/u).filter(Boolean))
+}
+
 export function resolveHostPaths(config: HostConfig, userHome: string): ResolvedHostPaths {
-  const hostHome = path.join(userHome, ...config.homeRelPath.split(path.sep))
+  const hostHome = resolveUserRelativePath(userHome, config.homeRelPath)
+  const mcpHome = config.mcp?.homeRelPath
+    ? resolveUserRelativePath(userHome, config.mcp.homeRelPath)
+    : hostHome
   return {
     hostHome,
     hostBaselineFile: path.join(hostHome, config.baselineFileName),
     projectBaseline: config.projectBaseline ?? true,
+    projectSharedResources: config.projectSharedResources ?? true,
     baselineMode: config.baselineMode ?? 'symlink',
     skillsDirName: config.skillsDirName ?? 'skills',
     excludedSkills: config.excludedSkills ?? [],
     agentFormat: config.agentFormat ?? 'markdown',
+    mcpHome,
     mcp: config.mcp,
   }
 }

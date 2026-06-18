@@ -189,18 +189,20 @@ export async function syncToHosts(options: SyncOptions): Promise<SyncResult> {
   const failedHosts: string[] = []
 
   for (const host of resolveHostTargets(options.host)) {
-    const { success } = projectHostById(host, paths.userHome, paths.moluoHome)
+    const { success, baselineProjected } = projectHostById(host, paths.userHome, paths.moluoHome)
     if (!success) {
       skippedHosts.push(host)
       continue
     }
 
     projectedHosts.push(host)
-    linkHostBaseline({
-      moluoHome: paths.moluoHome,
-      host,
-      userHome: paths.userHome,
-    })
+    if (baselineProjected) {
+      linkHostBaseline({
+        moluoHome: paths.moluoHome,
+        host,
+        userHome: paths.userHome,
+      })
+    }
 
     if (options.verify) {
       const verified = await verifyHost(host, paths.moluoHome, paths.userHome)

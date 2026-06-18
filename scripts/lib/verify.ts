@@ -17,12 +17,17 @@ export async function verifyHost(host: string, moluoHome: string, userHome = os.
   if (!config)
     return false
 
-  const { hostHome, skillsDirName, excludedSkills } = resolveHostPaths(config, userHome)
+  const { hostHome, skillsDirName, excludedSkills, projectSharedResources } = resolveHostPaths(config, userHome)
 
   const resolvedHostHome = path.resolve(hostHome)
   if (!existsSync(resolvedHostHome)) {
     console.warn(`[SKIP] 宿主目录不存在: ${resolvedHostHome}`)
     return true // 跳过但不视为失败
+  }
+
+  if (!projectSharedResources) {
+    console.log('[info] 宿主未启用 skills/agents 投影，跳过技能链接校验')
+    return true
   }
 
   const targetSkillsDir = path.join(resolvedHostHome, skillsDirName)

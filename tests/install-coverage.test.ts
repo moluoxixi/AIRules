@@ -67,15 +67,29 @@ function realLinkPath(linkPath: string) {
   return fs.realpathSync(linkPath).replace(/\\/g, '/')
 }
 
+const workspaceFolderPlaceholder = '$' + '{workspaceFolder}'
+
 it('hosts - 解析默认和自定义宿主路径', () => {
   const cursor = findHostConfig('cursor')
   const claude = findHostConfig('claude')
   const hermes = findHostConfig('hermes')
+  const trae = findHostConfig('trae')
+  const traeCn = findHostConfig('trae-cn')
+  const traeSolo = findHostConfig('trae-solo')
+  const traeSoloCn = findHostConfig('trae-solo-cn')
+  const qoder = findHostConfig('qoder')
+  const qoderwork = findHostConfig('qoderwork')
   const missing = findHostConfig('missing-host')
 
   assert.ok(cursor)
   assert.ok(claude)
   assert.ok(hermes)
+  assert.ok(trae)
+  assert.ok(traeCn)
+  assert.ok(traeSolo)
+  assert.ok(traeSoloCn)
+  assert.ok(qoder)
+  assert.ok(qoderwork)
   assert.equal(missing, undefined)
 
   const cursorPaths = resolveHostPaths(cursor, 'C:/Users/example')
@@ -93,6 +107,29 @@ it('hosts - 解析默认和自定义宿主路径', () => {
   assert.equal(hermesPaths.projectBaseline, true)
   assert.equal(hermesPaths.baselineMode, 'append')
   assert.deepEqual(hermesPaths.excludedSkills, [])
+
+  const traePaths = resolveHostPaths(trae, 'C:/Users/example')
+  assert.equal(normalizePath(traePaths.mcpHome), 'C:/Users/example/AppData/Roaming/Trae/User')
+  assert.deepEqual(traePaths.mcp?.defaultTopLevel, { inputs: [] })
+
+  const traeCnPaths = resolveHostPaths(traeCn, 'C:/Users/example')
+  assert.equal(normalizePath(traeCnPaths.mcpHome), 'C:/Users/example/AppData/Roaming/Trae CN/User')
+
+  const traeSoloPaths = resolveHostPaths(traeSolo, 'C:/Users/example')
+  assert.equal(normalizePath(traeSoloPaths.mcpHome), 'C:/Users/example/AppData/Roaming/TRAE SOLO/User')
+
+  const traeSoloCnPaths = resolveHostPaths(traeSoloCn, 'C:/Users/example')
+  assert.equal(normalizePath(traeSoloCnPaths.mcpHome), 'C:/Users/example/AppData/Roaming/TRAE SOLO CN/User')
+
+  const qoderPaths = resolveHostPaths(qoder, 'C:/Users/example')
+  assert.equal(normalizePath(qoderPaths.hostHome), 'C:/Users/example/AppData/Roaming/Qoder/SharedClientCache')
+  assert.equal(normalizePath(qoderPaths.mcpHome), 'C:/Users/example/AppData/Roaming/Qoder/SharedClientCache')
+  assert.equal(qoderPaths.projectSharedResources, false)
+  assert.equal(qoderPaths.projectBaseline, false)
+  assert.deepEqual(qoderPaths.mcp?.serverOverrides?.codegraph, { type: 'stdio' })
+
+  const qoderworkPaths = resolveHostPaths(qoderwork, 'C:/Users/example')
+  assert.equal(qoderworkPaths.mcp, undefined)
 })
 
 it('links - 构建按目标路径排序的绝对链接计划', () => {
@@ -270,6 +307,66 @@ it('install - projectHostById 跳过缺失宿主并处理未知宿主错误', ()
     () => projectHostById('unknown', userHome, moluoHome),
     /Unknown host: unknown/,
   )
+}))
+
+it('install - Trae 宿主 home 缺失但真实 MCP 目录存在时仍投影 codegraph MCP', () => withTempDir('airules-trae-mcp-', (tmpDir) => {
+  const userHome = path.join(tmpDir, 'user')
+  const moluoHome = path.join(userHome, '.moluoxixi')
+  const traeMcpHome = path.join(userHome, 'AppData', 'Roaming', 'Trae', 'User')
+
+  writeFile(path.join(moluoHome, 'vendor', 'mcp', 'mcp.json'), `${JSON.stringify({
+    mcpServers: {
+      codegraph: {
+        command: 'codegraph',
+        args: ['serve', '--mcp', '--path', workspaceFolderPlaceholder],
+      },
+    },
+  }, null, 2)}\n`)
+  fs.mkdirSync(traeMcpHome, { recursive: true })
+
+  const projected = projectHostById('trae', userHome, moluoHome)
+
+  assert.equal(projected.success, true)
+  assert.equal(projected.baselineProjected, false)
+  assert.equal(fs.existsSync(path.join(userHome, '.trae')), false)
+
+  const written = JSON.parse(fs.readFileSync(path.join(traeMcpHome, 'mcp.json'), 'utf8'))
+  assert.deepEqual(written.inputs, [])
+  assert.deepEqual(written.mcpServers.codegraph, {
+    command: 'codegraph',
+    args: ['serve', '--mcp', '--path', workspaceFolderPlaceholder],
+  })
+}))
+
+it('install - Qoder 只投影 MCP 且 codegraph 带 stdio 类型', () => withTempDir('airules-qoder-mcp-', (tmpDir) => {
+  const userHome = path.join(tmpDir, 'user')
+  const moluoHome = path.join(userHome, '.moluoxixi')
+  const qoderHome = path.join(userHome, 'AppData', 'Roaming', 'Qoder', 'SharedClientCache')
+
+  writeFile(path.join(moluoHome, 'vendor', 'mcp', 'mcp.json'), `${JSON.stringify({
+    mcpServers: {
+      codegraph: {
+        command: 'codegraph',
+        args: ['serve', '--mcp', '--path', workspaceFolderPlaceholder],
+      },
+    },
+  }, null, 2)}\n`)
+  fs.mkdirSync(qoderHome, { recursive: true })
+
+  const projected = projectHostById('qoder', userHome, moluoHome)
+
+  assert.equal(projected.success, true)
+  assert.equal(projected.baselineProjected, false)
+  assert.equal(fs.existsSync(path.join(qoderHome, 'AGENTS.md')), false)
+  assert.equal(fs.existsSync(path.join(qoderHome, 'skills')), false)
+  assert.equal(fs.existsSync(path.join(qoderHome, 'agents')), false)
+
+  const written = JSON.parse(fs.readFileSync(path.join(qoderHome, 'mcp.json'), 'utf8'))
+  assert.deepEqual(written.mcpServers.codegraph, {
+    type: 'stdio',
+    command: 'codegraph',
+    args: ['serve', '--mcp', '--path', workspaceFolderPlaceholder],
+  })
 }))
 
 it('install - Hermes 宿主投影使用统一技能集合', () => withTempDir('airules-hermes-host-', (tmpDir) => {

@@ -27,22 +27,25 @@
 | Cursor | `mcp.json` | `.cursor/` | `mcpServers` | JSON |
 | OpenCode | `opencode.json` | `.config/opencode/` | **`mcp`** | JSON |
 | Kiro | `mcp.json` | `.kiro/settings/` | `mcpServers` | JSON |
+| Trae / Trae CN / Trae Solo / Trae Solo CN | `mcp.json` | `AppData/Roaming/<产品名>/User/` | `mcpServers` | JSON |
+| Qoder | `mcp.json` | `AppData/Roaming/Qoder/SharedClientCache/` | `mcpServers`（server 需 `type: "stdio"`） | JSON |
 
 含义：多数宿主用 JSON + `mcpServers` 键，但 OpenCode 用 `mcp` 键、Codex 用 TOML，键名与格式都不同。中性 MCP 源（`{ "mcpServers": { ... } }`）投影到各宿主时必须按表转换键名与格式。
 
 ## AIRules 投影策略
 
 - **agent**：宿主 home 下 `agents/` 目录（与现有 skills 投影同级）。Markdown 兼容宿主走现有软链；TOML/JSON 宿主需要转译层（当前标记为 TODO，未实现前显式跳过 + 告警，不静默软链）。
-- **MCP**：中性源置于仓库 `mcp/` 下（rulesync 风格 `{ "mcpServers": {} }`）。投影时按上表写各宿主对应文件、键名、格式；源缺失时为 no-op（无服务可分发，非失败）。
+- **MCP**：中性源置于仓库 `mcp/` 下（rulesync 风格 `{ "mcpServers": {} }`）。投影时按上表写各宿主对应文件、键名、格式；源缺失时为 no-op（无服务可分发，非失败）。MCP 配置路径可独立于规则/skills 的宿主 home，例如 Trae 系列写 `AppData/Roaming/<产品名>/User/mcp.json`，Qoder 写 `AppData/Roaming/Qoder/SharedClientCache/mcp.json`。
 - **冲突策略：用户优先**。投影对同名 server **绝不覆盖用户已有配置**——JSON 宿主做浅合并、用户同名项保留（只补用户未配的 server）；TOML 宿主探测用户在 AIRULES 托管块外手写的 `[mcp_servers.<name>]`（裸键或引号键），跳过同名注入。用户已调过参数的 server 在重复 sync 后保持不变。
 - 宿主格式元数据作为**数据**维护在 `constants/hosts.ts`，引擎按元数据驱动，新增宿主只加一条记录。
 
 ## 默认分发的 MCP server
 
-仓库 `mcp/mcp.json` 默认携带以下 server，均通过 `npx -y` 启动、无需 API key：
+仓库 `mcp/mcp.json` 默认携带以下 server：
 
 | server | 包 | 说明 |
 |---|---|---|
+| `codegraph` | `codegraph serve --mcp --path ${workspaceFolder}` | 当前 workspace 的代码图谱检索；Qoder 投影时补 `type: "stdio"` |
 | `playwright` | `@playwright/mcp@latest` | 真实浏览器自动化与断言 |
 | `context7` | `@upstash/context7-mcp@latest` | 拉取库/框架的最新官方文档（API key 仅提升限流，可选） |
 | `sequential-thinking` | `@modelcontextprotocol/server-sequential-thinking@latest` | 结构化分步推理 |
@@ -58,6 +61,7 @@
 | `cursor` | ✅ | markdown |
 | `opencode` | ✅ | markdown |
 | `hermes` / `hermes desktop` | ❌（用 SOUL.md 身份文件） | agent 支持待确认，暂按 markdown |
-| `trae` / `trae-cn` / `qoderwork` / `cc-switch` | ❌（AGENTS.md 系） | 暂按 markdown（与 AGENTS.md 生态一致） |
+| `trae` / `trae-cn` / `trae-solo` / `trae-solo-cn` / `qoderwork` / `cc-switch` | ❌（AGENTS.md 系） | 暂按 markdown（与 AGENTS.md 生态一致） |
+| `qoder` | ❌（MCP-only） | N/A |
 
-`hermes` 与 AGENTS.md 系宿主未被 rulesync 直接覆盖，其 agent 格式为推断（markdown），正式启用前需各自验证；标记为 `MISSING verify`。
+`hermes` 与 AGENTS.md 系宿主未被 rulesync 直接覆盖，其 agent 格式为推断（markdown），正式启用前需各自验证；标记为 `MISSING verify`。当前只读搜索 `AppData/Roaming/QoderWork` 未发现 `mcp.json`、`mcpServers`、`codegraph` 或 `SharedClientCache` 配置入口，因此 `qoderwork` 暂不声明 MCP 投影；状态为 `MISSING evidence`。

@@ -48,6 +48,16 @@ const demoServers = {
     env: { DEMO_KEY: 'x' },
   },
 }
+const workspaceFolderPlaceholder = '$' + '{workspaceFolder}'
+
+it('mcp 默认源 - 分发 codegraph workspace server', () => {
+  const source = JSON.parse(fs.readFileSync(path.resolve('mcp', 'mcp.json'), 'utf8'))
+
+  assert.deepStrictEqual(source.mcpServers.codegraph, {
+    command: 'codegraph',
+    args: ['serve', '--mcp', '--path', workspaceFolderPlaceholder],
+  })
+})
 
 it('agent 格式门控 - markdown 宿主软链 agents 目录', () => {
   const { tmpDir, userHome, moluoHome, hostHome } = setupEnv()
@@ -263,6 +273,30 @@ it('mcp 投影 - JSON 宿主浅合并保留用户手写的其它 server', () => 
     const written = JSON.parse(fs.readFileSync(path.join(hostHome, '.mcp.json'), 'utf8'))
     assert.ok(written.mcpServers['user-server'], '应保留用户手写的 user-server')
     assert.ok(written.mcpServers['demo-server'], '应写入 AIRULES 的 demo-server')
+  }
+  finally {
+    cleanup(tmpDir)
+  }
+})
+
+it('mcp 投影 - JSON 宿主配置带 UTF-8 BOM 时仍可合并', () => {
+  const { tmpDir, userHome, moluoHome, hostHome } = setupEnv({ mcpServers: demoServers })
+  try {
+    fs.writeFileSync(
+      path.join(hostHome, '.mcp.json'),
+      `\uFEFF${JSON.stringify({ mcpServers: { 'user-server': { command: 'user' } } }, null, 2)}\n`,
+    )
+    projectToHost({
+      userHome,
+      moluoHome,
+      hostHome,
+      hostBaselineFile: path.join(hostHome, 'AGENTS.md'),
+      projectBaseline: false,
+      mcp: { relDir: '.', fileName: '.mcp.json', serversKey: 'mcpServers', format: 'json' },
+    })
+    const written = JSON.parse(fs.readFileSync(path.join(hostHome, '.mcp.json'), 'utf8'))
+    assert.ok(written.mcpServers['user-server'], '应保留 BOM 文件中的用户 server')
+    assert.ok(written.mcpServers['demo-server'], '应合并 AIRULES server')
   }
   finally {
     cleanup(tmpDir)
