@@ -170,6 +170,28 @@ it('installation linking - Pre-existing folder deletion', () => {
   }
 })
 
+it('installation linking - Pre-existing real file occupying skills dir is replaced', () => {
+  const { tmpDir, userHome, moluoHome, claudeHome } = setupMockEnvironment()
+
+  try {
+    // 宿主 skills 路径被一个同名真实文件占据（非目录、非软链接）
+    const claudeSkillsDir = path.join(claudeHome, 'skills')
+    fs.writeFileSync(claudeSkillsDir, 'stray file occupying the skills dir path')
+
+    assert.ok(fs.lstatSync(claudeSkillsDir).isFile(), 'skills path should start as a real file')
+
+    // 不应抛 EEXIST，应清掉占位文件后建目录并投影技能
+    projectSkillsToHost(userHome, moluoHome, claudeSkillsDir)
+
+    assert.ok(fs.lstatSync(claudeSkillsDir).isDirectory(), 'skills path should become a directory')
+    const skillA = path.join(claudeSkillsDir, 'skill-a')
+    assert.ok(fs.lstatSync(skillA).isSymbolicLink(), 'skill-a should be linked after replacing the file')
+  }
+  finally {
+    cleanup(tmpDir)
+  }
+})
+
 it('self-healing - Orphan link cleanup', () => {
   const { tmpDir, userHome, moluoHome, claudeHome } = setupMockEnvironment()
 

@@ -137,7 +137,10 @@ function removePath(targetPath: string) {
 
 function ensureManagedDirectory(targetDir: string) {
   try {
-    if (lstatSync(targetDir).isSymbolicLink()) {
+    const stats = lstatSync(targetDir)
+    // 目标是软链接，或是真实文件等非目录占位物时，先移除再建目录，避免 mkdir 抛 EEXIST。
+    // 真实目录保留，供自愈式同步清理其中过时条目。
+    if (stats.isSymbolicLink() || !stats.isDirectory()) {
       removePath(targetDir)
     }
   }
