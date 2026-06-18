@@ -20,6 +20,31 @@
           "manual": true
         }
       ]
+    },
+    "consistency-check": {
+      "minimalTask": "对「采购订单」模块做实现编码前的跨产物一致性核对，按 consistency-check skill 的流程产出核对报告。以下为三份上游产物的内容（均已就绪、非草案），直接据此核对，不需读取磁盘文件：\n\n【docs/prds/采购订单.md 验收标准】\n- AC1：采购员可创建采购订单（草稿态）。\n- AC2：草稿订单可提交进入待审批态。\n- AC3：审批通过后订单进入已确认态，不可再编辑。\n- AC4：已关闭订单不可被审批。\n\n【docs/test/采购订单.md 用例矩阵】\n- TC-采购订单-001：创建草稿订单成功（覆盖 AC1）。\n- TC-采购订单-002：草稿提交进入待审批（覆盖 AC2）。\n- TC-采购订单-003：审批通过订单转已确认且禁止编辑（覆盖 AC3）。\n- TC-采购订单-005：关闭态订单审批被拒（覆盖 AC4）。\n\n【docs/plan/backend/采购订单.md 实现任务拆解】\n- BT-采购订单-001：创建订单接口，目标文件 src/order/create.ts，独立验收 TC-采购订单-001。\n- BT-采购订单-002：提交订单状态流转，目标文件 src/order/submit.ts，独立验收 TC-采购订单-002。\n- BT-采购订单-003：审批通过状态机，目标文件 src/order/approve.ts，独立验收 TC-采购订单-003。\n- BT-采购订单-009：批量导出订单 CSV，目标文件 src/order/export.ts，独立验收（无对应用例/需求）。",
+      "assertions": [
+        {
+          "id": "overall-status",
+          "desc": "报告结论必须给出 PASS / FAIL / MISSING blocked 之一的总体状态",
+          "anyOf": ["PASS", "FAIL", "MISSING blocked"]
+        },
+        {
+          "id": "four-directions",
+          "desc": "报告必须覆盖四向核对：需求→用例、用例→计划任务、计划任务→需求/用例、计划↔代码",
+          "regex": "需求\\s*[→\\-]\\s*用例[\\s\\S]*用例\\s*[→\\-]\\s*计划[\\s\\S]*计划[\\s\\S]*代码"
+        },
+        {
+          "id": "gap-summary",
+          "desc": "报告必须含缺口汇总（漏测/漏实现/孤儿任务/计划与代码冲突/MISSING）",
+          "anyOf": ["漏测", "漏实现", "孤儿任务", "缺口汇总"]
+        },
+        {
+          "id": "no-upstream-fabrication",
+          "desc": "发现的 FAIL/MISSING 项不得在报告内自行补齐上游事实，须回退对应上游环节（负向断言，人工复核）",
+          "manual": true
+        }
+      ]
     }
   }
 }

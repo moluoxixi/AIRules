@@ -32,16 +32,20 @@ accepted
 
 | Agent | 加载的核心 skill | 职责 | 升级判据 |
 |---|---|---|---|
-| frontend-planner | frontend-impl-plan、knowledge-search | 前端实现计划 + 性能前置评估 | 上下文隔离 |
-| backend-planner | backend-impl-plan、knowledge-search | 后端实现计划 + 安全前置评估 | 上下文隔离 |
-| frontend-coder | frontend-impl-plan、test-docs、playwright | 按计划写前端源码 + 配套测试 | 上下文隔离、并行 |
-| backend-coder | backend-impl-plan、test-docs、test-driven-development | 按计划写后端源码 + 配套测试 | 上下文隔离、并行 |
+| debugger | systematic-debugging | bugfix 链前置：复现 → 定位根因 → 回传根因 + 证据 + 修复点 + 回归测试设计（不改生产代码，跨栈不拆） | 上下文隔离 |
+| frontend-planner | frontend-impl-plan、knowledge-search | 前端实现计划 + 性能前置评估 | 上下文隔离、并行 |
+| backend-planner | backend-impl-plan、knowledge-search | 后端实现计划 + 安全前置评估 | 上下文隔离、并行 |
+| frontend-coder | frontend-impl-plan、playwright、test-docs | 按计划写前端源码 + 配套交互测试 | 上下文隔离、并行 |
+| backend-coder | backend-impl-plan、test-docs、test-driven-development | 按计划写后端源码 + 配套单元测试 | 上下文隔离、并行 |
 | frontend-reviewer | code-reviewer | 前端栈独立只读评审 | 反自评偏袒、并行 |
 | backend-reviewer | code-reviewer | 后端栈独立只读评审 | 反自评偏袒、并行 |
-| unit-test-author | test-docs、test-driven-development | 纯逻辑单元测试编写 | 上下文隔离 |
-| interaction-test-author | test-docs、playwright | 前端交互/E2E 测试编写 | 上下文隔离 |
 
-前后端分栈原则：plan/coder/reviewer 各分前后端独立 agent 文件，因为前后端的上下文来源、关注点、评审维度真实分叉（前端：目录边界/组件契约/交互/空错态；后端：分层/数据一致性/并发幂等/权限）。测试按性质拆为单元测试作者与交互测试作者，而非按前后端拆。
+两条正交的拆分轴：
+
+- **任务类型前置轴（跨栈不拆）**：`debugger` 是 bugfix 链的前置环节，复现并定位根因后回传「根因 + 证据 + 建议修复点 + 回归测试设计」。根因常跨前后端，故不按栈拆；修复由 coder 按回传执行，debugger 本身不改生产代码。单点已定位的小 bug 主代理直接修，不派 debugger。
+- **栈线轴（前后端拆分）**：plan/coder/reviewer 各分前后端独立 agent 文件，因为前后端的上下文来源、关注点、评审维度真实分叉（前端：目录边界/组件契约/交互/空错态；后端：分层/数据一致性/并发幂等/权限）。两轴正交，debugger 的跨栈定位不与 plan/coder/reviewer 的栈线拆分冲突。
+
+测试**编写**不独立成 agent，而是并入对应 coder：`backend-coder` 写单元测试（纯逻辑、边界、异常分支、mock 隔离），`frontend-coder` 写交互测试（组件交互、表单校验、状态流转、空错态、E2E）。理由：测试充分性已由编码前的 `test-docs`（独立前置产出用例矩阵）与编码后的独立 reviewer（静态校验覆盖）两道门买单，再为「编写」起独立 agent 属重复付费；测试的**运行**归测试验证环节（`verification-before-completion`），与编写分离。
 
 ## 替代方案
 

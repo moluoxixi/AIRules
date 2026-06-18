@@ -220,6 +220,7 @@ export const vendors: VendorsConfig = [
           'api-docs',
           'backend-impl-plan',
           'components-docs',
+          'consistency-check',
           'frontend-impl-plan',
           'handoff',
           'init-project',

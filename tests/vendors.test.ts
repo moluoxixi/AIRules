@@ -602,6 +602,11 @@ it('vendors 配置 - 使用 OpenAI Playwright 并移除过时技能', () => {
         setup: undefined,
       },
       {
+        source: 'skills/consistency-check',
+        target: 'vendor/skills/consistency-check',
+        setup: undefined,
+      },
+      {
         source: 'skills/frontend-impl-plan',
         target: 'vendor/skills/frontend-impl-plan',
         setup: undefined,

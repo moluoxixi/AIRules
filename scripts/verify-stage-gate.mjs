@@ -1,7 +1,7 @@
 #!/usr/bin/env node
 // 链式前置门禁的确定性校验器。
 // 用法：node scripts/verify-stage-gate.mjs <project-root> <stage> <module>
-//   stage: test-design | frontend-plan | backend-plan
+//   stage: test-design | frontend-plan | backend-plan | consistency | bugfix-fix
 //   module: 业务/需求模块名，对应 docs/prds/<module>.md 等文件名（不含扩展名）。
 // 退出码：0 = PASS（上游就绪，可进入下游环节）；1 = blocked/失败（必须停止）。
 // 设计意图：把「需求合格→才出测试设计；需求+契约+测试合格→才出实现计划」这条
@@ -23,6 +23,22 @@ const STAGE_DEPENDENCIES = {
     { label: 'PRD', rel: m => `docs/prds/${m}.md`, required: true },
     { label: '测试设计', rel: m => `docs/test/${m}.md`, required: true },
   ],
+  // 跨产物一致性门禁（implement 前）：PRD + 测试设计 必须就绪；实现计划按「至少一栈存在」校验
+  // （模块可能只有单栈计划，分离索引设计下不强制双栈都在，但不能两栈都缺——否则 impl-plan
+  // 环节从未产出，下游无计划可对齐）。group:'plan' 的成员单看都 required:false，组级要求至少
+  // 一份就绪，与 consistency-check skill「实现计划为必需上游」口径一致。四向对齐的深度校验由
+  // consistency-check skill 承担，本门禁只做上游就绪的确定性兜底。
+  'consistency': [
+    { label: 'PRD', rel: m => `docs/prds/${m}.md`, required: true },
+    { label: '测试设计', rel: m => `docs/test/${m}.md`, required: true },
+    { label: '前端实现计划', rel: m => `docs/plan/frontend/${m}.md`, required: false, group: 'plan' },
+    { label: '后端实现计划', rel: m => `docs/plan/backend/${m}.md`, required: false, group: 'plan' },
+  ],
+  // bugfix 链修复前置：根因诊断产物 docs/diagnosis/<bug>.md 必须就绪（复杂/跨栈 bug 由
+  // debugger 子代理产出并交接），主代理据此驱动修复编码。
+  'bugfix-fix': [
+    { label: '根因诊断', rel: m => `docs/diagnosis/${m}.md`, required: true },
+  ],
 }
 
 // 草案标记：命中即视为未定稿，下游不得消费。
@@ -34,7 +50,7 @@ const [projectRootArg, stageArg, moduleArg] = process.argv.slice(2)
 
 if (!projectRootArg || !stageArg || !moduleArg) {
   console.error('用法：node scripts/verify-stage-gate.mjs <project-root> <stage> <module>')
-  console.error('stage 可选值：test-design | frontend-plan | backend-plan')
+  console.error(`stage 可选值：${Object.keys(STAGE_DEPENDENCIES).join(' | ')}`)
   process.exit(1)
 }
 
@@ -85,6 +101,10 @@ function assessDocument(absolutePath) {
 
 let blocked = false
 
+// 组级「至少一份就绪」累计：键为 group 名，值为该组是否已有成员 PASS。
+const groupReady = new Map()
+const groupLabels = new Map()
+
 console.log(`[stage-gate] 校验环节：${stageArg}，模块：${moduleArg}`)
 
 for (const dependency of dependencies) {
@@ -92,8 +112,24 @@ for (const dependency of dependencies) {
   const absolutePath = path.join(projectRoot, relPath)
   const result = assessDocument(absolutePath)
 
+  if (dependency.group && !groupReady.has(dependency.group)) {
+    groupReady.set(dependency.group, false)
+    groupLabels.set(dependency.group, [])
+  }
+  if (dependency.group)
+    groupLabels.get(dependency.group).push(dependency.label)
+
   if (result.status === 'PASS') {
+    if (dependency.group)
+      groupReady.set(dependency.group, true)
     console.log(`  PASS  ${dependency.label}（${relPath}）：${result.reason}`)
+    continue
+  }
+
+  // 组成员的「文件不存在」不单独 blocked，由组级「至少一份就绪」统一裁决；
+  // 但草案/空/MISSING 超阈值这类「存在但未就绪」仍即时 blocked。
+  if (dependency.group && result.reason === '文件不存在') {
+    console.log(`  N/A   ${dependency.label}（${relPath}）：组「${dependency.group}」成员，未提供`)
     continue
   }
 
@@ -104,6 +140,15 @@ for (const dependency of dependencies) {
 
   blocked = true
   console.error(`  ${result.status}  ${dependency.label}（${relPath}）：${result.reason}`)
+}
+
+// 组级裁决：每个声明了 group 的依赖组必须至少有一名成员就绪。
+for (const [group, ready] of groupReady) {
+  if (!ready) {
+    blocked = true
+    const labels = groupLabels.get(group).join(' / ')
+    console.error(`  MISSING blocked  组「${group}」（${labels}）：至少需一份就绪，当前全部缺失`)
+  }
 }
 
 if (blocked) {

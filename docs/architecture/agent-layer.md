@@ -1,6 +1,6 @@
 # Agent 层：开发链路角色与 Skill 复用
 
-本文档说明 AIRules 中 **Agent 层** 与 **Skill 层** 的职责边界、两者如何协作，以及 8 个第一方开发链路 agent 的定位。决策依据见 [ADR-0002](./decisions/ADR-0002-skill-agent-layering.md)。
+本文档说明 AIRules 中 **Agent 层** 与 **Skill 层** 的职责边界、两者如何协作，以及 7 个第一方开发链路 agent 的定位。决策依据见 [ADR-0002](./decisions/ADR-0002-skill-agent-layering.md)。
 
 ## 两层模型
 
@@ -27,22 +27,24 @@
 
 | Agent | 环节 | 加载的 Skill | 写入边界 |
 |---|---|---|---|
+| `debugger` | 调试修复（bugfix 前置，跨栈） | `systematic-debugging` | 只读诊断 + 可落盘 `docs/diagnosis/<bug>.md`，不改生产代码 |
 | `frontend-planner` | 实现计划（前端） | `frontend-impl-plan`、`knowledge-search` | 只写前端实现计划文档 |
 | `backend-planner` | 实现计划（后端） | `backend-impl-plan`、`knowledge-search` | 只写后端实现计划文档 |
-| `frontend-coder` | 实现编码（前端） | `frontend-impl-plan`、`playwright`、`test-docs` | 前端源码 + 配套测试 |
-| `backend-coder` | 实现编码（后端） | `backend-impl-plan`、`test-docs`、`test-driven-development` | 后端源码 + 配套测试 |
-| `unit-test-author` | 测试设计/编写（单元） | `test-docs`、`test-driven-development` | 单元测试 + mock/fixture |
-| `interaction-test-author` | 测试设计/编写（交互） | `test-docs`、`playwright` | 前端交互测试 + fixture/mock |
+| `frontend-coder` | 实现编码（前端） | `frontend-impl-plan`、`playwright`、`test-docs` | 前端源码 + 配套交互测试 |
+| `backend-coder` | 实现编码（后端） | `backend-impl-plan`、`test-docs`、`test-driven-development` | 后端源码 + 配套单元测试 |
 | `frontend-reviewer` | 代码评审（前端） | `code-reviewer` | 只读评审，不改代码 |
 | `backend-reviewer` | 代码评审（后端） | `code-reviewer` | 只读评审，不改代码 |
 
-### 前后端分栈
+### 两条正交的拆分轴
 
-plan / coder / reviewer 均按前后端拆成独立 agent，因为两栈的上下文来源、关注点、编码方式和评审维度都不同（见各 agent 的"评审维度"小节与 AGENTS.md 前后端评审清单）。评审 agent 与编写该代码的 agent **必须是不同实例**，不得自评。
+agent 拆分沿两条正交轴展开：
 
-### 测试拆分
+- **任务类型前置轴（跨栈不拆）**：`debugger` 是 bugfix 链的前置环节，负责复现 → 定位根因 → 回传「根因 + 证据 + 建议修复点 + 回归测试设计」。根因常跨前后端，故不按栈拆；修复由 coder 按回传执行，debugger 本身不改生产代码。单点已定位的小 bug 主代理直接修，不派 debugger。
+- **栈线轴（前后端拆分，贯穿计划→编码→评审）**：plan / coder / reviewer 均按前后端拆成独立 agent，因为两栈的上下文来源、关注点、编码方式和评审维度都不同（见各 agent 的"评审维度"小节与 AGENTS.md 前后端评审清单）。评审 agent 与编写该代码的 agent **必须是不同实例**，不得自评。
 
-测试拆为 `unit-test-author`（纯逻辑、边界、异常分支、mock）与 `interaction-test-author`（组件交互、表单校验、状态流转、空错态、E2E）。两者均只**编写**测试，**不负责运行**——运行归测试验证环节（`verification-before-completion`）。
+### 测试编写并入 coder
+
+测试**编写**不独立成 agent，而是并入对应 coder：`backend-coder` 写单元测试（纯逻辑、边界、异常分支、mock 隔离），`frontend-coder` 写交互测试（组件交互、表单校验、状态流转、空错态、E2E）。理由：测试充分性已由编码前的 `test-docs`（独立前置产出用例矩阵）与编码后的独立 reviewer（静态校验覆盖）两道门买单，再为「编写」起独立 agent 属重复付费。测试的**运行**归测试验证环节（`verification-before-completion`），与编写分离。
 
 ## 投影与分发链路
 
