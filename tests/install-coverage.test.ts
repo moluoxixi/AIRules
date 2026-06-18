@@ -117,9 +117,13 @@ it('hosts - 解析默认和自定义宿主路径', () => {
 
   const traeSoloPaths = resolveHostPaths(traeSolo, 'C:/Users/example')
   assert.equal(normalizePath(traeSoloPaths.mcpHome), 'C:/Users/example/AppData/Roaming/TRAE SOLO/User')
+  assert.equal(traeSoloPaths.projectSharedResources, false)
+  assert.equal(traeSoloPaths.projectBaseline, false)
 
   const traeSoloCnPaths = resolveHostPaths(traeSoloCn, 'C:/Users/example')
   assert.equal(normalizePath(traeSoloCnPaths.mcpHome), 'C:/Users/example/AppData/Roaming/TRAE SOLO CN/User')
+  assert.equal(traeSoloCnPaths.projectSharedResources, false)
+  assert.equal(traeSoloCnPaths.projectBaseline, false)
 
   const qoderPaths = resolveHostPaths(qoder, 'C:/Users/example')
   assert.equal(normalizePath(qoderPaths.hostHome), 'C:/Users/example/AppData/Roaming/Qoder/SharedClientCache')
@@ -331,6 +335,39 @@ it('install - Trae 宿主 home 缺失但真实 MCP 目录存在时仍投影 code
   assert.equal(fs.existsSync(path.join(userHome, '.trae')), false)
 
   const written = JSON.parse(fs.readFileSync(path.join(traeMcpHome, 'mcp.json'), 'utf8'))
+  assert.deepEqual(written.inputs, [])
+  assert.deepEqual(written.mcpServers.codegraph, {
+    command: 'codegraph',
+    args: ['serve', '--mcp', '--path', workspaceFolderPlaceholder],
+  })
+}))
+
+it('install - Trae Solo 只投影 MCP，不写 baseline、skills 或 agents', () => withTempDir('airules-trae-solo-mcp-', (tmpDir) => {
+  const userHome = path.join(tmpDir, 'user')
+  const moluoHome = path.join(userHome, '.moluoxixi')
+  const soloHostHome = path.join(userHome, '.trae-solo')
+  const soloMcpHome = path.join(userHome, 'AppData', 'Roaming', 'TRAE SOLO', 'User')
+
+  writeFile(path.join(moluoHome, 'vendor', 'mcp', 'mcp.json'), `${JSON.stringify({
+    mcpServers: {
+      codegraph: {
+        command: 'codegraph',
+        args: ['serve', '--mcp', '--path', workspaceFolderPlaceholder],
+      },
+    },
+  }, null, 2)}\n`)
+  fs.mkdirSync(soloMcpHome, { recursive: true })
+
+  const projected = projectHostById('trae-solo', userHome, moluoHome)
+
+  assert.equal(projected.success, true)
+  assert.equal(projected.baselineProjected, false)
+  assert.equal(fs.existsSync(soloHostHome), false)
+  assert.equal(fs.existsSync(path.join(soloMcpHome, 'skills')), false)
+  assert.equal(fs.existsSync(path.join(soloMcpHome, 'agents')), false)
+  assert.equal(fs.existsSync(path.join(soloMcpHome, 'AGENTS.md')), false)
+
+  const written = JSON.parse(fs.readFileSync(path.join(soloMcpHome, 'mcp.json'), 'utf8'))
   assert.deepEqual(written.inputs, [])
   assert.deepEqual(written.mcpServers.codegraph, {
     command: 'codegraph',

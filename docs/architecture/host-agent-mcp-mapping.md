@@ -61,7 +61,7 @@
 | `cursor` | ✅ | markdown |
 | `opencode` | ✅ | markdown |
 | `hermes` / `hermes desktop` | ❌（用 SOUL.md 身份文件） | agent 支持待确认，暂按 markdown |
-| `trae` / `trae-cn` / `trae-solo` / `trae-solo-cn` / `qoderwork` / `cc-switch` | ❌（AGENTS.md 系） | 暂按 markdown（与 AGENTS.md 生态一致） |
-| `qoder` | ❌（MCP-only） | N/A |
+| `trae` / `trae-cn` / `qoderwork` / `cc-switch` | ❌（AGENTS.md 系） | 暂按 markdown（与 AGENTS.md 生态一致） |
+| `trae-solo` / `trae-solo-cn` / `qoder` | ❌（MCP-only） | N/A |
 
-`hermes` 与 AGENTS.md 系宿主未被 rulesync 直接覆盖，其 agent 格式为推断（markdown），正式启用前需各自验证；标记为 `MISSING verify`。当前只读搜索 `AppData/Roaming/QoderWork` 未发现 `mcp.json`、`mcpServers`、`codegraph` 或 `SharedClientCache` 配置入口，因此 `qoderwork` 暂不声明 MCP 投影；状态为 `MISSING evidence`。
+`hermes` 与 AGENTS.md 系宿主未被 rulesync 直接覆盖，其 agent 格式为推断（markdown），正式启用前需各自验证；标记为 `MISSING verify`。Trae Solo / Trae Solo CN 无 skills 系统，仅投影 MCP。当前只读搜索 `AppData/Roaming/QoderWork` 未发现 `mcp.json`、`mcpServers`、`codegraph` 或 `SharedClientCache` 配置入口，因此 `qoderwork` 暂不声明 MCP 投影；状态为 `MISSING evidence`。

@@ -156,6 +156,8 @@ export const HOST_CONFIGS: HostConfig[] = [
     id: 'trae-solo',
     homeRelPath: '.trae-solo',
     baselineFileName: 'AGENTS.md',
+    projectBaseline: false,
+    projectSharedResources: false,
     mcp: {
       homeRelPath: path.join('AppData', 'Roaming', 'TRAE SOLO', 'User'),
       relDir: '.',
@@ -169,6 +171,8 @@ export const HOST_CONFIGS: HostConfig[] = [
     id: 'trae-solo-cn',
     homeRelPath: '.trae-solo-cn',
     baselineFileName: 'AGENTS.md',
+    projectBaseline: false,
+    projectSharedResources: false,
     mcp: {
       homeRelPath: path.join('AppData', 'Roaming', 'TRAE SOLO CN', 'User'),
       relDir: '.',

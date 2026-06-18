@@ -72,6 +72,19 @@ it('verifyHost - MCP-only Qoder 不要求 skills 目录', async () => {
   })
 })
 
+it('verifyHost - MCP-only Trae Solo 使用 MCP 目录作为存在性依据', async () => {
+  await withTempHome(async (userHome, moluoHome) => {
+    fs.mkdirSync(path.join(userHome, 'AppData', 'Roaming', 'TRAE SOLO', 'User'), { recursive: true })
+    createVendorSkill(moluoHome, 'api-docs')
+    const warn = vi.spyOn(console, 'warn').mockImplementation(() => {})
+    const log = vi.spyOn(console, 'log').mockImplementation(() => {})
+
+    assert.equal(await verifyHost('trae-solo', moluoHome), true)
+    assert.equal(warn.mock.calls.some(call => String(call[0]).includes('[SKIP]')), false)
+    assert.equal(log.mock.calls.some(call => String(call[0]).includes('跳过技能链接校验')), true)
+  })
+})
+
 it('verifyHost - 校验有效链接、物理目录和缺失技能', async () => {
   await withTempHome(async (userHome, moluoHome) => {
     createVendorSkill(moluoHome, 'linked')

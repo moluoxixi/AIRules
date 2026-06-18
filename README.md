@@ -176,8 +176,8 @@ Moluoxixi AIRules supports a growing ecosystem of AI agents through automated pr
 | **Cursor**         | `cursor` | `~/.cursor/`              | Symlink | `AGENTS.md` |
 | **Trae**           | `trae` | `~/.trae/`                | Symlink; MCP at `~/AppData/Roaming/Trae/User/mcp.json` | `AGENTS.md` |
 | **Trae CN**        | `trae-cn` | `~/.trae-cn/`            | Symlink; MCP at `~/AppData/Roaming/Trae CN/User/mcp.json` | `AGENTS.md` |
-| **Trae Solo**      | `trae-solo` | `~/.trae-solo/`        | Symlink; MCP at `~/AppData/Roaming/TRAE SOLO/User/mcp.json` | `AGENTS.md` |
-| **Trae Solo CN**   | `trae-solo-cn` | `~/.trae-solo-cn/`  | Symlink; MCP at `~/AppData/Roaming/TRAE SOLO CN/User/mcp.json` | `AGENTS.md` |
+| **Trae Solo**      | `trae-solo` | `~/AppData/Roaming/TRAE SOLO/User/` | MCP only | N/A |
+| **Trae Solo CN**   | `trae-solo-cn` | `~/AppData/Roaming/TRAE SOLO CN/User/` | MCP only | N/A |
 | **Qoder**          | `qoder` | `~/AppData/Roaming/Qoder/SharedClientCache/` | MCP only | N/A |
 | **QoderWork**      | `qoderwork` | `~/.qoderwork/`        | Symlink; no verified MCP config | `AGENTS.md` |
 | **OpenCode**       | `opencode` | `~/.config/opencode/`     | Symlink | `AGENTS.md` |

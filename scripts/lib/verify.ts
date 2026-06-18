@@ -17,9 +17,9 @@ export async function verifyHost(host: string, moluoHome: string, userHome = os.
   if (!config)
     return false
 
-  const { hostHome, skillsDirName, excludedSkills, projectSharedResources } = resolveHostPaths(config, userHome)
+  const { hostHome, skillsDirName, excludedSkills, projectSharedResources, mcpHome } = resolveHostPaths(config, userHome)
 
-  const resolvedHostHome = path.resolve(hostHome)
+  const resolvedHostHome = path.resolve(projectSharedResources ? hostHome : mcpHome)
   if (!existsSync(resolvedHostHome)) {
     console.warn(`[SKIP] 宿主目录不存在: ${resolvedHostHome}`)
     return true // 跳过但不视为失败

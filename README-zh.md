@@ -175,8 +175,8 @@ Moluoxixi AIRules 通过自动化投影，支持不断增长的 AI 代理生态�
 | **Cursor** | `cursor` | `~/.cursor/` | 软链接 | `AGENTS.md` |
 | **Trae** | `trae` | `~/.trae/` | 软链接；MCP 位于 `~/AppData/Roaming/Trae/User/mcp.json` | `AGENTS.md` |
 | **Trae CN** | `trae-cn` | `~/.trae-cn/` | 软链接；MCP 位于 `~/AppData/Roaming/Trae CN/User/mcp.json` | `AGENTS.md` |
-| **Trae Solo** | `trae-solo` | `~/.trae-solo/` | 软链接；MCP 位于 `~/AppData/Roaming/TRAE SOLO/User/mcp.json` | `AGENTS.md` |
-| **Trae Solo CN** | `trae-solo-cn` | `~/.trae-solo-cn/` | 软链接；MCP 位于 `~/AppData/Roaming/TRAE SOLO CN/User/mcp.json` | `AGENTS.md` |
+| **Trae Solo** | `trae-solo` | `~/AppData/Roaming/TRAE SOLO/User/` | 仅 MCP | N/A |
+| **Trae Solo CN** | `trae-solo-cn` | `~/AppData/Roaming/TRAE SOLO CN/User/` | 仅 MCP | N/A |
 | **Qoder** | `qoder` | `~/AppData/Roaming/Qoder/SharedClientCache/` | 仅 MCP | N/A |
 | **QoderWork** | `qoderwork` | `~/.qoderwork/` | 软链接；暂无已验证 MCP 配置 | `AGENTS.md` |
 | **OpenCode** | `opencode` | `~/.config/opencode/` | 软链接 | `AGENTS.md` |
