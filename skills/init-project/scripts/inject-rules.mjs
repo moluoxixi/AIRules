@@ -10,6 +10,21 @@ if (!projectRootArg) {
 }
 
 const skillRoot = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..')
+// AIRules 安装根目录 = skills/init-project 再上两层（skills → 安装根）。
+// 规则正文里用 `<AIRules>` 占位符引用安装目录下的校验脚本（如
+// `node <AIRules>/scripts/verify-knowledge-sources.mjs`）；这些脚本是 AIRules 中心工具，
+// 不投影进下游项目，下游通过解析后的绝对路径回指安装目录调用。注入时必须把占位符
+// 替换成真实绝对路径，否则下游 AI 读到字面量 `<AIRules>` 无从解析，且易与项目内
+// `.airules/` 目录撞名而找错位置。
+const AIRULES_PLACEHOLDER = '<AIRules>'
+// 统一用 POSIX 正斜杠：占位符出现在 `node <AIRules>/scripts/...` 这类命令里，
+// Windows 反斜杠会破坏命令；正斜杠在各平台 node 调用均可用。
+const airulesRootPosix = path.resolve(skillRoot, '..', '..').split(path.sep).join('/')
+
+/** 把规则正文里的 `<AIRules>` 占位符替换成真实安装绝对路径（POSIX 斜杠）。 */
+function resolveAirulesPlaceholder(content) {
+  return content.split(AIRULES_PLACEHOLDER).join(airulesRootPosix)
+}
 const baseReferencePath = path.join(skillRoot, 'references', 'airules-base.md')
 const controlReferencePath = path.join(skillRoot, 'references', 'common', 'control.md')
 const docsReferencePath = path.join(skillRoot, 'references', 'common', 'docs.md')
@@ -197,7 +212,7 @@ const routedRules = []
 
 for (const referencePath of coreInlinePaths) {
   const { body } = parseFrontmatter(readFileSync(referencePath, 'utf8'))
-  inlineSections.push(body)
+  inlineSections.push(resolveAirulesPlaceholder(body))
 }
 
 for (const referencePath of extraReferencePaths) {
@@ -205,7 +220,7 @@ for (const referencePath of extraReferencePaths) {
 
   // 无 ruleScope 的额外规范保持旧行为：直接 inline，确保向后兼容。
   if (!data.ruleScope) {
-    inlineSections.push(body)
+    inlineSections.push(resolveAirulesPlaceholder(body))
     continue
   }
 
@@ -213,7 +228,7 @@ for (const referencePath of extraReferencePaths) {
   const destAbs = path.join(projectRoot, RULES_DIR_REL, ruleRelPath)
   mkdirSync(path.dirname(destAbs), { recursive: true })
   // 复制正文（剥除 frontmatter），保持规范文件在项目内自包含、可 git 跟踪。
-  writeFileSync(destAbs, `${body}\n`, 'utf8')
+  writeFileSync(destAbs, `${resolveAirulesPlaceholder(body)}\n`, 'utf8')
 
   const globs = Array.isArray(data.globs) ? data.globs : (data.globs ? [data.globs] : [])
   routedRules.push({

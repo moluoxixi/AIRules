@@ -45,6 +45,31 @@
           "manual": true
         }
       ]
+    },
+    "design-docs": {
+      "minimalTask": "用户提供了「采购订单列表」页面的设计稿信息，要求按 design-docs skill 的流程产出 docs/design/采购订单.md 视觉规格文档。以下为用户提供的全部设计稿事实（直接据此转写，不需读取磁盘文件，未提供的视觉信息不得脑补）：\n\n【设计稿来源】Figma frame「采购列表-v2」+ 设计规范文档「色板」章节。\n【布局】页面主区顶部为筛选栏（供应商/状态/时间筛选），筛选栏下方为列表区（展示订单行）。\n【设计 token】主色 color-primary = #2F6BFF，用于主按钮与链接（来源：设计规范色板章节）。间距标度设计稿未标注。\n【状态】设计稿提供了四态：加载中（列表区骨架屏 6 行）、空态（居中插画+「暂无订单」）、错误态（顶部红条+重试按钮）、成功态（正常表格渲染）。\n【响应式】设计稿仅提供桌面端，未提供移动端断点。",
+      "assertions": [
+        {
+          "id": "visual-spec-sections",
+          "desc": "产物必须覆盖视觉规格核心章节：布局区域、设计 token、组件状态四态",
+          "regex": "布局[\\s\\S]*token[\\s\\S]*四态|布局[\\s\\S]*设计\\s*token[\\s\\S]*状态"
+        },
+        {
+          "id": "source-evidence",
+          "desc": "每条视觉事实必须可追溯到设计稿出处（Figma frame/规范章节/截图）",
+          "anyOf": ["Figma", "来源证据", "规范", "frame"]
+        },
+        {
+          "id": "missing-not-fabricated",
+          "desc": "用户未提供的视觉信息（间距标度、移动端断点）必须标 MISSING，不得脑补数值",
+          "regex": "MISSING"
+        },
+        {
+          "id": "boundary-no-business-rule",
+          "desc": "不得把业务规则/字段口径/验收标准写进视觉规格（应归 prd-docs），只写视觉事实（负向断言，人工复核）",
+          "manual": true
+        }
+      ]
     }
   }
 }

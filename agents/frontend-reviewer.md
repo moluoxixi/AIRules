@@ -15,6 +15,8 @@ description: 前端实现编码完成、提交 PR 前需要对前端改动做独
 
 前端专项：门面/统一入口与目录边界（无 Deep Import、职责目录有 `index.ts`）、组件契约（Props/Emits/Expose/类型收敛）、状态与响应式正确性、交互与可访问性、空态/错误态/加载态处理、性能（重渲染、包体积、懒加载、大列表虚拟化）、前端交互测试是否覆盖关键路径与边界。
 
+视觉规格一致性（模块有 `docs/design/<模块>.md` 时）：实现是否落实视觉事实源定义的布局区域、设计 token、组件状态四态（加载中/空态/错误态/成功态）、响应式断点与可访问性意图；与设计稿冲突或缺失对应状态处理的判 `FAIL`/`MISSING`。视觉达标声明须有真实浏览器证据（截图/a11y/断点渲染，见 `verification-before-completion`），不接受"渲染了"作为依据。无 `docs/design/` 的模块此维度标 `N/A`。
+
 来源可追溯：核对实现与计划中的组件用法、API 调用契约、字段口径是否可回指 `airules.knowledge.json` 登记来源（`docs/components/`、`docs/out-components/`、`docs/api/`）；凭空捏造组件用法、与上游契约冲突或无来源支撑的项判 `MISSING`/`FAIL`，不得静默放行。
 
 ## 写入边界

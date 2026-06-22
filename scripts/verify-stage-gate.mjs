@@ -15,8 +15,18 @@ const STAGE_DEPENDENCIES = {
   'test-design': [
     { label: 'PRD', rel: m => `docs/prds/${m}.md`, required: true },
   ],
+  // 视觉设计输入就绪门禁（仅前端 UI 模块）：PRD + 视觉事实源（docs/design/<module>.md，
+  // 由 design-docs 从用户设计稿转写）。前端 UI 模块进入实现计划前显式校验设计输入是否就绪。
+  'design-input': [
+    { label: 'PRD', rel: m => `docs/prds/${m}.md`, required: true },
+    { label: '视觉设计输入', rel: m => `docs/design/${m}.md`, required: true },
+  ],
   'frontend-plan': [
     { label: 'PRD', rel: m => `docs/prds/${m}.md`, required: true },
+    // 视觉设计输入：UI 模块的前端实现计划应以 docs/design/ 为视觉事实源；设为非强制
+    // （required:false），因设计稿常由设计师/PM 滞后补充，缺失时仅提示，不阻断纯逻辑前端模块；
+    // UI 模块的强制校验走 design-input stage。
+    { label: '视觉设计输入', rel: m => `docs/design/${m}.md`, required: false },
     { label: '测试设计', rel: m => `docs/test/${m}.md`, required: true },
   ],
   'backend-plan': [

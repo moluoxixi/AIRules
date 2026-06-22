@@ -17,6 +17,8 @@ if (!existsSync(projectRoot) || !statSync(projectRoot).isDirectory()) {
 const stacks = new Set(stackArgs)
 const docsRoot = path.join(projectRoot, 'docs')
 const includeComponents = stacks.has('component-consumer')
+// 视觉设计输入目录（docs/design/）仅对含 UI 的前端 stack 创建；纯后端/纯文档仓库不创建。
+const includeDesign = ['frontend', 'vue', 'component-consumer', 'component-library'].some(stack => stacks.has(stack))
 archiveExistingDocs(docsRoot, collectArchiveCandidates(docsRoot))
 
 const sections = [
@@ -38,6 +40,14 @@ const sections = [
         title: '外部组件库文档索引',
         description: '记录本项目消费的外部组件库、Design System 或 UI SDK 的使用约束、组件契约和版本来源。',
         columns: '| 组件库/组件 | 文档 | 来源 | 状态 |\n|---|---|---|---|',
+      }
+    : null,
+  includeDesign
+    ? {
+        name: 'design',
+        title: '视觉设计输入索引',
+        description: '记录由用户设计稿（Figma/截图/设计规范）转写的前端视觉事实源：布局区域、设计 token、组件状态四态、响应式断点和可访问性意图。视觉规格的权威源是设计稿，缺失项标 MISSING，不脑补。',
+        columns: '| 业务域 | 文档 | 视觉范围 | 来源设计稿 | 状态 |\n|---|---|---|---|---|',
       }
     : null,
   {
@@ -151,6 +161,9 @@ function collectArchiveCandidates(sourceDir) {
   const standardNames = new Set(['architecture', 'api', 'out-api', 'out-components', 'prds', 'test', 'map.md'])
   if (includeComponents) {
     standardNames.add('components')
+  }
+  if (includeDesign) {
+    standardNames.add('design')
   }
   // These directories are reference inputs, not legacy project docs to convert.
   const preservedNames = new Set(['other', 'superpowers'])

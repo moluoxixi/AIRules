@@ -51,6 +51,7 @@ node <init-project-skill>/scripts/scaffold-docs.mjs <your-project> <detect-stack
 - `docs/architecture/` 包含 `index.md`、`overview.md` 和 `decisions/index.md`，用于承载架构事实与 ADR。
 - `docs/api/` 包含 `index.md` 和 `_protocol.md`，用于承载当前项目消费的外部 API、上游服务或 SDK 契约。
 - `component-consumer` 项目额外创建 `docs/components/`，用于承载当前项目消费的外部组件库、Design System、UI SDK 或 workspace 组件包约束。
+- 含 UI 的前端 stack（`frontend`、`vue`、`component-consumer`、`component-library`）额外创建 `docs/design/`，用于承载由用户设计稿转写的前端视觉事实源（`design-docs` 产出）；纯后端/纯文档仓库不创建。
 - `scaffold-docs.mjs` 不生成 `docs/out-components/` 或 `docs/out-api/`；对外复用产物必须分别由 `components-docs`、`api-docs` 基于自维护文档、源码和已有契约推导生成。
 - 如果项目已有文档必须先判断归属；能确定属于架构、接口、需求、测试或外部组件库的，保留为登记知识源和已知归属来源，按“对应文档 Skills”转成标准格式；无法确定归属的移动到 `docs/other/imported/` 并在 `docs/other/index.md` 标记为 `MISSING conversion`。
 - 已有接口或组件文档必须再判断 ownership：当前项目提供的 API/组件库输出到 `docs/out-api/` 或 `docs/out-components/`；当前项目消费的外部 API/组件库输出到 `docs/api/` 或 `docs/components/`；无法确认时标记 `MISSING ownership`。
@@ -65,6 +66,7 @@ node <init-project-skill>/scripts/scaffold-docs.mjs <your-project> <detect-stack
 - `architecture-docs`：架构边界、分层、依赖方向、部署拓扑、权限模型、技术选型、ADR。
 - `knowledge-search`：通过 `airules.knowledge.json` 和登记文件系统来源查找项目知识和证据，不写正式文档。
 - `prd-docs`：业务背景、用户流程、字段口径、状态流转、验收标准、需求变更。
+- `design-docs`：把用户提供的设计稿（Figma/截图/设计规范）转写为前端视觉事实源，输出到 `docs/design/`（布局区域、设计 token、组件状态四态、响应式断点、可访问性意图）；视觉规格归此，业务规则归 `prd-docs`，组件对外契约归 `components-docs`，三者不交叉。
 - `api-docs`：当前项目提供的 API 输出到 `docs/out-api/`；当前项目消费的外部 API、上游服务、SDK 或 generated client 输出到 `docs/api/`。
 - `components-docs`：当前项目提供的组件库输出到 `docs/out-components/`；当前项目消费的外部组件库、Design System、UI SDK 或 workspace 组件包输出到 `docs/components/`。
 - `test-docs`：测试策略、用例矩阵、回归范围、联调验证、Mock/fixture、测试数据准备、前端交互测试设计。
@@ -80,7 +82,7 @@ node <init-project-skill>/scripts/scaffold-docs.mjs <your-project> <detect-stack
 - 始终注入 `references/common/control.md`、`references/common/docs.md` 和 `references/common/subagent.md`，再按检测结果选择场景输出规范与语言代码规范，并注入目标项目根目录 `AGENTS.md`。
 - `references/common/control.md` 承载变更分级（L0/L1/L2）、澄清门禁和开发链路控制（含 need→契约→测试设计→实现计划→编码→验证→评审的链式前置门禁），是各宿主 agent 获得需求-计划-测试-评审全程可控能力的入口；不得跳过注入。
 - `references/common/subagent.md` 承载子代理委派规则和后置子代理评审/校验（实现编码后强制独立子代理评审代码质量、文档产物的可控性后置校验）；不得跳过注入。
-- `references/` 按 `common/`、`frontend/`、`backend/` 组织：通用文档读取规则只放在 `common/docs.md`；组件库对外输出规则放在 `frontend/out-components.md`；外部组件库消费规则放在 `frontend/components.md`；后端 API 提供方与消费方规则放在 `backend/out-api.md`；各领域通用代码规则命名为 `code.md`，具体框架或语言规则使用 `vue.md`、`node.md`、`nestjs.md`、`java.md`。
+- `references/` 按 `common/`、`frontend/`、`backend/` 组织：通用文档读取规则只放在 `common/docs.md`；组件库对外输出规则放在 `frontend/out-components.md`；外部组件库消费规则放在 `frontend/components.md`；后端 API 提供方规则放在 `backend/out-api.md`，后端消费外部 API/SDK 规则放在 `backend/api-consumer.md`；各领域通用代码规则命名为 `code.md`（前端 `frontend/code.md`、后端 `backend/code.md`），具体框架或语言规则使用 `vue.md`、`node.md`、`nestjs.md`、`java.md`。
 
 | `detect-stack.mjs` 输出 stack | 追加注入 references |
 |---|---|
@@ -88,9 +90,9 @@ node <init-project-skill>/scripts/scaffold-docs.mjs <your-project> <detect-stack
 | `component-library` | `code-core.md`、`frontend/out-components.md` |
 | `component-consumer` | `code-core.md`、`frontend/components.md` |
 | `vue` | `code-core.md`、`frontend/vue.md` |
-| `node` | `code-core.md`、`backend/out-api.md`、`backend/node.md` |
-| `nestjs` | `code-core.md`、`backend/out-api.md`、`backend/nestjs.md` |
-| `java` | `code-core.md`、`backend/out-api.md`、`backend/java.md` |
+| `node` | `code-core.md`、`backend/code.md`、`backend/out-api.md`、`backend/api-consumer.md`、`backend/node.md` |
+| `nestjs` | `code-core.md`、`backend/code.md`、`backend/out-api.md`、`backend/api-consumer.md`、`backend/nestjs.md` |
+| `java` | `code-core.md`、`backend/code.md`、`backend/out-api.md`、`backend/api-consumer.md`、`backend/java.md` |
 
 `code-core.md` 是语言无关的代码实现核心纪律（边界校验、禁止冗余防御、禁止错误绕行、禁止 lint 绕行、优先成熟库），凡检测到任何含生产代码的 stack 都必须注入，且只注入一次（多 stack 命中时不重复传入）。它带 `ruleScope: code` 与跨语言 globs，走按需路由表，不再常驻全局 baseline。检测不到任何代码 stack（纯文档/配置仓库）时不注入。
 

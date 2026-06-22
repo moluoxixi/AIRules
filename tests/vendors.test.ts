@@ -562,8 +562,19 @@ it('vendors 配置 - 使用 OpenAI Playwright 并移除过时技能', () => {
         command: 'codegraph',
         args: ['install', '--yes'],
       },
+      {
+        command: 'npm',
+        args: ['install', '--global', '@fission-ai/openspec'],
+        skipIfCommandAvailable: 'openspec',
+      },
     ],
-    '安装 AIRules 时应同步安装并初始化 CodeGraph',
+    '安装 AIRules 时应同步安装并初始化 CodeGraph，并全局安装 OpenSpec CLI',
+  )
+  assert.ok(
+    vendors.moluoxixi.setup.some((cmd: any) =>
+      cmd.args?.includes('@fission-ai/openspec') && cmd.skipIfCommandAvailable === 'openspec',
+    ),
+    'setup 应包含 openspec 全局安装命令，并在命令已存在时跳过',
   )
   assert.ok(
     !vendors.moluoxixi.links.some((link: any) => link.target === 'vendor/skills/workflow'),
@@ -577,46 +588,6 @@ it('vendors 配置 - 使用 OpenAI Playwright 并移除过时技能', () => {
     })),
     [
       {
-        source: 'skills/architecture-docs',
-        target: 'vendor/skills/architecture-docs',
-        setup: undefined,
-      },
-      {
-        source: 'skills/architecture-deepening',
-        target: 'vendor/skills/architecture-deepening',
-        setup: undefined,
-      },
-      {
-        source: 'skills/api-docs',
-        target: 'vendor/skills/api-docs',
-        setup: undefined,
-      },
-      {
-        source: 'skills/backend-impl-plan',
-        target: 'vendor/skills/backend-impl-plan',
-        setup: undefined,
-      },
-      {
-        source: 'skills/components-docs',
-        target: 'vendor/skills/components-docs',
-        setup: undefined,
-      },
-      {
-        source: 'skills/consistency-check',
-        target: 'vendor/skills/consistency-check',
-        setup: undefined,
-      },
-      {
-        source: 'skills/frontend-impl-plan',
-        target: 'vendor/skills/frontend-impl-plan',
-        setup: undefined,
-      },
-      {
-        source: 'skills/handoff',
-        target: 'vendor/skills/handoff',
-        setup: undefined,
-      },
-      {
         source: 'skills/init-project',
         target: 'vendor/skills/init-project',
         setup: undefined,
@@ -627,8 +598,18 @@ it('vendors 配置 - 使用 OpenAI Playwright 并移除过时技能', () => {
         setup: undefined,
       },
       {
-        source: 'skills/prd-docs',
-        target: 'vendor/skills/prd-docs',
+        source: 'skills/consistency-check',
+        target: 'vendor/skills/consistency-check',
+        setup: undefined,
+      },
+      {
+        source: 'skills/design-docs',
+        target: 'vendor/skills/design-docs',
+        setup: undefined,
+      },
+      {
+        source: 'skills/handoff',
+        target: 'vendor/skills/handoff',
         setup: undefined,
       },
       {
@@ -636,33 +617,15 @@ it('vendors 配置 - 使用 OpenAI Playwright 并移除过时技能', () => {
         target: 'vendor/skills/retrospective-correction',
         setup: undefined,
       },
-      {
-        source: 'skills/test-docs',
-        target: 'vendor/skills/test-docs',
-        setup: undefined,
-      },
-      {
-        source: 'skills/systematic-debugging',
-        target: 'vendor/skills/systematic-debugging',
-        setup: undefined,
-      },
-      {
-        source: 'skills/verification-before-completion',
-        target: 'vendor/skills/verification-before-completion',
-        setup: undefined,
-      },
-      {
-        source: 'skills/requesting-code-review',
-        target: 'vendor/skills/requesting-code-review',
-        setup: undefined,
-      },
-      {
-        source: 'skills/receiving-code-review',
-        target: 'vendor/skills/receiving-code-review',
-        setup: undefined,
-      },
     ],
-    '第一方 skill 默认投影初始化、知识检索、项目文档写作、偏差修正与第一方化的调试/验证/评审治理技能',
+    '第一方 skill 默认只投影外部框架未覆盖的独有能力：项目初始化、知识检索、跨产物一致性门禁、视觉设计事实源、会话交接与偏差修正',
+  )
+  assert.ok(
+    !vendors.moluoxixi.links.some((link: any) =>
+      ['prd-docs', 'test-docs', 'systematic-debugging', 'verification-before-completion', 'requesting-code-review', 'receiving-code-review', 'backend-impl-plan', 'frontend-impl-plan', 'architecture-docs', 'architecture-deepening', 'api-docs', 'components-docs']
+        .some(name => link.target.endsWith(`/${name}`)),
+    ),
+    '被外部框架（pm-skills 需求侧 / superpowers 实现侧方法论）覆盖的 12 个 skill 不应再第一方分发',
   )
 })
 
@@ -699,7 +662,7 @@ it('vendors 配置 - 默认不接入静态代码规范供应商', () => {
   assert.strictEqual(vendors.vercelAgentSkills, undefined, '不应默认安装 Vercel React/React Native 代码技能')
 })
 
-it('vendors 配置 - Superpowers 精选投影互补方法论 skills', () => {
+it('vendors 配置 - Superpowers 完整方法论 skills 投影（含调试/验证/评审）', () => {
   const vendors: Record<string, any> = {}
 
   walkVendorTree(configuredVendors, [], vendors)
@@ -722,14 +685,37 @@ it('vendors 配置 - Superpowers 精选投影互补方法论 skills', () => {
       { kind: 'skill', source: 'skills/writing-plans', target: 'vendor/skills/writing-plans', setup: undefined },
       { kind: 'skill', source: 'skills/writing-skills', target: 'vendor/skills/writing-skills', setup: undefined },
       { kind: 'skill', source: 'skills/test-driven-development', target: 'vendor/skills/test-driven-development', setup: undefined },
+      { kind: 'skill', source: 'skills/systematic-debugging', target: 'vendor/skills/systematic-debugging', setup: undefined },
+      { kind: 'skill', source: 'skills/verification-before-completion', target: 'vendor/skills/verification-before-completion', setup: undefined },
+      { kind: 'skill', source: 'skills/requesting-code-review', target: 'vendor/skills/requesting-code-review', setup: undefined },
+      { kind: 'skill', source: 'skills/receiving-code-review', target: 'vendor/skills/receiving-code-review', setup: undefined },
     ],
-    'Superpowers 改为精选投影：只保留通用方法论，已第一方化的调试/验证/评审与冲突的 brainstorming/using-superpowers 不再分发',
+    'Superpowers 投影完整通用方法论：调试/验证/评审原版切回上游，不再第一方化；不分发 brainstorming（与L0/L1直接执行冲突）和 using-superpowers（与按需加载重复）',
   )
-  assert.ok(
-    !vendors.superpowers.links.some((link: any) =>
-      ['systematic-debugging', 'verification-before-completion', 'requesting-code-review', 'receiving-code-review']
-        .some(name => link.target.endsWith(`/${name}`)),
-    ),
-    '第一方化的 4 个 skill 不应再出现在 superpowers 投影中，避免 vendor/skills 扁平命名空间撞名',
+})
+
+it('vendors 配置 - pm-skills 承接需求侧 PM 工作流（PRD/用户故事/验收标准/ADR）', () => {
+  const vendors: Record<string, any> = {}
+
+  walkVendorTree(configuredVendors, [], vendors)
+
+  assert.ok(vendors.pmSkills, 'pmSkills 供应商应存在')
+  assert.strictEqual(vendors.pmSkills.repo, 'https://github.com/product-on-purpose/pm-skills.git')
+  assert.deepStrictEqual(
+    vendors.pmSkills.links.map((link: any) => ({
+      kind: link.kind,
+      source: link.source,
+      target: link.target,
+      setup: link.setup,
+    })),
+    [
+      { kind: 'skill', source: 'skills/deliver-prd', target: 'vendor/skills/deliver-prd', setup: undefined },
+      { kind: 'skill', source: 'skills/deliver-user-stories', target: 'vendor/skills/deliver-user-stories', setup: undefined },
+      { kind: 'skill', source: 'skills/deliver-acceptance-criteria', target: 'vendor/skills/deliver-acceptance-criteria', setup: undefined },
+      { kind: 'skill', source: 'skills/deliver-edge-cases', target: 'vendor/skills/deliver-edge-cases', setup: undefined },
+      { kind: 'skill', source: 'skills/develop-adr', target: 'vendor/skills/develop-adr', setup: undefined },
+      { kind: 'skill', source: 'skills/develop-solution-brief', target: 'vendor/skills/develop-solution-brief', setup: undefined },
+    ],
+    'pm-skills 承接原第一方 prd-docs 需求侧职责：PRD、用户故事、验收标准、边界用例、ADR、解决方案简报',
   )
 })

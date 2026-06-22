@@ -244,6 +244,50 @@ it('init-project inject-rules - 无 frontmatter 的额外规范仍 inline 且不
   assert.equal(fs.existsSync(path.join(projectRoot, '.airules')), false, 'no .airules dir without scoped rules')
 }))
 
+it('init-project inject-rules - <AIRules> 占位符注入时解析为真实安装绝对路径（inline 与路由规范均替换）', () => withTempDir('airules-inject-placeholder-', (tmpDir) => {
+  const projectRoot = path.join(tmpDir, 'project')
+  const plainRef = path.join(tmpDir, 'plain-placeholder.md')
+  const scopedRef = path.join(tmpDir, 'references', 'frontend', 'scoped-placeholder.md')
+
+  fs.mkdirSync(projectRoot, { recursive: true })
+  writeFile(plainRef, '# Placeholder Inline\n\n运行 `node <AIRules>/scripts/verify-knowledge-sources.mjs airules.knowledge.json`\n')
+  writeFile(
+    scopedRef,
+    [
+      '---',
+      'ruleScope: placeholder-scoped',
+      'globs:',
+      '  - "**/*.ph"',
+      'description: 占位符路由规范',
+      'loadTiming: 测试',
+      '---',
+      '# Placeholder Scoped',
+      '',
+      '校验：`node <AIRules>/scripts/verify-stage-gate.mjs <project-root> frontend-plan <模块>`',
+      '',
+    ].join('\n'),
+  )
+
+  const result = runInjectRules(projectRoot, plainRef, scopedRef)
+  const agentsContent = fs.readFileSync(agentsPath(projectRoot), 'utf8')
+  const copiedRule = fs.readFileSync(
+    path.join(projectRoot, '.airules', 'rules', 'frontend', 'scoped-placeholder.md'),
+    'utf8',
+  )
+  // 注入时占位符必须被真实安装根目录（POSIX 斜杠）替换；下游不得残留字面量 <AIRules>。
+  const airulesRootPosix = process.cwd().split(path.sep).join('/')
+
+  assert.equal(result.status, 0, result.stderr)
+  assert.doesNotMatch(agentsContent, /<AIRules>/, 'inline 正文不得残留 <AIRules> 占位符')
+  assert.doesNotMatch(copiedRule, /<AIRules>/, '复制到 .airules 的规范不得残留 <AIRules> 占位符')
+  assert.match(agentsContent, new RegExp(`node ${escapeRegExp(airulesRootPosix)}/scripts/verify-knowledge-sources\\.mjs`))
+  assert.match(copiedRule, new RegExp(`node ${escapeRegExp(airulesRootPosix)}/scripts/verify-stage-gate\\.mjs`))
+}))
+
+function escapeRegExp(value: string): string {
+  return value.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')
+}
+
 function agentsPath(projectRoot: string): string {
   return path.join(projectRoot, 'AGENTS.md')
 }
@@ -486,7 +530,7 @@ it('init-project detect-stack - monorepo 同时识别前端后端和组件库子
 
   assert.equal(result.status, 0, result.stderr)
   assert.deepEqual(output.stacks, ['frontend', 'component-library', 'vue', 'nestjs'])
-  assert.deepEqual(output.references, ['frontend/code.md', 'frontend/out-components.md', 'frontend/vue.md', 'backend/out-api.md', 'backend/nestjs.md'])
+  assert.deepEqual(output.references, ['frontend/code.md', 'frontend/out-components.md', 'frontend/vue.md', 'backend/code.md', 'backend/out-api.md', 'backend/api-consumer.md', 'backend/nestjs.md'])
   assert.deepEqual(projectStacks['apps/web'], ['frontend', 'vue'])
   assert.deepEqual(projectStacks['apps/api'], ['nestjs'])
   assert.deepEqual(projectStacks['packages/ui'], ['frontend', 'component-library', 'vue'])
@@ -562,7 +606,7 @@ it('init-project detect-stack - NestJS 项目注入后端文档规范', () => wi
 
   assert.equal(result.status, 0, result.stderr)
   assert.deepEqual(output.stacks, ['nestjs'])
-  assert.deepEqual(output.references, ['backend/out-api.md', 'backend/nestjs.md'])
+  assert.deepEqual(output.references, ['backend/code.md', 'backend/out-api.md', 'backend/api-consumer.md', 'backend/nestjs.md'])
 }))
 
 it('init-project scaffold-docs - 普通前端项目不创建组件库文档目录', () => withTempDir('airules-docs-frontend-', (tmpDir) => {

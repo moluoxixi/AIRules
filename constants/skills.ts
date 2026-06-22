@@ -113,6 +113,21 @@ const codegraphSetup: SetupCommand[] = [
 ]
 
 /**
+ * 安装 AIRules 时同步全局安装 OpenSpec CLI。
+ * OpenSpec 提供 spec-driven 的 propose→apply→archive 工作流，承接需求确认到实现的书面契约层；
+ * 全局装好命令后，用户在具体项目里按需执行 `openspec init` 注入 slash command，
+ * AIRules 不替用户自动修改任何项目级 AGENTS.md。
+ * @see https://github.com/Fission-AI/OpenSpec
+ */
+const openspecSetup: SetupCommand[] = [
+  {
+    command: 'npm',
+    args: ['install', '--global', '@fission-ai/openspec'],
+    skipIfCommandAvailable: 'openspec',
+  },
+]
+
+/**
  * @see https://github.com/Shubhamsaboo/awesome-llm-apps/tree/main/awesome_agent_skills awesome-agent-skills仓库，收集了很多技能
  * @see https://github.com/anthropics/skills.git anthropic（claude）官方技能仓库
  * @see https://github.com/google-gemini/gemini-cli.git gemini官方技能仓库
@@ -179,16 +194,14 @@ export const vendors: VendorsConfig = [
     source: 'https://github.com/obra/superpowers.git',
     projections: [
       {
-        // 精选投影：只保留与项目治理链互补、且不与第一方治理 skill 冲突或重名的通用方法论。
-        // 不再 namespace 全量安装，原因：
-        // - systematic-debugging / verification-before-completion / requesting-code-review /
-        //   receiving-code-review 已第一方化（见下方 moluoxixi 投影），剥离了 Claude-Code 专用
-        //   引用并对齐本项目子代理评审协议；superpowers 原版不再分发，避免 vendor/skills 扁平
-        //   命名空间撞名。
-        // - brainstorming（HARD-GATE 强制任何实现前先出设计等用户批准）与本项目 L0/L1 可直接
-        //   执行的变更分级门禁、以及用户「直接执行、反感反复确认」的偏好冲突，不分发。
-        // - using-superpowers 是框架自指胶水（引用 Claude Code Skill 工具、1% 即必须调用），
-        //   与本项目按需加载机制重复，不分发。
+        // 通用软件开发方法论由 superpowers 上游做主，不再第一方化重写。
+        // 调试、验证、评审、计划、TDD 等环节直接分发原版，本项目只在治理层（rules/sources/）
+        // 叠加 L0/L1/L2 分级、澄清门禁、子代理委派与后置评审协议。
+        // 不分发：
+        // - brainstorming —— HARD-GATE 强制任何实现前先出设计等批准，与本项目 L0/L1 可直接执行
+        //   的变更分级门禁、以及用户「直接执行、反感反复确认」的偏好冲突。
+        // - using-superpowers —— 框架自指胶水（引用 Claude Code Skill 工具、1% 即必须调用），
+        //   与本项目按需加载机制重复。
         kind: 'skills',
         sourceBaseDir: 'skills',
         skills: [
@@ -200,42 +213,58 @@ export const vendors: VendorsConfig = [
           'writing-plans',
           'writing-skills',
           'test-driven-development',
+          'systematic-debugging',
+          'verification-before-completion',
+          'requesting-code-review',
+          'receiving-code-review',
         ],
       },
     ],
   },
   {
-    name: 'moluoxixi',
-    official: true,
-    source: 'https://github.com/moluoxixi/AIRules.git',
-    sourceMode: 'workspace',
-    setup: codegraphSetup,
+    // 产品需求 / 用户故事 / 验收标准 / ADR 等 PM 工作流由 pm-skills 上游做主。
+    // 教练式引导（反问补全业务盲区）+ BDD 用户故事，覆盖原第一方 prd-docs/test-docs 的需求侧职责；
+    // 实现侧测试设计由 superpowers:test-driven-development 承接。
+    name: 'pmSkills',
+    official: false,
+    source: 'https://github.com/product-on-purpose/pm-skills.git',
     projections: [
       {
         kind: 'skills',
         sourceBaseDir: 'skills',
         skills: [
-          'architecture-docs',
-          'architecture-deepening',
-          'api-docs',
-          'backend-impl-plan',
-          'components-docs',
-          'consistency-check',
-          'frontend-impl-plan',
-          'handoff',
+          'deliver-prd',
+          'deliver-user-stories',
+          'deliver-acceptance-criteria',
+          'deliver-edge-cases',
+          'develop-adr',
+          'develop-solution-brief',
+        ],
+      },
+    ],
+  },
+  {
+    // 仅保留本项目真正独有、外部框架未覆盖的 workspace skill。
+    // 已删除被外部框架覆盖的 12 个：prd-docs/test-docs/systematic-debugging/
+    // verification-before-completion/requesting-code-review/receiving-code-review/
+    // backend-impl-plan/frontend-impl-plan/architecture-docs/architecture-deepening/
+    // api-docs/components-docs（分别由 pm-skills 与 superpowers 上游承接）。
+    name: 'moluoxixi',
+    official: true,
+    source: 'https://github.com/moluoxixi/AIRules.git',
+    sourceMode: 'workspace',
+    setup: [...codegraphSetup, ...openspecSetup],
+    projections: [
+      {
+        kind: 'skills',
+        sourceBaseDir: 'skills',
+        skills: [
           'init-project',
           'knowledge-search',
-          'prd-docs',
+          'consistency-check',
+          'design-docs',
+          'handoff',
           'retrospective-correction',
-          'test-docs',
-          // 第一方化的关键环节 skill：吸收 superpowers 方法论内核（根因优先调试、证据先于
-          // 声明、起评审子代理、非表演式接受反馈），剥离 Claude-Code 专用引用（Task/Skill 工具、
-          // code-reviewer.md 模板、superpowers: 前缀），对齐本项目子代理评审协议与中文结构化口径。
-          // 因 vendor/skills 为扁平命名空间，superpowers 投影已不再分发这 4 个原版以避免撞名。
-          'systematic-debugging',
-          'verification-before-completion',
-          'requesting-code-review',
-          'receiving-code-review',
           // TODO(未来开启): 'caveman' —— 超压缩沟通模式，用户显式触发省 token。
           // 与项目默认结构化高密度输出规范并存，确认不冲突后再纳入默认分发。
         ],

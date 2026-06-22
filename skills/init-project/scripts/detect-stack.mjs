@@ -20,9 +20,9 @@ const stackReferences = {
   'component-library': ['frontend/out-components.md'],
   'component-consumer': ['frontend/components.md'],
   'vue': ['frontend/vue.md'],
-  'node': ['backend/out-api.md', 'backend/node.md'],
-  'nestjs': ['backend/out-api.md', 'backend/nestjs.md'],
-  'java': ['backend/out-api.md', 'backend/java.md'],
+  'node': ['backend/code.md', 'backend/out-api.md', 'backend/api-consumer.md', 'backend/node.md'],
+  'nestjs': ['backend/code.md', 'backend/out-api.md', 'backend/api-consumer.md', 'backend/nestjs.md'],
+  'java': ['backend/code.md', 'backend/out-api.md', 'backend/api-consumer.md', 'backend/java.md'],
 }
 
 const ignoredDirs = new Set([

@@ -36,10 +36,12 @@
 | 需求进入 | `prd-docs`、`knowledge-search` | 背景、范围、用户流程、字段口径、验收标准、缺失项状态 | 源料/知识源 |
 | 架构设计 | `architecture-docs` | 模块边界、依赖方向、数据流、权限模型、ADR | 需求 |
 | API/组件契约 | `api-docs`、`components-docs` | 请求响应、错误码、字段含义、联调状态、组件边界 | 需求、架构 |
+| 视觉设计输入（前端 UI） | `design-docs` | 用户设计稿转写的布局区域、设计 token、组件状态四态、响应式断点、可访问性意图；缺失标 `MISSING` 不脑补 | 需求、用户设计稿 |
 | 测试设计 | `test-docs` | 测试目标、用例矩阵、前端交互测试、回归范围、Mock/fixture | 需求、API/组件契约 |
-| 实现计划 | `frontend-impl-plan`、`backend-impl-plan` | 实现方案、组件复用/数据模型、API 调用/接口设计、可追溯到需求与用例 | 需求、API/组件契约、测试设计 |
-| 跨产物一致性 | `consistency-check` | PRD↔测试↔计划↔（已有）代码四向对齐、覆盖缺口与孤儿项、结论 `PASS`/`FAIL`/`MISSING` | 需求、测试设计、实现计划 |
+| 实现计划 | `frontend-impl-plan`、`backend-impl-plan` | 实现方案、组件复用/数据模型、API 调用/接口设计、可追溯到需求与用例 | 需求、视觉设计输入(前端 UI)、API/组件契约、测试设计 |
+| 跨产物一致性 | `consistency-check` | PRD↔测试↔计划↔（已有）代码多向对齐、视觉态/用例/任务覆盖、覆盖缺口与孤儿项、结论 `PASS`/`FAIL`/`MISSING` | 需求、测试设计、实现计划 |
 | 实现编码 | 项目规则、TDD/调试类 skills | 边界校验在入口，内部不重复防御，错误显式暴露 | 实现计划、跨产物一致性 |
+| 架构改进 | `architecture-deepening`、`architecture-refactor`、`architecture-docs` | 深化候选(DC-*)发现与呈现 → 用户确认具体编号 → 精化为重构实现计划(对外行为等价/分步可回退/跨缝测试先行) → 改造编码与测试 → 回流 ADR 记录 | 架构设计、代码现状可访问 |
 | 调试修复 | `systematic-debugging`、`retrospective-correction`、debugger 子代理 | 先定位根因再修复；bugfix 链由 debugger 前置诊断，复杂/跨栈 bug 产 `docs/diagnosis/<bug>.md` 交接；偏差按级别处理 | 实现编码 / bugfix 复现现象 |
 | 代码评审 | `code-reviewer`、`requesting-code-review` | 编码完成后立即由评审员子代理评估；正确性、安全、性能、规则符合性、测试充分性；前后端改动分栈独立评审 | 实现编码 |
 | 测试验证 | `verification-before-completion` | 真实命令输出、测试结果、覆盖率、未执行项与原因 | 实现编码、代码评审 |
