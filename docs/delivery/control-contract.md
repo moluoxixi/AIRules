@@ -38,7 +38,8 @@ AIRules 的控制能力由三层资产协同构成，缺一不可：
 
 | 开发环节 | 控制资产 | 前置依赖 |
 |---|---|---|
-| 需求进入 | `prd-docs`、`knowledge-search` | 源料/知识源 |
+| 需求进入 | `prd-docs`、pm-skills(`deliver-prd`/`deliver-user-stories`/`deliver-acceptance-criteria`)、`knowledge-search` | 源料/知识源 |
+| Spec 契约（可选） | OpenSpec（`propose`→`apply`→`archive`） | 需求 |
 | 架构设计 | `architecture-docs` | 需求 |
 | API/组件契约 | `api-docs`、`components-docs` | 需求、架构 |
 | 测试设计 | `test-docs` | 需求、API/组件契约 |

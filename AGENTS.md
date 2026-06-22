@@ -52,7 +52,8 @@
 
 | 开发环节 | 控制资产 | 必需控制点 | 前置依赖 |
 |---|---|---|---|
-| 需求进入 | `prd-docs`、`knowledge-search` | 背景、范围、用户流程、字段口径、验收标准、缺失项状态 | 源料/知识源 |
+| 需求进入 | `prd-docs`、pm-skills(`deliver-prd`/`deliver-user-stories`/`deliver-acceptance-criteria`)、`knowledge-search` | 背景、范围、用户流程、字段口径、验收标准、缺失项状态 | 源料/知识源 |
+| Spec 契约（变更范围，可选） | OpenSpec（`propose`→`apply`→`archive`） | 按变更组织时，产出 proposal/specs/design/tasks 书面契约，实现前对齐、完成后归档留痕 | 需求 |
 | 架构设计 | `architecture-docs` | 模块边界、依赖方向、数据流、权限模型、ADR | 需求 |
 | API/组件契约 | `api-docs`、`components-docs` | 请求响应、错误码、字段含义、联调状态、组件边界 | 需求、架构 |
 | 视觉设计输入（前端 UI） | `design-docs` | 用户设计稿转写的布局区域、设计 token、组件状态四态、响应式断点、可访问性意图；缺失标 `MISSING` 不脑补 | 需求、用户设计稿 |
@@ -67,6 +68,7 @@
 | 提交 PR | `github-pr-workflow`、`pr-creator` | 评审全 `PASS` 且测试通过后推新分支建本地 PR；描述含变更摘要、关联上游、改动范围、测试情况、评审结论、风险、回滚 | 代码评审、测试验证 |
 
 - 进入任一环节前先按「任务分诊」定分类与分级，命中 L2 或关键事实缺失时先走「澄清门禁」。
+- 需求侧三者分工：`prd-docs` 负责把需求事实落盘到 `docs/prds/` 标准结构并维护知识源治理与导航（事实源，必经）；pm-skills 的 `deliver-*` 提供发现与拆解方法论（教练式反问、BDD 用户故事、验收标准，不绑定 docs 结构，按需调用辅助产出）；OpenSpec 在按「变更」组织工作时提供 `propose→apply→archive` 书面契约与留痕（可选，不替代 `prd-docs` 的事实落盘）。三者不互相替代，产出最终仍以 `docs/prds/` 为审计事实源。
 - bugfix 链：「调试修复」是 bugfix 的前置环节而非 feature 的收尾——先 debugger 复现并定位根因，回传「根因 + 证据 + 建议修复点 + 回归测试设计」，主代理再据此驱动实现编码修复；单点已定位的小 bug 主代理可直接修，不强制起 debugger。
 - 跨产物一致性（`consistency-check`）是实现编码前最后一道防漏门：校验需求是否都有对应用例、用例是否都有计划任务、计划任务是否都可追溯到需求/用例、有无孤儿项与覆盖缺口；`FAIL`/`MISSING` 未闭环不得进入实现编码。
 - 链式前置门禁：进入下游环节前必须先确认上游产物存在且已就绪。上游缺失或仍为草案/大量 `MISSING` 时，下游环节报告 `MISSING blocked`（说明缺失的上游产物）并停止，不得臆造上游事实继续推进。典型链：需求合格 → 才出测试设计；需求 + API/组件契约 + 测试设计合格 → 才出实现计划；实现计划合格 → 才进入实现编码。
