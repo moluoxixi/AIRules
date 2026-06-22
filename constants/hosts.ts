@@ -184,11 +184,10 @@ export const HOST_CONFIGS: HostConfig[] = [
   },
   {
     id: 'qoder',
-    homeRelPath: path.join('AppData', 'Roaming', 'Qoder', 'SharedClientCache'),
+    homeRelPath: '.qoder',
     baselineFileName: 'AGENTS.md',
-    projectBaseline: false,
-    projectSharedResources: false,
     mcp: {
+      homeRelPath: path.join('AppData', 'Roaming', 'Qoder', 'SharedClientCache'),
       relDir: '.',
       fileName: 'mcp.json',
       serversKey: 'mcpServers',

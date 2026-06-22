@@ -126,10 +126,11 @@ it('hosts - 解析默认和自定义宿主路径', () => {
   assert.equal(traeSoloCnPaths.projectBaseline, false)
 
   const qoderPaths = resolveHostPaths(qoder, 'C:/Users/example')
-  assert.equal(normalizePath(qoderPaths.hostHome), 'C:/Users/example/AppData/Roaming/Qoder/SharedClientCache')
+  assert.equal(normalizePath(qoderPaths.hostHome), 'C:/Users/example/.qoder')
   assert.equal(normalizePath(qoderPaths.mcpHome), 'C:/Users/example/AppData/Roaming/Qoder/SharedClientCache')
-  assert.equal(qoderPaths.projectSharedResources, false)
-  assert.equal(qoderPaths.projectBaseline, false)
+  assert.equal(normalizePath(qoderPaths.hostBaselineFile), 'C:/Users/example/.qoder/AGENTS.md')
+  assert.equal(qoderPaths.projectSharedResources, true)
+  assert.equal(qoderPaths.projectBaseline, true)
   assert.deepEqual(qoderPaths.mcp?.serverOverrides?.codegraph, { type: 'stdio' })
 
   const qoderworkPaths = resolveHostPaths(qoderwork, 'C:/Users/example')
@@ -375,11 +376,16 @@ it('install - Trae Solo 只投影 MCP，不写 baseline、skills 或 agents', ()
   })
 }))
 
-it('install - Qoder 只投影 MCP 且 codegraph 带 stdio 类型', () => withTempDir('airules-qoder-mcp-', (tmpDir) => {
+it('install - Qoder 投影 AGENTS、skills、agents，MCP 仍写 SharedClientCache', () => withTempDir('airules-qoder-mcp-', (tmpDir) => {
   const userHome = path.join(tmpDir, 'user')
   const moluoHome = path.join(userHome, '.moluoxixi')
-  const qoderHome = path.join(userHome, 'AppData', 'Roaming', 'Qoder', 'SharedClientCache')
+  const qoderHome = path.join(userHome, '.qoder')
+  const qoderMcpHome = path.join(userHome, 'AppData', 'Roaming', 'Qoder', 'SharedClientCache')
+  const vendorSkillsDir = path.join(moluoHome, 'vendor', 'skills')
 
+  writeFile(path.join(moluoHome, 'vendor', 'AGENTS.md'), '# AIRules\n\n## Core\n\n- Keep rules linked.\n')
+  fs.mkdirSync(path.join(vendorSkillsDir, 'api-docs'), { recursive: true })
+  writeFile(path.join(moluoHome, 'vendor', 'agents', 'demo-agent.md'), '---\nname: demo-agent\ndescription: demo\n---\nbody\n')
   writeFile(path.join(moluoHome, 'vendor', 'mcp', 'mcp.json'), `${JSON.stringify({
     mcpServers: {
       codegraph: {
@@ -389,16 +395,20 @@ it('install - Qoder 只投影 MCP 且 codegraph 带 stdio 类型', () => withTem
     },
   }, null, 2)}\n`)
   fs.mkdirSync(qoderHome, { recursive: true })
+  fs.mkdirSync(qoderMcpHome, { recursive: true })
 
   const projected = projectHostById('qoder', userHome, moluoHome)
 
   assert.equal(projected.success, true)
-  assert.equal(projected.baselineProjected, false)
-  assert.equal(fs.existsSync(path.join(qoderHome, 'AGENTS.md')), false)
-  assert.equal(fs.existsSync(path.join(qoderHome, 'skills')), false)
-  assert.equal(fs.existsSync(path.join(qoderHome, 'agents')), false)
+  assert.equal(projected.baselineProjected, true)
+  assert.equal(fs.existsSync(path.join(qoderHome, 'AGENTS.md')), true)
+  assert.equal(fs.existsSync(path.join(qoderHome, 'skills', 'api-docs')), true)
+  assert.equal(fs.existsSync(path.join(qoderHome, 'agents', 'demo-agent.md')), true)
+  assert.equal(fs.existsSync(path.join(qoderMcpHome, 'AGENTS.md')), false)
+  assert.equal(fs.existsSync(path.join(qoderMcpHome, 'skills')), false)
+  assert.equal(fs.existsSync(path.join(qoderMcpHome, 'agents')), false)
 
-  const written = JSON.parse(fs.readFileSync(path.join(qoderHome, 'mcp.json'), 'utf8'))
+  const written = JSON.parse(fs.readFileSync(path.join(qoderMcpHome, 'mcp.json'), 'utf8'))
   assert.deepEqual(written.mcpServers.codegraph, {
     type: 'stdio',
     command: 'codegraph',
