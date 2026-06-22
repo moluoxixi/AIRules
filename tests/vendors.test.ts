@@ -618,14 +618,14 @@ it('vendors 配置 - 使用 OpenAI Playwright 并移除过时技能', () => {
         setup: undefined,
       },
     ],
-    '第一方 skill 默认只投影外部框架未覆盖的独有能力：项目初始化、知识检索、跨产物一致性门禁、视觉设计事实源、会话交接与偏差修正',
+    '第一方 skill 默认只投影外部框架未覆盖的独有能力：项目初始化、知识检索、跨产物一致性门禁、视觉设计事实源、会话交接、偏差修正',
   )
   assert.ok(
     !vendors.moluoxixi.links.some((link: any) =>
-      ['prd-docs', 'test-docs', 'systematic-debugging', 'verification-before-completion', 'requesting-code-review', 'receiving-code-review', 'backend-impl-plan', 'frontend-impl-plan', 'architecture-docs', 'architecture-deepening', 'api-docs', 'components-docs']
+      ['prd-docs', 'test-docs', 'systematic-debugging', 'verification-before-completion', 'requesting-code-review', 'receiving-code-review', 'backend-impl-plan', 'frontend-impl-plan', 'architecture-docs', 'architecture-deepening', 'api-docs', 'components-docs', 'caveman']
         .some(name => link.target.endsWith(`/${name}`)),
     ),
-    '被外部框架（pm-skills 需求侧 / superpowers 实现侧方法论）覆盖的 12 个 skill 不应再第一方分发',
+    '被外部框架覆盖的 14 个 skill 不应再第一方分发',
   )
 })
 

@@ -245,10 +245,11 @@ export const vendors: VendorsConfig = [
   },
   {
     // 仅保留本项目真正独有、外部框架未覆盖的 workspace skill。
-    // 已删除被外部框架覆盖的 12 个：prd-docs/test-docs/systematic-debugging/
+    // 已删除被外部框架覆盖的 14 个：prd-docs/test-docs/systematic-debugging/
     // verification-before-completion/requesting-code-review/receiving-code-review/
     // backend-impl-plan/frontend-impl-plan/architecture-docs/architecture-deepening/
-    // api-docs/components-docs（分别由 pm-skills 与 superpowers 上游承接）。
+    // api-docs/components-docs/handoff/caveman（分别由 pm-skills、superpowers、
+    // applied-ai/claude-code-toolkit 上游承接）。
     name: 'moluoxixi',
     official: true,
     source: 'https://github.com/moluoxixi/AIRules.git',
@@ -265,8 +266,6 @@ export const vendors: VendorsConfig = [
           'design-docs',
           'handoff',
           'retrospective-correction',
-          // TODO(未来开启): 'caveman' —— 超压缩沟通模式，用户显式触发省 token。
-          // 与项目默认结构化高密度输出规范并存，确认不冲突后再纳入默认分发。
         ],
       },
     ],
