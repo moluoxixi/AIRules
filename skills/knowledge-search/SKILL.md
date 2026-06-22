@@ -24,7 +24,16 @@ name: knowledge-search
 - AIRules 不强制用户按统一 docs 模板写作；只强制知识源必须登记、检索结果必须可验证。
 - `airules.knowledge.json` 是项目知识源注册表；未登记来源不得作为项目事实入口。
 - 当前只支持登记的 `filesystem` 来源；未安装、未验证或未实现适配器的外部服务不得登记为知识源类型。
-- 标准 docs 是可审计输出层；只有用户明确要求生成或更新文档时，才调用 `architecture-docs`、`prd-docs`、`api-docs`、`components-docs` 或 `test-docs` 写入。
+- 标准 docs 是可审计输出层；只有用户明确要求生成或更新文档时，才调用对应文档 skill（需求侧 `deliver-prd`/`deliver-user-stories`、视觉侧 `design-docs`、spec 侧 OpenSpec `propose`）写入。
+
+## 主动触发（Self-RAG）
+
+在回答中即将做出**事实断言**（某字段的含义、某接口的行为、某业务规则的定义、某历史决策的原因）之前，先自问：**"我有来源吗？"**
+
+- 有来源 → 先检索，再断言，来源随答案一起输出。
+- 没有来源 → 不得以推断、代码反推或命名暗示替代事实；输出 `MISSING evidence` 并说明缺口。
+
+本 skill 的触发不依赖用户主动发起检索请求；凡涉及项目业务事实的回答，均应自行判断是否需要先检索。
 
 ## 读取顺序
 

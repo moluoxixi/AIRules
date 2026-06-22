@@ -587,45 +587,30 @@ it('vendors 配置 - 使用 OpenAI Playwright 并移除过时技能', () => {
       setup: link.setup,
     })),
     [
-      {
-        source: 'skills/init-project',
-        target: 'vendor/skills/init-project',
-        setup: undefined,
-      },
-      {
-        source: 'skills/knowledge-search',
-        target: 'vendor/skills/knowledge-search',
-        setup: undefined,
-      },
-      {
-        source: 'skills/consistency-check',
-        target: 'vendor/skills/consistency-check',
-        setup: undefined,
-      },
-      {
-        source: 'skills/design-docs',
-        target: 'vendor/skills/design-docs',
-        setup: undefined,
-      },
-      {
-        source: 'skills/handoff',
-        target: 'vendor/skills/handoff',
-        setup: undefined,
-      },
-      {
-        source: 'skills/retrospective-correction',
-        target: 'vendor/skills/retrospective-correction',
-        setup: undefined,
-      },
+      { source: 'skills/prd-docs', target: 'vendor/skills/prd-docs', setup: undefined },
+      { source: 'skills/architecture-docs', target: 'vendor/skills/architecture-docs', setup: undefined },
+      { source: 'skills/architecture-deepening', target: 'vendor/skills/architecture-deepening', setup: undefined },
+      { source: 'skills/api-docs', target: 'vendor/skills/api-docs', setup: undefined },
+      { source: 'skills/components-docs', target: 'vendor/skills/components-docs', setup: undefined },
+      { source: 'skills/test-docs', target: 'vendor/skills/test-docs', setup: undefined },
+      { source: 'skills/frontend-impl-plan', target: 'vendor/skills/frontend-impl-plan', setup: undefined },
+      { source: 'skills/backend-impl-plan', target: 'vendor/skills/backend-impl-plan', setup: undefined },
+      { source: 'skills/init-project', target: 'vendor/skills/init-project', setup: undefined },
+      { source: 'skills/knowledge-search', target: 'vendor/skills/knowledge-search', setup: undefined },
+      { source: 'skills/consistency-check', target: 'vendor/skills/consistency-check', setup: undefined },
+      { source: 'skills/design-docs', target: 'vendor/skills/design-docs', setup: undefined },
+      { source: 'skills/handoff', target: 'vendor/skills/handoff', setup: undefined },
+      { source: 'skills/retrospective-correction', target: 'vendor/skills/retrospective-correction', setup: undefined },
+      { source: 'skills/systematic-debugging', target: 'vendor/skills/systematic-debugging', setup: undefined },
+      { source: 'skills/verification-before-completion', target: 'vendor/skills/verification-before-completion', setup: undefined },
+      { source: 'skills/requesting-code-review', target: 'vendor/skills/requesting-code-review', setup: undefined },
+      { source: 'skills/receiving-code-review', target: 'vendor/skills/receiving-code-review', setup: undefined },
     ],
-    '第一方 skill 默认只投影外部框架未覆盖的独有能力：项目初始化、知识检索、跨产物一致性门禁、视觉设计事实源、会话交接、偏差修正',
+    '第一方 skill：文档生成（绑定 docs/ 结构）+ 实现计划 + 项目独有能力 + 第一方化方法论（剥离 Claude-Code 专用引用、对齐子代理评审协议）',
   )
   assert.ok(
-    !vendors.moluoxixi.links.some((link: any) =>
-      ['prd-docs', 'test-docs', 'systematic-debugging', 'verification-before-completion', 'requesting-code-review', 'receiving-code-review', 'backend-impl-plan', 'frontend-impl-plan', 'architecture-docs', 'architecture-deepening', 'api-docs', 'components-docs', 'caveman']
-        .some(name => link.target.endsWith(`/${name}`)),
-    ),
-    '被外部框架覆盖的 14 个 skill 不应再第一方分发',
+    !vendors.moluoxixi.links.some((link: any) => link.target.endsWith('/caveman')),
+    'caveman 超压缩模式不在默认分发中',
   )
 })
 
@@ -685,12 +670,15 @@ it('vendors 配置 - Superpowers 完整方法论 skills 投影（含调试/验�
       { kind: 'skill', source: 'skills/writing-plans', target: 'vendor/skills/writing-plans', setup: undefined },
       { kind: 'skill', source: 'skills/writing-skills', target: 'vendor/skills/writing-skills', setup: undefined },
       { kind: 'skill', source: 'skills/test-driven-development', target: 'vendor/skills/test-driven-development', setup: undefined },
-      { kind: 'skill', source: 'skills/systematic-debugging', target: 'vendor/skills/systematic-debugging', setup: undefined },
-      { kind: 'skill', source: 'skills/verification-before-completion', target: 'vendor/skills/verification-before-completion', setup: undefined },
-      { kind: 'skill', source: 'skills/requesting-code-review', target: 'vendor/skills/requesting-code-review', setup: undefined },
-      { kind: 'skill', source: 'skills/receiving-code-review', target: 'vendor/skills/receiving-code-review', setup: undefined },
     ],
-    'Superpowers 投影完整通用方法论：调试/验证/评审原版切回上游，不再第一方化；不分发 brainstorming（与L0/L1直接执行冲突）和 using-superpowers（与按需加载重复）',
+    'Superpowers 只投影通用方法论；systematic-debugging/verification/requesting-review/receiving-review 已第一方化（剥离 Claude-Code 引用、对齐子代理协议），不分发原版避免撞名；brainstorming（与L0/L1冲突）和 using-superpowers（与按需加载重复）也不分发',
+  )
+  assert.ok(
+    !vendors.superpowers.links.some((link: any) =>
+      ['systematic-debugging', 'verification-before-completion', 'requesting-code-review', 'receiving-code-review']
+        .some(name => link.target.endsWith(`/${name}`)),
+    ),
+    '第一方化的 4 个方法论 skill 不应再从 superpowers 原版投影，避免 vendor/skills 扁平命名空间撞名',
   )
 })
 

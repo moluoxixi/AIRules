@@ -195,13 +195,16 @@ export const vendors: VendorsConfig = [
     projections: [
       {
         // 通用软件开发方法论由 superpowers 上游做主，不再第一方化重写。
-        // 调试、验证、评审、计划、TDD 等环节直接分发原版，本项目只在治理层（rules/sources/）
+        // 计划、TDD、子代理、worktree 等环节直接分发原版，本项目只在治理层（rules/sources/）
         // 叠加 L0/L1/L2 分级、澄清门禁、子代理委派与后置评审协议。
         // 不分发：
         // - brainstorming —— HARD-GATE 强制任何实现前先出设计等批准，与本项目 L0/L1 可直接执行
         //   的变更分级门禁、以及用户「直接执行、反感反复确认」的偏好冲突。
         // - using-superpowers —— 框架自指胶水（引用 Claude Code Skill 工具、1% 即必须调用），
         //   与本项目按需加载机制重复。
+        // - systematic-debugging / verification-before-completion / requesting-code-review /
+        //   receiving-code-review —— 已第一方化（见 moluoxixi 投影），剥离 Claude-Code 专用引用
+        //   并对齐本项目子代理评审协议；因 vendor/skills 扁平命名空间，superpowers 原版不再分发以避免撞名。
         kind: 'skills',
         sourceBaseDir: 'skills',
         skills: [
@@ -213,18 +216,15 @@ export const vendors: VendorsConfig = [
           'writing-plans',
           'writing-skills',
           'test-driven-development',
-          'systematic-debugging',
-          'verification-before-completion',
-          'requesting-code-review',
-          'receiving-code-review',
         ],
       },
     ],
   },
   {
-    // 产品需求 / 用户故事 / 验收标准 / ADR 等 PM 工作流由 pm-skills 上游做主。
-    // 教练式引导（反问补全业务盲区）+ BDD 用户故事，覆盖原第一方 prd-docs/test-docs 的需求侧职责；
-    // 实现侧测试设计由 superpowers:test-driven-development 承接。
+    // 产品发现 / 用户故事 / 验收标准 / 边界用例 / ADR 等 PM 方法论由 pm-skills 上游做主。
+    // 教练式引导（反问补全业务盲区）+ BDD 用户故事，作为需求侧方法论补充。
+    // 与第一方 prd-docs 分工：pm-skills 提供发现与拆解方法论（不绑定项目 docs 结构），
+    // prd-docs 负责把需求事实落盘到 docs/prds/ 标准结构并维护知识源治理与导航。
     name: 'pmSkills',
     official: false,
     source: 'https://github.com/product-on-purpose/pm-skills.git',
@@ -244,12 +244,11 @@ export const vendors: VendorsConfig = [
     ],
   },
   {
-    // 仅保留本项目真正独有、外部框架未覆盖的 workspace skill。
-    // 已删除被外部框架覆盖的 14 个：prd-docs/test-docs/systematic-debugging/
-    // verification-before-completion/requesting-code-review/receiving-code-review/
-    // backend-impl-plan/frontend-impl-plan/architecture-docs/architecture-deepening/
-    // api-docs/components-docs/handoff/caveman（分别由 pm-skills、superpowers、
-    // applied-ai/claude-code-toolkit 上游承接）。
+    // 第一方 skill：绑定本项目 docs/ 知识治理结构与子代理评审协议，外部框架不生成这类结构化产物。
+    // 文档/计划/架构类（prd-docs/test-docs/*-impl-plan/architecture-*/api-docs/components-docs）
+    // 无外部等价替代，由本项目维护；调试/验证/评审 4 个为第一方化版本（剥离 Claude-Code 专用引用、
+    // 对齐子代理评审协议），superpowers 原版因扁平命名空间撞名不再分发。
+    // pm-skills 的 deliver-* 作为需求侧方法论与 prd-docs 共存（方法论 vs docs 结构落盘，分工见上）。
     name: 'moluoxixi',
     official: true,
     source: 'https://github.com/moluoxixi/AIRules.git',
@@ -260,12 +259,28 @@ export const vendors: VendorsConfig = [
         kind: 'skills',
         sourceBaseDir: 'skills',
         skills: [
+          // 文档生成（绑定 docs/ 标准结构 + 知识源治理）
+          'prd-docs',
+          'architecture-docs',
+          'architecture-deepening',
+          'api-docs',
+          'components-docs',
+          'test-docs',
+          // 实现计划（可追溯到需求与用例）
+          'frontend-impl-plan',
+          'backend-impl-plan',
+          // 项目独有能力
           'init-project',
           'knowledge-search',
           'consistency-check',
           'design-docs',
           'handoff',
           'retrospective-correction',
+          // 第一方化的方法论 skill（对齐子代理评审协议，避免与 superpowers 撞名）
+          'systematic-debugging',
+          'verification-before-completion',
+          'requesting-code-review',
+          'receiving-code-review',
         ],
       },
     ],
