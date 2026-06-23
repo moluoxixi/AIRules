@@ -17,7 +17,7 @@ description: 用于创建新项目、初始化项目、为已有项目首次接�
 
 ## 输出边界
 
-- 只修改目标项目根目录的 `AGENTS.md`、`CLAUDE.md`、`airules.knowledge.json`、`docs/` 标准骨架和 CodeGraph 初始化结果。
+- 仅修改初始化交付物：目标项目根目录的 `AGENTS.md`、`CLAUDE.md`、`airules.knowledge.json`、`docs/` 标准骨架、`.airules/rules/**` 按需规则路由文件，以及 CodeGraph 初始化结果。
 - 不改依赖目录、构建产物、vendor、宿主目录或用户未授权文件。
 
 ## 分析项目背景
@@ -32,7 +32,7 @@ node <init-project-skill>/scripts/detect-stack.mjs <your-project>
 - 规则文件来自脚本输出的 `references` 字段。
 - 多项目仓库、monorepo 或 workspace 项目必须读取脚本输出的 `monorepo`、`workspacePatterns`、`projects`、`projectRoots` 与 `evidence`；显式 workspace 配置优先，递归项目标记文件作为兜底；`stacks` 用于按所有子项目聚合后注入规则，`projects[].stacks` 用于说明每个子项目分别是前端、后端、组件库或其它类型，不得只根据仓库根目录判断。
 - 证据入口来自脚本输出的 `evidence` 字段；交付时保留关键证据，便于用户审计。
-- 写入边界：只修改目标项目根目录的 `AGENTS.md` 和 `CLAUDE.md`；不得改动依赖目录、构建产物、vendor 或用户未授权文件。
+- 写入边界：本 skill 只修改初始化交付物（`AGENTS.md`、`CLAUDE.md`、`airules.knowledge.json`、`docs/**`、`.airules/rules/**` 和 CodeGraph 初始化结果）；不得改动依赖目录、构建产物、vendor、宿主目录或用户未授权文件。
 - 缺失事实：脚本输出空 `stacks` 时，只注入通用 AIRules 基线；不要猜测语言规则。
 
 ## 初始化知识源注册表与项目文档骨架
@@ -81,7 +81,7 @@ node <init-project-skill>/scripts/scaffold-docs.mjs <your-project> <detect-stack
 - 当 `AGENTS.md` 已存在且包含用户内容时，跳过 `references/airules-base.md`，避免向用户已有规范中追加占位段。
 - 始终注入 `references/common/control.md`、`references/common/docs.md` 和 `references/common/subagent.md`，再按检测结果选择场景输出规范与语言代码规范，并注入目标项目根目录 `AGENTS.md`。
 - `references/common/control.md` 承载变更分级（L0/L1/L2）、澄清门禁和开发链路控制（含 need→契约→测试设计→实现计划→编码→验证→评审的链式前置门禁），是各宿主 agent 获得需求-计划-测试-评审全程可控能力的入口；不得跳过注入。
-- `references/common/subagent.md` 承载子代理委派规则和后置子代理评审/校验（实现编码后强制独立子代理评审代码质量、文档产物的可控性后置校验）；不得跳过注入。
+- `references/common/subagent.md` 承载子代理委派规则、关键环节子代理调度索引和后置子代理评审/校验（实现编码后强制独立子代理评审代码质量、文档产物的可控性后置校验）；不得跳过注入。
 - `references/` 按 `common/`、`frontend/`、`backend/` 组织：通用文档读取规则只放在 `common/docs.md`；组件库对外输出规则放在 `frontend/out-components.md`；外部组件库消费规则放在 `frontend/components.md`；后端 API 提供方规则放在 `backend/out-api.md`，后端消费外部 API/SDK 规则放在 `backend/api-consumer.md`；各领域通用代码规则命名为 `code.md`（前端 `frontend/code.md`、后端 `backend/code.md`），具体框架或语言规则使用 `vue.md`、`node.md`、`nestjs.md`、`java.md`。
 
 | `detect-stack.mjs` 输出 stack | 追加注入 references |

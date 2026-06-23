@@ -10,7 +10,7 @@ AIRules 的控制能力由三层资产协同构成，缺一不可：
 
 | 控制面 | 载体 | 职责 |
 |---|---|---|
-| 规则层 | `rules/AGENTS.md`（由 `rules/sources/*.md` 拼接） | 始终生效的红线：代码纪律、交付验证、变更分级、澄清门禁、子代理委派、后置评审 |
+| 规则层 | `rules/AGENTS.md`（由 `rules/sources/*.md` 拼接） | 始终生效的红线：代码纪律、交付验证、变更分级、澄清门禁、子代理调度、后置评审 |
 | 技能层 | `skills/*/SKILL.md` | 触发式工作流：prd/architecture/api/components/test/impl-plan/init-project 等环节资产 |
 | 执行层 | `scripts/verify-*.mjs`、`package.json` 脚本 | 确定性校验与编排：frontmatter、知识源、链式门禁、交付契约 |
 
@@ -41,6 +41,7 @@ AIRules 的控制能力由三层资产协同构成，缺一不可：
 | 需求进入 | `prd-docs`（产品/业务需求入口与最终事实源）、pm-skills 方法论辅助（`deliver-prd`/`deliver-user-stories`/`deliver-acceptance-criteria`/`deliver-edge-cases`）、`knowledge-search` | 源料/知识源 |
 | Spec 契约（可选） | OpenSpec（`propose`→`apply`→`archive`） | 需求 |
 | 架构设计 | `architecture-docs` | 需求 |
+| 架构改进 | `architecture-deepening`、`architecture-refactor`、`architecture-docs` | 架构设计、代码现状可访问；`architecture-refactor` 仅在用户确认具体 DC-* 后执行 |
 | API/组件契约 | `api-docs`、`components-docs` | 需求、架构 |
 | 测试设计 | `test-docs` | 需求、API/组件契约 |
 | 实现计划 | `frontend-impl-plan`、`backend-impl-plan` | 需求、API/组件契约、测试设计 |
@@ -53,6 +54,16 @@ AIRules 的控制能力由三层资产协同构成，缺一不可：
 链式前置门禁：进入下游环节前必须确认上游产物存在且已就绪；上游缺失或仍为草案时，下游报告 `MISSING blocked` 并停止，不得臆造上游事实继续推进。`scripts/verify-stage-gate.mjs` 对消费方项目做该校验。
 
 产品/业务需求入口以 `prd-docs` 为准；pm-skills 仅作为需求发现、用户故事、验收标准和边界用例的方法论辅助，辅助产出必须归一化进 `docs/prds/` 后才能作为下游事实源。
+
+关键环节子代理调度：规则层必须写明「什么时候调用什么子代理」，覆盖多源调研、实现计划、实现编码、调试修复、代码评审、测试验证、文档可控性校验、规则自足性校验和架构深化/重构。调度规则区分 `skill` 与 `subagent`：skill 承载知识内容与方法论，subagent 承载上下文隔离、并行和反自评边界；宿主不支持同名 agent 时，按同等职责与隔离边界选择可用子代理。多源调研可使用临时研究子代理或宿主 explorer 能力；测试验证可由主代理直接执行，或在输出量大、耗时长、跨多模块时派临时验证子代理加载 `verification-before-completion`；文档可控性校验与规则自足性校验使用临时 clean/headless validator。这些临时子代理不是固定 `agents/` 文件。
+
+headless / 干净隔离用于三类后置校验，但输入与闭环不同：
+
+- 文档可控性校验：输入为规则、被校验的 PRD/测试设计/实现计划等文档产物和必要 rubric，检查产物是否自足、结构完整、`MISSING` 标记完整；缺口回填产物或上游 skill 后复测。
+- 规则自足性校验：输入为规则、目标投影产物（`rules/AGENTS.md`、`rules/sources/*.md`、根 `AGENTS.md`/`CLAUDE.md` 或 init-project reference）和必要 rubric，检查规则脱离主会话是否仍能独立表达触发条件、门禁、状态语义与禁止替代通过；缺口回填规则源或投影产物后复测。
+- skill 纯净测试：输入为 init-project `references/` 规则、被测 skill 和最小任务，检查 skill 自身是否能驱动干净 agent 产出合规产物；缺口回填 skill 后复测。
+
+干净隔离指无主会话历史、无宿主 AGENTS/baseline、无额外引导；可使用只读工具、文件系统快照和显式注入的必要规则/产物/rubric。无法提供干净隔离时标记 `MISSING` 或 `NOT RUN` 并说明原因，不得用非干净执行替代通过。
 
 ## 质量门禁
 

@@ -53,6 +53,9 @@ node scripts/purity/purity-check.mjs <skill>
 关键约束：执行环境必须干净——不带本项目 `AGENTS.md`、不注入 baseline、不带历史记忆、不追加
 任何引导性提示词。否则测的就不是 skill 自身的可控性。
 
+无法保证上述干净执行环境时，结果必须标记为 `NOT RUN` 或 `MISSING clean executor`；不得继续执行
+`--check` 后把非干净 run 声明为 `PASS`。
+
 ### 3. 核对产物
 
 ```bash
