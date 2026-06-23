@@ -38,7 +38,7 @@ AIRules 的控制能力由三层资产协同构成，缺一不可：
 
 | 开发环节 | 控制资产 | 前置依赖 |
 |---|---|---|
-| 需求进入 | `prd-docs`、pm-skills(`deliver-prd`/`deliver-user-stories`/`deliver-acceptance-criteria`)、`knowledge-search` | 源料/知识源 |
+| 需求进入 | `prd-docs`（产品/业务需求入口与最终事实源）、pm-skills 方法论辅助（`deliver-prd`/`deliver-user-stories`/`deliver-acceptance-criteria`/`deliver-edge-cases`）、`knowledge-search` | 源料/知识源 |
 | Spec 契约（可选） | OpenSpec（`propose`→`apply`→`archive`） | 需求 |
 | 架构设计 | `architecture-docs` | 需求 |
 | API/组件契约 | `api-docs`、`components-docs` | 需求、架构 |
@@ -51,6 +51,8 @@ AIRules 的控制能力由三层资产协同构成，缺一不可：
 | 提交 PR | `github-pr-workflow`、`pr-creator` | 代码评审、测试验证 |
 
 链式前置门禁：进入下游环节前必须确认上游产物存在且已就绪；上游缺失或仍为草案时，下游报告 `MISSING blocked` 并停止，不得臆造上游事实继续推进。`scripts/verify-stage-gate.mjs` 对消费方项目做该校验。
+
+产品/业务需求入口以 `prd-docs` 为准；pm-skills 仅作为需求发现、用户故事、验收标准和边界用例的方法论辅助，辅助产出必须归一化进 `docs/prds/` 后才能作为下游事实源。
 
 ## 质量门禁
 

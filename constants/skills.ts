@@ -222,9 +222,9 @@ export const vendors: VendorsConfig = [
   },
   {
     // 产品发现 / 用户故事 / 验收标准 / 边界用例 / ADR 等 PM 方法论由 pm-skills 上游做主。
-    // 教练式引导（反问补全业务盲区）+ BDD 用户故事，作为需求侧方法论补充。
-    // 与第一方 prd-docs 分工：pm-skills 提供发现与拆解方法论（不绑定项目 docs 结构），
-    // prd-docs 负责把需求事实落盘到 docs/prds/ 标准结构并维护知识源治理与导航。
+    // 在 AIRules 链路中，产品/业务需求默认先进入第一方 prd-docs；
+    // pm-skills 提供发现与拆解方法论（不绑定项目 docs 结构），作为 prd-docs 的辅助工具箱，
+    // prd-docs 负责把确认后的需求事实归一化落盘到 docs/prds/ 标准结构并维护知识源治理与导航。
     name: 'pmSkills',
     official: false,
     source: 'https://github.com/product-on-purpose/pm-skills.git',
@@ -248,7 +248,7 @@ export const vendors: VendorsConfig = [
     // 文档/计划/架构类（prd-docs/test-docs/*-impl-plan/architecture-*/api-docs/components-docs）
     // 无外部等价替代，由本项目维护；调试/验证/评审 4 个为第一方化版本（剥离 Claude-Code 专用引用、
     // 对齐子代理评审协议），superpowers 原版因扁平命名空间撞名不再分发。
-    // pm-skills 的 deliver-* 作为需求侧方法论与 prd-docs 共存（方法论 vs docs 结构落盘，分工见上）。
+    // pm-skills 的 deliver-* 作为 prd-docs 内部需求侧方法论辅助（方法论 vs docs 结构落盘，分工见上）。
     name: 'moluoxixi',
     official: true,
     source: 'https://github.com/moluoxixi/AIRules.git',

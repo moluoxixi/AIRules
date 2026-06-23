@@ -33,7 +33,7 @@
 
 | 开发环节 | 控制资产 | 必需控制点 | 前置依赖 |
 |---|---|---|---|
-| 需求进入 | `prd-docs`、pm-skills(`deliver-prd`/`deliver-user-stories`/`deliver-acceptance-criteria`)、`knowledge-search` | 背景、范围、用户流程、字段口径、验收标准、缺失项状态 | 源料/知识源 |
+| 需求进入 | `prd-docs`（产品/业务需求入口与最终事实源）、pm-skills 方法论辅助（`deliver-prd`/`deliver-user-stories`/`deliver-acceptance-criteria`/`deliver-edge-cases`）、`knowledge-search` | 背景、范围、用户流程、字段口径、验收标准、缺失项状态 | 源料/知识源 |
 | Spec 契约（变更范围，可选） | OpenSpec（`propose`→`apply`→`archive`） | 按变更组织时，产出 proposal/specs/design/tasks 书面契约，实现前对齐、完成后归档留痕 | 需求 |
 | 架构设计 | `architecture-docs` | 模块边界、依赖方向、数据流、权限模型、ADR | 需求 |
 | API/组件契约 | `api-docs`、`components-docs` | 请求响应、错误码、字段含义、联调状态、组件边界 | 需求、架构 |
@@ -49,7 +49,7 @@
 | 提交 PR | `github-pr-workflow`、`pr-creator` | 评审全 `PASS` 且测试通过后推新分支建本地 PR；描述含变更摘要、关联上游、改动范围、测试情况、评审结论、风险、回滚 | 代码评审、测试验证 |
 
 - 进入任一环节前先按「任务分诊」定分类与分级，命中 L2 或关键事实缺失时先走「澄清门禁」。
-- 需求侧三者分工：`prd-docs` 负责把需求事实落盘到 `docs/prds/` 标准结构并维护知识源治理与导航（事实源，必经）；pm-skills 的 `deliver-*` 提供发现与拆解方法论（教练式反问、BDD 用户故事、验收标准，不绑定 docs 结构，按需调用辅助产出）；OpenSpec 在按「变更」组织工作时提供 `propose→apply→archive` 书面契约与留痕（可选，不替代 `prd-docs` 的事实落盘）。三者不互相替代，产出最终仍以 `docs/prds/` 为审计事实源。
+- 需求侧三者分工：产品/业务需求默认先进入 `prd-docs`，由 `prd-docs` 负责把需求事实落盘到 `docs/prds/` 标准结构并维护知识源治理与导航（入口与事实源，必经）；pm-skills 的 `deliver-*` 只作为 `prd-docs` 内部的发现与拆解方法论辅助（教练式反问、BDD 用户故事、验收标准、边界用例），输出必须归一化进 `docs/prds/<模块>.md` 的对应章节或「风险与待确认」，不得作为独立事实源；OpenSpec 在按「变更」组织工作时提供 `propose→apply→archive` 书面契约与留痕（可选，不替代 `prd-docs` 的事实落盘）。三者不互相替代，产出最终仍以 `docs/prds/` 为审计事实源。
 - bugfix 链：「调试修复」是 bugfix 的前置环节而非 feature 的收尾——先 debugger 复现并定位根因，回传「根因 + 证据 + 建议修复点 + 回归测试设计」，主代理再据此驱动实现编码修复；单点已定位的小 bug 主代理可直接修，不强制起 debugger。
 - 跨产物一致性（`consistency-check`）是实现编码前最后一道防漏门：校验需求是否都有对应用例、用例是否都有计划任务、计划任务是否都可追溯到需求/用例、有无孤儿项与覆盖缺口；`FAIL`/`MISSING` 未闭环不得进入实现编码。
 - 关键环节默认「该代理就代理」：实现计划、实现编码、调试修复、代码评审、测试验证、文档可控性校验等环节默认走子代理隔离上下文，主代理只做拆分、协调、整合与复核；各环节的委派形态、判据与方法论见「子代理委派」节的「关键环节子代理委派」表。

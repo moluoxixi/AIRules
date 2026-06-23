@@ -20,6 +20,7 @@ name: prd-docs
 - 默认只写 `docs/prds/`、`docs/prds/index.md` 和 `docs/map.md`。
 - 当用户或任务显式指定其它输出文件或目录时，按指定位置写入；此时不强制同步 `docs/prds/index.md` 与 `docs/map.md`，但必须在文档开头说明实际输出位置与未同步索引/地图的事实，不得静默偏离默认边界。
 - 不修改代码、接口协议、测试策略或其它正式文档的事实口径。
+- 借用 pm-skills 方法论时，不把 `deliver-prd`、`deliver-user-stories`、`deliver-acceptance-criteria`、`deliver-edge-cases` 的原始产物作为独立事实源；必须归一化进本 skill 的 PRD 结构，或归入「风险与待确认」。
 - 不得把原始资料中的密钥、token、appKey 等敏感凭证明文写入文档；发现时以配置项名称引用，并在「风险与待确认」标记 `MISSING` 凭证治理项。
 
 ## 输出位置
@@ -53,6 +54,22 @@ name: prd-docs
 ## 内容方法论（产物质量约束）
 
 写正式 PRD 各章节时，按以下方法论提升内容质量；每条事实的来源都先经 `knowledge-search` 命中 `airules.knowledge.json` 登记来源后引用，命中不到一律标 `MISSING`，禁止凭产品常识或代码反推业务事实。
+
+### PM 方法论集成
+
+`prd-docs` 是产品/业务需求入口和最终事实源；pm-skills 只作为方法论工具箱。需要更细的产品拆解时，按以下映射借用方法，并把结果写回本 PRD：
+
+| 方法论需求 | 借用的 pm-skills 能力 | 归一化到 PRD |
+|---|---|---|
+| 方案尚未对齐，需要先收敛问题、方案、取舍 | `develop-solution-brief` | 背景、目标、范围、风险与待确认 |
+| 需要完整需求规格框架 | `deliver-prd` | 正式 PRD 各章节；不得保留第二套 PRD 模板 |
+| 需要拆 backlog / sprint 用户故事 | `deliver-user-stories` | 用户故事小节；每条故事追溯到已确认需求 |
+| 需要 Given/When/Then 验收标准 | `deliver-acceptance-criteria` | 验收标准表；只写可观测结果 |
+| 需要系统枚举边界、错误、竞态、恢复路径 | `deliver-edge-cases` | 验收标准、状态与规则、风险与待确认 |
+
+- 若用户直接点名 pm-skills 产物，只可先产出临时方法论草稿；交付时必须说明其尚未成为 `docs/prds/` 审计事实源。
+- pm-skills 不能绕过澄清门禁；方法论产出中的假设、缺失数据、冲突口径必须保留为 `MISSING`，等待用户确认后才能定稿。
+- 技术架构决策不归 `prd-docs` 定稿；涉及 `develop-adr` 时，只在 PRD 中链接或标记需要 ADR，正式决策交给 `architecture-docs`/ADR 链路。
 
 - 问题陈述（背景节强化）：先框定「用户细分 + 痛点 + 业务影响 + 为何现在做」，避免泛指「所有用户」；用户细分要具体到角色/场景（如「完成结算的移动端买家」）。痛点严重度/频率须有证据来源（用户研究、工单、行为数据），无证据标 `MISSING`，不得臆断。
 - 成功指标（目标节强化）：目标必须可度量——每个指标给「当前基线 + 目标值 + 度量口径」，并与所解决的问题直接挂钩。基线或目标值缺失时标 `MISSING`，禁止编造数字。

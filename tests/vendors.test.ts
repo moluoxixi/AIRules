@@ -682,7 +682,7 @@ it('vendors 配置 - Superpowers 完整方法论 skills 投影（含调试/验�
   )
 })
 
-it('vendors 配置 - pm-skills 承接需求侧 PM 工作流（PRD/用户故事/验收标准/ADR）', () => {
+it('vendors 配置 - pm-skills 作为 prd-docs 的需求侧 PM 方法论辅助', () => {
   const vendors: Record<string, any> = {}
 
   walkVendorTree(configuredVendors, [], vendors)
@@ -704,6 +704,6 @@ it('vendors 配置 - pm-skills 承接需求侧 PM 工作流（PRD/用户故事/�
       { kind: 'skill', source: 'skills/develop-adr', target: 'vendor/skills/develop-adr', setup: undefined },
       { kind: 'skill', source: 'skills/develop-solution-brief', target: 'vendor/skills/develop-solution-brief', setup: undefined },
     ],
-    'pm-skills 承接原第一方 prd-docs 需求侧职责：PRD、用户故事、验收标准、边界用例、ADR、解决方案简报',
+    'pm-skills 提供 PRD、用户故事、验收标准、边界用例、ADR、解决方案简报等方法论；产品/业务需求事实源仍由 prd-docs 归一化落盘',
   )
 })
