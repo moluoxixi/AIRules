@@ -22,6 +22,8 @@ import path from 'node:path'
 import * as smolToml from 'smol-toml'
 import { findHostConfig, resolveHostPaths } from '../../constants/hosts.js'
 import { buildLinkPlan } from './links.js'
+// 共享 skill 索引模块（.mjs）：构建期与安装期共用，保证索引格式一致。
+import { renderSkillIndex, upsertSkillIndex } from './skill-index.mjs'
 import { collectFlattenedSkillSources, discoverSkillDirectories, flattenedSkillName } from './skill-projection.js'
 import { loadVendorManifest } from './vendors.js'
 
@@ -452,6 +454,29 @@ export function syncFirstPartyToHome(repoRoot: string, moluoHome: string) {
   syncOptionalDir(path.join(repoRoot, 'agents'), vendorAgentsPath(moluoHome))
   // 中性 MCP 源（rulesync 风格 { mcpServers: {} }）同步到 vendor，供各宿主按格式投影。
   syncOptionalDir(path.join(repoRoot, 'mcp'), vendorMcpPath(moluoHome))
+}
+
+/**
+ * 安装期重建 vendor/AGENTS.md 的「Skill 触发索引」段。
+ *
+ * 必须在 vendor/skills 链接齐全后调用（含 superpowers/pm-skills 等外部 skill），
+ * 这样索引才能覆盖全部已分发 skill，而不只是构建期可见的第一方 14 个。
+ * 缺 frontmatter description 的 skill 统一过滤、不注入（无触发词的条目对宿主无意义）。
+ * 索引段由 START/END 标记包裹，幂等替换；无可索引 skill 时移除旧索引段。
+ */
+export function regenerateVendorSkillIndex(moluoHome: string): void {
+  const baselineFile = vendorBaselinePath(moluoHome)
+  if (!existsSync(baselineFile)) {
+    return
+  }
+  const indexBlock = renderSkillIndex(vendorSkillsPath(moluoHome), {
+    readPathHint: 'skills/<name>/SKILL.md',
+  })
+  const current = readFileSync(baselineFile, 'utf8')
+  const updated = upsertSkillIndex(current, indexBlock)
+  if (updated !== current.replace(/\r\n/g, '\n')) {
+    writeFileSync(baselineFile, updated, 'utf8')
+  }
 }
 
 /**

@@ -14,11 +14,22 @@
 import { existsSync, readdirSync, readFileSync, writeFileSync } from 'node:fs'
 import path from 'node:path'
 import process from 'node:process'
+import { renderSkillIndex } from './lib/skill-index.mjs'
 
 const repoRoot = process.cwd()
 const SOURCES_DIR = path.join(repoRoot, 'rules', 'sources')
+const SKILLS_DIR = path.join(repoRoot, 'skills')
 const OUTPUT_FILE = path.join(repoRoot, 'rules', 'AGENTS.md')
 const HEADER = '# AIRules'
+
+/**
+ * 构建期生成「Skill 触发索引」段（含标记，便于安装期按标记替换为含外部 skill 的完整索引）。
+ * 缺 description 的第一方 skill 统一过滤、不注入（与安装期外部 skill 一致），不报错。
+ * 用途见 scripts/lib/skill-index.mjs 模块头注释。
+ */
+function buildSkillIndex() {
+  return renderSkillIndex(SKILLS_DIR, { readPathHint: 'skills/<name>/SKILL.md' })
+}
 
 /** 剥离 Markdown 文件开头的 YAML frontmatter（--- ... ---），返回正文（trim 后）。 */
 function stripFrontmatter(content) {
@@ -58,7 +69,9 @@ function assemble() {
     return body
   })
 
-  return `${HEADER}\n\n${sections.join('\n\n')}\n`
+  const skillIndex = buildSkillIndex()
+  const allSections = skillIndex ? [...sections, skillIndex] : sections
+  return `${HEADER}\n\n${allSections.join('\n\n')}\n`
 }
 
 const assembled = assemble()
