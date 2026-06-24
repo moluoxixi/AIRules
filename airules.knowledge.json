@@ -44,6 +44,7 @@
       "id": "first-party-instructions",
       "type": "filesystem",
       "include": [
+        "agents/**",
         "skills/**",
         "rules/**"
       ],

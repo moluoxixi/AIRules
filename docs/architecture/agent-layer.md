@@ -1,6 +1,6 @@
 # Agent 层：开发链路角色与 Skill 复用
 
-本文档说明 AIRules 中 **Agent 层** 与 **Skill 层** 的职责边界、两者如何协作，以及 8 个第一方开发链路 agent 的定位。决策依据见 [ADR-0002](./decisions/ADR-0002-skill-agent-layering.md)。
+本文档说明 AIRules 中 **Agent 层** 与 **Skill 层** 的职责边界、两者如何协作，以及 9 个第一方开发链路 agent 的定位。决策依据见 [ADR-0002](./decisions/ADR-0002-skill-agent-layering.md)。
 
 ## 两层模型
 
@@ -34,6 +34,7 @@
 | `backend-coder` | 实现编码（后端） | `backend-impl-plan`、`test-docs`、`test-driven-development` | 后端源码 + 配套单元测试 |
 | `frontend-reviewer` | 代码评审（前端） | `code-reviewer` | 只读评审，不改代码 |
 | `backend-reviewer` | 代码评审（后端） | `code-reviewer` | 只读评审，不改代码 |
+| `consistency-reviewer` | 后置一致性评审 | `consistency-check` | 只读评审；可写 `docs/consistency/*-implementation-review.md` |
 | `architecture-refactor` | 架构深化/重构（已确认 DC-* 后） | `architecture-deepening`、`test-driven-development`、`architecture-docs` | 按确认候选改造目标代码 + 跨缝测试；不定稿 ADR |
 
 ### 两条正交的拆分轴
@@ -42,6 +43,7 @@ agent 拆分沿两条正交轴展开：
 
 - **任务类型前置轴（跨栈不拆）**：`debugger` 是 bugfix 链的前置环节，负责复现 → 定位根因 → 回传「根因 + 证据 + 建议修复点 + 回归测试设计」。根因常跨前后端，故不按栈拆；修复由 coder 按回传执行，debugger 本身不改生产代码。单点已定位的小 bug 主代理直接修，不派 debugger。
 - **栈线轴（前后端拆分，贯穿计划→编码→评审）**：plan / coder / reviewer 均按前后端拆成独立 agent，因为两栈的上下文来源、关注点、编码方式和评审维度都不同（见各 agent 的"评审维度"小节与 AGENTS.md 前后端评审清单）。评审 agent 与编写该代码的 agent **必须是不同实例**，不得自评。
+- **后置一致性轴（跨栈不拆）**：`consistency-reviewer` 在实现编码后、测试验证前读取最终 diff 和上游事实源，判断实现是否符合需求、测试设计、实现计划或 bugfix 诊断。它只评需求一致性，不评代码质量；代码质量仍由 `frontend-reviewer` / `backend-reviewer` 分栈评审。
 - **架构深化轴（确认后执行）**：`architecture-refactor` 只承接用户已确认的 DC-* 深化候选，把候选精化为可回退的重构计划并交付跨缝测试；未确认候选时停在 `architecture-deepening`，不由 agent 自行选择目标。
 
 ### 测试编写并入 coder

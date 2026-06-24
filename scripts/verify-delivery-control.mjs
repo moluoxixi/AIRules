@@ -10,15 +10,20 @@ import path from 'node:path'
 
 const REQUIRED_STATUS_MARKERS = ['PASS', 'FAIL', 'MISSING', 'NOT RUN', 'N/A']
 const REQUIRED_SUBAGENT_DISPATCH_ITEMS = [
+  'flowchart',
   '多源',
   '实现计划',
   '实现编码',
   '调试修复',
   '代码评审',
+  '后置一致性评审',
   '测试验证',
   '文档可控性校验',
-  '规则自足性校验',
   '架构深化',
+  'architecture-deepening',
+  '临时研究子代理',
+  '临时验证子代理',
+  'clean/headless validator',
   'debugger',
   'frontend-planner',
   'backend-planner',
@@ -26,13 +31,31 @@ const REQUIRED_SUBAGENT_DISPATCH_ITEMS = [
   'backend-coder',
   'frontend-reviewer',
   'backend-reviewer',
+  'consistency-reviewer',
   'architecture-refactor',
+  '编码后',
+  '测试验证前',
+  'MISSING blocked',
+  '不得替代',
   '自包含',
   '复核',
   '不同实例',
   '隔离',
   '并行',
   '独立性',
+]
+const REQUIRED_CONSISTENCY_REVIEWER_ITEMS = [
+  'name: consistency-reviewer',
+  'description:',
+  'consistency-check',
+  '编码后',
+  '测试验证前',
+  '最终 diff',
+  '只读',
+  'PASS',
+  'FAIL',
+  'MISSING',
+  'N/A',
 ]
 const errors = []
 
@@ -113,6 +136,7 @@ function escapeRegExp(value) {
 function hasSubagentDispatchIndex(content) {
   const section = extractMarkdownSection(content, '关键环节子代理调度索引（什么时候调用什么子代理）')
   return section.includes('什么时候调用什么子代理')
+    && section.includes('```mermaid')
     && section.includes('skill')
     && section.includes('subagent')
     && section.includes('headless')
@@ -122,6 +146,10 @@ function hasSubagentDispatchIndex(content) {
 function hasCoreInlineReference(injectContent, referenceVariableName) {
   return injectContent.includes('const coreInlinePaths = [')
     && injectContent.includes(`${referenceVariableName},`)
+}
+
+function hasLegacyReference(injectContent, referenceVariableName) {
+  return injectContent.includes(referenceVariableName)
 }
 
 function checkRuleLayer(root) {
@@ -161,73 +189,60 @@ function checkRuleLayer(root) {
   }
 
   if (!hasSubagentDispatch) {
-    fail('rule layer incomplete: rules/AGENTS.md 必须包含子代理调度索引（场景、调用对象、触发条件、headless 边界）')
+    fail('rule layer incomplete: rules/AGENTS.md 必须包含子代理调度流程图（场景、具体子代理、触发条件、headless 边界）')
     return
   }
 
   pass('rule layer present')
 }
 
-/**
- * 校验下发到下游项目的控制 reference 是否完整。
- * control.md 承载分级闸门、澄清门禁和开发链路编排，由 init-project 注入各宿主 AGENTS.md，
- * 是各 agent 获得需求-计划-测试-评审全程可控能力的入口。
- */
-function checkControlReference(root) {
+/** 校验下发到下游项目的 project-init reference 是否只承载项目级规则。 */
+function checkProjectReference(root) {
   const initProjectRoot = path.join(root, 'skills', 'init-project')
   if (!fs.existsSync(initProjectRoot)) {
-    // 交付包未携带 init-project skill 时，控制 reference 不适用，跳过该检查。
-    pass('control reference n/a: 未携带 init-project skill')
+    // 交付包未携带 init-project skill 时，项目 reference 不适用，跳过该检查。
+    pass('project reference n/a: 未携带 init-project skill')
     return
   }
 
-  const controlPath = path.join(initProjectRoot, 'references', 'common', 'control.md')
-  if (!fs.existsSync(controlPath)) {
-    fail('control reference missing: skills/init-project/references/common/control.md')
+  const docsPath = path.join(initProjectRoot, 'references', 'common', 'docs.md')
+  if (!fs.existsSync(docsPath)) {
+    fail('project reference missing: skills/init-project/references/common/docs.md')
     return
   }
 
-  const subagentPath = path.join(initProjectRoot, 'references', 'common', 'subagent.md')
-  if (!fs.existsSync(subagentPath)) {
-    fail('control reference missing: skills/init-project/references/common/subagent.md')
-    return
-  }
-
-  const content = fs.readFileSync(controlPath, 'utf8')
-  const subagentContent = fs.readFileSync(subagentPath, 'utf8')
-  const hasGrading = content.includes('变更分级') && ['L0', 'L1', 'L2'].every(level => content.includes(level))
-  const hasClarify = content.includes('澄清门禁')
-  const hasPipeline = content.includes('开发链路控制')
-  const hasSubagentDispatch = hasSubagentDispatchIndex(subagentContent)
-
-  if (!hasGrading || !hasClarify || !hasPipeline) {
-    fail('control reference incomplete: control.md 必须包含变更分级、澄清门禁和开发链路控制')
-    return
-  }
-
-  if (!hasSubagentDispatch) {
-    fail('control reference incomplete: subagent.md 必须包含关键环节子代理调度索引和 headless 边界')
+  const docsContent = fs.readFileSync(docsPath, 'utf8')
+  const hasProjectDocs = docsContent.includes('项目知识源读取规范')
+    && docsContent.includes('airules.knowledge.json')
+    && docsContent.includes('测试文档结构')
+    && docsContent.includes('docs/test/e2e')
+    && docsContent.includes('docs/test/index.md')
+  if (!hasProjectDocs) {
+    fail('project reference incomplete: docs.md 必须包含知识源读取与项目测试文档结构')
     return
   }
 
   const injectScriptPath = path.join(root, 'skills', 'init-project', 'scripts', 'inject-rules.mjs')
   if (!fs.existsSync(injectScriptPath)) {
-    fail('control reference incomplete: 缺少 inject-rules.mjs 无法保证 control.md 注入')
+    fail('project reference incomplete: 缺少 inject-rules.mjs 无法保证 docs.md 注入')
     return
   }
 
   const injectContent = fs.readFileSync(injectScriptPath, 'utf8')
-  if (!hasCoreInlineReference(injectContent, 'normalizedControlReferencePath')) {
-    fail('control reference incomplete: inject-rules.mjs 未将 control.md 纳入注入链路')
+  if (!hasCoreInlineReference(injectContent, 'normalizedDocsReferencePath')) {
+    fail('project reference incomplete: inject-rules.mjs 未将 docs.md 纳入注入链路')
     return
   }
 
-  if (!hasCoreInlineReference(injectContent, 'normalizedSubagentReferencePath')) {
-    fail('control reference incomplete: inject-rules.mjs 未将 subagent.md 纳入注入链路')
+  if (
+    hasLegacyReference(injectContent, 'normalizedControlReferencePath')
+    || hasLegacyReference(injectContent, 'normalizedSubagentReferencePath')
+  ) {
+    fail('project reference incomplete: inject-rules.mjs 不得再注入 control.md 或 subagent.md')
     return
   }
 
-  pass('control reference present')
+  pass('project reference present')
 }
 
 function checkSkillLayer(root) {
@@ -237,6 +252,23 @@ function checkSkillLayer(root) {
   }
 
   pass('skill layer present')
+}
+
+function checkAgentLayer(root) {
+  const agentPath = path.join(root, 'agents', 'consistency-reviewer.md')
+  if (!fs.existsSync(agentPath)) {
+    fail('agent layer missing: agents/consistency-reviewer.md')
+    return
+  }
+
+  const content = fs.readFileSync(agentPath, 'utf8')
+  const missingItems = REQUIRED_CONSISTENCY_REVIEWER_ITEMS.filter(item => !content.includes(item))
+  if (missingItems.length > 0) {
+    fail(`agent layer incomplete: consistency-reviewer 缺少 ${missingItems.join(', ')}`)
+    return
+  }
+
+  pass('agent layer present')
 }
 
 function checkExecutionLayer(root) {
@@ -327,7 +359,7 @@ function checkDeliveryContract(root) {
   }
 
   if (!hasSubagentDispatch) {
-    fail('delivery contract incomplete: 必须声明关键环节子代理调度、skill/subagent 边界与 headless 要求')
+    fail('delivery contract incomplete: 必须声明关键环节子代理调度流程图、skill/subagent 边界与 headless 要求')
     return
   }
 
@@ -348,8 +380,9 @@ function finish(root) {
 
 function verify(root) {
   checkRuleLayer(root)
-  checkControlReference(root)
+  checkProjectReference(root)
   checkSkillLayer(root)
+  checkAgentLayer(root)
   checkExecutionLayer(root)
   checkDeliveryContract(root)
   finish(root)

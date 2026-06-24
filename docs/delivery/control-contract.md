@@ -10,11 +10,11 @@ AIRules 的控制能力由三层资产协同构成，缺一不可：
 
 | 控制面 | 载体 | 职责 |
 |---|---|---|
-| 规则层 | `rules/AGENTS.md`（由 `rules/sources/*.md` 拼接） | 投影到消费方/宿主上下文后始终生效的红线：代码纪律、交付验证、变更分级、澄清门禁、子代理调度、后置评审；在本仓库编辑 `rules/` 时仍按待生成数据处理 |
-| 技能层 | `skills/*/SKILL.md` | 触发式工作流：prd/architecture/api/components/test/impl-plan/init-project 等环节资产 |
+| 规则层 | `rules/AGENTS.md`（由 `rules/sources/*.md` 拼接） | 投影到消费方/宿主上下文后始终生效的红线：交付验证、变更分级、澄清门禁、子代理调度、后置评审；在本仓库编辑 `rules/` 时仍按待生成数据处理 |
+| 技能 / Agent 层 | `skills/*/SKILL.md`、`agents/*.md` | 触发式工作流与隔离执行角色：prd/architecture/api/components/test/impl-plan/init-project 等环节资产，以及 planner/coder/reviewer/consistency-reviewer 等子代理；init-project references 只承载用户项目初始化后的项目级规则 |
 | 执行层 | `scripts/verify-*.mjs`、`package.json` 脚本 | 确定性校验与编排：frontmatter、知识源、链式门禁、交付契约 |
 
-规则层定义「必须遵守什么」，技能层定义「某环节怎么做」，执行层把软约定转成可执行、可阻断的门禁。
+规则层定义「必须遵守什么」，技能 / Agent 层定义「某环节怎么做、由哪个隔离角色执行」，执行层把软约定转成可执行、可阻断的门禁。
 
 ## 变更分级闸门
 
@@ -48,19 +48,20 @@ AIRules 的控制能力由三层资产协同构成，缺一不可：
 | 实现编码 | 规则层、TDD/调试类 skills | 实现计划 |
 | 调试修复 | `systematic-debugging`、`retrospective-correction` | bugfix 复现现象 / 实现编码后偏差或回归现象 |
 | 代码评审 | `code-reviewer`、`requesting-code-review` | 实现编码 |
-| 测试验证 | `verification-before-completion` | 实现编码、代码评审 |
-| 提交 PR | `github-pr-workflow`、`pr-creator` | 代码评审、测试验证 |
+| 后置一致性评审 | `consistency-reviewer`、`consistency-check` | 实现编码、最终 diff、需求 / 测试设计 / 实现计划 / bugfix 诊断 |
+| 测试验证 | `verification-before-completion` | 实现编码、代码评审、后置一致性评审 |
+| 交付收口 | 项目既有 Git / PR / 发布流程 | 代码评审、后置一致性评审、测试验证 |
 
 链式前置门禁：进入下游环节前必须确认上游产物存在且已就绪；上游缺失或仍为草案时，下游报告 `MISSING blocked` 并停止，不得臆造上游事实继续推进。`scripts/verify-stage-gate.mjs` 对消费方项目做该校验。
 
 产品/业务需求入口以 `prd-docs` 为准；pm-skills 仅作为需求发现、用户故事、验收标准和边界用例的方法论辅助，辅助产出必须归一化进 `docs/prds/` 后才能作为下游事实源。
 
-关键环节子代理调度：规则层必须写明「什么时候调用什么子代理」，覆盖多源调研、实现计划、实现编码、调试修复、代码评审、测试验证、文档可控性校验、规则自足性校验和架构深化/重构。调度索引必须点名 `debugger`、`frontend-planner`、`backend-planner`、`frontend-coder`、`backend-coder`、`frontend-reviewer`、`backend-reviewer`、`architecture-refactor`，并说明自包含、复核、不同实例、隔离、并行、独立性。调度规则区分 `skill` 与 `subagent`：skill 承载知识内容与方法论，subagent 承载上下文隔离、并行和反自评边界；宿主不支持同名 agent 时，按同等职责与隔离边界选择可用子代理。多源调研可使用临时研究子代理或宿主 explorer 能力；测试验证可由主代理直接执行，或在输出量大、耗时长、跨多模块时派临时验证子代理加载 `verification-before-completion`；文档可控性校验与规则自足性校验使用临时 clean/headless validator。这些临时子代理不是固定 `agents/` 文件。
+关键环节子代理调度：规则层必须用 Mermaid flowchart 写明「什么时候调用什么子代理」，覆盖多源只读调研、实现计划、实现编码、调试修复、代码评审、后置一致性评审、测试验证、文档可控性校验和架构深化/重构。图中必须点名 `debugger`、`frontend-planner`、`backend-planner`、`frontend-coder`、`backend-coder`、`frontend-reviewer`、`backend-reviewer`、`consistency-reviewer`、`architecture-deepening`、`architecture-refactor`，并标出临时研究子代理 / explorer、临时验证子代理和临时 clean/headless validator；`consistency-reviewer` 用于编码后、测试验证前核对最终 diff 是否符合需求、测试设计、实现计划或 bugfix 诊断，不得替代编码前 `consistency-check`；纯文档、纯注释、纯格式或无行为配置改动可标 `N/A`，上游缺失或冲突标 `MISSING blocked`。`architecture-deepening` 用于未确认候选发现，`architecture-refactor` 仅在用户确认具体 DC-* 后落地。调度说明必须包含自包含、复核、不同实例、隔离、并行、独立性，并区分 `skill` 与 `subagent`：skill 承载知识内容与方法论，subagent 承载上下文隔离、并行和反自评边界。
 
-headless / 干净隔离用于三类后置校验，但输入与闭环不同：
+headless / 干净隔离用于三类 AIRules 维护或后置校验，但输入与闭环不同：
 
 - 文档可控性校验：输入为规则、被校验的 PRD/测试设计/实现计划等文档产物和必要 rubric，检查产物是否自足、结构完整、`MISSING` 标记完整；缺口回填产物或上游 skill 后复测。
-- 规则自足性校验：输入为规则、目标投影产物（`rules/AGENTS.md`、`rules/sources/*.md`、根 `AGENTS.md`/`CLAUDE.md` 或 init-project reference）和必要 rubric，检查规则脱离主会话是否仍能独立表达触发条件、门禁、状态语义与禁止替代通过；缺口回填规则源或投影产物后复测。确定性入口为 `npm run verify:rules:self-sufficiency`，L2 聚合门禁必须包含它；需要 live clean 子代理复审时仍按本节要求单独记录结论。
+- 规则自足性校验：属于 AIRules repo-maintenance 门禁，输入为规则、目标投影产物（`rules/AGENTS.md`、`rules/sources/*.md`、根 `AGENTS.md`/`CLAUDE.md` 或 init-project reference）和必要 rubric，检查规则脱离主会话是否仍能独立表达触发条件、门禁、状态语义与禁止替代通过；缺口回填规则源或投影产物后复测。确定性入口为 `npm run verify:rules:self-sufficiency`，L2 聚合门禁必须包含它；不得下沉到 project-init 子代理调度。
 - skill 纯净测试：输入为 init-project `references/` 规则、被测 skill 和最小任务，检查 skill 自身是否能驱动干净 agent 产出合规产物；缺口回填 skill 后复测。
 
 干净隔离指无主会话历史、无宿主 AGENTS/baseline、无额外引导；可使用只读工具、文件系统快照和显式注入的必要规则/产物/rubric。无法提供干净隔离时标记 `MISSING` 或 `NOT RUN` 并说明原因，不得用非干净执行替代通过。

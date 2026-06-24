@@ -26,13 +26,9 @@ function resolveAirulesPlaceholder(content) {
   return content.split(AIRULES_PLACEHOLDER).join(airulesRootPosix)
 }
 const baseReferencePath = path.join(skillRoot, 'references', 'airules-base.md')
-const controlReferencePath = path.join(skillRoot, 'references', 'common', 'control.md')
 const docsReferencePath = path.join(skillRoot, 'references', 'common', 'docs.md')
-const subagentReferencePath = path.join(skillRoot, 'references', 'common', 'subagent.md')
 const normalizedBaseReferencePath = path.resolve(baseReferencePath)
-const normalizedControlReferencePath = path.resolve(controlReferencePath)
 const normalizedDocsReferencePath = path.resolve(docsReferencePath)
-const normalizedSubagentReferencePath = path.resolve(subagentReferencePath)
 const projectRoot = path.resolve(projectRootArg)
 const agentsPath = path.join(projectRoot, 'AGENTS.md')
 const currentContent = existsSync(agentsPath) ? readFileSync(agentsPath, 'utf8') : ''
@@ -47,17 +43,13 @@ const extraReferencePaths = referenceArgs
   .map(referencePath => path.resolve(referencePath))
   .filter(referencePath =>
     referencePath !== normalizedBaseReferencePath
-    && referencePath !== normalizedControlReferencePath
-    && referencePath !== normalizedDocsReferencePath
-    && referencePath !== normalizedSubagentReferencePath,
+    && referencePath !== normalizedDocsReferencePath,
   )
 
 /** 始终 inline 的核心纪律（全场景常驻），顺序固定 */
 const coreInlinePaths = [
   ...(hasExistingAgentsContent ? [] : [normalizedBaseReferencePath]),
-  normalizedControlReferencePath,
   normalizedDocsReferencePath,
-  normalizedSubagentReferencePath,
 ]
 
 /**

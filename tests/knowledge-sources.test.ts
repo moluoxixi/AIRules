@@ -3,7 +3,11 @@ import { spawnSync } from 'node:child_process'
 import fs from 'node:fs'
 import os from 'node:os'
 import path from 'node:path'
+import { fileURLToPath } from 'node:url'
 import { it } from 'vitest'
+
+const __dirname = path.dirname(fileURLToPath(import.meta.url))
+const projectRoot = path.resolve(__dirname, '..')
 
 function withTempDir<T>(prefix: string, run: (tmpDir: string) => T): T {
   const tmpDir = fs.mkdtempSync(path.join(os.tmpdir(), prefix))
@@ -135,3 +139,12 @@ it('knowledge source verifier - 拒绝未安装接入的 Khoj 知识源类型', 
   assert.notEqual(result.status, 0)
   assert.match(result.stderr, /type 必须是 filesystem/)
 }))
+
+it('knowledge source registry - 将 agents 目录登记为第一方指令源', () => {
+  const registryPath = path.join(projectRoot, 'airules.knowledge.json')
+  const registry = JSON.parse(fs.readFileSync(registryPath, 'utf8'))
+  const source = registry.sources.find((entry: { id?: string }) => entry.id === 'first-party-instructions')
+
+  assert.ok(source, 'first-party-instructions source must exist')
+  assert.ok(source.include.includes('agents/**'), 'agents/** must be registered as first-party instructions')
+})

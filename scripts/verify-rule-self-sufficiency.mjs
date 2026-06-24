@@ -10,15 +10,20 @@ import path from 'node:path'
 
 const DISPATCH_HEADING = '关键环节子代理调度索引（什么时候调用什么子代理）'
 const DISPATCH_ITEMS = [
+  'flowchart',
   '多源',
   '实现计划',
   '实现编码',
   '调试修复',
   '代码评审',
+  '后置一致性评审',
   '测试验证',
   '文档可控性校验',
-  '规则自足性校验',
   '架构深化',
+  'architecture-deepening',
+  '临时研究子代理',
+  '临时验证子代理',
+  'clean/headless validator',
   'debugger',
   'frontend-planner',
   'backend-planner',
@@ -26,7 +31,12 @@ const DISPATCH_ITEMS = [
   'backend-coder',
   'frontend-reviewer',
   'backend-reviewer',
+  'consistency-reviewer',
   'architecture-refactor',
+  '编码后',
+  '测试验证前',
+  'MISSING blocked',
+  '不得替代',
   '自包含',
   '复核',
   '不同实例',
@@ -39,9 +49,23 @@ const HEADLESS_ITEMS = [
   '干净隔离',
   '无主会话历史',
   '无宿主 AGENTS/baseline',
+  '无额外引导',
   'MISSING',
   'NOT RUN',
   '不得由主上下文自评为 `PASS`',
+]
+const MAINTENANCE_LEAK_TOKENS = [
+  'rules/sources',
+  'rules/AGENTS',
+  'init-project reference',
+  'host 投影',
+  'host projection',
+  '发布/PR 默认流程',
+  'PR 默认流程',
+  '纯净测试',
+  'skill 纯净测试',
+  'git_safety',
+  '提交本地 PR',
 ]
 const errors = []
 
@@ -145,6 +169,42 @@ function checkNoTypo(label, content) {
   pass(`${label} headless spelling valid`)
 }
 
+function checkNoMaintenanceLeak(label, content) {
+  const leaked = MAINTENANCE_LEAK_TOKENS.filter(token => content.includes(token))
+  if (leaked.length > 0) {
+    issue('FAIL', `${label} 不得包含 AIRules 维护者资产: ${leaked.join(', ')}`)
+    return
+  }
+
+  pass(`${label} maintenance leak free`)
+}
+
+function collectMarkdownFiles(root, relativeDir) {
+  const absoluteDir = path.join(root, relativeDir)
+  if (!fs.existsSync(absoluteDir)) {
+    issue('MISSING', `规则自足性输入缺失: ${relativeDir}`)
+    return []
+  }
+
+  const files = []
+  function visit(dir) {
+    for (const entry of fs.readdirSync(dir, { withFileTypes: true })) {
+      const absolutePath = path.join(dir, entry.name)
+      if (entry.isDirectory()) {
+        visit(absolutePath)
+        continue
+      }
+
+      if (entry.isFile() && entry.name.endsWith('.md')) {
+        files.push(path.relative(root, absolutePath).replace(/\\/g, '/'))
+      }
+    }
+  }
+
+  visit(absoluteDir)
+  return files.sort()
+}
+
 function checkRootProjection(root) {
   const agents = readRequired(root, 'AGENTS.md')
   const claude = readRequired(root, 'CLAUDE.md')
@@ -158,11 +218,14 @@ function checkRootProjection(root) {
   }
 
   pass('AGENTS.md and CLAUDE.md content match')
-  checkDispatchSection('AGENTS.md/CLAUDE.md', agents)
   requireTokens('AGENTS.md/CLAUDE.md project boundary', agents, [
     '元认知隔离',
     '纯数据',
     '绝对禁止',
+    'AIRules 规则资产层级判定',
+    'repo-maintenance',
+    'global-baseline',
+    'project-init',
   ])
   checkNoTypo('AGENTS.md/CLAUDE.md', agents)
 }
@@ -170,8 +233,9 @@ function checkRootProjection(root) {
 function verify(root) {
   const rules = readRequired(root, 'rules/AGENTS.md')
   const source = readRequired(root, 'rules/sources/50-subagent-delegation.md')
-  const subagentReference = readRequired(root, 'skills/init-project/references/common/subagent.md')
+  const docsReference = readRequired(root, 'skills/init-project/references/common/docs.md')
   const contract = readRequired(root, 'docs/delivery/control-contract.md')
+  const projectReferences = collectMarkdownFiles(root, 'skills/init-project/references')
 
   if (rules) {
     checkDispatchSection('rules/AGENTS.md', rules)
@@ -183,17 +247,36 @@ function verify(root) {
     checkNoTypo('rules/sources/50-subagent-delegation.md', source)
   }
 
-  if (subagentReference) {
-    checkDispatchSection('skills/init-project/references/common/subagent.md', subagentReference)
-    checkNoTypo('skills/init-project/references/common/subagent.md', subagentReference)
+  if (docsReference) {
+    requireTokens('skills/init-project/references/common/docs.md project reference', docsReference, [
+      '项目知识源读取规范',
+      '测试文档结构',
+      'docs/test/e2e',
+    ])
+  }
+
+  for (const relativePath of projectReferences) {
+    const content = readRequired(root, relativePath)
+    if (!content) {
+      continue
+    }
+
+    checkNoTypo(relativePath, content)
+    checkNoMaintenanceLeak(relativePath, content)
   }
 
   if (contract) {
     requireTokens('docs/delivery/control-contract.md rule self-sufficiency contract', contract, [
       '关键环节子代理调度',
+      'Mermaid',
       '规则自足性校验',
-      'headless / 干净隔离',
+      'repo-maintenance',
       'verify:rules:self-sufficiency',
+      'consistency-reviewer',
+      '后置一致性评审',
+      '编码后',
+      '测试验证前',
+      'MISSING blocked',
     ])
     checkNoTypo('docs/delivery/control-contract.md', contract)
   }

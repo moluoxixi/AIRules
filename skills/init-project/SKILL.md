@@ -79,9 +79,9 @@ node <init-project-skill>/scripts/scaffold-docs.mjs <your-project> <detect-stack
 
 - 当 `AGENTS.md` 不存在或为空时，先注入 `references/airules-base.md`，为用户创建 `# 项目规范` 与项目自定义规范占位。
 - 当 `AGENTS.md` 已存在且包含用户内容时，跳过 `references/airules-base.md`，避免向用户已有规范中追加占位段。
-- 始终注入 `references/common/control.md`、`references/common/docs.md` 和 `references/common/subagent.md`，再按检测结果选择场景输出规范与语言代码规范，并注入目标项目根目录 `AGENTS.md`。
-- `references/common/control.md` 承载变更分级（L0/L1/L2）、澄清门禁和开发链路控制（含 need→契约→测试设计→实现计划→编码→验证→评审的链式前置门禁），是各宿主 agent 获得需求-计划-测试-评审全程可控能力的入口；不得跳过注入。
-- `references/common/subagent.md` 承载子代理委派规则、关键环节子代理调度索引和后置子代理评审/校验（实现编码后强制独立子代理评审代码质量、文档产物的可控性后置校验）；不得跳过注入。
+- 始终注入 `references/common/docs.md`，再按检测结果选择场景输出规范与语言代码规范，并注入目标项目根目录 `AGENTS.md`。
+- 变更分级、澄清门禁、开发链路控制、子代理委派和后置评审属于宿主全局 baseline，由 `rules/AGENTS.md` 提供；init-project reference 不再维护这些全局规则的副本。
+- `references/common/docs.md` 承载初始化后项目内长期需要的知识源读取、标准 docs 归属和项目文档结构规则；不得写入 AIRules 维护者规则或宿主全局调度规则。
 - `references/` 按 `common/`、`frontend/`、`backend/` 组织：通用文档读取规则只放在 `common/docs.md`；组件库对外输出规则放在 `frontend/out-components.md`；外部组件库消费规则放在 `frontend/components.md`；后端 API 提供方规则放在 `backend/out-api.md`，后端消费外部 API/SDK 规则放在 `backend/api-consumer.md`；各领域通用代码规则命名为 `code.md`（前端 `frontend/code.md`、后端 `backend/code.md`），具体框架或语言规则使用 `vue.md`、`node.md`、`nestjs.md`、`java.md`。
 
 | `detect-stack.mjs` 输出 stack | 追加注入 references |
@@ -103,13 +103,13 @@ node <init-project-skill>/scripts/inject-rules.mjs <your-project> <init-project-
 node <init-project-skill>/scripts/inject-rules.mjs <your-project> <init-project-skill>/references/<group>/<rule>.md [...]
 ```
 
-无法判断技术栈时不传额外语言规则，脚本仍会自动注入 `airules-base.md`（仅新建或空 `AGENTS.md` 时）、`common/control.md`、`common/docs.md` 和 `common/subagent.md`，无需在命令中手动传入这四个文件。当目标项目不存在 `AGENTS.md` 时，脚本创建该文件；当文件已存在时，脚本将聚合后的规则内容直接追加到文件末尾，不添加额外包装标题、受控块注释或文件名标题。
+无法判断技术栈时不传额外语言规则，脚本仍会自动注入 `airules-base.md`（仅新建或空 `AGENTS.md` 时）和 `common/docs.md`，无需在命令中手动传入这两个文件。当目标项目不存在 `AGENTS.md` 时，脚本创建该文件；当文件已存在时，脚本将聚合后的规则内容直接追加到文件末尾，不添加额外包装标题、受控块注释或文件名标题。
 
 ### 核心纪律 inline vs 语言规范按需路由
 
 `inject-rules.mjs` 按 reference 文件是否带 `ruleScope` frontmatter 分两条路径处理，目的是让常驻上下文只保留全场景核心纪律，语言/框架规范改为按场景动态加载：
 
-- **核心纪律（无 frontmatter）**：`common/control.md`、`common/docs.md`、`common/subagent.md`、`airules-base.md` 以及任何不带 `ruleScope` 的 reference，正文继续 inline 进目标项目 `AGENTS.md`，全场景常驻。
+- **项目级常驻规则（无 frontmatter）**：`common/docs.md`、`airules-base.md` 以及任何不带 `ruleScope` 的 reference，正文继续 inline 进目标项目 `AGENTS.md`，全场景常驻。
 - **语言/框架规范（带 `ruleScope` frontmatter）**：`frontend/*`、`backend/*` 等规范不再 inline，正文（剥除 frontmatter）复制到目标项目 `.airules/rules/<group>/<name>.md`，并按本次实际命中的规范在 `AGENTS.md` 末尾动态渲染一张《场景规范路由》表，每个命中规范一行（触发场景 description、匹配 globs、规范文件相对路径、加载时机）。未命中的规范既不复制也不进表，纯 Java 后端不会出现任何前端规范。
 - 规范文件 frontmatter 字段：`ruleScope`（对应 `detect-stack` 的 stack 标识）、`globs`（匹配文件模式，供路由表与未来 Cursor `.mdc` 投影共用）、`description`（触发场景，AI 据此判断是否读取）、`loadTiming`（加载时机提示）。
 - 各宿主读取方式：Codex/Claude 等读 `AGENTS.md` 全量看到路由表，按 description 命中场景时主动读取对应 `.airules/rules/**` 文件；规范文件在项目内自包含、可 git 跟踪、可审计，不依赖 npm 包安装路径。

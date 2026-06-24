@@ -19,8 +19,8 @@ function withTempRepo<T>(run: (repoRoot: string) => T): T {
     fs.mkdirSync(path.join(repoRoot, 'scripts', 'purity'), { recursive: true })
 
     fs.writeFileSync(
-      path.join(repoRoot, 'skills', 'init-project', 'references', 'common', 'control.md'),
-      '# 控制规则\n\n- 纯净上下文只读取显式注入的规则。\n',
+      path.join(repoRoot, 'skills', 'init-project', 'references', 'common', 'docs.md'),
+      '# 项目知识源读取规范\n\n- 纯净上下文只读取显式注入的项目规则。\n',
     )
     fs.writeFileSync(
       path.join(repoRoot, 'skills', 'demo-skill', 'SKILL.md'),
