@@ -9,6 +9,117 @@ import fs from 'node:fs'
 import path from 'node:path'
 
 const REQUIRED_STATUS_MARKERS = ['PASS', 'FAIL', 'MISSING', 'NOT RUN', 'N/A']
+const REQUIRED_DELIVERY_VERIFICATION_ITEMS = [
+  '```mermaid',
+  '高风险',
+  '已修复',
+  '已通过',
+  '自我质疑',
+  '任务复杂度',
+  '全量回归',
+  'coverage',
+  '构建',
+  '项目现有脚本',
+  '均不低于 80%',
+  'PASS',
+  'FAIL',
+  'MISSING',
+  'NOT RUN',
+  'N/A',
+  '不得伪装通过',
+  '变更分级',
+  'L0/L1/L2 及判定依据',
+  '改动内容',
+  '涉及文件与范围',
+  '验证',
+  '实际运行的命令',
+  '结果状态',
+  '未执行项',
+  '风险',
+  '没有则显式写"无"',
+]
+const REQUIRED_DELIVERY_VERIFICATION_FLOW_ITEMS = [
+  '高风险',
+  '已修复',
+  '已通过',
+  '自我质疑',
+  '项目现有脚本',
+  'MISSING',
+  'NOT RUN',
+  'PASS',
+  'FAIL',
+  'N/A',
+  '五项交付汇报',
+]
+const REQUIRED_CHANGE_LEVEL_ITEMS = [
+  '```mermaid',
+  '生成',
+  '修改',
+  '删除',
+  'L0',
+  'L1',
+  'L2',
+  'MISSING',
+  '歧义',
+  '澄清问题清单',
+  '目标',
+  '角色',
+  '边界',
+  '流程',
+  '字段',
+  '状态',
+  '验收标准',
+  '冲突',
+  '风险',
+  '苏格拉底式问题',
+  '不得用推断',
+  '默认值',
+  '代码反推',
+  '不得定稿',
+  '不得写入正式产物',
+  '不得声明完成',
+  '用户确认',
+  '权限模型',
+  '数据一致性',
+  '安全边界',
+  'rules',
+  'skills',
+  '初始化流程',
+  '默认分发配置',
+]
+const REQUIRED_CHANGE_LEVEL_FLOW_ITEMS = [
+  '生成',
+  '修改',
+  '删除',
+  'L0',
+  'L1',
+  'L2',
+  'MISSING',
+  '歧义',
+  '澄清问题清单',
+  '不得定稿',
+  '不得写入正式产物',
+  '不得声明完成',
+  '用户确认',
+  '权限模型',
+  '数据一致性',
+  '安全边界',
+  'rules',
+  'skills',
+  '初始化流程',
+  '默认分发配置',
+]
+const REQUIRED_CHANGE_LEVEL_FLOW_PATTERNS = [
+  /\bMissing\s+-->\|是\|\s+Questions\b/,
+  /\bL2\s+-->\s+Questions\b/,
+  /\bQuestions\s+-->\s+Expose\b/,
+  /\bQuestions\s+-->\s+Expose\["逐项暴露目标\s*\/\s*角色\s*\/\s*边界\s*\/\s*流程\s*\/\s*字段\s*\/\s*状态\s*\/\s*验收标准\s*\/\s*冲突\s*\/\s*风险"\]/,
+  /\bExpose\s+-->\s+Mark\b/,
+  /\bMark\s+-->\s+Stop\b/,
+  /\bStop\s+-->\s+Confirm\b/,
+  /\bConfirm\s+-->\|否\|\s+Stop\b/,
+  /\bConfirm\s+-->\|是\|\s+Continue\b/,
+]
 const REQUIRED_SUBAGENT_DISPATCH_ITEMS = [
   'flowchart',
   '多源',
@@ -143,6 +254,51 @@ function hasSubagentDispatchIndex(content) {
     && REQUIRED_SUBAGENT_DISPATCH_ITEMS.every(item => section.includes(item))
 }
 
+function extractMermaidBlocks(section) {
+  const blocks = []
+
+  let inMermaid = false
+  let currentBlock = []
+  for (const line of section.replace(/\r\n/g, '\n').split('\n')) {
+    if (!inMermaid && line.trim() === '```mermaid') {
+      inMermaid = true
+      currentBlock = []
+      continue
+    }
+
+    if (inMermaid && line.trim() === '```') {
+      blocks.push(currentBlock.join('\n'))
+      inMermaid = false
+      currentBlock = []
+      continue
+    }
+
+    if (inMermaid) {
+      currentBlock.push(line)
+    }
+  }
+
+  return blocks
+}
+
+function hasFlowchartBlock(section, requiredFlowItems, requiredFlowPatterns = []) {
+  return extractMermaidBlocks(section).some((block) => {
+    const hasFlowchart = block
+      .split('\n')
+      .some(line => /^flowchart\s+\w+/.test(line.trim()))
+
+    return hasFlowchart
+      && requiredFlowItems.every(item => block.includes(item))
+      && requiredFlowPatterns.every(pattern => pattern.test(block))
+  })
+}
+
+function hasRuleFlowSection(content, heading, requiredItems, requiredFlowItems, requiredFlowPatterns) {
+  const section = extractMarkdownSection(content, heading)
+  return requiredItems.every(item => section.includes(item))
+    && hasFlowchartBlock(section, requiredFlowItems, requiredFlowPatterns)
+}
+
 function hasCoreInlineReference(injectContent, referenceVariableName) {
   return injectContent.includes('const coreInlinePaths = [')
     && injectContent.includes(`${referenceVariableName},`)
@@ -167,10 +323,20 @@ function checkRuleLayer(root) {
   const codeCoreContent = fs.existsSync(codeCorePath) ? fs.readFileSync(codeCorePath, 'utf8') : ''
   const hasErrorContract = codeCoreContent.includes('禁止错误绕行') && codeCoreContent.includes('失败')
 
-  const hasDeliveryContract = content.includes('交付验证') && REQUIRED_STATUS_MARKERS.every(marker => content.includes(marker))
-  const hasGradingContract = content.includes('变更分级')
-    && ['L0', 'L1', 'L2'].every(level => content.includes(level))
-  const hasClarifyGate = content.includes('澄清门禁')
+  const hasDeliveryFlow = hasRuleFlowSection(
+    content,
+    '交付验证',
+    REQUIRED_DELIVERY_VERIFICATION_ITEMS,
+    REQUIRED_DELIVERY_VERIFICATION_FLOW_ITEMS,
+  )
+  const hasDeliveryContract = hasDeliveryFlow && REQUIRED_STATUS_MARKERS.every(marker => content.includes(marker))
+  const hasGradingContract = hasRuleFlowSection(
+    content,
+    '变更分级与澄清门禁',
+    REQUIRED_CHANGE_LEVEL_ITEMS,
+    REQUIRED_CHANGE_LEVEL_FLOW_ITEMS,
+    REQUIRED_CHANGE_LEVEL_FLOW_PATTERNS,
+  )
   const hasSubagentDispatch = hasSubagentDispatchIndex(content)
 
   if (!hasErrorContract) {
@@ -179,11 +345,11 @@ function checkRuleLayer(root) {
   }
 
   if (!hasDeliveryContract) {
-    fail('rule layer incomplete: rules/AGENTS.md 必须包含交付验证状态契约')
+    fail('rule layer incomplete: rules/AGENTS.md 必须包含交付验证图约束与状态契约')
     return
   }
 
-  if (!hasGradingContract || !hasClarifyGate) {
+  if (!hasGradingContract) {
     fail('rule layer incomplete: rules/AGENTS.md 必须定义变更分级（L0/L1/L2）和澄清门禁')
     return
   }

@@ -44,6 +44,84 @@ function subagentDispatchSection(): string[] {
   ]
 }
 
+function deliveryVerificationSection(): string[] {
+  return [
+    '## 交付验证',
+    '',
+    '```mermaid',
+    'flowchart TD',
+    '  Done["修改完成 / 准备声明完成"] --> Scope["按任务场景与风险分级选择质量检查"]',
+    '  Scope --> Risk{"高风险? 删除 / 生产 / 安全 / 权限 / 跨模块 / 声明已完成 / 已修复 / 已通过"}',
+    '  Risk -->|是| Doubt["先自我质疑: 最可能漏掉或验证不到什么"]',
+    '  Doubt --> AddChecks["补齐验证项"]',
+    '  Risk -->|否| Existing["优先项目现有脚本和配置"]',
+    '  AddChecks --> Existing',
+    '  Existing --> Missing{"脚本 / 配置 / 依赖 / 测试入口缺失?"}',
+    '  Missing -->|是| MarkMissing["标 MISSING 或 NOT RUN + 原因"]',
+    '  Missing -->|否| Run["运行命令并读取输出"]',
+    '  Run --> Status["记录 PASS / FAIL / MISSING / NOT RUN / N/A"]',
+    '  MarkMissing --> Report["五项交付汇报"]',
+    '  Status --> Report',
+    '```',
+    '',
+    '图例 / 硬约束：',
+    '',
+    '- 方法论能力按适用判据触发；全量回归、coverage 和构建只在任务复杂度、风险匹配或用户要求时运行。',
+    '- 覆盖率优先项目阈值；无阈值时 statements、branches、functions、lines 均不低于 80%。',
+    '- 状态只能用 `PASS`、`FAIL`、`MISSING`、`NOT RUN`、`N/A`；不得伪装通过。',
+    '- 交付汇报必须收口五项：变更分级（L0/L1/L2 及判定依据）、改动内容（涉及文件与范围）、验证（实际运行的命令与结果状态）、未执行项及原因、风险 / `MISSING` / 待确认项（没有则显式写"无"）。',
+  ]
+}
+
+const CLARIFICATION_DIMENSIONS = ['目标', '角色', '边界', '流程', '字段', '状态', '验收标准', '冲突', '风险']
+const CLARIFICATION_EXPOSE_LINE = `  Questions --> Expose["逐项暴露${CLARIFICATION_DIMENSIONS.join(' / ')}"]`
+const CLARIFICATION_LEGEND = '- 澄清问题必须用苏格拉底式问题暴露缺口；不得用推断、默认值或代码反推替代用户确认。'
+
+function changeLevelAndClarificationGateSection(): string[] {
+  return [
+    '## 变更分级与澄清门禁',
+    '',
+    '```mermaid',
+    'flowchart TD',
+    '  Start["生成 / 修改 / 删除前"] --> Facts["先读代码、文档、知识源补齐判定事实"]',
+    '  Facts --> Missing{"仍 MISSING 或歧义?"}',
+    '  Missing -->|是| Questions["输出澄清问题清单或设计报告"]',
+    '  Missing -->|否| Level{"最高命中级别"}',
+    '  Level -->|L0| L0["既有口径/契约/模式内补充，不改变对外事实"]',
+    '  Level -->|L1| L1["既有边界内新增或修改，不触及公共协议/权限模型/状态机/数据一致性/安全边界"]',
+    '  Level -->|L2| L2["触及需求/架构/公共协议/权限模型/状态机/数据一致性/安全边界/跨模块行为，或修改 rules/skills/初始化流程/默认分发配置"]',
+    '  L0 --> Go["可直接执行；交付说明判定依据和验证结果"]',
+    '  L1 --> Go',
+    '  L2 --> Questions',
+    CLARIFICATION_EXPOSE_LINE,
+    '  Expose --> Mark["未确认内容保留 MISSING"]',
+    '  Mark --> Stop["不得定稿、不得写入正式产物、不得声明完成"]',
+    '  Stop --> Confirm{"用户确认或补齐事实?"}',
+    '  Confirm -->|否| Stop',
+    '  Confirm -->|是| Continue["继续执行"]',
+    '```',
+    '',
+    '图例 / 硬约束：',
+    '',
+    CLARIFICATION_LEGEND,
+  ]
+}
+
+function removeClarificationGateToken(content: string, token: string): string {
+  if (CLARIFICATION_DIMENSIONS.includes(token)) {
+    return content.replace(
+      CLARIFICATION_EXPOSE_LINE,
+      `  Questions --> Expose["逐项暴露${CLARIFICATION_DIMENSIONS.filter(item => item !== token).join(' / ')}"]`,
+    )
+  }
+
+  if (!CLARIFICATION_LEGEND.includes(token)) {
+    throw new Error(`Unhandled clarification gate token: ${token}`)
+  }
+
+  return content.replace(CLARIFICATION_LEGEND, CLARIFICATION_LEGEND.replace(token, ''))
+}
+
 function projectDocsReference(): string[] {
   return [
     '# 项目知识源读取规范',
@@ -89,12 +167,8 @@ function createMinimalDeliveryRoot(): string {
 
   fs.writeFileSync(path.join(root, 'rules', 'AGENTS.md'), [
     '# AIRules',
-    '## 交付验证',
-    '- 检查状态统一使用 `PASS`、`FAIL`、`MISSING`、`NOT RUN`、`N/A`。',
-    '## 变更分级与确认门禁',
-    '- L0 可直接执行；L1 既有边界内执行；L2 必须先确认。',
-    '## 澄清门禁',
-    '- 命中 L2 或关键事实缺失时先输出澄清问题清单。',
+    ...deliveryVerificationSection(),
+    ...changeLevelAndClarificationGateSection(),
     '## 子代理委派',
     ...subagentDispatchSection(),
   ].join('\n'))
@@ -355,8 +429,7 @@ it('verify-delivery-control - 规则层缺少变更分级定义时显式失败',
     '# AIRules',
     '## 核心规则',
     '- 禁止错误绕行，失败必须显式暴露。',
-    '## 交付验证',
-    '- 检查状态统一使用 `PASS`、`FAIL`、`MISSING`、`NOT RUN`、`N/A`。',
+    ...deliveryVerificationSection(),
   ].join('\n'))
 
   const result = runScriptResult('--root', root)
@@ -369,12 +442,8 @@ it('verify-delivery-control - 规则层缺少子代理调度索引时显式失�
   const root = createMinimalDeliveryRoot()
   fs.writeFileSync(path.join(root, 'rules', 'AGENTS.md'), [
     '# AIRules',
-    '## 交付验证',
-    '- 检查状态统一使用 `PASS`、`FAIL`、`MISSING`、`NOT RUN`、`N/A`。',
-    '## 变更分级与确认门禁',
-    '- L0 可直接执行；L1 既有边界内执行；L2 必须先确认。',
-    '## 澄清门禁',
-    '- 命中 L2 或关键事实缺失时先输出澄清问题清单。',
+    ...deliveryVerificationSection(),
+    ...changeLevelAndClarificationGateSection(),
   ].join('\n'))
 
   const result = runScriptResult('--root', root)
@@ -382,6 +451,151 @@ it('verify-delivery-control - 规则层缺少子代理调度索引时显式失�
   assert.notEqual(result.status, 0)
   assert.match(result.stdout, /FAIL rule layer incomplete: rules\/AGENTS\.md 必须包含子代理调度流程图/)
 })
+
+it('verify-delivery-control - 交付验证缺少图约束时显式失败', () => {
+  const root = createMinimalDeliveryRoot()
+  fs.writeFileSync(path.join(root, 'rules', 'AGENTS.md'), [
+    '# AIRules',
+    '## 交付验证',
+    '- 检查状态统一使用 `PASS`、`FAIL`、`MISSING`、`NOT RUN`、`N/A`。',
+    ...changeLevelAndClarificationGateSection(),
+    '## 子代理委派',
+    ...subagentDispatchSection(),
+  ].join('\n'))
+
+  const result = runScriptResult('--root', root)
+
+  assert.notEqual(result.status, 0)
+  assert.match(result.stdout, /FAIL rule layer incomplete: rules\/AGENTS\.md 必须包含交付验证图约束与状态契约/)
+})
+
+it('verify-delivery-control - 交付验证 Mermaid 非 flowchart 时显式失败', () => {
+  const root = createMinimalDeliveryRoot()
+  const rulesPath = path.join(root, 'rules', 'AGENTS.md')
+  fs.writeFileSync(
+    rulesPath,
+    fs.readFileSync(rulesPath, 'utf8').replace(
+      'flowchart TD\n  Done["修改完成 / 准备声明完成"]',
+      'notAFlow TD\n  Done["修改完成 / 准备声明完成"]',
+    ),
+  )
+
+  const result = runScriptResult('--root', root)
+
+  assert.notEqual(result.status, 0)
+  assert.match(result.stdout, /FAIL rule layer incomplete: rules\/AGENTS\.md 必须包含交付验证图约束与状态契约/)
+})
+
+it('verify-delivery-control - 交付验证关键节点只在图例中出现时显式失败', () => {
+  const root = createMinimalDeliveryRoot()
+  const rulesPath = path.join(root, 'rules', 'AGENTS.md')
+  fs.writeFileSync(
+    rulesPath,
+    fs.readFileSync(rulesPath, 'utf8')
+      .replace('Risk -->|是| Doubt["先自我质疑: 最可能漏掉或验证不到什么"]', 'Risk -->|是| Doubt["先检查遗漏"]')
+      .replace('图例 / 硬约束：', '图例 / 硬约束：\n\n- 自我质疑只在图例中出现。'),
+  )
+
+  const result = runScriptResult('--root', root)
+
+  assert.notEqual(result.status, 0)
+  assert.match(result.stdout, /FAIL rule layer incomplete: rules\/AGENTS\.md 必须包含交付验证图约束与状态契约/)
+})
+
+for (const token of ['全量回归', 'coverage', '构建']) {
+  it(`verify-delivery-control - 交付验证缺少 ${token} 硬语义时显式失败`, () => {
+    const root = createMinimalDeliveryRoot()
+    const rulesPath = path.join(root, 'rules', 'AGENTS.md')
+    fs.writeFileSync(
+      rulesPath,
+      fs.readFileSync(rulesPath, 'utf8').replace(token, ''),
+    )
+
+    const result = runScriptResult('--root', root)
+
+    assert.notEqual(result.status, 0)
+    assert.match(result.stdout, /FAIL rule layer incomplete: rules\/AGENTS\.md 必须包含交付验证图约束与状态契约/)
+  })
+}
+
+for (const token of ['已修复', '已通过']) {
+  it(`verify-delivery-control - 交付验证缺少高风险声明 ${token} 时显式失败`, () => {
+    const root = createMinimalDeliveryRoot()
+    const rulesPath = path.join(root, 'rules', 'AGENTS.md')
+    fs.writeFileSync(
+      rulesPath,
+      fs.readFileSync(rulesPath, 'utf8').replace(token, ''),
+    )
+
+    const result = runScriptResult('--root', root)
+
+    assert.notEqual(result.status, 0)
+    assert.match(result.stdout, /FAIL rule layer incomplete: rules\/AGENTS\.md 必须包含交付验证图约束与状态契约/)
+  })
+}
+
+it('verify-delivery-control - 变更分级与澄清门禁 Mermaid 非 flowchart 时显式失败', () => {
+  const root = createMinimalDeliveryRoot()
+  const rulesPath = path.join(root, 'rules', 'AGENTS.md')
+  fs.writeFileSync(
+    rulesPath,
+    fs.readFileSync(rulesPath, 'utf8').replace(
+      'flowchart TD\n  Start["生成 / 修改 / 删除前"]',
+      'notAFlow TD\n  Start["生成 / 修改 / 删除前"]',
+    ),
+  )
+
+  const result = runScriptResult('--root', root)
+
+  assert.notEqual(result.status, 0)
+  assert.match(result.stdout, /FAIL rule layer incomplete: rules\/AGENTS\.md 必须定义变更分级/)
+})
+
+it('verify-delivery-control - 变更分级与澄清门禁缺少澄清关键节点时显式失败', () => {
+  const root = createMinimalDeliveryRoot()
+  const rulesPath = path.join(root, 'rules', 'AGENTS.md')
+  fs.writeFileSync(
+    rulesPath,
+    fs.readFileSync(rulesPath, 'utf8')
+      .replace('Missing -->|是| Questions["输出澄清问题清单或设计报告"]', 'Missing -->|是| Questions["输出设计报告"]')
+      .replace('## 子代理委派', '澄清问题清单只在图外补充\n\n## 子代理委派'),
+  )
+
+  const result = runScriptResult('--root', root)
+
+  assert.notEqual(result.status, 0)
+  assert.match(result.stdout, /FAIL rule layer incomplete: rules\/AGENTS\.md 必须定义变更分级/)
+})
+
+it('verify-delivery-control - 变更分级与澄清门禁 L2 未流向澄清问题时显式失败', () => {
+  const root = createMinimalDeliveryRoot()
+  const rulesPath = path.join(root, 'rules', 'AGENTS.md')
+  fs.writeFileSync(
+    rulesPath,
+    fs.readFileSync(rulesPath, 'utf8').replace('L2 --> Questions', 'L2 --> Go'),
+  )
+
+  const result = runScriptResult('--root', root)
+
+  assert.notEqual(result.status, 0)
+  assert.match(result.stdout, /FAIL rule layer incomplete: rules\/AGENTS\.md 必须定义变更分级/)
+})
+
+for (const token of ['目标', '角色', '边界', '流程', '字段', '状态', '验收标准', '冲突', '风险', '苏格拉底式问题', '不得用推断', '默认值', '代码反推']) {
+  it(`verify-delivery-control - 变更分级与澄清门禁缺少 ${token} 时显式失败`, () => {
+    const root = createMinimalDeliveryRoot()
+    const rulesPath = path.join(root, 'rules', 'AGENTS.md')
+    fs.writeFileSync(
+      rulesPath,
+      removeClarificationGateToken(fs.readFileSync(rulesPath, 'utf8'), token),
+    )
+
+    const result = runScriptResult('--root', root)
+
+    assert.notEqual(result.status, 0)
+    assert.match(result.stdout, /FAIL rule layer incomplete: rules\/AGENTS\.md 必须定义变更分级/)
+  })
+}
 
 it('verify-delivery-control - 契约缺少子代理调度说明时显式失败', () => {
   const root = createMinimalDeliveryRoot()
