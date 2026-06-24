@@ -47,12 +47,14 @@ function dispatchSection() {
     '  D -->|架构重构: 已确认 DC-*| Refactor["architecture-refactor"]',
     '```',
     '',
-    '- fresh 子代理 per task：每个 task 派全新子代理。',
-    '- 自包含与复核：每次委派必须自包含，回传必须复核。',
-    '- 不同实例与拆分理由：reviewer 必须是不同实例；拆 agent 必须命中隔离、并行或独立性。',
-    '- consistency-reviewer 在编码后、测试验证前评估最终 diff 是否符合需求、用例、实现计划或 bugfix 诊断；不得替代编码前 consistency-check，缺少可核对上游时标 MISSING blocked。',
-    '- headless / 干净隔离用于文档可控性校验；无法提供时标记 `MISSING` 或 `NOT RUN`，不得由主上下文自评为 `PASS`。',
-    '- 干净隔离指无主会话历史、无宿主 AGENTS/baseline、无额外引导。',
+    '图例 / 硬约束：',
+    '',
+    '- 图中具名 agent 是默认调度入口；宿主不支持同名 agent 时，用同职责、同隔离边界的可用子代理。',
+    '- `skill` 决定方法论，`subagent` 决定隔离、并行和反自评边界；不得只因角色名不同拆 agent。',
+    '- 每次委派必须自包含；子代理回传必须由主代理用文件、diff、命令输出、日志或 URL 复核。',
+    '- reviewer 必须与 coder 是不同实例；拆 agent 必须命中隔离、并行或独立性之一。',
+    '- 实现性改动后默认在编码后、测试验证前走 consistency-reviewer 核对最终 diff；不得替代编码前 consistency-check。纯文档、纯注释、纯格式或无行为配置改动可标 N/A；缺少可核对上游时标 MISSING blocked。',
+    '- clean/headless validator 指干净隔离：无主会话历史、无宿主 AGENTS/baseline、无额外引导；无法提供时标 `MISSING` 或 `NOT RUN`，不得由主上下文自评为 `PASS`。',
   ].join('\n')
 }
 
