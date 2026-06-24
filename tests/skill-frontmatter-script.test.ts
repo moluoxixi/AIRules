@@ -144,3 +144,43 @@ it('verify-skill-frontmatter 校验 YAML、目录名、description 和正文边�
   assert.notEqual(oversizedSkillResult.status, 0)
   assert.match(oversizedSkillResult.stdout, /SKILL\.md 超过 500 行/)
 })
+
+it('verify-skill-frontmatter - frontend-impl-plan 必须声明需求来源、调用接口和使用或封装组件', () => {
+  const missingContractRoot = path.join(fs.mkdtempSync(path.join(os.tmpdir(), 'airules-frontend-plan-missing-')), 'frontend-impl-plan')
+  writeSkill(missingContractRoot, validSkillLines('frontend-impl-plan'))
+
+  const missingContractResult = runScriptResult('--root', missingContractRoot)
+
+  assert.notEqual(missingContractResult.status, 0)
+  assert.match(missingContractResult.stdout, /frontend-impl-plan 必须要求任务书写出需求来源、调用接口和使用\/封装组件/)
+
+  const validContractRoot = path.join(fs.mkdtempSync(path.join(os.tmpdir(), 'airules-frontend-plan-valid-')), 'frontend-impl-plan')
+  writeSkill(validContractRoot, [
+    ...validSkillLines('frontend-impl-plan').slice(0, -3),
+    '## 文档结构',
+    '',
+    '### 需求来源',
+    '',
+    '| 来源类型 | 路径/章节/ID | 关键事实 |',
+    '|---|---|---|',
+    '',
+    '### 使用/封装组件',
+    '',
+    '| 组件 | 类型（使用/封装） | 来源 | 用途 |',
+    '|---|---|---|---|',
+    '',
+    '### 调用接口',
+    '',
+    '| 接口 | 方法 | 契约来源 | 入参 | 返回 | 错误处理 |',
+    '|---|---|---|---|---|---|',
+    '',
+    '## 示例',
+    '',
+    '以下内容是示例模板，仅供参考，不得作为真实业务事实自动应用。',
+  ])
+
+  const validContractResult = runScriptResult('--root', validContractRoot)
+
+  assert.equal(validContractResult.status, 0, validContractResult.stdout)
+  assert.match(validContractResult.stdout, /PASS skill content contract is valid/)
+})

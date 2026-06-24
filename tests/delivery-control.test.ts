@@ -396,6 +396,19 @@ it('verify-delivery-control - project reference 缺少测试文档结构时显�
   assert.match(result.stdout, /FAIL project reference incomplete: docs\.md 必须包含知识源读取与项目测试文档结构/)
 })
 
+it('verify-delivery-control - project reference 旧 control/subagent 文件重新出现时显式失败', () => {
+  const root = createMinimalDeliveryRoot()
+  fs.writeFileSync(path.join(root, 'skills', 'init-project', 'references', 'common', 'control.md'), '# 变更分级与确认门禁\n')
+  fs.writeFileSync(path.join(root, 'skills', 'init-project', 'references', 'common', 'subagent.md'), '# 子代理委派\n')
+
+  const result = runScriptResult('--root', root)
+
+  assert.notEqual(result.status, 0)
+  assert.match(result.stdout, /FAIL project reference incomplete: init-project 不得重新携带旧 reference 文件/)
+  assert.match(result.stdout, /skills\/init-project\/references\/common\/control\.md/)
+  assert.match(result.stdout, /skills\/init-project\/references\/common\/subagent\.md/)
+})
+
 it('verify-delivery-control - inject-rules 未将 docs.md 放入 core inline 时显式失败', () => {
   const root = createMinimalDeliveryRoot()
   fs.writeFileSync(path.join(root, 'skills', 'init-project', 'scripts', 'inject-rules.mjs'), [
@@ -409,6 +422,26 @@ it('verify-delivery-control - inject-rules 未将 docs.md 放入 core inline 时
 
   assert.notEqual(result.status, 0)
   assert.match(result.stdout, /FAIL project reference incomplete: inject-rules\.mjs 未将 docs\.md 纳入注入链路/)
+})
+
+it('verify-delivery-control - inject-rules 旧 control/subagent 字面路径重新注入时显式失败', () => {
+  const root = createMinimalDeliveryRoot()
+  fs.writeFileSync(path.join(root, 'skills', 'init-project', 'scripts', 'inject-rules.mjs'), [
+    '#!/usr/bin/env node',
+    'const normalizedDocsReferencePath = "references/common/docs.md"',
+    'const legacyControlReferencePath = "references/common/control.md"',
+    'const legacySubagentReferencePath = "references/common/subagent.md"',
+    'const coreInlinePaths = [',
+    '  normalizedDocsReferencePath,',
+    '  legacyControlReferencePath,',
+    '  legacySubagentReferencePath,',
+    ']',
+  ].join('\n'))
+
+  const result = runScriptResult('--root', root)
+
+  assert.notEqual(result.status, 0)
+  assert.match(result.stdout, /FAIL project reference incomplete: inject-rules\.mjs 不得再注入 control\.md 或 subagent\.md/)
 })
 
 it('verify-delivery-control - 当前仓库入口规则携带 AIRules 资产分层边界', () => {
@@ -445,6 +478,40 @@ it('verify-delivery-control - 规则层缺少子代理调度索引时显式失�
     ...deliveryVerificationSection(),
     ...changeLevelAndClarificationGateSection(),
   ].join('\n'))
+
+  const result = runScriptResult('--root', root)
+
+  assert.notEqual(result.status, 0)
+  assert.match(result.stdout, /FAIL rule layer incomplete: rules\/AGENTS\.md 必须包含子代理调度流程图/)
+})
+
+it('verify-delivery-control - 子代理调度 Mermaid 非 flowchart 时显式失败', () => {
+  const root = createMinimalDeliveryRoot()
+  const rulesPath = path.join(root, 'rules', 'AGENTS.md')
+  fs.writeFileSync(
+    rulesPath,
+    fs.readFileSync(rulesPath, 'utf8').replace(
+      'flowchart TD\n  T["任务分诊"]',
+      'notAFlow TD\n  T["任务分诊"]',
+    ),
+  )
+
+  const result = runScriptResult('--root', root)
+
+  assert.notEqual(result.status, 0)
+  assert.match(result.stdout, /FAIL rule layer incomplete: rules\/AGENTS\.md 必须包含子代理调度流程图/)
+})
+
+it('verify-delivery-control - 子代理调度关键 agent 只在图例中出现时显式失败', () => {
+  const root = createMinimalDeliveryRoot()
+  const rulesPath = path.join(root, 'rules', 'AGENTS.md')
+  fs.writeFileSync(
+    rulesPath,
+    fs.readFileSync(rulesPath, 'utf8').replace(
+      'D -->|后置一致性评审| ConsistencyReview["consistency-reviewer"]',
+      'D -->|后置一致性评审| ConsistencyReview["reviewer"]',
+    ),
+  )
 
   const result = runScriptResult('--root', root)
 
@@ -494,6 +561,23 @@ it('verify-delivery-control - 交付验证关键节点只在图例中出现时�
     fs.readFileSync(rulesPath, 'utf8')
       .replace('Risk -->|是| Doubt["先自我质疑: 最可能漏掉或验证不到什么"]', 'Risk -->|是| Doubt["先检查遗漏"]')
       .replace('图例 / 硬约束：', '图例 / 硬约束：\n\n- 自我质疑只在图例中出现。'),
+  )
+
+  const result = runScriptResult('--root', root)
+
+  assert.notEqual(result.status, 0)
+  assert.match(result.stdout, /FAIL rule layer incomplete: rules\/AGENTS\.md 必须包含交付验证图约束与状态契约/)
+})
+
+it('verify-delivery-control - 交付验证高风险链路断开时显式失败', () => {
+  const root = createMinimalDeliveryRoot()
+  const rulesPath = path.join(root, 'rules', 'AGENTS.md')
+  fs.writeFileSync(
+    rulesPath,
+    fs.readFileSync(rulesPath, 'utf8').replace(
+      'Risk -->|是| Doubt["先自我质疑: 最可能漏掉或验证不到什么"]',
+      'Risk -->|是| Existing\n  Doubt["先自我质疑: 最可能漏掉或验证不到什么"]',
+    ),
   )
 
   const result = runScriptResult('--root', root)

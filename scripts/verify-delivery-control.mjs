@@ -51,6 +51,20 @@ const REQUIRED_DELIVERY_VERIFICATION_FLOW_ITEMS = [
   'N/A',
   '五项交付汇报',
 ]
+const REQUIRED_DELIVERY_VERIFICATION_FLOW_PATTERNS = [
+  /\bDone(?:\[[^\]]+\])?\s+-->\s+Scope\b/,
+  /\bScope(?:\[[^\]]+\])?\s+-->\s+Risk\b/,
+  /\bRisk\s+-->\|是\|\s+Doubt\b/,
+  /\bDoubt\s+-->\s+AddChecks\b/,
+  /\bRisk\s+-->\|否\|\s+Existing\b/,
+  /\bAddChecks\s+-->\s+Existing\b/,
+  /\bExisting\s+-->\s+Missing\b/,
+  /\bMissing\s+-->\|是\|\s+MarkMissing\b/,
+  /\bMissing\s+-->\|否\|\s+Run\b/,
+  /\bRun\s+-->\s+Status\b/,
+  /\bMarkMissing\s+-->\s+Report\b/,
+  /\bStatus\s+-->\s+Report\b/,
+]
 const REQUIRED_CHANGE_LEVEL_ITEMS = [
   '```mermaid',
   '生成',
@@ -155,6 +169,50 @@ const REQUIRED_SUBAGENT_DISPATCH_ITEMS = [
   '并行',
   '独立性',
 ]
+const REQUIRED_SUBAGENT_DISPATCH_FLOW_ITEMS = [
+  'flowchart',
+  '任务分诊',
+  '任务类型与规模',
+  '多源只读调研',
+  '实现计划',
+  '实现编码',
+  '调试修复',
+  '代码评审',
+  '后置一致性评审',
+  '测试验证',
+  '文档可控性校验',
+  '架构深化',
+  '架构重构',
+  '临时研究子代理',
+  '临时验证子代理',
+  'clean/headless validator',
+  'debugger',
+  'frontend-planner',
+  'backend-planner',
+  'frontend-coder',
+  'backend-coder',
+  'frontend-reviewer',
+  'backend-reviewer',
+  'consistency-reviewer',
+  'architecture-deepening',
+  'architecture-refactor',
+]
+const REQUIRED_SUBAGENT_DISPATCH_FLOW_PATTERNS = [
+  /\bT(?:\[[^\]]+\])?\s+-->\s+D\b/,
+  /\bD\s+-->\|多源只读调研\|\s+Research\b/,
+  /\bD\s+-->\|实现计划:\s*前端\|\s+FrontendPlan\b/,
+  /\bD\s+-->\|实现计划:\s*后端\|\s+BackendPlan\b/,
+  /\bD\s+-->\|实现编码:\s*前端\|\s+FrontendCode\b/,
+  /\bD\s+-->\|实现编码:\s*后端\|\s+BackendCode\b/,
+  /\bD\s+-->\|调试修复\|\s+Debug\b/,
+  /\bD\s+-->\|代码评审:\s*前端\|\s+FrontendReview\b/,
+  /\bD\s+-->\|代码评审:\s*后端\|\s+BackendReview\b/,
+  /\bD\s+-->\|后置一致性评审\|\s+ConsistencyReview\b/,
+  /\bD\s+-->\|测试验证\|\s+Verify\b/,
+  /\bD\s+-->\|文档可控性校验\|\s+DocCheck\b/,
+  /\bD\s+-->\|架构深化:\s*候选发现\|\s+Deepening\b/,
+  /\bD\s+-->\|架构重构:\s*已确认 DC-\*\|\s+Refactor\b/,
+]
 const REQUIRED_CONSISTENCY_REVIEWER_ITEMS = [
   'name: consistency-reviewer',
   'description:',
@@ -252,6 +310,7 @@ function hasSubagentDispatchIndex(content) {
     && section.includes('subagent')
     && section.includes('headless')
     && REQUIRED_SUBAGENT_DISPATCH_ITEMS.every(item => section.includes(item))
+    && hasFlowchartBlock(section, REQUIRED_SUBAGENT_DISPATCH_FLOW_ITEMS, REQUIRED_SUBAGENT_DISPATCH_FLOW_PATTERNS)
 }
 
 function extractMermaidBlocks(section) {
@@ -328,6 +387,7 @@ function checkRuleLayer(root) {
     '交付验证',
     REQUIRED_DELIVERY_VERIFICATION_ITEMS,
     REQUIRED_DELIVERY_VERIFICATION_FLOW_ITEMS,
+    REQUIRED_DELIVERY_VERIFICATION_FLOW_PATTERNS,
   )
   const hasDeliveryContract = hasDeliveryFlow && REQUIRED_STATUS_MARKERS.every(marker => content.includes(marker))
   const hasGradingContract = hasRuleFlowSection(
@@ -377,6 +437,18 @@ function checkProjectReference(root) {
     return
   }
 
+  const legacyReferencePaths = [
+    path.join(initProjectRoot, 'references', 'common', 'control.md'),
+    path.join(initProjectRoot, 'references', 'common', 'subagent.md'),
+  ]
+  const existingLegacyReferences = legacyReferencePaths
+    .filter(filePath => fs.existsSync(filePath))
+    .map(filePath => path.relative(root, filePath).replace(/\\/g, '/'))
+  if (existingLegacyReferences.length > 0) {
+    fail(`project reference incomplete: init-project 不得重新携带旧 reference 文件 ${existingLegacyReferences.join(', ')}`)
+    return
+  }
+
   const docsContent = fs.readFileSync(docsPath, 'utf8')
   const hasProjectDocs = docsContent.includes('项目知识源读取规范')
     && docsContent.includes('airules.knowledge.json')
@@ -403,6 +475,8 @@ function checkProjectReference(root) {
   if (
     hasLegacyReference(injectContent, 'normalizedControlReferencePath')
     || hasLegacyReference(injectContent, 'normalizedSubagentReferencePath')
+    || /\bcontrol\.md\b/.test(injectContent)
+    || /\bsubagent\.md\b/.test(injectContent)
   ) {
     fail('project reference incomplete: inject-rules.mjs 不得再注入 control.md 或 subagent.md')
     return

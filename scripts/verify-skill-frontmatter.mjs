@@ -13,6 +13,13 @@ const UNSUITABLE_SECTION_PATTERN = /##\s*(不适合|拒绝|不要使用|Don't us
 const BOUNDARY_SECTION_PATTERN = /##\s*(输出边界|应用边界|写入边界|边界|禁止|共同规则|核心规则|Output Boundary|Boundaries)/i
 const BOUNDARY_MARKER_PATTERN = /(占位|仅供参考|用户确认|确认后|待审|PENDING_REVIEW|不得自动|不可直接|不要直接|字段含义|运行前提|失败|placeholder|review|confirm|not automatically)/i
 const UNRESOLVED_PLACEHOLDER_PATTERN = /(TODO|FIXME|待补充|后续补充|这里写|请补充|\[补充|<待|待填写)/i
+const FRONTEND_IMPL_PLAN_REQUIRED_ITEMS = [
+  '需求来源',
+  '调用接口',
+  '使用/封装组件',
+  '类型（使用/封装）',
+  '契约来源',
+]
 
 const errors = []
 
@@ -238,6 +245,20 @@ function checkExampleBoundaries(body) {
   pass('examples/templates/candidates have boundary wording')
 }
 
+function checkFrontendImplPlanContract(fields, body) {
+  if (fields.get('name') !== 'frontend-impl-plan') {
+    return
+  }
+
+  const missingItems = FRONTEND_IMPL_PLAN_REQUIRED_ITEMS.filter(item => !body.includes(item))
+  if (missingItems.length > 0) {
+    fail(`frontend-impl-plan 必须要求任务书写出需求来源、调用接口和使用/封装组件，缺少: ${missingItems.join(', ')}`)
+    return
+  }
+
+  pass('frontend-impl-plan traceability contract present')
+}
+
 function finish(fields, root) {
   console.log('────────────────────────────')
   if (errors.length > 0) {
@@ -264,6 +285,7 @@ function verify(root) {
   if (parsed) {
     checkBodyStructure(parsed.body)
     checkExampleBoundaries(parsed.body)
+    checkFrontendImplPlanContract(fields, parsed.body)
   }
 
   finish(fields, root)
