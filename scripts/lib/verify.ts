@@ -1,8 +1,104 @@
-import { existsSync, lstatSync, readdirSync, realpathSync } from 'node:fs'
+import type { McpProjection } from '../../constants/hosts.js'
+import { existsSync, lstatSync, readdirSync, readFileSync, realpathSync } from 'node:fs'
 import os from 'node:os'
 import path from 'node:path'
 import kleur from 'kleur'
+import * as smolToml from 'smol-toml'
 import { findHostConfig, resolveHostPaths } from '../../constants/hosts.js'
+
+function isRecord(value: unknown): value is Record<string, unknown> {
+  return typeof value === 'object' && value !== null && !Array.isArray(value)
+}
+
+function readNeutralMcpServers(moluoHome: string): Record<string, unknown> | undefined {
+  const sourceFile = path.join(moluoHome, 'vendor', 'mcp', 'mcp.json')
+  if (!existsSync(sourceFile)) {
+    return undefined
+  }
+
+  const raw = readFileSync(sourceFile, 'utf8').trim()
+  if (!raw) {
+    return undefined
+  }
+
+  let parsed: unknown
+  try {
+    parsed = JSON.parse(raw)
+  }
+  catch (error) {
+    throw new Error(`中性 MCP 源解析失败 ${sourceFile}: ${String(error)}`)
+  }
+
+  if (!isRecord(parsed) || !isRecord(parsed.mcpServers) || Object.keys(parsed.mcpServers).length === 0) {
+    return undefined
+  }
+
+  return parsed.mcpServers
+}
+
+function readHostMcpServers(targetFile: string, mcp: McpProjection): Record<string, unknown> | undefined {
+  const raw = readFileSync(targetFile, 'utf8').replace(/^\uFEFF/u, '')
+  const parsed = mcp.format === 'json'
+    ? JSON.parse(raw) as unknown
+    : smolToml.parse(raw) as unknown
+
+  if (!isRecord(parsed)) {
+    return undefined
+  }
+
+  const servers = parsed[mcp.serversKey]
+  if (!isRecord(servers)) {
+    return undefined
+  }
+
+  return servers
+}
+
+function verifyMcpProjection(host: string, moluoHome: string, mcpHome: string, mcp?: McpProjection): boolean {
+  if (!mcp) {
+    return true
+  }
+
+  const expectedServers = readNeutralMcpServers(moluoHome)
+  if (!expectedServers) {
+    console.log('[info] 未发现中性 MCP 源，跳过 MCP 配置校验')
+    return true
+  }
+
+  if (!existsSync(mcpHome)) {
+    console.error(`[FAIL] MCP 目录不存在: ${mcpHome}`)
+    return false
+  }
+
+  const targetFile = path.join(mcpHome, mcp.relDir, mcp.fileName)
+  if (!existsSync(targetFile)) {
+    console.error(`[FAIL] MCP 配置缺失: ${targetFile}`)
+    return false
+  }
+
+  let actualServers: Record<string, unknown> | undefined
+  try {
+    actualServers = readHostMcpServers(targetFile, mcp)
+  }
+  catch (error) {
+    console.error(`[FAIL] MCP 配置解析失败 ${targetFile}: ${String(error)}`)
+    return false
+  }
+
+  if (!actualServers) {
+    console.error(`[FAIL] MCP 配置缺少服务表 ${mcp.serversKey}: ${targetFile}`)
+    return false
+  }
+
+  const missingServers = Object.keys(expectedServers).filter(serverName => !Object.hasOwn(actualServers, serverName))
+  if (missingServers.length > 0) {
+    console.error(`[FAIL] MCP 配置缺少 AIRules server: ${missingServers.join(', ')}`)
+    return false
+  }
+
+  console.log(`[info] MCP 配置校验通过: ${host}`)
+  return true
+}
 
 /**
  * 验证指定宿主的技能链接完整性
@@ -17,17 +113,24 @@ export async function verifyHost(host: string, moluoHome: string, userHome = os.
   if (!config)
     return false
 
-  const { hostHome, skillsDirName, excludedSkills, projectSharedResources, mcpHome } = resolveHostPaths(config, userHome)
+  const { hostHome, skillsDirName, excludedSkills, projectSharedResources, mcpHome, mcp } = resolveHostPaths(config, userHome)
 
-  const resolvedHostHome = path.resolve(projectSharedResources ? hostHome : mcpHome)
-  if (!existsSync(resolvedHostHome)) {
+  const resolvedHostHome = path.resolve(hostHome)
+  const resolvedMcpHome = path.resolve(mcpHome)
+  const hasHostHome = existsSync(resolvedHostHome)
+  const hasMcpHome = Boolean(mcp && existsSync(resolvedMcpHome))
+
+  if (!hasHostHome && !hasMcpHome) {
     console.warn(`[SKIP] 宿主目录不存在: ${resolvedHostHome}`)
     return true // 跳过但不视为失败
   }
 
-  if (!projectSharedResources) {
-    console.log('[info] 宿主未启用 skills/agents 投影，跳过技能链接校验')
-    return true
+  const mcpSuccess = verifyMcpProjection(host, moluoHome, resolvedMcpHome, mcp)
+  const shouldVerifySharedResources = projectSharedResources && hasHostHome
+
+  if (!shouldVerifySharedResources) {
+    console.log('[info] 宿主未启用 skills/agents 投影，跳过 skills/agents 链接校验')
+    return mcpSuccess
   }
 
   const targetSkillsDir = path.join(resolvedHostHome, skillsDirName)
@@ -98,7 +201,7 @@ export async function verifyHost(host: string, moluoHome: string, userHome = os.
 
   console.log(`[result] 有效=${validCount}, 缺失=${missingCount}, 损坏=${brokenCount}`)
 
-  const success = missingCount === 0 && brokenCount === 0
+  const success = missingCount === 0 && brokenCount === 0 && mcpSuccess
   if (success) {
     console.log(kleur.green(`✅ ${host} 验证通过`))
   }

@@ -6,6 +6,8 @@ import path from 'node:path'
 import { it } from 'vitest'
 import { ensureVendorRepo, getRemoteDefaultBranch } from '../scripts/lib/vendor-sync.js'
 
+const GIT_INTEGRATION_TIMEOUT_MS = 30000
+
 function git(cwd: string, args: string[]): string {
   return execFileSync('git', args, { cwd, encoding: 'utf8' }).trim()
 }
@@ -75,7 +77,7 @@ it('ensureVendorRepo - overwrites a diverged local vendor repo with remote state
       'local-only commit should be overwritten by remote state',
     )
   })
-})
+}, GIT_INTEGRATION_TIMEOUT_MS)
 
 it('ensureVendorRepo - handles non-fast-forward remote branch updates', () => {
   withTempGitDir((tempRoot) => {
@@ -117,7 +119,7 @@ it('ensureVendorRepo - handles non-fast-forward remote branch updates', () => {
       'remote rewritten\n',
     )
   })
-})
+}, GIT_INTEGRATION_TIMEOUT_MS)
 
 it('getRemoteDefaultBranch - 从 origin/HEAD symbolic-ref 读取默认分支', () => {
   withTempGitDir((tempRoot) => {
@@ -135,7 +137,7 @@ it('getRemoteDefaultBranch - 从 origin/HEAD symbolic-ref 读取默认分支', (
 
     assert.strictEqual(getRemoteDefaultBranch(cloneDir), 'trunk')
   })
-})
+}, GIT_INTEGRATION_TIMEOUT_MS)
 
 it('getRemoteDefaultBranch - 只有单个远端分支时作为 fallback', () => {
   withTempGitDir((tempRoot) => {
@@ -154,7 +156,7 @@ it('getRemoteDefaultBranch - 只有单个远端分支时作为 fallback', () => 
 
     assert.strictEqual(getRemoteDefaultBranch(cloneDir), 'feature-only')
   })
-})
+}, GIT_INTEGRATION_TIMEOUT_MS)
 
 it('getRemoteDefaultBranch - 无法判断默认分支时显式失败', () => {
   withTempGitDir((tempRoot) => {
@@ -180,7 +182,7 @@ it('getRemoteDefaultBranch - 无法判断默认分支时显式失败', () => {
       /Unable to determine origin default branch/,
     )
   })
-})
+}, GIT_INTEGRATION_TIMEOUT_MS)
 
 it('ensureVendorRepo - 远程仓库使用 sparse clone 和 reapply', () => {
   withTempGitDir((tempRoot) => {
@@ -212,7 +214,7 @@ it('ensureVendorRepo - 远程仓库使用 sparse clone 和 reapply', () => {
     assert.ok(fs.existsSync(path.join(cloneDir, 'skills', 'demo', 'SKILL.md')))
     assert.equal(fs.existsSync(path.join(cloneDir, 'docs', 'README.md')), false)
   })
-})
+}, GIT_INTEGRATION_TIMEOUT_MS)
 
 function normalizePath(value: string) {
   return value.replace(/\\/g, '/')

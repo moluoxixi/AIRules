@@ -19,6 +19,20 @@ const REQUIRED_SUBAGENT_DISPATCH_ITEMS = [
   '文档可控性校验',
   '规则自足性校验',
   '架构深化',
+  'debugger',
+  'frontend-planner',
+  'backend-planner',
+  'frontend-coder',
+  'backend-coder',
+  'frontend-reviewer',
+  'backend-reviewer',
+  'architecture-refactor',
+  '自包含',
+  '复核',
+  '不同实例',
+  '隔离',
+  '并行',
+  '独立性',
 ]
 const errors = []
 
@@ -227,7 +241,11 @@ function checkSkillLayer(root) {
 
 function checkExecutionLayer(root) {
   const requiredFiles = [
+    'scripts/assemble-baseline.mjs',
+    'scripts/verify-knowledge-sources.mjs',
+    'scripts/verify-rule-self-sufficiency.mjs',
     'scripts/verify-skill-frontmatter.mjs',
+    'scripts/verify-skills.mjs',
     'scripts/verify-delivery-control.mjs',
   ]
 
@@ -244,7 +262,7 @@ function checkExecutionLayer(root) {
   }
 
   const packageJson = JSON.parse(fs.readFileSync(packageJsonPath, 'utf8'))
-  const requiredPackageFiles = ['docs', 'rules', 'scripts', 'skills']
+  const requiredPackageFiles = ['agents', 'docs', 'mcp', 'rules', 'scripts', 'skills']
   const publishedFiles = new Set(packageJson.files ?? [])
   const missingPackageFiles = requiredPackageFiles.filter(file => !publishedFiles.has(file))
   if (missingPackageFiles.length > 0) {
@@ -254,6 +272,32 @@ function checkExecutionLayer(root) {
 
   if (packageJson.scripts?.['delivery:verify'] !== 'node scripts/verify-delivery-control.mjs') {
     fail('execution layer incomplete: package.json scripts 缺少 delivery:verify')
+    return
+  }
+
+  if (packageJson.scripts?.['rules:check'] !== 'node scripts/assemble-baseline.mjs --check') {
+    fail('execution layer incomplete: package.json scripts 缺少 rules:check')
+    return
+  }
+
+  if (packageJson.scripts?.['verify:skills'] !== 'node scripts/verify-skills.mjs') {
+    fail('execution layer incomplete: package.json scripts 缺少 verify:skills')
+    return
+  }
+
+  if (packageJson.scripts?.['verify:knowledge-sources'] !== 'node scripts/verify-knowledge-sources.mjs airules.knowledge.json') {
+    fail('execution layer incomplete: package.json scripts 缺少 verify:knowledge-sources')
+    return
+  }
+
+  if (packageJson.scripts?.['verify:rules:self-sufficiency'] !== 'node scripts/verify-rule-self-sufficiency.mjs') {
+    fail('execution layer incomplete: package.json scripts 缺少 verify:rules:self-sufficiency')
+    return
+  }
+
+  const expectedL2Script = 'npm run rules:check && npm run delivery:verify && npm run verify:rules:self-sufficiency && npm run verify:skills && npm run verify:knowledge-sources'
+  if (packageJson.scripts?.['verify:control:l2'] !== expectedL2Script) {
+    fail('execution layer incomplete: package.json scripts 缺少 verify:control:l2')
     return
   }
 

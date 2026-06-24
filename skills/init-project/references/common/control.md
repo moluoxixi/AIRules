@@ -43,7 +43,7 @@
 | 跨产物一致性 | `consistency-check` | PRD↔测试↔计划↔（已有）代码多向对齐、视觉态/用例/任务覆盖、覆盖缺口与孤儿项、结论 `PASS`/`FAIL`/`MISSING` | 需求、测试设计、实现计划 |
 | 实现编码 | 项目规则、TDD/调试类 skills | 边界校验在入口，内部不重复防御，错误显式暴露 | 实现计划、跨产物一致性 |
 | 架构改进 | `architecture-deepening`、`architecture-refactor`、`architecture-docs` | 深化候选(DC-*)发现与呈现 → 用户确认具体编号 → 精化为重构实现计划(对外行为等价/分步可回退/跨缝测试先行) → 改造编码与测试 → 回流 ADR 记录 | 架构设计、代码现状可访问 |
-| 调试修复 | `systematic-debugging`、`retrospective-correction`、debugger 子代理 | 先定位根因再修复；bugfix 链由 debugger 前置诊断，复杂/跨栈 bug 产 `docs/diagnosis/<bug>.md` 交接；偏差按级别处理 | 实现编码 / bugfix 复现现象 |
+| 调试修复 | `systematic-debugging`、`retrospective-correction`、debugger 子代理 | 先定位根因再修复；bugfix 链由 debugger 前置诊断，复杂/跨栈 bug 产 `docs/diagnosis/<bug>.md` 交接；偏差按级别处理 | bugfix 复现现象 / 实现编码后偏差或回归现象 |
 | 代码评审 | `code-reviewer`、`requesting-code-review` | 编码完成后立即由评审员子代理评估；正确性、安全、性能、规则符合性、测试充分性；前后端改动分栈独立评审 | 实现编码 |
 | 测试验证 | `verification-before-completion` | 真实命令输出、测试结果、覆盖率、未执行项与原因 | 实现编码、代码评审 |
 | 提交 PR | `github-pr-workflow`、`pr-creator` | 评审全 `PASS` 且测试通过后推新分支建本地 PR；描述含变更摘要、关联上游、改动范围、测试情况、评审结论、风险、回滚 | 代码评审、测试验证 |

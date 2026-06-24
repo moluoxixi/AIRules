@@ -24,7 +24,7 @@
 
 `scripts/purity/purity-check.mjs` **不调用任何 LLM**，只做两件确定性的事：
 
-1. `assemble`：组装纯净上下文包到 `.purity-runs/<skill>/`（`context.md` + `rubric.md`）。
+1. `assemble`：组装纯净上下文包到系统临时目录 `airules-purity-runs/<skill>/`，或用 `--out <输出根目录>` 指定输出位置（`context.md` + `rubric.md`）。
 2. `--check`：拿纯净 run 的产物，对 `scripts/purity/rubric.json` 声明的断言做核对。
 
 **用什么 agent 执行纯净 run 由用户环境决定**——脚本不假设 `claude` / `codex` / `opencode` / `delegate_task`
@@ -39,14 +39,18 @@ node scripts/purity/purity-check.mjs <skill>
 # 或 npm run purity:assemble -- <skill>
 ```
 
-产出 `.purity-runs/<skill>/context.md`（纯净上下文）和 `rubric.md`（核对清单）。该目录已被 gitignore。
+产出 `<输出根目录>/<skill>/context.md`（纯净上下文）和 `rubric.md`（核对清单）。默认输出根目录在系统临时目录，不写入仓库内 git ignored 目录；需要固定输出位置时显式传入：
+
+```bash
+node scripts/purity/purity-check.mjs <skill> --out <输出根目录>
+```
 
 ### 2. 在干净 agent 里执行（执行器自选，脚本不强制）
 
 三种方式任选其一，取决于你的环境：
 
 - **无 runner**：把 `context.md` 喂给环境里任意干净 agent（新会话、不带项目规则），产物存为 `out.md`。
-- **命令行 runner**：`cat .purity-runs/<skill>/context.md | <你的 CLI> > out.md`，其中 `<你的 CLI>`
+- **命令行 runner**：`cat <输出根目录>/<skill>/context.md | <你的 CLI> > out.md`，其中 `<你的 CLI>`
   是你环境里实际可用的命令（例如某个 agent CLI 的非交互模式）。
 - **由调用方代理执行**：主代理用其子代理能力跑 `context.md`，回填产物。
 

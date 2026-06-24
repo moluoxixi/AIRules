@@ -1,5 +1,6 @@
 ---
 name: systematic-debugging
+description: Use when diagnosing technical failures, test failures, build errors, regressions, flaky behavior, or unexpected behavior before proposing fixes
 ---
 
 # Systematic Debugging（系统化调试）

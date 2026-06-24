@@ -1,5 +1,6 @@
 ---
 name: verification-before-completion
+description: Use when about to claim work is complete, fixed, passing, verified, ready to commit, or ready to publish
 ---
 
 # Verification Before Completion（完成前验证）

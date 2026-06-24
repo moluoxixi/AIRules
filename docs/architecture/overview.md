@@ -80,7 +80,7 @@ vendor 同步缓存：`sync-vendors.ts` 计算 `constants/` 目录 SHA-256 指�
 - 运行时：Node 22+，通过 `tsx` 直接执行 TypeScript 脚本，无需预编译即可 `sync`。
 - 工程基础设施：TypeScript 5.x + ESLint（@antfu）+ Vitest + Husky + Commitlint。
 - 发布：`publish.yml` 由 `v*.*.*` git tag 触发，校验 tag 与 package.json 版本一致后 `npm publish --provenance`。
-- 质量门禁：PR 阶段 `ci.yml` 跑 lint:check / typecheck / test / delivery:verify / verify:skills；本地 `pre-commit` 跑 lint-staged，`pre-push` 跑 typecheck + skill frontmatter 校验。
+- 质量门禁：PR 阶段 `ci.yml` 跑 lint:check / typecheck / test / rules:check / delivery:verify / verify:rules:self-sufficiency / verify:skills / verify:knowledge-sources；本地 `pre-commit` 跑 lint-staged，`pre-push` 跑 typecheck + skill frontmatter 校验。
 - 不涉及容器、服务器或云资源部署；产物为 npm 包 + 用户本地宿主目录投影。
 
 ## 待确认

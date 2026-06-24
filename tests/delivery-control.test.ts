@@ -37,6 +37,8 @@ function runScriptResult(...args: string[]) {
 function createMinimalDeliveryRoot(): string {
   const root = fs.mkdtempSync(path.join(os.tmpdir(), 'airules-delivery-'))
   fs.mkdirSync(path.join(root, 'rules'), { recursive: true })
+  fs.mkdirSync(path.join(root, 'agents'), { recursive: true })
+  fs.mkdirSync(path.join(root, 'mcp'), { recursive: true })
   fs.mkdirSync(path.join(root, 'skills', 'demo-skill'), { recursive: true })
   fs.mkdirSync(path.join(root, 'skills', 'init-project', 'references'), { recursive: true })
   fs.mkdirSync(path.join(root, 'scripts'), { recursive: true })
@@ -54,6 +56,8 @@ function createMinimalDeliveryRoot(): string {
     '## 关键环节子代理调度索引（什么时候调用什么子代理）',
     '- `skill` 决定知识内容和方法论，`subagent` 决定上下文隔离、并行和反自评边界。',
     '- 覆盖多源只读调研、实现计划、实现编码、调试修复、代码评审、测试验证、文档可控性校验、规则自足性校验、架构深化/重构。',
+    '- 具名 agent 包括 `debugger`、`frontend-planner`、`backend-planner`、`frontend-coder`、`backend-coder`、`frontend-reviewer`、`backend-reviewer`、`architecture-refactor`。',
+    '- 子代理指令必须自包含，回传必须由主代理复核，reviewer 必须是不同实例，拆 agent 必须命中隔离、并行或独立性。',
     '- headless / 干净隔离上下文用于规则自足性和文档可控性校验。',
   ].join('\n'))
 
@@ -91,6 +95,18 @@ function createMinimalDeliveryRoot(): string {
     '- 文档可控性校验。',
     '- 规则自足性校验。',
     '- 架构深化/重构。',
+    '- debugger。',
+    '- frontend-planner。',
+    '- backend-planner。',
+    '- frontend-coder。',
+    '- backend-coder。',
+    '- frontend-reviewer。',
+    '- backend-reviewer。',
+    '- architecture-refactor。',
+    '- 子代理指令必须自包含。',
+    '- 主代理必须复核回传。',
+    '- reviewer 必须是不同实例。',
+    '- 隔离、并行、独立性。',
     '- headless / 干净隔离用于文档可控性校验。',
   ].join('\n'))
   fs.writeFileSync(path.join(root, 'skills', 'init-project', 'scripts', 'inject-rules.mjs'), [
@@ -112,12 +128,21 @@ function createMinimalDeliveryRoot(): string {
   ].join('\n'))
 
   fs.writeFileSync(path.join(root, 'package.json'), JSON.stringify({
-    files: ['docs', 'rules', 'scripts', 'skills'],
+    files: ['agents', 'docs', 'mcp', 'rules', 'scripts', 'skills'],
     scripts: {
       'delivery:verify': 'node scripts/verify-delivery-control.mjs',
+      'rules:check': 'node scripts/assemble-baseline.mjs --check',
+      'verify:skills': 'node scripts/verify-skills.mjs',
+      'verify:knowledge-sources': 'node scripts/verify-knowledge-sources.mjs airules.knowledge.json',
+      'verify:rules:self-sufficiency': 'node scripts/verify-rule-self-sufficiency.mjs',
+      'verify:control:l2': 'npm run rules:check && npm run delivery:verify && npm run verify:rules:self-sufficiency && npm run verify:skills && npm run verify:knowledge-sources',
     },
   }))
+  fs.writeFileSync(path.join(root, 'scripts', 'assemble-baseline.mjs'), '#!/usr/bin/env node\n')
+  fs.writeFileSync(path.join(root, 'scripts', 'verify-knowledge-sources.mjs'), '#!/usr/bin/env node\n')
+  fs.writeFileSync(path.join(root, 'scripts', 'verify-rule-self-sufficiency.mjs'), '#!/usr/bin/env node\n')
   fs.writeFileSync(path.join(root, 'scripts', 'verify-skill-frontmatter.mjs'), '#!/usr/bin/env node\n')
+  fs.writeFileSync(path.join(root, 'scripts', 'verify-skills.mjs'), '#!/usr/bin/env node\n')
   fs.writeFileSync(path.join(root, 'scripts', 'verify-delivery-control.mjs'), '#!/usr/bin/env node\n')
   fs.writeFileSync(path.join(root, 'docs', 'delivery', 'control-contract.md'), [
     '# 交付控制契约',
@@ -134,7 +159,9 @@ function createMinimalDeliveryRoot(): string {
     '|---|---|---|',
     '| 需求 | prd-docs | PASS/FAIL |',
     '关键环节子代理调度：规则层必须写明「什么时候调用什么子代理」，覆盖多源调研、实现计划、实现编码、调试修复、代码评审、测试验证、文档可控性校验、规则自足性校验和架构深化/重构。',
+    '调度索引必须点名 debugger、frontend-planner、backend-planner、frontend-coder、backend-coder、frontend-reviewer、backend-reviewer、architecture-refactor，并说明自包含、复核、不同实例、隔离、并行、独立性。',
     '调度规则区分 `skill` 与 `subagent`，并要求 headless / 干净隔离上下文。',
+    'L2 控制聚合入口必须包含 `verify:rules:self-sufficiency`。',
     '## 质量门禁',
     '- 交付前运行 npm run delivery:verify。',
   ].join('\n'))
@@ -179,6 +206,58 @@ it('verify-delivery-control - 当前仓库携带 control reference', () => {
   const output = runScript('--root', projectRoot)
 
   assert.match(output, /PASS control reference present/)
+})
+
+it('verify-delivery-control - package files 缺少 agents 或 mcp 时显式失败', () => {
+  const root = createMinimalDeliveryRoot()
+  const packageJsonPath = path.join(root, 'package.json')
+  const packageJson = JSON.parse(fs.readFileSync(packageJsonPath, 'utf8'))
+  packageJson.files = ['docs', 'rules', 'scripts', 'skills']
+  fs.writeFileSync(packageJsonPath, JSON.stringify(packageJson))
+
+  const result = runScriptResult('--root', root)
+
+  assert.notEqual(result.status, 0)
+  assert.match(result.stdout, /FAIL execution layer incomplete: package\.json files 缺少 agents, mcp/)
+})
+
+it('verify-delivery-control - 缺少 L2 控制聚合入口时显式失败', () => {
+  const root = createMinimalDeliveryRoot()
+  const packageJsonPath = path.join(root, 'package.json')
+  const packageJson = JSON.parse(fs.readFileSync(packageJsonPath, 'utf8'))
+  delete packageJson.scripts['verify:control:l2']
+  fs.writeFileSync(packageJsonPath, JSON.stringify(packageJson))
+
+  const result = runScriptResult('--root', root)
+
+  assert.notEqual(result.status, 0)
+  assert.match(result.stdout, /FAIL execution layer incomplete: package\.json scripts 缺少 verify:control:l2/)
+})
+
+it('verify-delivery-control - 缺少规则自足性校验入口时显式失败', () => {
+  const root = createMinimalDeliveryRoot()
+  const packageJsonPath = path.join(root, 'package.json')
+  const packageJson = JSON.parse(fs.readFileSync(packageJsonPath, 'utf8'))
+  delete packageJson.scripts['verify:rules:self-sufficiency']
+  fs.writeFileSync(packageJsonPath, JSON.stringify(packageJson))
+
+  const result = runScriptResult('--root', root)
+
+  assert.notEqual(result.status, 0)
+  assert.match(result.stdout, /FAIL execution layer incomplete: package\.json scripts 缺少 verify:rules:self-sufficiency/)
+})
+
+it('verify-delivery-control - L2 控制聚合入口必须是真实 npm run 链', () => {
+  const root = createMinimalDeliveryRoot()
+  const packageJsonPath = path.join(root, 'package.json')
+  const packageJson = JSON.parse(fs.readFileSync(packageJsonPath, 'utf8'))
+  packageJson.scripts['verify:control:l2'] = 'echo rules:check delivery:verify verify:rules:self-sufficiency verify:skills verify:knowledge-sources'
+  fs.writeFileSync(packageJsonPath, JSON.stringify(packageJson))
+
+  const result = runScriptResult('--root', root)
+
+  assert.notEqual(result.status, 0)
+  assert.match(result.stdout, /FAIL execution layer incomplete: package\.json scripts 缺少 verify:control:l2/)
 })
 
 it('verify-delivery-control - control reference 缺少 subagent.md 时显式失败', () => {

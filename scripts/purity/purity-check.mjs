@@ -6,29 +6,31 @@
  * 干净隔离环境里，仅凭 init-project references 规则 + 被测 skill 自身，能否产出符合
  * skill 声明的产物。本脚本不调用任何 LLM，只做两件确定性的事：
  *
- *   1. assemble（默认）：组装纯净上下文包到 .purity-runs/<skill>/context.md + rubric.md。
+ *   1. assemble（默认）：组装纯净上下文包到系统临时目录，或用 --out 指定输出根目录。
  *      用「什么 agent」跑这个包由用户环境决定——脚本不假设 claude/codex/opencode/delegate
  *      任意一种存在，保证换环境可用。
  *   2. check：拿纯净 run 的产物文件，对 rubric 的确定性断言做核对，输出可控性缺口报告。
  *
  * 用法：
- *   node scripts/purity/purity-check.mjs <skill>                  # 组装纯净包
- *   node scripts/purity/purity-check.mjs <skill> --check <产物文件>  # 核对产物
+ *   node scripts/purity/purity-check.mjs <skill>                    # 组装纯净包
+ *   node scripts/purity/purity-check.mjs <skill> --out <输出根目录>  # 组装到指定目录
+ *   node scripts/purity/purity-check.mjs <skill> --check <产物文件>   # 核对产物
  *
  * 执行纯净 run 的三种方式（脚本均不强制，由用户环境选择）：
- *   - 无 runner：把 .purity-runs/<skill>/context.md 喂给你环境里任意干净 agent，
+ *   - 无 runner：把输出目录里的 <skill>/context.md 喂给你环境里任意干净 agent，
  *     产物存盘后用 --check 核对。
  *   - 命令行 runner：cat context.md | <你的 CLI，如 claude -p / codex exec / opencode run> > out.md
  *   - 由调用方（如主代理）用其子代理能力执行后回填产物。
  */
 import { existsSync, mkdirSync, readdirSync, readFileSync, writeFileSync } from 'node:fs'
+import os from 'node:os'
 import path from 'node:path'
 import process from 'node:process'
 
 const repoRoot = process.cwd()
 const REFERENCES_DIR = path.join(repoRoot, 'skills', 'init-project', 'references')
 const RUBRIC_FILE = path.join(repoRoot, 'scripts', 'purity', 'rubric.json')
-const RUNS_DIR = path.join(repoRoot, '.purity-runs')
+const DEFAULT_RUNS_DIR = path.join(os.tmpdir(), 'airules-purity-runs')
 
 function fail(message) {
   console.log(`FAIL ${message}`)
@@ -57,8 +59,15 @@ function loadRubric() {
   return JSON.parse(readFileSync(RUBRIC_FILE, 'utf8'))
 }
 
+function displayPath(targetPath) {
+  const relative = path.relative(repoRoot, targetPath)
+  return relative && !relative.startsWith('..') && !path.isAbsolute(relative)
+    ? relative.replace(/\\/g, '/')
+    : targetPath.replace(/\\/g, '/')
+}
+
 /** 组装纯净上下文包：references 规则 + 被测 skill + 最小任务指令。 */
-function assemble(skillName) {
+function assemble(skillName, runsDir) {
   const skillFile = path.join(repoRoot, 'skills', skillName, 'SKILL.md')
   if (!existsSync(skillFile)) {
     fail(`被测 skill 不存在: ${skillFile}`)
@@ -115,12 +124,12 @@ function assemble(skillName) {
     '',
   ].join('\n')
 
-  const runDir = path.join(RUNS_DIR, skillName)
+  const runDir = path.join(runsDir, skillName)
   mkdirSync(runDir, { recursive: true })
   writeFileSync(path.join(runDir, 'context.md'), context, 'utf8')
   writeFileSync(path.join(runDir, 'rubric.md'), rubricMd, 'utf8')
 
-  console.log(`PASS 纯净包已组装: ${path.relative(repoRoot, runDir).replace(/\\/g, '/')}/`)
+  console.log(`PASS 纯净包已组装: ${displayPath(runDir)}/`)
   console.log(`  - context.md  纯净上下文（喂给任意干净 agent）`)
   console.log(`  - rubric.md   可控性核对清单`)
   console.log('')
@@ -181,9 +190,10 @@ function check(skillName, artifactPath) {
 function main() {
   const [skillName, ...rest] = process.argv.slice(2)
   if (!skillName) {
-    fail('用法: node scripts/purity/purity-check.mjs <skill> [--check <产物文件>]')
+    fail('用法: node scripts/purity/purity-check.mjs <skill> [--out <输出根目录>] [--check <产物文件>]')
   }
 
+  let outDir = DEFAULT_RUNS_DIR
   const checkIdx = rest.indexOf('--check')
   if (checkIdx !== -1) {
     const artifactPath = rest[checkIdx + 1]
@@ -194,7 +204,22 @@ function main() {
     return
   }
 
-  assemble(skillName)
+  for (let index = 0; index < rest.length; index++) {
+    const arg = rest[index]
+    if (arg === '--out') {
+      const value = rest[index + 1]
+      if (!value || value.startsWith('--')) {
+        fail('--out 需要提供输出根目录')
+      }
+      outDir = path.resolve(repoRoot, value)
+      index++
+      continue
+    }
+
+    fail(`未知参数：${arg}`)
+  }
+
+  assemble(skillName, outDir)
 }
 
 main()

@@ -5,10 +5,12 @@ import path from 'node:path'
 import { afterEach, it, vi } from 'vitest'
 import { verifyHost } from '../scripts/lib/verify.js'
 
+const workspaceFolderPlaceholder = '$' + '{workspaceFolder}'
+
 /**
  * 创建隔离的临时 home 目录，避免 verifyHost 读取真实用户目录。
  */
-function withTempHome<T>(run: (userHome: string, moluoHome: string) => T): T {
+async function withTempHome<T>(run: (userHome: string, moluoHome: string) => T | Promise<T>): Promise<T> {
   const tmpDir = fs.mkdtempSync(path.join(os.tmpdir(), 'airules-verify-'))
   const userHome = path.join(tmpDir, 'user')
   const moluoHome = path.join(userHome, '.moluoxixi')
@@ -16,7 +18,7 @@ function withTempHome<T>(run: (userHome: string, moluoHome: string) => T): T {
   try {
     fs.mkdirSync(userHome, { recursive: true })
     vi.spyOn(os, 'homedir').mockReturnValue(userHome)
-    return run(userHome, moluoHome)
+    return await run(userHome, moluoHome)
   }
   finally {
     vi.restoreAllMocks()
@@ -29,6 +31,21 @@ function withTempHome<T>(run: (userHome: string, moluoHome: string) => T): T {
  */
 function createVendorSkill(moluoHome: string, skillName: string) {
   fs.mkdirSync(path.join(moluoHome, 'vendor', 'skills', skillName), { recursive: true })
+}
+
+/**
+ * 写入中性 MCP 源，供 verifyHost 判断宿主 MCP 投影是否完整。
+ */
+function writeNeutralMcpSource(moluoHome: string) {
+  fs.mkdirSync(path.join(moluoHome, 'vendor', 'mcp'), { recursive: true })
+  fs.writeFileSync(path.join(moluoHome, 'vendor', 'mcp', 'mcp.json'), `${JSON.stringify({
+    mcpServers: {
+      codegraph: {
+        command: 'codegraph',
+        args: ['serve', '--mcp', '--path', workspaceFolderPlaceholder],
+      },
+    },
+  }, null, 2)}\n`)
 }
 
 /**
@@ -81,14 +98,101 @@ it('verifyHost - Qoder 要求 .qoder skills 链接完整', async () => {
 
 it('verifyHost - MCP-only Trae Solo 使用 MCP 目录作为存在性依据', async () => {
   await withTempHome(async (userHome, moluoHome) => {
-    fs.mkdirSync(path.join(userHome, 'AppData', 'Roaming', 'TRAE SOLO', 'User'), { recursive: true })
+    const mcpHome = path.join(userHome, 'AppData', 'Roaming', 'TRAE SOLO', 'User')
+    fs.mkdirSync(mcpHome, { recursive: true })
     createVendorSkill(moluoHome, 'api-docs')
+    writeNeutralMcpSource(moluoHome)
     const warn = vi.spyOn(console, 'warn').mockImplementation(() => {})
     const log = vi.spyOn(console, 'log').mockImplementation(() => {})
 
+    assert.equal(await verifyHost('trae-solo', moluoHome), false)
+
+    fs.writeFileSync(path.join(mcpHome, 'mcp.json'), `${JSON.stringify({
+      inputs: [],
+      mcpServers: {
+        codegraph: {
+          command: 'codegraph',
+          args: ['serve', '--mcp', '--path', workspaceFolderPlaceholder],
+        },
+      },
+    }, null, 2)}\n`)
+
     assert.equal(await verifyHost('trae-solo', moluoHome), true)
     assert.equal(warn.mock.calls.some(call => String(call[0]).includes('[SKIP]')), false)
-    assert.equal(log.mock.calls.some(call => String(call[0]).includes('跳过技能链接校验')), true)
+    assert.equal(log.mock.calls.some(call => String(call[0]).includes('跳过 skills/agents 链接校验')), true)
+  })
+})
+
+it('verifyHost - Trae 主目录缺失但 MCP 目录存在时仍校验 MCP', async () => {
+  await withTempHome(async (userHome, moluoHome) => {
+    const mcpHome = path.join(userHome, 'AppData', 'Roaming', 'Trae', 'User')
+    fs.mkdirSync(mcpHome, { recursive: true })
+    writeNeutralMcpSource(moluoHome)
+
+    assert.equal(await verifyHost('trae', moluoHome), false)
+
+    fs.writeFileSync(path.join(mcpHome, 'mcp.json'), `${JSON.stringify({
+      inputs: [],
+      mcpServers: {
+        codegraph: {
+          command: 'codegraph',
+          args: ['serve', '--mcp', '--path', workspaceFolderPlaceholder],
+        },
+      },
+    }, null, 2)}\n`)
+
+    assert.equal(await verifyHost('trae', moluoHome), true)
+  })
+})
+
+it('verifyHost - Qoder 用户同名 MCP server 不因缺少覆盖字段失败', async () => {
+  await withTempHome(async (userHome, moluoHome) => {
+    const qoderHome = path.join(userHome, '.qoder')
+    const qoderMcpHome = path.join(userHome, 'AppData', 'Roaming', 'Qoder', 'SharedClientCache')
+    fs.mkdirSync(qoderMcpHome, { recursive: true })
+    createVendorSkill(moluoHome, 'api-docs')
+    writeNeutralMcpSource(moluoHome)
+    linkDir(
+      path.join(moluoHome, 'vendor', 'skills', 'api-docs'),
+      path.join(qoderHome, 'skills', 'api-docs'),
+    )
+
+    fs.writeFileSync(path.join(qoderMcpHome, 'mcp.json'), `${JSON.stringify({
+      mcpServers: {
+        codegraph: {
+          command: 'user-custom-codegraph',
+        },
+      },
+    }, null, 2)}\n`)
+
+    assert.equal(await verifyHost('qoder', moluoHome, userHome), true)
+  })
+})
+
+it('verifyHost - Qoder host 存在但独立 MCP 目录缺失时失败', async () => {
+  await withTempHome(async (userHome, moluoHome) => {
+    const qoderHome = path.join(userHome, '.qoder')
+    createVendorSkill(moluoHome, 'api-docs')
+    writeNeutralMcpSource(moluoHome)
+    linkDir(
+      path.join(moluoHome, 'vendor', 'skills', 'api-docs'),
+      path.join(qoderHome, 'skills', 'api-docs'),
+    )
+
+    assert.equal(await verifyHost('qoder', moluoHome, userHome), false)
+  })
+})
+
+it('verifyHost - Codex TOML MCP 配置带 BOM 仍可解析', async () => {
+  await withTempHome(async (userHome, moluoHome) => {
+    fs.mkdirSync(path.join(userHome, '.codex', 'skills'), { recursive: true })
+    writeNeutralMcpSource(moluoHome)
+    fs.writeFileSync(
+      path.join(userHome, '.codex', 'config.toml'),
+      '\uFEFF[mcp_servers.codegraph]\ncommand = "user-custom-codegraph"\n',
+    )
+
+    assert.equal(await verifyHost('codex', moluoHome), true)
   })
 })
 

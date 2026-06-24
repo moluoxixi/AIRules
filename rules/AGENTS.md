@@ -53,6 +53,8 @@
 调度补充规则：
 
 - fresh 子代理 per task：每个独立 task 派全新子代理，不继承主会话历史；主代理显式提供文件路径、上游产物、约束边界、禁止事项和期望回传。
+- 自包含与复核：每次委派必须给子代理自包含指令；所有回传都必须由主代理用路径、diff、命令输出、URL 或日志复核后才能对外声明。
+- 不同实例与拆分理由：reviewer 必须与 coder 是不同实例；拆出独立 agent 必须命中隔离、并行或独立性之一，不得只因角色特点不同就拆 agent。
 - headless / 干净隔离：文档可控性、规则自足性、skill 纯净测试等校验必须使用干净隔离上下文；无法提供时标记 `MISSING` 或 `NOT RUN` 并说明原因，不得用非干净执行替代通过。干净隔离指无主会话历史、无宿主 AGENTS/baseline、无额外引导；可使用只读工具、文件系统快照和显式注入的必要规则/产物/rubric。
 - 两段评审：实现编码类 task 完成后，默认由同一 reviewer 报告分两段输出——先检查是否满足计划/用例，再检查代码质量；只有跨栈或独立性/上下文隔离收益明确时才拆多个 reviewer。任一阶段 `FAIL` / `MISSING` 都回到修复，不得静默放行。
 - 连续执行不空转请示：已有用户确认、门禁已闭环且存在可执行计划时，主代理逐个委派、逐个验收；遇到 L2、`MISSING` / conflict、风险升级、关键歧义、用户要求确认或全部完成时必须停下。
@@ -84,4 +86,6 @@
 | `handoff` | 当用户说"交接/handoff/换会话/写个总结给下一个会话/上下文快用完了"，或会话上下文明显过长需要中断转移时，输出一份新 agent 可直接消费的交接文档。 |
 | `init-project` | 用于创建新项目、初始化项目、为已有项目首次接入 AIRules、生成项目根 AGENTS.md/CLAUDE.md 或初始化 CodeGraph 时触发。 |
 | `retrospective-correction` | 用于用户指出实现与要求、计划、规则或验收标准存在偏差时触发；小偏差直接修复并说明，重大偏差先出修正计划、做原因归因，并强制写入纠偏记录沉淀为下次约束。 |
+| `systematic-debugging` | Use when diagnosing technical failures, test failures, build errors, regressions, flaky behavior, or unexpected behavior before proposing fixes |
+| `verification-before-completion` | Use when about to claim work is complete, fixed, passing, verified, ready to commit, or ready to publish |
 <!-- AIRULES:SKILL-INDEX:END -->
