@@ -3,7 +3,7 @@
 ## 读取顺序
 
 - 当任务涉及架构、模块边界、需求、接口联调、测试设计、业务流程、字段口径、验收标准、历史约定或用户提到具体业务域时，必须先查项目根目录 `airules.knowledge.json`。
-- 若 `airules.knowledge.json` 存在，先运行 `node <AIRules>/scripts/verify-knowledge-sources.mjs airules.knowledge.json`；校验失败时报告 `FAIL knowledge source registry`，不得绕过注册表继续伪装检索成功。
+- 若 `airules.knowledge.json` 存在，先运行 `node <init-project-skill>/scripts/verify-knowledge-sources.mjs airules.knowledge.json`；校验失败时报告 `FAIL knowledge source registry`，不得绕过注册表继续伪装检索成功。
 - 若 `airules.knowledge.json` 缺失，报告 `MISSING source registry`；仅可临时读取 `README.md`、`docs/`、`AGENTS.md`、`CLAUDE.md`，并在交付中说明未经过知识源治理。
 - 检索登记的 `filesystem` 来源时，只读取 `include` 声明的路径，并遵守 `exclude`；未安装、未验证或未实现适配器的外部服务不得作为知识源类型登记。
 - 登记源命中标准文档时，再按 `docs/map.md`、相关目录 `index.md` 和业务文档读取细节；标准 docs 是可审计输出层，不是用户资料的唯一输入格式。
@@ -18,7 +18,7 @@
 - 检索关键词必须包含用户原始业务词、可能的英文名、接口路径、页面路由、组件名、实体名、领域缩写和历史称呼。
 - 回答必须列出来源路径、URL 或文件标题；没有来源不得给确定结论。
 - 若找到可信来源，状态为 `PASS`；若没有来源，状态为 `MISSING evidence`；若来源冲突，状态为 `MISSING conflict`；若注册表、权限或检索工具失败，状态为 `FAIL`。
-- 证据报告需要落盘或交接时，使用 `node <AIRules>/scripts/verify-knowledge-sources.mjs --evidence <evidence-json>` 校验。
+- 证据报告需要落盘或交接时，使用 `node <init-project-skill>/scripts/verify-knowledge-sources.mjs --evidence <evidence-json>` 校验。
 - 若相关文档存在，以登记源和文档作为事实来源，再结合 CodeGraph 分析代码结构；不得只凭代码反推需求。
 - 若文档与代码、用户口径或其它来源冲突，必须停止并报告冲突位置；不得静默用代码覆盖文档事实。
 

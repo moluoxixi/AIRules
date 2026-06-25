@@ -189,6 +189,17 @@ it('verify-rule-self-sufficiency - project-init reference 泄漏中文维护流�
   assert.match(result.stdout, /FAIL skills\/init-project\/references\/common\/docs\.md 不得包含 AIRules 维护者资产: host 投影, 发布\/PR 默认流程, PR 默认流程, 纯净测试/)
 })
 
+it('verify-rule-self-sufficiency - project-init reference 引用 AIRules 全局 scripts 时显式失败', () => {
+  const root = createMinimalRoot()
+  const docsPath = path.join(root, 'skills', 'init-project', 'references', 'common', 'docs.md')
+  fs.appendFileSync(docsPath, '\n- 运行 `node <AIRules>/scripts/verify-knowledge-sources.mjs airules.knowledge.json`。\n')
+
+  const result = runScriptResult('--root', root)
+
+  assert.notEqual(result.status, 0)
+  assert.match(result.stdout, /FAIL skills\/init-project\/references\/common\/docs\.md 不得引用 AIRules 安装根全局 scripts/)
+})
+
 it('verify-rule-self-sufficiency - AGENTS 和 CLAUDE 漂移时显式失败', () => {
   const root = createMinimalRoot()
   fs.appendFileSync(path.join(root, 'CLAUDE.md'), '\nextra drift\n')

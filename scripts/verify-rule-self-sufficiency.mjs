@@ -179,6 +179,15 @@ function checkNoMaintenanceLeak(label, content) {
   pass(`${label} maintenance leak free`)
 }
 
+function checkNoGlobalScriptReference(label, content) {
+  if (/<AIRules>\/scripts\//.test(content)) {
+    issue('FAIL', `${label} 不得引用 AIRules 安装根全局 scripts；初始化链路脚本必须放在 skills/init-project/scripts 并通过 <init-project-skill>/scripts 引用`)
+    return
+  }
+
+  pass(`${label} init-project script reference scoped`)
+}
+
 function collectMarkdownFiles(root, relativeDir) {
   const absoluteDir = path.join(root, relativeDir)
   if (!fs.existsSync(absoluteDir)) {
@@ -227,6 +236,7 @@ function checkRootProjection(root) {
     'global-baseline',
     'project-init',
   ])
+  checkNoGlobalScriptReference('AGENTS.md/CLAUDE.md', agents)
   checkNoTypo('AGENTS.md/CLAUDE.md', agents)
 }
 
@@ -263,6 +273,7 @@ function verify(root) {
 
     checkNoTypo(relativePath, content)
     checkNoMaintenanceLeak(relativePath, content)
+    checkNoGlobalScriptReference(relativePath, content)
   }
 
   if (contract) {

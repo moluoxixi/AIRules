@@ -37,7 +37,7 @@ name: consistency-check
 
 - 本环节前置依赖需求、测试设计、实现计划三者就绪：开始前必须确认 `docs/prds/<模块>.md`、`docs/test/<模块>.md` 及对应 `docs/plan/{frontend,backend}/<模块>.md` 存在且非草案、关键事实非 `MISSING`。
 - 上游缺失或仍为草案/大量 `MISSING` 时，报告 `MISSING blocked`（说明缺失的上游产物）并停止，不得臆造上游事实继续核对。
-- 可运行 `node <AIRules>/scripts/verify-stage-gate.mjs <project-root> consistency <模块>` 做确定性前置校验；校验失败按 `MISSING blocked` 处理，不得绕过。
+- 可运行 `node <init-project-skill>/scripts/verify-stage-gate.mjs <project-root> consistency <模块>` 做确定性前置校验；校验失败按 `MISSING blocked` 处理，不得绕过。
 
 ## 输出边界
 

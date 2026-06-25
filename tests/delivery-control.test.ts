@@ -183,7 +183,7 @@ function createMinimalDeliveryRoot(): string {
     '- 禁止错误绕行，失败必须显式暴露。',
   ].join('\n'))
 
-  // 引入 init-project skill 后，project reference 检查要求 common/docs.md 与 inject-rules.mjs 齐备
+  // 引入 init-project skill 后，project reference 检查要求 common/docs.md 与 init-project scripts 齐备
   fs.mkdirSync(path.join(root, 'skills', 'init-project', 'references', 'common'), { recursive: true })
   fs.mkdirSync(path.join(root, 'skills', 'init-project', 'scripts'), { recursive: true })
   fs.writeFileSync(path.join(root, 'skills', 'init-project', 'references', 'common', 'docs.md'), projectDocsReference().join('\n'))
@@ -194,6 +194,8 @@ function createMinimalDeliveryRoot(): string {
     '  normalizedDocsReferencePath,',
     ']',
   ].join('\n'))
+  fs.writeFileSync(path.join(root, 'skills', 'init-project', 'scripts', 'verify-knowledge-sources.mjs'), '#!/usr/bin/env node\n')
+  fs.writeFileSync(path.join(root, 'skills', 'init-project', 'scripts', 'verify-stage-gate.mjs'), '#!/usr/bin/env node\n')
 
   fs.writeFileSync(path.join(root, 'skills', 'demo-skill', 'SKILL.md'), [
     '---',

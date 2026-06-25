@@ -28,4 +28,4 @@
 
 审查结论必须按层级列出，不得跨层归因。
 `skills/init-project/references/**` 禁止写入 AIRules 维护者规则，例如 `rules/sources/**`、`rules/AGENTS.md`、init-project reference 维护、skill 纯净测试、host 投影、发布/PR 默认流程等。
-可以引用 AIRules 中心脚本，但必须服务于用户项目产物校验，并由 `<AIRules>` 注入为真实安装路径。
+用户项目规则引用初始化链路脚本时，必须使用随 skill 分发的 `skills/init-project/scripts/**` 入口（注入前写 `<init-project-skill>/scripts/...`），不得依赖 AIRules 安装根下的全局 `scripts/` 目录。

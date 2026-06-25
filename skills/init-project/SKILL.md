@@ -7,84 +7,107 @@ description: 用于创建新项目、初始化项目、为已有项目首次接�
 
 ## 触发条件
 
-- 用户创建新项目、初始化项目或首次为已有项目接入 AIRules 时使用。
-- 需要生成项目根 `AGENTS.md`/`CLAUDE.md`、创建文档骨架、登记知识源或初始化 CodeGraph 时使用。
+- 用户创建新项目、初始化项目，或首次为已有项目接入 AIRules。
+- 需要生成项目根 `AGENTS.md`/`CLAUDE.md`、创建 docs 骨架、登记 `airules.knowledge.json` 或初始化 CodeGraph。
 
 ## 不适合场景
 
-- 项目已经完成初始化，且用户只要求修改业务代码、普通文档或单个 skill 时不要使用。
-- 目标目录、技术栈或写入权限无法确认时，不要猜测或覆盖用户文件。
+- 项目已完成初始化，且用户只要求普通业务代码、普通文档或单个 skill 修改。
+- 目标目录、技术栈或写入权限无法确认时，不猜测、不覆盖用户文件。
 
 ## 输出边界
 
-- 仅修改初始化交付物：目标项目根目录的 `AGENTS.md`、`CLAUDE.md`、`airules.knowledge.json`、`docs/` 标准骨架、`.airules/rules/**` 按需规则路由文件，以及 CodeGraph 初始化结果。
+- 只改初始化交付物：`AGENTS.md`、`CLAUDE.md`、`airules.knowledge.json`、`docs/**`、`.airules/rules/**` 和 CodeGraph 初始化结果。
 - 不改依赖目录、构建产物、vendor、宿主目录或用户未授权文件。
+- `skills/init-project/references/**` 禁止写入 AIRules 维护者规则；变更分级、澄清门禁、子代理委派、开发流程控制和后置评审归宿主全局 `rules/AGENTS.md`。
 
-## 分析项目背景
+## 初始化总流程
 
-开始初始化前，先执行确定性技术栈检测脚本，形成最小项目背景：
-
-```bash
-node <init-project-skill>/scripts/detect-stack.mjs <your-project>
+```mermaid
+flowchart TD
+    A[确认目标项目根目录] --> B[detect-stack.mjs]
+    B --> C{检测到代码 stack?}
+    C -->|否| D[只注入 airules-base + common/docs]
+    C -->|是| E[按 stacks 选择 references]
+    D --> F[scaffold-docs.mjs]
+    E --> F
+    F --> G[inject-rules.mjs]
+    G --> H{重复 Markdown 标题?}
+    H -->|是| I[停止写入并人工审查合并]
+    H -->|否| J[link-claude.mjs]
+    J --> K[codegraph init -i]
+    K --> L[交付检查]
 ```
 
-- 项目类型来自脚本输出的 `stacks` 字段，可能包含 `frontend`、`component-library`、`component-consumer`、`vue`、`node`、`nestjs`、`java`。
-- 规则文件来自脚本输出的 `references` 字段。
-- 多项目仓库、monorepo 或 workspace 项目必须读取脚本输出的 `monorepo`、`workspacePatterns`、`projects`、`projectRoots` 与 `evidence`；显式 workspace 配置优先，递归项目标记文件作为兜底；`stacks` 用于按所有子项目聚合后注入规则，`projects[].stacks` 用于说明每个子项目分别是前端、后端、组件库或其它类型，不得只根据仓库根目录判断。
-- 证据入口来自脚本输出的 `evidence` 字段；交付时保留关键证据，便于用户审计。
-- 写入边界：本 skill 只修改初始化交付物（`AGENTS.md`、`CLAUDE.md`、`airules.knowledge.json`、`docs/**`、`.airules/rules/**` 和 CodeGraph 初始化结果）；不得改动依赖目录、构建产物、vendor、宿主目录或用户未授权文件。
-- 缺失事实：脚本输出空 `stacks` 时，只注入通用 AIRules 基线；不要猜测语言规则。
+| 环节 | 命令 | 关键输出 | 失败语义 |
+|---|---|---|---|
+| 技术栈检测 | `node <init-project-skill>/scripts/detect-stack.mjs <project>` | `stacks`、`references`、`projects`、`evidence` | 空 `stacks` 只走通用基线 |
+| 文档骨架 | `node <init-project-skill>/scripts/scaffold-docs.mjs <project> <stack...>` | `airules.knowledge.json`、标准 `docs/` | 冲突或归档目标已存在时停止 |
+| 规则注入 | `node <init-project-skill>/scripts/inject-rules.mjs <project> <reference...>` | `AGENTS.md`、`.airules/rules/**` | 重复标题必须审查，不自动跳过 |
+| Claude 链接 | `node <init-project-skill>/scripts/link-claude.mjs <project>` | `CLAUDE.md` 指向 `AGENTS.md` | 非托管文件/错误链接时停止 |
+| CodeGraph | 在项目根执行 `codegraph init -i` | `.codegraph` 初始化状态 | 命令缺失报 `MISSING` |
 
-## 初始化知识源注册表与项目文档骨架
+## 文档归属图
 
-根据技术栈检测结果创建项目知识源注册表和标准文档输出骨架：
-
-```bash
-node <init-project-skill>/scripts/scaffold-docs.mjs <your-project> <detect-stack 输出的 stack...>
+```mermaid
+flowchart LR
+    S[已有资料/新建骨架] --> K[airules.knowledge.json]
+    S --> C{能确认归属?}
+    C -->|架构/ADR| ARCH[docs/architecture/]
+    C -->|需求| PRD[docs/prds/]
+    C -->|测试| TEST[docs/test/]
+    C -->|消费外部 API| API[docs/api/]
+    C -->|提供 API| OUTAPI[docs/out-api/]
+    C -->|消费外部组件| COMP[docs/components/]
+    C -->|提供组件库| OUTCOMP[docs/out-components/]
+    C -->|无法确认| OTHER[docs/other/imported/ + MISSING conversion]
 ```
 
-- 所有项目都会在根目录创建 `airules.knowledge.json`，作为行业式知识源注册表；该文件登记可被 AI 检索的项目资料来源，不要求用户把原始资料统一改写成标准 docs。
-- 默认注册 `README.md`、`README-zh.md`、`AGENTS.md`、`CLAUDE.md` 和 `docs/**` 作为文件系统知识源，并排除 `vendor/**`、`node_modules/**`、`dist/**`、`coverage/**`、`.git/**`、`.codegraph/**`。
-- `airules.knowledge.json` 已存在时不得覆盖；需要新增非文件系统来源时，必须先实现安装、查询、校验和测试合同，不得仅凭名称登记，也不得默认索引整个项目。
-- 知识源注册表必须通过 `node <AIRules>/scripts/verify-knowledge-sources.mjs airules.knowledge.json`；校验失败是 `FAIL`，不得降级成 warning。
-- 所有项目都会创建 `docs/architecture/`、`docs/api/`、`docs/prds/`、`docs/test/`、`docs/other/` 和 `docs/map.md`。
-- `docs/architecture/` 包含 `index.md`、`overview.md` 和 `decisions/index.md`，用于承载架构事实与 ADR。
-- `docs/api/` 包含 `index.md` 和 `_protocol.md`，用于承载当前项目消费的外部 API、上游服务或 SDK 契约。
-- `component-consumer` 项目额外创建 `docs/components/`，用于承载当前项目消费的外部组件库、Design System、UI SDK 或 workspace 组件包约束。
-- 含 UI 的前端 stack（`frontend`、`vue`、`component-consumer`、`component-library`）额外创建 `docs/design/`，用于承载由用户设计稿转写的前端视觉事实源（`design-docs` 产出）；纯后端/纯文档仓库不创建。
-- `scaffold-docs.mjs` 不生成 `docs/out-components/` 或 `docs/out-api/`；对外复用产物必须分别由 `components-docs`、`api-docs` 基于自维护文档、源码和已有契约推导生成。
-- 如果项目已有文档必须先判断归属；能确定属于架构、接口、需求、测试或外部组件库的，保留为登记知识源和已知归属来源，按“对应文档 Skills”转成标准格式；无法确定归属的移动到 `docs/other/imported/` 并在 `docs/other/index.md` 标记为 `MISSING conversion`。
-- 已有接口或组件文档必须再判断 ownership：当前项目提供的 API/组件库输出到 `docs/out-api/` 或 `docs/out-components/`；当前项目消费的外部 API/组件库输出到 `docs/api/` 或 `docs/components/`；无法确认时标记 `MISSING ownership`。
-- 归档前必须识别特殊文档目录；例如 `docs/superpowers/` 属于外部方法论/参考资料目录，必须原位保留，不得移动到 `docs/other/imported/`，也不得作为待转换业务文档登记。
-- 无法归类文档的归档目标已存在时，脚本必须停止并报告冲突；不得覆盖、合并或部分移动。
-- 已 AIRules 初始化的项目重复执行时，脚本只补缺失标准入口，不覆盖用户已有标准文档。
+| 目录 | 用途 | 创建条件 |
+|---|---|---|
+| `docs/architecture/` | 架构事实、模块边界、ADR | 所有项目 |
+| `docs/api/` | 当前项目消费的外部 API/SDK 契约 | 所有项目 |
+| `docs/prds/`、`docs/test/`、`docs/other/`、`docs/map.md` | 需求、测试、未归类资料、文档导航 | 所有项目 |
+| `docs/components/` | 当前项目消费的外部组件库/Design System | `component-consumer` |
+| `docs/design/` | 设计稿转写的视觉事实源 | UI stack |
+| `docs/out-api/`、`docs/out-components/` | 当前项目对外提供的 API/组件契约 | 由 `api-docs` / `components-docs` 生成，不由 scaffold 默认创建 |
 
-## 对应文档 Skills
+## 文档 Skill 路由
 
-旧文档标准化、文档更新和对外产物生成必须按内容类型调用对应 skill；不得只写“使用对应 skill”而不说明对应关系：
+```mermaid
+flowchart TD
+    A[待处理资料] --> B{内容类型}
+    B -->|架构/ADR| ARCH[architecture-docs]
+    B -->|项目知识检索| KS[knowledge-search]
+    B -->|需求| PRD[prd-docs]
+    B -->|设计稿/视觉规格| DESIGN[design-docs]
+    B -->|API 契约| API[api-docs]
+    B -->|组件契约| COMP[components-docs]
+    B -->|测试设计| TEST[test-docs]
+    TEST --> PLAN{写代码前}
+    PLAN --> FE[frontend-impl-plan]
+    PLAN --> BE[backend-impl-plan]
+```
 
-- `architecture-docs`：架构边界、分层、依赖方向、部署拓扑、权限模型、技术选型、ADR。
-- `knowledge-search`：通过 `airules.knowledge.json` 和登记文件系统来源查找项目知识和证据，不写正式文档。
-- `prd-docs`：业务背景、用户流程、字段口径、状态流转、验收标准、需求变更。
-- `design-docs`：把用户提供的设计稿（Figma/截图/设计规范）转写为前端视觉事实源，输出到 `docs/design/`（布局区域、设计 token、组件状态四态、响应式断点、可访问性意图）；视觉规格归此，业务规则归 `prd-docs`，组件对外契约归 `components-docs`，三者不交叉。
-- `api-docs`：当前项目提供的 API 输出到 `docs/out-api/`；当前项目消费的外部 API、上游服务、SDK 或 generated client 输出到 `docs/api/`。
-- `components-docs`：当前项目提供的组件库输出到 `docs/out-components/`；当前项目消费的外部组件库、Design System、UI SDK 或 workspace 组件包输出到 `docs/components/`。
-- `test-docs`：测试策略、用例矩阵、回归范围、联调验证、Mock/fixture、测试数据准备、前端交互测试设计。
-- `frontend-impl-plan`、`backend-impl-plan`：测试设计就绪后、写代码前的实现计划/任务书；前端方案（组件复用、布局、状态、API 调用）用 `frontend-impl-plan`，后端方案（数据模型、接口设计、分层、事务一致性）用 `backend-impl-plan`，前后端不混写。
+- `frontend-impl-plan` 只写前端方案：需求来源、组件使用/封装、布局、状态、API 调用。
+- `backend-impl-plan` 只写后端方案：需求来源、接口设计、数据模型、分层、事务一致性。
+- 标准化旧文档时先用 `knowledge-search` 定位证据；无法确认 ownership 时标 `MISSING ownership` 或 `MISSING conversion`。
 
+## 规则注入图
 
-## 根据项目背景注入规则
+```mermaid
+flowchart TD
+    A[detect-stack references] --> B[common/docs.md inline]
+    A --> C{命中代码 stack?}
+    C -->|是| CORE[code-core.md 复制为按需规则且只注入一次]
+    C -->|否| N[不注入语言代码规则]
+    C -->|是| R[frontend/* 或 backend/*]
+    R --> ROUTE[复制到 .airules/rules/** 并渲染 场景规范路由]
+    B --> AG[AGENTS.md]
+    ROUTE --> AG
+```
 
-执行脚本时会按目标项目现状注入规则：
-
-- 当 `AGENTS.md` 不存在或为空时，先注入 `references/airules-base.md`，为用户创建 `# 项目规范` 与项目自定义规范占位。
-- 当 `AGENTS.md` 已存在且包含用户内容时，跳过 `references/airules-base.md`，避免向用户已有规范中追加占位段。
-- 始终注入 `references/common/docs.md`，再按检测结果选择场景输出规范与语言代码规范，并注入目标项目根目录 `AGENTS.md`。
-- 变更分级、澄清门禁、开发链路控制、子代理委派和后置评审属于宿主全局 baseline，由 `rules/AGENTS.md` 提供；init-project reference 不再维护这些全局规则的副本。
-- `references/common/docs.md` 承载初始化后项目内长期需要的知识源读取、标准 docs 归属和项目文档结构规则；不得写入 AIRules 维护者规则或宿主全局调度规则。
-- `references/` 按 `common/`、`frontend/`、`backend/` 组织：通用文档读取规则只放在 `common/docs.md`；组件库对外输出规则放在 `frontend/out-components.md`；外部组件库消费规则放在 `frontend/components.md`；后端 API 提供方规则放在 `backend/out-api.md`，后端消费外部 API/SDK 规则放在 `backend/api-consumer.md`；各领域通用代码规则命名为 `code.md`（前端 `frontend/code.md`、后端 `backend/code.md`），具体框架或语言规则使用 `vue.md`、`node.md`、`nestjs.md`、`java.md`。
-
-| `detect-stack.mjs` 输出 stack | 追加注入 references |
+| `detect-stack` stack | 追加 references |
 |---|---|
 | `frontend` | `code-core.md`、`frontend/code.md` |
 | `component-library` | `code-core.md`、`frontend/out-components.md` |
@@ -94,60 +117,18 @@ node <init-project-skill>/scripts/scaffold-docs.mjs <your-project> <detect-stack
 | `nestjs` | `code-core.md`、`backend/code.md`、`backend/out-api.md`、`backend/api-consumer.md`、`backend/nestjs.md` |
 | `java` | `code-core.md`、`backend/code.md`、`backend/out-api.md`、`backend/api-consumer.md`、`backend/java.md` |
 
-`code-core.md` 是语言无关的代码实现核心纪律（边界校验、禁止冗余防御、禁止错误绕行、禁止 lint 绕行、优先成熟库），凡检测到任何含生产代码的 stack 都必须注入，且只注入一次（多 stack 命中时不重复传入）。它带 `ruleScope: code` 与跨语言 globs，走按需路由表，不再常驻全局 baseline。检测不到任何代码 stack（纯文档/配置仓库）时不注入。
-
-执行内容注入脚本：
-
-```bash
-node <init-project-skill>/scripts/inject-rules.mjs <your-project> <init-project-skill>/references/common/docs.md [...]
-node <init-project-skill>/scripts/inject-rules.mjs <your-project> <init-project-skill>/references/<group>/<rule>.md [...]
-```
-
-无法判断技术栈时不传额外语言规则，脚本仍会自动注入 `airules-base.md`（仅新建或空 `AGENTS.md` 时）和 `common/docs.md`，无需在命令中手动传入这两个文件。当目标项目不存在 `AGENTS.md` 时，脚本创建该文件；当文件已存在时，脚本将聚合后的规则内容直接追加到文件末尾，不添加额外包装标题、受控块注释或文件名标题。
-
-### 核心纪律 inline vs 语言规范按需路由
-
-`inject-rules.mjs` 按 reference 文件是否带 `ruleScope` frontmatter 分两条路径处理，目的是让常驻上下文只保留全场景核心纪律，语言/框架规范改为按场景动态加载：
-
-- **项目级常驻规则（无 frontmatter）**：`common/docs.md`、`airules-base.md` 以及任何不带 `ruleScope` 的 reference，正文继续 inline 进目标项目 `AGENTS.md`，全场景常驻。
-- **语言/框架规范（带 `ruleScope` frontmatter）**：`frontend/*`、`backend/*` 等规范不再 inline，正文（剥除 frontmatter）复制到目标项目 `.airules/rules/<group>/<name>.md`，并按本次实际命中的规范在 `AGENTS.md` 末尾动态渲染一张《场景规范路由》表，每个命中规范一行（触发场景 description、匹配 globs、规范文件相对路径、加载时机）。未命中的规范既不复制也不进表，纯 Java 后端不会出现任何前端规范。
-- 规范文件 frontmatter 字段：`ruleScope`（对应 `detect-stack` 的 stack 标识）、`globs`（匹配文件模式，供路由表与未来 Cursor `.mdc` 投影共用）、`description`（触发场景，AI 据此判断是否读取）、`loadTiming`（加载时机提示）。
-- 各宿主读取方式：Codex/Claude 等读 `AGENTS.md` 全量看到路由表，按 description 命中场景时主动读取对应 `.airules/rules/**` 文件；规范文件在项目内自包含、可 git 跟踪、可审计，不依赖 npm 包安装路径。
-- 路由表章节标题为 `## 场景规范路由`，参与既有标题去重；重复初始化命中同名标题时按 dedup-halt 流程由 AI 审查合并，不自动覆盖。
-
-追加前脚本会按 Markdown 标题文本去重。若待注入规则与现有 `AGENTS.md` 出现重复标题，脚本必须停止写入并报告重复标题；AI 随后读取现有 `AGENTS.md` 与待注入 references，输出规则合并审查结论，评估应合并、保留、改名还是移动到既有章节。未经审查不得自动跳过、覆盖或重复追加同名章节。
-
-然后基于项目根目录 `AGENTS.md` 创建 `CLAUDE.md` 托管链接：
-
-```bash
-node <init-project-skill>/scripts/link-claude.mjs <your-project>
-```
-
-脚本会先检测目标目录是否为 Git worktree；若是，则写入仓库本地配置 `core.symlinks=true`，让该仓库优先按符号链接方式记录和还原 `CLAUDE.md`。该配置不能替代 Windows 的符号链接权限；若 Windows 无管理员权限或未启用开发者模式，文件软链接仍可能失败。
-
-脚本优先创建指向 `AGENTS.md` 的相对软链接。若 Windows 无管理员权限或未启用开发者模式导致文件软链接创建失败，脚本会明确创建同目录硬链接并输出说明；不得静默复制文件。若 `CLAUDE.md` 已存在且不是指向 `AGENTS.md` 的软链接或同一文件实体的硬链接，包括指向其它文件的错误软链接或死链，必须停止并报告实际指向，让用户决定；不得覆盖用户文件。
-
-## 初始化 CodeGraph
-
-在目标项目根目录执行：
-
-```bash
-cd your-project
-codegraph init -i
-```
-
-若 `codegraph` 命令不存在，报告 `MISSING`，提示先运行 AIRules 默认安装流程；不得伪造成已初始化。
+- `inject-rules.mjs` 自动处理 `airules-base.md`（仅新建/空 `AGENTS.md`）与 `common/docs.md`；命令里不用手动重复传入。
+- 无 frontmatter 的 reference inline 到 `AGENTS.md`；带 `ruleScope` 的 reference 复制到 `.airules/rules/**`，并只在 `AGENTS.md` 渲染《场景规范路由》。
+- `<init-project-skill>` 占位符由注入脚本替换为真实 init-project skill 根目录；下游不得残留字面量 `<init-project-skill>`。
 
 ## 交付检查
 
-- `AGENTS.md` 已包含本次项目背景对应的 AIRules 规则块。
-- `airules.knowledge.json` 已创建或保留，并通过 `verify-knowledge-sources.mjs` 校验；知识源只包含登记文件系统路径，未默认索引整个项目。
-- `docs/map.md`、`docs/architecture/`、`docs/api/_protocol.md`、`docs/other/` 与对应文档目录索引已创建；`component-consumer` 项目已创建 `docs/components/`；旧文档已按归属转换到标准目录，无法确定归属的才归档到 `docs/other/imported/`。
-- 重复初始化时已按当前 AIRules 最新规范检查 `docs/`；需要语义迁移或标准化更新的文档已使用对应 docs skill 处理，需开发者确认的项已输出标准化更新报告。
-- 若存在旧文档，已按标准分类转换到 `docs/prds/`、`docs/api/`、`docs/test/`、`docs/architecture/`；组件库旧文档应通过 `components-docs` 判断 ownership 后转换到 `docs/components/` 或 `docs/out-components/`；无法转换的条目已标记 `MISSING conversion`。
-- 组件库项目已通过 `components-docs` 优先读取组件库自维护文档，并按 AIRules 输出位置、文档结构、必备字段、来源证据和 `MISSING` 语义完成合规校验；缺少自维护文档、自维护文档不合规或公开组件存在文档缺口时，已生成、标准化或更新 `docs/out-components/`，无法确认时已报告 `MISSING component docs coverage`、`MISSING component docs drift` 或 `MISSING components discovery`。
-- 组件消费项目已通过 `components-docs` 优先读取外部组件库官方文档、依赖包自维护文档和本项目已有封装规则，并按 AIRules 输出位置、文档结构、必备字段、来源证据和 `MISSING` 语义完成合规校验；缺少消费方文档或已有文档不合规时已生成、标准化或更新 `docs/components/`，未发现外部组件库时已报告 `MISSING component dependency` 和扫描范围。
-- 后端 API 项目已通过 `api-docs` 分析路由、DTO/schema、OpenAPI/Swagger、测试、外部 client、SDK/generated client、Mock 和已有接口文档；当前项目提供的接口已生成或更新 `docs/out-api/`，当前项目消费的外部接口已生成或更新 `docs/api/`，未发现接口时已报告 `MISSING API contract` 和扫描范围。
-- 技术栈检测结果已按 `detect-stack.mjs` 的 `stacks`、`references` 和关键 `evidence` 报告。
-- `CLAUDE.md` 是指向 `AGENTS.md` 的软链接；Windows 无文件软链接权限时，可为同一文件实体的硬链接，且日志必须说明。
-- `codegraph init -i` 已执行并按真实结果报告 `PASS`、`FAIL`、`MISSING` 或 `NOT RUN`。
+| 检查项 | 期望 |
+|---|---|
+| 技术栈 | 报告 `detect-stack` 的 `stacks`、`references`、关键 `evidence` |
+| 规则 | `AGENTS.md` 含通用项目规则；语言/框架规则按路由进入 `.airules/rules/**` |
+| 知识源 | `airules.knowledge.json` 存在，并通过 `node <init-project-skill>/scripts/verify-knowledge-sources.mjs airules.knowledge.json` |
+| 文档 | `docs/map.md`、`docs/architecture/`、`docs/api/_protocol.md`、`docs/prds/`、`docs/test/`、`docs/other/` 存在；可选目录按 stack 创建 |
+| 旧文档 | 已确认归属并进入标准目录；无法确认的在 `docs/other/imported/` 标 `MISSING conversion` |
+| `CLAUDE.md` | 指向 `AGENTS.md` 的软链接；Windows 无权限时可为同一文件实体硬链接且日志说明 |
+| CodeGraph | `codegraph init -i` 真实执行并报告 `PASS`、`FAIL`、`MISSING` 或 `NOT RUN` |

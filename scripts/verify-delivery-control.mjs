@@ -460,12 +460,20 @@ function checkProjectReference(root) {
     return
   }
 
-  const injectScriptPath = path.join(root, 'skills', 'init-project', 'scripts', 'inject-rules.mjs')
-  if (!fs.existsSync(injectScriptPath)) {
-    fail('project reference incomplete: 缺少 inject-rules.mjs 无法保证 docs.md 注入')
+  const requiredInitProjectScripts = [
+    'inject-rules.mjs',
+    'verify-knowledge-sources.mjs',
+    'verify-stage-gate.mjs',
+  ]
+  const missingInitProjectScripts = requiredInitProjectScripts.filter(fileName =>
+    !fs.existsSync(path.join(root, 'skills', 'init-project', 'scripts', fileName)),
+  )
+  if (missingInitProjectScripts.length > 0) {
+    fail(`project reference incomplete: 缺少 init-project script ${missingInitProjectScripts.join(', ')}`)
     return
   }
 
+  const injectScriptPath = path.join(root, 'skills', 'init-project', 'scripts', 'inject-rules.mjs')
   const injectContent = fs.readFileSync(injectScriptPath, 'utf8')
   if (!hasCoreInlineReference(injectContent, 'normalizedDocsReferencePath')) {
     fail('project reference incomplete: inject-rules.mjs 未将 docs.md 纳入注入链路')

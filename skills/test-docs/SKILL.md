@@ -79,7 +79,7 @@ flowchart LR
 
 - 本环节是实现编码前的测试设计门禁，前置依赖需求与 API/组件契约：开始前必须确认对应业务域的 `docs/prds/<模块>.md` 存在且非草案、关键事实非 `MISSING`；涉及接口/组件时确认 `docs/api/`、`docs/out-api/`、`docs/components/` 对应契约就绪。
 - 上游缺失或仍为草案/大量 `MISSING` 时，报告 `MISSING blocked`（说明缺失的上游产物）并停止，不得臆造需求或接口预期继续写测试设计。
-- 可运行 `node <AIRules>/scripts/verify-stage-gate.mjs <project-root> test-design <模块>` 做确定性前置校验；校验失败按 `MISSING blocked` 处理，不得绕过。
+- 可运行 `node <init-project-skill>/scripts/verify-stage-gate.mjs <project-root> test-design <模块>` 做确定性前置校验；校验失败按 `MISSING blocked` 处理，不得绕过。
 
 ## 写作规则
 

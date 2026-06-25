@@ -32,7 +32,7 @@ name: frontend-impl-plan
 
 - 本环节是实现编码前的最后一道设计门禁，前置依赖需求、API/组件契约、测试设计三者就绪：开始前必须确认对应业务域的 `docs/prds/<模块>.md` 与 `docs/test/<模块>.md` 存在且非草案、关键事实非 `MISSING`；涉及接口/组件时确认 `docs/api/`、`docs/components/`、`docs/out-components/` 对应契约就绪。
 - 上游缺失或仍为草案/大量 `MISSING` 时，报告 `MISSING blocked`（说明缺失的上游产物）并停止，不得臆造需求、用例或契约继续出实现计划。
-- 可运行 `node <AIRules>/scripts/verify-stage-gate.mjs <project-root> frontend-plan <模块>` 做确定性前置校验；校验失败按 `MISSING blocked` 处理，不得绕过。
+- 可运行 `node <init-project-skill>/scripts/verify-stage-gate.mjs <project-root> frontend-plan <模块>` 做确定性前置校验；校验失败按 `MISSING blocked` 处理，不得绕过。
 
 ## 输出边界
 

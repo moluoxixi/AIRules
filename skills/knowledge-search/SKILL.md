@@ -41,7 +41,7 @@ name: knowledge-search
 2. 若存在，先运行：
 
 ```bash
-node <AIRules>/scripts/verify-knowledge-sources.mjs airules.knowledge.json
+node <init-project-skill>/scripts/verify-knowledge-sources.mjs airules.knowledge.json
 ```
 
 3. 若注册表校验失败，报告 `FAIL knowledge source registry`，不得绕过校验继续伪装检索成功。
@@ -67,7 +67,7 @@ node <AIRules>/scripts/verify-knowledge-sources.mjs airules.knowledge.json
 证据报告可写为临时 JSON，并使用：
 
 ```bash
-node <AIRules>/scripts/verify-knowledge-sources.mjs --evidence <evidence-json>
+node <init-project-skill>/scripts/verify-knowledge-sources.mjs --evidence <evidence-json>
 ```
 
 ## 输出要求

@@ -13,11 +13,20 @@ const UNSUITABLE_SECTION_PATTERN = /##\s*(不适合|拒绝|不要使用|Don't us
 const BOUNDARY_SECTION_PATTERN = /##\s*(输出边界|应用边界|写入边界|边界|禁止|共同规则|核心规则|Output Boundary|Boundaries)/i
 const BOUNDARY_MARKER_PATTERN = /(占位|仅供参考|用户确认|确认后|待审|PENDING_REVIEW|不得自动|不可直接|不要直接|字段含义|运行前提|失败|placeholder|review|confirm|not automatically)/i
 const UNRESOLVED_PLACEHOLDER_PATTERN = /(TODO|FIXME|待补充|后续补充|这里写|请补充|\[补充|<待|待填写)/i
+const AIRULES_GLOBAL_SCRIPT_PATTERN = /<AIRules>\/scripts\//
 const FRONTEND_IMPL_PLAN_REQUIRED_ITEMS = [
   '需求来源',
   '调用接口',
   '使用/封装组件',
   '类型（使用/封装）',
+  '契约来源',
+]
+const BACKEND_IMPL_PLAN_REQUIRED_ITEMS = [
+  '需求来源',
+  '接口设计',
+  '数据模型',
+  '代码分层与职责',
+  '事务与一致性',
   '契约来源',
 ]
 
@@ -202,6 +211,10 @@ function checkBodyStructure(body) {
   if (UNRESOLVED_PLACEHOLDER_PATTERN.test(body)) {
     fail('正文包含未解决占位内容或 TODO')
   }
+
+  if (AIRULES_GLOBAL_SCRIPT_PATTERN.test(body)) {
+    fail('正文不得引用 <AIRules>/scripts；初始化链路脚本必须放在 skills/init-project/scripts 并通过 <init-project-skill>/scripts 引用')
+  }
 }
 
 function checkExampleBoundaries(body) {
@@ -259,6 +272,20 @@ function checkFrontendImplPlanContract(fields, body) {
   pass('frontend-impl-plan traceability contract present')
 }
 
+function checkBackendImplPlanContract(fields, body) {
+  if (fields.get('name') !== 'backend-impl-plan') {
+    return
+  }
+
+  const missingItems = BACKEND_IMPL_PLAN_REQUIRED_ITEMS.filter(item => !body.includes(item))
+  if (missingItems.length > 0) {
+    fail(`backend-impl-plan 必须要求任务书写出需求来源、接口设计、数据模型和分层/事务，缺少: ${missingItems.join(', ')}`)
+    return
+  }
+
+  pass('backend-impl-plan traceability contract present')
+}
+
 function finish(fields, root) {
   console.log('────────────────────────────')
   if (errors.length > 0) {
@@ -286,6 +313,7 @@ function verify(root) {
     checkBodyStructure(parsed.body)
     checkExampleBoundaries(parsed.body)
     checkFrontendImplPlanContract(fields, parsed.body)
+    checkBackendImplPlanContract(fields, parsed.body)
   }
 
   finish(fields, root)

@@ -264,13 +264,13 @@ it('init-project inject-rules - 无 frontmatter 的额外规范仍 inline 且不
   assert.equal(fs.existsSync(path.join(projectRoot, '.airules')), false, 'no .airules dir without scoped rules')
 }))
 
-it('init-project inject-rules - <AIRules> 占位符注入时解析为真实安装绝对路径（inline 与路由规范均替换）', () => withTempDir('airules-inject-placeholder-', (tmpDir) => {
+it('init-project inject-rules - <init-project-skill> 占位符注入时解析为真实 skill 绝对路径（inline 与路由规范均替换）', () => withTempDir('airules-inject-placeholder-', (tmpDir) => {
   const projectRoot = path.join(tmpDir, 'project')
   const plainRef = path.join(tmpDir, 'plain-placeholder.md')
   const scopedRef = path.join(tmpDir, 'references', 'frontend', 'scoped-placeholder.md')
 
   fs.mkdirSync(projectRoot, { recursive: true })
-  writeFile(plainRef, '# Placeholder Inline\n\n运行 `node <AIRules>/scripts/verify-knowledge-sources.mjs airules.knowledge.json`\n')
+  writeFile(plainRef, '# Placeholder Inline\n\n运行 `node <init-project-skill>/scripts/verify-knowledge-sources.mjs airules.knowledge.json`\n')
   writeFile(
     scopedRef,
     [
@@ -283,7 +283,7 @@ it('init-project inject-rules - <AIRules> 占位符注入时解析为真实安�
       '---',
       '# Placeholder Scoped',
       '',
-      '校验：`node <AIRules>/scripts/verify-stage-gate.mjs <project-root> frontend-plan <模块>`',
+      '校验：`node <init-project-skill>/scripts/verify-stage-gate.mjs <project-root> frontend-plan <模块>`',
       '',
     ].join('\n'),
   )
@@ -294,14 +294,14 @@ it('init-project inject-rules - <AIRules> 占位符注入时解析为真实安�
     path.join(projectRoot, '.airules', 'rules', 'frontend', 'scoped-placeholder.md'),
     'utf8',
   )
-  // 注入时占位符必须被真实安装根目录（POSIX 斜杠）替换；下游不得残留字面量 <AIRules>。
-  const airulesRootPosix = process.cwd().split(path.sep).join('/')
+  // 注入时占位符必须被 init-project skill 根目录（POSIX 斜杠）替换；下游不得残留字面量。
+  const initProjectSkillRootPosix = path.join(process.cwd(), 'skills', 'init-project').split(path.sep).join('/')
 
   assert.equal(result.status, 0, result.stderr)
-  assert.doesNotMatch(agentsContent, /<AIRules>/, 'inline 正文不得残留 <AIRules> 占位符')
-  assert.doesNotMatch(copiedRule, /<AIRules>/, '复制到 .airules 的规范不得残留 <AIRules> 占位符')
-  assert.match(agentsContent, new RegExp(`node ${escapeRegExp(airulesRootPosix)}/scripts/verify-knowledge-sources\\.mjs`))
-  assert.match(copiedRule, new RegExp(`node ${escapeRegExp(airulesRootPosix)}/scripts/verify-stage-gate\\.mjs`))
+  assert.doesNotMatch(agentsContent, /<init-project-skill>/, 'inline 正文不得残留 <init-project-skill> 占位符')
+  assert.doesNotMatch(copiedRule, /<init-project-skill>/, '复制到 .airules 的规范不得残留 <init-project-skill> 占位符')
+  assert.match(agentsContent, new RegExp(`node ${escapeRegExp(initProjectSkillRootPosix)}/scripts/verify-knowledge-sources\\.mjs`))
+  assert.match(copiedRule, new RegExp(`node ${escapeRegExp(initProjectSkillRootPosix)}/scripts/verify-stage-gate\\.mjs`))
 }))
 
 function escapeRegExp(value: string): string {

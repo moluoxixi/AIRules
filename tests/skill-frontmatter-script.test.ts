@@ -132,6 +132,15 @@ it('verify-skill-frontmatter 校验 YAML、目录名、description 和正文边�
   assert.notEqual(placeholderResult.status, 0)
   assert.match(placeholderResult.stdout, /正文包含未解决占位内容或 TODO/)
 
+  const globalScriptReferenceRoot = path.join(fs.mkdtempSync(path.join(os.tmpdir(), 'airules-global-script-reference-')), 'global-script-reference')
+  writeSkill(globalScriptReferenceRoot, [
+    ...validSkillLines('global-script-reference'),
+    '运行 `node <AIRules>/scripts/verify-knowledge-sources.mjs airules.knowledge.json`。',
+  ])
+  const globalScriptReferenceResult = runScriptResult('--root', globalScriptReferenceRoot)
+  assert.notEqual(globalScriptReferenceResult.status, 0)
+  assert.match(globalScriptReferenceResult.stdout, /正文不得引用 <AIRules>\/scripts/)
+
   const oversizedSkillRoot = path.join(fs.mkdtempSync(path.join(os.tmpdir(), 'airules-oversized-skill-')), 'oversized-skill')
   writeSkill(oversizedSkillRoot, [
     '---',
@@ -173,6 +182,56 @@ it('verify-skill-frontmatter - frontend-impl-plan 必须声明需求来源、调
     '',
     '| 接口 | 方法 | 契约来源 | 入参 | 返回 | 错误处理 |',
     '|---|---|---|---|---|---|',
+    '',
+    '## 示例',
+    '',
+    '以下内容是示例模板，仅供参考，不得作为真实业务事实自动应用。',
+  ])
+
+  const validContractResult = runScriptResult('--root', validContractRoot)
+
+  assert.equal(validContractResult.status, 0, validContractResult.stdout)
+  assert.match(validContractResult.stdout, /PASS skill content contract is valid/)
+})
+
+it('verify-skill-frontmatter - backend-impl-plan 必须声明需求来源、接口设计、数据模型和分层事务', () => {
+  const missingContractRoot = path.join(fs.mkdtempSync(path.join(os.tmpdir(), 'airules-backend-plan-missing-')), 'backend-impl-plan')
+  writeSkill(missingContractRoot, validSkillLines('backend-impl-plan'))
+
+  const missingContractResult = runScriptResult('--root', missingContractRoot)
+
+  assert.notEqual(missingContractResult.status, 0)
+  assert.match(missingContractResult.stdout, /backend-impl-plan 必须要求任务书写出需求来源、接口设计、数据模型和分层\/事务/)
+
+  const validContractRoot = path.join(fs.mkdtempSync(path.join(os.tmpdir(), 'airules-backend-plan-valid-')), 'backend-impl-plan')
+  writeSkill(validContractRoot, [
+    ...validSkillLines('backend-impl-plan').slice(0, -3),
+    '## 文档结构',
+    '',
+    '### 需求来源',
+    '',
+    '| 来源类型 | 路径/章节/ID | 关键事实 |',
+    '|---|---|---|',
+    '',
+    '### 接口设计',
+    '',
+    '| 接口类型 | 方法 | 路径 | DTO | 校验 | 错误码 | 契约来源 |',
+    '|---|---|---|---|---|---|---|',
+    '',
+    '### 数据模型',
+    '',
+    '| 实体 | 字段 | 类型 | 约束 | 来源 |',
+    '|---|---|---|---|---|',
+    '',
+    '### 代码分层与职责',
+    '',
+    '| 层/模块 | 职责 | 目标文件路径 | 来源 |',
+    '|---|---|---|---|',
+    '',
+    '### 事务与一致性',
+    '',
+    '| 场景 | 事务边界 | 并发/幂等/回滚策略 | 对应用例 |',
+    '|---|---|---|---|',
     '',
     '## 示例',
     '',
