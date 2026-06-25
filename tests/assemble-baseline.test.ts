@@ -44,34 +44,30 @@ function runBuildResult(root: string) {
   return spawnSync(process.execPath, [scriptPath], { cwd: root, encoding: 'utf8' })
 }
 
-it('assemble-baseline - 生成 Skill 触发索引并列出所有带 description 的 skill', () => withTempRepo((root) => {
+it('assemble-baseline - skills 不再生成静态触发索引', () => withTempRepo((root) => {
   writeSkill(root, 'alpha-skill', '当用户要做 alpha 时使用。')
   writeSkill(root, 'beta-skill', '当用户要做 beta 时使用。')
 
   runBuild(root)
   const baseline = fs.readFileSync(path.join(root, 'rules', 'AGENTS.md'), 'utf8')
 
-  assert.match(baseline, /## Skill 触发索引/)
-  assert.match(baseline, /\| `alpha-skill` \| 当用户要做 alpha 时使用。 \|/)
-  assert.match(baseline, /\| `beta-skill` \| 当用户要做 beta 时使用。 \|/)
-  // 核心规则段仍在，索引追加在末尾。
   assert.match(baseline, /## 核心/)
-  assert.ok(
-    baseline.indexOf('## 核心') < baseline.indexOf('## Skill 触发索引'),
-    '索引应追加在规则段之后',
-  )
+  assert.doesNotMatch(baseline, /## Skill 触发索引/)
+  assert.doesNotMatch(baseline, /alpha-skill/)
+  assert.doesNotMatch(baseline, /beta-skill/)
 }))
 
-it('assemble-baseline - 缺 description 的 skill 被过滤，不报错且不进索引', () => withTempRepo((root) => {
+it('assemble-baseline - skill frontmatter 不影响 baseline 构建', () => withTempRepo((root) => {
   writeSkill(root, 'good-skill', '当用户要做 good 时使用。')
   writeSkill(root, 'no-desc-skill', null)
 
   const result = runBuildResult(root)
 
-  assert.equal(result.status, 0, '缺 description 不应导致构建失败')
+  assert.equal(result.status, 0, 'skills 不应影响 baseline 构建')
   const baseline = fs.readFileSync(path.join(root, 'rules', 'AGENTS.md'), 'utf8')
-  assert.match(baseline, /\| `good-skill` \|/)
-  assert.doesNotMatch(baseline, /no-desc-skill/, '缺 description 的 skill 应被过滤')
+  assert.match(baseline, /## 核心/)
+  assert.doesNotMatch(baseline, /good-skill/)
+  assert.doesNotMatch(baseline, /no-desc-skill/)
 }))
 
 it('assemble-baseline - 无 skills 目录时只生成规则段，不报错', () => withTempRepo((root) => {
@@ -82,7 +78,7 @@ it('assemble-baseline - 无 skills 目录时只生成规则段，不报错', () 
   assert.doesNotMatch(baseline, /## Skill 触发索引/)
 }))
 
-it('assemble-baseline - 当前仓库 baseline 与源一致（含 skill 索引防漂移）', () => {
+it('assemble-baseline - 当前仓库 baseline 与源一致（不含 skill 索引防漂移）', () => {
   const output = execFileSync(process.execPath, [scriptPath, '--check'], {
     cwd: projectRoot,
     encoding: 'utf8',

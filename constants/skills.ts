@@ -112,20 +112,21 @@ const codegraphSetup: SetupCommand[] = [
   },
 ]
 
-/**
- * 安装 AIRules 时同步全局安装 OpenSpec CLI。
- * OpenSpec 提供 spec-driven 的 propose→apply→archive 工作流，承接需求确认到实现的书面契约层；
- * 全局装好命令后，用户在具体项目里按需执行 `openspec init` 注入 slash command，
- * AIRules 不替用户自动修改任何项目级 AGENTS.md。
- * @see https://github.com/Fission-AI/OpenSpec
- */
-const openspecSetup: SetupCommand[] = [
-  {
-    command: 'npm',
-    args: ['install', '--global', '@fission-ai/openspec'],
-    skipIfCommandAvailable: 'openspec',
-  },
-]
+// 暂时不再使用
+// /**
+//  * 安装 AIRules 时同步全局安装 OpenSpec CLI。
+//  * OpenSpec 提供 spec-driven 的 propose→apply→archive 工作流，承接需求确认到实现的书面契约层；
+//  * 全局装好命令后，用户在具体项目里按需执行 `openspec init` 注入 slash command，
+//  * AIRules 不替用户自动修改任何项目级 AGENTS.md。
+//  * @see https://github.com/Fission-AI/OpenSpec
+//  */
+// const openspecSetup: SetupCommand[] = [
+//   {
+//     command: 'npm',
+//     args: ['install', '--global', '@fission-ai/openspec'],
+//     skipIfCommandAvailable: 'openspec',
+//   },
+// ]
 
 /**
  * @see https://github.com/Shubhamsaboo/awesome-llm-apps/tree/main/awesome_agent_skills awesome-agent-skills仓库，收集了很多技能
@@ -253,7 +254,7 @@ export const vendors: VendorsConfig = [
     official: true,
     source: 'https://github.com/moluoxixi/AIRules.git',
     sourceMode: 'workspace',
-    setup: [...codegraphSetup, ...openspecSetup],
+    setup: codegraphSetup,
     projections: [
       {
         kind: 'skills',

@@ -39,7 +39,6 @@ AIRules 的控制能力由三层资产协同构成，缺一不可：
 | 开发环节 | 控制资产 | 前置依赖 |
 |---|---|---|
 | 需求进入 | `prd-docs`（产品/业务需求入口与最终事实源）、pm-skills 方法论辅助（`deliver-prd`/`deliver-user-stories`/`deliver-acceptance-criteria`/`deliver-edge-cases`）、`knowledge-search` | 源料/知识源 |
-| Spec 契约（可选） | OpenSpec（`propose`→`apply`→`archive`） | 需求 |
 | 架构设计 | `architecture-docs` | 需求 |
 | 架构改进 | `architecture-deepening`、`architecture-refactor`、`architecture-docs` | 架构设计、代码现状可访问；`architecture-refactor` 仅在用户确认具体 DC-* 后执行 |
 | API/组件契约 | `api-docs`、`components-docs` | 需求、架构 |
@@ -55,6 +54,21 @@ AIRules 的控制能力由三层资产协同构成，缺一不可：
 链式前置门禁：进入下游环节前必须确认上游产物存在且已就绪；上游缺失或仍为草案时，下游报告 `MISSING blocked` 并停止，不得臆造上游事实继续推进。`scripts/verify-stage-gate.mjs` 对消费方项目做该校验。
 
 产品/业务需求入口以 `prd-docs` 为准；pm-skills 仅作为需求发现、用户故事、验收标准和边界用例的方法论辅助，辅助产出必须归一化进 `docs/prds/` 后才能作为下游事实源。
+
+## L2 变更包
+
+AIRules 自身的 L2 变更优先写成变更包，再进入实现与验证：
+
+| 文件 | 职责 |
+|---|---|
+| `docs/changes/index.md` | 变更包导航，区分活动变更与归档变更 |
+| `docs/changes/<change-id>/proposal.md` | 目标、范围、非目标、影响层级、风险 |
+| `docs/changes/<change-id>/layer-delta.md` | 按 `repo-maintenance`、`global-baseline`、`project-init`、`generated-project` 记录 `ADDED` / `MODIFIED` / `REMOVED` |
+| `docs/changes/<change-id>/design.md` | 技术方案、兼容性、迁移 / 回滚 |
+| `docs/changes/<change-id>/tasks.md` | 可执行任务清单 |
+| `docs/changes/<change-id>/verification.md` | 实际运行命令与 `PASS` / `FAIL` / `MISSING` / `NOT RUN` / `N/A` 结果 |
+
+完成后将活动变更归档到 `docs/changes/archive/<date>-<change-id>/`，保留完整上下文。`scripts/verify-change-packs.mjs` 校验该结构，`npm run verify:control:l2` 必须串联它。
 
 关键环节子代理调度：规则层必须用 Mermaid flowchart 写明「什么时候调用什么子代理」，覆盖多源只读调研、实现计划、实现编码、调试修复、代码评审、后置一致性评审、测试验证、文档可控性校验和架构深化/重构。图中必须点名 `debugger`、`frontend-planner`、`backend-planner`、`frontend-coder`、`backend-coder`、`frontend-reviewer`、`backend-reviewer`、`consistency-reviewer`、`architecture-deepening`、`architecture-refactor`，并标出临时研究子代理 / explorer、临时验证子代理和临时 clean/headless validator；`consistency-reviewer` 用于编码后、测试验证前核对最终 diff 是否符合需求、测试设计、实现计划或 bugfix 诊断，不得替代编码前 `consistency-check`；纯文档、纯注释、纯格式或无行为配置改动可标 `N/A`，上游缺失或冲突标 `MISSING blocked`。`architecture-deepening` 用于未确认候选发现，`architecture-refactor` 仅在用户确认具体 DC-* 后落地。调度说明必须包含自包含、复核、不同实例、隔离、并行、独立性，并区分 `skill` 与 `subagent`：skill 承载知识内容与方法论，subagent 承载上下文隔离、并行和反自评边界。
 

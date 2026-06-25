@@ -522,6 +522,7 @@ function checkAgentLayer(root) {
 function checkExecutionLayer(root) {
   const requiredFiles = [
     'scripts/assemble-baseline.mjs',
+    'scripts/verify-change-packs.mjs',
     'scripts/verify-knowledge-sources.mjs',
     'scripts/verify-rule-self-sufficiency.mjs',
     'scripts/verify-skill-frontmatter.mjs',
@@ -575,7 +576,12 @@ function checkExecutionLayer(root) {
     return
   }
 
-  const expectedL2Script = 'npm run rules:check && npm run delivery:verify && npm run verify:rules:self-sufficiency && npm run verify:skills && npm run verify:knowledge-sources'
+  if (packageJson.scripts?.['verify:changes'] !== 'node scripts/verify-change-packs.mjs') {
+    fail('execution layer incomplete: package.json scripts 缺少 verify:changes')
+    return
+  }
+
+  const expectedL2Script = 'npm run rules:check && npm run delivery:verify && npm run verify:changes && npm run verify:rules:self-sufficiency && npm run verify:skills && npm run verify:knowledge-sources'
   if (packageJson.scripts?.['verify:control:l2'] !== expectedL2Script) {
     fail('execution layer incomplete: package.json scripts 缺少 verify:control:l2')
     return
@@ -592,7 +598,7 @@ function checkDeliveryContract(root) {
   }
 
   const content = fs.readFileSync(contractPath, 'utf8')
-  const requiredSections = ['三层控制面', '变更分级闸门', '澄清触发机制', '环节控制矩阵', '质量门禁']
+  const requiredSections = ['三层控制面', '变更分级闸门', '澄清触发机制', '环节控制矩阵', 'L2 变更包', '质量门禁']
   const missingSections = requiredSections.filter(section => !content.includes(section))
   const hasSubagentDispatch = content.includes('关键环节子代理调度')
     && content.includes('什么时候调用什么子代理')

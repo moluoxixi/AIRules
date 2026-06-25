@@ -10,7 +10,6 @@ import {
   linkHostBaseline,
   projectHostById,
   rebuildVendorSkillLinks,
-  regenerateVendorSkillIndex,
   runSkillSetupCommands,
   syncFirstPartySkillsToVendor,
   syncFirstPartyToHome,
@@ -184,10 +183,6 @@ export async function syncToHosts(options: SyncOptions): Promise<SyncResult> {
     manifestPath: paths.manifestPath,
   })
   syncLocalSkillLayers(paths)
-
-  // vendor/skills 链接齐全（含外部 skill）后重建索引，写进 vendor/AGENTS.md，
-  // 使 Qoder 等不自动发现 skill 的宿主在 baseline 里看到完整触发索引。必须在 host 投影前。
-  regenerateVendorSkillIndex(paths.moluoHome)
 
   const projectedHosts: string[] = []
   const skippedHosts: string[] = []

@@ -223,10 +223,12 @@ function createMinimalDeliveryRoot(): string {
       'verify:skills': 'node scripts/verify-skills.mjs',
       'verify:knowledge-sources': 'node scripts/verify-knowledge-sources.mjs airules.knowledge.json',
       'verify:rules:self-sufficiency': 'node scripts/verify-rule-self-sufficiency.mjs',
-      'verify:control:l2': 'npm run rules:check && npm run delivery:verify && npm run verify:rules:self-sufficiency && npm run verify:skills && npm run verify:knowledge-sources',
+      'verify:changes': 'node scripts/verify-change-packs.mjs',
+      'verify:control:l2': 'npm run rules:check && npm run delivery:verify && npm run verify:changes && npm run verify:rules:self-sufficiency && npm run verify:skills && npm run verify:knowledge-sources',
     },
   }))
   fs.writeFileSync(path.join(root, 'scripts', 'assemble-baseline.mjs'), '#!/usr/bin/env node\n')
+  fs.writeFileSync(path.join(root, 'scripts', 'verify-change-packs.mjs'), '#!/usr/bin/env node\n')
   fs.writeFileSync(path.join(root, 'scripts', 'verify-knowledge-sources.mjs'), '#!/usr/bin/env node\n')
   fs.writeFileSync(path.join(root, 'scripts', 'verify-rule-self-sufficiency.mjs'), '#!/usr/bin/env node\n')
   fs.writeFileSync(path.join(root, 'scripts', 'verify-skill-frontmatter.mjs'), '#!/usr/bin/env node\n')
@@ -246,6 +248,8 @@ function createMinimalDeliveryRoot(): string {
     '| 环节 | 控制资产 | 验证方式 |',
     '|---|---|---|',
     '| 需求 | prd-docs | PASS/FAIL |',
+    '## L2 变更包',
+    '- L2 变更写入 docs/changes/<change-id>/，包含 proposal.md、layer-delta.md、design.md、tasks.md、verification.md。',
     '关键环节子代理调度：规则层必须用 Mermaid flowchart 写明「什么时候调用什么子代理」，覆盖多源只读调研、实现计划、实现编码、调试修复、代码评审、后置一致性评审、测试验证、文档可控性校验和架构深化/重构，点名 debugger、frontend-planner、backend-planner、frontend-coder、backend-coder、frontend-reviewer、backend-reviewer、consistency-reviewer、architecture-deepening、architecture-refactor，并标出临时研究子代理、临时验证子代理和临时 clean/headless validator；consistency-reviewer 用于编码后、测试验证前核对最终 diff，不得替代 consistency-check，缺少可核对上游时标 MISSING blocked。',
     '调度规则区分 `skill` 与 `subagent`，并用图例硬约束说明自包含、复核、不同实例、隔离、并行、独立性。',
     '规则自足性校验属于 AIRules repo-maintenance 门禁；确定性入口为 `npm run verify:rules:self-sufficiency`，不得下沉到 project-init 子代理调度。',
@@ -362,11 +366,24 @@ it('verify-delivery-control - 缺少规则自足性校验入口时显式失败',
   assert.match(result.stdout, /FAIL execution layer incomplete: package\.json scripts 缺少 verify:rules:self-sufficiency/)
 })
 
+it('verify-delivery-control - 缺少变更包校验入口时显式失败', () => {
+  const root = createMinimalDeliveryRoot()
+  const packageJsonPath = path.join(root, 'package.json')
+  const packageJson = JSON.parse(fs.readFileSync(packageJsonPath, 'utf8'))
+  delete packageJson.scripts['verify:changes']
+  fs.writeFileSync(packageJsonPath, JSON.stringify(packageJson))
+
+  const result = runScriptResult('--root', root)
+
+  assert.notEqual(result.status, 0)
+  assert.match(result.stdout, /FAIL execution layer incomplete: package\.json scripts 缺少 verify:changes/)
+})
+
 it('verify-delivery-control - L2 控制聚合入口必须是真实 npm run 链', () => {
   const root = createMinimalDeliveryRoot()
   const packageJsonPath = path.join(root, 'package.json')
   const packageJson = JSON.parse(fs.readFileSync(packageJsonPath, 'utf8'))
-  packageJson.scripts['verify:control:l2'] = 'echo rules:check delivery:verify verify:rules:self-sufficiency verify:skills verify:knowledge-sources'
+  packageJson.scripts['verify:control:l2'] = 'echo rules:check delivery:verify verify:changes verify:rules:self-sufficiency verify:skills verify:knowledge-sources'
   fs.writeFileSync(packageJsonPath, JSON.stringify(packageJson))
 
   const result = runScriptResult('--root', root)
