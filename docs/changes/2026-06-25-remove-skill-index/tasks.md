@@ -12,9 +12,9 @@
 - [x] 2.1 新增 `docs/delivery/change-pack.md`。
 - [x] 2.2 新增 `docs/changes/` 索引和本次变更包。
 - [x] 2.3 更新 `docs/delivery/control-contract.md` 与 `docs/map.md`。
-- [ ] 2.4 新增 `scripts/verify-change-packs.mjs` 并接入 `verify:control:l2`。
+- [x] 2.4 新增 `scripts/verify-change-packs.mjs` 并接入 `verify:control:l2`。
 
 ## 3. 验证
 
-- [ ] 3.1 更新相关测试。
-- [ ] 3.2 运行规则、变更包和 L2 控制验证。
+- [x] 3.1 更新相关测试。
+- [x] 3.2 运行规则、变更包和 L2 控制验证。
