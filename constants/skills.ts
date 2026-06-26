@@ -181,7 +181,7 @@ export const vendors: VendorsConfig = [
       {
         // Superpowers 的全部方法论已第一方化（抄原文改造、对齐本项目契约后落在 skills/），
         // 见 skills/{brainstorming,writing-plans,test-driven-development,verification-before-completion,
-        // systematic-debugging,requesting-code-review,writing-skills,executing-plans,
+        // systematic-debugging,requesting-code-review,distill-candidates,executing-plans,
         // subagent-driven-development,dispatching-parallel-agents,receiving-code-review,
         // using-git-worktrees,finishing-a-development-branch}。
         // 因 vendor/skills 扁平命名空间，superpowers 原版不再分发以避免与第一方撞名/双份。
@@ -257,8 +257,12 @@ export const vendors: VendorsConfig = [
           'dispatching-parallel-agents',
           'using-git-worktrees',
           'finishing-a-development-branch',
-          // skill 提炼
-          'writing-skills',
+          // 会话提炼：双路产出 skill 候选 + 记忆候选（待审）
+          'distill-candidates',
+          // 记忆与反思（持续进化闭环：capture → distill → 审核 → recall → reflect）
+          'remember',
+          'recall-memory',
+          'reflect',
           // 变更规格工作流（第一方 spec-driven）
           'spec-workflow',
         ],

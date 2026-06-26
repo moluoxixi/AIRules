@@ -21,5 +21,6 @@ module.exports = {
     'scope-empty': [2, 'never'],
     'subject-empty': [2, 'never'],
     'subject-max-length': [2, 'always', 50],
+    'body-max-line-length': [2, 'always', 272],
   },
 }
