@@ -46,7 +46,6 @@ AIRules 是一个**可组合的 AI 技能分发系统**。它的核心思想很�
 - 🧱 **预留第一方扩展位**：保留顶层自定义 skills 投影入口，后续补充时无需调整整体分发模型
 - 🌐 **多代理同步**：一次配置，Claude / Cursor / Codex / Hermes / Qoder / Trae / OpenCode / CC-Switch 全部生效
 - 🔄 **持续更新**：上游 skills 更新后，一条命令同步最新版本
-- ✅ **交付控制门禁**：通过 `docs/delivery/control-contract.md` 和 `npm run delivery:verify` 检查 rules、skills、执行脚本是否形成闭环
 
 ## 安装
 
@@ -148,7 +147,6 @@ npm run rules:install -- --host 宿主名（例如 claude）
 | `airules add ./my-skill --host all` | 添加本地 skill，并同步到所有宿主 |
 | `airules add ./my-skill --name review-plus --overwrite` | 指定安装名并覆盖已有用户 skill |
 | `airules verify --host codex` | 校验指定宿主的 skills 链接完整性 |
-| `npm run delivery:verify` | 校验 AIRules 交付包是否同时具备规则层、技能层、执行层和交付契约 |
 
 常用选项：
 

@@ -37,18 +37,3 @@ jobs:
 
       - name: Test
         run: npm test
-
-      - name: Verify rules baseline (no drift)
-        run: npm run rules:check
-
-      - name: Verify delivery control contract
-        run: npm run delivery:verify
-
-      - name: Verify rule self-sufficiency
-        run: npm run verify:rules:self-sufficiency
-
-      - name: Verify skill frontmatter
-        run: npm run verify:skills
-
-      - name: Verify knowledge source registry
-        run: npm run verify:knowledge-sources

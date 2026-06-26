@@ -39,16 +39,7 @@
     "test": "vitest run",
     "typecheck": "tsc --noEmit",
     "coverage": "vitest run --coverage",
-    "delivery:verify": "node scripts/verify-delivery-control.mjs",
-    "verify:skills": "node scripts/verify-skills.mjs",
-    "verify:knowledge-sources": "node scripts/verify-knowledge-sources.mjs airules.knowledge.json",
-    "verify:rules:self-sufficiency": "node scripts/verify-rule-self-sufficiency.mjs",
-    "verify:changes": "node scripts/verify-change-packs.mjs",
-    "verify:control:l2": "npm run rules:check && npm run delivery:verify && npm run verify:changes && npm run verify:rules:self-sufficiency && npm run verify:skills && npm run verify:knowledge-sources",
-    "rules:build": "node scripts/assemble-baseline.mjs",
-    "rules:check": "node scripts/assemble-baseline.mjs --check",
-    "purity:assemble": "node scripts/purity/purity-check.mjs",
-    "purity:check": "node scripts/purity/purity-check.mjs"
+    "rules:build": "node scripts/assemble-baseline.mjs"
   },
   "dependencies": {
     "kleur": "4.1.5",

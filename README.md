@@ -46,7 +46,6 @@ AIRules is a **composable AI skill distribution system**. The core idea is simpl
 - 🧱 **Reserved first-party expansion slots** so you can add your own top-level skills later without changing the distribution model
 - 🌐 **Multi-agent sync**: configure once, works across Claude / Cursor / Codex / Hermes / Qoder / Trae / OpenCode / CC-Switch
 - 🔄 **Continuous updates**: one command pulls latest upstream skills
-- ✅ **Delivery control gate**: `docs/delivery/control-contract.md` and `npm run delivery:verify` check that rules, skills, and executable verification form a closed loop
 
 ## Installation
 
@@ -148,7 +147,6 @@ npm run rules:install -- --host <host-name> (e.g., claude)
 | `airules add ./my-skill --host all` | Add a local skill and sync it to every host |
 | `airules add ./my-skill --name review-plus --overwrite` | Set the installed skill name and replace an existing user skill |
 | `airules verify --host codex` | Verify skill links for one host |
-| `npm run delivery:verify` | Verify that the AIRules package includes the rule layer, skill layer, execution layer, and delivery contract |
 
 Common options:
 

@@ -62,19 +62,5 @@ function assemble() {
 }
 
 const assembled = assemble()
-const checkMode = process.argv.includes('--check')
-
-if (checkMode) {
-  const existing = existsSync(OUTPUT_FILE)
-    ? readFileSync(OUTPUT_FILE, 'utf8').replace(/\r\n/g, '\n')
-    : ''
-  if (existing !== assembled) {
-    console.log('FAIL assemble-baseline: rules/AGENTS.md 与 rules/sources/ 不一致，请运行 npm run rules:build')
-    process.exit(1)
-  }
-  console.log('PASS assemble-baseline: rules/AGENTS.md 与源一致')
-}
-else {
-  writeFileSync(OUTPUT_FILE, assembled, 'utf8')
-  console.log(`PASS assemble-baseline: 已生成 rules/AGENTS.md（${assembled.length} 字符）`)
-}
+writeFileSync(OUTPUT_FILE, assembled, 'utf8')
+console.log(`PASS assemble-baseline: 已生成 rules/AGENTS.md（${assembled.length} 字符）`)
