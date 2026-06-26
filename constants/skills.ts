@@ -113,22 +113,6 @@ const codegraphSetup: SetupCommand[] = [
 ]
 
 /**
- * 安装 AIRules 时同步全局安装 OpenSpec CLI。
- * OpenSpec 提供 spec-driven 的 propose→apply→archive 工作流，承接需求确认到实现的书面契约层。
- * 全局装好命令后，init-project 的 init-openspec 脚本在用户项目里执行
- * `openspec init .airules --tools none`，把 change/spec 工作目录落在 .airules/openspec/，
- * 不向宿主 agent 目录写 slash command、不写机器级注册表。
- * @see https://github.com/Fission-AI/OpenSpec
- */
-const openspecSetup: SetupCommand[] = [
-  {
-    command: 'npm',
-    args: ['install', '--global', '@fission-ai/openspec'],
-    skipIfCommandAvailable: 'openspec',
-  },
-]
-
-/**
  * @see https://github.com/Shubhamsaboo/awesome-llm-apps/tree/main/awesome_agent_skills awesome-agent-skills仓库，收集了很多技能
  * @see https://github.com/anthropics/skills.git anthropic（claude）官方技能仓库
  * @see https://github.com/google-gemini/gemini-cli.git gemini官方技能仓库
@@ -242,7 +226,7 @@ export const vendors: VendorsConfig = [
     official: true,
     source: 'https://github.com/moluoxixi/AIRules.git',
     sourceMode: 'workspace',
-    setup: [...codegraphSetup, ...openspecSetup],
+    setup: codegraphSetup,
     projections: [
       {
         kind: 'skills',
@@ -275,6 +259,8 @@ export const vendors: VendorsConfig = [
           'finishing-a-development-branch',
           // skill 提炼
           'writing-skills',
+          // 变更规格工作流（第一方 spec-driven）
+          'spec-workflow',
         ],
       },
     ],

@@ -13,6 +13,6 @@
 审查或修改 `rules/`、`skills/init-project/references/`、根 `AGENTS.md` 前，先判定资产层级，结论按层级列出，不跨层归因：
 
 - repo-maintenance：根 `AGENTS.md`、`CLAUDE.md`，只约束 AIRules 仓库（本仓库）维护者。
-- global-baseline：`rules/sources/**` 与生成产物 `rules/AGENTS.md`，提供给宿主/用户的全局 baseline；`rules/AGENTS.md` 由 `npm run rules:build` 从 `rules/sources/**` 拼接生成，按待生成数据处理。
+- global-baseline：`rules/AGENTS.md`，提供给宿主/用户的全局 baseline，手工维护；作为所有宿主基线软链/注入的统一源，按待生成数据处理。
 - project-init：`skills/init-project/references/**`，注入用户项目根 `AGENTS.md` 或 `.airules/rules/**`，只能写项目级规则。
 - generated-project：用户项目中的 `docs/**`、`AGENTS.md`、`.airules/rules/**`。

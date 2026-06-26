@@ -1,0 +1,45 @@
+---
+name: spec-workflow
+---
+
+# Spec Workflow（变更规格工作流）
+
+把一次变更立项为可追溯、可归档的书面 spec 契约。propose → apply → archive 三态，第一方自建（零外部依赖），产物落在 `.airules/`。这是"书面持久化层"——需求/计划的方法论仍由 `brainstorming` / `writing-plans` / `test-design` 承担，本 skill 只负责把结论固化成可机读、可合并的规格。
+
+## 触发条件
+
+- 用户显式要把一次变更正式立项、记录为可追溯 spec 契约时按名调用。
+- 变更涉及系统行为契约（接口/状态机/数据一致性等），值得沉淀为长期事实源。
+
+## 不适合场景
+
+- 主代理普通对话不主动加载本 skill（故省略 description），不自动触发。
+- 小改、L0/L1 可直接执行的变更 → 不必立项 spec，直接走编码流水线。
+- 纯探索、纯文档、纯格式调整 → 不需要 spec。
+
+## 三态流程
+
+### propose（提案）
+1. 先用 `brainstorming` 想清需求、`writing-plans` 拆任务、`test-design` 定验收（方法论），不在本 skill 重复需求分析。
+2. `node <init-project-skill>/scripts/spec-new-change.mjs <project> <change-id>` 建变更骨架。
+3. 填写：
+   - `proposal.md`：`## Why`（问题与动机，必填）+ `## What Changes`（变更点，必填非空）+ `## Impact`。
+   - `tasks.md`：`## N. 组` + `- [ ] N.M 任务` 复选框清单。
+   - `specs/<capability>/spec.md`：delta，用 `## ADDED/MODIFIED/REMOVED/RENAMED Requirements`；每个 `### Requirement:` 正文含 SHALL/MUST，下挂 `#### Scenario:`。
+4. `node <init-project-skill>/scripts/spec-validate.mjs <project> <change-id>` 校验 delta 格式合法。
+
+### apply（实现）
+- 按 `tasks.md` 逐条实现（走编码流水线 coder），完成一项勾选 `- [x]`。
+- 实现中发现需求/规格需变，回到 propose 修订对应文件，不在实现里偷改契约。
+
+### archive（归档）
+- 实现完成、测试通过后：`node <init-project-skill>/scripts/spec-archive.mjs <project> <change-id>`。
+- 脚本把 delta 合并进 `.airules/specs/<capability>/spec.md`（应用顺序 RENAMED→REMOVED→MODIFIED→ADDED），再把 change 移到 `.airules/changes/archive/<date>-<change-id>/`。
+
+## 写入边界与约束
+
+- 只写 `.airules/specs/` 与 `.airules/changes/`，不碰生产代码（代码由编码流水线写）。
+- delta 格式须合法：ADDED/MODIFIED 必须有 SHALL/MUST 正文 + ≥1 Scenario。
+- archive 合并冲突（ADDED 已存在 / MODIFIED 或 REMOVED 未找到 / 跨段冲突）**硬失败、不静默、不部分写**；冲突时修正 delta 后重跑。
+- 新 capability（主 spec 不存在）只允许 ADDED。
+- 与编码编排串联：spec-workflow 管"契约书面化"，不替代 brainstorming/writing-plans/test-design 的方法论。

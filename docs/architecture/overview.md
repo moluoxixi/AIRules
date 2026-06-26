@@ -26,7 +26,7 @@ AIRules（包名 `.moluoxixi`）是一个可组合的 AI 技能分发系统，�
 | `constants/skills.ts` | vendor 与 skill 声明（repo、links、setup 命令） | 无 | `vendors.ts`、`sync-vendors.ts` | 维护者 |
 | `scripts/verify-*.mjs` | 交付控制、skill frontmatter、知识源、链式门禁的确定性校验 | 仓库内容 | CI / pre-push | 维护者 |
 | `skills/` | 第一方领域 skills（prd-docs、test-docs、impl-plan、init-project 等） | — | vendor/skills 投影 | 维护者 |
-| `rules/` | 规则基线源（原子规则 + 拼接产物 `AGENTS.md`） | `rules/sources/*` | 各宿主基线文件 | 维护者 |
+| `rules/` | 规则基线（手工维护的 `AGENTS.md`） | — | 各宿主基线文件 | 维护者 |
 | `docs/` | 可审计文档层（architecture / api / prds / test 等） | 源料 | 人工/检索 | 维护者 |
 
 ## 分层与依赖规则
@@ -57,8 +57,7 @@ vendor Git 仓库
 规则基线链路：
 
 ```
-rules/sources/*.md
-  → rules/AGENTS.md               （assemble-baseline 拼接产物，提交入库）
+rules/AGENTS.md                   （手工维护的全局 baseline，提交入库）
   → ~/.moluoxixi/vendor/AGENTS.md （syncFirstPartyToHome 复制，作为所有宿主软链统一源）
   → <宿主>基线文件
        · symlink 模式：整份软链覆盖（CLAUDE.md / AGENTS.md）

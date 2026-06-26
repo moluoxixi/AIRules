@@ -13,12 +13,12 @@ name: writing-skills
 ## 不适合场景
 
 - 主代理普通对话不主动加载本 skill（故省略 description），不自动触发。
-- 素材不足（`.airules/sessions/` 与 `.airules/openspec/changes/` 为空或无可复用模式）→ 报告无可提炼项，不硬凑。
+- 素材不足（`.airules/sessions/` 与 `.airules/changes/` 为空或无可复用模式）→ 报告无可提炼项，不硬凑。
 - 一次性偶发做法、标准实践、项目专属约定 → 不提炼成 skill（项目约定写进项目规则文件）。
 
 ## 流程
 
-1. 读取 `.airules/sessions/*.md` 与 `.airules/openspec/changes/`（含 archive），识别跨多次出现、有清晰触发场景的可复用做法。
+1. 读取 `.airules/sessions/*.md` 与 `.airules/changes/`（含 archive），识别跨多次出现、有清晰触发场景的可复用做法。
 2. 对每个候选，在 `.airules/skills-candidates/<name>/SKILL.md` 写草稿，标注其来源（哪些 session/change 支撑）。
 3. 输出"待审清单"：候选名、一句话职责、来源依据、建议触发条件，交用户逐个 review。
 

@@ -2,21 +2,31 @@
 
 ## 编码生命周期编排
 
-本 baseline 定义一条编码任务的标准流水线：从需求进入到评审收口。主代理读图决定每个阶段调度哪个子代理；阶段之间存在前置依赖，下游默认依赖上游产物已就绪。
+本 baseline 定义一条编码任务的标准流水线：从需求进入到评审收口。主代理读图决定每个阶段调度哪个子代理；阶段之间存在前置依赖，下游默认依赖上游产物已就绪。需要把变更沉淀为可追溯规格契约时，整条主线由 `spec-workflow` 的 propose→apply→archive 三态包裹（见图右侧泳道与下方说明）。
 
 ```mermaid
 flowchart TD
-  Intake["任务进入"] --> Req["需求分析: 评估 PRD / 轻量澄清，产出需求事实源 + 验收标准"]
+  Intake["任务进入"] --> Gate{"需要规格契约?<br/>(系统行为/接口/状态机/数据一致性)"}
+  Gate -->|否, 小改/L0L1| Req
+  Gate -->|是| Propose["spec-workflow · propose: spec-new-change 建变更骨架"]
+  Propose --> Req
+
+  Req["需求分析: 评估 PRD / 轻量澄清，产出需求事实源 + 验收标准"]
   Req -->|歧义/关键事实缺失| Clarify["澄清: 向用户提问"] --> Req
   Req --> Plan["计划: planner 冻结范围 + 产出实现计划 + 验收用例清单"]
-  Plan --> Code["实现: coder 按栈写测试(红) + 代码(绿)"]
+  Plan -->|规格契约路径| Spec["落盘 proposal.md + specs/delta + tasks.md，spec-validate 校验"]
+  Spec --> Code
+  Plan -->|普通路径| Code["实现(spec-workflow · apply): coder 按栈写测试(红) + 代码(绿)，勾选 tasks"]
   Code --> Test["测试运行: 实际跑 build/test/lint 并读输出"]
   Test -->|FAIL| Debug["debugger 定位根因"] --> Code
   Test -->|PASS| Consist["后置一致性评审: consistency-reviewer 核对最终 diff 是否符合需求/计划/验收用例"]
   Consist -->|不符| Code
   Consist -->|符合| Review["代码评审: code-reviewer 独立实例评审最终 diff"]
   Review -->|FAIL| Code
-  Review -->|PASS| Done["交付收口: 精简汇报 + 项目既有 Git/PR 流程"]
+  Review -->|PASS| Archive{"走了规格契约路径?"}
+  Archive -->|是| DoArchive["spec-workflow · archive: spec-archive 合并 delta 进 .airules/specs 并归档"]
+  Archive -->|否| Done
+  DoArchive --> Done["交付收口: 精简汇报 + 项目既有 Git/PR 流程"]
 ```
 
 ### 阶段契约
@@ -32,6 +42,15 @@ flowchart TD
 | 代码评审 | `requesting-code-review` | 最终 diff、需求 | 评审结论（独立实例，不得自评） |
 
 链式前置门禁：进入下游阶段前必须确认上游产物存在且已就绪（非草案、关键事实非 `MISSING`）；上游缺失时下游报告 `MISSING blocked` 并停止，不得臆造上游事实继续推进。
+
+### 方法论层 vs 规格持久化层
+
+- **方法论层**（默认）：需求/计划/测试设计的"怎么想清楚"由编码流水线 skill 承担——`brainstorming`、`writing-plans`、`test-design`。小改、L0/L1 可直接执行的变更只走方法论层（图中"否, 小改/L0L1"分支），不必立项规格。
+- **规格持久化层**（按需）：变更涉及系统行为契约（接口/状态机/数据一致性等）、值得沉淀为长期可追溯事实源时，用 `spec-workflow` 三态包裹主线，把结论固化为 `.airules/specs/` 规格：
+  - **propose**：进入需求/计划前 `spec-new-change` 建变更骨架；需求与计划的结论落盘成 `proposal.md` + `specs/<capability>/spec.md`(delta) + `tasks.md`，`spec-validate` 校验 delta 格式。需求/计划内容仍由 `brainstorming`/`writing-plans`/`test-design` 产出，spec-workflow 只负责固化。
+  - **apply**：实现阶段按 `tasks.md` 逐条落地并勾选，对应主线"实现→测试"。
+  - **archive**：代码评审通过后 `spec-archive` 把 delta 合并进 `.airules/specs/`（RENAMED→REMOVED→MODIFIED→ADDED，冲突硬失败）并归档变更目录。
+- 二者分工，不重复造需求/计划文档；规格持久化层不替代方法论层，只在其产出之上做书面固化与归档。
 
 ## 核心门禁
 
