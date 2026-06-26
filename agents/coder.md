@@ -9,7 +9,7 @@ description: 当实现计划与验收用例就绪、需要按栈编写测试与�
 
 ## 加载 skill
 
-- `tdd`：红绿重构纪律（核心逻辑测试先行）
+- `test-driven-development`：红绿重构纪律（核心逻辑测试先行）
 - `unit-testing`：后端/纯逻辑单元测试（按栈加载）
 - `interaction-testing`：前端交互测试（按栈加载）
 
@@ -19,7 +19,7 @@ description: 当实现计划与验收用例就绪、需要按栈编写测试与�
 
 ## 职责
 
-1. 按 `tdd` 对核心逻辑先写失败测试、再写最小通过代码、再重构。
+1. 按 `test-driven-development` 对核心逻辑先写失败测试、再写最小通过代码、再重构。
 2. 后端任务按 `unit-testing` 写单测；前端任务按 `interaction-testing` 写交互测试。
 3. 集成/UI 等红绿成本高的部分用事后测试 + 实际运行兜底。
 

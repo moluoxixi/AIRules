@@ -562,14 +562,19 @@ it('vendors 配置 - 使用 OpenAI Playwright 并移除过时技能', () => {
         command: 'codegraph',
         args: ['install', '--yes'],
       },
+      {
+        command: 'npm',
+        args: ['install', '--global', '@fission-ai/openspec'],
+        skipIfCommandAvailable: 'openspec',
+      },
     ],
-    '安装 AIRules 时应同步安装并初始化 CodeGraph，不默认安装 OpenSpec CLI',
+    '安装 AIRules 时应同步安装并初始化 CodeGraph，并全局安装 OpenSpec CLI',
   )
   assert.ok(
-    !vendors.moluoxixi.setup.some((cmd: any) =>
-      cmd.args?.includes('@fission-ai/openspec') || cmd.skipIfCommandAvailable === 'openspec',
+    vendors.moluoxixi.setup.some((cmd: any) =>
+      cmd.args?.includes('@fission-ai/openspec') && cmd.skipIfCommandAvailable === 'openspec',
     ),
-    'setup 不应包含 openspec 全局安装命令',
+    'setup 应包含 openspec 全局安装命令（已存在则跳过）',
   )
   assert.ok(
     !vendors.moluoxixi.links.some((link: any) => link.target === 'vendor/skills/workflow'),

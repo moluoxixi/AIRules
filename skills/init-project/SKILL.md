@@ -5,7 +5,7 @@ description: 用于创建新项目、初始化项目、为已有项目首次接�
 
 # Init Project
 
-最小化项目初始化：注入项目规则、建立 `CLAUDE.md` 软链、初始化 CodeGraph。
+最小化项目初始化：注入项目规则、建立 `CLAUDE.md` 软链、初始化 CodeGraph、建立 `.airules/openspec` 变更工作目录。
 
 ## 触发条件
 
@@ -19,7 +19,7 @@ description: 用于创建新项目、初始化项目、为已有项目首次接�
 
 ## 输出边界
 
-- 只改初始化交付物：项目根 `AGENTS.md`、`CLAUDE.md` 链接、CodeGraph 初始化结果。
+- 只改初始化交付物：项目根 `AGENTS.md`、`CLAUDE.md` 链接、CodeGraph 初始化结果、`.airules/` 工作目录。
 - 不改依赖目录、构建产物、vendor、宿主目录或用户未授权文件。
 - `references/**` 只承载注入到用户项目的项目级规则；不写入 AIRules 维护者规则（变更分级、子代理调度、host 投影、发布流程等归 AIRules 仓库自身）。
 
@@ -32,7 +32,8 @@ flowchart TD
   C -->|是| D[停止写入并人工审查合并]
   C -->|否| E[link-claude.mjs 建 CLAUDE.md 软链]
   E --> F[codegraph init -i]
-  F --> G[交付检查]
+  F --> G[init-openspec.mjs 建 .airules/openspec store]
+  G --> H[交付检查]
 ```
 
 | 环节 | 命令 | 关键输出 | 失败语义 |
@@ -40,6 +41,7 @@ flowchart TD
 | 规则注入 | `node <init-project-skill>/scripts/inject-rules.mjs <project>` | 项目根 `AGENTS.md`（airules-base + code-core） | 重复标题必须人工审查合并，不自动跳过 |
 | Claude 链接 | `node <init-project-skill>/scripts/link-claude.mjs <project>` | `CLAUDE.md` 软链指向 `AGENTS.md` | 非托管文件或链接到其它目标时停止 |
 | CodeGraph | 在项目根执行 `codegraph init -i` | `.codegraph` 初始化状态 | 命令缺失报 `MISSING` |
+| OpenSpec store | `node <init-project-skill>/scripts/init-openspec.mjs <project>` | `.airules/openspec/{changes,specs}` | `openspec` 命令缺失报 `MISSING`，不阻断其余步骤 |
 
 - `<init-project-skill>` 占位符由脚本运行时解析为真实 init-project skill 根目录；下游不得残留字面量。
 - `inject-rules.mjs` 自动处理 `airules-base.md`（仅在 `AGENTS.md` 为空/新建时注入）与 `code-core.md`；命令无需手动传 reference。
@@ -51,3 +53,4 @@ flowchart TD
 | 规则 | 项目根 `AGENTS.md` 含项目规范骨架与代码核心纪律 |
 | `CLAUDE.md` | 软链接指向 `AGENTS.md`；Windows 无符号链接权限时回退为同一文件实体硬链接，并在日志说明 |
 | CodeGraph | `codegraph init -i` 真实执行并报告 `PASS`、`FAIL`、`MISSING` 或 `NOT RUN` |
+| OpenSpec store | `.airules/openspec/{changes,specs}` 已建；`openspec` 缺失时报 `MISSING` 且不阻断其余交付 |

@@ -9,7 +9,7 @@ description: 当实现编码完成、需要由独立实例评审最终 diff 的�
 
 ## 加载 skill
 
-- `code-review`：代码评审 rubric（正确性/可维护性/安全/健壮性/测试/栈相关维度）
+- `requesting-code-review`：代码评审 rubric（正确性/可维护性/安全/健壮性/测试/栈相关维度）
 
 ## 前置依赖
 
@@ -17,7 +17,7 @@ description: 当实现编码完成、需要由独立实例评审最终 diff 的�
 
 ## 职责
 
-1. 按 `code-review` 维度评审最终 diff；后端关注分层/事务/一致性/幂等，前端关注组件契约/状态/空错态/可访问性，按栈加载对应关注点。
+1. 按 `requesting-code-review` 维度评审最终 diff；后端关注分层/事务/一致性/幂等，前端关注组件契约/状态/空错态/可访问性，按栈加载对应关注点。
 2. 结论分级：`Critical` / `Improvement` / `Nitpick`。
 3. 基于实际 diff 与可运行证据下结论。
 

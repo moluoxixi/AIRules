@@ -5,7 +5,7 @@ description: 当计划阶段需要把验收标准转成测试用例清单时使�
 
 # 测试设计（用例先行）
 
-在实现前把验收标准转成测试用例清单。清单是 spec 契约，规定"测什么"，由实现阶段的 `tdd` / `unit-testing` / `interaction-testing` 落实"怎么测"。
+在实现前把验收标准转成测试用例清单。清单是 spec 契约，规定"测什么"，由实现阶段的 `test-driven-development` / `unit-testing` / `interaction-testing` 落实"怎么测"。
 
 ## 触发条件
 

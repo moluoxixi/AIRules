@@ -14,7 +14,7 @@ name: consistency-check
 ## 不适合场景
 
 - 主代理在普通对话里不主动加载本 skill（故省略 description）
-- 代码质量评审 → 由 `code-review` 承担
+- 代码质量评审 → 由 `requesting-code-review` 承担
 - 纯文档、纯注释、纯格式或无行为配置改动 → 标 `N/A`
 - 上游事实源缺失或冲突 → 标 `MISSING blocked`，不臆造上游事实
 

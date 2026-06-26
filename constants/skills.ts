@@ -112,21 +112,21 @@ const codegraphSetup: SetupCommand[] = [
   },
 ]
 
-// 暂时不再使用
-// /**
-//  * 安装 AIRules 时同步全局安装 OpenSpec CLI。
-//  * OpenSpec 提供 spec-driven 的 propose→apply→archive 工作流，承接需求确认到实现的书面契约层；
-//  * 全局装好命令后，用户在具体项目里按需执行 `openspec init` 注入 slash command，
-//  * AIRules 不替用户自动修改任何项目级 AGENTS.md。
-//  * @see https://github.com/Fission-AI/OpenSpec
-//  */
-// const openspecSetup: SetupCommand[] = [
-//   {
-//     command: 'npm',
-//     args: ['install', '--global', '@fission-ai/openspec'],
-//     skipIfCommandAvailable: 'openspec',
-//   },
-// ]
+/**
+ * 安装 AIRules 时同步全局安装 OpenSpec CLI。
+ * OpenSpec 提供 spec-driven 的 propose→apply→archive 工作流，承接需求确认到实现的书面契约层。
+ * 全局装好命令后，init-project 的 init-openspec 脚本在用户项目里执行
+ * `openspec init .airules --tools none`，把 change/spec 工作目录落在 .airules/openspec/，
+ * 不向宿主 agent 目录写 slash command、不写机器级注册表。
+ * @see https://github.com/Fission-AI/OpenSpec
+ */
+const openspecSetup: SetupCommand[] = [
+  {
+    command: 'npm',
+    args: ['install', '--global', '@fission-ai/openspec'],
+    skipIfCommandAvailable: 'openspec',
+  },
+]
 
 /**
  * @see https://github.com/Shubhamsaboo/awesome-llm-apps/tree/main/awesome_agent_skills awesome-agent-skills仓库，收集了很多技能
@@ -195,32 +195,17 @@ export const vendors: VendorsConfig = [
     source: 'https://github.com/obra/superpowers.git',
     projections: [
       {
-        // 通用软件开发方法论由 superpowers 上游做主，不再第一方化重写。
-        // 计划、TDD、子代理、worktree 等环节直接分发原版，本项目只在治理层（rules/sources/）
-        // 叠加 L0/L1/L2 分级、澄清门禁、子代理委派与后置评审协议。
-        // 不分发：
-        // - brainstorming —— HARD-GATE 强制任何实现前先出设计等批准，与本项目 L0/L1 可直接执行
-        //   的变更分级门禁、以及用户「直接执行、反感反复确认」的偏好冲突。
-        // - using-superpowers —— 框架自指胶水（引用 Claude Code Skill 工具、1% 即必须调用），
-        //   与本项目按需加载机制重复。
-        // - systematic-debugging / verification-before-completion / requesting-code-review /
-        //   receiving-code-review —— 已第一方化（见 moluoxixi 投影），剥离 Claude-Code 专用引用
-        //   并对齐本项目子代理评审协议；因 vendor/skills 扁平命名空间，superpowers 原版不再分发以避免撞名。
-        kind: 'namespace',
-        sourceDir: 'skills',
-        output: 'superpowers',
-        // kind: 'skills',
-        // sourceBaseDir: 'skills',
-        // skills: [
-        //   'dispatching-parallel-agents',
-        //   'subagent-driven-development',
-        //   'executing-plans',
-        //   'finishing-a-development-branch',
-        //   'using-git-worktrees',
-        //   'writing-plans',
-        //   'writing-skills',
-        //   'test-driven-development',
-        // ],
+        // Superpowers 的全部方法论已第一方化（抄原文改造、对齐本项目契约后落在 skills/），
+        // 见 skills/{brainstorming,writing-plans,test-driven-development,verification-before-completion,
+        // systematic-debugging,requesting-code-review,writing-skills,executing-plans,
+        // subagent-driven-development,dispatching-parallel-agents,receiving-code-review,
+        // using-git-worktrees,finishing-a-development-branch}。
+        // 因 vendor/skills 扁平命名空间，superpowers 原版不再分发以避免与第一方撞名/双份。
+        // using-superpowers（框架自指胶水）与本项目按需加载机制冲突，弃用。
+        // 此处保留 vendor 槽位但空精选：上游若出现新的、无第一方等价物的 skill，在此 skills 数组按需登记。
+        kind: 'skills',
+        sourceBaseDir: 'skills',
+        skills: [],
       },
     ],
   },
@@ -257,13 +242,39 @@ export const vendors: VendorsConfig = [
     official: true,
     source: 'https://github.com/moluoxixi/AIRules.git',
     sourceMode: 'workspace',
-    setup: codegraphSetup,
+    setup: [...codegraphSetup, ...openspecSetup],
     projections: [
       {
         kind: 'skills',
         sourceBaseDir: 'skills',
         skills: [
+          // 项目初始化与会话
+          'init-project',
           'handoff',
+          'session-capture',
+          // 需求 → 计划 → 测试设计
+          'brainstorming',
+          'writing-plans',
+          'test-design',
+          // 实现与测试方法论
+          'test-driven-development',
+          'unit-testing',
+          'interaction-testing',
+          // 验证 / 调试
+          'verification-before-completion',
+          'systematic-debugging',
+          // 评审
+          'requesting-code-review',
+          'receiving-code-review',
+          'consistency-check',
+          // 子代理编排 / 计划执行 / worktree / 收尾
+          'executing-plans',
+          'subagent-driven-development',
+          'dispatching-parallel-agents',
+          'using-git-worktrees',
+          'finishing-a-development-branch',
+          // skill 提炼
+          'writing-skills',
         ],
       },
     ],
