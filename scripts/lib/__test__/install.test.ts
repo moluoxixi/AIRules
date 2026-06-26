@@ -6,7 +6,7 @@ import { it } from 'vitest'
 import {
   projectSkillsToHost,
   syncFirstPartyToHome,
-} from '../scripts/lib/install.js'
+} from '../install.js'
 
 function setupMockEnvironment() {
   const tmpDir = fs.mkdtempSync(path.join(os.tmpdir(), 'moluoxixi-test-'))

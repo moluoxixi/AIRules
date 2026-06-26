@@ -3,7 +3,7 @@ import fs from 'node:fs'
 import os from 'node:os'
 import path from 'node:path'
 import { it } from 'vitest'
-import { findHostConfig, resolveHostPaths } from '../constants/hosts.js'
+import { findHostConfig, resolveHostPaths } from '../../../constants/hosts.js'
 import {
   ensureGlobalSkillLink,
   ensureInstallRoot,
@@ -20,9 +20,9 @@ import {
   shouldUseShellForSetupCommand,
   syncFirstPartySkillsToVendor,
   syncFirstPartyToHome,
-} from '../scripts/lib/install.js'
-import { buildLinkPlan } from '../scripts/lib/links.js'
-import { getRepoRoot, loadVendorManifest, normalizePath, resolveHomePath, walkVendorTree } from '../scripts/lib/vendors.js'
+} from '../install.js'
+import { buildLinkPlan } from '../links.js'
+import { getRepoRoot, loadVendorManifest, normalizePath, resolveHomePath, walkVendorTree } from '../vendors.js'
 
 /**
  * 创建临时目录并保证用例结束后彻底清理。
@@ -860,6 +860,6 @@ it('vendors - 合并重复供应商、拒绝本地供应商和未知 projection'
 it('vendors - 工具路径函数返回标准化路径', () => {
   assert.equal(normalizePath('a\\b\\c'), 'a/b/c')
   assert.equal(resolveHomePath('C:/Users/example', '.moluoxixi/vendor'), 'C:/Users/example/.moluoxixi/vendor')
-  const vendorsModuleUrl = new URL('../scripts/lib/vendors.ts', import.meta.url).href
+  const vendorsModuleUrl = new URL('../vendors.ts', import.meta.url).href
   assert.equal(normalizePath(getRepoRoot(vendorsModuleUrl)), normalizePath(process.cwd()))
 })

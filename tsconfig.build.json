@@ -16,7 +16,7 @@
     "coverage",
     "dist",
     "node_modules",
-    "tests",
+    "**/__test__/**",
     "vendor"
   ]
 }

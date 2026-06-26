@@ -3,7 +3,7 @@ import fs from 'node:fs'
 import os from 'node:os'
 import path from 'node:path'
 import { afterEach, it, vi } from 'vitest'
-import { verifyHost } from '../scripts/lib/verify.js'
+import { verifyHost } from '../verify.js'
 
 const workspaceFolderPlaceholder = '$' + '{workspaceFolder}'
 

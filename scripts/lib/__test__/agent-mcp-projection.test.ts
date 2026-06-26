@@ -3,7 +3,7 @@ import fs from 'node:fs'
 import os from 'node:os'
 import path from 'node:path'
 import { it } from 'vitest'
-import { projectToHost } from '../scripts/lib/install.js'
+import { projectToHost } from '../install.js'
 
 /**
  * 为 agent 格式门控 + MCP 多宿主投影搭建隔离环境。

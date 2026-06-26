@@ -3,7 +3,7 @@ import fs from 'node:fs'
 import os from 'node:os'
 import path from 'node:path'
 import { it } from 'vitest'
-import { addLocalSkill, resolveHostTargets, resolveToolPaths, syncToHosts } from '../scripts/lib/tool.js'
+import { addLocalSkill, resolveHostTargets, resolveToolPaths, syncToHosts } from '../tool.js'
 
 function withTempDir<T>(prefix: string, run: (tmpDir: string) => T): T {
   const tmpDir = fs.mkdtempSync(path.join(os.tmpdir(), prefix))

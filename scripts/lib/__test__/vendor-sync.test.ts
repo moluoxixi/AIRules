@@ -4,7 +4,7 @@ import fs from 'node:fs'
 import os from 'node:os'
 import path from 'node:path'
 import { it } from 'vitest'
-import { ensureVendorRepo, getRemoteDefaultBranch } from '../scripts/lib/vendor-sync.js'
+import { ensureVendorRepo, getRemoteDefaultBranch } from '../vendor-sync.js'
 
 const GIT_INTEGRATION_TIMEOUT_MS = 30000
 

@@ -17,7 +17,7 @@ export default defineConfig({
         'scripts/lib/**/*.ts',
       ],
       exclude: [
-        'tests/**',
+        '**/__test__/**',
         'vitest.config.ts',
         'eslint.config.ts',
       ],

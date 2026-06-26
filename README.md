@@ -236,8 +236,7 @@ Moluoxixi AIRules supports a growing ecosystem of AI agents through automated pr
 │   ├── repos/               # Cloned third-party source repos
 │   └── skills/              # Flattened extracted skills
 ├── constants/skills.ts      # Single source of truth for vendor config
-├── scripts/                 # Install / sync / verify scripts
-└── tests/                   # Automated verification tests
+└── scripts/                 # Install / sync scripts (tests colocated in __test__/ beside the code)
 ```
 
 > Source `skills/` folders may be grouped recursively; installed vendor and host skill directories are flattened by leaf skill name.

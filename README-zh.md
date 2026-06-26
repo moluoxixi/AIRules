@@ -235,8 +235,7 @@ Moluoxixi AIRules 通过自动化投影，支持不断增长的 AI 代理生态�
 │   ├── repos/               # 克隆的第三方源仓库
 │   └── skills/              # 展平后的提取 skills
 ├── constants/skills.ts      # 唯一的第三方技能配置清单
-├── scripts/                 # 安装/同步/校验脚本
-└── tests/                   # 自动化验证测试
+└── scripts/                 # 安装/同步脚本（测试就近放在被测代码旁的 __test__/）
 ```
 
 > 源 `skills/` 目录允许递归分组；安装后的 vendor 与宿主 skills 目录统一按叶子 skill 名称展平。

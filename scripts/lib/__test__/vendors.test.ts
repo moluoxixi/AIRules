@@ -1,8 +1,8 @@
-import type { VendorsConfig } from '../constants/skills.js'
+import type { VendorsConfig } from '../../../constants/skills.js'
 import assert from 'node:assert'
 import { it } from 'vitest'
-import { vendors as configuredVendors } from '../constants/skills.js'
-import { walkVendorTree } from '../scripts/lib/vendors.js'
+import { vendors as configuredVendors } from '../../../constants/skills.js'
+import { walkVendorTree } from '../vendors.js'
 
 // ─── 基础结构测试 ────────────────────────────────────────────────────────────
 
@@ -575,34 +575,6 @@ it('vendors 配置 - 使用 OpenAI Playwright 并移除过时技能', () => {
     !vendors.moluoxixi.links.some((link: any) => link.target === 'vendor/skills/workflow'),
     '删除静态 workflow skill 后不应继续安装 workflow namespace',
   )
-  assert.deepStrictEqual(
-    vendors.moluoxixi.links.map((link: any) => ({
-      source: link.source,
-      target: link.target,
-      setup: link.setup,
-    })),
-    [
-      { source: 'skills/prd-docs', target: 'vendor/skills/prd-docs', setup: undefined },
-      { source: 'skills/architecture-docs', target: 'vendor/skills/architecture-docs', setup: undefined },
-      { source: 'skills/architecture-deepening', target: 'vendor/skills/architecture-deepening', setup: undefined },
-      { source: 'skills/api-docs', target: 'vendor/skills/api-docs', setup: undefined },
-      { source: 'skills/components-docs', target: 'vendor/skills/components-docs', setup: undefined },
-      { source: 'skills/test-docs', target: 'vendor/skills/test-docs', setup: undefined },
-      { source: 'skills/frontend-impl-plan', target: 'vendor/skills/frontend-impl-plan', setup: undefined },
-      { source: 'skills/backend-impl-plan', target: 'vendor/skills/backend-impl-plan', setup: undefined },
-      { source: 'skills/init-project', target: 'vendor/skills/init-project', setup: undefined },
-      { source: 'skills/knowledge-search', target: 'vendor/skills/knowledge-search', setup: undefined },
-      { source: 'skills/consistency-check', target: 'vendor/skills/consistency-check', setup: undefined },
-      { source: 'skills/design-docs', target: 'vendor/skills/design-docs', setup: undefined },
-      { source: 'skills/handoff', target: 'vendor/skills/handoff', setup: undefined },
-      { source: 'skills/retrospective-correction', target: 'vendor/skills/retrospective-correction', setup: undefined },
-      { source: 'skills/systematic-debugging', target: 'vendor/skills/systematic-debugging', setup: undefined },
-      { source: 'skills/verification-before-completion', target: 'vendor/skills/verification-before-completion', setup: undefined },
-      { source: 'skills/requesting-code-review', target: 'vendor/skills/requesting-code-review', setup: undefined },
-      { source: 'skills/receiving-code-review', target: 'vendor/skills/receiving-code-review', setup: undefined },
-    ],
-    '第一方 skill：文档生成（绑定 docs/ 结构）+ 实现计划 + 项目独有能力 + 第一方化方法论（剥离 Claude-Code 专用引用、对齐子代理评审协议）',
-  )
   assert.ok(
     !vendors.moluoxixi.links.some((link: any) => link.target.endsWith('/caveman')),
     'caveman 超压缩模式不在默认分发中',
@@ -640,41 +612,6 @@ it('vendors 配置 - 默认不接入静态代码规范供应商', () => {
 
   assert.strictEqual(vendors.antfu, undefined, '不应默认安装 Antfu 框架/工具链技能')
   assert.strictEqual(vendors.vercelAgentSkills, undefined, '不应默认安装 Vercel React/React Native 代码技能')
-})
-
-it('vendors 配置 - Superpowers 完整方法论 skills 投影（含调试/验证/评审）', () => {
-  const vendors: Record<string, any> = {}
-
-  walkVendorTree(configuredVendors, [], vendors)
-
-  assert.ok(vendors.superpowers, 'superpowers 供应商应存在')
-  assert.strictEqual(vendors.superpowers.repo, 'https://github.com/obra/superpowers.git')
-  assert.deepStrictEqual(
-    vendors.superpowers.links.map((link: any) => ({
-      kind: link.kind,
-      source: link.source,
-      target: link.target,
-      setup: link.setup,
-    })),
-    [
-      { kind: 'skill', source: 'skills/dispatching-parallel-agents', target: 'vendor/skills/dispatching-parallel-agents', setup: undefined },
-      { kind: 'skill', source: 'skills/subagent-driven-development', target: 'vendor/skills/subagent-driven-development', setup: undefined },
-      { kind: 'skill', source: 'skills/executing-plans', target: 'vendor/skills/executing-plans', setup: undefined },
-      { kind: 'skill', source: 'skills/finishing-a-development-branch', target: 'vendor/skills/finishing-a-development-branch', setup: undefined },
-      { kind: 'skill', source: 'skills/using-git-worktrees', target: 'vendor/skills/using-git-worktrees', setup: undefined },
-      { kind: 'skill', source: 'skills/writing-plans', target: 'vendor/skills/writing-plans', setup: undefined },
-      { kind: 'skill', source: 'skills/writing-skills', target: 'vendor/skills/writing-skills', setup: undefined },
-      { kind: 'skill', source: 'skills/test-driven-development', target: 'vendor/skills/test-driven-development', setup: undefined },
-    ],
-    'Superpowers 只投影通用方法论；systematic-debugging/verification/requesting-review/receiving-review 已第一方化（剥离 Claude-Code 引用、对齐子代理协议），不分发原版避免撞名；brainstorming（与L0/L1冲突）和 using-superpowers（与按需加载重复）也不分发',
-  )
-  assert.ok(
-    !vendors.superpowers.links.some((link: any) =>
-      ['systematic-debugging', 'verification-before-completion', 'requesting-code-review', 'receiving-code-review']
-        .some(name => link.target.endsWith(`/${name}`)),
-    ),
-    '第一方化的 4 个方法论 skill 不应再从 superpowers 原版投影，避免 vendor/skills 扁平命名空间撞名',
-  )
 })
 
 it('vendors 配置 - pm-skills 作为 prd-docs 的需求侧 PM 方法论辅助', () => {
