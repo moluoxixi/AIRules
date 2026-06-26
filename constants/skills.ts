@@ -206,18 +206,21 @@ export const vendors: VendorsConfig = [
         // - systematic-debugging / verification-before-completion / requesting-code-review /
         //   receiving-code-review —— 已第一方化（见 moluoxixi 投影），剥离 Claude-Code 专用引用
         //   并对齐本项目子代理评审协议；因 vendor/skills 扁平命名空间，superpowers 原版不再分发以避免撞名。
-        kind: 'skills',
-        sourceBaseDir: 'skills',
-        skills: [
-          'dispatching-parallel-agents',
-          'subagent-driven-development',
-          'executing-plans',
-          'finishing-a-development-branch',
-          'using-git-worktrees',
-          'writing-plans',
-          'writing-skills',
-          'test-driven-development',
-        ],
+        kind: 'namespace',
+        sourceDir: 'skills',
+        output: 'superpowers',
+        // kind: 'skills',
+        // sourceBaseDir: 'skills',
+        // skills: [
+        //   'dispatching-parallel-agents',
+        //   'subagent-driven-development',
+        //   'executing-plans',
+        //   'finishing-a-development-branch',
+        //   'using-git-worktrees',
+        //   'writing-plans',
+        //   'writing-skills',
+        //   'test-driven-development',
+        // ],
       },
     ],
   },
@@ -260,28 +263,7 @@ export const vendors: VendorsConfig = [
         kind: 'skills',
         sourceBaseDir: 'skills',
         skills: [
-          // 文档生成（绑定 docs/ 标准结构 + 知识源治理）
-          'prd-docs',
-          'architecture-docs',
-          'architecture-deepening',
-          'api-docs',
-          'components-docs',
-          'test-docs',
-          // 实现计划（可追溯到需求与用例）
-          'frontend-impl-plan',
-          'backend-impl-plan',
-          // 项目独有能力
-          'init-project',
-          'knowledge-search',
-          'consistency-check',
-          'design-docs',
           'handoff',
-          'retrospective-correction',
-          // 第一方化的方法论 skill（对齐子代理评审协议，避免与 superpowers 撞名）
-          'systematic-debugging',
-          'verification-before-completion',
-          'requesting-code-review',
-          'receiving-code-review',
         ],
       },
     ],
