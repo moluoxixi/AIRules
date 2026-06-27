@@ -3,7 +3,6 @@ vendor
 .cache-git
 .qoder
 .cursor
-issue
 # 依赖锁文件（注意：用精确名，避免误伤源码 scripts/lib/vendor-lock.ts）
 /package-lock.json
 /pnpm-lock.yaml
@@ -48,10 +47,6 @@ lerna-debug.log*
 *.sln
 *.sw?
 .zed
-.ruletest-output/
-
-# 纯净校验运行产物（每次组装重生成，不入库）
-.purity-runs/
 
 # 外部知名 skills 参考资料（对标抄优点用，只读，不入库）
 .skill-references/
