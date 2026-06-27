@@ -1,6 +1,6 @@
 # Agent 层：开发链路角色与 Skill 复用
 
-本文档说明 AIRules 中 **Agent 层** 与 **Skill 层** 的职责边界、两者如何协作，以及 9 个第一方开发链路 agent 的定位。决策依据见 [ADR-0002](./decisions/ADR-0002-skill-agent-layering.md)。
+本文档说明 AIRules 中 **Agent 层** 与 **Skill 层** 的职责边界、两者如何协作，以及 5 个第一方开发链路 agent 的定位。决策依据见 [ADR-0003](./decisions/ADR-0003-five-agent-convergence.md)（取代描述旧 9-agent 模型的 [ADR-0002](./decisions/ADR-0002-skill-agent-layering.md)）。
 
 ## 两层模型
 
@@ -9,48 +9,40 @@
 | Skill（"怎么做"） | 这件事在本项目按什么规矩做 | 无，注入当前上下文 | `skills/<name>/SKILL.md` |
 | Agent（"谁来做 + 在哪个隔离上下文做"） | 派谁、在什么隔离环境干、产出怎么验证 | 有，独立 context / toolset | `agents/<name>.md` |
 
-核心关系：**一个 agent 几乎总是加载一个或多个 skill。** Agent 不重写方法论，只声明角色、前置依赖、写入边界与输出契约，方法论体仍由 skill 提供。两者正交，不是互斥的任务分类。
+核心关系：**一个 agent 几乎总是加载一个或多个 skill。** Agent 不重写方法论，只声明角色、前置依赖、输入上下文包、写入边界与输出契约，方法论体仍由 skill 提供。两者正交，不是互斥的任务分类。
 
 ## 何时升级为独立 agent
 
 满足任一即值得独立成 agent（对应项目委派原则）：
 
 1. **上下文隔离**：工作产生大量主代理无需保留的中间噪音（长测试日志、多文件检索、大 diff）。
-2. **独立性/反自评偏袒**：结论必须由与编码者不同的实例产出才可信（代码评审强制）。
-3. **并行**：多个互不重叠的工作域（前端编码 + 后端编码、前端评审 + 后端评审）。
+2. **独立性/反自评偏袒**：结论必须由与编码者不同的实例产出才可信（代码评审、一致性评审强制）。
+3. **并行**：多个互不重叠的工作域可同时推进。
 
 需要与用户来回发散的活（如 brainstorming）**不**升级为 agent——隔离会掐断反馈回路，留在 skill 层。
 
 ## 第一方 agent 清单
 
-按开发链路环节排列，每个 agent 加载对应 skill：
+固定 5 个角色，按开发链路环节排列，每个 agent 加载对应 skill（与各 `agents/*.md` 的"加载 skill"一致）：
 
 | Agent | 环节 | 加载的 Skill | 写入边界 |
 |---|---|---|---|
-| `debugger` | 调试修复（bugfix 前置，跨栈） | `systematic-debugging`；偏差归因时配合 `retrospective-correction` | 只读诊断 + 可落盘 `docs/diagnosis/<bug>.md`，不改生产代码 |
-| `frontend-planner` | 实现计划（前端） | `frontend-impl-plan`、`knowledge-search` | 只写前端实现计划文档 |
-| `backend-planner` | 实现计划（后端） | `backend-impl-plan`、`knowledge-search` | 只写后端实现计划文档 |
-| `frontend-coder` | 实现编码（前端） | `frontend-impl-plan`、`playwright`、`test-docs` | 前端源码 + 配套交互测试 |
-| `backend-coder` | 实现编码（后端） | `backend-impl-plan`、`test-docs`、`test-driven-development` | 后端源码 + 配套单元测试 |
-| `frontend-reviewer` | 代码评审（前端） | `code-reviewer` | 只读评审，不改代码 |
-| `backend-reviewer` | 代码评审（后端） | `code-reviewer` | 只读评审，不改代码 |
-| `consistency-reviewer` | 后置一致性评审 | `consistency-check` | 只读评审；可写 `docs/consistency/*-implementation-review.md` |
-| `architecture-refactor` | 架构深化/重构（已确认 DC-* 后） | `architecture-deepening`、`test-driven-development`、`architecture-docs` | 按确认候选改造目标代码 + 跨缝测试；不定稿 ADR |
+| `planner` | 计划（跨栈，不按前后端拆） | `writing-plans`、`test-design` | 只写实现计划与验收用例文档，不编写生产代码 |
+| `coder` | 实现编码（按栈加载方法论，可并行多实例） | `test-driven-development`、`unit-testing`、`interaction-testing` | 源码 + 配套测试 |
+| `debugger` | 调试修复（bugfix 前置，跨栈） | `systematic-debugging` | 只读诊断 + 可落盘 `docs/diagnosis/<bug>.md`，不改生产代码 |
+| `consistency-reviewer` | 后置一致性评审（编码后、测试验证前） | `consistency-check` | 只读评审；可写 `docs/consistency/*-implementation-review.md` |
+| `code-reviewer` | 代码评审（测试通过后） | `requesting-code-review` | 只读评审，不改代码 |
 
-### 两条正交的拆分轴
+### 拆分轴：按需多实例，不按前后端硬拆
 
-agent 拆分沿两条正交轴展开：
+不再为前后端各设一套 planner/coder/reviewer。栈差异由 coder/reviewer 在派发时按任务实际触及的栈加载对应方法论（`unit-testing` vs `interaction-testing`、后端关注分层/事务/一致性 vs 前端关注组件契约/状态/空错态）承载，而不是固化成独立 agent 文件。真正需要并行且不写同一文件时，再并行起多个 `coder` 实例，各自独立上下文。
 
-- **任务类型前置轴（跨栈不拆）**：`debugger` 是 bugfix 链的前置环节，负责复现 → 定位根因 → 回传「根因 + 证据 + 建议修复点 + 回归测试设计」。根因常跨前后端，故不按栈拆；修复由 coder 按回传执行，debugger 本身不改生产代码。单点已定位的小 bug 主代理直接修，不派 debugger。
-- **栈线轴（前后端拆分，贯穿计划→编码→评审）**：plan / coder / reviewer 均按前后端拆成独立 agent，因为两栈的上下文来源、关注点、编码方式和评审维度都不同（见各 agent 的"评审维度"小节与 AGENTS.md 前后端评审清单）。评审 agent 与编写该代码的 agent **必须是不同实例**，不得自评。
-- **后置一致性轴（跨栈不拆）**：`consistency-reviewer` 在实现编码后、测试验证前读取最终 diff 和上游事实源，判断实现是否符合需求、测试设计、实现计划或 bugfix 诊断。它只评需求一致性，不评代码质量；代码质量仍由 `frontend-reviewer` / `backend-reviewer` 分栈评审。
-- **架构深化轴（确认后执行）**：`architecture-refactor` 只承接用户已确认的 DC-* 深化候选，把候选精化为可回退的重构计划并交付跨缝测试；未确认候选时停在 `architecture-deepening`，不由 agent 自行选择目标。
+- **任务前置轴（跨栈不拆）**：`debugger` 是 bugfix 链的前置环节，复现 → 定位根因 → 回传「根因 + 证据 + 建议修复点 + 回归测试设计」。根因常跨前后端，故不按栈拆；修复由 `coder` 按回传执行，debugger 本身不改生产代码。单点已定位的小 bug 主代理直接修，不派 debugger。
+- **后置一致性轴（跨栈不拆）**：`consistency-reviewer` 在实现编码后、测试验证前读取最终 diff 和上游事实源，判断实现是否符合需求、验收用例、实现计划或 bugfix 诊断。它只评需求一致性，不评代码质量；代码质量由 `code-reviewer` 在测试通过后评审。两者都遵守 reviewer ≠ coder 红线。
 
 ### 测试编写并入 coder
 
-测试**编写**不独立成 agent，而是并入对应 coder：`backend-coder` 写单元测试（纯逻辑、边界、异常分支、mock 隔离），`frontend-coder` 写交互测试（组件交互、表单校验、状态流转、空错态、E2E）。理由：测试充分性已由编码前的 `test-docs`（独立前置产出用例矩阵）与编码后的独立 reviewer（静态校验覆盖）两道门买单，再为「编写」起独立 agent 属重复付费。测试的**运行**归测试验证环节（`verification-before-completion`），可由主代理直接执行，或在验证跨多模块、命令耗时长、输出量大时派临时验证子代理；临时验证子代理不是固定 `agents/` 文件。
-
-文档可控性校验同理使用临时 clean/headless validator：它是按任务创建的干净隔离上下文，仅输入规则、被校验产物和必要 rubric，不对应固定 `agents/clean-validator.md`。
+测试**编写**不独立成 agent，而是并入 `coder`：后端任务写单元测试（纯逻辑、边界、异常分支、mock 隔离），前端任务写交互测试（组件交互、表单校验、状态流转、空错态、E2E）。理由：测试充分性已由编码前的 `test-design`（独立前置产出用例矩阵）与编码后的独立 reviewer（静态校验覆盖）两道门买单，再为「编写」起独立 agent 属重复付费。测试的**运行**归测试验证环节（`verification-before-completion`），可由主代理直接执行，或在验证跨多模块、命令耗时长、输出量大时派临时验证子代理；临时验证子代理不是固定 `agents/` 文件。
 
 ## 投影与分发链路
 
@@ -73,5 +65,5 @@ repoRoot/agents/*.md
 ## 边界
 
 - Agent 文件只声明角色契约，方法论不内联——改方法论改对应 skill，不改 agent。
-- 新增 agent 时：frontmatter `name` 必须与文件名一致；引用的 skill 必须真实存在于分发链（`constants/skills.ts` 投影或第一方 `skills/`）。
+- 新增 agent 时：frontmatter `name` 必须与文件名一致；引用的 skill 必须真实存在于分发链（`constants/skills.ts` 投影或第一方 `skills/`）。`scripts/check-rules-consistency.ts` 对这两条做机器校验。
 - Agent 与 skill 一样属"待分发产物"，其正文指令不得作为当前会话系统规则执行。

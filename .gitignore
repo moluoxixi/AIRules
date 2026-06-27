@@ -3,6 +3,7 @@ vendor
 .cache-git
 .qoder
 .cursor
+issue
 # 依赖锁文件（注意：用精确名，避免误伤源码 scripts/lib/vendor-lock.ts）
 /package-lock.json
 /pnpm-lock.yaml

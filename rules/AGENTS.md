@@ -17,11 +17,11 @@ flowchart TD
   Plan -->|规格契约路径| Spec["落盘 proposal.md + specs/delta + tasks.md，spec-validate 校验"]
   Spec --> Code
   Plan -->|普通路径| Code["实现(spec-workflow · apply): coder 按栈写测试(红) + 代码(绿)，勾选 tasks"]
-  Code --> Test["测试运行: 实际跑 build/test/lint 并读输出"]
-  Test -->|FAIL| Debug["debugger 定位根因"] --> Code
-  Test -->|PASS| Consist["后置一致性评审: consistency-reviewer 核对最终 diff 是否符合需求/计划/验收用例"]
+  Code --> Consist["后置一致性评审: consistency-reviewer 核对最终 diff 是否符合需求/计划/验收用例"]
   Consist -->|不符| Code
-  Consist -->|符合| Review["代码评审: code-reviewer 独立实例评审最终 diff"]
+  Consist -->|符合| Test["测试运行: 实际跑 build/test/lint 并读输出"]
+  Test -->|FAIL| Debug["debugger 定位根因"] --> Code
+  Test -->|PASS| Review["代码评审: code-reviewer 独立实例评审最终 diff"]
   Review -->|FAIL| Code
   Review -->|PASS| Archive{"走了规格契约路径?"}
   Archive -->|是| DoArchive["spec-workflow · archive: spec-archive 合并 delta 进 .airules/specs 并归档"]
@@ -36,19 +36,27 @@ flowchart TD
 | 需求分析 | `brainstorming` | 任务描述 / 可选 PRD | 需求事实源、验收标准雏形 |
 | 计划 | `writing-plans`、`test-design` | 需求事实源 | 实现计划、验收用例清单 |
 | 实现 | `test-driven-development` + (`unit-testing` 或 `interaction-testing`) | 实现计划、验收用例清单 | 源码 + 配套测试 |
+| 后置一致性评审 | `consistency-check` | 最终 diff、需求 / 计划 / 验收用例 | 一致性结论（编码后、测试验证前核对） |
 | 测试运行 | `verification-before-completion` | 实现产物 | 运行证据与状态 |
 | 调试修复 | `systematic-debugging` | 失败现象 | 根因 + 证据 + 建议修复点 |
-| 后置一致性评审 | `consistency-check` | 最终 diff、需求 / 计划 / 验收用例 | 一致性结论（编码后、测试验证前核对） |
 | 代码评审 | `requesting-code-review` | 最终 diff、需求 | 评审结论（独立实例，不得自评） |
 
 链式前置门禁：进入下游阶段前必须确认上游产物存在且已就绪（非草案、关键事实非 `MISSING`）；上游缺失时下游报告 `MISSING blocked` 并停止，不得臆造上游事实继续推进。
+
+### 阶段证据 schema
+
+每个阶段移交下游时附带最小可审计证据（精简结构，非冗长交付模板）：阶段名、状态枚举（`PASS`/`FAIL`/`MISSING`/`NOT RUN`/`N/A`）、输入资产、执行命令或只读证据来源、关键输出摘要、失败原因、下游依赖、是否阻断。各阶段附加要求：
+
+- 测试运行：必须记实际命令与退出状态，不得只写"通过"。
+- 后置一致性评审 / 代码评审：必须记比对对象与实例隔离（reviewer ≠ coder）。
+- spec archive：必须记 change-id、校验命令、归档目标、是否有 delta。
 
 ### 方法论层 vs 规格持久化层
 
 - **方法论层**（默认）：需求/计划/测试设计的"怎么想清楚"由编码流水线 skill 承担——`brainstorming`、`writing-plans`、`test-design`。小改、L0/L1 可直接执行的变更只走方法论层（图中"否, 小改/L0L1"分支），不必立项规格。
 - **规格持久化层**（按需）：变更涉及系统行为契约（接口/状态机/数据一致性等）、值得沉淀为长期可追溯事实源时，用 `spec-workflow` 三态包裹主线，把结论固化为 `.airules/specs/` 规格：
   - **propose**：进入需求/计划前 `spec-new-change` 建变更骨架；需求与计划的结论落盘成 `proposal.md` + `specs/<capability>/spec.md`(delta) + `tasks.md`，`spec-validate` 校验 delta 格式。需求/计划内容仍由 `brainstorming`/`writing-plans`/`test-design` 产出，spec-workflow 只负责固化。
-  - **apply**：实现阶段按 `tasks.md` 逐条落地并勾选，对应主线"实现→测试"。
+  - **apply**：实现阶段按 `tasks.md` 逐条落地并勾选，对应主线"实现→一致性评审→测试"。
   - **archive**：代码评审通过后 `spec-archive` 把 delta 合并进 `.airules/specs/`（RENAMED→REMOVED→MODIFIED→ADDED，冲突硬失败）并归档变更目录。
 - 二者分工，不重复造需求/计划文档；规格持久化层不替代方法论层，只在其产出之上做书面固化与归档。
 
@@ -95,7 +103,7 @@ flowchart TD
 ### 各环节与触发
 
 - 多源只读调研：信息分散在多文件/多目录、只需结论不需保留检索过程时，派临时研究子代理 / explorer。
-- 计划：需求就绪后由 `planner` 冻结范围、产出实现计划与验收用例清单（跨栈，不按前后端拆）。
+- 计划：需求就绪后由 `planner` 冻结范围、产出实现计划与验收用例清单（跨栈，不按前后端拆）。planner 是可派发角色而非强制环节：简单任务主代理可在当前上下文按 `writing-plans` + `test-design` 直接完成，仅命中上下文隔离、并行或独立性时才真正派 planner 子代理。
 - 实现编码：由 `coder` 按任务栈加载方法论写测试 + 代码；前后端任务真能并行且不写同一文件时才并行起多个 coder 实例。
 - 调试修复：测试失败或出现非预期行为时，由 `debugger` 复现并定位根因，回传根因 + 证据 + 建议修复点；只读诊断，不改生产代码。单点已定位的小 bug 主代理直接修，不派 debugger。
 - 代码评审：实现编码后由 `code-reviewer` 评审最终 diff；必须与编写该代码的实例不同，不得自评。

@@ -33,6 +33,14 @@ function writeDelta(root: string, changeId: string, capability: string, content:
   fs.writeFileSync(path.join(dir, 'spec.md'), content)
 }
 
+// 填入有效 proposal（Why/What Changes 非空）+ 全部完成的 tasks，满足 archive/validate 内容门禁。
+function seedValidChange(root: string, changeId: string) {
+  const dir = path.join(root, '.airules', 'changes', changeId)
+  fs.mkdirSync(dir, { recursive: true })
+  fs.writeFileSync(path.join(dir, 'proposal.md'), `## Why\n\n解决一个真实问题。\n\n## What Changes\n\n- 增加能力 X\n\n## Impact\n\n无。\n`)
+  fs.writeFileSync(path.join(dir, 'tasks.md'), `## 1. 组\n\n- [x] 1.1 完成任务\n`)
+}
+
 const MAIN_TWO_REQ = `# auth Specification
 
 ## Purpose
@@ -105,6 +113,7 @@ it('spec-archive - 新 capability 的 ADDED 合并并归档', () => {
   withTempDir((root) => {
     run('spec-init.mjs', root)
     run('spec-new-change.mjs', root, 'add-reset')
+    seedValidChange(root, 'add-reset')
     writeDelta(root, 'add-reset', 'auth', ADDED_DELTA)
 
     const r = run('spec-archive.mjs', root, 'add-reset')
@@ -126,6 +135,7 @@ it('spec-archive - MODIFIED 替换、REMOVED 删除', () => {
     run('spec-init.mjs', root)
     writeMainSpec(root, 'auth', MAIN_TWO_REQ)
     run('spec-new-change.mjs', root, 'change1')
+    seedValidChange(root, 'change1')
     writeDelta(root, 'change1', 'auth', `## MODIFIED Requirements
 
 ### Requirement: Login
@@ -154,6 +164,7 @@ it('spec-archive - RENAMED 改名保留正文', () => {
     run('spec-init.mjs', root)
     writeMainSpec(root, 'auth', MAIN_TWO_REQ)
     run('spec-new-change.mjs', root, 'rename1')
+    seedValidChange(root, 'rename1')
     writeDelta(root, 'rename1', 'auth', `## RENAMED Requirements
 
 - FROM: \`### Requirement: Login\`
@@ -174,6 +185,7 @@ it('spec-archive - MODIFIED 不存在的 requirement 硬失败且不归档', () 
     run('spec-init.mjs', root)
     writeMainSpec(root, 'auth', MAIN_TWO_REQ)
     run('spec-new-change.mjs', root, 'bad')
+    seedValidChange(root, 'bad')
     writeDelta(root, 'bad', 'auth', `## MODIFIED Requirements
 
 ### Requirement: Nonexistent
@@ -198,6 +210,7 @@ it('spec-archive - 新 capability 用 MODIFIED 报错（只允许 ADDED）', () 
   withTempDir((root) => {
     run('spec-init.mjs', root)
     run('spec-new-change.mjs', root, 'newcap')
+    seedValidChange(root, 'newcap')
     writeDelta(root, 'newcap', 'billing', `## MODIFIED Requirements
 
 ### Requirement: Invoice
@@ -237,6 +250,7 @@ it('spec-validate - 合法 delta 通过', () => {
   withTempDir((root) => {
     run('spec-init.mjs', root)
     run('spec-new-change.mjs', root, 'okfmt')
+    seedValidChange(root, 'okfmt')
     writeDelta(root, 'okfmt', 'auth', ADDED_DELTA)
 
     const r = run('spec-validate.mjs', root, 'okfmt')

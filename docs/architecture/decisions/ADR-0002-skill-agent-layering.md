@@ -1,8 +1,10 @@
 # ADR-0002 Skill 与 Agent 两层职责分离
 
+> **superseded by [ADR-0003](./ADR-0003-five-agent-convergence.md)**：本 ADR 确立的 skill/agent 两层解耦仍有效，但其落地的「分栈 9-agent」集合（frontend/backend planner/coder/reviewer、architecture-refactor）已收敛为 5-agent + 按需多实例。下方 9-agent 清单仅作历史记录，**不代表当前设计**。当前 agent 集合见 ADR-0003 与 [agent-layer.md](../agent-layer.md)。
+
 ## 状态
 
-accepted
+superseded
 
 ## 背景
 

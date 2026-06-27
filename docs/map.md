@@ -11,11 +11,9 @@
 | changes | [变更包索引](changes/index.md) | 记录 L2 变更包、delta spec、技术设计、验证记录和归档状态。 |
 | other | [其它文档索引](other/index.md) | 登记初始化前已存在但尚未归入架构、接口、需求、组件库或测试目录的项目文档。 |
 
-## 知识源入口
+## 知识检索
 
-| 文件 | 用途 | 状态 |
-|---|---|---|
-| [airules.knowledge.json](../airules.knowledge.json) | 登记可被 AI 检索的项目知识源；当前仅支持文件系统来源，非文件系统来源必须先实现安装、查询和校验合同。 | managed |
+项目知识检索遵循 [ADR-0004 知识检索协议](architecture/decisions/ADR-0004-knowledge-retrieval-protocol.md)：普通文件检索 / grep → CodeGraph → 项目 memory（`.airules/memory/`）→ 全局 memory → 宿主 MCP 外部资料。代码与文档为权威事实源，记忆与外部资料仅作背景证据，冲突时以代码/文档为准。不再使用 `airules.knowledge.json` 注册表。
 
 
 ## 维护约定
@@ -23,7 +21,6 @@
 - 新增业务文档时，使用稳定业务名作为文件名，例如 `采购订单.md`。
 - 架构文档放入 `docs/architecture/`，接口文档放入 `docs/api/`，需求文档放入 `docs/prds/`，测试文档放入 `docs/test/`。
 - 对外复用产物由对应 skill 生成：组件库契约写入 `docs/out-components/`，API 契约写入 `docs/out-api/`。
-- 项目知识检索优先读取根目录 `airules.knowledge.json`；标准 docs 是可审计输出层，不是用户资料的唯一输入格式。
 - 初始化前已存在的旧文档归档到 `docs/other/imported/`；整理时先评估归属，再转换为标准分类文档。
 - 全局接口协议维护在 `docs/api/_protocol.md`；业务接口文档不得重复定义冲突协议。
 - 新增或改名文档后，同步更新对应目录的 `index.md` 和本文件。

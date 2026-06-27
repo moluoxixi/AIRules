@@ -1,8 +1,10 @@
 # ADR-0001 Knowledge Source Registry And Retrieval Contract
 
+> **superseded by [ADR-0004](./ADR-0004-knowledge-retrieval-protocol.md)**：`airules.knowledge.json` registry、`knowledge-search` skill 与 `scripts/verify-knowledge-sources.mjs` 已废弃，不再作为当前机制存在。当前知识检索协议见 ADR-0004。下方正文仅作历史记录。
+
 ## 状态
 
-accepted
+superseded
 
 ## 背景
 

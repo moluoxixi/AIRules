@@ -33,13 +33,15 @@ name: spec-workflow
 - 实现中发现需求/规格需变，回到 propose 修订对应文件，不在实现里偷改契约。
 
 ### archive（归档）
-- 实现完成、测试通过后：`node <init-project-skill>/scripts/spec-archive.mjs <project> <change-id>`。
-- 脚本把 delta 合并进 `.airules/specs/<capability>/spec.md`（应用顺序 RENAMED→REMOVED→MODIFIED→ADDED），再把 change 移到 `.airules/changes/archive/<date>-<change-id>/`。
+- 前置条件（默认全满足才归档）：实现完成、验证 PASS、一致性评审 PASS 或 N/A、代码评审无阻塞项；proposal 的 Why/What Changes 非空、tasks 全部 `[x]`、≥1 delta spec。
+- `node <init-project-skill>/scripts/spec-archive.mjs <project> <change-id>`。
+- 脚本前置门禁：proposal 无效 / tasks 未全部 `[x]` / 无 delta 时 **FAIL 不归档**。纯文档/纯流程变更加 `--allow-empty`（跳过 delta 要求）；确需带未完成 tasks 归档加 `--allow-incomplete`（仅在用户明确同意时）。
+- 门禁通过后：把 delta 合并进 `.airules/specs/<capability>/spec.md`（应用顺序 RENAMED→REMOVED→MODIFIED→ADDED），再把 change 移到 `.airules/changes/archive/<date>-<change-id>/`。
 
 ## 写入边界与约束
 
 - 只写 `.airules/specs/` 与 `.airules/changes/`，不碰生产代码（代码由编码流水线写）。
 - delta 格式须合法：ADDED/MODIFIED 必须有 SHALL/MUST 正文 + ≥1 Scenario。
-- archive 合并冲突（ADDED 已存在 / MODIFIED 或 REMOVED 未找到 / 跨段冲突）**硬失败、不静默、不部分写**；冲突时修正 delta 后重跑。
+- archive 前置条件不满足（proposal 空 / tasks 未完成 / 无 delta）**硬失败、不归档**；合并冲突（ADDED 已存在 / MODIFIED 或 REMOVED 未找到 / 跨段冲突）**硬失败、不静默、不部分写**；冲突时修正后重跑。
 - 新 capability（主 spec 不存在）只允许 ADDED。
 - 与编码编排串联：spec-workflow 管"契约书面化"，不替代 brainstorming/writing-plans/test-design 的方法论。

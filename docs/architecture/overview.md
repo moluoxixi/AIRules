@@ -24,8 +24,8 @@ AIRules（包名 `.moluoxixi`）是一个可组合的 AI 技能分发系统，�
 | `scripts/lib/skill-projection.ts` | 技能目录发现、名称展平、源收集 | 文件系统 | `install.ts`、`sync-vendors.ts` | 维护者 |
 | `constants/hosts.ts` | 宿主配置表（home 路径、基线文件名、投影模式、skills 目录名、排除项） | 无 | `install.ts` | 维护者 |
 | `constants/skills.ts` | vendor 与 skill 声明（repo、links、setup 命令） | 无 | `vendors.ts`、`sync-vendors.ts` | 维护者 |
-| `scripts/verify-*.mjs` | 交付控制、skill frontmatter、知识源、链式门禁的确定性校验 | 仓库内容 | CI / pre-push | 维护者 |
-| `skills/` | 第一方领域 skills（prd-docs、test-docs、impl-plan、init-project 等） | — | vendor/skills 投影 | 维护者 |
+| `scripts/check-rules-consistency.ts` | 编码编排资产自洽性校验：agent/skill/rules/docs 引用存在性与漂移检查 | 仓库内容 | CI / pre-push | 维护者 |
+| `skills/` | 第一方领域 skills（init-project、brainstorming、writing-plans、test-design、spec-workflow 等） | — | vendor/skills 投影 | 维护者 |
 | `rules/` | 规则基线（手工维护的 `AGENTS.md`） | — | 各宿主基线文件 | 维护者 |
 | `docs/` | 可审计文档层（architecture / api / prds / test 等） | 源料 | 人工/检索 | 维护者 |
 
@@ -79,7 +79,7 @@ vendor 同步缓存：`sync-vendors.ts` 计算 `constants/` 目录 SHA-256 指�
 - 运行时：Node 22+，通过 `tsx` 直接执行 TypeScript 脚本，无需预编译即可 `sync`。
 - 工程基础设施：TypeScript 5.x + ESLint（@antfu）+ Vitest + Husky + Commitlint。
 - 发布：`publish.yml` 由 `v*.*.*` git tag 触发，校验 tag 与 package.json 版本一致后 `npm publish --provenance`。
-- 质量门禁：PR 阶段 `ci.yml` 跑 lint:check / typecheck / test / rules:check / delivery:verify / verify:rules:self-sufficiency / verify:skills / verify:knowledge-sources；本地 `pre-commit` 跑 lint-staged，`pre-push` 跑 typecheck + skill frontmatter 校验。
+- 质量门禁：PR 阶段 `ci.yml` 跑 lint:check / typecheck / test / rules:check；本地 `pre-commit` 跑 lint-staged，`pre-push` 跑 typecheck + rules:check。
 - 不涉及容器、服务器或云资源部署；产物为 npm 包 + 用户本地宿主目录投影。
 
 ## 待确认

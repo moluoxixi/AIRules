@@ -1,10 +1,12 @@
 #!/usr/bin/env node
 import { existsSync, mkdirSync, readdirSync, readFileSync, renameSync, writeFileSync } from 'node:fs'
 import path from 'node:path'
+import { countDeltaSpecs, validateProposal, validateTasks } from './spec-content.mjs'
 
 // 第一方 spec 归档：把 change 的 delta spec 合并进 .airules/specs/，再归档 change 目录。
 // 确定性逻辑复刻自 OpenSpec（src/core/specs-apply.ts + requirement-blocks.ts），零外部依赖。
 // 应用顺序 RENAMED → REMOVED → MODIFIED → ADDED，冲突硬失败、两阶段（全构建+校验后才写盘）。
+// 前置门禁：默认要求 ≥1 delta（--allow-empty 例外）、proposal 有效、tasks 全部 [x]（--allow-incomplete 例外）。
 
 const DELTA_SECTION_RE = /^##\s+(ADDED|MODIFIED|REMOVED|RENAMED)\s+Requirements\s*$/i
 const REQUIREMENT_RE = /^###\s*Requirement:(.+)$/i
@@ -229,9 +231,12 @@ function today() {
 }
 
 function main() {
-  const [projectRootArg, changeId] = process.argv.slice(2)
+  const rawArgs = process.argv.slice(2)
+  const allowEmpty = rawArgs.includes('--allow-empty')
+  const allowIncomplete = rawArgs.includes('--allow-incomplete')
+  const [projectRootArg, changeId] = rawArgs.filter(a => !a.startsWith('--'))
   if (!projectRootArg || !changeId) {
-    throw new Error('Usage: spec-archive.mjs <project-root> <change-id>')
+    throw new Error('Usage: spec-archive.mjs <project-root> <change-id> [--allow-empty] [--allow-incomplete]')
   }
   const projectRoot = path.resolve(projectRootArg)
   const changeDir = path.join(projectRoot, '.airules', 'changes', changeId)
@@ -240,6 +245,30 @@ function main() {
 
   if (!existsSync(changeDir)) {
     throw new Error(`change 不存在：${path.relative(projectRoot, changeDir).replace(/\\/g, '/')}`)
+  }
+
+  // 前置门禁：proposal/tasks/delta 满足后才允许归档（不满足时不写盘、不归档）。
+  const gateErrors = []
+  for (const e of validateProposal(changeDir).errors) {
+    gateErrors.push(e)
+  }
+  const tasks = validateTasks(changeDir)
+  for (const e of tasks.errors) {
+    gateErrors.push(e)
+  }
+  if (!allowIncomplete && tasks.total > 0 && !tasks.allDone) {
+    gateErrors.push(`tasks 未全部完成（${tasks.done}/${tasks.total}）；完成后再归档，或加 --allow-incomplete`)
+  }
+  if (!allowEmpty && countDeltaSpecs(changeDir) === 0) {
+    gateErrors.push('无 delta spec；如确为纯文档/纯流程变更，加 --allow-empty')
+  }
+  if (gateErrors.length > 0) {
+    for (const e of gateErrors) {
+      console.log(`FAIL ${e}`)
+    }
+    console.log(`────────────────────────────\nFAIL spec archive 前置条件未满足：${gateErrors.length} 个问题`)
+    process.exitCode = 1
+    return
   }
 
   // 收集 delta spec：changes/<id>/specs/<capability>/spec.md

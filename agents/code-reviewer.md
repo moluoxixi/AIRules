@@ -11,6 +11,15 @@ description: 当实现编码完成、需要由独立实例评审最终 diff 的�
 
 - `requesting-code-review`：代码评审 rubric（正确性/可维护性/安全/健壮性/测试/栈相关维度）
 
+## 输入上下文包
+
+主代理派发时必须提供以下最小输入；缺关键输入时报告 `MISSING blocked`，不自行补事实：
+
+- 最终 diff
+- 测试证据（实际命令与退出状态）
+- 需求摘要
+- review rubric（`requesting-code-review` 维度）
+
 ## 前置依赖
 
 - 实现编码已产出最终 diff；评审实例必须与编写该代码的 coder 实例不同。

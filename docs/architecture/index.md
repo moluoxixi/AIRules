@@ -6,4 +6,4 @@
 |---|---|---|
 | [overview.md](./overview.md) | 架构总览 | - |
 | [host-agent-mcp-mapping.md](./host-agent-mcp-mapping.md) | 宿主 / agent / MCP 投影映射 | - |
-| [agent-layer.md](./agent-layer.md) | Agent 层角色与 Skill 复用 | accepted |
+| [agent-layer.md](./agent-layer.md) | Agent 层角色与 Skill 复用（5-agent） | accepted |
