@@ -119,9 +119,12 @@ task reviewer 给两个结论：spec 合规与代码质量，缺任一不算完�
 - 某任务评审干净后，在做其它记账的同一条消息里追加一行：`Task N: complete (commits <base7>..<head7>, review clean)`。
 - 账本是恢复地图：它命名的提交在 git 里真实存在，compaction 后信账本与 `git log` 而非记忆。`git clean -fdx` 会毁账本，被毁则从 `git log` 恢复。
 
+可选 blocked 传播扩展：当某 `MISSING`/`BLOCKED` 跨多个任务同源时（如某需求字段缺失同时卡住任务 3、5、7），在账本里给它一个稳定 `blocked_id`，记一行 `BLOCKED <id>: <源头/原因>, 受阻任务 3/5/7, 解除条件 <…>`。用户澄清解除后据此批量解锁受阻任务，不必逐任务重新发现同一阻塞。仅在多任务同源阻塞时启用，单点阻塞直接记在该任务行即可，不强制为每个 MISSING 立条目。
+
 ## 输出边界
 
 - implementer/reviewer/fixer 均为隔离子代理；reviewer 必须 ≠ 编写该代码的 coder 实例，不得自评。
+- **并行实例 MUST worktree 隔离**：同一会话内若并行派多个写代码的 implementer，各自必须在独立 worktree（见 `using-git-worktrees`/`dispatching-parallel-agents`），不共用工作目录；合并前做冲突预演。顺序执行单 implementer 时无此要求。
 - 每次委派自包含，不灌主会话历史；回传一律视为待复核数据，由主代理用 diff/命令输出/日志核实。
 - 验证状态只用 `PASS` / `FAIL` / `MISSING` / `NOT RUN` / `N/A`，spec 合规与代码质量缺任一不算完成。
 - 未经用户明确同意不在 main/master 上开始实现；末尾走 `finishing-a-development-branch` 收尾。

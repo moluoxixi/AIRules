@@ -40,5 +40,6 @@ name: requesting-code-review
 
 - 只读评审，按 `Critical` / `Improvement` / `Nitpick` 分级给出结论，不直接改代码。
 - 结论必须基于实际 diff 与可运行证据，不得伪装 PASS、不得放过 `Critical`。
+- 失败结论标 `escalation_type`——`code_quality`（实现层问题，回 coder）或 `requirement_mismatch`（方向偏离需求，回溯需求分析）：区分"做得不好"与"做错了东西"，避免在错误方向上反复打补丁；分不清默认 `code_quality` 并说明疑点。
 - `Critical` 必须修复后才继续；`Improvement` 进入下一步前处理；`Nitpick` 可记录后续。
 - 评审结论由主代理复核后决定是否回 coder 修复；评审者若有误，coder 可带技术理由反驳。

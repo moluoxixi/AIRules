@@ -34,8 +34,27 @@ description: 当计划阶段需要把验收标准转成测试用例清单时使�
 - 状态流转：加载、成功、空、错误态
 - 关键 E2E 流程：贯穿多组件的用户旅程
 
+## 机器可解析验收清单
+
+除自然语言矩阵外，同时产出一份机器可解析的验收清单（YAML），给一致性评审作可逐条打勾的结构化锚点——避免评审退化为纯自然语言语义比对、易遗漏或误判。每条含稳定 `id`、`description`、`acceptance_condition`：
+
+```yaml
+acceptance_checklist:
+  - id: AC-1
+    description: <这条验收点测什么>
+    acceptance_condition: <可判定的通过条件——具体到可观察行为/返回值/状态，不写"正确处理">
+    traces_to: <对应的需求/验收标准来源>
+  - id: AC-2
+    description: ...
+    acceptance_condition: ...
+    traces_to: ...
+```
+
+`id` 是清单内稳定标识，下游 `consistency-check` 据此逐条标 `COVERED` / `NOT_COVERED` / `PARTIAL`。每条 `acceptance_condition` 必须可判定（能明确说出"满足/不满足"），不可写成含糊目标。清单与上面两个矩阵是同一批验收点的两种视图——矩阵供人读、清单供评审机械核对，不得二者覆盖范围不一致。
+
 ## 输出边界
 
 - 只产出用例清单，不编写测试实现代码。
 - 每条用例必须可追溯到一条验收标准；覆盖不足时补用例或标 `MISSING`，不得删减验收标准。
+- 机器可解析清单（YAML）与自然语言矩阵覆盖范围必须一致；每条 `acceptance_condition` 可判定，`id` 稳定供下游打勾。
 - 矩阵中的示例条目仅供格式参考，需按真实验收标准填充，不得直接当作最终用例。

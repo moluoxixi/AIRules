@@ -33,12 +33,23 @@ description: 当用户说"提炼/沉淀这些会话/distill/从会话里提炼 s
 
 判据差异的根由：skill 改变行为、需攒够模式确认其可复用；记忆是背景事实、出现一次即有值。两路不互斥——一条素材可能只命中一路。
 
+## 库级健康复核（淘汰/合并候选）
+
+闭环不能只增不减——只提炼新候选、从不复核既有库，库会退化为"未经验证的 prompt 堆积"。提炼时附带一轮**库级视角**扫描，识别既有 skill / 记忆中的退化信号，产出**淘汰/合并候选**（同样落候选区、待人工审核，绝不自动删除）：
+
+- **长期不被触发**：skill 的触发场景在近期 `sessions/`、`changes/` 中从未命中——疑似过时或与他者重叠，提合并/淘汰候选。
+- **触发但屡被覆盖/绕过**：素材显示某 skill/记忆被加载后，实际执行频繁偏离或被用户纠正——疑似指令失效或与现状冲突，提复核候选。
+- **记忆已 superseded 或事实失效**：`status: superseded`、或正文命名的文件/接口已不存在——提归档/删除候选。
+- **重复/碎片**：多条记忆或多个 skill 覆盖同一事实/职责——提合并候选。
+
+AIRules 是纯 prompt 项目、无运行时自增计数器，上述信号靠**扫描沉淀素材的启发式判断**得出，不要求每条 skill/记忆维护精确的 `recall_count`/`override_count` 字段（那是无客观信号的重型治理，违背 baseline 取舍原则）。淘汰/合并一律是候选，人工审核后才执行。
+
 ## 流程
 
 1. 读取 `.airules/sessions/*.md` 与 `.airules/changes/`（含 archive）。优先用条目自带的 `[procedural]` / `[declarative]` 分流标签；无标签的按上表语义判定。
 2. **procedural 路**：对每个 skill 候选，在 `.airules/skills-candidates/<name>/SKILL.md` 写草稿，标注来源（哪些 session/change 支撑）。
 3. **declarative 路**：对每条记忆候选，在 `.airules/memory-candidates/<slug>.md` 写草稿（frontmatter 同正式记忆格式：`name` / `description` / `metadata.type`），标注来源。
-4. 输出统一"待审清单"，两类分组列出：候选名/slug、一句话职责或事实、类型、来源依据；交用户逐个 review。
+4. 输出统一"待审清单"，分组列出：新增 skill 候选、新增记忆候选（各含名/slug、一句话职责或事实、类型、来源依据）、以及**库级淘汰/合并候选**（含目标条目、信号依据、建议动作）；交用户逐个 review。
 
 ## 候选草稿质量标准
 
@@ -52,8 +63,8 @@ description: 当用户说"提炼/沉淀这些会话/distill/从会话里提炼 s
 
 ### 记忆候选
 
-- frontmatter 完整：`name`（kebab-case，与文件名一致）、`description`（recall 判定相关性用）、`metadata.type`（`decision` / `gotcha` / `constraint` / `reference`）。
-- `decision` 须含理由，`gotcha` 须含 `**根因:**` 与 `**规避:**`。
+- frontmatter 完整：`name`（kebab-case，与文件名一致）、`description`（recall 判定相关性用）、`metadata.type`（`decision` / `gotcha` / `constraint` / `boundary` / `reference`）、`metadata.created_at`（提炼当日）、`metadata.status`（候选默认 `active`）。
+- `decision` 须含理由，`gotcha` 须含 `**根因:**` 与 `**规避:**`，`boundary` 须写明触发条件与拒绝/谨慎动作。
 - 单条聚焦一个事实，不把多个无关事实塞一条。
 
 ## 审核转正

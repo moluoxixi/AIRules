@@ -40,7 +40,9 @@ description: 当用户说"记住这条/沉淀这个知识/把这个约定存下�
 name: <kebab-case-slug>
 description: <一句话摘要——recall-memory 据此判定与当前任务是否相关>
 metadata:
-  type: decision | gotcha | constraint | reference
+  type: decision | gotcha | constraint | boundary | reference
+  created_at: <YYYY-MM-DD，写入当日>
+  status: active | superseded
 ---
 
 <事实正文。用 [[other-slug]] 链接关联记忆。>
@@ -50,8 +52,14 @@ metadata:
 
 - `decision`：确定下来的方向/取舍，正文须含**理由**（为什么这样选，否决了什么）。
 - `gotcha`：踩坑/教训，正文须追加 `**根因:**` 与 `**规避:**` 两行。
-- `constraint`：项目长期约束（架构边界、接口协议、权限模型等）。
+- `constraint`：项目长期约束（架构边界、接口协议、权限模型等）。正文应包含**负面边界**——不仅写"必须怎样"，也写"何时不做/何时拒绝"。
+- `boundary`：何时不做、何时拒绝、何时必须先确认的安全/权限边界。与纯执行类记忆（教"如何做"）相对，用于防止经验累积后行为越权。正文须写明触发条件与拒绝/谨慎动作。
 - `reference`：外部资源指针（URL、工单号、看板链接）。
+
+生命周期字段：
+
+- `created_at`：写入当日日期，供 recall 判断时效与排序。
+- `status`：默认 `active`。当新记忆推翻旧记忆时，旧记忆不直接删，改标 `status: superseded` 留可追溯轨迹；`recall-memory` 默认只召回 `active`。高置信度但已过时的记忆危害大于低相关记忆，故 status 过滤是 recall 的默认门。
 
 `MEMORY.md` 索引行格式（一条一行，正文只放索引，不放记忆内容）：
 
@@ -61,8 +69,8 @@ metadata:
 
 ## 流程
 
-1. 先查重：读 `.airules/memory/MEMORY.md`（不存在则本次需新建）。若已有文件覆盖同一事实 → 更新那个文件，不建重复；若新知识推翻了旧记忆 → 删除旧文件并移除其索引行。
-2. 选定 `type` 与 `kebab-case` slug（动词或主题在前，与文件名一致），写 `.airules/memory/<slug>.md`。
+1. 先查重：读 `.airules/memory/MEMORY.md`（不存在则本次需新建）。若已有文件覆盖同一事实 → 更新那个文件，不建重复；若新知识推翻了旧记忆 → 把旧文件标 `status: superseded`（保留可追溯轨迹，不直接删），并在 `MEMORY.md` 索引行标注其已被取代；仅当旧记忆确属错误且无追溯价值时才删除。
+2. 选定 `type` 与 `kebab-case` slug（动词或主题在前，与文件名一致），填 `created_at`（当日）与 `status: active`，写 `.airules/memory/<slug>.md`。
 3. 在 `MEMORY.md` 追加（或更新）对应索引行。
 4. 若本次是**转正候选**：写入正式库后，删除 `.airules/memory-candidates/` 下对应的候选文件，避免候选区与正式库重复。
 
