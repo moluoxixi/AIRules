@@ -46,7 +46,7 @@ name: session-capture
 ## 写入边界与约束
 
 - **脱敏**：不写密钥、token、密码、个人身份信息；涉及敏感值时只按 key 名引用（如"使用 DB_PASSWORD 环境变量"）。
-- 只写 `.airules/sessions/`；不得写 `vendor/`、`node_modules/`、`.git/` 或用户未授权位置。
+- **scope 项目局部**：只写当前项目 `.airules/sessions/`，作为该项目的原始素材；不得写 `vendor/`、`node_modules/`、`.git/` 或用户未授权位置。沉淀里若含全局可复用洞见，仅打标待 `distill-candidates` 事后判 scope，不在本 skill 决定全局/项目落点。
 - 与 `handoff` 区分：沉淀是永久积累供提炼，handoff 是临时接力文档。
 - 沉淀是**原始素材**：`[procedural]` 与 `[declarative]` 条目都由 `distill-candidates` 事后扫描提炼成候选（skill 候选 / 记忆候选，两类待审），本 skill 只负责打标分流，不直接写记忆库、skill 候选或正式记忆。
 - 用事实陈述，不附加安慰或冗余解释；候选/未确认内容显式标注，不得当作既定事实。

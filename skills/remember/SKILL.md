@@ -68,6 +68,7 @@ metadata:
 
 ## 写入边界与约束
 
+- **scope 判定**：本 skill 只写**项目** memory（`.airules/memory/`）——项目事实、约束、仓库决策、局部踩坑。用户偏好、跨项目习惯属**运行时全局 memory**，由宿主运行时承载，不写进项目仓库；可复用的程序性模式属 skill 候选，走 `distill-candidates`，不写记忆库。
 - **脱敏**：不写密钥、token、密码、个人身份信息；涉及敏感值只按 key 名引用（如"使用 `DB_PASSWORD` 环境变量"）。
 - 只写 `.airules/memory/`；不得写 `vendor/`、`node_modules/`、`.git/` 或用户未授权位置。
 - 涉及写入前若 `.airules/memory/` 不存在，按需创建该目录；不改 `spec-init` 等初始化脚本。

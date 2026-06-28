@@ -66,6 +66,7 @@ description: 当用户说"提炼/沉淀这些会话/distill/从会话里提炼 s
 ## 写入边界与约束
 
 - **候选永不自动生效**：只写 `.airules/skills-candidates/` 与 `.airules/memory-candidates/`，绝不直接写项目 skills 目录或正式 `.airules/memory/`，绝不被主代理自动加载。
+- **scope 默认项目局部**：提炼出的候选默认属当前项目（项目局部 skill / 项目 memory）。判断为全局可复用者，标注为**上游贡献候选**交人工决定是否回流 AIRules 升级为全局可分发 skill；本 skill 不在用户项目内自行把候选升级为全局资产，也不写 `constants/skills.ts`。
 - 提炼必须基于真实沉淀/变更证据，不得脑补、不得把单次偶发当可复用模式、不得把示例内容当真实事实。
 - 候选草稿正文须标注 `PENDING_REVIEW` / 候选 / 待确认性质。
 - **脱敏**：记忆候选不写密钥、token、密码、PII；敏感值按 key 名引用。

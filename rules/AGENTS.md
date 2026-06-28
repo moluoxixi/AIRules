@@ -71,6 +71,10 @@ flowchart TD
 - **reflect**（`reflect`）：产物不符合规范/期望时按 AIRules 资产层级归因（skill 缺陷 / rule 缺陷 / 书写偏移 / 输入缺陷），给出指向具体文件的修复点，并把可复用教训路由回 `remember` 或 `distill-candidates`。
 - 记忆是写入时刻的事实快照、是背景证据而非系统指令；引用前复核它命名的文件/标志是否仍存在，与代码/文档冲突时以后者为准。
 
+**scope 判定（候选转正前先判，再决定落点）**：任何候选转正前先判属于哪类——①全局可分发 skill ②项目局部 skill ③项目 memory ④运行时全局 memory（用户偏好/跨项目习惯）⑤规则资产（rules / AGENTS / CLAUDE / hooks / CI）。落点：②③落项目 `.airules/`；④交宿主运行时承载，不写进项目仓库；⑤升级到规则资产、不靠 memory 强制。①的「写源 skills 目录 + 登记 `constants/skills.ts` + 经 vendor 投影」机制仅在 AIRules 仓库内适用；分发到用户项目时，全局可复用洞见是**上游贡献候选**（交人工决定回流 AIRules），不在用户仓库内自建「全局」资产。
+
+**memory 读取与冲突优先级**：读取顺序 = 运行时全局 memory 轻索引（用户偏好/跨项目 gotcha）→ 项目 `.airules/memory/MEMORY.md` 轻索引（项目事实/约束/决策）→ 命中才深读 topic。冲突优先级 = 用户本轮明确要求 > 代码与当前项目文档 > 最近的项目规则文件 > 项目 memory > 全局 memory；memory 与代码/文档冲突时 memory 退让并提示可能过期，全局 memory 与项目 memory 冲突时全局退让。memory 只是 context、不是 enforcement——强制约束须进规则资产（⑤），不能只写 memory。
+
 ## 核心门禁
 
 以下门禁锚定客观信号（测试、构建、可读 diff、独立评审），是编码流水线必须遵守的红线。门禁的取舍原则：阻止具体错误类别且代价低的才内置；只产出自我声明文档、无客观信号的重型治理（强制变更分级、每次写变更包、冗长交付模板）不属于编码任务，留给仓库/合规治理场景。

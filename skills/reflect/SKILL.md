@@ -21,6 +21,8 @@ description: 当用户说"这文档/产物不符合规范、为什么会这样�
 
 按 AIRules 资产层级定位根因（对齐 `CLAUDE.md`「规则资产层级判定」，**不跨层归因**）。一个问题可命中多类，逐条列证据：
 
+> 归因层级（repo-maintenance / global-baseline / project-init / generated-project）回答「产物属哪层、责任在哪层规则资产」；它与进化闭环的**写入 scope**（全局 skill / 项目 skill / 项目 memory / 运行时全局 memory / 规则资产）是两套维度——前者定位缺陷归属，后者决定教训沉淀到哪。归因层级 ⊇ 写入 scope：归因可指向任一层，教训路由（见下）才据 scope 决定落点。
+
 | 根因类别 | 判据 | 典型证据 |
 |---|---|---|
 | **skill 缺陷** | 照着 skill 做也会错——触发条件/不适合场景/流程写得有歧义、缺失或自相矛盾 | 指出 skill 文件里那段含糊或缺失的指令 |
