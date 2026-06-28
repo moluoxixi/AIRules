@@ -48,6 +48,8 @@ describe('自洽检查器', () => {
     }
     fs.writeFileSync(path.join(root, 'skills', 'writing-plans', 'SKILL.md'), '---\nname: writing-plans\n---\n')
     fs.writeFileSync(path.join(root, 'docs', 'architecture', 'overview.md'), '质量门禁：lint:check / typecheck。\n')
+    fs.mkdirSync(path.join(root, 'docs', 'architecture', 'decisions'), { recursive: true })
+    fs.writeFileSync(path.join(root, 'docs', 'architecture', 'decisions', 'index.md'), '| ADR | 决策 |\n|---|---|\n')
     fs.writeFileSync(path.join(root, 'rules', 'AGENTS.md'), 'Consist -->|符合| Test\n')
     fs.writeFileSync(path.join(root, 'package.json'), JSON.stringify({ scripts: { 'lint:check': 'x', 'typecheck': 'x' } }))
   }
@@ -92,6 +94,29 @@ describe('自洽检查器', () => {
       fs.writeFileSync(path.join(root, 'rules', 'AGENTS.md'), 'Test -->|PASS| Consist\n')
       const { errors } = checkRulesConsistency(root)
       assert.ok(errors.some(e => e.includes('旧时序边')), errors.join('\n'))
+    })
+  })
+
+  it('捕获：skills 目录有 SKILL.md 但未登记 constants/skills.ts', () => {
+    withTempDir((root) => {
+      seedCleanRepo(root)
+      const orphan = path.join(root, 'skills', 'unregistered-orphan-skill')
+      fs.mkdirSync(orphan, { recursive: true })
+      fs.writeFileSync(path.join(orphan, 'SKILL.md'), '---\nname: unregistered-orphan-skill\n---\n')
+      const { errors } = checkRulesConsistency(root)
+      assert.ok(errors.some(e => e.includes('unregistered-orphan-skill') && e.includes('未登记')), errors.join('\n'))
+    })
+  })
+
+  it('捕获：ADR 文件未登记 decisions/index.md', () => {
+    withTempDir((root) => {
+      seedCleanRepo(root)
+      fs.writeFileSync(
+        path.join(root, 'docs', 'architecture', 'decisions', 'ADR-0099-orphan.md'),
+        '# ADR-0099 孤儿\n\n## 状态\n\naccepted\n',
+      )
+      const { errors } = checkRulesConsistency(root)
+      assert.ok(errors.some(e => e.includes('ADR-0099-orphan.md') && e.includes('未登记')), errors.join('\n'))
     })
   })
 })
@@ -252,5 +277,54 @@ describe('编排红线文本', () => {
     assert.doesNotMatch(rules, /Test -->\|PASS\| Consist/)
     assert.match(read('agents/consistency-reviewer.md'), /编码后、测试验证前/)
     assert.match(read('skills/consistency-check/SKILL.md'), /编码后、测试验证前/)
+  })
+
+  it('回路熔断：Consist→Code 受 max_loop（不依赖 Test 兜底）', () => {
+    const rules = read('rules/AGENTS.md')
+    // 核心门禁第 9 条须显式纳入 Consist→Code 回路
+    assert.match(rules, /Consist→Code/)
+    // Mermaid 的"不符"回边须带回路计数标注，且有溢出到 Blocked 的边
+    assert.match(rules, /Consist -->\|"不符 \(回路计数 < max_loop\)"\| Code/)
+    assert.match(rules, /Consist -->\|"回路计数 ≥ max_loop"\| Blocked/)
+  })
+
+  it('requirement_mismatch 外层回路有独立熔断计数', () => {
+    const rules = read('rules/AGENTS.md')
+    assert.match(rules, /mismatch_loop/)
+    // mismatch 分支回边须带计数标注
+    assert.match(rules, /requirement_mismatch FAIL \(mismatch_loop < max\)/)
+  })
+
+  it('subagent fix→复审循环有界', () => {
+    assert.match(read('skills/subagent-driven-development/SKILL.md'), /fix→复审循环上限/)
+  })
+
+  it('正式 memory 文件含 created_at 与 status frontmatter', () => {
+    const memDir = path.join(repoRoot, '.airules', 'memory')
+    if (!fs.existsSync(memDir)) {
+      return
+    }
+    for (const entry of fs.readdirSync(memDir)) {
+      if (!entry.endsWith('.md') || entry === 'MEMORY.md') {
+        continue
+      }
+      const content = fs.readFileSync(path.join(memDir, entry), 'utf8')
+      assert.match(content, /^\s*created_at:\s*\d{4}-\d{2}-\d{2}/m, `${entry} 缺 created_at`)
+      assert.match(content, /^\s*status:\s*(active|superseded)/m, `${entry} 缺 status`)
+    }
+  })
+
+  it('记忆进化闭环关键文本锚点存在', () => {
+    const rules = read('rules/AGENTS.md')
+    for (const anchor of ['boundary', 'superseded', '安全边界侵蚀', '库级健康复核']) {
+      assert.ok(rules.includes(anchor), `rules/AGENTS.md 缺锚点：${anchor}`)
+    }
+  })
+
+  it('vendor/ 是 git-ignored 只读沙箱（不作为源资产纳入版本库）', () => {
+    const r = spawnSync('git', ['check-ignore', 'vendor'], { cwd: repoRoot, encoding: 'utf8' })
+    // git check-ignore 命中时 status 0 并回显路径；未命中 status 1。
+    assert.equal(r.status, 0, 'vendor/ 应被 .gitignore 忽略')
+    assert.match(r.stdout, /vendor/)
   })
 })

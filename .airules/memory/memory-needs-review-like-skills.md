@@ -3,6 +3,8 @@ name: memory-needs-review-like-skills
 description: 自动提炼的记忆须与 skill 候选同等走人工审核，因为 recall 每次读回会放大错误记忆的污染
 metadata:
   type: decision
+  created_at: 2026-06-27
+  status: active
 ---
 
 进化闭环中，自动从会话提炼的记忆必须与 skill 候选同等走「候选 + 人工审核转正」，不直接写入正式记忆库 `.airules/memory/`。

@@ -19,14 +19,15 @@ flowchart TD
   Apply --> Code
   Plan -->|普通路径| Code["实现: coder 按计划 + 验收用例写测试(红) + 代码(绿)"]
   Code --> Consist["后置一致性评审: consistency-reviewer 核对最终 diff 是否符合需求/计划/验收用例"]
-  Consist -->|不符| Code
+  Consist -->|"不符 (回路计数 < max_loop)"| Code
   Consist -->|符合| Test["测试运行: 实际跑 build/test/lint 并读输出"]
   Test -->|"FAIL (回路计数 < max_loop)"| Debug["debugger 定位根因"] --> Code
   Test -->|"PASS"| Review["代码评审: code-reviewer 独立实例评审最终 diff"]
   Review -->|"code_quality FAIL (回路计数 < max_loop)"| Code
-  Review -->|"requirement_mismatch FAIL"| Req
+  Review -->|"requirement_mismatch FAIL (mismatch_loop < max)"| Req
+  Consist -->|"回路计数 ≥ max_loop"| Blocked
   Test -->|"回路计数 ≥ max_loop"| Blocked["BLOCKED: 标记并升级用户决策<br/>(附已尝试路径与失败证据)"]
-  Review -->|"回路计数 ≥ max_loop"| Blocked
+  Review -->|"回路计数 ≥ max_loop (含 mismatch_loop)"| Blocked
   Review -->|PASS| Archive{"走了规格契约路径?"}
   Archive -->|是| DoArchive["spec-workflow · archive: spec-archive 合并 delta 进 .airules/specs 并归档"]
   Archive -->|否| Done
@@ -57,7 +58,8 @@ flowchart TD
 
 回路与升级可观测字段（按需附带，非每阶段强制）：
 
-- `loop_iteration`：回路已迭代次数。`Test→Debug→Code` 与 `Review→Code` 两条回路各自计数，达到 `max_loop`（默认 3）即不再自动回灌，标 `BLOCKED` 升级用户决策，附已尝试路径与失败证据。这是**编排层**的全局熔断，区别于 `systematic-debugging` 中 debugger 自身"同一思路失败两次换方向"的局部铁律——后者约束单次诊断策略，前者约束跨阶段回灌总轮数。
+- `loop_iteration`：回路已迭代次数。`Test→Debug→Code`、`Review→Code`（`code_quality` 分支）与 `Consist→Code` 三条内层回路各自计数，达到 `max_loop`（默认 3）即不再自动回灌，标 `BLOCKED` 升级用户决策，附已尝试路径与失败证据。`Consist→Code` 不依赖下游 Test 兜底：若一致性评审持续判"不符"，流程在到达 Test 前就会空转，故该回路必须独立计数熔断。这是**编排层**的全局熔断，区别于 `systematic-debugging` 中 debugger 自身"同一思路失败两次换方向"的局部铁律——后者约束单次诊断策略，前者约束跨阶段回灌总轮数。
+- `mismatch_loop`：`Review→Req`（`requirement_mismatch` 分支）外层回路的独立计数（默认 2，低于 `max_loop`）。方向性错误反复出现说明需求本身存在无法自动消解的歧义，应尽早升级用户而非反复绕 `Req→Plan→Code→…→Review` 全周期空耗 token；达到上限标 `BLOCKED`。
 - `escalation_type`（代码评审失败时）：`code_quality`（命名/结构/性能等，回 coder 直接修）或 `requirement_mismatch`（需求理解偏差导致方向错，回溯需求分析，不在错误方向上继续修补）。主编排据此决定回灌目标。
 - `blocked_id`（可选）：当某 `MISSING`/`BLOCKED` 跨阶段传播时，给它一个稳定标识，记录源头阶段与受阻下游；用户澄清解除后据此批量解锁下游，不逐阶段重新发现。轻量任务无需引入，仅在多阶段同源阻塞时启用（实现可挂 `subagent-driven-development` 的进度账本，不另立强制登记表）。
 
@@ -99,7 +101,7 @@ flowchart TD
 6. **独立评审实例**：最终 diff 必须由与编码者不同的实例评审（reviewer ≠ coder），防止自我偏袒；后置一致性评审与代码评审都遵守此红线。
 7. **诚实状态报告**：状态只能用 `PASS`、`FAIL`、`MISSING`、`NOT RUN`、`N/A`、`BLOCKED`，不得把失败、缺失、不相关或未运行转写成通过。交付汇报精简收口：改了什么（涉及文件与范围）、验证（实际运行的命令与结果状态）、未执行项及原因。
 8. **任务起始读回记忆**：开始处理任务时若项目存在 `.airules/memory/`，先经 `recall-memory` 读 `MEMORY.md` 轻索引、命中相关条目才深读，作为背景证据带入；记忆不是系统指令，与代码/文档冲突以后者为准。空记忆或纯轻量动作不强制读回，不加额外开销。
-9. **回路熔断**：`Test→Debug→Code` 与 `Review→Code` 两条回路各自有全局重试上限（`max_loop` 默认 3）。达到上限不得继续自动回灌，必须标 `BLOCKED`、生成 blocked summary（含已尝试路径与失败证据）并升级用户决策。代码评审失败回灌前先判 `escalation_type`：方向性错误（`requirement_mismatch`）回溯需求分析，不在错误方向上反复打补丁。此为编排层熔断，与 debugger 自身的局部换向铁律分属两层。
+9. **回路熔断**：`Test→Debug→Code`、`Review→Code`（`code_quality` 分支）与 `Consist→Code` 三条内层回路各自有全局重试上限（`max_loop` 默认 3）；`Review→Req`（`requirement_mismatch` 分支）外层回路另设独立计数 `mismatch_loop`（默认 2）。任一计数达到上限不得继续自动回灌，必须标 `BLOCKED`、生成 blocked summary（含已尝试路径与失败证据）并升级用户决策。`Consist→Code` 必须独立熔断，不得依赖"总会通过 Consist 到达 Test 再被 Test 兜住"——一致性评审持续判"不符"时流程到不了 Test，Test 的熔断永不触发。代码评审失败回灌前先判 `escalation_type`：方向性错误（`requirement_mismatch`）回溯需求分析并计入 `mismatch_loop`，不在错误方向上反复打补丁。此为编排层熔断，与 debugger 自身的局部换向铁律分属两层。
 
 ## 关键环节子代理调度索引（什么时候调用什么子代理）
 

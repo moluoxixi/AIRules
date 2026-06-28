@@ -179,6 +179,38 @@ export function checkRulesConsistency(repoRoot: string): CheckResult {
     }
   }
 
+  // 7. 反向登记：skills/ 下每个含 SKILL.md 的第一方目录都必须登记进 constants/skills.ts
+  //    分发清单（防止新增 skill 漏登记而无法被投影/安装）。vendor 投影来源不在此列。
+  if (existsSync(skillsDir)) {
+    const registered = new Set(firstPartySkillNames())
+    for (const entry of readdirSync(skillsDir, { withFileTypes: true })) {
+      if (!entry.isDirectory()) {
+        continue
+      }
+      if (!existsSync(path.join(skillsDir, entry.name, 'SKILL.md'))) {
+        continue
+      }
+      if (!registered.has(entry.name)) {
+        errors.push(`skills/${entry.name}/ 含 SKILL.md 但未登记进 constants/skills.ts 分发清单`)
+      }
+    }
+  }
+
+  // 8. 每个 ADR 文件必须登记进 decisions/index.md（防止新增 ADR 漏登记而失联）。
+  const decisionsDir = path.join(archDir, 'decisions')
+  const indexPath = path.join(decisionsDir, 'index.md')
+  if (existsSync(decisionsDir) && existsSync(indexPath)) {
+    const indexContent = readFileSync(indexPath, 'utf8')
+    for (const entry of readdirSync(decisionsDir)) {
+      if (!/^ADR-\d.*\.md$/.test(entry)) {
+        continue
+      }
+      if (!indexContent.includes(entry)) {
+        errors.push(`docs/architecture/decisions/${entry} 未登记进 decisions/index.md`)
+      }
+    }
+  }
+
   return { errors }
 }
 
