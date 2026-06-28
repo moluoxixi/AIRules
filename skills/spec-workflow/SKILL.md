@@ -8,14 +8,20 @@ name: spec-workflow
 
 ## 触发条件
 
-- 用户显式要把一次变更正式立项、记录为可追溯 spec 契约时按名调用。
-- 变更涉及系统行为契约（接口/状态机/数据一致性等），值得沉淀为长期事实源。
+触发当且仅当满足下列之一：
+
+- 用户显式要把一次变更正式立项、记录为可追溯 spec 契约时按名调用；或
+- 变更会新增/修改/废弃**外部可观察的系统行为契约**（公共 API、跨模块协议、状态机、权限规则、数据一致性规则、持久化数据模型、兼容性/破坏性变化），**且该契约值得作为长期事实源维护**（后续多 agent/多模块/多团队会依赖，缺书面 spec 会导致实现/评审/回归无法稳定判定）。
+
+技术对象类型（接口/状态机/数据一致性）只是常见例子，不是充分触发条件——关键是契约是否变化且是否值得长期沉淀。
 
 ## 不适合场景
 
 - 主代理普通对话不主动加载本 skill（故省略 description），不自动触发。
-- 小改、L0/L1 可直接执行的变更 → 不必立项 spec，直接走编码流水线。
+- 纯内部实现重构且行为等价 → 不触发。
+- 小改、L0/L1、局部 bugfix 且不改长期契约 → 不必立项 spec，直接走编码流水线。
 - 纯探索、纯文档、纯格式调整 → 不需要 spec。
+- 只需一次性实现计划、不需归档为长期事实源的任务 → 走方法论层即可。
 
 ## 三态流程
 
@@ -33,9 +39,17 @@ name: spec-workflow
 - 实现中发现需求/规格需变，回到 propose 修订对应文件，不在实现里偷改契约。
 
 ### archive（归档）
-- 前置条件（默认全满足才归档）：实现完成、验证 PASS、一致性评审 PASS 或 N/A、代码评审无阻塞项；proposal 的 Why/What Changes 非空、tasks 全部 `[x]`、≥1 delta spec。
-- `node <init-project-skill>/scripts/spec-archive.mjs <project> <change-id>`。
-- 脚本前置门禁：proposal 无效 / tasks 未全部 `[x]` / 无 delta 时 **FAIL 不归档**。纯文档/纯流程变更加 `--allow-empty`（跳过 delta 要求）；确需带未完成 tasks 归档加 `--allow-incomplete`（仅在用户明确同意时）。
+
+前置条件分两类门禁，缺一不归档：
+
+- **流程门禁**（主代理基于阶段证据负责，脚本无法检查）：实现完成、验证 PASS、一致性评审 PASS 或 N/A、代码评审无阻塞项。脚本成功 ≠ 流程满足——测试/评审/一致性状态由主流程 evidence schema 负责。
+- **脚本门禁**（`spec-archive.mjs` 强制检查）：proposal 的 Why/What Changes 非空、tasks 默认全部 `[x]`、默认 ≥1 delta spec、delta 合并无冲突。
+
+执行：`node <init-project-skill>/scripts/spec-archive.mjs <project> <change-id>`。
+
+- 脚本门禁不满足（proposal 无效 / tasks 未全部 `[x]` / 无 delta）时 **FAIL 不归档**。
+- `--allow-empty` 仅跳过 delta spec 存在性要求，**不跳过 proposal/tasks 内容门禁**；它只是用户显式要求把治理决策/流程规则/纯文档变更作为可追溯 change 归档时的例外，不是普通文档变更的默认入口。普通纯文档/纯流程/纯格式变更应直接不触发 spec-workflow。
+- `--allow-incomplete` 仅跳过 tasks 全完成要求（仅在用户明确同意带未完成 tasks 归档时），不跳过 proposal/delta 门禁。
 - 门禁通过后：把 delta 合并进 `.airules/specs/<capability>/spec.md`（应用顺序 RENAMED→REMOVED→MODIFIED→ADDED），再把 change 移到 `.airules/changes/archive/<date>-<change-id>/`。
 
 ## 写入边界与约束

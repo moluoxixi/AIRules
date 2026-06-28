@@ -178,6 +178,55 @@ describe('spec 门禁行为', () => {
       assert.equal(fs.existsSync(path.join(root, '.airules', 'specs', 'auth', 'spec.md')), true)
     })
   })
+
+  // ── flag 语义隔离：例外参数只跳过自身门禁，不绕过其它门禁 ──
+
+  it('archive --allow-empty 跳过 delta，但 proposal 空仍 FAIL', () => {
+    withTempDir((root) => {
+      newChange(root, 'ae-emptywhy')
+      // proposal 用模板（Why 空），有效 tasks，无 delta
+      writeTasks(root, 'ae-emptywhy', '## 1. 组\n\n- [x] 1.1 完成\n')
+      const r = runSpec('spec-archive.mjs', root, 'ae-emptywhy', '--allow-empty')
+      assert.notEqual(r.status, 0, r.stdout)
+      assert.match(r.stdout, /Why/)
+      assert.doesNotMatch(r.stdout, /无 delta spec/)
+    })
+  })
+
+  it('archive --allow-empty 跳过 delta，但 tasks 缺失仍 FAIL', () => {
+    withTempDir((root) => {
+      newChange(root, 'ae-notasks')
+      writeProposal(root, 'ae-notasks', '动机。', '- 变更点')
+      // tasks 用模板（无任务项），无 delta
+      const r = runSpec('spec-archive.mjs', root, 'ae-notasks', '--allow-empty')
+      assert.notEqual(r.status, 0, r.stdout)
+      assert.doesNotMatch(r.stdout, /无 delta spec/)
+    })
+  })
+
+  it('archive --allow-incomplete 跳过 tasks，但 delta 缺失仍 FAIL', () => {
+    withTempDir((root) => {
+      newChange(root, 'ai-nodelta')
+      writeProposal(root, 'ai-nodelta', '动机。', '- 变更点')
+      writeTasks(root, 'ai-nodelta', '## 1. 组\n\n- [x] 1.1 完成\n- [ ] 1.2 未完成\n')
+      // 无 delta
+      const r = runSpec('spec-archive.mjs', root, 'ai-nodelta', '--allow-incomplete')
+      assert.notEqual(r.status, 0, r.stdout)
+      assert.match(r.stdout, /无 delta spec/)
+    })
+  })
+
+  it('validate --allow-empty 跳过 delta 数量，但 proposal 空仍 FAIL', () => {
+    withTempDir((root) => {
+      newChange(root, 've-emptywhy')
+      // proposal 用模板（Why 空），有效 tasks，无 delta
+      writeTasks(root, 've-emptywhy', '## 1. 组\n\n- [x] 1.1 完成\n')
+      const r = runSpec('spec-validate.mjs', root, 've-emptywhy', '--allow-empty')
+      assert.notEqual(r.status, 0, r.stdout)
+      assert.match(r.stdout, /## Why 为空/)
+      assert.doesNotMatch(r.stdout, /无 delta spec/)
+    })
+  })
 })
 
 // ── 3. 红线文本断言 ──────────────────────────────────────────

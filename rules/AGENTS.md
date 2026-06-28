@@ -6,7 +6,7 @@
 
 ```mermaid
 flowchart TD
-  Intake["任务进入"] --> Gate{"需要规格契约?<br/>(系统行为/接口/状态机/数据一致性)"}
+  Intake["任务进入"] --> Gate{"需要规格契约?<br/>(外部可观察行为契约变化 + 值得长期沉淀;<br/>接口/状态机/数据一致性仅为例)"}
   Gate -->|否, 小改/L0L1| Req
   Gate -->|是| Propose["spec-workflow · propose: spec-new-change 建变更骨架"]
   Propose --> Req
@@ -15,8 +15,9 @@ flowchart TD
   Req -->|歧义/关键事实缺失| Clarify["澄清: 向用户提问"] --> Req
   Req --> Plan["计划: planner 冻结范围 + 产出实现计划 + 验收用例清单"]
   Plan -->|规格契约路径| Spec["落盘 proposal.md + specs/delta + tasks.md，spec-validate 校验"]
-  Spec --> Code
-  Plan -->|普通路径| Code["实现(spec-workflow · apply): coder 按栈写测试(红) + 代码(绿)，勾选 tasks"]
+  Spec --> Apply["spec-workflow · apply: 按 tasks.md 逐条落地并勾选"]
+  Apply --> Code
+  Plan -->|普通路径| Code["实现: coder 按计划 + 验收用例写测试(红) + 代码(绿)"]
   Code --> Consist["后置一致性评审: consistency-reviewer 核对最终 diff 是否符合需求/计划/验收用例"]
   Consist -->|不符| Code
   Consist -->|符合| Test["测试运行: 实际跑 build/test/lint 并读输出"]
@@ -54,7 +55,7 @@ flowchart TD
 ### 方法论层 vs 规格持久化层
 
 - **方法论层**（默认）：需求/计划/测试设计的"怎么想清楚"由编码流水线 skill 承担——`brainstorming`、`writing-plans`、`test-design`。小改、L0/L1 可直接执行的变更只走方法论层（图中"否, 小改/L0L1"分支），不必立项规格。
-- **规格持久化层**（按需）：变更涉及系统行为契约（接口/状态机/数据一致性等）、值得沉淀为长期可追溯事实源时，用 `spec-workflow` 三态包裹主线，把结论固化为 `.airules/specs/` 规格：
+- **规格持久化层**（按需）：仅当满足触发条件——变更会新增/修改/废弃**外部可观察的系统行为契约**（如公共 API、跨模块协议、状态机、权限规则、数据一致性规则、持久化数据模型、兼容性/破坏性变化），**且该契约值得作为长期事实源维护**（后续多 agent/多模块/多团队会依赖、缺书面 spec 会导致实现/评审/回归无法稳定判定）；或用户显式要求正式立项——才用 `spec-workflow` 三态包裹主线，把结论固化为 `.airules/specs/` 规格。下列情形**不触发**：纯内部实现重构且行为等价、小改/L0/L1/局部 bugfix 且不改长期契约、纯探索/纯格式/普通文档更新、只需一次性实现计划不需归档为长期事实源。技术对象类型（接口/状态机/数据一致性）只是常见例子，不是充分触发条件——关键是契约是否变化且是否值得长期沉淀。三态分工：
   - **propose**：进入需求/计划前 `spec-new-change` 建变更骨架；需求与计划的结论落盘成 `proposal.md` + `specs/<capability>/spec.md`(delta) + `tasks.md`，`spec-validate` 校验 delta 格式。需求/计划内容仍由 `brainstorming`/`writing-plans`/`test-design` 产出，spec-workflow 只负责固化。
   - **apply**：实现阶段按 `tasks.md` 逐条落地并勾选，对应主线"实现→一致性评审→测试"。
   - **archive**：代码评审通过后 `spec-archive` 把 delta 合并进 `.airules/specs/`（RENAMED→REMOVED→MODIFIED→ADDED，冲突硬失败）并归档变更目录。
