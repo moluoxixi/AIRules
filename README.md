@@ -8,10 +8,10 @@
 
 AIRules is a **composable AI skill distribution system**. The core idea is simple:
 
-- **Clone** mature AI Skills from the community (Anthropic, Google Gemini, OpenAI, Superpowers, etc.)
+- **Clone** curated AI Skills from mature community sources (Anthropic, Google Gemini, OpenAI, PM Skills, etc.)
 - **Write** your own domain-specific Skills
 - **Compose** these small, modular units into your personalized development best practices
-- **Distribute** them to all your AI agents (Claude, Cursor, Codex, Gemini, etc.) with one command
+- **Distribute** them to your AI agents (Claude, Cursor, Codex, Trae, Qoder, OpenCode, etc.) with one command
 
 ## Core Philosophy
 
@@ -20,13 +20,14 @@ AIRules is a **composable AI skill distribution system**. The core idea is simpl
 ```
 ┌─────────────────────────────────────────────┐
 │  🔧 First-Party Skills (your own)           │ ← Your competitive edge
-│  init-project / knowledge-search / docs      │
+│  init-project / workflow / spec / memory     │
 ├─────────────────────────────────────────────┤
 │  📦 Third-Party Skills (cloned from mature  │ ← Stand on the shoulders
-│  repos) superpowers · anthropic/design · ...│   of giants
+│  repos) gemini/review · anthropic/design ·  │   of giants
+│  openai/playwright · pm-skills · ...         │
 ├─────────────────────────────────────────────┤
 │  🚀 Distribution Engine (one-command deploy │ ← Automated infrastructure
-│  to all AI agents)                          │
+│  to supported AI agents)                    │
 └─────────────────────────────────────────────┘
 ```
 
@@ -37,14 +38,14 @@ AIRules is a **composable AI skill distribution system**. The core idea is simpl
 | **Small, Modular Units** | Each skill does one thing — independent, testable, replaceable |
 | **Composition > Monolith** | Like Unix pipes — combine small tools to solve big problems |
 | **Capability First** | Install workflow, tool, design, and verification skills by default; generate code standards from the current repository |
-| **Self-Healing Distribution** | One command syncs to all agents with auto link repair and verification |
+| **Self-Healing Distribution** | One command syncs to configured agents with auto link repair and verification |
 
 ## What You Get
 
 - 🔥 **Curated** workflow, tool, design, and verification AI Skills out of the box
 - 🧠 **Automatic CodeGraph install** via `npm install --global @colbymchenry/codegraph`, followed by `codegraph install`, during default sync
 - 🧱 **Reserved first-party expansion slots** so you can add your own top-level skills later without changing the distribution model
-- 🌐 **Multi-agent sync**: configure once, works across Claude / Cursor / Codex / Hermes / Qoder / Trae / OpenCode / CC-Switch
+- 🌐 **Multi-agent sync**: configure once, works across Claude / Cursor / Codex / Hermes / Qoder / Trae / OpenCode / CC-Switch and the `.agents` shared layer
 - 🔄 **Continuous updates**: one command pulls latest upstream skills
 
 ## Installation
@@ -53,6 +54,7 @@ AIRules is a **composable AI skill distribution system**. The core idea is simpl
 
 ```bash
 npm install -g pnpm
+pnpm install
 pnpm build
 npm link
 airules sync --host all
@@ -64,7 +66,7 @@ Add a local skill and sync it to every host:
 airules add ./my-skill --host all
 ```
 
-The `add` command requires the source directory to contain `SKILL.md`. It copies the skill to `~/.moluoxixi/skills/<skill-name>` and then uses the same vendor/host projection pipeline.
+The `add` command requires the source directory to contain `SKILL.md`. It copies the skill to `~/.moluoxixi/local/skills/<skill-name>` and then uses the same vendor/host projection pipeline.
 
 **macOS / Linux / Git Bash:**
 
@@ -115,7 +117,7 @@ The workflow uses `npm install` because this repository intentionally does not t
 ```bash
 git clone https://github.com/moluoxixi/AIRules.git "$HOME/.moluoxixi"
 cd "$HOME/.moluoxixi"
-npm run rules:install -- --host <host-name> (e.g., claude)
+npm run rules:install -- --host claude
 ```
 
 **Windows CMD:**
@@ -123,7 +125,7 @@ npm run rules:install -- --host <host-name> (e.g., claude)
 ```cmd
 git clone https://github.com/moluoxixi/AIRules.git "%USERPROFILE%\.moluoxixi"
 cd "%USERPROFILE%\.moluoxixi"
-npm run rules:install -- --host <host-name> (e.g., claude)
+npm run rules:install -- --host claude
 ```
 
 **Windows PowerShell:**
@@ -131,7 +133,7 @@ npm run rules:install -- --host <host-name> (e.g., claude)
 ```powershell
 git clone https://github.com/moluoxixi/AIRules.git "$env:USERPROFILE\.moluoxixi"
 cd "$env:USERPROFILE\.moluoxixi"
-npm run rules:install -- --host <host-name> (e.g., claude)
+npm run rules:install -- --host claude
 ```
 
 > [!TIP]
@@ -157,6 +159,7 @@ Common options:
 | `--host <name\|all>` | Target host, defaults to `all` |
 | `--skip-vendors` | Do not refresh third-party vendor repos during `sync` |
 | `--skip-sync` | Add the user skill without projecting it immediately |
+| `--sync-vendors` | Refresh third-party vendor repos while running `add`; `add` skips vendor refresh by default |
 | `--no-verify` | Skip host verification |
 
 ---
@@ -165,21 +168,22 @@ Common options:
 
 Moluoxixi AIRules supports a growing ecosystem of AI agents through automated projection:
 
-| Agent              | `--host` Value | Host Path                 | Projection Method | Rules Baseline |
-|--------------------|----------------|---------------------------|-------------------|----------------|
-| **Claude Code**    | `claude` | `~/.claude/`              | Symlink | `CLAUDE.md` |
-| **Codex**          | `codex` | `~/.codex/`               | Symlink | `AGENTS.md` |
-| **Hermes**         | `hermes` | `~/AppData/Local/hermes/` | Symlink + baseline block | Appended into `SOUL.md` |
-| **Hermes Desktop** | `hermes desktop` | `~/AppData/Local/hermes/` | Symlink + baseline block | Appended into `SOUL.md` |
-| **Cursor**         | `cursor` | `~/.cursor/`              | Symlink | `AGENTS.md` |
-| **Trae**           | `trae` | `~/.trae/`                | Symlink; MCP at `~/AppData/Roaming/Trae/User/mcp.json` | `AGENTS.md` |
-| **Trae CN**        | `trae-cn` | `~/.trae-cn/`            | Symlink; MCP at `~/AppData/Roaming/Trae CN/User/mcp.json` | `AGENTS.md` |
-| **Trae Solo**      | `trae-solo` | `~/AppData/Roaming/TRAE SOLO/User/` | MCP only | N/A |
-| **Trae Solo CN**   | `trae-solo-cn` | `~/AppData/Roaming/TRAE SOLO CN/User/` | MCP only | N/A |
-| **Qoder**          | `qoder` | `~/AppData/Roaming/Qoder/SharedClientCache/` | MCP only | N/A |
-| **QoderWork**      | `qoderwork` | `~/.qoderwork/`        | Symlink; no verified MCP config | `AGENTS.md` |
-| **OpenCode**       | `opencode` | `~/.config/opencode/`     | Symlink | `AGENTS.md` |
-| **CC-Switch**      | `cc-switch` | `~/.cc-switch/`           | Symlink | `AGENTS.md` |
+| Agent | `--host` Value | Host / MCP Path | Projection Method | Rules Baseline |
+|-------|----------------|-----------------|-------------------|----------------|
+| **Claude Code** | `claude` | `~/.claude/` | Skills + agents symlink; MCP at `~/.claude/.mcp.json` | `CLAUDE.md` |
+| **Codex** | `codex` | `~/.codex/` | Skills symlink; agents converted to TOML; MCP in `config.toml` | `AGENTS.md` |
+| **Hermes** | `hermes` | `~/AppData/Local/hermes/` | Skills symlink + baseline managed block | Appended into `SOUL.md` |
+| **Hermes Desktop** | `hermes desktop` | `~/AppData/Local/hermes/` | Skills symlink + baseline managed block | Appended into `SOUL.md` |
+| **Cursor** | `cursor` | `~/.cursor/` | Skills symlink to `skills-cursor`; agents symlink; MCP at `mcp.json` | `AGENTS.md` |
+| **Agents.md shared layer** | `agentsmd` | `~/.agents/` | Skills symlink + agents projected to `subagents/`; explicit only, not included in `--host all` | N/A |
+| **Trae** | `trae` | `~/.trae/`; MCP at `~/AppData/Roaming/Trae/User/mcp.json` | Skills + agents symlink; MCP merge | `AGENTS.md` |
+| **Trae CN** | `trae-cn` | `~/.trae-cn/`; MCP at `~/AppData/Roaming/Trae CN/User/mcp.json` | Skills + agents symlink; MCP merge | `AGENTS.md` |
+| **Trae Solo** | `trae-solo` | MCP at `~/AppData/Roaming/TRAE SOLO/User/mcp.json` | MCP only | N/A |
+| **Trae Solo CN** | `trae-solo-cn` | MCP at `~/AppData/Roaming/TRAE SOLO CN/User/mcp.json` | MCP only | N/A |
+| **Qoder** | `qoder` | `~/.qoder/`; MCP at `~/AppData/Roaming/Qoder/SharedClientCache/mcp.json` | Skills + agents symlink; MCP merge | `AGENTS.md` |
+| **QoderWork** | `qoderwork` | `~/.qoderwork/` | Skills + agents symlink; no verified MCP config | `AGENTS.md` |
+| **OpenCode** | `opencode` | `~/.config/opencode/` | Skills + agents symlink; MCP in `opencode.json` | `AGENTS.md` |
+| **CC-Switch** | `cc-switch` | `~/.cc-switch/` | Skills + agents symlink | `AGENTS.md` |
 
 > [!NOTE]
 > All first-party and curated third-party skills are automatically projected into the agent's dedicated skills directory during installation. Hermes `SOUL.md` is an identity/persona file, so AIRules never overwrites it — instead it injects the rules baseline as an idempotent managed block wrapped in `<!-- AIRULES:BASELINE:START/END -->`. Each `sync` removes the old block and rewrites the latest one, keeping exactly one copy without clobbering your identity content. AIRules no longer ships its former Hermes-inspired learning/curation skills by default; learning candidates remain an internal document convention, not an installed agent skill.
@@ -190,19 +194,16 @@ Moluoxixi AIRules supports a growing ecosystem of AI agents through automated pr
 
 ### First-Party Skills (Custom)
 
-| Name | Description |
-|------|-------------|
-| **init-project** | New-project initialization skill that analyzes project context, injects rules into root `AGENTS.md`, links `CLAUDE.md`, and runs `codegraph init -i` |
-| **architecture-docs** | Generates or updates architecture docs, module boundaries, and ADRs under `docs/architecture/` while maintaining docs navigation |
-| **prd-docs** | Generates or updates business PRDs under `docs/prds/` and maintains docs navigation |
-| **api-docs** | Generates or updates API and integration contracts under `docs/api/` and maintains docs navigation |
-| **components-docs** | Generates or updates frontend component docs under `docs/components/` and maintains docs navigation |
-| **test-docs** | Generates or updates test design and validation docs under `docs/test/` and maintains docs navigation |
-| **retrospective-correction** | Handles implementation drift with lightweight direct fixes for minor deviations and confirmed correction plans for major deviations |
-| **handoff** | When a session must pause or hand off to another agent, compacts progress into a handoff doc (written to temp dir, references existing artifacts, redacted) for a fresh agent to pick up |
-| **architecture-deepening** | When improving architecture, finding refactor opportunities, or eliminating shallow modules, produces deepening candidates and cross-seam testing strategy based on the "deep module" lens |
+| Area | Skills |
+|------|--------|
+| **Project and spec lifecycle** | `init-project`, `spec-workflow`, `handoff` |
+| **Requirement, planning, and test design** | `brainstorming`, `writing-plans`, `test-design` |
+| **Implementation and testing** | `test-driven-development`, `unit-testing`, `interaction-testing`, `verification-before-completion`, `systematic-debugging` |
+| **Review and correction** | `consistency-check`, `requesting-code-review`, `receiving-code-review` |
+| **Agent orchestration** | `executing-plans`, `subagent-driven-development`, `dispatching-parallel-agents`, `using-git-worktrees`, `finishing-a-development-branch` |
+| **Memory and evolution** | `session-capture`, `distill-candidates`, `recall-memory`, `remember`, `reflect` |
 
-> First-party skills may live under nested source folders, but installation flattens them into `vendor/skills/<skill-name>`. First-party rules live in `rules/AGENTS.md`; CodeGraph install commands live in the vendor setup section of `constants/skills.ts`.
+> First-party skills may live under nested source folders, but installation flattens them by leaf directory name into `vendor/skills/<skill-name>`. First-party rules live in `rules/AGENTS.md`; first-party agents live in `agents/`; CodeGraph install commands live in the vendor setup section of `constants/skills.ts`.
 
 ### Third-Party Skills (Curated)
 
@@ -212,7 +213,8 @@ Moluoxixi AIRules supports a growing ecosystem of AI agents through automated pr
 | **Vercel Labs** | find-skills-vercel | Open ecosystem skill discovery and installation |
 | **Anthropic** | frontend-design-anthropic | Production-grade frontend visual design guidance |
 | **OpenAI** | playwright-openai | Browser automation and UI-flow debugging |
-| **Superpowers** | All upstream skills under `skills/` | Full Superpowers namespace installation, flattened into `vendor/skills/<skill-name>` |
+| **Product on Purpose PM Skills** | deliver-prd, deliver-user-stories, deliver-acceptance-criteria, deliver-edge-cases, develop-adr, develop-solution-brief | Product and planning methods used alongside first-party workflow skills |
+| **Superpowers** | N/A by default | Superpowers methods have been adapted into first-party skills; the upstream namespace is not projected by default to avoid duplicate method skills |
 
 > Curated third-party skills use source suffixes as installation names to avoid bare-name collisions with Superpowers, user-local skills, or other vendors.
 
@@ -221,17 +223,22 @@ Moluoxixi AIRules supports a growing ecosystem of AI agents through automated pr
 ```
 ~/.moluoxixi/
 ├── rules/
-│   └── AGENTS.md          # Repository-level operating rules
+│   └── AGENTS.md          # Global rules baseline projected to hosts
+├── agents/                 # First-party subagent role contracts
+├── mcp/
+│   └── mcp.json            # Neutral MCP source projected per host format
 ├── skills/                  # First-party skills (your core assets)
 │   ├── init-project/
 │   │   ├── references/
 │   │   └── scripts/
-│   ├── architecture-docs/
-│   ├── api-docs/
-│   ├── components-docs/
-│   ├── prd-docs/
-│   ├── retrospective-correction/
-│   └── test-docs/
+│   ├── spec-workflow/
+│   ├── brainstorming/
+│   ├── writing-plans/
+│   ├── test-driven-development/
+│   ├── verification-before-completion/
+│   └── ...
+├── local/
+│   └── skills/              # User-added skills copied by `airules add`
 ├── vendor/
 │   ├── repos/               # Cloned third-party source repos
 │   └── skills/              # Flattened extracted skills
@@ -249,7 +256,7 @@ There are many AI rules repositories out there. Here's what makes AIRules differ
 |-----------------|---------|
 | One large rules file | Modular, composable skill units |
 | Manual copy-paste | Script-driven automated distribution |
-| Single agent support | 7 AI agents supported simultaneously |
+| Single agent support | Many host targets plus the `.agents` shared layer |
 | Everything custom-written | Clone mature skills + write only what's unique |
 | One-time setup | Continuous sync + self-healing repair |
 
