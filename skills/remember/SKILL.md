@@ -10,7 +10,7 @@ description: 当用户说"记住这条/沉淀这个知识/把这个约定存下�
 两个入口写入正式记忆库：
 
 1. **显式即写**：用户当场口述"记住这条"——口述即审核，直接写入，不绕候选。
-2. **转正候选**：`distill-candidates` 提炼的记忆候选经用户审核通过后，由本 skill 把它从 `.airules/memory-candidates/` 转正写入 `.airules/memory/`。
+2. **转正候选**：`distill-candidates` 提炼的记忆候选经用户审核通过后，由本 skill 把它从 `.airules/memory-candidates/` 转正写入 `.airules/memory/`。**转正前置门**：候选 frontmatter 的 `review_status` 必须为 `approved`；`pending`（未审）或 `rejected`（已弃）一律拒绝转正，不得越过人工审核。`review_status` 是写入端唯一持久化的审核信号，与 `metadata.status`（记忆生命周期）正交。
 
 ## 触发条件
 
@@ -70,9 +70,9 @@ metadata:
 ## 流程
 
 1. 先查重：读 `.airules/memory/MEMORY.md`（不存在则本次需新建）。若已有文件覆盖同一事实 → 更新那个文件，不建重复；若新知识推翻了旧记忆 → 把旧文件标 `status: superseded`（保留可追溯轨迹，不直接删），并在 `MEMORY.md` 索引行标注其已被取代；仅当旧记忆确属错误且无追溯价值时才删除。
-2. 选定 `type` 与 `kebab-case` slug（动词或主题在前，与文件名一致），填 `created_at`（当日）与 `status: active`，写 `.airules/memory/<slug>.md`。
+2. 选定 `type` 与 `kebab-case` slug（动词或主题在前，与文件名一致），填 `created_at`（当日）与 `status: active`，写 `.airules/memory/<slug>.md`。正式记忆**不带 `review_status`**——该字段只存在于候选区，转正即脱离审核态。
 3. 在 `MEMORY.md` 追加（或更新）对应索引行。
-4. 若本次是**转正候选**：写入正式库后，删除 `.airules/memory-candidates/` 下对应的候选文件，避免候选区与正式库重复。
+4. 若本次是**转正候选**：先确认候选 `review_status` 为 `approved`（非 `approved` 拒绝转正）；写入正式库后，删除 `.airules/memory-candidates/` 下对应的候选文件，避免候选区与正式库重复。
 
 ## 写入边界与约束
 

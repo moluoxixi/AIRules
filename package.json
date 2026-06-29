@@ -37,6 +37,7 @@
     "sync:update-lock": "tsx scripts/sync-vendors.ts --update-lock",
     "rules:install": "tsx scripts/cli.ts sync",
     "rules:check": "tsx scripts/check-rules-consistency.ts",
+    "candidates:review": "tsx scripts/review-candidates.ts",
     "pretest": "npx tsx scripts/sync-vendors.ts",
     "test": "vitest run",
     "typecheck": "tsc --noEmit",

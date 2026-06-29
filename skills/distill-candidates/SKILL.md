@@ -47,9 +47,9 @@ AIRules 是纯 prompt 项目、无运行时自增计数器，上述信号靠**�
 ## 流程
 
 1. 读取 `.airules/sessions/*.md` 与 `.airules/changes/`（含 archive）。优先用条目自带的 `[procedural]` / `[declarative]` 分流标签；无标签的按上表语义判定。
-2. **procedural 路**：对每个 skill 候选，在 `.airules/skills-candidates/<name>/SKILL.md` 写草稿，标注来源（哪些 session/change 支撑）。
-3. **declarative 路**：对每条记忆候选，在 `.airules/memory-candidates/<slug>.md` 写草稿（frontmatter 同正式记忆格式：`name` / `description` / `metadata.type`），标注来源。
-4. 输出统一"待审清单"，分组列出：新增 skill 候选、新增记忆候选（各含名/slug、一句话职责或事实、类型、来源依据）、以及**库级淘汰/合并候选**（含目标条目、信号依据、建议动作）；交用户逐个 review。
+2. **procedural 路**：对每个 skill 候选，在 `.airules/skills-candidates/<name>/SKILL.md` 写草稿，frontmatter 含 `review_status: pending`，标注来源（哪些 session/change 支撑）。
+3. **declarative 路**：对每条记忆候选，在 `.airules/memory-candidates/<slug>.md` 写草稿（frontmatter 同正式记忆格式：`name` / `description` / `metadata.type`，**外加顶层 `review_status: pending`**），标注来源。
+4. 输出统一"待审清单"，分组列出：新增 skill 候选、新增记忆候选（各含名/slug、一句话职责或事实、类型、来源依据）、以及**库级淘汰/合并候选**（含目标条目、信号依据、建议动作）；交用户逐个 review。可运行 `npm run candidates:review list` 复核候选区当前状态（按 `review_status` 分组）。
 
 ## 候选草稿质量标准
 
@@ -63,16 +63,19 @@ AIRules 是纯 prompt 项目、无运行时自增计数器，上述信号靠**�
 
 ### 记忆候选
 
-- frontmatter 完整：`name`（kebab-case，与文件名一致）、`description`（recall 判定相关性用）、`metadata.type`（`decision` / `gotcha` / `constraint` / `boundary` / `reference`）、`metadata.created_at`（提炼当日）、`metadata.status`（候选默认 `active`）。
+- frontmatter 完整：`name`（kebab-case，与文件名一致）、`description`（recall 判定相关性用）、`metadata.type`（`decision` / `gotcha` / `constraint` / `boundary` / `reference`）、`metadata.created_at`（提炼当日）、`metadata.status`（候选默认 `active`）、顶层 `review_status`（候选一律 `pending`）。
 - `decision` 须含理由，`gotcha` 须含 `**根因:**` 与 `**规避:**`，`boundary` 须写明触发条件与拒绝/谨慎动作。
 - 单条聚焦一个事实，不把多个无关事实塞一条。
+
+`review_status`（顶层字段）与 `metadata.status`（记忆生命周期 `active`/`superseded`）**正交**：前者记"审核了没"（`pending` → 人工审核改 `approved`/`rejected`），后者记"事实是否仍有效"。距离写入正式库前，候选恒为 `pending`；只有人工显式改 `approved` 才允许 `remember` 转正。`npm run candidates:review validate` 把"frontmatter 可解析 + `review_status` 为合法枚举"作为客观门禁。
 
 ## 审核转正
 
 候选区的内容由用户审核后**显式转正**，本 skill 不自行提升：
 
-- 批准的 **skill 候选** → 用户显式操作迁入项目 skills 目录。
-- 批准的 **记忆候选** → 交 `remember` 转正写入 `.airules/memory/` 并登记 `MEMORY.md`。
+- 审核动作 = 把候选 frontmatter 的 `review_status` 由 `pending` 改为 `approved`（采纳）或 `rejected`（弃用）。这是写入端唯一持久化的审核信号，重跑 distill 据此区分"已审"与"新提"，不靠人脑记忆。
+- 批准的 **skill 候选**（`approved`）→ 用户显式操作迁入项目 skills 目录。
+- 批准的 **记忆候选**（`approved`）→ 交 `remember` 转正写入 `.airules/memory/` 并登记 `MEMORY.md`；`remember` 只转正 `approved`，拒绝 `pending`/`rejected`。
 
 ## 写入边界与约束
 
