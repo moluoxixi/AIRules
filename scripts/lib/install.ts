@@ -1006,10 +1006,19 @@ function projectHooksJson(targetFile: string, hooks: HookProjection, hostScript:
   writeFileSync(targetFile, `${JSON.stringify(root, null, 2)}\n`, 'utf8')
 }
 
+/** 迁移兼容：清理旧版无 scriptName 的通用受管块（`# >>> AIRULES HOOK >>>` 后直接 `>>>`）。 */
+const LEGACY_HOOK_BLOCK_REGEX = /\n*# >>> AIRULES HOOK >>>[\s\S]*?(?:# <<< AIRULES HOOK <<<|$)\n*/g
+
 /** TOML 宿主（Codex）：用受管块写 [[hooks.<event>]]，幂等替换、保留块外用户内容。 */
-function projectHooksToml(targetFile: string, event: string, hostScript: string, _scriptName: string) {
+function projectHooksToml(targetFile: string, event: string, hostScript: string, scriptName: string) {
   const prev = readHostConfigForMerge(targetFile)
-  const cleaned = prev.replace(/\n*# >>> AIRULES HOOK >>>[\s\S]*?(?:# <<< AIRULES HOOK <<<|$)\n*/g, '\n').trimEnd()
+  // 受管块按 scriptName 作唯一标识，使同一文件的多事件投影（Stop / SubagentStop / PreToolUse）
+  // 各自独立幂等——只替换本脚本的块，不误删其它脚本的块。旧版无 scriptName 的通用块一并清理（迁移兼容）。
+  const marker = scriptMarker(scriptName)
+  const cleaned = prev
+    .replace(scopedHookBlockRegex(marker), '\n')
+    .replace(LEGACY_HOOK_BLOCK_REGEX, '\n')
+    .trimEnd()
 
   // command 是 shell 命令串：node "<脚本绝对路径>"（.mjs 非直接可执行，必须经 node 启动）。
   // 整串用单引号 TOML 字面量（不转义反斜杠，Windows 路径安全）；脚本路径含单引号时回退双引号转义。
@@ -1025,10 +1034,21 @@ function projectHooksToml(targetFile: string, event: string, hostScript: string,
     `command = ${commandLiteral}`,
     '',
   ].join('\n')
-  const block = `# >>> AIRULES HOOK >>>\n${blockBody}# <<< AIRULES HOOK <<<\n`
+  const block = `# >>> ${marker} >>>\n${blockBody}# <<< ${marker} <<<\n`
   const next = cleaned.length > 0 ? `${cleaned}\n\n${block}` : block
   mkdirSync(path.dirname(targetFile), { recursive: true })
   writeFileSync(targetFile, next, 'utf8')
+}
+
+/** 受管块标识：按 scriptName 区分，使同一 TOML 文件多事件投影互不覆盖。 */
+function scriptMarker(scriptName: string): string {
+  return `AIRULES HOOK ${scriptName}`
+}
+
+/** 匹配某脚本专属受管块（含起止哨兵）。 */
+function scopedHookBlockRegex(marker: string): RegExp {
+  const escaped = marker.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')
+  return new RegExp(`\\n*# >>> ${escaped} >>>[\\s\\S]*?(?:# <<< ${escaped} <<<|$)\\n*`, 'g')
 }
 
 export function projectToHost({
@@ -1060,7 +1080,7 @@ export function projectToHost({
   mcpHome?: string
   mcp?: McpProjection
   hooksHome?: string
-  hooks?: HookProjection
+  hooks?: HookProjection[]
 }) {
   if (projectSharedResources) {
     projectSharedSkillsHost(userHome, hostHome, moluoHome, customSkillsDirName, excludedSkills, agentFormat)
@@ -1068,8 +1088,9 @@ export function projectToHost({
   if (mcp) {
     projectMcpToHost(moluoHome, mcpHome, mcp)
   }
-  if (hooks) {
-    projectHooksToHost(moluoHome, hooksHome, hooks)
+  // 一个宿主可声明多条 hook 投影（多事件）；逐条投影，受管块按 scriptName + event 各自幂等。
+  for (const hook of hooks ?? []) {
+    projectHooksToHost(moluoHome, hooksHome, hook)
   }
   if (!projectBaseline) {
     return

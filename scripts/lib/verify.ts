@@ -103,12 +103,17 @@ function verifyMcpProjection(host: string, moluoHome: string, mcpHome: string, m
 /**
  * 验证宿主 hook 投影：声明 hooks 的宿主，其配置文件须含一条指向 session-log 脚本的受管
  * Stop hook，且脚本文件已就位。未声明 hooks 的宿主跳过（不算失败）。
+ * 宿主可声明多条投影（多事件）：逐条校验，全部通过才算 PASS。
  */
-function verifyHookProjection(host: string, hooksHome: string, hooks?: HookProjection): boolean {
-  if (!hooks) {
+function verifyHookProjection(host: string, hooksHome: string, hooks: HookProjection[]): boolean {
+  if (hooks.length === 0) {
     return true
   }
+  return hooks.every(hook => verifyOneHook(host, hooksHome, hook))
+}
 
+/** 校验单条 hook 投影：脚本就位 + 配置含指向该脚本的受管条目。 */
+function verifyOneHook(host: string, hooksHome: string, hooks: HookProjection): boolean {
   // 中性源脚本不存在 → 无可分发 hook，跳过（与 MCP 源缺失同义，不算失败）。
   const hostScript = path.join(hooksHome, 'hooks', hooks.scriptName)
   if (!existsSync(hostScript)) {
@@ -127,7 +132,8 @@ function verifyHookProjection(host: string, hooksHome: string, hooks?: HookProje
 
   // TOML（Codex）：断言受管块存在且块内引用脚本名。
   if (hooks.format === 'toml') {
-    if (!raw.includes('# >>> AIRULES HOOK >>>') || !raw.includes(hooks.scriptName)) {
+    // 受管块标识按 scriptName 区分（多事件投影互不覆盖），断言本脚本专属块存在。
+    if (!raw.includes(`# >>> AIRULES HOOK ${hooks.scriptName} >>>`) || !raw.includes(hooks.scriptName)) {
       console.error(`[FAIL] hook 配置未含指向 ${hooks.scriptName} 的 ${hooks.event} 受管块: ${targetFile}`)
       return false
     }

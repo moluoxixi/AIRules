@@ -2,9 +2,9 @@
 
 ## 状态
 
-proposed
+accepted（2026-06-29 仓库维护者批准）
 
-> 状态说明：本 ADR 的**第一段「能力基线」是已核验的事实**，立场中性，用于修正 ADR-0005 的作废论据。但**第二段「阻断边界」（PreToolUse 允许在客观信号层阻断）是对 ADR-0005 / host-hook-mapping「永不阻断」立场的部分翻案，属 repo-maintenance 层设计决策变更，需仓库维护者明确批准后方可生效**。在批准前本 ADR 保持 `proposed`：能力基线可作背景引用，但任何 PreToolUse 阻断实现不得以"ADR-0006 已批准"为依据。批准后改为 `accepted`。
+> 状态说明：本 ADR 的**第一段「能力基线」是已核验的事实**，立场中性，用于修正 ADR-0005 的作废论据。**第二段「阻断边界」（PreToolUse 允许在客观信号层阻断）是对 ADR-0005 / host-hook-mapping「永不阻断」立场的部分翻案，属 repo-maintenance 层设计决策变更**，已于 2026-06-29 经仓库维护者明确批准。自批准起，PreToolUse 阻断实现（`loop-guard` 等）可正式立项，但**仅限**第二段列出的三类客观信号，且须遵守第三段「承认的能力限制」（guardrail 非密闭 boundary、落地前按宿主版本实测 deny 生效性）。
 
 ## 背景
 

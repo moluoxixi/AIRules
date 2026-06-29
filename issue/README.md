@@ -41,7 +41,7 @@
 
 ## 修复优先级
 
-1. **O-01** 回路熔断运行时承载 — 唯一 P0，违反项目自身"memory 不是 enforcement"原则
+1. **O-01** 回路熔断运行时承载 — 唯一 P0，违反项目自身"memory 不是 enforcement"原则。**运行时承载部分**（hook 硬熔断 + 账本）已由 [评估.md](./评估.md) P1 正式立项落地（`hooks/loop-guard.mjs`、`hooks/subagent-trace.mjs`、`constants/loop-ledger.ts`），原 issue 的"声明+契约+锚点"层与评估的"runtime"层互补、不分叉。
 2. **O-02** `blocked_id` 消费契约 — 与 O-01 共享进度账本基础设施
 3. **O-03** agent 输出契约补 `current_loop_id` / `current_iteration` 字段 — 配合 O-01 落地
 4. **E-01** 项目 skill 不盲创宿主目录的 fixture — 单测补强

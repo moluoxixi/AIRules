@@ -262,7 +262,7 @@ There are many AI rules repositories out there. Here's what makes AIRules differ
 
 ## Roadmap / TODO
 
-- [ ] **PreToolUse 客观信号阻断 hook**（回路计数熔断 / `reviewer ≠ coder` 身份隔离）— 立场提议见 [ADR-0006](docs/architecture/decisions/ADR-0006-cross-host-hook-capability-baseline.md)（`proposed`，待仓库维护者批准）。能力基线已核验（五宿主普遍支持 PreToolUse deny），但暂缓实现：PreToolUse 是 guardrail 而非密闭 boundary（可绕道）、Codex 存量 deny bug、Trae 缺 SubagentStop。**待上述限制收敛或确有强约束需求时再立项**，届时需先批准 ADR-0006 第二段。
+- [x] **PreToolUse 客观信号阻断 hook**（回路计数熔断 / `reviewer ≠ coder` 身份隔离）— 已落地（2026-06-29）：[ADR-0006](docs/architecture/decisions/ADR-0006-cross-host-hook-capability-baseline.md) 第二段「阻断边界」经仓库维护者批准转 `accepted`，实现为 `hooks/loop-guard.mjs`（PreToolUse 三类客观信号拦截）+ `hooks/subagent-trace.mjs`（SubagentStop 计数，恒 exit 0）+ 账本 `constants/loop-ledger.ts`（协议见 [loop-ledger-protocol.md](docs/architecture/loop-ledger-protocol.md)）。**承认的限制**：PreToolUse 是 guardrail 而非密闭 boundary（可绕道）、Codex 存量 deny bug、Trae 缺 SubagentStop——这部分语义层仍由 prose + 主代理自律兜底，投影落地前按宿主版本实测 deny 生效性。落地路线图见 [issue/评估.md](issue/评估.md)。
 
 ## License
 

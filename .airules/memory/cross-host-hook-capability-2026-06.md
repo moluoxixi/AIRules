@@ -23,6 +23,6 @@ metadata:
 - **硬限制**：Codex 官方明示 PreToolUse "guardrail rather than a complete enforcement boundary"，只拦 Bash/apply_patch/MCP，agent 可绕道等价工具。即"运行时 invariant"收益弱于第一份报告假设。
 - **存量 bug**：Codex issue #27833，apply_patch 的 deny 实测未强制执行，落地须按版本实测。
 
-**决策状态**：能力基线（本条事实）已落 [ADR-0006](../../docs/architecture/decisions/ADR-0006-cross-host-hook-capability-baseline.md) 第一段；其第二段「PreToolUse 阻断边界」为 `proposed`，需仓库维护者批准方可据此立项做阻断 hook。
+**决策状态**：能力基线（本条事实）已落 [ADR-0006](../../docs/architecture/decisions/ADR-0006-cross-host-hook-capability-baseline.md) 第一段；其第二段「PreToolUse 阻断边界」已于 2026-06-29 经仓库维护者批准转 `accepted`，loop-guard / subagent-trace 已据此立项落地（边界细节见 [[pretooluse-block-only-three-signals]]、[[hook-never-block-stop-events]]）。
 
 **来源**：developers.openai.com/codex/hooks、docs.qoder.com/en/cli/hooks、docs.trae.cn/ide_hook-configuration-reference（均 2026-06-29 官方文档）。关联 [[memory-needs-review-like-skills]]。

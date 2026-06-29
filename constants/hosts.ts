@@ -107,9 +107,11 @@ export interface HostConfig {
   mcp?: McpProjection
   /**
    * 宿主生命周期 hook 投影规格，未声明则该宿主不参与 hook 投影。
-   * 仅宿主暴露按轮 Stop hook 时声明（Claude / Codex）。
+   * - 单值：宿主只投影一个事件（如仅 Stop）——历史形态，保持兼容。
+   * - 数组：宿主同时投影多个事件（如 PreToolUse + SubagentStop + Stop）。
+   * 每条 HookProjection 仍是单事件；多事件由数组承载。内部经 normalizeHooks 统一为数组遍历。
    */
-  hooks?: HookProjection
+  hooks?: HookProjection | HookProjection[]
 }
 
 /**
@@ -124,7 +126,12 @@ export const HOST_CONFIGS: HostConfig[] = [
     baselineFileName: 'CLAUDE.md',
     agentFormat: 'markdown',
     mcp: { relDir: '.', fileName: '.mcp.json', serversKey: 'mcpServers', format: 'json' },
-    hooks: { relDir: '.', fileName: 'settings.json', format: 'json', event: 'Stop', scriptName: 'session-log.mjs', nesting: 'group', includeType: true },
+    // 多事件投影：Stop 记录（session-log）+ SubagentStop 计数（subagent-trace）+ PreToolUse 熔断（loop-guard）。
+    hooks: [
+      { relDir: '.', fileName: 'settings.json', format: 'json', event: 'Stop', scriptName: 'session-log.mjs', nesting: 'group', includeType: true },
+      { relDir: '.', fileName: 'settings.json', format: 'json', event: 'SubagentStop', scriptName: 'subagent-trace.mjs', nesting: 'group', includeType: true },
+      { relDir: '.', fileName: 'settings.json', format: 'json', event: 'PreToolUse', scriptName: 'loop-guard.mjs', nesting: 'group', includeType: true },
+    ],
   },
   {
     id: 'codex',
@@ -132,7 +139,12 @@ export const HOST_CONFIGS: HostConfig[] = [
     baselineFileName: 'AGENTS.md',
     agentFormat: 'toml',
     mcp: { relDir: '.', fileName: 'config.toml', serversKey: 'mcp_servers', format: 'toml' },
-    hooks: { relDir: '.', fileName: 'config.toml', format: 'toml', event: 'Stop', scriptName: 'session-log.mjs' },
+    // 多事件投影（TOML 受管块按 event 各写一块）：Stop 记录 + SubagentStop 计数 + PreToolUse 熔断。
+    hooks: [
+      { relDir: '.', fileName: 'config.toml', format: 'toml', event: 'Stop', scriptName: 'session-log.mjs' },
+      { relDir: '.', fileName: 'config.toml', format: 'toml', event: 'SubagentStop', scriptName: 'subagent-trace.mjs' },
+      { relDir: '.', fileName: 'config.toml', format: 'toml', event: 'PreToolUse', scriptName: 'loop-guard.mjs' },
+    ],
   },
   {
     id: 'hermes',
@@ -153,8 +165,12 @@ export const HOST_CONFIGS: HostConfig[] = [
     skillsDirName: 'skills-cursor',
     agentFormat: 'markdown',
     mcp: { relDir: '.', fileName: 'mcp.json', serversKey: 'mcpServers', format: 'json' },
-    // Cursor hooks：顶层 version、事件名小写 stop、扁平条目（无 type 包裹）。
-    hooks: { relDir: '.', fileName: 'hooks.json', format: 'json', event: 'stop', scriptName: 'session-log.mjs', version: 1, nesting: 'flat' },
+    // Cursor hooks：顶层 version、事件名小写、扁平条目（无 type 包裹）。多事件投影。
+    hooks: [
+      { relDir: '.', fileName: 'hooks.json', format: 'json', event: 'stop', scriptName: 'session-log.mjs', version: 1, nesting: 'flat' },
+      { relDir: '.', fileName: 'hooks.json', format: 'json', event: 'subagentStop', scriptName: 'subagent-trace.mjs', version: 1, nesting: 'flat' },
+      { relDir: '.', fileName: 'hooks.json', format: 'json', event: 'preToolUse', scriptName: 'loop-guard.mjs', version: 1, nesting: 'flat' },
+    ],
   },
   {
     id: 'agentsmd',
@@ -243,8 +259,12 @@ export const HOST_CONFIGS: HostConfig[] = [
         codegraph: { type: 'stdio' },
       },
     },
-    // Qoder hooks：~/.qoder/settings.json，与 Claude 同构（JSON、group 嵌套、内层 type）。
-    hooks: { relDir: '.', fileName: 'settings.json', format: 'json', event: 'Stop', scriptName: 'session-log.mjs', nesting: 'group', includeType: true },
+    // Qoder hooks：~/.qoder/settings.json，与 Claude 同构（JSON、group 嵌套、内层 type）。多事件投影。
+    hooks: [
+      { relDir: '.', fileName: 'settings.json', format: 'json', event: 'Stop', scriptName: 'session-log.mjs', nesting: 'group', includeType: true },
+      { relDir: '.', fileName: 'settings.json', format: 'json', event: 'SubagentStop', scriptName: 'subagent-trace.mjs', nesting: 'group', includeType: true },
+      { relDir: '.', fileName: 'settings.json', format: 'json', event: 'PreToolUse', scriptName: 'loop-guard.mjs', nesting: 'group', includeType: true },
+    ],
   },
   {
     id: 'opencode',
@@ -288,7 +308,16 @@ export interface ResolvedHostPaths {
   mcpHome: string
   mcp?: McpProjection
   hooksHome: string
-  hooks?: HookProjection
+  /** 规范化为数组：未声明则空数组；单值/数组均归一为数组，供下游统一遍历。 */
+  hooks: HookProjection[]
+}
+
+/** 把 HostConfig.hooks（单值 | 数组 | undefined）归一为数组，供 install/verify 统一遍历。 */
+export function normalizeHooks(hooks?: HookProjection | HookProjection[]): HookProjection[] {
+  if (!hooks) {
+    return []
+  }
+  return Array.isArray(hooks) ? hooks : [hooks]
 }
 
 function resolveUserRelativePath(userHome: string, relPath: string): string {
@@ -312,6 +341,6 @@ export function resolveHostPaths(config: HostConfig, userHome: string): Resolved
     mcpHome,
     mcp: config.mcp,
     hooksHome: hostHome,
-    hooks: config.hooks,
+    hooks: normalizeHooks(config.hooks),
   }
 }

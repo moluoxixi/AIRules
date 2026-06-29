@@ -29,15 +29,15 @@
 ## 跨宿主行为红线
 
 - **stdout 必须合法 JSON**：Codex 与 Cursor 的 Stop hook 要求 exit 0 时 stdout 为合法 JSON（纯文本非法）；Claude 容忍空输出。脚本统一向 stdout 打 `{}`，三者通用。
-- **Stop / SubagentStop 永不阻断对话**：完成类 hook（Stop/SubagentStop）脚本任何异常都 `exit 0`，不返回 `decision: block`（其语义是按轮/子代理完成时**记录**，非控制流干预）。此边界是设计立场、与能力无关，不因技术上能阻断而松动。**适用范围限完成类事件**——PreToolUse 不在此约束内，其阻断边界见 [ADR-0006](./decisions/ADR-0006-cross-host-hook-capability-baseline.md)（仅允许基于客观信号阻断）。本文件当前仅投影 Stop hook，PreToolUse 投影属后续独立变更。
+- **Stop / SubagentStop 永不阻断对话**：完成类 hook（Stop/SubagentStop）脚本任何异常都 `exit 0`，不返回 `decision: block`（其语义是按轮/子代理完成时**记录**，非控制流干预）。此边界是设计立场、与能力无关，不因技术上能阻断而松动。**适用范围限完成类事件**——PreToolUse 不在此约束内，其阻断边界见 [ADR-0006](./decisions/ADR-0006-cross-host-hook-capability-baseline.md)（**已 accepted**，仅允许基于回路计数/`blocked_id`/agent 身份重叠三类客观信号阻断）。Claude/Cursor/Codex/Qoder 四宿主现已投影 Stop（session-log）+ SubagentStop（subagent-trace 计数）+ PreToolUse（loop-guard 熔断）三事件；Trae 缺 SubagentStop，回路熔断 prose-only 兜底。
 - **用户优先合并**：投影只增/替换 AIRULES 受管条目，保留用户手写的其它 hook 与顶层键。
 
 ## 投影实现位置
 
-- schema：`constants/hosts.ts` 的 `HookProjection`（`format`/`version`/`nesting`/`includeType`/`event`）。
-- 投影：`scripts/lib/install.ts` 的 `projectHooksToHost`（JSON 浅合并 / TOML 受管块双分支）。
-- 校验：`scripts/lib/verify.ts` 的 `verifyHookProjection`。
-- 中性源脚本：`hooks/session-log.mjs`。
+- schema：`constants/hosts.ts` 的 `HookProjection`（`format`/`version`/`nesting`/`includeType`/`event`）；`HostConfig.hooks` 支持单值或数组（多事件），经 `normalizeHooks` 归一。
+- 投影：`scripts/lib/install.ts` 的 `projectHooksToHost`（JSON 浅合并 / TOML 受管块双分支）；TOML 受管块按 `scriptName` 标识，使同文件多事件互不覆盖。
+- 校验：`scripts/lib/verify.ts` 的 `verifyHookProjection`（逐条校验数组）。
+- 中性源脚本：`hooks/session-log.mjs`（Stop 记录）、`hooks/subagent-trace.mjs`（SubagentStop 计数）、`hooks/loop-guard.mjs`（PreToolUse 熔断）。后两者的账本协议见 [loop-ledger-protocol.md](./loop-ledger-protocol.md)。
 
 ## 未覆盖宿主
 
