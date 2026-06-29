@@ -1,4 +1,4 @@
-import type { McpProjection } from '../../constants/hosts.js'
+import type { HookProjection, McpProjection } from '../../constants/hosts.js'
 import { existsSync, lstatSync, readdirSync, readFileSync, realpathSync } from 'node:fs'
 import os from 'node:os'
 import path from 'node:path'
@@ -101,6 +101,39 @@ function verifyMcpProjection(host: string, moluoHome: string, mcpHome: string, m
 }
 
 /**
+ * 验证宿主 hook 投影：声明 hooks 的宿主，其配置文件须含一条指向 session-log 脚本的受管
+ * Stop hook，且脚本文件已就位。未声明 hooks 的宿主跳过（不算失败）。
+ */
+function verifyHookProjection(host: string, hooksHome: string, hooks?: HookProjection): boolean {
+  if (!hooks) {
+    return true
+  }
+
+  // 中性源脚本不存在 → 无可分发 hook，跳过（与 MCP 源缺失同义，不算失败）。
+  const hostScript = path.join(hooksHome, 'hooks', hooks.scriptName)
+  if (!existsSync(hostScript)) {
+    console.log(`[info] 未发现 hook 脚本，跳过 hook 校验: ${host}`)
+    return true
+  }
+
+  const targetFile = path.join(hooksHome, hooks.relDir, hooks.fileName)
+  if (!existsSync(targetFile)) {
+    console.error(`[FAIL] hook 配置缺失: ${targetFile}`)
+    return false
+  }
+
+  const raw = readFileSync(targetFile, 'utf8').replace(/^\uFEFF/u, '')
+  // 受管条目以脚本名为锚点；JSON 与 TOML 都把脚本绝对路径写进 command/args，故按脚本名子串断言。
+  if (!raw.includes(hooks.scriptName)) {
+    console.error(`[FAIL] hook 配置未含指向 ${hooks.scriptName} 的 ${hooks.event} hook: ${targetFile}`)
+    return false
+  }
+
+  console.log(`[info] hook 配置校验通过: ${host}`)
+  return true
+}
+
+/**
  * 验证指定宿主的技能链接完整性
  * @param host 宿主名称
  * @param moluoHome AIRules 的本地安装目录
@@ -113,7 +146,7 @@ export async function verifyHost(host: string, moluoHome: string, userHome = os.
   if (!config)
     return false
 
-  const { hostHome, skillsDirName, excludedSkills, projectSharedResources, mcpHome, mcp } = resolveHostPaths(config, userHome)
+  const { hostHome, skillsDirName, excludedSkills, projectSharedResources, mcpHome, mcp, hooksHome, hooks } = resolveHostPaths(config, userHome)
 
   const resolvedHostHome = path.resolve(hostHome)
   const resolvedMcpHome = path.resolve(mcpHome)
@@ -126,11 +159,13 @@ export async function verifyHost(host: string, moluoHome: string, userHome = os.
   }
 
   const mcpSuccess = verifyMcpProjection(host, moluoHome, resolvedMcpHome, mcp)
+  // hook 投影需要宿主目录存在；不存在则不校验（与投影侧门控一致）。
+  const hookSuccess = hasHostHome ? verifyHookProjection(host, path.resolve(hooksHome), hooks) : true
   const shouldVerifySharedResources = projectSharedResources && hasHostHome
 
   if (!shouldVerifySharedResources) {
     console.log('[info] 宿主未启用 skills/agents 投影，跳过 skills/agents 链接校验')
-    return mcpSuccess
+    return mcpSuccess && hookSuccess
   }
 
   const targetSkillsDir = path.join(resolvedHostHome, skillsDirName)
@@ -201,7 +236,7 @@ export async function verifyHost(host: string, moluoHome: string, userHome = os.
 
   console.log(`[result] 有效=${validCount}, 缺失=${missingCount}, 损坏=${brokenCount}`)
 
-  const success = missingCount === 0 && brokenCount === 0 && mcpSuccess
+  const success = missingCount === 0 && brokenCount === 0 && mcpSuccess && hookSuccess
   if (success) {
     console.log(kleur.green(`✅ ${host} 验证通过`))
   }

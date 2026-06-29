@@ -1,4 +1,4 @@
-import type { AgentFormat, McpProjection } from '../../constants/hosts.js'
+import type { AgentFormat, HookProjection, McpProjection } from '../../constants/hosts.js'
 import type { SetupCommand } from '../../constants/skills.js'
 import type { LinkEntry } from './links.js'
 import type { VendorManifest } from './vendors.js'
@@ -92,6 +92,11 @@ function vendorAgentsPath(moluoHome: string): string {
 /** 获取 vendor MCP 中性源目录的绝对路径 */
 function vendorMcpPath(moluoHome: string): string {
   return path.join(moluoHome, 'vendor', 'mcp')
+}
+
+/** 获取 vendor hooks 中性源目录的绝对路径 */
+function vendorHooksPath(moluoHome: string): string {
+  return path.join(moluoHome, 'vendor', 'hooks')
 }
 
 /** 获取全局 .agents/skills 目录的绝对路径 */
@@ -358,6 +363,7 @@ export function ensureInstallRoot(paths: InstallPaths) {
     vendorSkillsPath(paths.moluoHome),
     vendorAgentsPath(paths.moluoHome),
     vendorMcpPath(paths.moluoHome),
+    vendorHooksPath(paths.moluoHome),
     paths.globalAgentSkillsHome,
     agentsMdSubagentsPath(paths.userHome),
   ]) {
@@ -452,6 +458,8 @@ export function syncFirstPartyToHome(repoRoot: string, moluoHome: string) {
   syncOptionalDir(path.join(repoRoot, 'agents'), vendorAgentsPath(moluoHome))
   // 中性 MCP 源（rulesync 风格 { mcpServers: {} }）同步到 vendor，供各宿主按格式投影。
   syncOptionalDir(path.join(repoRoot, 'mcp'), vendorMcpPath(moluoHome))
+  // hook 脚本源（如 session-log.mjs）同步到 vendor/hooks，供支持 hook 的宿主投影。
+  syncOptionalDir(path.join(repoRoot, 'hooks'), vendorHooksPath(moluoHome))
 }
 
 /**
@@ -885,6 +893,122 @@ function projectMcpToHost(moluoHome: string, mcpHome: string, mcp: McpProjection
   writeFileSync(targetFile, next, 'utf8')
 }
 
+/** 命令在 settings.json 里以 node + 脚本绝对路径的 exec 形式表达（避免 shell 引号问题）。 */
+function isManagedHookCommand(value: unknown, scriptName: string): boolean {
+  if (typeof value !== 'object' || value === null) {
+    return false
+  }
+  const cmd = value as { command?: unknown, args?: unknown }
+  const inArgs = Array.isArray(cmd.args) && cmd.args.some(a => typeof a === 'string' && a.includes(scriptName))
+  const inCommand = typeof cmd.command === 'string' && cmd.command.includes(scriptName)
+  return inArgs || inCommand
+}
+
+/**
+ * 把会话自动记录 Stop hook 投影到宿主配置文件。
+ * - 先把 vendor/hooks/<scriptName> 拷到宿主 hooks 目录（稳定绝对路径）。
+ * - JSON 宿主（Claude settings.json）：浅合并 hooks.<event>，幂等替换指向本脚本的受管条目，
+ *   保留用户手写的其它 hook 与其它顶层键。
+ * - TOML 宿主（Codex config.toml）：用 AIRULES HOOK 受管块写 [[hooks.<event>]]，幂等替换，
+ *   保留块外用户内容。
+ * 中性源脚本缺失时 no-op（不写文件、不报错）。映射依据见 docs/architecture/host-hook-mapping.md。
+ */
+function projectHooksToHost(moluoHome: string, hooksHome: string, hooks: HookProjection) {
+  const sourceScript = path.join(vendorHooksPath(moluoHome), hooks.scriptName)
+  if (!existsSync(sourceScript)) {
+    return
+  }
+
+  // 1. 脚本拷到宿主 hooks 目录，settings 里引用其绝对路径。
+  const hostHooksDir = path.join(hooksHome, 'hooks')
+  const hostScript = path.join(hostHooksDir, hooks.scriptName)
+  copyRequiredFile(sourceScript, hostScript)
+
+  const targetDir = hooks.relDir === '.' ? hooksHome : path.join(hooksHome, hooks.relDir)
+  const targetFile = path.join(targetDir, hooks.fileName)
+  mkdirSync(targetDir, { recursive: true })
+
+  if (hooks.format === 'json') {
+    projectHooksJson(targetFile, hooks.event, hostScript, hooks.scriptName)
+    return
+  }
+  projectHooksToml(targetFile, hooks.event, hostScript, hooks.scriptName)
+}
+
+/** JSON 宿主（Claude）：在 hooks.<event>[] 里幂等放置一条受管 command hook。 */
+function projectHooksJson(targetFile: string, event: string, hostScript: string, scriptName: string) {
+  const prev = readHostConfigForMerge(targetFile)
+  let root: Record<string, unknown> = {}
+  if (prev.trim().length > 0) {
+    try {
+      root = JSON.parse(prev) as Record<string, unknown>
+    }
+    catch (error) {
+      throw new Error(`宿主 hooks 配置解析失败 ${targetFile}（请修复其 JSON 语法后重试）: ${String(error)}`)
+    }
+  }
+
+  const hooksObj = (typeof root.hooks === 'object' && root.hooks !== null && !Array.isArray(root.hooks))
+    ? root.hooks as Record<string, unknown>
+    : {}
+  const eventGroups = Array.isArray(hooksObj[event]) ? hooksObj[event] as unknown[] : []
+
+  // 自愈：剔除任何含"指向本脚本"的受管条目（连同其所属 group 内的该条），再追加最新一条。
+  const cleanedGroups: unknown[] = []
+  for (const group of eventGroups) {
+    if (typeof group !== 'object' || group === null) {
+      cleanedGroups.push(group)
+      continue
+    }
+    const g = group as { hooks?: unknown }
+    if (!Array.isArray(g.hooks)) {
+      cleanedGroups.push(group)
+      continue
+    }
+    const keptInner = g.hooks.filter(h => !isManagedHookCommand(h, scriptName))
+    // group 内只剩空 hooks 数组（原本只有受管条目）则整组丢弃，避免堆积空 group。
+    if (keptInner.length > 0) {
+      cleanedGroups.push({ ...group, hooks: keptInner })
+    }
+    else if (g.hooks.length === keptInner.length) {
+      cleanedGroups.push(group)
+    }
+  }
+
+  cleanedGroups.push({
+    hooks: [{ type: 'command', command: 'node', args: [hostScript] }],
+  })
+
+  hooksObj[event] = cleanedGroups
+  root.hooks = hooksObj
+  writeFileSync(targetFile, `${JSON.stringify(root, null, 2)}\n`, 'utf8')
+}
+
+/** TOML 宿主（Codex）：用受管块写 [[hooks.<event>]]，幂等替换、保留块外用户内容。 */
+function projectHooksToml(targetFile: string, event: string, hostScript: string, _scriptName: string) {
+  const prev = readHostConfigForMerge(targetFile)
+  const cleaned = prev.replace(/\n*# >>> AIRULES HOOK >>>[\s\S]*?(?:# <<< AIRULES HOOK <<<|$)\n*/g, '\n').trimEnd()
+
+  // command 是 shell 命令串：node "<脚本绝对路径>"（.mjs 非直接可执行，必须经 node 启动）。
+  // 整串用单引号 TOML 字面量（不转义反斜杠，Windows 路径安全）；脚本路径含单引号时回退双引号转义。
+  const shellCommand = `node "${hostScript}"`
+  const commandLiteral = shellCommand.includes('\'')
+    ? `"${escapeTomlString(shellCommand)}"`
+    : `'${shellCommand}'`
+  const blockBody = [
+    `[[hooks.${event}]]`,
+    '',
+    `[[hooks.${event}.hooks]]`,
+    'type = "command"',
+    `command = ${commandLiteral}`,
+    '',
+  ].join('\n')
+  const block = `# >>> AIRULES HOOK >>>\n${blockBody}# <<< AIRULES HOOK <<<\n`
+  const next = cleaned.length > 0 ? `${cleaned}\n\n${block}` : block
+  mkdirSync(path.dirname(targetFile), { recursive: true })
+  writeFileSync(targetFile, next, 'utf8')
+}
+
 export function projectToHost({
   userHome,
   moluoHome,
@@ -898,6 +1022,8 @@ export function projectToHost({
   projectSharedResources = true,
   mcpHome = hostHome,
   mcp,
+  hooksHome = hostHome,
+  hooks,
 }: {
   userHome: string
   moluoHome: string
@@ -911,12 +1037,17 @@ export function projectToHost({
   projectSharedResources?: boolean
   mcpHome?: string
   mcp?: McpProjection
+  hooksHome?: string
+  hooks?: HookProjection
 }) {
   if (projectSharedResources) {
     projectSharedSkillsHost(userHome, hostHome, moluoHome, customSkillsDirName, excludedSkills, agentFormat)
   }
   if (mcp) {
     projectMcpToHost(moluoHome, mcpHome, mcp)
+  }
+  if (hooks) {
+    projectHooksToHost(moluoHome, hooksHome, hooks)
   }
   if (!projectBaseline) {
     return
@@ -964,7 +1095,7 @@ export function projectHostById(
     throw new Error(`Unknown host: ${host}`)
   }
 
-  const { hostHome, hostBaselineFile, projectBaseline, projectSharedResources, baselineMode, skillsDirName, excludedSkills, agentFormat, mcpHome, mcp } = resolveHostPaths(config, userHome)
+  const { hostHome, hostBaselineFile, projectBaseline, projectSharedResources, baselineMode, skillsDirName, excludedSkills, agentFormat, mcpHome, mcp, hooksHome, hooks } = resolveHostPaths(config, userHome)
 
   const hostHomePath = path.resolve(hostHome)
   const mcpHomePath = path.resolve(mcpHome)
@@ -989,6 +1120,9 @@ export function projectHostById(
     projectSharedResources: projectSharedResources && hasHostHome,
     mcpHome,
     mcp,
+    hooksHome,
+    // hook 投影需要宿主目录存在（脚本与配置都落在宿主 home 下）。
+    hooks: hasHostHome ? hooks : undefined,
   })
 
   return { success: true, hostBaselineFile, baselineProjected: projectBaseline && hasHostHome }

@@ -34,6 +34,25 @@ export interface McpProjection {
 }
 
 /**
+ * 宿主生命周期 hook 投影规格。
+ * 把 AIRules 的会话自动记录 Stop hook 写到各宿主对应的配置文件、格式。
+ * 仅在宿主暴露按轮 Stop 生命周期 hook 时声明（当前：Claude settings.json / Codex config.toml）。
+ * 映射依据见 docs/architecture/host-hook-mapping.md。
+ */
+export interface HookProjection {
+  /** hook 配置文件相对宿主 home 的目录片段（'.' 表示宿主 home 根） */
+  relDir: string
+  /** 配置文件名：Claude = settings.json；Codex = config.toml */
+  fileName: string
+  /** 文件格式，决定合并写法：JSON 浅合并 / TOML 受管块 */
+  format: 'json' | 'toml'
+  /** hook 事件名（当前只用 'Stop'） */
+  event: string
+  /** 脚本源文件名（位于 vendor/hooks 下，投影时拷到宿主 hooks 目录） */
+  scriptName: string
+}
+
+/**
  * 单个宿主（AI 代理）的配置定义
  */
 export interface HostConfig {
@@ -71,6 +90,11 @@ export interface HostConfig {
    * 宿主 MCP 配置投影规格，未声明则该宿主不参与 MCP 投影。
    */
   mcp?: McpProjection
+  /**
+   * 宿主生命周期 hook 投影规格，未声明则该宿主不参与 hook 投影。
+   * 仅宿主暴露按轮 Stop hook 时声明（Claude / Codex）。
+   */
+  hooks?: HookProjection
 }
 
 /**
@@ -85,6 +109,7 @@ export const HOST_CONFIGS: HostConfig[] = [
     baselineFileName: 'CLAUDE.md',
     agentFormat: 'markdown',
     mcp: { relDir: '.', fileName: '.mcp.json', serversKey: 'mcpServers', format: 'json' },
+    hooks: { relDir: '.', fileName: 'settings.json', format: 'json', event: 'Stop', scriptName: 'session-log.mjs' },
   },
   {
     id: 'codex',
@@ -92,6 +117,7 @@ export const HOST_CONFIGS: HostConfig[] = [
     baselineFileName: 'AGENTS.md',
     agentFormat: 'toml',
     mcp: { relDir: '.', fileName: 'config.toml', serversKey: 'mcp_servers', format: 'toml' },
+    hooks: { relDir: '.', fileName: 'config.toml', format: 'toml', event: 'Stop', scriptName: 'session-log.mjs' },
   },
   {
     id: 'hermes',
@@ -238,6 +264,8 @@ export interface ResolvedHostPaths {
   agentFormat: AgentFormat
   mcpHome: string
   mcp?: McpProjection
+  hooksHome: string
+  hooks?: HookProjection
 }
 
 function resolveUserRelativePath(userHome: string, relPath: string): string {
@@ -260,5 +288,7 @@ export function resolveHostPaths(config: HostConfig, userHome: string): Resolved
     agentFormat: config.agentFormat ?? 'markdown',
     mcpHome,
     mcp: config.mcp,
+    hooksHome: hostHome,
+    hooks: config.hooks,
   }
 }
