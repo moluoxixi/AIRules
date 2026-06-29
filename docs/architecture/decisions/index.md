@@ -9,3 +9,4 @@
 | [ADR-0003](./ADR-0003-five-agent-convergence.md) | 收敛为 5-agent + 按需多实例 | accepted | 2026-06-27 |
 | [ADR-0004](./ADR-0004-knowledge-retrieval-protocol.md) | 知识检索协议（取代注册表） | accepted | 2026-06-27 |
 | [ADR-0005](./ADR-0005-session-auto-log-hook.md) | 会话自动记录 hook 多宿主投影 | accepted | 2026-06-29 |
+| [ADR-0006](./ADR-0006-cross-host-hook-capability-baseline.md) | 跨宿主 hook 能力基线与阻断边界 | proposed | 2026-06-29 |

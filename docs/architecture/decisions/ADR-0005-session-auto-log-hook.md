@@ -32,7 +32,7 @@ accepted
 
 - **仅本机装一个 Claude hook**：解决不了多宿主与可分发；用户换宿主即失效。
 - **Claude-only 投影**：基于"只有 Claude 有 hook"的错误前提（调研已证伪）。
-- **让 hook 触发一次 LLM 摘要**：hook 是 shell 脚本、无法调用模型；只能记索引。需要语义摘要时回查 transcript，属另一议题。
+- **让 hook 触发一次 LLM 摘要**：本能力不需要——会话自动记录只需索引，语义摘要需要时回查 transcript，属另一议题。（注：本条最初的拒绝论据写作"hook 是 shell 脚本、无法调用模型"，已于 2026-06-29 跨宿主调研中**证伪**——Claude Code / Codex 支持 `prompt`/`agent` 类型 hook 可调模型，即便只用 `command` 类型，多宿主 hook 能力也远超本 ADR 假设。结论不变[原因换为：本能力定位是按轮索引而非语义沉淀，且 `command` 类型才是跨宿主最小公约数]，但原论据作废，留痕备查。能力基线详见 [ADR-0006](./ADR-0006-cross-host-hook-capability-baseline.md) 第一段。）
 - **自动跑 `session-capture`**：该 skill 设计为手动、产出结构化沉淀（非每轮原始索引），强行自动化会破坏其"候选 + 人工审核"语义。
 
 ## 影响

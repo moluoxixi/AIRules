@@ -29,7 +29,7 @@
 ## 跨宿主行为红线
 
 - **stdout 必须合法 JSON**：Codex 与 Cursor 的 Stop hook 要求 exit 0 时 stdout 为合法 JSON（纯文本非法）；Claude 容忍空输出。脚本统一向 stdout 打 `{}`，三者通用。
-- **永不阻断对话**：脚本任何异常都 `exit 0`，不返回 `decision: block`（那会强制 agent 继续，非本能力意图）。
+- **Stop / SubagentStop 永不阻断对话**：完成类 hook（Stop/SubagentStop）脚本任何异常都 `exit 0`，不返回 `decision: block`（其语义是按轮/子代理完成时**记录**，非控制流干预）。此边界是设计立场、与能力无关，不因技术上能阻断而松动。**适用范围限完成类事件**——PreToolUse 不在此约束内，其阻断边界见 [ADR-0006](./decisions/ADR-0006-cross-host-hook-capability-baseline.md)（仅允许基于客观信号阻断）。本文件当前仅投影 Stop hook，PreToolUse 投影属后续独立变更。
 - **用户优先合并**：投影只增/替换 AIRULES 受管条目，保留用户手写的其它 hook 与顶层键。
 
 ## 投影实现位置
