@@ -262,7 +262,7 @@ Moluoxixi AIRules 通过自动化投影，支持不断增长的 AI 代理生态�
 
 ## 路线 / TODO
 
-- [x] **PreToolUse 客观信号阻断 hook**（回路计数熔断 / `reviewer ≠ coder` 身份隔离）— 已落地（2026-06-29）：[ADR-0006](docs/architecture/decisions/ADR-0006-cross-host-hook-capability-baseline.md) 第二段「阻断边界」经仓库维护者批准转 `accepted`，实现为 `hooks/loop-guard.mjs`（PreToolUse 三类客观信号拦截）+ `hooks/subagent-trace.mjs`（SubagentStop 计数，恒 exit 0）+ 账本 `constants/loop-ledger.ts`（协议见 [loop-ledger-protocol.md](docs/architecture/loop-ledger-protocol.md)）。**承认的限制**：PreToolUse 是护栏而非密闭边界（可绕道）、Codex 存量 deny bug、Trae 缺 SubagentStop——这部分语义层仍由 prose + 主代理自律兜底，投影落地前按宿主版本实测 deny 生效性。落地路线图见 [issue/评估.md](issue/评估.md)。
+- [x] **PreToolUse 客观信号阻断 hook**（回路计数熔断 / `reviewer ≠ coder` 身份隔离）— 已落地（2026-06-29）：[ADR-0006](docs/architecture/decisions/ADR-0006-cross-host-hook-capability-baseline.md) 第二段「阻断边界」经仓库维护者批准转 `accepted`，实现为 `hooks/loop-guard.mjs`（PreToolUse 三类客观信号拦截）+ `hooks/subagent-trace.mjs`（SubagentStop 计数，恒 exit 0）+ 账本 `constants/loop-ledger.ts`（协议见 [loop-ledger-protocol.md](docs/architecture/loop-ledger-protocol.md)）。**承认的限制**：PreToolUse 是护栏而非密闭边界（可绕道）、Codex 存量 deny bug、Trae 缺 SubagentStop——这部分语义层仍由 prose + 主代理自律兜底，投影落地前按宿主版本实测 deny 生效性。落地凭据见 [issue/DONE-TODO.md](issue/DONE-TODO.md)。
 
 ## 许可证
 

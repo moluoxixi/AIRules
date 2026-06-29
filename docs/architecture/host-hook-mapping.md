@@ -1,10 +1,12 @@
 # 各宿主会话 hook 格式映射
 
-本文件记录各宿主**按轮完成（Stop）hook**的格式差异，作为 AIRules hook 投影引擎的事实依据。来源为各宿主 2026-06-29 的官方文档（逐一核验，URL 见下）。映射如与上游冲突，以宿主官方文档为准。
+本文件记录各宿主 hook 的格式差异，作为 AIRules hook 投影引擎的事实依据。来源为各宿主 2026-06-29 的官方文档（逐一核验，URL 见下）。映射如与上游冲突，以宿主官方文档为准。
+
+> 下表的事件名/嵌套/version 差异以**完成类（Stop）hook** 为样本；同样的格式规则适用于本仓已投影的 `SubagentStop`、`PreToolUse` 多事件（见「跨宿主行为红线」段与 `constants/hosts.ts` 各宿主 `hooks` 数组）。各事件的语义边界——完成类永不阻断、PreToolUse 仅客观信号阻断——见 [ADR-0005](./decisions/ADR-0005-session-auto-log-hook.md) 与 [ADR-0006](./decisions/ADR-0006-cross-host-hook-capability-baseline.md)。
 
 决策背景见 [ADR-0005](./decisions/ADR-0005-session-auto-log-hook.md)。
 
-## 核心结论：Stop hook 是多宿主通用能力，但结构各不相同
+## 核心结论：完成类 hook 是多宿主通用能力，但结构各不相同（PreToolUse/SubagentStop 同构）
 
 | 宿主 | 完成事件名 | 配置文件 | 格式 | 顶层 version | 条目嵌套 | 内层 type |
 |---|---|---|---|---|---|---|

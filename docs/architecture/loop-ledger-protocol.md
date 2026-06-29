@@ -113,3 +113,4 @@ tsx scripts/loop-ledger.ts reset <change-id> [repo-root]  # 重置某账本为�
 - PreToolUse 是 guardrail 非密闭 boundary（ADR-0006 第三段）：agent 可能经等价工具路径绕过，账本阻断**降低**违规概率、不构成密闭强制。prose 红线 + 主代理自律仍是第一道防线。
 - Trae 无 SubagentStop，无法跨宿主一致投影计数；该宿主回路熔断 prose-only 兜底。
 - 账本并发写由单文件原子重写兜底（hook 串行触发为主，竞争窗口小）。
+- **现网生效性需真宿主验证**：hook 的最终生效依赖各宿主真实 payload 字段名与 deny 解释方式。离线单测覆盖逻辑与字段名兼容，但真宿主烟测（见 [hook-smoke-test-guide.md](./hook-smoke-test-guide.md)）过线前不宣称「已生效」。

@@ -258,3 +258,98 @@ describe('集成 · trace 计数累积后 guard 在第 max_loop+1 次派发拦�
     })
   })
 })
+
+// ── 跨宿主 stdin payload 字段名兼容（离线烟测 Phase 1）──
+// 各宿主 PreToolUse/SubagentStop payload 命名不一：Claude/Codex/Qoder 多为 snake_case + tool_input，
+// Cursor 用 camelCase（toolInput / toolName / subagentType / changeId / ...）。若 hook 取不到 change_id，
+// 会走「无 change_id 放行」分支——熔断静默失效但表面看不出来（复核报告 §4.2.1）。这里用 fixture 锁住兼容性。
+
+describe('跨宿主字段兼容 · loop-guard 拦截（camelCase 信封）', () => {
+  it('cursor 风格 camelCase（toolInput/toolName/subagentType/changeId）回路超限仍 exit 2', () => {
+    withTempRepo((root) => {
+      const l = createLedger('c1', new Date().toISOString())
+      l.loops.test_debug_code.iteration = 3
+      writeLedger(root, l)
+      const r = runHook(guardScript, {
+        hookEventName: 'preToolUse',
+        toolName: 'Task',
+        changeId: 'c1',
+        cwd: root,
+        toolInput: { subagentType: 'coder', currentLoopId: 'test_debug_code', targetStage: 'coder' },
+      }, root)
+      assert.equal(r.status, 2, 'camelCase payload 也应触发熔断')
+      assert.match(r.stderr, /loop_exceeded/)
+    })
+  })
+
+  it('camelCase agent 身份重叠（agentId/subagentType）仍 exit 2', () => {
+    withTempRepo((root) => {
+      const l = createLedger('c1', new Date().toISOString())
+      l.recent_dispatches.push({ timestamp: new Date().toISOString(), agent_id: 'shared-x', agent_type: 'coder', target_stage: 'implement', current_loop_id: 'test_debug_code', outcome: 'success' })
+      writeLedger(root, l)
+      const r = runHook(guardScript, {
+        toolName: 'Task',
+        changeId: 'c1',
+        cwd: root,
+        toolInput: { subagentType: 'code-reviewer', agentId: 'shared-x', targetStage: 'review' },
+      }, root)
+      assert.equal(r.status, 2)
+      assert.match(r.stderr, /agent_overlap/)
+    })
+  })
+
+  it('顶层 camelCase（无 toolInput 信封）也能取到 changeId', () => {
+    withTempRepo((root) => {
+      const l = createLedger('c1', new Date().toISOString())
+      l.blocked_entries.push({ blocked_id: 'b1', source_stage: 'planner', reason: 'x', affected_downstream: ['coder'], unblock_condition: 'y', status: 'open', created_at: new Date().toISOString() })
+      writeLedger(root, l)
+      const r = runHook(guardScript, { toolName: 'Task', changeId: 'c1', cwd: root, subagentType: 'coder', targetStage: 'coder' }, root)
+      assert.equal(r.status, 2)
+      assert.match(r.stderr, /blocked_id/)
+    })
+  })
+})
+
+describe('跨宿主字段兼容 · subagent-trace 计数（camelCase 信封）', () => {
+  it('cursor 风格 camelCase（changeId/agentType/currentLoopId）正确写账本', () => {
+    withTempRepo((root) => {
+      const r = runHook(traceScript, {
+        hookEventName: 'subagentStop',
+        changeId: 'c1',
+        cwd: root,
+        toolInput: { agentType: 'coder', currentLoopId: 'test_debug_code', outcome: 'success' },
+      }, root)
+      assert.equal(r.status, 0)
+      const l = JSON.parse(fs.readFileSync(ledgerPath(root, 'c1'), 'utf8'))
+      assert.equal(l.loops.test_debug_code.iteration, 1, 'camelCase payload 也应推进计数')
+    })
+  })
+
+  it('camelCase blocked 注入（blockedId/affectedDownstream）写 open 条目', () => {
+    withTempRepo((root) => {
+      runHook(traceScript, {
+        changeId: 'c1',
+        cwd: root,
+        toolInput: { agentType: 'planner', targetStage: 'plan', outcome: 'blocked', blockedId: 'b9', affectedDownstream: ['coder', 'consistency-reviewer'], reason: '需求缺失', unblockCondition: '用户补全' },
+      }, root)
+      const l = JSON.parse(fs.readFileSync(ledgerPath(root, 'c1'), 'utf8'))
+      assert.equal(l.blocked_entries.length, 1)
+      assert.equal(l.blocked_entries[0].blocked_id, 'b9')
+      assert.deepEqual(l.blocked_entries[0].affected_downstream, ['coder', 'consistency-reviewer'])
+    })
+  })
+})
+
+describe('跨宿主字段兼容 · 回归：字段名取不到时静默放行（暴露故障模式）', () => {
+  it('完全错误的字段名（如 wrong_key）→ guard 放行 exit 0（无 changeId 分支）', () => {
+    withTempRepo((root) => {
+      const l = createLedger('c1', new Date().toISOString())
+      l.loops.test_debug_code.iteration = 3
+      writeLedger(root, l)
+      // 故意用不被识别的键名：模拟字段名拼错——hook 取不到 changeId，放行（fail-open）。
+      // 这条 TC 固化「fail-open」行为本身，提醒真宿主烟测必须验证字段名确实被识别。
+      const r = runHook(guardScript, { toolName: 'Task', cwd: root, tool_input: { wrong_change_key: 'c1', subagent_type: 'coder', current_loop_id: 'test_debug_code' } }, root)
+      assert.equal(r.status, 0, '取不到 changeId 时 fail-open——这是已知风险，真宿主须验证字段名')
+    })
+  })
+})

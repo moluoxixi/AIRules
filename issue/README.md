@@ -1,18 +1,23 @@
 # 未决问题索引
 
-本目录登记 `busyming-ai-rules` 仓库中尚未落地的结构性问题。每条问题对应一个独立 `.md` 文件，控制在 3000 字以内。
+本目录登记 `busyming-ai-rules` 仓库的结构性问题及其落地轨迹。
 
-所有问题均**经独立子代理逐字核验**（2026-06-28）确认事实成立；历史多轮复核中已被规则资产吸收或被反例推翻的条目不再保留（见末尾"已撤回条目"）。
+> **状态（截至 2026-06-29）**：O-01/O-02/O-03/E-01（P0–P2）已全部落地——prose 层与 runtime 承载层（hook 硬熔断 + 账本：`hooks/loop-guard.mjs`、`hooks/subagent-trace.mjs`、`constants/loop-ledger.ts`，ADR-0006 已 accepted）的落地凭据见 [DONE-TODO.md](./DONE-TODO.md)。仅 O-04 / E-02（P3 远期话题）仍未决。各问题立项时的分析快照与路线图（`01~04`、`评估.md`、`复核.md`、两份核验报告）已于落地后删除——内容已收口进 DONE-TODO.md 与代码/文档，历史正文可经 git 历史追溯。
 
-## 当前未决问题
+## 仍未决问题
 
 | 编号 | 主题 | 优先级 | 文件 |
 |---|---|---|---|
-| O-01 | 回路熔断缺运行时承载 | P0 | [01-回路熔断运行时承载.md](./01-回路熔断运行时承载.md) |
-| O-02 | `blocked_id` 跨阶段共享缺消费契约 | P1 | [02-blocked-id消费契约.md](./02-blocked-id消费契约.md) |
-| O-03 | 计数器责任主体在 agent 契约层完全缺失 | P2 | [03-计数器责任主体.md](./03-计数器责任主体.md) |
-| E-01 | "项目 skill 不盲创宿主目录"零覆盖 | P2 | [04-项目skill宿主目录零覆盖.md](./04-项目skill宿主目录零覆盖.md) |
 | O-04 / E-02 | 远期话题（聚合 trace + 纵向评测） | P3 | [05-远期话题.md](./05-远期话题.md) |
+
+## 已落地问题（凭据见 DONE-TODO.md 与代码）
+
+| 编号 | 主题 | 落地凭据 |
+|---|---|---|
+| O-01 | 回路熔断缺运行时承载 | prose + runtime：[DONE-TODO.md](./DONE-TODO.md)；`hooks/loop-guard.mjs` + `hooks/subagent-trace.mjs` + `constants/loop-ledger.ts`（协议见 `docs/architecture/loop-ledger-protocol.md`） |
+| O-02 | `blocked_id` 跨阶段共享缺消费契约 | [DONE-TODO.md](./DONE-TODO.md) O-02（5 agent 输入契约 + 账本结构化条目 + hook blocked_id 消费） |
+| O-03 | 计数器责任主体在 agent 契约层缺失 | [DONE-TODO.md](./DONE-TODO.md) O-03（agent 回路字段）+ 账本 `recent_dispatches` 承载计数 |
+| E-01 | "项目 skill 不盲创宿主目录"零覆盖 | [DONE-TODO.md](./DONE-TODO.md) E-01（`check-rules-consistency.ts` check #9） |
 
 ## 已撤回条目（核验不成立）
 
@@ -39,10 +44,9 @@
 - scope 判定 5 类候选落点
 - spec-workflow 三态（propose / apply / archive）
 
-## 修复优先级
+## 后续优先级
 
-1. **O-01** 回路熔断运行时承载 — 唯一 P0，违反项目自身"memory 不是 enforcement"原则。**运行时承载部分**（hook 硬熔断 + 账本）已由 [评估.md](./评估.md) P1 正式立项落地（`hooks/loop-guard.mjs`、`hooks/subagent-trace.mjs`、`constants/loop-ledger.ts`），原 issue 的"声明+契约+锚点"层与评估的"runtime"层互补、不分叉。
-2. **O-02** `blocked_id` 消费契约 — 与 O-01 共享进度账本基础设施
-3. **O-03** agent 输出契约补 `current_loop_id` / `current_iteration` 字段 — 配合 O-01 落地
-4. **E-01** 项目 skill 不盲创宿主目录的 fixture — 单测补强
-5. **O-04 / E-02** 远期话题 — 等聚合 trace 需求/宿主 runtime 能力到位
+O-01/O-02/O-03/E-01 已落地（见上表）。剩余：
+
+1. **O-04 / E-02** 远期话题 — 等聚合 trace 需求 / 宿主 runtime 能力到位再启动（触发条件见 [05-远期话题.md](./05-远期话题.md)）。
+2. **现网烟测** — runtime hook 的真宿主生效性验证尚未跑（见 `docs/architecture/hook-smoke-test-guide.md`），Phase 2/3 过线前不宣称"已生效"。

@@ -31,13 +31,29 @@ function readStdin() {
   }
 }
 
-function firstString(...values) {
-  for (const v of values) {
-    if (typeof v === 'string' && v.length > 0) {
-      return v
+/**
+ * 跨宿主取字段：在「顶层」与「工具入参信封」两处、按多个候选键名（snake_case + camelCase）找首个非空字符串。
+ * 各宿主 SubagentStop payload 命名不一（Cursor 用 camelCase）；取不到 change_id 会静默不写账本，
+ * 故主代理注入的每个键都按两套命名兜底。envelopes 为要扫描的信封（顶层 + tool_input/toolInput）。
+ */
+function pickField(envelopes, ...keys) {
+  for (const env of envelopes) {
+    if (!env || typeof env !== 'object') {
+      continue
+    }
+    for (const k of keys) {
+      if (typeof env[k] === 'string' && env[k].length > 0) {
+        return env[k]
+      }
     }
   }
   return undefined
+}
+
+/** 从 payload 取工具入参信封：兼容 tool_input（snake）与 toolInput（camel）。 */
+function toolInputOf(payload) {
+  const ti = payload.tool_input ?? payload.toolInput
+  return (ti && typeof ti === 'object') ? ti : {}
 }
 
 /** 构造空账本（与 constants/loop-ledger.ts createLedger 等价）。 */
@@ -88,19 +104,21 @@ function main() {
 
   try {
     // 字段兜底：主代理派发时把这些塞进 tool_input，SubagentStop 时回传到顶层或 tool_input。
-    const ti = (payload.tool_input && typeof payload.tool_input === 'object') ? payload.tool_input : {}
-    const changeId = firstString(payload.change_id, ti.change_id)
+    // 跨宿主命名（snake_case + camelCase）由 pickField 兜底。
+    const ti = toolInputOf(payload)
+    const envs = [ti, payload] // 信封优先级：工具入参 > 顶层。
+    const changeId = pickField(envs, 'change_id', 'changeId')
     // 无 change_id 无账本可写——直接跳过（不新建无主账本）。
     if (!changeId) {
       throw new Error('no change_id')
     }
-    const cwd = firstString(payload.cwd) ?? process.cwd()
-    const agentId = firstString(payload.agent_id, ti.agent_id) ?? '(unknown)'
-    const agentType = firstString(payload.agent_type, payload.subagent_type, ti.subagent_type, ti.agent_type) ?? '(unknown)'
-    const targetStage = firstString(payload.target_stage, ti.target_stage) ?? '(unknown)'
-    const loopIdRaw = firstString(payload.current_loop_id, ti.current_loop_id)
+    const cwd = pickField([payload], 'cwd') ?? process.cwd()
+    const agentId = pickField(envs, 'agent_id', 'agentId') ?? '(unknown)'
+    const agentType = pickField(envs, 'agent_type', 'agentType', 'subagent_type', 'subagentType') ?? '(unknown)'
+    const targetStage = pickField(envs, 'target_stage', 'targetStage') ?? '(unknown)'
+    const loopIdRaw = pickField(envs, 'current_loop_id', 'currentLoopId')
     const currentLoopId = LOOP_IDS.includes(loopIdRaw) ? loopIdRaw : null
-    const outcomeRaw = firstString(payload.outcome, ti.outcome)
+    const outcomeRaw = pickField(envs, 'outcome')
     const outcome = DISPATCH_OUTCOMES.includes(outcomeRaw) ? outcomeRaw : 'pending'
 
     const now = new Date().toISOString()
@@ -129,15 +147,16 @@ function main() {
     }
 
     // blocked_id 注入（可选）：主代理标 MISSING/BLOCKED 时塞入，写一条 open 条目。
-    const blockedId = firstString(payload.blocked_id, ti.blocked_id)
+    const blockedId = pickField(envs, 'blocked_id', 'blockedId')
     if (blockedId && !ledger.blocked_entries.some(e => e.blocked_id === blockedId)) {
-      const affected = Array.isArray(ti.affected_downstream) ? ti.affected_downstream : (Array.isArray(payload.affected_downstream) ? payload.affected_downstream : [])
+      const affectedRaw = ti.affected_downstream ?? ti.affectedDownstream ?? payload.affected_downstream ?? payload.affectedDownstream
+      const affected = Array.isArray(affectedRaw) ? affectedRaw : []
       ledger.blocked_entries.push({
         blocked_id: blockedId,
-        source_stage: firstString(payload.source_stage, ti.source_stage) ?? targetStage,
-        reason: firstString(payload.reason, ti.reason) ?? '(unspecified)',
+        source_stage: pickField(envs, 'source_stage', 'sourceStage') ?? targetStage,
+        reason: pickField(envs, 'reason') ?? '(unspecified)',
         affected_downstream: affected.filter(s => typeof s === 'string'),
-        unblock_condition: firstString(payload.unblock_condition, ti.unblock_condition) ?? '(unspecified)',
+        unblock_condition: pickField(envs, 'unblock_condition', 'unblockCondition') ?? '(unspecified)',
         status: 'open',
         created_at: now,
       })

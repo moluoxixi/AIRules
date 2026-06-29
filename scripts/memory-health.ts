@@ -41,6 +41,8 @@ export interface Finding {
 
 export interface AuditResult {
   findings: Finding[]
+  /** 库级软告警（非单条记忆问题）：如缺 active boundary/constraint 记忆。恒不影响 exit code。 */
+  warnings: string[]
 }
 
 /** 解析记忆 frontmatter：取首块 `---...---`，收顶层标量键 + 一层 `metadata:` 下缩进键。 */
@@ -173,7 +175,8 @@ export function auditMemory(repoRoot: string, opts: { ageDays?: number, now?: Da
   const ageDays = opts.ageDays ?? DEFAULT_AGE_DAYS
   const now = opts.now ?? new Date()
   const findings: Finding[] = []
-  for (const m of scanMemory(repoRoot)) {
+  const entries = scanMemory(repoRoot)
+  for (const m of entries) {
     // 默认只审 active；superseded / 解析失败的留给 validate。
     if (m.status !== 'active') {
       continue
@@ -196,7 +199,20 @@ export function auditMemory(repoRoot: string, opts: { ageDays?: number, now?: Da
       findings.push({ slug: m.slug, relPath: m.relPath, reasons })
     }
   }
-  return { findings }
+
+  // 库级软告警：边界保护激活度。recall-memory「边界最低召回」要求每次召回至少含一条
+  // constraint/boundary；若库中无 active 的此类记忆，纯执行类经验会在高权重召回中持续覆盖
+  // 应谨慎/拒绝的判断（安全边界侵蚀）。这里只产可观测信号、恒 exit 0、绝不改记忆——
+  // 与 recall-memory SKILL.md「跳过不静默」提示对齐，便于 reflect 的「安全边界侵蚀」归因。
+  const warnings: string[] = []
+  const boundaryActive = entries.filter(
+    m => m.status === 'active' && (m.type === 'boundary' || m.type === 'constraint'),
+  ).length
+  if (boundaryActive < 1) {
+    warnings.push('当前项目未定义 active 的 boundary/constraint 记忆，安全边界侵蚀保护未激活')
+  }
+
+  return { findings, warnings }
 }
 
 /** 按 status 分组列出记忆。返回可打印文本。 */
@@ -230,13 +246,21 @@ export function formatList(entries: MemoryEntry[]): string {
 }
 
 /** 格式化 audit 报告。 */
-export function formatAudit(findings: Finding[]): string {
+export function formatAudit(result: AuditResult): string {
+  const { findings, warnings } = result
+  const lines: string[] = []
   if (findings.length === 0) {
-    return '记忆体检：未发现超龄或悬空引用的 active 记忆。'
+    lines.push('记忆体检：未发现超龄或悬空引用的 active 记忆。')
   }
-  const lines = [`记忆体检：${findings.length} 条 active 记忆建议人工复核（经 remember 标 superseded 或更新）：`]
-  for (const f of findings) {
-    lines.push(`  - ${f.slug} — ${f.relPath} [${f.reasons.join(', ')}]`)
+  else {
+    lines.push(`记忆体检：${findings.length} 条 active 记忆建议人工复核（经 remember 标 superseded 或更新）：`)
+    for (const f of findings) {
+      lines.push(`  - ${f.slug} — ${f.relPath} [${f.reasons.join(', ')}]`)
+    }
+  }
+  // 库级软告警单独成段，前缀 [warn] 便于与单条 finding 区分（恒不改 exit code）。
+  for (const w of warnings) {
+    lines.push(`[warn] ${w}`)
   }
   return lines.join('\n')
 }
@@ -292,8 +316,7 @@ function main() {
   }
 
   if (subcommand === 'audit') {
-    const { findings } = auditMemory(repoRoot, { ageDays: parseAgeDays(rest) })
-    console.log(formatAudit(findings))
+    console.log(formatAudit(auditMemory(repoRoot, { ageDays: parseAgeDays(rest) })))
     return
   }
 

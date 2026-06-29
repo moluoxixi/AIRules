@@ -36,13 +36,30 @@ function readStdin() {
   }
 }
 
-function firstString(...values) {
-  for (const v of values) {
-    if (typeof v === 'string' && v.length > 0) {
-      return v
+/**
+ * 跨宿主取字段：在「顶层」与「工具入参信封」两处、按多个候选键名（snake_case + camelCase）找首个非空字符串。
+ * 各宿主 PreToolUse/SubagentStop payload 命名不一：Claude/Codex/Qoder 多为 snake_case + tool_input，
+ * Cursor 用 camelCase（toolInput / toolName / ...）。取不到值会导致熔断静默失效（无 change_id 放行分支），
+ * 故主代理注入的每个键都按两套命名兜底。envelopes 传入要扫描的信封对象（顶层 + tool_input/toolInput）。
+ */
+function pickField(envelopes, ...keys) {
+  for (const env of envelopes) {
+    if (!env || typeof env !== 'object') {
+      continue
+    }
+    for (const k of keys) {
+      if (typeof env[k] === 'string' && env[k].length > 0) {
+        return env[k]
+      }
     }
   }
   return undefined
+}
+
+/** 从 payload 取工具入参信封：兼容 tool_input（snake）与 toolInput（camel）。 */
+function toolInputOf(payload) {
+  const ti = payload.tool_input ?? payload.toolInput
+  return (ti && typeof ti === 'object') ? ti : {}
 }
 
 function isReviewer(t) {
@@ -92,15 +109,16 @@ function main() {
   }
 
   try {
-    const toolName = firstString(payload.tool_name, payload.toolName)
+    const toolName = pickField([payload], 'tool_name', 'toolName')
     // 非子代理派发工具 → 放行（不拦普通工具调用）。
     if (toolName && !DISPATCH_TOOL_NAMES.includes(toolName)) {
       process.exit(0)
     }
 
-    const ti = (payload.tool_input && typeof payload.tool_input === 'object') ? payload.tool_input : {}
-    const changeId = firstString(payload.change_id, ti.change_id)
-    const cwd = firstString(payload.cwd) ?? process.cwd()
+    const ti = toolInputOf(payload)
+    const envs = [ti, payload] // 信封优先级：工具入参 > 顶层。
+    const changeId = pickField(envs, 'change_id', 'changeId')
+    const cwd = pickField([payload], 'cwd') ?? process.cwd()
     if (!changeId) {
       process.exit(0) // 无账本上下文 → 放行
     }
@@ -115,10 +133,10 @@ function main() {
     }
 
     const req = {
-      agent_id: firstString(ti.agent_id, payload.agent_id),
-      agent_type: firstString(ti.subagent_type, ti.agent_type, payload.subagent_type, payload.agent_type),
-      target_stage: firstString(ti.target_stage, payload.target_stage),
-      current_loop_id: firstString(ti.current_loop_id, payload.current_loop_id),
+      agent_id: pickField(envs, 'agent_id', 'agentId'),
+      agent_type: pickField(envs, 'subagent_type', 'subagentType', 'agent_type', 'agentType'),
+      target_stage: pickField(envs, 'target_stage', 'targetStage'),
+      current_loop_id: pickField(envs, 'current_loop_id', 'currentLoopId'),
     }
 
     const decision = decideBlock(ledger, req)

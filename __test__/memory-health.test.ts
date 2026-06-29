@@ -163,6 +163,52 @@ describe('memory-health · audit staleness', () => {
   })
 })
 
+// ── 边界保护哨兵：缺 active boundary/constraint → 软告警 ──────
+
+describe('memory-health · 边界保护哨兵', () => {
+  const now = new Date('2026-06-29')
+
+  it('库中无 boundary/constraint → warnings 含「安全边界侵蚀保护未激活」', () => {
+    withTempDir((root) => {
+      seedMemory(root, 'just-a-fact', { type: 'reference', status: 'active', createdAt: '2026-06-20' })
+      const { warnings } = auditMemory(root, { ageDays: 180, now })
+      assert.ok(warnings.some(w => w.includes('安全边界侵蚀保护未激活')), `应告警，实际 ${JSON.stringify(warnings)}`)
+    })
+  })
+
+  it('有 active boundary → 不告警', () => {
+    withTempDir((root) => {
+      seedMemory(root, 'a-boundary', { type: 'boundary', status: 'active', createdAt: '2026-06-20' })
+      const { warnings } = auditMemory(root, { ageDays: 180, now })
+      assert.equal(warnings.length, 0, `不应告警，实际 ${JSON.stringify(warnings)}`)
+    })
+  })
+
+  it('有 active constraint → 不告警', () => {
+    withTempDir((root) => {
+      seedMemory(root, 'a-constraint', { type: 'constraint', status: 'active', createdAt: '2026-06-20' })
+      assert.equal(auditMemory(root, { ageDays: 180, now }).warnings.length, 0)
+    })
+  })
+
+  it('boundary 存在但被标 superseded → 仍告警（保护实际未激活）', () => {
+    withTempDir((root) => {
+      seedMemory(root, 'dead-boundary', { type: 'boundary', status: 'superseded', createdAt: '2026-06-20' })
+      const { warnings } = auditMemory(root, { ageDays: 180, now })
+      assert.ok(warnings.some(w => w.includes('未激活')), 'superseded boundary 不算激活')
+    })
+  })
+
+  it('audit 命中哨兵不改 exit code（恒 0）', () => {
+    withTempDir((root) => {
+      seedMemory(root, 'just-a-fact', { type: 'reference', status: 'active', createdAt: '2026-06-20' })
+      const r = runCli('audit', root)
+      assert.equal(r.status, 0, 'audit 恒 exit 0，哨兵只是软告警')
+      assert.match(r.stdout, /\[warn\].*未激活/)
+    })
+  })
+})
+
 // ── B10：CLI exit 语义 ─────────────────────────────────────
 
 describe('memory-health · CLI', () => {
@@ -219,13 +265,19 @@ describe('memory-health · CLI', () => {
 
 describe('memory-health · formatAudit', () => {
   it('无 findings → 明确健康提示', () => {
-    assert.match(formatAudit([]), /未发现/)
+    assert.match(formatAudit({ findings: [], warnings: [] }), /未发现/)
   })
 
   it('有 findings → 逐条列 slug 与原因', () => {
-    const out = formatAudit([{ slug: 'x', relPath: '.airules/memory/x.md', reasons: ['stale(400d>180d)'] }])
+    const out = formatAudit({ findings: [{ slug: 'x', relPath: '.airules/memory/x.md', reasons: ['stale(400d>180d)'] }], warnings: [] })
     assert.match(out, /x\.md/)
     assert.match(out, /stale/)
+  })
+
+  it('有 warnings → 以 [warn] 前缀单独成段', () => {
+    const out = formatAudit({ findings: [], warnings: ['当前项目未定义 active 的 boundary/constraint 记忆，安全边界侵蚀保护未激活'] })
+    assert.match(out, /\[warn\]/)
+    assert.match(out, /安全边界侵蚀保护未激活/)
   })
 })
 

@@ -4,6 +4,8 @@
 
 accepted
 
+> 部分被 [ADR-0006](./ADR-0006-cross-host-hook-capability-baseline.md)（accepted 2026-06-29）修订：本 ADR 确立的"永不阻断对话"红线，其**适用范围已收窄为完成类事件（Stop / SubagentStop）**；PreToolUse 允许在三类客观信号下阻断（回路熔断 hook 据此落地）。本 ADR 关于会话自动记录 hook 的决策本身不变。
+
 ## 背景
 
 `session-capture` skill 是手动按名触发的会话沉淀（用户显式说"记录这次"才跑），不在编码流水线编排里，也不自动执行。用户需要的是「每轮回答结束自动记录会话索引」——这要求**机制层、按轮触发**的承载，而非 prompt 自觉或手动 skill。

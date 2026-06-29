@@ -8,7 +8,7 @@
 - [x] `rules/AGENTS.md` 第 9 条补**计数责任主体**声明：`loop_iteration`/`mismatch_loop` 由主代理维护并持久化进账本；子代理只回执 `current_loop_id` 与建议增量；主代理派发 coder 前 MUST 先读账本计数，达上限立即转 `BLOCKED`。
 - [x] `skills/subagent-driven-development/SKILL.md` 新增 `### 内层回路计数账本` 子节（`LOOP-COUNTERS` 结构 + 读/增/熔断时机）。
 - [x] 回归锚点：`workflow-contract.test.ts` 加 2 条断言（责任主体文本 + `LOOP-COUNTERS`）。
-- [ ] ~~`scripts/lib/loop-guard.ts` 运行时硬熔断~~ — **当时决策不做**（理由：纯 prompt 仓库无派发进程调用，会是无调用方代码）。**已演进**：[评估.md](./评估.md) 基于 [ADR-0006](../docs/architecture/decisions/ADR-0006-cross-host-hook-capability-baseline.md)（accepted 2026-06-29）能力调研推翻该论据——宿主 runtime（Claude/Cursor/Codex/Qoder）本身即 hook 调用方。loop-guard 已以 `hooks/loop-guard.mjs`（PreToolUse 拦截）+ `hooks/subagent-trace.mjs`（SubagentStop 计数）+ 账本 `constants/loop-ledger.ts` 正式落地，见评估.md P1。
+- [ ] ~~`scripts/lib/loop-guard.ts` 运行时硬熔断~~ — **当时决策不做**（理由：纯 prompt 仓库无派发进程调用，会是无调用方代码）。**已演进并落地**：[ADR-0006](../docs/architecture/decisions/ADR-0006-cross-host-hook-capability-baseline.md)（accepted 2026-06-29）能力调研推翻该论据——宿主 runtime（Claude/Cursor/Codex/Qoder）本身即 hook 调用方。loop-guard 已以 `hooks/loop-guard.mjs`（PreToolUse 拦截）+ `hooks/subagent-trace.mjs`（SubagentStop 计数）+ 账本 `constants/loop-ledger.ts` 正式落地（协议见 `docs/architecture/loop-ledger-protocol.md`、烟测指引见 `docs/architecture/hook-smoke-test-guide.md`）。
 - [ ] ~~baseline 同步 `~/.qoderwork/agents.md`~~ — 宿主侧文件，不在本仓库范围。
 
 ### O-02 · blocked_id 消费契约（P1）
