@@ -21,6 +21,8 @@ description: 当需求事实源就绪、需要在实现前冻结范围并产出�
 - 验收目标与范围边界
 - 已知未知项（待澄清问题）
 
+执行前 MUST 读进度账本（`subagent-driven-development` 规定位置）：若本阶段（planner）在某 `open` 的 `BLOCKED <blocked_id>` 条目的 `affected_downstream` 内，立即回执 `BLOCKED` 并附 `blocked_id`，不继续推理。
+
 ## 前置依赖
 
 - 需求事实源已就绪（非草案、关键事实非 `MISSING`）；否则报告 `MISSING blocked` 并停止。

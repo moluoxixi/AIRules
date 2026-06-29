@@ -21,6 +21,8 @@ description: 当测试失败、出现 bug 或非预期行为且根因不明时�
 - 已排除的假设
 - 只读边界（不改生产代码）
 
+执行前 MUST 读进度账本（`subagent-driven-development` 规定位置）：若本阶段（debug）在某 `open` 的 `BLOCKED <blocked_id>` 条目的 `affected_downstream` 内，立即回执 `BLOCKED` 并附 `blocked_id`，不继续推理。
+
 ## 前置依赖
 
 - 存在可描述的失败现象（测试失败、bug、非预期行为）。
@@ -38,3 +40,6 @@ description: 当测试失败、出现 bug 或非预期行为且根因不明时�
 - 现象未稳定复现时标 `MISSING`，不得把"暂时不复现"当作已修复。
 - 单点已定位的小 bug 主代理直接修，不派 debugger。
 - 两层熔断分清：本角色遵循 `systematic-debugging` 的局部铁律（同一思路失败两次即换根本不同路径）；而 `Test→Debug→Code` 回路的总轮数由**编排层** `max_loop`（默认 3）熔断——达到上限时主代理标 `BLOCKED` 升级用户，不再无限回灌。debugger 不自行决定回路是否继续，只负责单次诊断质量。
+- 回路字段（计数器在主代理侧，本角色只读取与回执）：
+  - 声明性（主代理派发时**传入**，本角色原样**回执**）：`current_loop_id`（此处取值 `Test→Debug→Code`）、`current_iteration`（整数，主代理写入）。
+  - 建议性（本角色**产出**给主代理）：`recommended_next_action.reroute_target`（`Code` | `none`）。给出根因与建议修复点即建议 `reroute_target: Code`，是否继续回灌/熔断由主代理据账本计数裁决。

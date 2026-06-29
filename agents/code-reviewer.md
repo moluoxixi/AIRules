@@ -20,6 +20,8 @@ description: 当实现编码完成、需要由独立实例评审最终 diff 的�
 - 需求摘要
 - review rubric（`requesting-code-review` 维度）
 
+执行前 MUST 读进度账本（`subagent-driven-development` 规定位置）：若本阶段（review）在某 `open` 的 `BLOCKED <blocked_id>` 条目的 `affected_downstream` 内，立即回执 `BLOCKED` 并附 `blocked_id`，不继续推理。
+
 ## 前置依赖
 
 - 实现编码已产出最终 diff；评审实例必须与编写该代码的 coder 实例不同。
@@ -39,3 +41,6 @@ description: 当实现编码完成、需要由独立实例评审最终 diff 的�
 - 只读评审，不改代码；修复回到 coder。
 - 不得自评（reviewer ≠ coder），不得伪装 PASS、不得放过 `Critical`。
 - 回传评审结论（含分级与 `escalation_type`），由主代理复核后决定回灌目标（coder 修复 / 回溯需求）。
+- 回路字段（计数器在主代理侧，本角色只读取与回执）：
+  - 声明性（主代理派发时**传入**，本角色原样**回执**）：`current_loop_id`（取值 `Review→Code` 或 `Review→Req`，由主代理据 `escalation_type` 选定）、`current_iteration`（整数，主代理写入）。
+  - 建议性（本角色**产出**给主代理）：`recommended_next_action.reroute_target`（`Code` | `Req` | `none`）、`escalation_type`（`code_quality` | `requirement_mismatch`）、`should_increment_mismatch_loop`（boolean；判 `requirement_mismatch` 时为 `true`，提示主代理走 `mismatch_loop` 独立计数）。主代理据建议字段与自身账本计数决定 reroute 还是 `BLOCKED`。

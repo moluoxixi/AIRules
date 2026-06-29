@@ -43,3 +43,4 @@ name: requesting-code-review
 - 失败结论标 `escalation_type`——`code_quality`（实现层问题，回 coder）或 `requirement_mismatch`（方向偏离需求，回溯需求分析）：区分"做得不好"与"做错了东西"，避免在错误方向上反复打补丁；分不清默认 `code_quality` 并说明疑点。
 - `Critical` 必须修复后才继续；`Improvement` 进入下一步前处理；`Nitpick` 可记录后续。
 - 评审结论由主代理复核后决定是否回 coder 修复；评审者若有误，coder 可带技术理由反驳。
+- 回路字段：`current_loop_id`（`Review→Code` 或 `Review→Req`）与 `current_iteration` 由主代理派发时传入、评审者原样回执，不自持计数；评审者产出 `recommended_next_action`（`reroute_target` ∈ `Code`/`Req`/`none`、`escalation_type`、`should_increment_mismatch_loop`），主代理据此与账本计数决定 reroute 还是 `BLOCKED`。

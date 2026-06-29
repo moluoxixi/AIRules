@@ -211,6 +211,30 @@ export function checkRulesConsistency(repoRoot: string): CheckResult {
     }
   }
 
+  // 9. 项目级 skill 不得在 SKILL.md 或安装脚本中引用宿主全局目录（scope 判定 ②/③ 落点限制：
+  //    项目级洞见落项目 .airules/，全局洞见走上游贡献候选，不在用户仓库内自建「全局」资产）。
+  //    这是低成本 tripwire：命中即"引用"（presence），用于提请人工复核是否在自建全局资产，
+  //    不臆断写入意图。匹配 ~/.claude、$HOME/.cursor、${HOME}/.qoderwork 等 POSIX 宿主目录；
+  //    项目本地 .airules/ 不在此列。
+  if (existsSync(skillsDir)) {
+    const hostGlobalDir = /(?:~|\$HOME|\$\{HOME\})\/\.(?:claude|cursor|qoderwork)\b/
+    const walk = (dir: string) => {
+      for (const entry of readdirSync(dir, { withFileTypes: true })) {
+        const full = path.join(dir, entry.name)
+        if (entry.isDirectory()) {
+          walk(full)
+        }
+        else if (entry.name === 'SKILL.md' || /\.(?:sh|bash|ps1|py|ts|js|mjs|cjs)$/.test(entry.name)) {
+          const content = readFileSync(full, 'utf8')
+          if (hostGlobalDir.test(content)) {
+            errors.push(`${path.relative(repoRoot, full).replace(/\\/g, '/')} 引用宿主全局目录（~/.claude、$HOME/.cursor、~/.qoderwork 等），违反 scope 判定 ②/③ 落点限制`)
+          }
+        }
+      }
+    }
+    walk(skillsDir)
+  }
+
   return { errors }
 }
 

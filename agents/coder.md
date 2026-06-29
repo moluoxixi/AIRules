@@ -23,6 +23,8 @@ description: 当实现计划与验收用例就绪、需要按栈编写测试与�
 - 禁止事项（不可触碰的范围 / 行为）
 - 测试优先级（哪些核心逻辑必须 TDD 红绿）
 
+执行前 MUST 读进度账本（`subagent-driven-development` 规定位置）：若本阶段（code/实现）在某 `open` 的 `BLOCKED <blocked_id>` 条目的 `affected_downstream` 内，立即回执 `BLOCKED` 并附 `blocked_id`，不继续推理。
+
 ## 前置依赖
 
 - 实现计划与验收用例清单已就绪；否则报告 `MISSING blocked` 并停止。

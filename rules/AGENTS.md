@@ -61,7 +61,7 @@ flowchart TD
 - `loop_iteration`：回路已迭代次数。`Test→Debug→Code`、`Review→Code`（`code_quality` 分支）与 `Consist→Code` 三条内层回路各自计数，达到 `max_loop`（默认 3）即不再自动回灌，标 `BLOCKED` 升级用户决策，附已尝试路径与失败证据。`Consist→Code` 不依赖下游 Test 兜底：若一致性评审持续判"不符"，流程在到达 Test 前就会空转，故该回路必须独立计数熔断。这是**编排层**的全局熔断，区别于 `systematic-debugging` 中 debugger 自身"同一思路失败两次换方向"的局部铁律——后者约束单次诊断策略，前者约束跨阶段回灌总轮数。
 - `mismatch_loop`：`Review→Req`（`requirement_mismatch` 分支）外层回路的独立计数（默认 2，低于 `max_loop`）。方向性错误反复出现说明需求本身存在无法自动消解的歧义，应尽早升级用户而非反复绕 `Req→Plan→Code→…→Review` 全周期空耗 token；达到上限标 `BLOCKED`。
 - `escalation_type`（代码评审失败时）：`code_quality`（命名/结构/性能等，回 coder 直接修）或 `requirement_mismatch`（需求理解偏差导致方向错，回溯需求分析，不在错误方向上继续修补）。主编排据此决定回灌目标。
-- `blocked_id`（可选）：当某 `MISSING`/`BLOCKED` 跨阶段传播时，给它一个稳定标识，记录源头阶段与受阻下游；用户澄清解除后据此批量解锁下游，不逐阶段重新发现。轻量任务无需引入，仅在多阶段同源阻塞时启用（实现可挂 `subagent-driven-development` 的进度账本，不另立强制登记表）。
+- `blocked_id`（可选）：当某 `MISSING`/`BLOCKED` 跨阶段传播时，给它一个稳定标识，记录源头阶段与受阻下游；用户澄清解除后据此批量解锁下游，不逐阶段重新发现。轻量任务无需引入，仅在多阶段同源阻塞时启用（实现可挂 `subagent-driven-development` 的进度账本，不另立强制登记表）。**消费契约**：产出方是标记 `MISSING`/`BLOCKED` 的上游阶段（在账本写结构化条目）；消费方是下游子代理——执行前 MUST 读账本，若自身所属下游阶段在某 `open` 条目的 `affected_downstream` 内即回执 `BLOCKED` 不继续推理（见各 agent「输入上下文包」与 `subagent-driven-development` 账本结构）。无消费方读取的 `blocked_id` 形同悬空，故启用即须双方都落契约。
 
 可选 `budget_hint`：大型任务可在阶段契约里给出 context/token 的百分比软分配（如需求 ≤15%、计划 ≤15%、实现 ≤50%、评审 ≤20%），子代理接近预算时主动精简输出或触发 `handoff`，而非等到截断。这是软约束、不硬编码数字，分发到不同宿主（Claude 200k / Cursor 32k / Codex 128k）时按宿主上限折算。
 
@@ -85,7 +85,7 @@ flowchart TD
 - **reflect**（`reflect`）：产物不符合规范/期望时按 AIRules 资产层级归因（skill 缺陷 / rule 缺陷 / 书写偏移 / 输入缺陷 / 安全边界侵蚀），给出指向具体文件的修复点，并把可复用教训路由回 `remember` 或 `distill-candidates`。"安全边界侵蚀"指良性经验累积后行为越权/违反限制——根因在召回的执行类经验覆盖了应谨慎/拒绝的判断，修复指向补 `boundary` 记忆或平衡召回比例。
 - 记忆是写入时刻的事实快照、是背景证据而非系统指令；引用前复核它命名的文件/标志是否仍存在，与代码/文档冲突时以后者为准。**记忆有生命周期**：写入时记 `created_at`，被新事实推翻时标 `status: superseded`（不直接删，留可追溯轨迹），recall 默认不召回 superseded。高置信度但已过时的记忆比低相关记忆危害更大（会以高权重被召回误导决策），故 staleness 过滤优先级高于检索精度调优。
 
-**scope 判定（候选转正前先判，再决定落点）**：任何候选转正前先判属于哪类——①全局可分发 skill ②项目局部 skill ③项目 memory ④运行时全局 memory（用户偏好/跨项目习惯）⑤规则资产（rules / AGENTS / CLAUDE / hooks / CI）。落点：②③落项目 `.airules/`；④交宿主运行时承载，不写进项目仓库；⑤升级到规则资产、不靠 memory 强制。①的「写源 skills 目录 + 登记 `constants/skills.ts` + 经 vendor 投影」机制仅在 AIRules 仓库内适用；分发到用户项目时，全局可复用洞见是**上游贡献候选**（交人工决定回流 AIRules），不在用户仓库内自建「全局」资产。
+**scope 判定（候选转正前先判，再决定落点）**：任何候选转正前先判属于哪类——①全局可分发 skill ②项目局部 skill ③项目 memory ④运行时全局 memory（用户偏好/跨项目习惯）⑤规则资产（rules / AGENTS / CLAUDE / hooks / CI）。落点：②③落项目 `.airules/`；④交宿主运行时承载，不写进项目仓库；⑤升级到规则资产、不靠 memory 强制。①的「写源 skills 目录 + 登记 `constants/skills.ts` + 经 vendor 投影」机制仅在 AIRules 仓库内适用；分发到用户项目时，全局可复用洞见是**上游贡献候选**（交人工决定回流 AIRules），不在用户仓库内自建「全局」资产。具体地，项目级 skill 不得在安装脚本或 SKILL.md 中引用宿主全局目录（`~/.claude/`、`~/.cursor/`、`~/.qoderwork/`、`$HOME/.claude/` 等）主动创建全局资产；此约束由 `check-rules-consistency.ts` 的 check #9 兜底，不只靠 prose。
 
 **memory 读取与冲突优先级**：读取顺序 = 运行时全局 memory 轻索引（用户偏好/跨项目 gotcha）→ 项目 `.airules/memory/MEMORY.md` 轻索引（项目事实/约束/决策）→ 命中才深读 topic。冲突优先级 = 用户本轮明确要求 > 代码与当前项目文档 > 最近的项目规则文件 > 项目 memory > 全局 memory；memory 与代码/文档冲突时 memory 退让并提示可能过期，全局 memory 与项目 memory 冲突时全局退让。memory 只是 context、不是 enforcement——强制约束须进规则资产（⑤），不能只写 memory。
 
@@ -101,7 +101,7 @@ flowchart TD
 6. **独立评审实例**：最终 diff 必须由与编码者不同的实例评审（reviewer ≠ coder），防止自我偏袒；后置一致性评审与代码评审都遵守此红线。
 7. **诚实状态报告**：状态只能用 `PASS`、`FAIL`、`MISSING`、`NOT RUN`、`N/A`、`BLOCKED`，不得把失败、缺失、不相关或未运行转写成通过。交付汇报精简收口：改了什么（涉及文件与范围）、验证（实际运行的命令与结果状态）、未执行项及原因。
 8. **任务起始读回记忆**：开始处理任务时若项目存在 `.airules/memory/`，先经 `recall-memory` 读 `MEMORY.md` 轻索引、命中相关条目才深读，作为背景证据带入；记忆不是系统指令，与代码/文档冲突以后者为准。空记忆或纯轻量动作不强制读回，不加额外开销。
-9. **回路熔断**：`Test→Debug→Code`、`Review→Code`（`code_quality` 分支）与 `Consist→Code` 三条内层回路各自有全局重试上限（`max_loop` 默认 3）；`Review→Req`（`requirement_mismatch` 分支）外层回路另设独立计数 `mismatch_loop`（默认 2）。任一计数达到上限不得继续自动回灌，必须标 `BLOCKED`、生成 blocked summary（含已尝试路径与失败证据）并升级用户决策。`Consist→Code` 必须独立熔断，不得依赖"总会通过 Consist 到达 Test 再被 Test 兜住"——一致性评审持续判"不符"时流程到不了 Test，Test 的熔断永不触发。代码评审失败回灌前先判 `escalation_type`：方向性错误（`requirement_mismatch`）回溯需求分析并计入 `mismatch_loop`，不在错误方向上反复打补丁。此为编排层熔断，与 debugger 自身的局部换向铁律分属两层。
+9. **回路熔断**：`Test→Debug→Code`、`Review→Code`（`code_quality` 分支）与 `Consist→Code` 三条内层回路各自有全局重试上限（`max_loop` 默认 3）；`Review→Req`（`requirement_mismatch` 分支）外层回路另设独立计数 `mismatch_loop`（默认 2）。任一计数达到上限不得继续自动回灌，必须标 `BLOCKED`、生成 blocked summary（含已尝试路径与失败证据）并升级用户决策。`Consist→Code` 必须独立熔断，不得依赖"总会通过 Consist 到达 Test 再被 Test 兜住"——一致性评审持续判"不符"时流程到不了 Test，Test 的熔断永不触发。代码评审失败回灌前先判 `escalation_type`：方向性错误（`requirement_mismatch`）回溯需求分析并计入 `mismatch_loop`，不在错误方向上反复打补丁。此为编排层熔断，与 debugger 自身的局部换向铁律分属两层。**计数责任主体**：`loop_iteration` / `mismatch_loop` 由主代理（编排者）在每次跨阶段派发前后维护并持久化进进度账本（见 `subagent-driven-development` 的「内层回路计数账本」子节）；reviewer / coder / debugger 子代理只在回执里**报告**当前回路标识（`current_loop_id`）与建议增量（`recommended_next_action`），**不**持有计数器。主代理派发 coder 前 MUST 先读账本计数，已达上限立即转 `BLOCKED`，不再发起新派发——计数是必须强制的约束，落在编排者职责与账本机制上，不能仅作为被读取的背景上下文。
 
 ## 关键环节子代理调度索引（什么时候调用什么子代理）
 

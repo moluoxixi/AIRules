@@ -41,3 +41,4 @@ name: consistency-check
 - 只读核对，可写 `docs/consistency/*-implementation-review.md`，不改生产代码。
 - 结论逐条对照上游事实源，不符项明确指出对应的需求/计划条目。
 - 评审实例必须与编码实例不同；不得伪装 PASS。
+- 回路字段：`current_loop_id`（`Consist→Code`）与 `current_iteration` 由主代理派发时传入、本 skill 执行者原样回执，不自持计数；判 `FAIL` 时产出 `recommended_next_action.reroute_target: Code`，熔断与否由主代理据账本计数裁决。

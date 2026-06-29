@@ -56,3 +56,4 @@ name: systematic-debugging
 - 回传必须包含根因 + 证据 + 建议修复点 + 回归测试设计。
 - 不得把"暂时不复现"当作已修复；现象未稳定复现时标 `MISSING`。
 - 调查若确证问题确属环境 / 时序 / 外部因素，记录调查过程并建议相应处理（重试、超时、监控）——但绝大多数"查不到根因"其实是调查不彻底。
+- 回路字段：`current_loop_id`（`Test→Debug→Code`）与 `current_iteration` 由主代理派发时传入、debugger 原样回执，不自持计数；产出 `recommended_next_action.reroute_target: Code`，回灌轮数熔断由主代理据账本计数裁决（见 baseline 核心门禁第 9 条）。

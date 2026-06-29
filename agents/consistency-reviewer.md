@@ -19,6 +19,8 @@ description: 当实现编码后、测试验证前，需要核对最终 diff 是�
 - 需求 / 计划 / 验收用例（或 bugfix 诊断）；若有 `test-design` 的机器可解析验收清单（YAML）一并提供，作结构化打勾锚点
 - 允许标 `N/A` 的条件（纯文档 / 纯注释 / 纯格式 / 无行为配置改动）
 
+执行前 MUST 读进度账本（`subagent-driven-development` 规定位置）：若本阶段（consistency）在某 `open` 的 `BLOCKED <blocked_id>` 条目的 `affected_downstream` 内，立即回执 `BLOCKED` 并附 `blocked_id`，不继续推理。
+
 ## 触发时机
 
 - 在实现编码后、测试验证前介入，核对最终 diff。
@@ -36,3 +38,6 @@ description: 当实现编码后、测试验证前，需要核对最终 diff 是�
 - 评审实例必须与编码实例不同，不得自评。
 - 纯文档、纯注释、纯格式或无行为配置改动可标 `N/A`；上游缺失或冲突标 `MISSING blocked`，不臆造上游事实。
 - 状态用 `PASS` / `FAIL` / `MISSING` / `N/A`，不得伪装通过。
+- 回路字段（计数器在主代理侧，本角色只读取与回执）：
+  - 声明性（主代理派发时**传入**，本角色原样**回执**）：`current_loop_id`（此处取值 `Consist→Code`）、`current_iteration`（整数，主代理写入）。
+  - 建议性（本角色**产出**给主代理）：`recommended_next_action.reroute_target`（`Code` | `none`）。判 `FAIL` 即建议 `reroute_target: Code`，是否回灌/熔断由主代理据账本计数裁决。

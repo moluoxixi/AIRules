@@ -328,3 +328,72 @@ describe('编排红线文本', () => {
     assert.match(r.stdout, /vendor/)
   })
 })
+
+// ── 4. 回路熔断承载 / blocked 消费 / 计数器契约 / 宿主目录 ──────
+
+describe('回路熔断承载与 blocked 消费契约', () => {
+  const agentFiles = ['planner', 'coder', 'debugger', 'consistency-reviewer', 'code-reviewer']
+
+  it('第 9 条声明计数责任主体在主代理 + 账本承载（O-01）', () => {
+    const rules = read('rules/AGENTS.md')
+    assert.match(rules, /计数责任主体/)
+    assert.match(rules, /派发 coder 前 MUST 先读账本计数/)
+  })
+
+  it('subagent-driven-development 账本有内层回路计数子节（O-01）', () => {
+    const sdd = read('skills/subagent-driven-development/SKILL.md')
+    assert.match(sdd, /内层回路计数账本/)
+    assert.match(sdd, /LOOP-COUNTERS/)
+  })
+
+  it('rules blocked_id 定义含消费契约：产出方 + 消费方（O-02）', () => {
+    assert.match(read('rules/AGENTS.md'), /消费契约/)
+  })
+
+  it('账本 blocked 条目结构化：affected_downstream + status（O-02）', () => {
+    const sdd = read('skills/subagent-driven-development/SKILL.md')
+    assert.match(sdd, /affected_downstream/)
+    assert.match(sdd, /unblock_condition/)
+    assert.match(sdd, /status:\s*open \| resolved/)
+  })
+
+  it('5 个 agent 输入上下文包均含"读账本→回执 BLOCKED"消费契约（O-02）', () => {
+    for (const a of agentFiles) {
+      assert.match(read(`agents/${a}.md`), /MUST 读进度账本/, `agents/${a}.md 缺读账本消费契约`)
+      assert.match(read(`agents/${a}.md`), /affected_downstream/, `agents/${a}.md 缺 affected_downstream 判定`)
+    }
+  })
+
+  it('三个出结论 agent 输出契约含 current_loop_id / current_iteration / recommended_next_action（O-03）', () => {
+    for (const a of ['consistency-reviewer', 'code-reviewer', 'debugger']) {
+      const content = read(`agents/${a}.md`)
+      assert.match(content, /current_loop_id/, `agents/${a}.md 缺 current_loop_id`)
+      assert.match(content, /current_iteration/, `agents/${a}.md 缺 current_iteration`)
+      assert.match(content, /recommended_next_action/, `agents/${a}.md 缺 recommended_next_action`)
+    }
+  })
+
+  it('code-reviewer 输出 should_increment_mismatch_loop 字段（O-03）', () => {
+    assert.match(read('agents/code-reviewer.md'), /should_increment_mismatch_loop/)
+  })
+
+  it('项目级 skill 不得引用宿主全局目录：真实仓库经 check #9 验证（E-01）', () => {
+    // 复用脚本作为唯一事实源，不在测试里重抄 walk/正则（避免与 check #9 漂移）。
+    const hostDirErrors = checkRulesConsistency(repoRoot).errors.filter(e => /宿主全局目录/.test(e))
+    assert.deepEqual(hostDirErrors, [], `这些项目级 skill 引用了宿主全局目录：\n${hostDirErrors.join('\n')}`)
+  })
+
+  it('check #9 能捕获种入宿主目录引用的 skill（E-01）', () => {
+    withTempDir((root) => {
+      const badSkill = path.join(root, 'skills', 'rogue-skill')
+      fs.mkdirSync(badSkill, { recursive: true })
+      fs.writeFileSync(path.join(badSkill, 'SKILL.md'), '---\nname: rogue-skill\n---\n安装到 ~/.claude/skills 全局生效\n')
+      const { errors } = checkRulesConsistency(root)
+      assert.ok(errors.some(e => /宿主全局目录/.test(e)), `应捕获宿主目录引用，实际：\n${errors.join('\n')}`)
+    })
+  })
+
+  it('rules scope 判定段含宿主目录文本锚点（E-01）', () => {
+    assert.match(read('rules/AGENTS.md'), /项目级 skill 不得在安装脚本或 SKILL\.md 中引用宿主全局目录/)
+  })
+})

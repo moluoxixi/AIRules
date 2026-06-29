@@ -121,7 +121,40 @@ task reviewer 给两个结论：spec 合规与代码质量，缺任一不算完�
 - 某任务评审干净后，在做其它记账的同一条消息里追加一行：`Task N: complete (commits <base7>..<head7>, review clean)`。
 - 账本是恢复地图：它命名的提交在 git 里真实存在，compaction 后信账本与 `git log` 而非记忆。`git clean -fdx` 会毁账本，被毁则从 `git log` 恢复。
 
-可选 blocked 传播扩展：当某 `MISSING`/`BLOCKED` 跨多个任务同源时（如某需求字段缺失同时卡住任务 3、5、7），在账本里给它一个稳定 `blocked_id`，记一行 `BLOCKED <id>: <源头/原因>, 受阻任务 3/5/7, 解除条件 <…>`。用户澄清解除后据此批量解锁受阻任务，不必逐任务重新发现同一阻塞。仅在多任务同源阻塞时启用，单点阻塞直接记在该任务行即可，不强制为每个 MISSING 立条目。
+### 内层回路计数账本（编排层熔断的承载点）
+
+主编排的回路熔断（baseline 核心门禁第 9 条）不能只停在 prose——它的计数必须由主代理落在账本里，否则 compaction 后失忆即等于无限回灌。在账本维护一个 `{loop_name → iteration}` 段：
+
+```
+LOOP-COUNTERS:
+  Consist→Code: <n>
+  Test→Debug→Code: <n>
+  Review→Code: <n>        # code_quality 分支
+  Review→Req: <n>         # mismatch_loop，上限独立（默认 2）
+```
+
+- 主代理在**每次跨阶段回灌派发前**读对应 `loop_name` 计数；`Consist→Code`/`Test→Debug→Code`/`Review→Code` 任一达到 `max_loop`（默认 3）、或 `Review→Req` 达到 `mismatch_loop`（默认 2），立即转 `BLOCKED` 不再派发。
+- 主代理在**每次回灌派发后**对应 `loop_name` 自增 1，并写回账本。
+- 子代理（reviewer/coder/debugger）不持有计数器：它们在回执里报告 `current_loop_id` 与 `recommended_next_action`，由主代理据此增计数、判熔断。这与 `Test→Debug→Code` 的局部铁律（debugger 单次诊断换向）分属两层，不可混。
+- `BLOCKED` 升级时附 blocked summary：每次迭代失败的验收点 / coder diff 摘要 / reviewer 反馈摘要，供用户决策。
+
+### blocked 传播（结构化条目）
+
+当某 `MISSING`/`BLOCKED` 跨多个任务/阶段同源时（如某需求字段缺失同时卡住任务 3、5、7），在账本里给它一个稳定 `blocked_id`，记一条**结构化条目**而非单行：
+
+```
+BLOCKED <blocked_id>:
+  source_stage: <planner | consistency | review | test | debug>
+  reason: <原始 MISSING 字段或失败摘要>
+  affected_downstream: [<stage>, <stage>, ...]
+  unblock_condition: <用户澄清的具体内容 / 上游产物补齐方式>
+  status: open | resolved
+  created_at: <YYYY-MM-DD>
+```
+
+- **消费**：每个下游子代理派发前 MUST 读账本，若自身阶段在某 `open` 条目的 `affected_downstream` 内，立即回执 `BLOCKED`、附 `blocked_id`，不继续推理。
+- **解除**：用户澄清后主代理把 `status` 改为 `resolved`、填 `resolved_at`，据 `affected_downstream` 批量重派受阻下游，不必逐任务重新发现同一阻塞。
+- 仅在多任务/多阶段同源阻塞时启用，单点阻塞直接记在该任务行即可，不强制为每个 MISSING 立条目。
 
 ## 输出边界
 
