@@ -260,6 +260,10 @@ Moluoxixi AIRules 通过自动化投影，支持不断增长的 AI 代理生态�
 | 全部自己写 | 克隆成熟的 + 自己写独特的 |
 | 一次性配置 | 持续同步 + 自愈修复 |
 
+## 路线 / TODO
+
+- [ ] **PreToolUse 客观信号阻断 hook**（回路计数熔断 / `reviewer ≠ coder` 身份隔离）— 立场提议见 [ADR-0006](docs/architecture/decisions/ADR-0006-cross-host-hook-capability-baseline.md)（`proposed`，待仓库维护者批准）。能力基线已核验（五宿主普遍支持 PreToolUse deny），但暂缓实现：PreToolUse 是护栏而非密闭边界（可绕道）、Codex 存量 deny bug、Trae 缺 SubagentStop。**待上述限制收敛或确有强约束需求时再立项**，届时需先批准 ADR-0006 第二段。
+
 ## 许可证
 
 MIT

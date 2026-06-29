@@ -260,6 +260,10 @@ There are many AI rules repositories out there. Here's what makes AIRules differ
 | Everything custom-written | Clone mature skills + write only what's unique |
 | One-time setup | Continuous sync + self-healing repair |
 
+## Roadmap / TODO
+
+- [ ] **PreToolUse 客观信号阻断 hook**（回路计数熔断 / `reviewer ≠ coder` 身份隔离）— 立场提议见 [ADR-0006](docs/architecture/decisions/ADR-0006-cross-host-hook-capability-baseline.md)（`proposed`，待仓库维护者批准）。能力基线已核验（五宿主普遍支持 PreToolUse deny），但暂缓实现：PreToolUse 是 guardrail 而非密闭 boundary（可绕道）、Codex 存量 deny bug、Trae 缺 SubagentStop。**待上述限制收敛或确有强约束需求时再立项**，届时需先批准 ADR-0006 第二段。
+
 ## License
 
 MIT
