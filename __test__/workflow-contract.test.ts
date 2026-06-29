@@ -396,4 +396,25 @@ describe('回路熔断承载与 blocked 消费契约', () => {
   it('rules scope 判定段含宿主目录文本锚点（E-01）', () => {
     assert.match(read('rules/AGENTS.md'), /项目级 skill 不得在安装脚本或 SKILL\.md 中引用宿主全局目录/)
   })
+
+  it('会话自动记录 hook 脚本存在且容错（跨宿主分发能力）', () => {
+    const script = read('hooks/session-log.mjs')
+    // 永不阻断对话：异常吞掉、stdout 打合法 JSON 兼容 Codex/Cursor。
+    assert.match(script, /process\.exit\(0\)/)
+    assert.match(script, /process\.stdout\.write\('\{\}'\)/)
+    // 跨宿主字段兜底：session_id（Claude/Codex/Qoder/Trae）与 conversation_id（Cursor）。
+    assert.match(script, /conversation_id/)
+    assert.match(script, /\.airules.+sessions.+auto|sessions', 'auto'/)
+  })
+
+  it('hook 投影覆盖 5 宿主（Claude/Codex/Qoder/Trae/Cursor）', () => {
+    const hosts = read('constants/hosts.ts')
+    // 五宿主各自声明 hooks 投影规格。
+    for (const anchor of ['settings.json', 'config.toml', 'hooks.json']) {
+      assert.ok(hosts.includes(anchor), `constants/hosts.ts 缺 hook 配置文件锚点：${anchor}`)
+    }
+    // Cursor 小写事件名 + 扁平嵌套；Codex TOML format。
+    assert.match(hosts, /event: 'stop'/)
+    assert.match(hosts, /nesting: 'flat'/)
+  })
 })

@@ -893,7 +893,7 @@ function projectMcpToHost(moluoHome: string, mcpHome: string, mcp: McpProjection
   writeFileSync(targetFile, next, 'utf8')
 }
 
-/** 命令在 settings.json 里以 node + 脚本绝对路径的 exec 形式表达（避免 shell 引号问题）。 */
+/** 受管条目识别：command 串含本脚本名即视为 AIRULES 受管（兼容扁平/嵌套两种条目形态）。 */
 function isManagedHookCommand(value: unknown, scriptName: string): boolean {
   if (typeof value !== 'object' || value === null) {
     return false
@@ -907,8 +907,9 @@ function isManagedHookCommand(value: unknown, scriptName: string): boolean {
 /**
  * 把会话自动记录 Stop hook 投影到宿主配置文件。
  * - 先把 vendor/hooks/<scriptName> 拷到宿主 hooks 目录（稳定绝对路径）。
- * - JSON 宿主（Claude settings.json）：浅合并 hooks.<event>，幂等替换指向本脚本的受管条目，
- *   保留用户手写的其它 hook 与其它顶层键。
+ * - JSON 宿主（Claude/Qoder/Trae/Cursor settings.json|hooks.json）：浅合并 hooks.<event>，幂等
+ *   替换指向本脚本的受管条目，保留用户手写的其它 hook 与其它顶层键。按 version/nesting/includeType
+ *   适配各宿主结构差异。
  * - TOML 宿主（Codex config.toml）：用 AIRULES HOOK 受管块写 [[hooks.<event>]]，幂等替换，
  *   保留块外用户内容。
  * 中性源脚本缺失时 no-op（不写文件、不报错）。映射依据见 docs/architecture/host-hook-mapping.md。
@@ -919,7 +920,7 @@ function projectHooksToHost(moluoHome: string, hooksHome: string, hooks: HookPro
     return
   }
 
-  // 1. 脚本拷到宿主 hooks 目录，settings 里引用其绝对路径。
+  // 1. 脚本拷到宿主 hooks 目录，配置里引用其绝对路径。
   const hostHooksDir = path.join(hooksHome, 'hooks')
   const hostScript = path.join(hostHooksDir, hooks.scriptName)
   copyRequiredFile(sourceScript, hostScript)
@@ -929,14 +930,25 @@ function projectHooksToHost(moluoHome: string, hooksHome: string, hooks: HookPro
   mkdirSync(targetDir, { recursive: true })
 
   if (hooks.format === 'json') {
-    projectHooksJson(targetFile, hooks.event, hostScript, hooks.scriptName)
+    projectHooksJson(targetFile, hooks, hostScript)
     return
   }
   projectHooksToml(targetFile, hooks.event, hostScript, hooks.scriptName)
 }
 
-/** JSON 宿主（Claude）：在 hooks.<event>[] 里幂等放置一条受管 command hook。 */
-function projectHooksJson(targetFile: string, event: string, hostScript: string, scriptName: string) {
+/** 构造一条受管条目：command 统一用 shell 串 `node "<脚本>"`（各 JSON 宿主都接受 command 串）。 */
+function buildManagedJsonEntry(hooks: HookProjection, hostScript: string): Record<string, unknown> {
+  const entry: Record<string, unknown> = { command: `node "${hostScript}"` }
+  if (hooks.includeType) {
+    entry.type = 'command'
+  }
+  // flat 宿主（Cursor）：event 下直接是 [{command}]；group 宿主：包一层 { hooks: [entry] }。
+  return hooks.nesting === 'flat' ? entry : { hooks: [entry] }
+}
+
+/** JSON 宿主：在 hooks.<event>[] 里幂等放置一条受管条目，保留用户内容。 */
+function projectHooksJson(targetFile: string, hooks: HookProjection, hostScript: string) {
+  const { event, scriptName, nesting = 'group', version } = hooks
   const prev = readHostConfigForMerge(targetFile)
   let root: Record<string, unknown> = {}
   if (prev.trim().length > 0) {
@@ -948,38 +960,48 @@ function projectHooksJson(targetFile: string, event: string, hostScript: string,
     }
   }
 
+  // 顶层 version：宿主要求且用户未声明时补齐（不覆盖用户已写的 version）。
+  if (typeof version === 'number' && root.version === undefined) {
+    root.version = version
+  }
+
   const hooksObj = (typeof root.hooks === 'object' && root.hooks !== null && !Array.isArray(root.hooks))
     ? root.hooks as Record<string, unknown>
     : {}
-  const eventGroups = Array.isArray(hooksObj[event]) ? hooksObj[event] as unknown[] : []
+  const eventEntries = Array.isArray(hooksObj[event]) ? hooksObj[event] as unknown[] : []
 
-  // 自愈：剔除任何含"指向本脚本"的受管条目（连同其所属 group 内的该条），再追加最新一条。
-  const cleanedGroups: unknown[] = []
-  for (const group of eventGroups) {
-    if (typeof group !== 'object' || group === null) {
-      cleanedGroups.push(group)
+  // 自愈：剔除任何"指向本脚本"的受管条目，再追加最新一条。
+  const cleaned: unknown[] = []
+  for (const item of eventEntries) {
+    if (nesting === 'flat') {
+      // 扁平：条目本身就是 {command}。
+      if (!isManagedHookCommand(item, scriptName)) {
+        cleaned.push(item)
+      }
       continue
     }
-    const g = group as { hooks?: unknown }
+    // 嵌套：条目是 { hooks: [...] }，剔除其内层受管条目。
+    if (typeof item !== 'object' || item === null) {
+      cleaned.push(item)
+      continue
+    }
+    const g = item as { hooks?: unknown }
     if (!Array.isArray(g.hooks)) {
-      cleanedGroups.push(group)
+      cleaned.push(item)
       continue
     }
     const keptInner = g.hooks.filter(h => !isManagedHookCommand(h, scriptName))
-    // group 内只剩空 hooks 数组（原本只有受管条目）则整组丢弃，避免堆积空 group。
     if (keptInner.length > 0) {
-      cleanedGroups.push({ ...group, hooks: keptInner })
+      cleaned.push({ ...item, hooks: keptInner })
     }
     else if (g.hooks.length === keptInner.length) {
-      cleanedGroups.push(group)
+      cleaned.push(item) // 本来就没有受管条目，原样保留
     }
+    // 否则该 group 只含受管条目，整组丢弃，避免堆积空 group。
   }
 
-  cleanedGroups.push({
-    hooks: [{ type: 'command', command: 'node', args: [hostScript] }],
-  })
-
-  hooksObj[event] = cleanedGroups
+  cleaned.push(buildManagedJsonEntry(hooks, hostScript))
+  hooksObj[event] = cleaned
   root.hooks = hooksObj
   writeFileSync(targetFile, `${JSON.stringify(root, null, 2)}\n`, 'utf8')
 }

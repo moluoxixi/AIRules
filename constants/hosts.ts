@@ -36,20 +36,35 @@ export interface McpProjection {
 /**
  * 宿主生命周期 hook 投影规格。
  * 把 AIRules 的会话自动记录 Stop hook 写到各宿主对应的配置文件、格式。
- * 仅在宿主暴露按轮 Stop 生命周期 hook 时声明（当前：Claude settings.json / Codex config.toml）。
+ * 仅在宿主暴露按轮 Stop 生命周期 hook 时声明。已确认支持的宿主与差异：
+ * - Claude：~/.claude/settings.json（JSON，event 'Stop'，group 嵌套，内层带 type）
+ * - Codex：~/.codex/config.toml（TOML，[[hooks.Stop]] 受管块）
+ * - Qoder：~/.qoder/settings.json（JSON，与 Claude 同构）
+ * - Trae：~/.trae-cn/hooks.json（JSON，顶层 version:1，group 嵌套）
+ * - Cursor：~/.cursor/hooks.json（JSON，顶层 version:1，事件名小写 'stop'，扁平条目、无 type）
  * 映射依据见 docs/architecture/host-hook-mapping.md。
  */
 export interface HookProjection {
   /** hook 配置文件相对宿主 home 的目录片段（'.' 表示宿主 home 根） */
   relDir: string
-  /** 配置文件名：Claude = settings.json；Codex = config.toml */
+  /** 配置文件名：settings.json / config.toml / hooks.json */
   fileName: string
   /** 文件格式，决定合并写法：JSON 浅合并 / TOML 受管块 */
   format: 'json' | 'toml'
-  /** hook 事件名（当前只用 'Stop'） */
+  /** hook 事件名：多数为 'Stop'，Cursor 为小写 'stop' */
   event: string
   /** 脚本源文件名（位于 vendor/hooks 下，投影时拷到宿主 hooks 目录） */
   scriptName: string
+  /** JSON 宿主：是否需要顶层 `version: 1`（Trae/Cursor 需要） */
+  version?: number
+  /**
+   * JSON 宿主条目嵌套风格：
+   * - 'group'（默认）：event 下是 [{ hooks: [{...}] }]（Claude/Qoder/Trae）
+   * - 'flat'：event 下直接是 [{ command }]（Cursor）
+   */
+  nesting?: 'group' | 'flat'
+  /** JSON 宿主内层条目是否带 `type: 'command'`（Claude/Qoder 带；Cursor 不带） */
+  includeType?: boolean
 }
 
 /**
@@ -109,7 +124,7 @@ export const HOST_CONFIGS: HostConfig[] = [
     baselineFileName: 'CLAUDE.md',
     agentFormat: 'markdown',
     mcp: { relDir: '.', fileName: '.mcp.json', serversKey: 'mcpServers', format: 'json' },
-    hooks: { relDir: '.', fileName: 'settings.json', format: 'json', event: 'Stop', scriptName: 'session-log.mjs' },
+    hooks: { relDir: '.', fileName: 'settings.json', format: 'json', event: 'Stop', scriptName: 'session-log.mjs', nesting: 'group', includeType: true },
   },
   {
     id: 'codex',
@@ -138,6 +153,8 @@ export const HOST_CONFIGS: HostConfig[] = [
     skillsDirName: 'skills-cursor',
     agentFormat: 'markdown',
     mcp: { relDir: '.', fileName: 'mcp.json', serversKey: 'mcpServers', format: 'json' },
+    // Cursor hooks：顶层 version、事件名小写 stop、扁平条目（无 type 包裹）。
+    hooks: { relDir: '.', fileName: 'hooks.json', format: 'json', event: 'stop', scriptName: 'session-log.mjs', version: 1, nesting: 'flat' },
   },
   {
     id: 'agentsmd',
@@ -164,6 +181,8 @@ export const HOST_CONFIGS: HostConfig[] = [
       format: 'json',
       defaultTopLevel: { inputs: [] },
     },
+    // Trae hooks：~/.trae/hooks.json，顶层 version、group 嵌套、事件名 Stop。
+    hooks: { relDir: '.', fileName: 'hooks.json', format: 'json', event: 'Stop', scriptName: 'session-log.mjs', version: 1, nesting: 'group', includeType: true },
   },
   {
     id: 'trae-cn',
@@ -177,6 +196,8 @@ export const HOST_CONFIGS: HostConfig[] = [
       format: 'json',
       defaultTopLevel: { inputs: [] },
     },
+    // Trae CN hooks：~/.trae-cn/hooks.json（官方文档示例的全局路径）。
+    hooks: { relDir: '.', fileName: 'hooks.json', format: 'json', event: 'Stop', scriptName: 'session-log.mjs', version: 1, nesting: 'group', includeType: true },
   },
   {
     id: 'trae-solo',
@@ -222,6 +243,8 @@ export const HOST_CONFIGS: HostConfig[] = [
         codegraph: { type: 'stdio' },
       },
     },
+    // Qoder hooks：~/.qoder/settings.json，与 Claude 同构（JSON、group 嵌套、内层 type）。
+    hooks: { relDir: '.', fileName: 'settings.json', format: 'json', event: 'Stop', scriptName: 'session-log.mjs', nesting: 'group', includeType: true },
   },
   {
     id: 'opencode',

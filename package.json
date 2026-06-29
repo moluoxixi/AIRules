@@ -18,6 +18,7 @@
     "agents",
     "dist",
     "docs",
+    "hooks",
     "mcp",
     "rules",
     "scripts",

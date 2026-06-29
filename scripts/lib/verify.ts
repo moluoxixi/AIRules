@@ -123,9 +123,49 @@ function verifyHookProjection(host: string, hooksHome: string, hooks?: HookProje
   }
 
   const raw = readFileSync(targetFile, 'utf8').replace(/^\uFEFF/u, '')
-  // 受管条目以脚本名为锚点；JSON 与 TOML 都把脚本绝对路径写进 command/args，故按脚本名子串断言。
-  if (!raw.includes(hooks.scriptName)) {
-    console.error(`[FAIL] hook 配置未含指向 ${hooks.scriptName} 的 ${hooks.event} hook: ${targetFile}`)
+  // 受管条目以脚本名为锚点。
+
+  // TOML（Codex）：断言受管块存在且块内引用脚本名。
+  if (hooks.format === 'toml') {
+    if (!raw.includes('# >>> AIRULES HOOK >>>') || !raw.includes(hooks.scriptName)) {
+      console.error(`[FAIL] hook 配置未含指向 ${hooks.scriptName} 的 ${hooks.event} 受管块: ${targetFile}`)
+      return false
+    }
+    console.log(`[info] hook 配置校验通过: ${host}`)
+    return true
+  }
+
+  // JSON：解析后按结构断言——受管条目须挂在正确的 event 键下且 command 引用脚本名，
+  // 而非全文子串（防止脚本名恰好出现在别处、或条目挂错 event/嵌套形态）。
+  let parsed: unknown
+  try {
+    parsed = JSON.parse(raw)
+  }
+  catch (error) {
+    console.error(`[FAIL] hook 配置解析失败 ${targetFile}: ${String(error)}`)
+    return false
+  }
+
+  const refsScript = (entry: unknown): boolean => {
+    if (typeof entry !== 'object' || entry === null) {
+      return false
+    }
+    const e = entry as { command?: unknown, args?: unknown, hooks?: unknown }
+    const inCommand = typeof e.command === 'string' && e.command.includes(hooks.scriptName)
+    const inArgs = Array.isArray(e.args) && e.args.some(a => typeof a === 'string' && a.includes(hooks.scriptName))
+    // group 嵌套：递归看内层 hooks 数组。
+    const inInner = Array.isArray(e.hooks) && e.hooks.some(refsScript)
+    return inCommand || inArgs || inInner
+  }
+
+  const root = parsed as { version?: unknown, hooks?: Record<string, unknown> }
+  const eventEntries = root.hooks && Array.isArray(root.hooks[hooks.event]) ? root.hooks[hooks.event] as unknown[] : []
+  if (!eventEntries.some(refsScript)) {
+    console.error(`[FAIL] hook 配置 ${hooks.event} 下未含指向 ${hooks.scriptName} 的受管条目: ${targetFile}`)
+    return false
+  }
+  if (typeof hooks.version === 'number' && root.version !== hooks.version) {
+    console.error(`[FAIL] hook 配置缺顶层 version=${hooks.version}: ${targetFile}`)
     return false
   }
 
