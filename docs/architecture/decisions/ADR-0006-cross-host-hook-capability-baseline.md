@@ -56,7 +56,7 @@ ADR-0005 落地"会话自动记录 Stop hook 多宿主投影"时，基于两条�
 - **本 ADR 只确立基线与边界，不实现任何阻断 hook**。`loop-guard` / `subagent-trace` 等 PreToolUse 投影是后续独立变更，立项时各自走需求/计划/评审，并先按"承认的能力限制"做宿主版本实测。
 - 修正 ADR-0005 替代方案段的作废论据（已留痕，结论不变）。
 - `host-hook-mapping.md` 的"永不阻断"红线需后续标注其适用范围为 Stop/SubagentStop（PreToolUse 不在此约束内）——属后续变更，本 ADR 不动其它文件。
-- `constants/hosts.ts` 的 `HookProjection` 若要支持多事件，需从单 `event` 扩为 events 数组——后续变更，非本 ADR 范围。
+- `constants/hosts.ts` 的 `HookProjection` 多事件支持已实现：`HostConfig.hooks` 扩展为 `HookProjection | HookProjection[]` union type，`normalizeHooks` 归一，Claude / Codex / Cursor / Qoder 均已声明三事件数组（Stop + SubagentStop + PreToolUse）。
 
 ## 替代方案
 

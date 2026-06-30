@@ -41,3 +41,7 @@ description: 当实现编码后、测试验证前，需要核对最终 diff 是�
 - 回路字段（计数器在主代理侧，本角色只读取与回执）：
   - 声明性（主代理派发时**传入**，本角色原样**回执**）：`current_loop_id`（此处取值 `Consist→Code`）、`current_iteration`（整数，主代理写入）。
   - 建议性（本角色**产出**给主代理）：`recommended_next_action.reroute_target`（`Code` | `none`）。判 `FAIL` 即建议 `reroute_target: Code`，是否回灌/熔断由主代理据账本计数裁决。
+- 判 FAIL 时回执 MUST 包含 `scope_hint`：
+  - `not_covered`: [AC-id 列表]
+  - `partial`: [AC-id 列表]
+  - `summary`: 一句话说明缺口
