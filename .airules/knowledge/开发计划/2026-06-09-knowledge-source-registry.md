@@ -69,10 +69,10 @@ Expected: PASS.
 - Modify: `constants/skills.ts`
 - Modify: `skills/init-project/references/common/docs.md`
 - Modify: `skills/init-project/SKILL.md`
-- Create: `docs/architecture/decisions/ADR-0001-knowledge-source-registry.md`
-- Modify: `docs/architecture/decisions/index.md`
-- Modify: `docs/architecture/index.md`
-- Modify: `docs/map.md`
+- Create: `.airules/knowledge/架构/decisions/ADR-0001-knowledge-source-registry.md`
+- Modify: `.airules/knowledge/架构/decisions/index.md`
+- Modify: `.airules/knowledge/架构/index.md`
+- Modify: `.airules/knowledge/index.md`
 
 - [ ] **Step 1: Write skill and docs contract**
 

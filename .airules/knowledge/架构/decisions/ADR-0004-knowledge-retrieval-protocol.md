@@ -16,7 +16,7 @@ accepted
 
 ### 读取顺序（先近后远、先确定后背景）
 
-1. **普通文件检索 / grep**：项目内代码、`docs/**`、`README`、`AGENTS.md` / `CLAUDE.md`——最高可信、最贴近当前事实。
+1. **普通文件检索 / grep**：项目内代码、`.airules/knowledge/index.md`（经 diff 触发整理后，见 [ADR-0007](./ADR-0007-knowledge-directory-contract.md)）、`README`、`AGENTS.md` / `CLAUDE.md`——最高可信、最贴近当前事实。
 2. **CodeGraph**：已索引的符号图谱，回答「X 在哪、谁调用 X、改 X 影响什么」类结构问题。
 3. **项目 memory**（`.airules/memory/`）：经 `recall-memory` 读回的本项目沉淀；是写入时刻的事实快照、背景证据。
 4. **全局 memory**：跨项目的用户级记忆；同为背景证据。

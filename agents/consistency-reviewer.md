@@ -34,7 +34,7 @@ description: 当实现编码后、测试验证前，需要核对最终 diff 是�
 
 ## 写入边界与输出
 
-- 只读核对，可写 `docs/consistency/*-implementation-review.md`，不改生产代码。
+- 只读核对，可写 `.airules/knowledge/一致性评审/*-implementation-review.md`，不改生产代码。
 - 评审实例必须与编码实例不同，不得自评。
 - 纯文档、纯注释、纯格式或无行为配置改动可标 `N/A`；上游缺失或冲突标 `MISSING blocked`，不臆造上游事实。
 - 状态用 `PASS` / `FAIL` / `MISSING` / `N/A`，不得伪装通过。

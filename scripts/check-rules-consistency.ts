@@ -6,7 +6,7 @@ import { fileURLToPath } from 'node:url'
 import { vendors } from '../constants/skills.js'
 
 // 编码编排资产最小自洽性检查（低成本、非重型治理）：
-// 校验 rules/AGENTS.md、agents/*.md、constants/skills.ts 分发清单、docs/architecture/**
+// 校验 rules/AGENTS.md、agents/*.md、constants/skills.ts 分发清单、.airules/knowledge/架构/**
 // 之间的引用存在性与明显漂移。作用域不含历史 plan、README。
 
 // rules/AGENTS.md 调度索引引用的固定 agent。
@@ -100,7 +100,7 @@ export function checkRulesConsistency(repoRoot: string): CheckResult {
   const errors: string[] = []
   const agentsDir = path.join(repoRoot, 'agents')
   const skillsDir = path.join(repoRoot, 'skills')
-  const archDir = path.join(repoRoot, 'docs', 'architecture')
+  const archDir = path.join(repoRoot, '.airules', 'knowledge', '架构')
 
   // 1. 固定 agent 必须有对应文件。
   for (const name of FIXED_AGENTS) {
@@ -162,7 +162,7 @@ export function checkRulesConsistency(repoRoot: string): CheckResult {
     for (const token of referenced) {
       // 仅校验看起来像 npm script 名的（含已知前缀），避免误伤普通冒号词。
       if (/^(?:verify|delivery|rules|lint):/.test(token) && !scripts.has(token)) {
-        errors.push(`docs/architecture/overview.md 引用了 package.json 不存在的 npm script：${token}`)
+        errors.push(`.airules/knowledge/架构/overview.md 引用了 package.json 不存在的 npm script：${token}`)
       }
     }
   }
@@ -206,7 +206,7 @@ export function checkRulesConsistency(repoRoot: string): CheckResult {
         continue
       }
       if (!indexContent.includes(entry)) {
-        errors.push(`docs/architecture/decisions/${entry} 未登记进 decisions/index.md`)
+        errors.push(`.airules/knowledge/架构/decisions/${entry} 未登记进 decisions/index.md`)
       }
     }
   }

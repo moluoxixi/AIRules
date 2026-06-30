@@ -236,6 +236,8 @@ export const vendors: VendorsConfig = [
           'init-project',
           'handoff',
           'session-capture',
+          // 知识库整理（无 description，由编排 diff 触发或用户手动调用）
+          'organize-knowledge',
           // 需求 → 计划 → 测试设计
           'brainstorming',
           'writing-plans',

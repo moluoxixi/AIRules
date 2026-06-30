@@ -37,7 +37,7 @@ describe('自洽检查器', () => {
   function seedCleanRepo(root: string) {
     fs.mkdirSync(path.join(root, 'agents'), { recursive: true })
     fs.mkdirSync(path.join(root, 'skills', 'writing-plans'), { recursive: true })
-    fs.mkdirSync(path.join(root, 'docs', 'architecture'), { recursive: true })
+    fs.mkdirSync(path.join(root, '.airules', 'knowledge', '架构'), { recursive: true })
     fs.mkdirSync(path.join(root, 'rules'), { recursive: true })
     for (const name of ['planner', 'coder', 'debugger', 'consistency-reviewer', 'code-reviewer']) {
       fs.writeFileSync(path.join(root, 'agents', `${name}.md`), `---\nname: ${name}\n---\n\n## 加载 skill\n\n- \`writing-plans\`：x\n`)
@@ -47,9 +47,9 @@ describe('自洽检查器', () => {
       fs.mkdirSync(path.join(root, 'skills', skill), { recursive: true })
     }
     fs.writeFileSync(path.join(root, 'skills', 'writing-plans', 'SKILL.md'), '---\nname: writing-plans\n---\n')
-    fs.writeFileSync(path.join(root, 'docs', 'architecture', 'overview.md'), '质量门禁：lint:check / typecheck。\n')
-    fs.mkdirSync(path.join(root, 'docs', 'architecture', 'decisions'), { recursive: true })
-    fs.writeFileSync(path.join(root, 'docs', 'architecture', 'decisions', 'index.md'), '| ADR | 决策 |\n|---|---|\n')
+    fs.writeFileSync(path.join(root, '.airules', 'knowledge', '架构', 'overview.md'), '质量门禁：lint:check / typecheck。\n')
+    fs.mkdirSync(path.join(root, '.airules', 'knowledge', '架构', 'decisions'), { recursive: true })
+    fs.writeFileSync(path.join(root, '.airules', 'knowledge', '架构', 'decisions', 'index.md'), '| ADR | 决策 |\n|---|---|\n')
     fs.writeFileSync(path.join(root, 'rules', 'AGENTS.md'), 'Consist -->|符合| Test\n')
     fs.writeFileSync(path.join(root, 'package.json'), JSON.stringify({ scripts: { 'lint:check': 'x', 'typecheck': 'x' } }))
   }
@@ -64,7 +64,7 @@ describe('自洽检查器', () => {
   it('捕获：docs 残留旧 agent 名', () => {
     withTempDir((root) => {
       seedCleanRepo(root)
-      fs.writeFileSync(path.join(root, 'docs', 'architecture', 'agent-layer.md'), '本文档描述 frontend-planner 与 backend-coder。\n')
+      fs.writeFileSync(path.join(root, '.airules', 'knowledge', '架构', 'agent-layer.md'), '本文档描述 frontend-planner 与 backend-coder。\n')
       const { errors } = checkRulesConsistency(root)
       assert.ok(errors.some(e => e.includes('frontend-planner')), errors.join('\n'))
     })
@@ -82,7 +82,7 @@ describe('自洽检查器', () => {
   it('捕获：overview 引用不存在的 npm script', () => {
     withTempDir((root) => {
       seedCleanRepo(root)
-      fs.writeFileSync(path.join(root, 'docs', 'architecture', 'overview.md'), '质量门禁跑 verify:knowledge-sources。\n')
+      fs.writeFileSync(path.join(root, '.airules', 'knowledge', '架构', 'overview.md'), '质量门禁跑 verify:knowledge-sources。\n')
       const { errors } = checkRulesConsistency(root)
       assert.ok(errors.some(e => e.includes('verify:knowledge-sources')), errors.join('\n'))
     })
@@ -112,7 +112,7 @@ describe('自洽检查器', () => {
     withTempDir((root) => {
       seedCleanRepo(root)
       fs.writeFileSync(
-        path.join(root, 'docs', 'architecture', 'decisions', 'ADR-0099-orphan.md'),
+        path.join(root, '.airules', 'knowledge', '架构', 'decisions', 'ADR-0099-orphan.md'),
         '# ADR-0099 孤儿\n\n## 状态\n\naccepted\n',
       )
       const { errors } = checkRulesConsistency(root)

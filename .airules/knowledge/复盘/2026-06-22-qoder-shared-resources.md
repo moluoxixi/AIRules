@@ -16,7 +16,7 @@ Qoder 的 MCP 配置仍写入 `~/AppData/Roaming/Qoder/SharedClientCache/mcp.jso
 - 用户补充确认：`qoder需要agents.md`。
 - 修复前 `constants/hosts.ts` 中 `qoder.homeRelPath` 指向 `AppData/Roaming/Qoder/SharedClientCache`，并设置 `projectSharedResources: false`、`projectBaseline: false`。
 - 修复前 `tests/install-coverage.test.ts` 明确断言 Qoder 不生成 `AGENTS.md`、`skills`、`agents`。
-- 修复前 `docs/architecture/host-agent-mcp-mapping.md` 将 `qoder` 列为 MCP-only。
+- 修复前 `.airules/knowledge/架构/host-agent-mcp-mapping.md` 将 `qoder` 列为 MCP-only。
 
 ## 根因分类
 

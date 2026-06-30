@@ -27,7 +27,7 @@ AIRules（包名 `.moluoxixi`）是一个可组合的 AI 技能分发系统，�
 | `scripts/check-rules-consistency.ts` | 编码编排资产自洽性校验：agent/skill/rules/docs 引用存在性与漂移检查 | 仓库内容 | CI / pre-push | 维护者 |
 | `skills/` | 第一方领域 skills（init-project、brainstorming、writing-plans、test-design、spec-workflow 等） | — | vendor/skills 投影 | 维护者 |
 | `rules/` | 规则基线（手工维护的 `AGENTS.md`） | — | 各宿主基线文件 | 维护者 |
-| `docs/` | 可审计文档层（architecture / api / prds / test 等） | 源料 | 人工/检索 | 维护者 |
+| `.airules/knowledge/` | 可审计文档层（架构 / 接口协议 / 产品需求 / 测试 等） | 源料 | 人工/检索 | 维护者 |
 
 ## 分层与依赖规则
 
@@ -40,7 +40,7 @@ constants/  ← scripts/lib/  ← scripts/cli.ts、scripts/sync-vendors.ts
 - `constants/` 为纯配置层，不依赖 `scripts/lib`。
 - `scripts/lib/` 消费 `constants/`，封装投影、同步、校验逻辑，不直接解析 CLI 参数。
 - `scripts/cli.ts`、`scripts/*.ts` 为编排层，只负责解析参数并调用 lib。
-- `skills/`、`rules/`、`docs/` 为内容/产物层，不被代码层 import，仅作为投影/校验的数据输入。
+- `skills/`、`rules/`、`.airules/knowledge/` 为内容/产物层，不被代码层 import，仅作为投影/校验的数据输入。
 
 ## 数据流
 

@@ -10,7 +10,7 @@ description: 接收用户新请求或开始处理任务时，若项目存在 `.a
 ## 触发条件
 
 - 接收用户新请求、开始处理一个任务时，若项目根存在 `.airules/memory/MEMORY.md` 则加载本 skill。
-- 与普通文件检索 / CodeGraph / 宿主 MCP 外部资料（见 [ADR-0004 知识检索协议](../../docs/architecture/decisions/ADR-0004-knowledge-retrieval-protocol.md)）互补：本 skill 只读"我们自己沉淀的记忆库"，是检索链路中的项目 memory 一环，不替代代码/文档检索。
+- 与普通文件检索 / CodeGraph / 宿主 MCP 外部资料（见 [ADR-0004 知识检索协议](../../.airules/knowledge/架构/decisions/ADR-0004-knowledge-retrieval-protocol.md)）互补：本 skill 只读"我们自己沉淀的记忆库"，是检索链路中的项目 memory 一环，不替代代码/文档检索。
 
 ## 不适合场景
 

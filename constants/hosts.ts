@@ -7,14 +7,14 @@ import path from 'node:path'
  * - 'toml'：宿主吃 TOML（Codex CLI），由 Markdown agent 转译生成。
  * - 'json'：宿主吃 JSON（Kiro），需转译，未实现前显式跳过 + 告警。
  * - 'agentsmd'：agents.md 共享层，使用 .agents/subagents。
- * 映射依据见 docs/architecture/host-agent-mcp-mapping.md（提取自 rulesync 源码）。
+ * 映射依据见 .airules/knowledge/架构/host-agent-mcp-mapping.md（提取自 rulesync 源码）。
  */
 export type AgentFormat = 'markdown' | 'toml' | 'json' | 'agentsmd'
 
 /**
  * 宿主 MCP 配置投影规格。
  * 中性源 { mcpServers: {...} } 按此规格写到各宿主对应文件、键名、格式。
- * 映射依据见 docs/architecture/host-agent-mcp-mapping.md。
+ * 映射依据见 .airules/knowledge/架构/host-agent-mcp-mapping.md。
  */
 export interface McpProjection {
   /** MCP 配置根目录；未声明时使用宿主 home。 */
@@ -42,7 +42,7 @@ export interface McpProjection {
  * - Qoder：~/.qoder/settings.json（JSON，与 Claude 同构）
  * - Trae：~/.trae-cn/hooks.json（JSON，顶层 version:1，group 嵌套）
  * - Cursor：~/.cursor/hooks.json（JSON，顶层 version:1，事件名小写 'stop'，扁平条目、无 type）
- * 映射依据见 docs/architecture/host-hook-mapping.md。
+ * 映射依据见 .airules/knowledge/架构/host-hook-mapping.md。
  */
 export interface HookProjection {
   /** hook 配置文件相对宿主 home 的目录片段（'.' 表示宿主 home 根） */

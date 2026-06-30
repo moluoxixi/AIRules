@@ -790,7 +790,7 @@ function readHostConfigForMerge(targetFile: string): string {
  * - JSON 宿主：用 mcp.serversKey 作为服务表键名（多数为 mcpServers，OpenCode 为 mcp）；
  *   保留文件已有其它顶层字段，且对 serversKey 做浅合并，不清掉用户手写的其它 server。
  * - TOML 宿主（Codex）：以 AIRULES 托管块写 [mcp_servers.<name>] 表，幂等替换，保留块外内容。
- * 源缺失时 no-op（不写文件、不报错）。映射依据见 docs/architecture/host-agent-mcp-mapping.md。
+ * 源缺失时 no-op（不写文件、不报错）。映射依据见 .airules/knowledge/架构/host-agent-mcp-mapping.md。
  */
 function applyMcpServerOverrides(servers: Record<string, unknown>, overrides: McpProjection['serverOverrides']): Record<string, unknown> {
   if (!overrides || Object.keys(overrides).length === 0) {
@@ -912,7 +912,7 @@ function isManagedHookCommand(value: unknown, scriptName: string): boolean {
  *   适配各宿主结构差异。
  * - TOML 宿主（Codex config.toml）：用 AIRULES HOOK 受管块写 [[hooks.<event>]]，幂等替换，
  *   保留块外用户内容。
- * 中性源脚本缺失时 no-op（不写文件、不报错）。映射依据见 docs/architecture/host-hook-mapping.md。
+ * 中性源脚本缺失时 no-op（不写文件、不报错）。映射依据见 .airules/knowledge/架构/host-hook-mapping.md。
  */
 function projectHooksToHost(moluoHome: string, hooksHome: string, hooks: HookProjection) {
   const sourceScript = path.join(vendorHooksPath(moluoHome), hooks.scriptName)
