@@ -52,6 +52,8 @@ acceptance_checklist:
 
 `id` 是清单内稳定标识，下游 `consistency-check` 据此逐条标 `COVERED` / `NOT_COVERED` / `PARTIAL`。每条 `acceptance_condition` 必须可判定（能明确说出"满足/不满足"），不可写成含糊目标。清单与上面两个矩阵是同一批验收点的两种视图——矩阵供人读、清单供评审机械核对，不得二者覆盖范围不一致。
 
+计划中可判定的**产物形态与性能边界**（如页面布局区域是否齐、组件是否按计划复用、首屏/接口耗时阈值、列表虚拟化行数、查询无 N+1）也纳入本清单，作为可逐条核对的验收点：能实际运行度量的（bundle 体积、性能测试、查询计数断言）交 `verification-before-completion` 跑；只能结构性核对的（目录/布局/复用是否如计划）交 `consistency-check` 比对 diff。
+
 ## 输出边界
 
 - 只产出用例清单，不编写测试实现代码。
