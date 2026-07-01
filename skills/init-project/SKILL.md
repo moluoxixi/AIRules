@@ -33,7 +33,8 @@ flowchart TD
   C -->|否| E[link-claude.mjs 建 CLAUDE.md 软链]
   E --> F[codegraph init -i]
   F --> G[spec-init.mjs 建 .airules spec 工作流骨架]
-  G --> H[交付检查]
+  G --> W[wiki-init.mjs 建 .qoder/repowiki/wiki_plan.yaml]
+  W --> H[交付检查]
 ```
 
 | 环节 | 命令 | 关键输出 | 失败语义 |
@@ -42,6 +43,7 @@ flowchart TD
 | Claude 链接 | `node <init-project-skill>/scripts/link-claude.mjs <project>` | `CLAUDE.md` 软链指向 `AGENTS.md` | 非托管文件或链接到其它目标时停止 |
 | CodeGraph | 在项目根执行 `codegraph init -i` | `.codegraph` 初始化状态 | 命令缺失报 `MISSING` |
 | spec 工作流骨架 | `node <init-project-skill>/scripts/spec-init.mjs <project>` | `.airules/{specs,changes,changes/archive}` + `.airules/knowledge/index.md` 空骨架 | 幂等，已存在则跳过；无外部依赖 |
+| Qoder wiki 配置 | `node <init-project-skill>/scripts/wiki-init.mjs <project>` | `.qoder/repowiki/wiki_plan.yaml`（引导 wiki 读取 `.airules/knowledge/`） | 幂等，已存在则跳过；不覆盖团队已维护的配置 |
 
 - `<init-project-skill>` 占位符由脚本运行时解析为真实 init-project skill 根目录；下游不得残留字面量。
 - `inject-rules.mjs` 自动处理 `airules-base.md`（仅在 `AGENTS.md` 为空/新建时注入）与 `code-core.md`；命令无需手动传 reference。
@@ -54,3 +56,4 @@ flowchart TD
 | `CLAUDE.md` | 软链接指向 `AGENTS.md`；Windows 无符号链接权限时回退为同一文件实体硬链接，并在日志说明 |
 | CodeGraph | `codegraph init -i` 真实执行并报告 `PASS`、`FAIL`、`MISSING` 或 `NOT RUN` |
 | spec 工作流 | `.airules/{specs,changes,changes/archive}` 已建；`.airules/knowledge/index.md` 空骨架已建；后续变更立项见 `spec-workflow` skill；文档放入 `.airules/knowledge/`，整理见 `organize-knowledge` skill |
+| Qoder wiki | `.qoder/repowiki/wiki_plan.yaml` 已建，内含知识库路径引导；已存在则跳过（`NOT RUN` 可接受） |
