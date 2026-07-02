@@ -321,6 +321,36 @@ describe('编排红线文本', () => {
     }
   })
 
+  it('test-design 测试用例必须落档到 .airules/tests/（不只停在对话里）', () => {
+    const td = read('skills/test-design/SKILL.md')
+    assert.match(td, /\.airules\/tests\//, 'test-design/SKILL.md 缺 .airules/tests/ 落档规则')
+    assert.match(td, /coverage_status/, 'test-design/SKILL.md 缺 coverage_status 字段')
+    assert.match(td, /task_id/, 'test-design/SKILL.md 缺 task_id 字段（用于任务反向引用）')
+  })
+
+  it('planner 同时产出任务文件与测试用例文件', () => {
+    const planner = read('agents/planner.md')
+    assert.match(planner, /\.airules\/tasks\//, 'agents/planner.md 缺任务落档规则')
+    assert.match(planner, /\.airules\/tests\//, 'agents/planner.md 缺测试用例落档规则')
+    assert.match(planner, /测试用例文件路径/, 'agents/planner.md 回传字段缺"测试用例文件路径"')
+  })
+
+  it('coder 输入包含测试用例文件（.airules/tests/）', () => {
+    const coder = read('agents/coder.md')
+    assert.match(coder, /\.airules\/tests\//, 'agents/coder.md 输入上下文包缺 .airules/tests/ 引用')
+  })
+
+  it('consistency-reviewer 输入包含 .airules/tests/ 测试用例文件引用', () => {
+    const cr = read('agents/consistency-reviewer.md')
+    assert.match(cr, /\.airules\/tests\//, 'agents/consistency-reviewer.md 缺 .airules/tests/ 引用')
+  })
+
+  it('subagent-driven-development 任务派发单位包含测试用例文件引用', () => {
+    const sdd = read('skills/subagent-driven-development/SKILL.md')
+    assert.match(sdd, /\.airules\/tests\//, 'subagent-driven-development/SKILL.md 任务派发缺 .airules/tests/ 引用')
+    assert.match(sdd, /TC-id/, 'subagent-driven-development/SKILL.md 缺 TC-id 引用')
+  })
+
   it('vendor/ 是 git-ignored 只读沙箱（不作为源资产纳入版本库）', () => {
     const r = spawnSync('git', ['check-ignore', 'vendor'], { cwd: repoRoot, encoding: 'utf8' })
     // git check-ignore 命中时 status 0 并回显路径；未命中 status 1。

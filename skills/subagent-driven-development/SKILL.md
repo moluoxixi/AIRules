@@ -27,10 +27,13 @@ name: subagent-driven-development
 
 ## 执行流程
 
+**任务派发单位**：每次派 implementer 子代理，以 `.airules/tasks/<task-name>.md`（`writing-plans` 产出的单任务 Markdown）为最小工作单位；同时读取对应的 `.airules/tests/<feature>.md`（`test-design` 落档的验收清单），把相关 TC-id / AC-id 列入 implementer 简报作为 TDD 红阶段依据。主代理起步时先读任务文件列表与测试用例文件，逐任务派发，不把整个计划一次性灌给子代理。
+
 ```dot
 digraph process {
   rankdir=TB;
-  "读计划, 记全局约束, 建 todos" [shape=box];
+  "读任务列表(.airules/tasks/), 记全局约束, 建 todos" [shape=box];
+  "读当前任务 Markdown 构造 implementer 简报" [shape=box];
   "派 implementer 子代理" [shape=box];
   "子代理有疑问?" [shape=diamond];
   "答疑并补上下文" [shape=box];
@@ -42,7 +45,8 @@ digraph process {
   "还有任务?" [shape=diamond];
   "派末尾全面评审子代理" [shape=box];
   "走 finishing-a-development-branch" [shape=box];
-  "读计划, 记全局约束, 建 todos" -> "派 implementer 子代理";
+  "读任务列表(.airules/tasks/), 记全局约束, 建 todos" -> "读当前任务 Markdown 构造 implementer 简报";
+  "读当前任务 Markdown 构造 implementer 简报" -> "派 implementer 子代理";
   "派 implementer 子代理" -> "子代理有疑问?";
   "子代理有疑问?" -> "答疑并补上下文" [label="是"];
   "答疑并补上下文" -> "派 implementer 子代理";
@@ -53,7 +57,7 @@ digraph process {
   "派 fix 子代理修 Critical/Important" -> "写 diff 文件, 派 task reviewer" [label="复审"];
   "spec 通过且质量通过?" -> "标任务完成 + 记进度账本" [label="是"];
   "标任务完成 + 记进度账本" -> "还有任务?";
-  "还有任务?" -> "派 implementer 子代理" [label="是"];
+  "还有任务?" -> "读当前任务 Markdown 构造 implementer 简报" [label="是"];
   "还有任务?" -> "派末尾全面评审子代理" [label="否"];
   "派末尾全面评审子代理" -> "走 finishing-a-development-branch";
 }

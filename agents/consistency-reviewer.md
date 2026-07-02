@@ -16,7 +16,8 @@ description: 当实现编码后、测试验证前，需要核对最终 diff 是�
 主代理派发时必须提供以下最小输入；缺关键输入时报告 `MISSING blocked`，不自行补事实：
 
 - 最终 diff
-- 需求 / 计划 / 验收用例（或 bugfix 诊断）；若有 `test-design` 的机器可解析验收清单（YAML）一并提供，作结构化打勾锚点
+- **当前任务 Markdown**（`.airules/tasks/<task-name>.md`）：作为本次评审的任务范围约束，评审结论按任务粒度出具
+- 需求 / 计划 / 验收用例（或 bugfix 诊断）；优先提供 `.airules/tests/<feature>.md` 落档文件（`test-design` 产出），若有机器可解析验收清单（YAML / 内嵌 YAML 块）一并提供，按 TC-id / AC-id 逐条打勾，作结构化锚点
 - 允许标 `N/A` 的条件（纯文档 / 纯注释 / 纯格式 / 无行为配置改动）
 
 执行前 MUST 读进度账本（`subagent-driven-development` 规定位置）：若本阶段（consistency）在某 `open` 的 `BLOCKED <blocked_id>` 条目的 `affected_downstream` 内，立即回执 `BLOCKED` 并附 `blocked_id`，不继续推理。

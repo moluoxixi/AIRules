@@ -30,12 +30,12 @@ name: spec-workflow
 2. `node <init-project-skill>/scripts/spec-new-change.mjs <project> <change-id>` 建变更骨架。
 3. 填写：
    - `proposal.md`：`## Why`（问题与动机，必填）+ `## What Changes`（变更点，必填非空）+ `## Impact`。
-   - `tasks.md`：`## N. 组` + `- [ ] N.M 任务` 复选框清单。
+   - `tasks.md`：`## N. 组` + `- [ ] N.M 任务` 复选框清单——作为该 change 的任务索引与勾选进度。**详细任务 Markdown 落 `.airules/tasks/<task-name>.md`（由 `writing-plans` 产出），`tasks.md` 勾选行应附注引用对应文件路径**，例如 `- [ ] 1.1 实现登录接口 → [auth-login](.airules/tasks/auth-login.md)`；若任务较简单、无独立文件则内联在 `tasks.md` 即可，不强拆。
    - `specs/<capability>/spec.md`：delta，用 `## ADDED/MODIFIED/REMOVED/RENAMED Requirements`；每个 `### Requirement:` 正文含 SHALL/MUST，下挂 `#### Scenario:`。
 4. `node <init-project-skill>/scripts/spec-validate.mjs <project> <change-id>` 校验 delta 格式合法。
 
 ### apply（实现）
-- 按 `tasks.md` 逐条实现（走编码流水线 coder），完成一项勾选 `- [x]`。
+- 按 `tasks.md` 勾选列表逐条实现，coder 以 `.airules/tasks/<task-name>.md` 单任务文件为输入（来自 `writing-plans` 落档），完成一项后在 `tasks.md` 勾选 `- [x]`。
 - 实现中发现需求/规格需变，回到 propose 修订对应文件，不在实现里偷改契约。
 
 ### archive（归档）

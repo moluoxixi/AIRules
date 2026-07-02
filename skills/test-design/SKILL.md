@@ -54,9 +54,33 @@ acceptance_checklist:
 
 计划中可判定的**产物形态与性能边界**（如页面布局区域是否齐、组件是否按计划复用、首屏/接口耗时阈值、列表虚拟化行数、查询无 N+1）也纳入本清单，作为可逐条核对的验收点：能实际运行度量的（bundle 体积、性能测试、查询计数断言）交 `verification-before-completion` 跑；只能结构性核对的（目录/布局/复用是否如计划）交 `consistency-check` 比对 diff。
 
+## 测试用例落档
+
+产出完成后，验收清单必须落盘到 `.airules/tests/`，不能只停留在对话里或附在计划文本中：
+
+- **人类可读文件**：`.airules/tests/<feature-or-change>.md`——自然语言矩阵 + 说明。
+- **机器可解析清单**：可以是独立 `.airules/tests/<feature-or-change>.yaml`，也可以是上述 `.md` 文件中的 YAML 代码块；两种形式等价，选一即可。
+
+每条测试用例落档时必须包含以下字段（无关字段标 `N/A` 并注明原因）：
+
+| 字段 | 说明 |
+|---|---|
+| `id` | 稳定测试用例 ID，如 `TC-1`（可与 `AC-id` 对齐） |
+| `traces_to` | 对应的需求 / 验收标准来源 |
+| `task_id` | 对应的任务 ID（来自 `.airules/tasks/`） |
+| `type` | `unit` / `interaction` / `integration` / `e2e` / `static` / `doc-check` / `script-check` |
+| `preconditions` | 前置条件，无则写"无" |
+| `steps_or_input` | 操作步骤或输入 |
+| `expected` | 预期结果（可判定） |
+| `coverage_status` | `PLANNED` / `IMPLEMENTED` / `N/A` / `BLOCKED` |
+| `test_file_or_command` | 对应测试文件路径或验证命令，未知时填 `PLANNED` |
+
+`id` 应能被任务文件（`.airules/tasks/<task>.md`）的"测试设计 / 验收用例映射"字段引用；任务文件也应反向列出自己覆盖的测试用例 ID，形成双向可追溯链。
+
 ## 输出边界
 
 - 只产出用例清单，不编写测试实现代码。
 - 每条用例必须可追溯到一条验收标准；覆盖不足时补用例或标 `MISSING`，不得删减验收标准。
 - 机器可解析清单（YAML）与自然语言矩阵覆盖范围必须一致；每条 `acceptance_condition` 可判定，`id` 稳定供下游打勾。
 - 矩阵中的示例条目仅供格式参考，需按真实验收标准填充，不得直接当作最终用例。
+- **落档（强制）**：产出的验收清单必须落盘到 `.airules/tests/`（见上方"测试用例落档"），不得只以对话文本交付；落档文件路径随任务文件路径一起回传给主代理。
