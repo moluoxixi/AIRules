@@ -18,8 +18,8 @@ flowchart TD
   Req["需求分析: 评估 PRD / 轻量澄清，产出需求事实源 + 验收标准"]
   Req -->|歧义/关键事实缺失| Clarify["澄清: 向用户提问"] --> Req
   Req --> Plan["计划: planner 冻结范围 + 产出实现计划 + 验收用例清单"]
-  Plan -->|规格契约路径| Spec["落盘 proposal.md + specs/delta + tasks.md，spec-validate 校验"]
-  Spec --> Apply["spec-workflow · apply: 按 tasks.md 逐条落地并勾选"]
+  Plan -->|规格契约路径| Spec["落盘 requirements/契约影响摘要 + specs/delta，spec-validate 校验"]
+  Spec --> Apply["spec-workflow · apply: 按 .airules/tasks/<id>.md 逐条落地"]
   Apply --> Code
   Plan -->|普通路径| Code["实现: coder 按计划 + 验收用例写测试(红) + 代码(绿)"]
   Code --> Consist["后置一致性评审: consistency-reviewer 核对最终 diff 是否符合需求/计划/验收用例"]
@@ -43,7 +43,7 @@ flowchart TD
 | 阶段 | 控制资产 | 前置依赖 | 产出 |
 |---|---|---|---|
 | 需求分析 | `brainstorming` | 任务描述 / 可选 PRD | 需求事实源（**落档为 `.airules/requirements/<feature>.md`**）、验收标准雏形 |
-| 计划 | `writing-plans`、`test-design` | 需求文档（`.airules/requirements/<feature>.md`）、需求事实源 | 实现计划（**落档为 `.airules/tasks/<task>.md`**，一任务一文件）、验收用例清单（**落档为 `.airules/tests/<feature>.md`**）；规格契约路径另有 `.airules/changes/<change-id>/tasks.md` 勾选索引 |
+| 计划 | `writing-plans`、`test-design` | 需求文档（`.airules/requirements/<feature>.md`）、需求事实源 | 实现计划（**落档为 `.airules/tasks/<task>.md`**，一任务一文件；spec 路径时在"需求来源/契约来源"字段写 change-id，不另建 `changes/<change-id>/tasks.md`）、验收用例清单（**落档为 `.airules/tests/<feature>.md`**） |
 | 实现 | `test-driven-development` + (`unit-testing` 或 `interaction-testing`) | **当前任务 Markdown**（`.airules/tasks/<task>.md`，coder 每次以单任务为工作单位）、验收用例清单；目标栈构建工具可执行（主代理派发前验证 build tool 存在且可运行基础命令；验证失败标 MISSING blocked，不派发 coder） | 源码 + 配套测试 |
 | 后置一致性评审 | `consistency-check` | 最终 diff、需求 / 计划 / 验收用例 | 一致性结论（编码后、测试验证前核对） |
 | 测试运行 | `verification-before-completion` | 实现产物 | 运行证据与状态 |
@@ -73,8 +73,8 @@ flowchart TD
 
 - **方法论层**（默认）：需求/计划/测试设计的"怎么想清楚"由编码流水线 skill 承担——`brainstorming`、`writing-plans`、`test-design`。小改、L0/L1 可直接执行的变更只走方法论层（图中"否, 小改/L0L1"分支），不必立项规格。
 - **规格持久化层**（按需）：仅当满足触发条件——变更会新增/修改/废弃**外部可观察的系统行为契约**（如公共 API、跨模块协议、状态机、权限规则、数据一致性规则、持久化数据模型、兼容性/破坏性变化），**且该契约值得作为长期事实源维护**（后续多 agent/多模块/多团队会依赖、缺书面 spec 会导致实现/评审/回归无法稳定判定）；或用户显式要求正式立项——才用 `spec-workflow` 三态包裹主线，把结论固化为 `.airules/specs/` 规格。下列情形**不触发**：纯内部实现重构且行为等价、小改/L0/L1/局部 bugfix 且不改长期契约、纯探索/纯格式/普通文档更新、只需一次性实现计划不需归档为长期事实源。技术对象类型（接口/状态机/数据一致性）只是常见例子，不是充分触发条件——关键是契约是否变化且是否值得长期沉淀。三态分工：
-  - **propose**：进入需求/计划前 `spec-new-change` 建变更骨架；需求与计划的结论落盘成 `proposal.md` + `specs/<capability>/spec.md`(delta) + `tasks.md`，`spec-validate` 校验 delta 格式。需求/计划内容仍由 `brainstorming`/`writing-plans`/`test-design` 产出，spec-workflow 只负责固化。
-  - **apply**：实现阶段按 `tasks.md` 逐条落地并勾选，对应主线"实现→一致性评审→测试"。
+  - **propose**：进入需求/计划前 `spec-new-change` 建变更骨架（只创建 `changes/<change-id>/specs/` 目录）；需求与计划的结论落盘成 `.airules/requirements/<change-id>.md`（含 `## 契约影响摘要` 节）+ `.airules/tasks/<change-id>.md`（含 `change-id` 字段）+ `specs/<capability>/spec.md`(delta)，`spec-validate` 校验 delta 格式。需求/计划内容仍由 `brainstorming`/`writing-plans`/`test-design` 产出，spec-workflow 只负责固化。
+  - **apply**：实现阶段 coder 以 `.airules/tasks/<change-id>.md` 为输入逐条落地，对应主线"实现→一致性评审→测试"；无需在 `changes/` 维护勾选清单。
   - **archive**：代码评审通过后 `spec-archive` 把 delta 合并进 `.airules/specs/`（RENAMED→REMOVED→MODIFIED→ADDED，冲突硬失败）并归档变更目录。
 - 二者分工，不重复造需求/计划文档；规格持久化层不替代方法论层，只在其产出之上做书面固化与归档。
 

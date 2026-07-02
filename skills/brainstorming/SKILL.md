@@ -44,7 +44,7 @@ description: 当编码任务进入、需要把用户诉求或 PRD 转成可执�
 **落档路径（强制）**：
 
 - 普通路径：`.airules/requirements/<feature-or-change>.md`
-- spec 路径：`.airules/changes/<change-id>/proposal.md` 作 change 级需求说明；如需更细需求事实源，可引用 `.airules/requirements/<feature-or-change>.md`
+- spec 路径：`.airules/requirements/<change-id>.md`，在 `## 契约影响摘要` 节写明变更类型（新增/修改/废弃）与涉及契约路径；无需单独 `proposal.md`
 
 **需求文档最小内容（强制模板）**：
 
@@ -72,6 +72,12 @@ description: 当编码任务进入、需要把用户诉求或 PRD 转成可执�
 
 ## 外部可观察行为变化
 <新增/修改/废弃的对外行为，若无则写"无">
+
+## 契约影响摘要
+<!-- 仅 spec 路径时填写；普通路径写"N/A（不触发 spec-workflow）" -->
+- 变更类型: 新增 / 修改 / 废弃
+- 涉及契约: <capability 路径，如 .airules/specs/auth/spec.md>
+- change-id: <与 .airules/changes/<change-id>/ 目录对应>
 
 ## 接口 / 数据 / 权限 / 状态机 / 兼容性影响
 <涉及的公共 API、数据模型、权限规则、状态转换、破坏性变更；若无则写"无">

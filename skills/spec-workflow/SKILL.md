@@ -27,35 +27,35 @@ name: spec-workflow
 
 ### propose（提案）
 1. 先用 `brainstorming` 想清需求、`writing-plans` 拆任务、`test-design` 定验收（方法论），不在本 skill 重复需求分析。
-2. `node <init-project-skill>/scripts/spec-new-change.mjs <project> <change-id>` 建变更骨架。
+2. `node <init-project-skill>/scripts/spec-new-change.mjs <project> <change-id>` 建变更骨架（只创建 `changes/<change-id>/specs/` 目录）。
 3. 填写：
-   - `proposal.md`：`## Why`（问题与动机，必填）+ `## What Changes`（变更点，必填非空）+ `## Impact`。
-   - `tasks.md`：`## N. 组` + `- [ ] N.M 任务` 复选框清单——作为该 change 的任务索引与勾选进度。**详细任务 Markdown 落 `.airules/tasks/<task-name>.md`（由 `writing-plans` 产出），`tasks.md` 勾选行应附注引用对应文件路径**，例如 `- [ ] 1.1 实现登录接口 → [auth-login](.airules/tasks/auth-login.md)`；若任务较简单、无独立文件则内联在 `tasks.md` 即可，不强拆。**内联仅适用于单个内聚任务或治理/文档类轻量任务；一旦该任务需要任务级 code/test/review（即 coder 要对它执行 TDD、consistency-reviewer 要按 AC-id 核对、code-reviewer 要出评审结论），就必须落 `.airules/tasks/<task-name>.md`，不得以"任务简单"为由内联规避落盘。**
+   - **需求文档**：在 `.airules/requirements/<change-id>.md` 的 `## 契约影响摘要` 节写明变更类型（新增/修改/废弃）和涉及契约路径——这是 proposal 的替代，需求事实源与契约动机合并在同一文件，无需单独 `proposal.md`。
+   - **任务文档**：在 `.airules/tasks/<change-id>.md`（由 `writing-plans` 产出）的 `## 需求来源 / 契约来源` 字段写明 `change-id`，作为反向关联——无需单独 `tasks.md`。
    - `specs/<capability>/spec.md`：delta，用 `## ADDED/MODIFIED/REMOVED/RENAMED Requirements`；每个 `### Requirement:` 正文含 SHALL/MUST，下挂 `#### Scenario:`。
 4. `node <init-project-skill>/scripts/spec-validate.mjs <project> <change-id>` 校验 delta 格式合法。
 
 ### apply（实现）
-- 按 `tasks.md` 勾选列表逐条实现，coder 以 `.airules/tasks/<task-name>.md` 单任务文件为输入（来自 `writing-plans` 落档），完成一项后在 `tasks.md` 勾选 `- [x]`。
-- 实现中发现需求/规格需变，回到 propose 修订对应文件，不在实现里偷改契约。
+- coder 以 `.airules/tasks/<change-id>.md` 为输入（由 `writing-plans` 落档，其"需求来源/契约来源"字段引用本 change-id），按任务实现步骤逐条落地；无需在 `changes/` 目录内维护勾选清单。
+- 实现中发现需求/规格需变，回到 propose 修订 `.airules/requirements/<change-id>.md` 和 delta spec，不在实现里偷改契约。
 
 ### archive（归档）
 
 前置条件分两类门禁，缺一不归档：
 
 - **流程门禁**（主代理基于阶段证据负责，脚本无法检查）：实现完成、验证 PASS、一致性评审 PASS 或 N/A、代码评审无阻塞项。脚本成功 ≠ 流程满足——测试/评审/一致性状态由主流程 evidence schema 负责。
-- **脚本门禁**（`spec-archive.mjs` 强制检查）：proposal 的 Why/What Changes 非空、tasks 默认全部 `[x]`、默认 ≥1 delta spec、delta 合并无冲突。
+- **脚本门禁**（`spec-archive.mjs` 强制检查）：默认 ≥1 delta spec、delta 合并无冲突。
 
 执行：`node <init-project-skill>/scripts/spec-archive.mjs <project> <change-id>`。
 
-- 脚本门禁不满足（proposal 无效 / tasks 未全部 `[x]` / 无 delta）时 **FAIL 不归档**。
-- `--allow-empty` 仅跳过 delta spec 存在性要求，**不跳过 proposal/tasks 内容门禁**；它只是用户显式要求把治理决策/流程规则/纯文档变更作为可追溯 change 归档时的例外，不是普通文档变更的默认入口。普通纯文档/纯流程/纯格式变更应直接不触发 spec-workflow。
-- `--allow-incomplete` 仅跳过 tasks 全完成要求（仅在用户明确同意带未完成 tasks 归档时），不跳过 proposal/delta 门禁。
+- 脚本门禁不满足（无 delta）时 **FAIL 不归档**。
+- `--allow-empty` 仅跳过 delta spec 存在性要求；它只是用户显式要求把治理决策/流程规则/纯文档变更作为可追溯 change 归档时的例外，不是普通文档变更的默认入口。普通纯文档/纯流程/纯格式变更应直接不触发 spec-workflow。
 - 门禁通过后：把 delta 合并进 `.airules/specs/<capability>/spec.md`（应用顺序 RENAMED→REMOVED→MODIFIED→ADDED），再把 change 移到 `.airules/changes/archive/<date>-<change-id>/`。
 
 ## 写入边界与约束
 
 - 只写 `.airules/specs/` 与 `.airules/changes/`，不碰生产代码（代码由编码流水线写）。
+- `changes/<change-id>/` 只包含 `specs/<capability>/spec.md` delta 文件，不创建 `proposal.md` 或 `tasks.md`；契约动机记录在 `.airules/requirements/<change-id>.md` 的"契约影响摘要"节，任务进度记录在 `.airules/tasks/<change-id>.md`。
 - delta 格式须合法：ADDED/MODIFIED 必须有 SHALL/MUST 正文 + ≥1 Scenario。
-- archive 前置条件不满足（proposal 空 / tasks 未完成 / 无 delta）**硬失败、不归档**；合并冲突（ADDED 已存在 / MODIFIED 或 REMOVED 未找到 / 跨段冲突）**硬失败、不静默、不部分写**；冲突时修正后重跑。
+- archive 前置条件不满足（无 delta）**硬失败、不归档**；合并冲突（ADDED 已存在 / MODIFIED 或 REMOVED 未找到 / 跨段冲突）**硬失败、不静默、不部分写**；冲突时修正后重跑。
 - 新 capability（主 spec 不存在）只允许 ADDED。
 - 与编码编排串联：spec-workflow 管"契约书面化"，不替代 brainstorming/writing-plans/test-design 的方法论。

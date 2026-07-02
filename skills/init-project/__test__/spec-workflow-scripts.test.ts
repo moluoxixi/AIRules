@@ -33,12 +33,10 @@ function writeDelta(root: string, changeId: string, capability: string, content:
   fs.writeFileSync(path.join(dir, 'spec.md'), content)
 }
 
-// 填入有效 proposal（Why/What Changes 非空）+ 全部完成的 tasks，满足 archive/validate 内容门禁。
+// 确保 change 目录存在（archive/validate 不再需要 proposal/tasks 文件）。
 function seedValidChange(root: string, changeId: string) {
   const dir = path.join(root, '.airules', 'changes', changeId)
   fs.mkdirSync(dir, { recursive: true })
-  fs.writeFileSync(path.join(dir, 'proposal.md'), `## Why\n\n解决一个真实问题。\n\n## What Changes\n\n- 增加能力 X\n\n## Impact\n\n无。\n`)
-  fs.writeFileSync(path.join(dir, 'tasks.md'), `## 1. 组\n\n- [x] 1.1 完成任务\n`)
 }
 
 const MAIN_TWO_REQ = `# auth Specification
@@ -91,8 +89,10 @@ it('spec-new-change - 建变更骨架，重复 id 报错', () => {
     run('spec-init.mjs', root)
     const r = run('spec-new-change.mjs', root, 'add-login')
     assert.equal(r.status, 0, r.stderr)
-    assert.equal(fs.existsSync(path.join(root, '.airules', 'changes', 'add-login', 'proposal.md')), true)
-    assert.equal(fs.existsSync(path.join(root, '.airules', 'changes', 'add-login', 'tasks.md')), true)
+    // 只建 specs/ 骨架目录，不再创建 proposal.md / tasks.md
+    assert.equal(fs.existsSync(path.join(root, '.airules', 'changes', 'add-login', 'specs')), true)
+    assert.equal(fs.existsSync(path.join(root, '.airules', 'changes', 'add-login', 'proposal.md')), false)
+    assert.equal(fs.existsSync(path.join(root, '.airules', 'changes', 'add-login', 'tasks.md')), false)
 
     const dup = run('spec-new-change.mjs', root, 'add-login')
     assert.notEqual(dup.status, 0)

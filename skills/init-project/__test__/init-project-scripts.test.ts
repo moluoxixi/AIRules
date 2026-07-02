@@ -264,7 +264,7 @@ it('wiki-init - 新建 wiki_plan 时写入 airules note 与 knowledge include', 
     const content = fs.readFileSync(path.join(projectRoot, '.qoder', 'repowiki', 'wiki_plan.yaml'), 'utf8')
 
     assert.match(content, /scope:\n {4}include:\n {6}- "\.airules\/knowledge\/\*\*"/)
-    assert.match(content, /text: "项目知识库位于 \.airules\/knowledge\/，生成 Wiki 时必须将 \.airules\/knowledge\/ 的内容写入"/)
+    assert.match(content, /text: "必须添加\.airules\/knowledge\/ 的内容到 Qoder wiki 知识库，作为背景事实源。"/)
     assert.match(content, /author: airules/)
   })
 })
@@ -298,7 +298,7 @@ it('wiki-init - 已有 wiki_plan 时替换 airules note 并补充 knowledge incl
     const content = fs.readFileSync(wikiPlanPath, 'utf8')
 
     assert.doesNotMatch(content, /旧 airules note/)
-    assert.match(content, /text: "项目知识库位于 \.airules\/knowledge\/，生成 Wiki 时必须将 \.airules\/knowledge\/ 的内容写入"/)
+    assert.match(content, /text: "必须添加\.airules\/knowledge\/ 的内容到 Qoder wiki 知识库，作为背景事实源。"/)
     assert.match(content, /- "src\/\*\*"/)
     assert.match(content, /- "\.airules\/knowledge\/\*\*"/)
     assert.match(content, /text: "团队 note"/)

@@ -1,12 +1,13 @@
 #!/usr/bin/env node
 import { existsSync, readdirSync, readFileSync } from 'node:fs'
 import path from 'node:path'
-import { countDeltaSpecs, validateProposal, validateTasks } from './spec-content.mjs'
+import { countDeltaSpecs } from './spec-content.mjs'
 
 // 校验一个 change 的 delta spec 格式合法性（不合并、不写盘）。
 // 复刻 OpenSpec validate 规则：每 section 非空、ADDED/MODIFIED 有 SHALL/MUST + ≥1 Scenario、
-// 无重名、无跨段冲突。另校验 proposal/tasks 最小内容与 delta 存在性。校验失败非零退出。
+// 无重名、无跨段冲突。校验失败非零退出。
 // --allow-empty 跳过 delta 存在性要求（纯文档/纯流程 change）。
+// 注：proposal/tasks 内容门禁已移除——proposal 由 requirements/<id>.md 承载，tasks 由 .airules/tasks/ 承载。
 
 const DELTA_SECTION_RE = /^##\s+(ADDED|MODIFIED|REMOVED|RENAMED)\s+Requirements\s*$/i
 const REQUIREMENT_RE = /^###\s*Requirement:(.+)$/i
@@ -119,13 +120,7 @@ function main() {
 
   for (const id of targets) {
     const changeDir = path.join(changesRoot, id)
-    // 内容门禁：proposal 非空、tasks ≥1 任务、≥1 delta（除非 --allow-empty）
-    for (const e of validateProposal(changeDir).errors) {
-      errors.push(`${id}: ${e}`)
-    }
-    for (const e of validateTasks(changeDir).errors) {
-      errors.push(`${id}: ${e}`)
-    }
+    // delta 存在性检查（proposal/tasks 内容门禁已移除）
     if (!allowEmpty && countDeltaSpecs(changeDir) === 0) {
       errors.push(`${id}: 无 delta spec（如确为纯文档/纯流程变更，加 --allow-empty）`)
     }

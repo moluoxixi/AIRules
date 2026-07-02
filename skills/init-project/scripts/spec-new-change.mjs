@@ -1,9 +1,10 @@
 #!/usr/bin/env node
-import { existsSync, mkdirSync, writeFileSync } from 'node:fs'
+import { existsSync, mkdirSync } from 'node:fs'
 import path from 'node:path'
 
-// 在 .airules/changes/<change-id>/ 建立一个新变更的骨架文件（proposal/tasks）。
-// AI 随后填写内容；delta spec 由 AI 在 specs/<capability>/spec.md 写。
+// 在 .airules/changes/<change-id>/specs/ 建立新变更的 delta spec 骨架目录。
+// proposal 内容由 brainstorming 落盘到 .airules/requirements/<id>.md 的"契约影响摘要"节；
+// tasks 由 writing-plans 落盘到 .airules/tasks/<id>.md，通过 change-id 字段关联。
 // change-id 已存在则报错，避免覆盖。
 
 const [projectRootArg, changeId] = process.argv.slice(2)
@@ -25,29 +26,8 @@ if (existsSync(changeDir)) {
 
 mkdirSync(path.join(changeDir, 'specs'), { recursive: true })
 
-const proposalTemplate = `## Why
-
-<!-- 1-2 句：要解决什么问题、为什么现在做。本节必填。 -->
-
-## What Changes
-
-<!-- 变更点列表。破坏性变更标 **BREAKING**。本节必填且非空。 -->
-
--
-
-## Impact
-
-<!-- 受影响的代码、接口、依赖、系统 -->
-`
-
-const tasksTemplate = `## 1. <任务组>
-
-- [ ] 1.1 <可执行任务>
-- [ ] 1.2 <可执行任务>
-`
-
-writeFileSync(path.join(changeDir, 'proposal.md'), proposalTemplate, 'utf8')
-writeFileSync(path.join(changeDir, 'tasks.md'), tasksTemplate, 'utf8')
-
 console.log(`[airules] 已建立变更骨架：${path.relative(projectRoot, changeDir).replace(/\\/g, '/')}`)
-console.log('[airules] 下一步：填写 proposal.md（Why + What Changes）、tasks.md，并在 specs/<capability>/spec.md 写 delta（## ADDED/MODIFIED/REMOVED Requirements）。')
+console.log('[airules] 下一步：')
+console.log('  1. 在 .airules/requirements/<id>.md 的"## 契约影响摘要"节填写变更类型与涉及契约')
+console.log('  2. 在 .airules/tasks/<id>.md 填写实现计划（change-id 字段引用本 change-id）')
+console.log('  3. 在 specs/<capability>/spec.md 写 delta（## ADDED/MODIFIED/REMOVED Requirements）')
