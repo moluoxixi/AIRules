@@ -15,6 +15,8 @@ const skillRoot = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..
 // 用户项目规则绑到 AIRules 安装根的全局 scripts/ 目录。
 const INIT_PROJECT_SKILL_PLACEHOLDER = '<init-project-skill>'
 const initProjectSkillRootPosix = skillRoot.split(path.sep).join('/')
+const MANAGED_BLOCK_BEGIN = '<!-- AIRULES:BEGIN init-project-rules -->'
+const MANAGED_BLOCK_END = '<!-- AIRULES:END init-project-rules -->'
 
 /** 把规则正文里的 init-project skill 占位符替换成真实绝对路径（POSIX 斜杠）。 */
 function resolvePathPlaceholders(content) {
@@ -126,8 +128,32 @@ const inlineSections = inlineReferencePaths.map(referencePath =>
   resolvePathPlaceholders(stripFrontmatter(readFileSync(referencePath, 'utf8'))),
 )
 const incomingRules = inlineSections.join('\n\n')
+const managedRulesBlock = `${MANAGED_BLOCK_BEGIN}\n${incomingRules}\n${MANAGED_BLOCK_END}`
 
-const duplicateTitles = findDuplicateHeadingTitles(currentContent, incomingRules)
+function replaceManagedBlock(content, replacement) {
+  const beginIndex = content.indexOf(MANAGED_BLOCK_BEGIN)
+  const endIndex = content.indexOf(MANAGED_BLOCK_END)
+
+  if (beginIndex === -1 && endIndex === -1) {
+    return null
+  }
+
+  if (beginIndex === -1 || endIndex === -1 || endIndex < beginIndex) {
+    throw new Error('AGENTS.md contains an incomplete AIRules managed block; fix markers before reinjecting rules.')
+  }
+
+  const afterEndIndex = endIndex + MANAGED_BLOCK_END.length
+  const before = content.slice(0, beginIndex).trimEnd()
+  const after = content.slice(afterEndIndex).trimStart()
+
+  return [before, replacement, after].filter(section => section.length > 0).join('\n\n')
+}
+
+const replacedContent = replaceManagedBlock(currentContent, managedRulesBlock)
+
+const duplicateTitles = replacedContent === null
+  ? findDuplicateHeadingTitles(currentContent, incomingRules)
+  : []
 
 if (duplicateTitles.length > 0) {
   console.error('[airules] AGENTS.md contains duplicate headings that require AI review:')
@@ -139,8 +165,8 @@ if (duplicateTitles.length > 0) {
 }
 
 const nextContent = currentContent.trim().length === 0
-  ? `${incomingRules}\n`
-  : `${currentContent}${currentContent.endsWith('\n') ? '\n' : '\n\n'}${incomingRules}\n`
+  ? `${managedRulesBlock}\n`
+  : `${replacedContent ?? `${currentContent}${currentContent.endsWith('\n') ? '\n' : '\n\n'}${managedRulesBlock}`}\n`
 
 writeFileSync(agentsPath, nextContent, 'utf8')
 console.log(`[airules] Updated ${agentsPath}`)

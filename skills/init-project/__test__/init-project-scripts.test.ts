@@ -92,9 +92,11 @@ it('inject-rules - 新建 AGENTS.md 注入项目规则与代码核心纪律', ()
     const agentsPath = path.join(tmpDir, 'AGENTS.md')
     const content = fs.readFileSync(agentsPath, 'utf8')
 
+    assert.match(content, /<!-- AIRULES:BEGIN init-project-rules -->/)
     assert.match(content, /# 项目规范/)
     assert.match(content, /# 代码实现核心纪律/)
     assert.match(content, /禁止错误绕行/)
+    assert.match(content, /<!-- AIRULES:END init-project-rules -->/)
     assertNoTrailingBlankLine(agentsPath)
   })
 })
@@ -113,6 +115,39 @@ it('inject-rules - 已有内容时只追加 code-core，不重复 airules-base',
     assert.match(content, /# 代码实现核心纪律/)
     // 已有内容时不再注入项目规范骨架。
     assert.doesNotMatch(content, /## 项目自定义规范/)
+  })
+})
+
+it('inject-rules - 已有托管块时覆盖替换而非追加重复规则', () => {
+  withTempDir('airules-inject-replace-', (tmpDir) => {
+    const agentsPath = path.join(tmpDir, 'AGENTS.md')
+    writeFile(
+      agentsPath,
+      [
+        '# 用户规则',
+        '',
+        '- 保留。',
+        '',
+        '<!-- AIRULES:BEGIN init-project-rules -->',
+        '# 旧托管规则',
+        '',
+        '- 应被替换。',
+        '<!-- AIRULES:END init-project-rules -->',
+        '',
+      ].join('\n'),
+    )
+
+    const result = runInjectRules(tmpDir)
+
+    assert.equal(result.status, 0, result.stderr)
+    const content = fs.readFileSync(agentsPath, 'utf8')
+
+    assert.match(content, /# 用户规则/)
+    assert.doesNotMatch(content, /# 旧托管规则/)
+    assert.match(content, /# 代码实现核心纪律/)
+    assert.equal(content.match(/AIRULES:BEGIN init-project-rules/g)?.length, 1)
+    assert.equal(content.match(/AIRULES:END init-project-rules/g)?.length, 1)
+    assertNoTrailingBlankLine(agentsPath)
   })
 })
 

@@ -42,13 +42,14 @@ flowchart TD
 
 | 环节 | 命令 | 关键输出 | 失败语义 |
 |---|---|---|---|
-| 规则注入 | `node <init-project-skill>/scripts/inject-rules.mjs <project>` | 项目根 `AGENTS.md`（airules-base + code-core） | 重复标题必须人工审查合并，不自动跳过 |
-| Claude 链接 | `node <init-project-skill>/scripts/link-claude.mjs <project>` | `CLAUDE.md` 软链指向 `AGENTS.md` | 非托管文件或链接到其它目标时停止 |
+| 规则注入 | `node "<init-project-skill>/scripts/inject-rules.mjs" <project>` | 项目根 `AGENTS.md`（airules-base + code-core），包在 `AIRULES:BEGIN/END init-project-rules` 托管注释块内 | 已有托管块时覆盖替换；托管块不完整或非托管重复标题时停止并要求人工审查合并 |
+| Claude 链接 | `node "<init-project-skill>/scripts/link-claude.mjs" <project>` | `CLAUDE.md` 软链指向 `AGENTS.md` | 非托管文件或链接到其它目标时停止 |
 | CodeGraph | 在项目根执行 `codegraph init -i` | `.codegraph` 初始化状态 | 命令缺失报 `MISSING` |
-| spec 工作流骨架 | `node <init-project-skill>/scripts/spec-init.mjs <project>` | `.airules/{specs,changes,changes/archive}` + `.airules/knowledge/index.md` 空骨架 | 幂等，已存在则跳过；无外部依赖 |
-| Qoder wiki / rules 配置 | `node <init-project-skill>/scripts/wiki-init.mjs <project>` | `.qoder/repowiki/wiki_plan.yaml`（引导 wiki 读取 `.airules/knowledge/`）；若项目已有 `.qoder/`，从用户根目录 `.qoder/AGENTS.md` 覆盖写入项目 `.qoder/rules/AGENTS.md` | wiki 配置幂等，已存在则跳过；Qoder rules 采用覆盖替换；用户根规则缺失时明确告警并跳过 |
+| spec 工作流骨架 | `node "<init-project-skill>/scripts/spec-init.mjs" <project>` | `.airules/{specs,changes,changes/archive}` + `.airules/knowledge/index.md` 空骨架 | 幂等，已存在则跳过；无外部依赖 |
+| Qoder wiki / rules 配置 | `node "<init-project-skill>/scripts/wiki-init.mjs" <project>` | `.qoder/repowiki/wiki_plan.yaml`（引导 wiki 读取 `.airules/knowledge/`）；若项目已有 `.qoder/`，从用户根目录 `.qoder/AGENTS.md` 覆盖写入项目 `.qoder/rules/AGENTS.md` | wiki 配置幂等，已存在则跳过；Qoder rules 采用覆盖替换；用户根规则缺失时明确告警并跳过 |
 
-- `<init-project-skill>` 占位符由脚本运行时解析为真实 init-project skill 根目录；下游不得残留字面量。
+- `<init-project-skill>` 表示已安装的全局 init-project skill 根目录（例如宿主 skills 目录下的 `init-project/`），不是目标项目内路径；执行前必须替换为真实绝对路径，且路径建议加双引号。
+- 不要在目标项目内寻找 `skills/init-project/scripts/*.mjs`，这些脚本随全局 skill 分发；若无法定位全局 skill 根目录，标 `MISSING` 并提示用户提供。
 - `inject-rules.mjs` 自动处理 `airules-base.md`（仅在 `AGENTS.md` 为空/新建时注入）与 `code-core.md`；命令无需手动传 reference。
 
 ## 交付检查
