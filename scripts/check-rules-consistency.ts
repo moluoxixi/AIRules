@@ -235,6 +235,39 @@ export function checkRulesConsistency(repoRoot: string): CheckResult {
     walk(skillsDir)
   }
 
+  // 10. 需求落档契约：brainstorming/SKILL.md 必须声明需求落档路径（.airules/requirements/），
+  //     避免需求分析结论只停留在对话而不落盘。
+  const brainstormingSkillPath = path.join(skillsDir, 'brainstorming', 'SKILL.md')
+  if (existsSync(brainstormingSkillPath)) {
+    const content = readFileSync(brainstormingSkillPath, 'utf8')
+    if (!content.includes('.airules/requirements/')) {
+      errors.push('skills/brainstorming/SKILL.md 未声明需求落档路径 .airules/requirements/（需求文档必须落盘，不得只在对话中交付）')
+    }
+  }
+
+  // 11. 需求路径传递契约：agents/planner.md 输入上下文包必须包含需求文档路径字段，
+  //     确保 planner 接收并传递 .airules/requirements/ 路径给下游。
+  const plannerPath = path.join(agentsDir, 'planner.md')
+  if (existsSync(plannerPath)) {
+    const content = readFileSync(plannerPath, 'utf8')
+    if (!content.includes('.airules/requirements/')) {
+      errors.push('agents/planner.md 输入上下文包未包含需求文档路径（.airules/requirements/），planner 必须接收并传递需求文档路径')
+    }
+  }
+
+  // 12. writing-plans 参考文件引用：writing-plans/SKILL.md 必须引用前后端参考文件，
+  //     防止主入口忘记加载专项规范导致漂移。
+  const writingPlansPath = path.join(skillsDir, 'writing-plans', 'SKILL.md')
+  if (existsSync(writingPlansPath)) {
+    const content = readFileSync(writingPlansPath, 'utf8')
+    if (!content.includes('writing-plans/references/frontend-plan.md')) {
+      errors.push('skills/writing-plans/SKILL.md 未引用 writing-plans/references/frontend-plan.md（前端专项规范必须从主入口可达）')
+    }
+    if (!content.includes('writing-plans/references/backend-plan.md')) {
+      errors.push('skills/writing-plans/SKILL.md 未引用 writing-plans/references/backend-plan.md（后端专项规范必须从主入口可达）')
+    }
+  }
+
   return { errors }
 }
 

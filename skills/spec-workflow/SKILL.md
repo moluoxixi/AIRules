@@ -30,7 +30,7 @@ name: spec-workflow
 2. `node <init-project-skill>/scripts/spec-new-change.mjs <project> <change-id>` 建变更骨架。
 3. 填写：
    - `proposal.md`：`## Why`（问题与动机，必填）+ `## What Changes`（变更点，必填非空）+ `## Impact`。
-   - `tasks.md`：`## N. 组` + `- [ ] N.M 任务` 复选框清单——作为该 change 的任务索引与勾选进度。**详细任务 Markdown 落 `.airules/tasks/<task-name>.md`（由 `writing-plans` 产出），`tasks.md` 勾选行应附注引用对应文件路径**，例如 `- [ ] 1.1 实现登录接口 → [auth-login](.airules/tasks/auth-login.md)`；若任务较简单、无独立文件则内联在 `tasks.md` 即可，不强拆。
+   - `tasks.md`：`## N. 组` + `- [ ] N.M 任务` 复选框清单——作为该 change 的任务索引与勾选进度。**详细任务 Markdown 落 `.airules/tasks/<task-name>.md`（由 `writing-plans` 产出），`tasks.md` 勾选行应附注引用对应文件路径**，例如 `- [ ] 1.1 实现登录接口 → [auth-login](.airules/tasks/auth-login.md)`；若任务较简单、无独立文件则内联在 `tasks.md` 即可，不强拆。**内联仅适用于单个内聚任务或治理/文档类轻量任务；一旦该任务需要任务级 code/test/review（即 coder 要对它执行 TDD、consistency-reviewer 要按 AC-id 核对、code-reviewer 要出评审结论），就必须落 `.airules/tasks/<task-name>.md`，不得以"任务简单"为由内联规避落盘。**
    - `specs/<capability>/spec.md`：delta，用 `## ADDED/MODIFIED/REMOVED/RENAMED Requirements`；每个 `### Requirement:` 正文含 SHALL/MUST，下挂 `#### Scenario:`。
 4. `node <init-project-skill>/scripts/spec-validate.mjs <project> <change-id>` 校验 delta 格式合法。
 
