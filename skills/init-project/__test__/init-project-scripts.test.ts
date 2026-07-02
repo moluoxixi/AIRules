@@ -253,6 +253,89 @@ it('wiki-init - 项目存在 .qoder 时覆盖注入用户根 .qoder/AGENTS.md �
   })
 })
 
+it('wiki-init - 新建 wiki_plan 时写入 airules note 与 knowledge include', () => {
+  withTempDir('airules-qoder-wiki-new-', (tmpDir) => {
+    const homeDir = path.join(tmpDir, 'home')
+    const projectRoot = path.join(tmpDir, 'project')
+
+    const result = runWikiInit(projectRoot, homeDir)
+
+    assert.equal(result.status, 0, result.stderr)
+    const content = fs.readFileSync(path.join(projectRoot, '.qoder', 'repowiki', 'wiki_plan.yaml'), 'utf8')
+
+    assert.match(content, /scope:\n {4}include:\n {6}- "\.airules\/knowledge\/\*\*"/)
+    assert.match(content, /text: "项目知识库位于 \.airules\/knowledge\/，生成 Wiki 时必须将 \.airules\/knowledge\/ 的内容写入"/)
+    assert.match(content, /author: airules/)
+  })
+})
+
+it('wiki-init - 已有 wiki_plan 时替换 airules note 并补充 knowledge include', () => {
+  withTempDir('airules-qoder-wiki-update-', (tmpDir) => {
+    const homeDir = path.join(tmpDir, 'home')
+    const projectRoot = path.join(tmpDir, 'project')
+    const wikiPlanPath = path.join(projectRoot, '.qoder', 'repowiki', 'wiki_plan.yaml')
+    writeFile(
+      wikiPlanPath,
+      [
+        'version: 1',
+        '',
+        'repowiki:',
+        '  scope:',
+        '    include:',
+        '      - "src/**"',
+        '  notes:',
+        '    - text: "旧 airules note"',
+        '      author: airules',
+        '    - text: "团队 note"',
+        '      author: team',
+        '',
+      ].join('\n'),
+    )
+
+    const result = runWikiInit(projectRoot, homeDir)
+
+    assert.equal(result.status, 0, result.stderr)
+    const content = fs.readFileSync(wikiPlanPath, 'utf8')
+
+    assert.doesNotMatch(content, /旧 airules note/)
+    assert.match(content, /text: "项目知识库位于 \.airules\/knowledge\/，生成 Wiki 时必须将 \.airules\/knowledge\/ 的内容写入"/)
+    assert.match(content, /- "src\/\*\*"/)
+    assert.match(content, /- "\.airules\/knowledge\/\*\*"/)
+    assert.match(content, /text: "团队 note"/)
+    assert.equal(content.match(/author: airules/g)?.length, 1)
+  })
+})
+
+it('wiki-init - knowledge include 已存在时不重复添加', () => {
+  withTempDir('airules-qoder-wiki-include-idem-', (tmpDir) => {
+    const homeDir = path.join(tmpDir, 'home')
+    const projectRoot = path.join(tmpDir, 'project')
+    const wikiPlanPath = path.join(projectRoot, '.qoder', 'repowiki', 'wiki_plan.yaml')
+    writeFile(
+      wikiPlanPath,
+      [
+        'version: 1',
+        '',
+        'repowiki:',
+        '  scope:',
+        '    include:',
+        '      - ".airules/knowledge/**"',
+        '  notes:',
+        '    - text: "旧 airules note"',
+        '      author: airules',
+        '',
+      ].join('\n'),
+    )
+
+    const result = runWikiInit(projectRoot, homeDir)
+
+    assert.equal(result.status, 0, result.stderr)
+    const content = fs.readFileSync(wikiPlanPath, 'utf8')
+
+    assert.equal(content.match(/\.airules\/knowledge\/\*\*/g)?.length, 1)
+  })
+})
+
 it('wiki-init - 项目不存在 .qoder 时不创建 Qoder rules 注入目录', () => {
   withTempDir('airules-qoder-rules-skip-', (tmpDir) => {
     const homeDir = path.join(tmpDir, 'home')
