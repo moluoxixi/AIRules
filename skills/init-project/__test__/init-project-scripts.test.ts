@@ -66,6 +66,24 @@ function runLinkClaude(projectRoot: string) {
   )
 }
 
+function runWikiInit(projectRoot: string, homeDir: string) {
+  return spawnSync(
+    process.execPath,
+    [
+      path.join(process.cwd(), 'skills', 'init-project', 'scripts', 'wiki-init.mjs'),
+      projectRoot,
+    ],
+    {
+      cwd: process.cwd(),
+      encoding: 'utf8',
+      env: {
+        ...process.env,
+        AIRULES_TEST_HOME: homeDir,
+      },
+    },
+  )
+}
+
 it('inject-rules - 新建 AGENTS.md 注入项目规则与代码核心纪律', () => {
   withTempDir('airules-inject-new-', (tmpDir) => {
     const result = runInjectRules(tmpDir)
@@ -177,5 +195,38 @@ it('link-claude - CLAUDE.md 已是非托管普通文件时停止', () => {
 
     assert.notEqual(result.status, 0)
     assert.match(result.stderr, /not managed by AIRules/)
+  })
+})
+
+it('wiki-init - 项目存在 .qoder 时覆盖注入用户根 .qoder/AGENTS.md 到项目 .qoder/rules/AGENTS.md', () => {
+  withTempDir('airules-qoder-rules-', (tmpDir) => {
+    const homeDir = path.join(tmpDir, 'home')
+    const projectRoot = path.join(tmpDir, 'project')
+    const globalAgents = '# 全局 Qoder 规则\n\n- 来自用户根目录。\n'
+    fs.mkdirSync(path.join(projectRoot, '.qoder'), { recursive: true })
+    writeFile(path.join(homeDir, '.qoder', 'AGENTS.md'), globalAgents)
+    writeFile(path.join(projectRoot, '.qoder', 'rules', 'AGENTS.md'), '# 旧项目规则\n')
+
+    const result = runWikiInit(projectRoot, homeDir)
+
+    assert.equal(result.status, 0, result.stderr)
+    assert.equal(
+      fs.readFileSync(path.join(projectRoot, '.qoder', 'rules', 'AGENTS.md'), 'utf8'),
+      globalAgents,
+    )
+    assert.match(result.stdout, /已覆盖注入 \.qoder\/rules\/AGENTS\.md/)
+  })
+})
+
+it('wiki-init - 项目不存在 .qoder 时不创建 Qoder rules 注入目录', () => {
+  withTempDir('airules-qoder-rules-skip-', (tmpDir) => {
+    const homeDir = path.join(tmpDir, 'home')
+    const projectRoot = path.join(tmpDir, 'project')
+    writeFile(path.join(homeDir, '.qoder', 'AGENTS.md'), '# 全局 Qoder 规则\n')
+
+    const result = runWikiInit(projectRoot, homeDir)
+
+    assert.equal(result.status, 0, result.stderr)
+    assert.equal(fs.existsSync(path.join(projectRoot, '.qoder', 'rules')), false)
   })
 })
