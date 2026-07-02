@@ -48,7 +48,7 @@
 | `codegraph` | `codegraph serve --mcp --path ${workspaceFolder}` | 当前 workspace 的代码图谱检索；Qoder 投影时补 `type: "stdio"` |
 | `playwright` | `@playwright/mcp@latest` | 真实浏览器自动化与断言 |
 | `context7` | `@upstash/context7-mcp@latest` | 拉取库/框架的最新官方文档（API key 仅提升限流，可选） |
-| `sequential-thinking` | `@modelcontextprotocol/server-sequential-thinking@latest` | 结构化分步推理 |
+| `@modelcontextprotocol/sequentialthinking` | `@modelcontextprotocol/server-sequential-thinking@latest` | 结构化分步推理 |
 
 需要增减时编辑 `mcp/mcp.json` 后运行 `pnpm sync`；用户在各宿主手写的同名 server 不会被覆盖。
 

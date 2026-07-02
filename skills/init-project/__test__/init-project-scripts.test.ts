@@ -247,7 +247,7 @@ it('wiki-init - 项目存在 .qoder 时覆盖注入用户根 .qoder/AGENTS.md �
     assert.equal(result.status, 0, result.stderr)
     assert.equal(
       fs.readFileSync(path.join(projectRoot, '.qoder', 'rules', 'AGENTS.md'), 'utf8'),
-      globalAgents,
+      `---\ntrigger: always_on\n---\n\n${globalAgents}`,
     )
     assert.match(result.stdout, /已覆盖注入 \.qoder\/rules\/AGENTS\.md/)
   })

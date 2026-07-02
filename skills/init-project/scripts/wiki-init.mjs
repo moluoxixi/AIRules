@@ -1,5 +1,5 @@
 #!/usr/bin/env node
-import { copyFileSync, existsSync, mkdirSync, readFileSync, writeFileSync } from 'node:fs'
+import { existsSync, mkdirSync, readFileSync, writeFileSync } from 'node:fs'
 import os from 'node:os'
 import path from 'node:path'
 
@@ -13,7 +13,10 @@ const qoderDir = path.join(projectRoot, '.qoder')
 const wikiPlanDir = path.join(projectRoot, '.qoder', 'repowiki')
 const wikiPlanPath = path.join(wikiPlanDir, 'wiki_plan.yaml')
 const KNOWLEDGE_INCLUDE = '.airules/knowledge/**'
-const AIRULES_NOTE_TEXT = '项目知识库位于 .airules/knowledge/，生成 Wiki 时必须将 .airules/knowledge/ 的内容写入'
+const AIRULES_NOTE_TEXT = '必须添加.airules/knowledge/ 的内容到 Qoder wiki 知识库，作为背景事实源。'
+const QODER_RULE_FRONTMATTER = `---
+trigger: always_on
+---`
 
 if (existsSync(qoderDir)) {
   const userHome = process.env.AIRULES_TEST_HOME
@@ -25,7 +28,7 @@ if (existsSync(qoderDir)) {
 
   if (existsSync(globalAgentsPath)) {
     mkdirSync(projectRulesDir, { recursive: true })
-    copyFileSync(globalAgentsPath, projectRulesPath)
+    writeFileSync(projectRulesPath, `${QODER_RULE_FRONTMATTER}\n\n${readFileSync(globalAgentsPath, 'utf8')}`, 'utf8')
     console.log('[airules] 已覆盖注入 .qoder/rules/AGENTS.md')
   }
   else {
