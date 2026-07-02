@@ -44,7 +44,7 @@ const content = `version: 1
 
 repowiki:
   notes:
-    - text: "项目知识库位于 .airules/knowledge/，生成 Wiki 时优先参考其中的架构决策、设计原则与业务背景"
+    - text: "项目知识库位于 .airules/knowledge/，生成 Wiki 时必须将.airules/knowledge/，的内容写入"
       author: airules
 `
 
