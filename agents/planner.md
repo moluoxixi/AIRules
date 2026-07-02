@@ -17,6 +17,7 @@ description: 当需求事实源就绪、需要在实现前冻结范围并产出�
 主代理派发时必须提供以下最小输入；缺关键输入时报告 `MISSING blocked`，不自行补事实：
 
 - 需求事实源（验收标准雏形）
+- **需求文档路径**（`.airules/requirements/<feature>.md`，若已由 `brainstorming` 落档；spec 路径则提供 `.airules/changes/<change-id>/proposal.md`）
 - 相关代码 / 文档证据
 - 验收目标与范围边界
 - 已知未知项（待澄清问题）
@@ -35,10 +36,15 @@ description: 当需求事实源就绪、需要在实现前冻结范围并产出�
 
 ## 写入边界与输出
 
-- 只写实现计划与验收用例文档，不编写生产代码、不改现有代码。
+- 只写需求文档、实现计划与验收用例文档，不编写生产代码、不改现有代码。
 - 范围冻结后如需变更，回到需求分析，不在计划内擅自扩张。
+- **需求文档（按需落档）**：若需求文档尚不存在（`brainstorming` 未落档），planner 在产出计划前先确认需求文档路径；路径为 `.airules/requirements/<feature>.md`（普通路径）或 `.airules/changes/<change-id>/proposal.md`（spec 路径）。
 - **任务落档（强制）**：计划完成后，每个 task 按 `writing-plans` 的"两路任务落点"规则落盘为独立 Markdown 文件，内容满足"单任务 Markdown 最小内容"模板：
   - 普通路径：落 `.airules/tasks/<task-name>.md`，一任务一文件。
   - 规格契约路径：`.airules/changes/<change-id>/tasks.md` 作索引，详细任务文件落 `.airules/tasks/<task-name>.md`，`tasks.md` 勾选行引用对应文件路径。
 - **测试用例落档（强制）**：`test-design` 产出的验收清单必须同时落档到 `.airules/tests/<feature-or-change>.md`（及可选的 `.yaml` 或内嵌 YAML 块），与任务文件一起作为 coder / consistency-reviewer 的输入事实源；不得只停留在对话文本中。
-- 回传必须可被主代理用文档核对：任务文件路径清单 + 测试用例文件路径 + 验收用例清单 + 可追溯字段。
+- **三路径追溯关系（回传必含）**：
+  - 需求文档：`.airules/requirements/<feature>.md`（或 spec 路径），含需求 ID 列表
+  - 任务文档：`.airules/tasks/<task-name>.md` 清单，每个文件引用需求 ID
+  - 测试用例：`.airules/tests/<feature>.md`，每条 TC 引用需求 ID + 任务 ID
+- 回传必须可被主代理用文档核对：需求文档路径 + 任务文件路径清单 + 测试用例文件路径 + 验收用例清单 + 可追溯字段。

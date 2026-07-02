@@ -42,8 +42,8 @@ flowchart TD
 
 | 阶段 | 控制资产 | 前置依赖 | 产出 |
 |---|---|---|---|
-| 需求分析 | `brainstorming` | 任务描述 / 可选 PRD | 需求事实源、验收标准雏形 |
-| 计划 | `writing-plans`、`test-design` | 需求事实源 | 实现计划（落档为 `.airules/tasks/<task>.md`，一任务一文件）、验收用例清单；规格契约路径另有 `.airules/changes/<change-id>/tasks.md` 勾选索引 |
+| 需求分析 | `brainstorming` | 任务描述 / 可选 PRD | 需求事实源（**落档为 `.airules/requirements/<feature>.md`**）、验收标准雏形 |
+| 计划 | `writing-plans`、`test-design` | 需求文档（`.airules/requirements/<feature>.md`）、需求事实源 | 实现计划（**落档为 `.airules/tasks/<task>.md`**，一任务一文件）、验收用例清单（**落档为 `.airules/tests/<feature>.md`**）；规格契约路径另有 `.airules/changes/<change-id>/tasks.md` 勾选索引 |
 | 实现 | `test-driven-development` + (`unit-testing` 或 `interaction-testing`) | **当前任务 Markdown**（`.airules/tasks/<task>.md`，coder 每次以单任务为工作单位）、验收用例清单；目标栈构建工具可执行（主代理派发前验证 build tool 存在且可运行基础命令；验证失败标 MISSING blocked，不派发 coder） | 源码 + 配套测试 |
 | 后置一致性评审 | `consistency-check` | 最终 diff、需求 / 计划 / 验收用例 | 一致性结论（编码后、测试验证前核对） |
 | 测试运行 | `verification-before-completion` | 实现产物 | 运行证据与状态 |
