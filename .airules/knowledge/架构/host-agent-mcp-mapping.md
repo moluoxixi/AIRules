@@ -34,8 +34,8 @@
 
 ## AIRules 投影策略
 
-- **agent**：宿主 home 下 `agents/` 目录（与现有 skills 投影同级）。Markdown 兼容宿主走现有软链；TOML/JSON 宿主需要转译层（当前标记为 TODO，未实现前显式跳过 + 告警，不静默软链）。Qoder 的共享资源 home 为用户根目录下 `.qoder/`，需要 `AGENTS.md`、`skills/` 与 `agents/`。
-- **MCP**：中性源置于仓库 `mcp/` 下（rulesync 风格 `{ "mcpServers": {} }`）。投影时按上表写各宿主对应文件、键名、格式；源缺失时为 no-op（无服务可分发，非失败）。MCP 配置路径可独立于规则/skills 的宿主 home，例如 Trae 系列写 `AppData/Roaming/<产品名>/User/mcp.json`，Qoder 共享资源写 `.qoder/`，但 MCP 写 `AppData/Roaming/Qoder/SharedClientCache/mcp.json`。
+- **agent**：宿主 home 下 `agents/` 目录（与现有 skills 投影同级）。Markdown 兼容宿主走现有软链；TOML/JSON 宿主需要转译层（当前标记为 TODO，未实现前显式跳过 + 告警，不静默软链）。Qoder 按旧方案使用单一 host `qoder`：共享资源 home 为 `~/.qoder`，投影 `AGENTS.md`、`skills/`、`agents/` 与三事件 hooks。Qoder IDE 当前未读取全局规则/skills 的现象按上游 bug 处理，AIRules 暂不拆 `qoder-cli`。
+- **MCP**：中性源置于仓库 `mcp/` 下（rulesync 风格 `{ "mcpServers": {} }`）。投影时按上表写各宿主对应文件、键名、格式；源缺失时为 no-op（无服务可分发，非失败）。MCP 配置路径可独立于规则/skills 的宿主 home，例如 Trae 系列写 `AppData/Roaming/<产品名>/User/mcp.json`，Qoder 写 `AppData/Roaming/Qoder/SharedClientCache/mcp.json`。Qoder 的 SharedClientCache 可作为宿主存在证据触发 `~/.qoder` 完整投影；Trae 系列不使用该推断，只有 MCP 目录时仍只投影/校验 MCP。
 - **冲突策略：用户优先**。投影对同名 server **绝不覆盖用户已有配置**——JSON 宿主做浅合并、用户同名项保留（只补用户未配的 server）；TOML 宿主探测用户在 AIRULES 托管块外手写的 `[mcp_servers.<name>]`（裸键或引号键），跳过同名注入。用户已调过参数的 server 在重复 sync 后保持不变。
 - 宿主格式元数据作为**数据**维护在 `constants/hosts.ts`，引擎按元数据驱动，新增宿主只加一条记录。
 
@@ -61,7 +61,8 @@
 | `cursor` | ✅ | markdown |
 | `opencode` | ✅ | markdown |
 | `hermes` / `hermes desktop` | ❌（用 SOUL.md 身份文件） | agent 支持待确认，暂按 markdown |
-| `trae` / `trae-cn` / `qoder` / `qoderwork` / `cc-switch` | ❌（AGENTS.md 系） | 暂按 markdown（与 AGENTS.md 生态一致） |
+| `trae` / `trae-cn` / `qoderwork` / `cc-switch` | ❌（AGENTS.md 系） | 暂按 markdown（与 AGENTS.md 生态一致） |
+| `qoder` | ❌（Qoder 系，按 AIRules 旧方案完整投影） | markdown |
 | `trae-solo` / `trae-solo-cn` | ❌（MCP-only） | N/A |
 
-`hermes` 与 AGENTS.md 系宿主未被 rulesync 直接覆盖，其 agent 格式为推断（markdown），正式启用前需各自验证；标记为 `MISSING verify`。Qoder 需要用户根目录 `.qoder/AGENTS.md`、`.qoder/skills`、`.qoder/agents`，同时 MCP 文件仍位于 `AppData/Roaming/Qoder/SharedClientCache/mcp.json`。Trae Solo / Trae Solo CN 无 skills 系统，仅投影 MCP。当前只读搜索 `AppData/Roaming/QoderWork` 未发现 `mcp.json`、`mcpServers`、`codegraph` 或 `SharedClientCache` 配置入口，因此 `qoderwork` 暂不声明 MCP 投影；状态为 `MISSING evidence`。
+`hermes` 与 AGENTS.md 系宿主未被 rulesync 直接覆盖，其 agent 格式为推断（markdown），正式启用前需各自验证；标记为 `MISSING verify`。Qoder 当前维持单一 `qoder` host 与旧方案：`~/.qoder/AGENTS.md`、`~/.qoder/skills`、`~/.qoder/agents` 继续默认投影；IDE 对全局规则/skills 的读取缺口按 Qoder 上游 bug 处理，等待修复后再重新评估。Trae Solo / Trae Solo CN 无 skills 系统，仅投影 MCP。当前只读搜索 `AppData/Roaming/QoderWork` 未发现 `mcp.json`、`mcpServers`、`codegraph` 或 `SharedClientCache` 配置入口，因此 `qoderwork` 暂不声明 MCP 投影；状态为 `MISSING evidence`。

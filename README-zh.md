@@ -180,7 +180,7 @@ Moluoxixi AIRules 通过自动化投影，支持不断增长的 AI 代理生态�
 | **Trae CN** | `trae-cn` | `~/.trae-cn/`；MCP 位于 `~/AppData/Roaming/Trae CN/User/mcp.json` | skills + agents 软链接；MCP 合并写入 | `AGENTS.md` |
 | **Trae Solo** | `trae-solo` | MCP 位于 `~/AppData/Roaming/TRAE SOLO/User/mcp.json` | 仅 MCP | N/A |
 | **Trae Solo CN** | `trae-solo-cn` | MCP 位于 `~/AppData/Roaming/TRAE SOLO CN/User/mcp.json` | 仅 MCP | N/A |
-| **Qoder** | `qoder` | `~/.qoder/`；MCP 位于 `~/AppData/Roaming/Qoder/SharedClientCache/mcp.json` | skills + agents 软链接；MCP 合并写入 | `AGENTS.md` |
+| **Qoder** | `qoder` | `~/.qoder/`；MCP 位于 `~/AppData/Roaming/Qoder/SharedClientCache/mcp.json` | skills + agents 软链接；三事件 hooks；MCP 合并写入 | `AGENTS.md` |
 | **QoderWork** | `qoderwork` | `~/.qoderwork/` | skills + agents 软链接；暂无已验证 MCP 配置 | `AGENTS.md` |
 | **OpenCode** | `opencode` | `~/.config/opencode/` | skills + agents 软链接；MCP 写入 `opencode.json` | `AGENTS.md` |
 | **CC-Switch** | `cc-switch` | `~/.cc-switch/` | skills + agents 软链接 | `AGENTS.md` |

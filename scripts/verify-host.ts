@@ -2,7 +2,7 @@
 import os from 'node:os'
 import path from 'node:path'
 import { parseArgs as nodeParseArgs } from 'node:util'
-import { ALL_HOST_IDS } from '../constants/hosts.js'
+import { ALL_HOST_IDS, HOST_IDS } from '../constants/hosts.js'
 import { verifyHost } from './lib/verify.js'
 
 async function main() {
@@ -20,7 +20,7 @@ async function main() {
   const moluoHome = home ? path.resolve(home) : path.join(os.homedir(), '.moluoxixi')
   const userHome = values['user-home'] === undefined ? os.homedir() : path.resolve(String(values['user-home']))
 
-  if (!host || (host !== 'all' && !ALL_HOST_IDS.includes(host))) {
+  if (!host || (host !== 'all' && !HOST_IDS.includes(host))) {
     console.error(`Usage: npx tsx scripts/verify-host.ts --host <name|all> [--home <dir>] [--user-home <dir>]`)
     process.exit(1)
   }

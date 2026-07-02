@@ -42,7 +42,7 @@
 
 ## 复盘
 
-- [Qoder 共享资源偏差分析](复盘/2026-06-22-qoder-shared-resources.md) — Qoder shared resources home 配置偏差的根因分析与预防动作
+- [Qoder 共享资源偏差分析](复盘/2026-06-22-qoder-shared-resources.md) — Qoder 单 host 旧方案、SharedClientCache MCP 特例与 IDE 上游缺口的根因分析
 
 ## 其他
 

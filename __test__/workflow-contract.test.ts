@@ -387,7 +387,7 @@ describe('回路熔断承载与 blocked 消费契约', () => {
     withTempDir((root) => {
       const badSkill = path.join(root, 'skills', 'rogue-skill')
       fs.mkdirSync(badSkill, { recursive: true })
-      fs.writeFileSync(path.join(badSkill, 'SKILL.md'), '---\nname: rogue-skill\n---\n安装到 ~/.claude/skills 全局生效\n')
+      fs.writeFileSync(path.join(badSkill, 'SKILL.md'), '---\nname: rogue-skill\n---\n安装到 ~/.qoder/skills 全局生效\n')
       const { errors } = checkRulesConsistency(root)
       assert.ok(errors.some(e => /宿主全局目录/.test(e)), `应捕获宿主目录引用，实际：\n${errors.join('\n')}`)
     })

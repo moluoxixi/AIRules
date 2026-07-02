@@ -106,6 +106,11 @@ export interface HostConfig {
    */
   mcp?: McpProjection
   /**
+   * MCP 目录可作为宿主存在证据，并触发宿主 home 资源投影。
+   * 仅用于 Qoder 这类 MCP 目录与规则/skills home 分离、但旧合同仍要求完整 host home 的宿主。
+   */
+  mcpHomeImpliesHostHome?: boolean
+  /**
    * 宿主生命周期 hook 投影规格，未声明则该宿主不参与 hook 投影。
    * - 单值：宿主只投影一个事件（如仅 Stop）——历史形态，保持兼容。
    * - 数组：宿主同时投影多个事件（如 PreToolUse + SubagentStop + Stop）。
@@ -259,7 +264,8 @@ export const HOST_CONFIGS: HostConfig[] = [
         codegraph: { type: 'stdio' },
       },
     },
-    // Qoder hooks：~/.qoder/settings.json，与 Claude 同构（JSON、group 嵌套、内层 type）。多事件投影。
+    mcpHomeImpliesHostHome: true,
+    // Qoder 暂按旧方案完整投影。IDE 未读取全局 rules/skills 视为上游缺口，待 Qoder 修复后再收敛。
     hooks: [
       { relDir: '.', fileName: 'settings.json', format: 'json', event: 'Stop', scriptName: 'session-log.mjs', nesting: 'group', includeType: true },
       { relDir: '.', fileName: 'settings.json', format: 'json', event: 'SubagentStop', scriptName: 'subagent-trace.mjs', nesting: 'group', includeType: true },
@@ -281,7 +287,10 @@ export const HOST_CONFIGS: HostConfig[] = [
   },
 ]
 
-/** 所有支持的宿主 ID 列表，供 --host all 使用 */
+/** 所有已登记宿主 ID 列表，供显式 --host 校验与帮助输出使用。 */
+export const HOST_IDS: string[] = HOST_CONFIGS.map(h => h.id)
+
+/** 默认 --host all 目标列表；共享目录或显式 opt-in 宿主可通过 includeInAll=false 排除。 */
 export const ALL_HOST_IDS: string[] = HOST_CONFIGS
   .filter(h => h.includeInAll ?? true)
   .map(h => h.id)

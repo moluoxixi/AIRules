@@ -32,7 +32,7 @@ ADR-0005 落地"会话自动记录 Stop hook 多宿主投影"时，基于两条�
 两条修正：
 
 - **前提 1 证伪**：Claude Code / Codex 官方支持 `prompt` / `agent` 类型 hook handler，可调用模型；即便坚持只用 `command` 类型（跨宿主最小公约数），能力也远超"只能 shell"。
-- **前提 2 证伪**：PreToolUse 为**五宿主普遍能力**；SubagentStart/Stop 为四宿主能力（Trae 缺）；SessionStart 为五宿主能力。ADR-0005"只有 Stop 通用"的前提作废。
+- **前提 2 证伪**：PreToolUse 为**五宿主普遍能力**；SubagentStart/Stop 为四宿主能力（Trae 缺；Qoder IDE 当前若不触发全局 SubagentStop，按上游缺口实测记录）；SessionStart 为五宿主能力。ADR-0005"只有 Stop 通用"的前提作废。
 
 ### 二、阻断边界（立场层）
 

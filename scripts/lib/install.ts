@@ -1088,7 +1088,7 @@ export function projectToHost({
   if (mcp) {
     projectMcpToHost(moluoHome, mcpHome, mcp)
   }
-  // 一个宿主可声明多条 hook 投影（多事件）；逐条投影，受管块按 scriptName + event 各自幂等。
+  // 一个宿主可声明多条 hook 投影（多事件）；受管条目按 scriptName + event 各自幂等。
   for (const hook of hooks ?? []) {
     projectHooksToHost(moluoHome, hooksHome, hook)
   }
@@ -1144,6 +1144,7 @@ export function projectHostById(
   const mcpHomePath = path.resolve(mcpHome)
   const hasHostHome = existsSync(hostHomePath)
   const hasMcpHome = Boolean(mcp && existsSync(mcpHomePath))
+  const shouldProjectHostHome = hasHostHome || (hasMcpHome && Boolean(config.mcpHomeImpliesHostHome) && (projectBaseline || projectSharedResources || hooks.length > 0))
 
   if (!hasHostHome && !hasMcpHome) {
     console.warn(`[skip] 宿主目录不存在，跳过投影: ${host} (${hostHomePath})`)
@@ -1155,18 +1156,18 @@ export function projectHostById(
     moluoHome,
     hostHome,
     hostBaselineFile,
-    projectBaseline: projectBaseline && hasHostHome,
+    projectBaseline: projectBaseline && shouldProjectHostHome,
     baselineMode,
     customSkillsDirName: skillsDirName,
     excludedSkills,
     agentFormat,
-    projectSharedResources: projectSharedResources && hasHostHome,
+    projectSharedResources: projectSharedResources && shouldProjectHostHome,
     mcpHome,
     mcp,
     hooksHome,
-    // hook 投影需要宿主目录存在（脚本与配置都落在宿主 home 下）。
-    hooks: hasHostHome ? hooks : undefined,
+    // mcpHome 可作为宿主存在证据；完整宿主不能静默退化为 MCP-only。
+    hooks: shouldProjectHostHome ? hooks : undefined,
   })
 
-  return { success: true, hostBaselineFile, baselineProjected: projectBaseline && hasHostHome }
+  return { success: true, hostBaselineFile, baselineProjected: projectBaseline && shouldProjectHostHome }
 }

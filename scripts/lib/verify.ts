@@ -198,6 +198,7 @@ export async function verifyHost(host: string, moluoHome: string, userHome = os.
   const resolvedMcpHome = path.resolve(mcpHome)
   const hasHostHome = existsSync(resolvedHostHome)
   const hasMcpHome = Boolean(mcp && existsSync(resolvedMcpHome))
+  const requiresHostHome = Boolean(config.mcpHomeImpliesHostHome) && (projectSharedResources || hooks.length > 0)
 
   if (!hasHostHome && !hasMcpHome) {
     console.warn(`[SKIP] 宿主目录不存在: ${resolvedHostHome}`)
@@ -205,7 +206,12 @@ export async function verifyHost(host: string, moluoHome: string, userHome = os.
   }
 
   const mcpSuccess = verifyMcpProjection(host, moluoHome, resolvedMcpHome, mcp)
-  // hook 投影需要宿主目录存在；不存在则不校验（与投影侧门控一致）。
+  if (!hasHostHome && requiresHostHome) {
+    console.error(`[FAIL] 宿主共享资源目录缺失，不能只验证 MCP: ${resolvedHostHome}`)
+    return false
+  }
+
+  // mcpHome-only 证据不等同于所有宿主都启用 host-home 校验；Trae 等宿主仍可只验 MCP。
   const hookSuccess = hasHostHome ? verifyHookProjection(host, path.resolve(hooksHome), hooks) : true
   const shouldVerifySharedResources = projectSharedResources && hasHostHome
 

@@ -2,7 +2,7 @@
 
 本文件记录各宿主 hook 的格式差异，作为 AIRules hook 投影引擎的事实依据。来源为各宿主 2026-06-29 的官方文档（逐一核验，URL 见下）。映射如与上游冲突，以宿主官方文档为准。
 
-> 下表的事件名/嵌套/version 差异以**完成类（Stop）hook** 为样本；同样的格式规则适用于本仓已投影的 `SubagentStop`、`PreToolUse` 多事件（见「跨宿主行为红线」段与 `constants/hosts.ts` 各宿主 `hooks` 数组）。各事件的语义边界——完成类永不阻断、PreToolUse 仅客观信号阻断——见 [ADR-0005](./decisions/ADR-0005-session-auto-log-hook.md) 与 [ADR-0006](./decisions/ADR-0006-cross-host-hook-capability-baseline.md)。
+> 下表的事件名/嵌套/version 差异以**完成类（Stop）hook** 为样本；同样的格式规则适用于本仓已投影的 `SubagentStop`、`PreToolUse` 多事件（见「跨宿主行为红线」段与 `constants/hosts.ts` 各宿主 `hooks` 数组）。Qoder 当前维持单一 `qoder` host 与旧方案，三事件 hooks 均投影到 `~/.qoder/settings.json`；IDE 对全局规则/skills 或部分事件的读取缺口按 Qoder 上游 bug 处理。各事件的语义边界——完成类永不阻断、PreToolUse 仅客观信号阻断——见 [ADR-0005](./decisions/ADR-0005-session-auto-log-hook.md) 与 [ADR-0006](./decisions/ADR-0006-cross-host-hook-capability-baseline.md)。
 
 决策背景见 [ADR-0005](./decisions/ADR-0005-session-auto-log-hook.md)。
 
@@ -49,6 +49,6 @@ OpenCode（插件式 25+ 事件，机制不同）、QoderWork、Hermes、cc-swit
 
 - Claude Code：https://code.claude.com/docs/en/hooks
 - Codex CLI：https://developers.openai.com/codex/hooks 、 https://developers.openai.com/codex/config-advanced/
-- Qoder：https://docs.qoder.com/extensions/hooks
+- Qoder：https://docs.qoder.com/extensions/hooks 、 https://docs.qoder.com/en/cli/hooks
 - Trae：https://docs.trae.cn/ide_hook-configuration-reference
 - Cursor：https://blog.gitbutler.com/cursor-hooks-deep-dive （Cursor 1.7 Hooks beta）

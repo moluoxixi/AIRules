@@ -3,7 +3,7 @@ import os from 'node:os'
 import path from 'node:path'
 
 import kleur from 'kleur'
-import { ALL_HOST_IDS } from '../constants/hosts.js'
+import { ALL_HOST_IDS, HOST_IDS } from '../constants/hosts.js'
 import {
   ensureGlobalSkillLink,
   ensureInstallRoot,
@@ -29,7 +29,7 @@ interface Args {
 }
 
 function printHelp() {
-  const hostsLine = ALL_HOST_IDS.join('\n  ')
+  const hostsLine = HOST_IDS.join('\n  ')
   console.log(`Usage: npx tsx scripts/host-setup.ts --host <name|all> [--mode <install|upgrade>] [--home <dir>] [--user-home <dir>] [--skip-vendors]
 
 Hosts:

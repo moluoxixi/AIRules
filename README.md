@@ -180,7 +180,7 @@ Moluoxixi AIRules supports a growing ecosystem of AI agents through automated pr
 | **Trae CN** | `trae-cn` | `~/.trae-cn/`; MCP at `~/AppData/Roaming/Trae CN/User/mcp.json` | Skills + agents symlink; MCP merge | `AGENTS.md` |
 | **Trae Solo** | `trae-solo` | MCP at `~/AppData/Roaming/TRAE SOLO/User/mcp.json` | MCP only | N/A |
 | **Trae Solo CN** | `trae-solo-cn` | MCP at `~/AppData/Roaming/TRAE SOLO CN/User/mcp.json` | MCP only | N/A |
-| **Qoder** | `qoder` | `~/.qoder/`; MCP at `~/AppData/Roaming/Qoder/SharedClientCache/mcp.json` | Skills + agents symlink; MCP merge | `AGENTS.md` |
+| **Qoder** | `qoder` | `~/.qoder/`; MCP at `~/AppData/Roaming/Qoder/SharedClientCache/mcp.json` | Skills + agents symlink; three-event hooks; MCP merge | `AGENTS.md` |
 | **QoderWork** | `qoderwork` | `~/.qoderwork/` | Skills + agents symlink; no verified MCP config | `AGENTS.md` |
 | **OpenCode** | `opencode` | `~/.config/opencode/` | Skills + agents symlink; MCP in `opencode.json` | `AGENTS.md` |
 | **CC-Switch** | `cc-switch` | `~/.cc-switch/` | Skills + agents symlink | `AGENTS.md` |

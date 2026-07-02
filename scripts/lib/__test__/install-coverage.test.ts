@@ -3,7 +3,7 @@ import fs from 'node:fs'
 import os from 'node:os'
 import path from 'node:path'
 import { it } from 'vitest'
-import { findHostConfig, resolveHostPaths } from '../../../constants/hosts.js'
+import { ALL_HOST_IDS, findHostConfig, HOST_IDS, resolveHostPaths } from '../../../constants/hosts.js'
 import {
   ensureGlobalSkillLink,
   ensureInstallRoot,
@@ -91,6 +91,8 @@ it('hosts - 解析默认和自定义宿主路径', () => {
   assert.ok(qoder)
   assert.ok(qoderwork)
   assert.equal(missing, undefined)
+  assert.equal(HOST_IDS.includes('qoder-cli'), false)
+  assert.equal(ALL_HOST_IDS.includes('qoder-cli'), false)
 
   const cursorPaths = resolveHostPaths(cursor, 'C:/Users/example')
   assert.equal(normalizePath(cursorPaths.hostHome), 'C:/Users/example/.cursor')
@@ -131,7 +133,9 @@ it('hosts - 解析默认和自定义宿主路径', () => {
   assert.equal(normalizePath(qoderPaths.hostBaselineFile), 'C:/Users/example/.qoder/AGENTS.md')
   assert.equal(qoderPaths.projectSharedResources, true)
   assert.equal(qoderPaths.projectBaseline, true)
+  assert.equal(qoder.mcpHomeImpliesHostHome, true)
   assert.deepEqual(qoderPaths.mcp?.serverOverrides?.codegraph, { type: 'stdio' })
+  assert.deepEqual(qoderPaths.hooks.map(h => h.event).sort(), ['PreToolUse', 'Stop', 'SubagentStop'])
 
   const qoderworkPaths = resolveHostPaths(qoderwork, 'C:/Users/example')
   assert.equal(qoderworkPaths.mcp, undefined)
@@ -376,7 +380,7 @@ it('install - Trae Solo 只投影 MCP，不写 baseline、skills 或 agents', ()
   })
 }))
 
-it('install - Qoder 投影 AGENTS、skills、agents，MCP 仍写 SharedClientCache', () => withTempDir('airules-qoder-mcp-', (tmpDir) => {
+it('install - Qoder 按旧方案投影全局 AGENTS、skills、agents、三事件 hook 与 SharedClientCache MCP', () => withTempDir('airules-qoder-mcp-', (tmpDir) => {
   const userHome = path.join(tmpDir, 'user')
   const moluoHome = path.join(userHome, '.moluoxixi')
   const qoderHome = path.join(userHome, '.qoder')
@@ -386,6 +390,9 @@ it('install - Qoder 投影 AGENTS、skills、agents，MCP 仍写 SharedClientCac
   writeFile(path.join(moluoHome, 'vendor', 'AGENTS.md'), '# AIRules\n\n## Core\n\n- Keep rules linked.\n')
   fs.mkdirSync(path.join(vendorSkillsDir, 'api-docs'), { recursive: true })
   writeFile(path.join(moluoHome, 'vendor', 'agents', 'demo-agent.md'), '---\nname: demo-agent\ndescription: demo\n---\nbody\n')
+  writeFile(path.join(moluoHome, 'vendor', 'hooks', 'session-log.mjs'), 'process.stdout.write("{}")\n')
+  writeFile(path.join(moluoHome, 'vendor', 'hooks', 'loop-guard.mjs'), 'process.stdout.write("{}")\n')
+  writeFile(path.join(moluoHome, 'vendor', 'hooks', 'subagent-trace.mjs'), 'process.stdout.write("{}")\n')
   writeFile(path.join(moluoHome, 'vendor', 'mcp', 'mcp.json'), `${JSON.stringify({
     mcpServers: {
       codegraph: {
@@ -396,6 +403,69 @@ it('install - Qoder 投影 AGENTS、skills、agents，MCP 仍写 SharedClientCac
   }, null, 2)}\n`)
   fs.mkdirSync(qoderHome, { recursive: true })
   fs.mkdirSync(qoderMcpHome, { recursive: true })
+  writeFile(path.join(qoderHome, 'settings.json'), `${JSON.stringify({
+    hooks: {
+      Stop: [
+        { hooks: [{ type: 'command', command: `node "${path.join(qoderHome, 'hooks', 'session-log.mjs')}" --airules-host=qoder-cli` }] },
+        { hooks: [{ type: 'command', command: 'echo user-stop' }] },
+      ],
+      PreToolUse: [
+        { hooks: [{ type: 'command', command: `node "${path.join(qoderHome, 'hooks', 'loop-guard.mjs')}" --airules-host=qoder-cli` }] },
+      ],
+    },
+  }, null, 2)}\n`)
+
+  const projected = projectHostById('qoder', userHome, moluoHome)
+
+  assert.equal(projected.success, true)
+  assert.equal(projected.baselineProjected, true)
+  assert.equal(fs.existsSync(path.join(qoderHome, 'AGENTS.md')), true)
+  assert.equal(realLinkPath(path.join(qoderHome, 'skills', 'api-docs')), normalizePath(path.join(vendorSkillsDir, 'api-docs')))
+  assert.equal(fs.existsSync(path.join(qoderHome, 'agents', 'demo-agent.md')), true)
+  assert.equal(fs.existsSync(path.join(qoderMcpHome, 'AGENTS.md')), false)
+  assert.equal(fs.existsSync(path.join(qoderMcpHome, 'skills')), false)
+  assert.equal(fs.existsSync(path.join(qoderMcpHome, 'agents')), false)
+  const settings = JSON.parse(fs.readFileSync(path.join(qoderHome, 'settings.json'), 'utf8'))
+  assert.deepEqual(Object.keys(settings.hooks).sort(), ['PreToolUse', 'Stop', 'SubagentStop'])
+  const stopCommands = settings.hooks.Stop.flatMap((group: { hooks: Array<{ command: string }> }) => group.hooks.map(h => h.command))
+  const preToolCommands = settings.hooks.PreToolUse.flatMap((group: { hooks: Array<{ command: string }> }) => group.hooks.map(h => h.command))
+  const subagentCommands = settings.hooks.SubagentStop.flatMap((group: { hooks: Array<{ command: string }> }) => group.hooks.map(h => h.command))
+  assert.equal(stopCommands.includes('echo user-stop'), true)
+  assert.equal(stopCommands.filter((command: string) => command.includes('session-log.mjs')).length, 1)
+  assert.equal(preToolCommands.filter((command: string) => command.includes('loop-guard.mjs')).length, 1)
+  assert.equal(subagentCommands.filter((command: string) => command.includes('subagent-trace.mjs')).length, 1)
+  assert.equal([...stopCommands, ...preToolCommands, ...subagentCommands].some((command: string) => command.includes('--airules-host=')), false)
+
+  const written = JSON.parse(fs.readFileSync(path.join(qoderMcpHome, 'mcp.json'), 'utf8'))
+  assert.deepEqual(written.mcpServers.codegraph, {
+    type: 'stdio',
+    command: 'codegraph',
+    args: ['serve', '--mcp', '--path', workspaceFolderPlaceholder],
+  })
+}))
+
+it('install - Qoder 只有 SharedClientCache 存在时仍创建 .qoder 完整投影', () => withTempDir('airules-qoder-mcp-only-', (tmpDir) => {
+  const userHome = path.join(tmpDir, 'user')
+  const moluoHome = path.join(userHome, '.moluoxixi')
+  const qoderHome = path.join(userHome, '.qoder')
+  const qoderMcpHome = path.join(userHome, 'AppData', 'Roaming', 'Qoder', 'SharedClientCache')
+  const vendorSkillsDir = path.join(moluoHome, 'vendor', 'skills')
+
+  writeFile(path.join(moluoHome, 'vendor', 'AGENTS.md'), '# AIRules\n')
+  fs.mkdirSync(path.join(vendorSkillsDir, 'api-docs'), { recursive: true })
+  writeFile(path.join(moluoHome, 'vendor', 'agents', 'demo-agent.md'), '---\nname: demo-agent\ndescription: demo\n---\nbody\n')
+  writeFile(path.join(moluoHome, 'vendor', 'hooks', 'session-log.mjs'), 'process.stdout.write("{}")\n')
+  writeFile(path.join(moluoHome, 'vendor', 'hooks', 'loop-guard.mjs'), 'process.stdout.write("{}")\n')
+  writeFile(path.join(moluoHome, 'vendor', 'hooks', 'subagent-trace.mjs'), 'process.stdout.write("{}")\n')
+  writeFile(path.join(moluoHome, 'vendor', 'mcp', 'mcp.json'), `${JSON.stringify({
+    mcpServers: {
+      codegraph: {
+        command: 'codegraph',
+        args: ['serve', '--mcp', '--path', workspaceFolderPlaceholder],
+      },
+    },
+  }, null, 2)}\n`)
+  fs.mkdirSync(qoderMcpHome, { recursive: true })
 
   const projected = projectHostById('qoder', userHome, moluoHome)
 
@@ -404,16 +474,8 @@ it('install - Qoder 投影 AGENTS、skills、agents，MCP 仍写 SharedClientCac
   assert.equal(fs.existsSync(path.join(qoderHome, 'AGENTS.md')), true)
   assert.equal(fs.existsSync(path.join(qoderHome, 'skills', 'api-docs')), true)
   assert.equal(fs.existsSync(path.join(qoderHome, 'agents', 'demo-agent.md')), true)
-  assert.equal(fs.existsSync(path.join(qoderMcpHome, 'AGENTS.md')), false)
-  assert.equal(fs.existsSync(path.join(qoderMcpHome, 'skills')), false)
-  assert.equal(fs.existsSync(path.join(qoderMcpHome, 'agents')), false)
-
-  const written = JSON.parse(fs.readFileSync(path.join(qoderMcpHome, 'mcp.json'), 'utf8'))
-  assert.deepEqual(written.mcpServers.codegraph, {
-    type: 'stdio',
-    command: 'codegraph',
-    args: ['serve', '--mcp', '--path', workspaceFolderPlaceholder],
-  })
+  const settings = JSON.parse(fs.readFileSync(path.join(qoderHome, 'settings.json'), 'utf8'))
+  assert.deepEqual(Object.keys(settings.hooks).sort(), ['PreToolUse', 'Stop', 'SubagentStop'])
 }))
 
 it('install - Hermes 宿主投影使用统一技能集合', () => withTempDir('airules-hermes-host-', (tmpDir) => {

@@ -43,7 +43,7 @@ npx vitest run __test__/hook-contract.test.ts
 
 ## Phase 3 · 多宿主烟测（按需，人工）
 
-Cursor / Codex / Qoder 各重复 Phase 2 验证点，重点确认字段名兼容；Trae 验证 prose-only 兜底（不部署 hook，仅靠主代理读 `rules/AGENTS.md` 自律）。
+Cursor / Codex / Qoder 各重复 Phase 2 验证点，重点确认字段名兼容。Qoder 若在 IDE 版本里仍无法触发全局规则/skills 或 SubagentStop，记录为上游缺口，不在 AIRules 中拆 `qoder-cli` 合同。Trae 验证 prose-only 兜底（不部署 hook，仅靠主代理读 `rules/AGENTS.md` 自律）。
 
 - **Codex**：额外验证 `exit 2` 是否真被强制（issue #27833）。若 deny 未生效，记录为该宿主已知限制，prose 兜底。
 - **Cursor**：验证 `failClosed` 模式下 hook 正常 `exit 0` 不误触发拦截。
@@ -55,4 +55,4 @@ Cursor / Codex / Qoder 各重复 Phase 2 验证点，重点确认字段名兼容
 | _待填_ | Claude Code | | 2 | _未跑_ | |
 | _待填_ | Cursor | | 3 | _未跑_ | |
 | _待填_ | Codex | | 3 | _未跑_ | deny bug #27833 待验 |
-| _待填_ | Qoder | | 3 | _未跑_ | |
+| _待填_ | Qoder | | 3 | _未跑_ | 验 Stop + SubagentStop + PreToolUse；IDE 缺口按上游 bug 记录 |

@@ -80,16 +80,28 @@ it('verifyHost - 宿主 skills 目录缺失时返回失败', async () => {
   })
 })
 
-it('verifyHost - Qoder 要求 .qoder skills 链接完整', async () => {
+it('verifyHost - Qoder 按旧方案要求 .qoder skills 链接完整，同时校验 SharedClientCache MCP', async () => {
   await withTempHome(async (userHome, moluoHome) => {
-    fs.mkdirSync(path.join(userHome, '.qoder'), { recursive: true })
+    const qoderHome = path.join(userHome, '.qoder')
+    const qoderMcpHome = path.join(userHome, 'AppData', 'Roaming', 'Qoder', 'SharedClientCache')
+    fs.mkdirSync(qoderHome, { recursive: true })
+    fs.mkdirSync(qoderMcpHome, { recursive: true })
     createVendorSkill(moluoHome, 'api-docs')
+    writeNeutralMcpSource(moluoHome)
+
+    fs.writeFileSync(path.join(qoderMcpHome, 'mcp.json'), `${JSON.stringify({
+      mcpServers: {
+        codegraph: {
+          command: 'user-custom-codegraph',
+        },
+      },
+    }, null, 2)}\n`)
 
     assert.equal(await verifyHost('qoder', moluoHome, userHome), false)
 
     linkDir(
       path.join(moluoHome, 'vendor', 'skills', 'api-docs'),
-      path.join(userHome, '.qoder', 'skills', 'api-docs'),
+      path.join(qoderHome, 'skills', 'api-docs'),
     )
 
     assert.equal(await verifyHost('qoder', moluoHome, userHome), true)
@@ -149,6 +161,7 @@ it('verifyHost - Qoder 用户同名 MCP server 不因缺少覆盖字段失败', 
   await withTempHome(async (userHome, moluoHome) => {
     const qoderHome = path.join(userHome, '.qoder')
     const qoderMcpHome = path.join(userHome, 'AppData', 'Roaming', 'Qoder', 'SharedClientCache')
+    fs.mkdirSync(qoderHome, { recursive: true })
     fs.mkdirSync(qoderMcpHome, { recursive: true })
     createVendorSkill(moluoHome, 'api-docs')
     writeNeutralMcpSource(moluoHome)
@@ -171,13 +184,27 @@ it('verifyHost - Qoder 用户同名 MCP server 不因缺少覆盖字段失败', 
 
 it('verifyHost - Qoder host 存在但独立 MCP 目录缺失时失败', async () => {
   await withTempHome(async (userHome, moluoHome) => {
-    const qoderHome = path.join(userHome, '.qoder')
     createVendorSkill(moluoHome, 'api-docs')
     writeNeutralMcpSource(moluoHome)
-    linkDir(
-      path.join(moluoHome, 'vendor', 'skills', 'api-docs'),
-      path.join(qoderHome, 'skills', 'api-docs'),
-    )
+    fs.mkdirSync(path.join(userHome, '.qoder'), { recursive: true })
+
+    assert.equal(await verifyHost('qoder', moluoHome, userHome), false)
+  })
+})
+
+it('verifyHost - Qoder 只有 SharedClientCache 存在但缺 .qoder 完整资源时失败', async () => {
+  await withTempHome(async (userHome, moluoHome) => {
+    const qoderMcpHome = path.join(userHome, 'AppData', 'Roaming', 'Qoder', 'SharedClientCache')
+    fs.mkdirSync(qoderMcpHome, { recursive: true })
+    createVendorSkill(moluoHome, 'api-docs')
+    writeNeutralMcpSource(moluoHome)
+    fs.writeFileSync(path.join(qoderMcpHome, 'mcp.json'), `${JSON.stringify({
+      mcpServers: {
+        codegraph: {
+          command: 'user-custom-codegraph',
+        },
+      },
+    }, null, 2)}\n`)
 
     assert.equal(await verifyHost('qoder', moluoHome, userHome), false)
   })
