@@ -93,7 +93,7 @@ npm run sync
 ```
 
 > [!TIP]
-> **同步流程**：该命令会重建 vendor skills、执行 setup 命令、清理死链接，并在完成后自动运行宿主验证。默认 setup 会全局安装并初始化 CodeGraph；需要避免拉取第三方供应商和跳过 setup 时，可使用 `airules sync --skip-vendors`。
+> **同步流程**：`npm run sync` 是默认开发角色同步（`roles/common` + `roles/development`）。需要显式开发角色时用 `npm run sync:development`；需要产品角色时用 `npm run sync:product`（`roles/common` + `roles/product`）。每次同步都会重建 vendor skills、执行 setup 命令、清理死链接，并在完成后自动运行宿主验证。默认 setup 会全局安装并初始化 CodeGraph；需要避免拉取第三方供应商和跳过 setup 时，可使用 `airules sync --skip-vendors`。
 
 ---
 
@@ -146,6 +146,9 @@ npm run rules:install -- --host claude
 | 命令 | 作用 |
 |------|------|
 | `airules sync --host all` | 同步内置、用户自定义和第三方 skills 到所有已存在宿主 |
+| `npm run sync` | 同步默认开发角色到所有已存在宿主 |
+| `npm run sync:development` | 显式同步开发角色到所有已存在宿主 |
+| `npm run sync:product` | 同步产品角色到所有已存在宿主 |
 | `airules add ./my-skill --host all` | 添加本地 skill，并同步到所有宿主 |
 | `airules add ./my-skill --name review-plus --overwrite` | 指定安装名并覆盖已有用户 skill |
 | `airules verify --host codex` | 校验指定宿主的 skills 链接完整性 |
@@ -157,6 +160,7 @@ npm run rules:install -- --host claude
 | `--home <dir>` | 指定 AIRules 安装目录，默认 `~/.moluoxixi` |
 | `--user-home <dir>` | 指定宿主配置所在的用户目录，默认当前系统用户目录 |
 | `--host <name\|all>` | 指定宿主，默认 `all` |
+| `--role <name>` | 指定第一方角色，默认 `development`；产品 / PM skills 使用 `product` |
 | `--skip-vendors` | `sync` 时不刷新第三方 vendor 仓库 |
 | `--skip-sync` | `add` 后只写入用户 skill，不立即同步宿主 |
 | `--sync-vendors` | 执行 `add` 时同步刷新第三方 vendor；`add` 默认跳过 vendor 刷新 |
@@ -237,16 +241,6 @@ Moluoxixi AIRules 通过自动化投影，支持不断增长的 AI 代理生态�
 │   │   └── skills/
 │   └── product/
 │       └── skills/         # 第一方产品 / PM skills
-├── skills/                  # 第一方 skills（你的核心资产）
-│   ├── init-project/
-│   │   ├── references/
-│   │   └── scripts/
-│   ├── spec-workflow/
-│   ├── brainstorming/
-│   ├── writing-plans/
-│   ├── test-driven-development/
-│   ├── verification-before-completion/
-│   └── ...
 ├── local/
 │   └── skills/              # `airules add` 复制进来的用户自定义 skills
 ├── vendor/

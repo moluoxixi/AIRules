@@ -93,7 +93,7 @@ npm run sync
 ```
 
 > [!TIP]
-> **Sync Process**: This command rebuilds vendor skills, runs setup commands, cleans dead links, and runs host verification after projection. The default setup globally installs and initializes CodeGraph; use `airules sync --skip-vendors` when you do not want to refresh third-party vendor repositories or run setup.
+> **Sync Process**: `npm run sync` is the default development-role sync (`roles/common` + `roles/development`). Use `npm run sync:development` for an explicit development sync, or `npm run sync:product` to sync the product role (`roles/common` + `roles/product`). Each sync rebuilds vendor skills, runs setup commands, cleans dead links, and runs host verification after projection. The default setup globally installs and initializes CodeGraph; use `airules sync --skip-vendors` when you do not want to refresh third-party vendor repositories or run setup.
 
 ---
 
@@ -146,6 +146,9 @@ npm run rules:install -- --host claude
 | Command | Purpose |
 |---------|---------|
 | `airules sync --host all` | Sync built-in, user-defined, and third-party skills to every existing host |
+| `npm run sync` | Sync the default development role to every existing host |
+| `npm run sync:development` | Explicitly sync the development role to every existing host |
+| `npm run sync:product` | Sync the product role to every existing host |
 | `airules add ./my-skill --host all` | Add a local skill and sync it to every host |
 | `airules add ./my-skill --name review-plus --overwrite` | Set the installed skill name and replace an existing user skill |
 | `airules verify --host codex` | Verify skill links for one host |
@@ -157,6 +160,7 @@ Common options:
 | `--home <dir>` | AIRules install directory, defaults to `~/.moluoxixi` |
 | `--user-home <dir>` | User home used for host directories, defaults to the current OS home |
 | `--host <name\|all>` | Target host, defaults to `all` |
+| `--role <name>` | First-party role to sync, defaults to `development`; use `product` for product / PM skills |
 | `--skip-vendors` | Do not refresh third-party vendor repos during `sync` |
 | `--skip-sync` | Add the user skill without projecting it immediately |
 | `--sync-vendors` | Refresh third-party vendor repos while running `add`; `add` skips vendor refresh by default |
@@ -237,16 +241,6 @@ Moluoxixi AIRules supports a growing ecosystem of AI agents through automated pr
 │   │   └── skills/
 │   └── product/
 │       └── skills/         # First-party product / PM skills
-├── skills/                  # First-party skills (your core assets)
-│   ├── init-project/
-│   │   ├── references/
-│   │   └── scripts/
-│   ├── spec-workflow/
-│   ├── brainstorming/
-│   ├── writing-plans/
-│   ├── test-driven-development/
-│   ├── verification-before-completion/
-│   └── ...
 ├── local/
 │   └── skills/              # User-added skills copied by `airules add`
 ├── vendor/
