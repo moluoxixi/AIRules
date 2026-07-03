@@ -15,14 +15,10 @@
     "LICENSE",
     "README-zh.md",
     "README.md",
-    "agents",
     "dist",
     "docs",
-    "hooks",
-    "mcp",
-    "rules",
-    "scripts",
-    "skills"
+    "roles",
+    "scripts"
   ],
   "scripts": {
     "airules": "tsx scripts/cli.ts",

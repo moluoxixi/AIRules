@@ -203,7 +203,7 @@ Moluoxixi AIRules 通过自动化投影，支持不断增长的 AI 代理生态�
 | **Agent 编排** | `executing-plans`, `subagent-driven-development`, `dispatching-parallel-agents`, `using-git-worktrees`, `finishing-a-development-branch` |
 | **记忆与演进** | `session-capture`, `distill-candidates`, `recall-memory`, `remember`, `reflect` |
 
-> 第一方 skills 可以继续放在嵌套源目录下，安装时会按叶子目录名展平为 `vendor/skills/<skill-name>`；第一方规则位于 `rules/AGENTS.md`，第一方 agent 位于 `agents/`，CodeGraph 安装命令位于 `constants/skills.ts` 的 vendor setup。
+> 第一方角色资产位于 `roles/<role>/`。skills 可以继续放在嵌套源目录下，安装时会按叶子目录名展平为 `vendor/skills/<skill-name>`；角色同步先叠加 `roles/common/`，再叠加所选角色（默认 `development`，也可 `--role product`），同名资产由所选角色覆盖 common；CodeGraph 安装命令位于 `constants/skills.ts` 的 vendor setup。
 
 ### 第三方 Skills（精选）
 
@@ -222,11 +222,21 @@ Moluoxixi AIRules 通过自动化投影，支持不断增长的 AI 代理生态�
 
 ```
 ~/.moluoxixi/
-├── rules/
-│   └── AGENTS.md          # 投影到宿主的全局规则基线
-├── agents/                 # 第一方子代理角色契约
-├── mcp/
-│   └── mcp.json            # 按宿主格式投影的中性 MCP 源
+├── roles/
+│   ├── common/
+│   │   ├── hooks/
+│   │   │   └── session-log.mjs
+│   │   └── skills/        # 共享会话沉淀 / 提炼 / 记忆 / 反思能力
+│   ├── development/
+│   │   ├── rules/
+│   │   │   └── AGENTS.md  # 投影到宿主的全局规则基线
+│   │   ├── agents/        # 第一方子代理角色契约
+│   │   ├── mcp/
+│   │   │   └── mcp.json   # 按宿主格式投影的中性 MCP 源
+│   │   ├── hooks/
+│   │   └── skills/
+│   └── product/
+│       └── skills/         # 第一方产品 / PM skills
 ├── skills/                  # 第一方 skills（你的核心资产）
 │   ├── init-project/
 │   │   ├── references/
@@ -262,7 +272,7 @@ Moluoxixi AIRules 通过自动化投影，支持不断增长的 AI 代理生态�
 
 ## 路线 / TODO
 
-- [x] **PreToolUse 客观信号阻断 hook**（回路计数熔断 / `reviewer ≠ coder` 身份隔离）— 已落地（2026-06-29）：[ADR-0006](docs/architecture/decisions/ADR-0006-cross-host-hook-capability-baseline.md) 第二段「阻断边界」经仓库维护者批准转 `accepted`，实现为 `hooks/loop-guard.mjs`（PreToolUse 三类客观信号拦截）+ `hooks/subagent-trace.mjs`（SubagentStop 计数，恒 exit 0）+ 账本 `constants/loop-ledger.ts`（协议见 [loop-ledger-protocol.md](docs/architecture/loop-ledger-protocol.md)）。**承认的限制**：PreToolUse 是护栏而非密闭边界（可绕道）、Codex 存量 deny bug、Trae 缺 SubagentStop——这部分语义层仍由 prose + 主代理自律兜底，投影落地前按宿主版本实测 deny 生效性。落地凭据见 [issue/DONE-TODO.md](issue/DONE-TODO.md)。
+- [x] **PreToolUse 客观信号阻断 hook**（回路计数熔断 / `reviewer ≠ coder` 身份隔离）— 已落地（2026-06-29）：[ADR-0006](docs/architecture/decisions/ADR-0006-cross-host-hook-capability-baseline.md) 第二段「阻断边界」经仓库维护者批准转 `accepted`，实现为 `roles/development/hooks/loop-guard.mjs`（PreToolUse 三类客观信号拦截）+ `roles/development/hooks/subagent-trace.mjs`（SubagentStop 计数，恒 exit 0）+ 账本 `constants/loop-ledger.ts`（协议见 [loop-ledger-protocol.md](docs/architecture/loop-ledger-protocol.md)）。**承认的限制**：PreToolUse 是护栏而非密闭边界（可绕道）、Codex 存量 deny bug、Trae 缺 SubagentStop——这部分语义层仍由 prose + 主代理自律兜底，投影落地前按宿主版本实测 deny 生效性。落地凭据见 [issue/DONE-TODO.md](issue/DONE-TODO.md)。
 
 ## 许可证
 

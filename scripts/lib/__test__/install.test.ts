@@ -38,12 +38,12 @@ it('first-party sync - agents and mcp are stored under vendor', () => {
   try {
     const repoRoot = path.join(tmpDir, 'repo')
     const moluoHome = path.join(tmpDir, 'user', '.moluoxixi')
-    fs.mkdirSync(path.join(repoRoot, 'rules'), { recursive: true })
-    fs.mkdirSync(path.join(repoRoot, 'agents'), { recursive: true })
-    fs.mkdirSync(path.join(repoRoot, 'mcp'), { recursive: true })
-    fs.writeFileSync(path.join(repoRoot, 'rules', 'AGENTS.md'), '# AIRules\n')
-    fs.writeFileSync(path.join(repoRoot, 'agents', 'demo.md'), 'agent\n')
-    fs.writeFileSync(path.join(repoRoot, 'mcp', 'mcp.json'), '{"mcpServers":{}}\n')
+    fs.mkdirSync(path.join(repoRoot, 'roles', 'development', 'rules'), { recursive: true })
+    fs.mkdirSync(path.join(repoRoot, 'roles', 'development', 'agents'), { recursive: true })
+    fs.mkdirSync(path.join(repoRoot, 'roles', 'development', 'mcp'), { recursive: true })
+    fs.writeFileSync(path.join(repoRoot, 'roles', 'development', 'rules', 'AGENTS.md'), '# AIRules\n')
+    fs.writeFileSync(path.join(repoRoot, 'roles', 'development', 'agents', 'demo.md'), 'agent\n')
+    fs.writeFileSync(path.join(repoRoot, 'roles', 'development', 'mcp', 'mcp.json'), '{"mcpServers":{}}\n')
 
     syncFirstPartyToHome(repoRoot, moluoHome)
 

@@ -11,8 +11,8 @@ import { CODER_AGENT_TYPES, createLedger, DEFAULT_MAX_LOOP, DISPATCH_OUTCOMES, L
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url))
 const repoRoot = path.resolve(__dirname, '..')
-const guardScript = path.join(repoRoot, 'hooks', 'loop-guard.mjs')
-const traceScript = path.join(repoRoot, 'hooks', 'subagent-trace.mjs')
+const guardScript = path.join(repoRoot, 'roles', 'development', 'hooks', 'loop-guard.mjs')
+const traceScript = path.join(repoRoot, 'roles', 'development', 'hooks', 'subagent-trace.mjs')
 
 function withTempRepo<T>(run: (root: string) => T): T {
   const tmpDir = fs.mkdtempSync(path.join(os.tmpdir(), 'airules-hook-'))

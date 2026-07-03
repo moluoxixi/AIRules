@@ -15,6 +15,7 @@ import {
   syncFirstPartySkillsToVendor,
   syncFirstPartyToHome,
 } from './lib/install.js'
+import { DEFAULT_ROLE } from './lib/roles.js'
 import { ensureVendorRepo } from './lib/vendor-sync.js'
 import { loadVendorManifest } from './lib/vendors.js'
 import { verifyHost } from './lib/verify.js'
@@ -24,13 +25,14 @@ interface Args {
   mode: string
   home: string
   userHome?: string
+  role: string
   skipVendors: boolean
   help: boolean
 }
 
 function printHelp() {
   const hostsLine = HOST_IDS.join('\n  ')
-  console.log(`Usage: npx tsx scripts/host-setup.ts --host <name|all> [--mode <install|upgrade>] [--home <dir>] [--user-home <dir>] [--skip-vendors]
+  console.log(`Usage: npx tsx scripts/host-setup.ts --host <name|all> [--mode <install|upgrade>] [--home <dir>] [--user-home <dir>] [--role <role>] [--skip-vendors]
 
 Hosts:
   all (安装到所有支持的代理)
@@ -43,6 +45,7 @@ function parseArgs(argv: string[]): Args {
     host: '',
     mode: 'install', // 默认安装
     home: path.join(os.homedir(), '.moluoxixi'),
+    role: DEFAULT_ROLE,
     skipVendors: false,
     help: false,
   }
@@ -66,6 +69,10 @@ function parseArgs(argv: string[]): Args {
     }
     else if (arg === '--user-home') {
       args.userHome = argv[index + 1]
+      index += 1
+    }
+    else if (arg === '--role') {
+      args.role = argv[index + 1]
       index += 1
     }
     else if (arg === '--skip-vendors') {
@@ -119,16 +126,16 @@ async function main() {
   paths.repoRoot = repoRoot
 
   ensureInstallRoot(paths)
-  syncFirstPartyToHome(repoRoot, paths.moluoHome)
+  syncFirstPartyToHome(repoRoot, paths.moluoHome, args.role)
   await syncVendorsIfNeeded(paths.moluoHome, repoRoot, args.skipVendors)
   await rebuildVendorSkillLinks({
     homeDir: paths.moluoHome,
     manifestPath: path.join(repoRoot, 'constants', 'skills.js'),
   })
-  // 第一方 skills 链路恒为 <repoRoot>/skills/* → <moluoHome>/vendor/skills/*，
+  // 第一方 skills 链路恒为 <repoRoot>/roles/common + roles/<role>/skills/* → <moluoHome>/vendor/skills/*，
   // 源与目标永不相同；即使 repoRoot === moluoHome（仓库装进 ~/.moluoxixi）也必须投影，
   // 否则第一方 skills 会被整体漏发。
-  syncFirstPartySkillsToVendor(repoRoot, paths.moluoHome)
+  syncFirstPartySkillsToVendor(repoRoot, paths.moluoHome, args.role)
   syncFirstPartySkillsToVendor(path.join(paths.moluoHome, 'local'), paths.moluoHome)
   ensureGlobalSkillLink(paths)
 

@@ -30,7 +30,7 @@ const PACKAGE_ROOT = findPackageRoot(import.meta.url)
 
 function printHelp() {
   console.log(`Usage:
-  airules sync [--host <name|all>] [--home <dir>] [--user-home <dir>] [--skip-vendors] [--no-verify]
+  airules sync [--role <name>] [--host <name|all>] [--home <dir>] [--user-home <dir>] [--skip-vendors] [--no-verify]
   airules add <skill-dir> [--name <skill-name>] [--host <name|all>] [--home <dir>] [--user-home <dir>] [--overwrite] [--skip-sync] [--sync-vendors]
   airules verify [--host <name|all>] [--home <dir>] [--user-home <dir>]
 
@@ -53,6 +53,7 @@ function parseCommandArgs(args: string[]) {
       'overwrite': { type: 'boolean' },
       'no-verify': { type: 'boolean' },
       'repo-root': { type: 'string' },
+      'role': { type: 'string' },
       'skip-sync': { type: 'boolean' },
       'skip-vendors': { type: 'boolean' },
       'sync-vendors': { type: 'boolean' },
@@ -67,6 +68,7 @@ function commonOptions(values: Record<string, string | boolean | undefined>) {
     home: String(values.home ?? getDefaultMoluoHome()),
     host: String(values.host ?? 'all'),
     repoRoot: String(values['repo-root'] ?? PACKAGE_ROOT),
+    role: values.role === undefined ? undefined : String(values.role),
     userHome: values['user-home'] === undefined ? undefined : String(values['user-home']),
   }
 }

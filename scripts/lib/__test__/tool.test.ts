@@ -129,9 +129,10 @@ it('tool - syncToHosts 同步内置和用户自定义 skills 到宿主', async (
 
     writeFile(path.join(repoRoot, 'package.json'), '{"type":"module"}\n')
     writeFile(path.join(repoRoot, 'constants', 'skills.js'), 'export const vendors = []\n')
-    writeFile(path.join(repoRoot, 'rules', 'AGENTS.md'), 'baseline\n')
-    writeFile(path.join(repoRoot, 'agents', 'demo-agent.md'), '---\nname: demo-agent\ndescription: Demo agent\n---\nDo work\n')
-    writeFile(path.join(repoRoot, 'skills', 'workflow', 'builtin-review', 'SKILL.md'), 'builtin\n')
+    writeFile(path.join(repoRoot, 'roles', 'development', 'rules', 'AGENTS.md'), 'baseline\n')
+    writeFile(path.join(repoRoot, 'roles', 'development', 'agents', 'demo-agent.md'), '---\nname: demo-agent\ndescription: Demo agent\n---\nDo work\n')
+    writeFile(path.join(repoRoot, 'roles', 'common', 'skills', 'session-capture', 'SKILL.md'), 'common\n')
+    writeFile(path.join(repoRoot, 'roles', 'development', 'skills', 'workflow', 'builtin-review', 'SKILL.md'), 'builtin\n')
     writeFile(path.join(moluoHome, 'local', 'skills', 'custom-review', 'SKILL.md'), 'custom\n')
     fs.mkdirSync(codexHome, { recursive: true })
 
@@ -148,7 +149,11 @@ it('tool - syncToHosts 同步内置和用户自定义 skills 到宿主', async (
     assert.deepEqual(result.skippedHosts, [])
     assert.equal(
       realLinkPath(path.join(moluoHome, 'vendor', 'skills', 'builtin-review')),
-      realLinkPath(path.join(repoRoot, 'skills', 'workflow', 'builtin-review')),
+      realLinkPath(path.join(repoRoot, 'roles', 'development', 'skills', 'workflow', 'builtin-review')),
+    )
+    assert.equal(
+      realLinkPath(path.join(moluoHome, 'vendor', 'skills', 'session-capture')),
+      realLinkPath(path.join(repoRoot, 'roles', 'common', 'skills', 'session-capture')),
     )
     assert.equal(
       realLinkPath(path.join(moluoHome, 'vendor', 'skills', 'custom-review')),
@@ -169,6 +174,51 @@ it('tool - syncToHosts 同步内置和用户自定义 skills 到宿主', async (
   })
 })
 
+it('tool - syncToHosts 支持只包含 skills 的 product 角色', async () => {
+  await withTempDirAsync('airules-tool-product-role-', async (tmpDir) => {
+    const repoRoot = path.join(tmpDir, 'repo')
+    const userHome = path.join(tmpDir, 'user')
+    const moluoHome = path.join(userHome, '.moluoxixi')
+    const codexHome = path.join(userHome, '.codex')
+
+    writeFile(path.join(repoRoot, 'package.json'), '{"type":"module"}\n')
+    writeFile(path.join(repoRoot, 'constants', 'skills.js'), 'export const vendors = []\n')
+    writeFile(path.join(repoRoot, 'roles', 'development', 'rules', 'AGENTS.md'), 'development baseline\n')
+    writeFile(path.join(repoRoot, 'roles', 'common', 'hooks', 'session-log.mjs'), 'process.stdout.write("{}")\n')
+    writeFile(path.join(repoRoot, 'roles', 'common', 'skills', 'session-capture', 'SKILL.md'), 'common skill\n')
+    writeFile(path.join(repoRoot, 'roles', 'product', 'skills', 'deliver-prd', 'SKILL.md'), 'product skill\n')
+    writeFile(path.join(moluoHome, 'vendor', 'AGENTS.md'), 'stale baseline\n')
+    fs.mkdirSync(codexHome, { recursive: true })
+
+    const result = await syncToHosts({
+      repoRoot,
+      home: moluoHome,
+      userHome,
+      host: 'codex',
+      role: 'product',
+      skipVendors: true,
+      verify: false,
+    })
+
+    assert.deepEqual(result.projectedHosts, ['codex'])
+    assert.equal(fs.existsSync(path.join(moluoHome, 'vendor', 'AGENTS.md')), false)
+    assert.equal(fs.existsSync(path.join(codexHome, 'AGENTS.md')), false)
+    assert.equal(
+      realLinkPath(path.join(moluoHome, 'vendor', 'skills', 'deliver-prd')),
+      realLinkPath(path.join(repoRoot, 'roles', 'product', 'skills', 'deliver-prd')),
+    )
+    assert.equal(
+      realLinkPath(path.join(moluoHome, 'vendor', 'skills', 'session-capture')),
+      realLinkPath(path.join(repoRoot, 'roles', 'common', 'skills', 'session-capture')),
+    )
+    assert.equal(fs.existsSync(path.join(moluoHome, 'vendor', 'hooks', 'session-log.mjs')), true)
+    assert.equal(
+      realLinkPath(path.join(codexHome, 'skills', 'deliver-prd')),
+      realLinkPath(path.join(userHome, '.agents', 'skills', 'deliver-prd')),
+    )
+  })
+})
+
 it('tool - syncToHosts 在源码安装目录缺少 dist 时可直接加载 TypeScript manifest', async () => {
   await withTempDirAsync('airules-tool-source-no-dist-', async (tmpDir) => {
     const repoRoot = path.join(tmpDir, 'repo')
@@ -178,9 +228,10 @@ it('tool - syncToHosts 在源码安装目录缺少 dist 时可直接加载 TypeS
 
     writeFile(path.join(repoRoot, 'package.json'), '{"type":"module"}\n')
     writeFile(path.join(repoRoot, 'constants', 'skills.ts'), 'export const vendors = []\n')
-    writeFile(path.join(repoRoot, 'rules', 'AGENTS.md'), 'baseline\n')
-    writeFile(path.join(repoRoot, 'agents', 'demo-agent.md'), '---\nname: demo-agent\ndescription: Demo agent\n---\nDo work\n')
-    writeFile(path.join(repoRoot, 'skills', 'workflow', 'source-only', 'SKILL.md'), 'source-only\n')
+    writeFile(path.join(repoRoot, 'roles', 'development', 'rules', 'AGENTS.md'), 'baseline\n')
+    writeFile(path.join(repoRoot, 'roles', 'development', 'agents', 'demo-agent.md'), '---\nname: demo-agent\ndescription: Demo agent\n---\nDo work\n')
+    writeFile(path.join(repoRoot, 'roles', 'common', 'skills', 'session-capture', 'SKILL.md'), 'common\n')
+    writeFile(path.join(repoRoot, 'roles', 'development', 'skills', 'workflow', 'source-only', 'SKILL.md'), 'source-only\n')
     fs.mkdirSync(codexHome, { recursive: true })
 
     const result = await syncToHosts({
@@ -198,6 +249,10 @@ it('tool - syncToHosts 在源码安装目录缺少 dist 时可直接加载 TypeS
       realLinkPath(path.join(codexHome, 'skills', 'source-only')),
       realLinkPath(path.join(userHome, '.agents', 'skills', 'source-only')),
     )
+    assert.equal(
+      realLinkPath(path.join(codexHome, 'skills', 'session-capture')),
+      realLinkPath(path.join(userHome, '.agents', 'skills', 'session-capture')),
+    )
   })
 })
 
@@ -206,7 +261,7 @@ it('tool - syncToHosts 在安装目录即仓库根目录时仍从 vendor 投影�
     const userHome = path.join(tmpDir, 'user')
     const moluoHome = path.join(userHome, '.moluoxixi')
     const codexHome = path.join(userHome, '.codex')
-    const vendorRepoSkill = path.join(moluoHome, 'vendor', 'repos', 'moluoxixi', 'skills', 'api-docs')
+    const vendorRepoSkill = path.join(moluoHome, 'vendor', 'repos', 'moluoxixi', 'roles', 'development', 'skills', 'api-docs')
 
     writeFile(path.join(moluoHome, 'package.json'), '{"type":"module"}\n')
     writeFile(path.join(moluoHome, 'constants', 'skills.js'), `
@@ -218,14 +273,15 @@ export const vendors = [
     projections: [
       {
         kind: 'skills',
-        sourceBaseDir: 'skills',
+        sourceBaseDir: 'roles/development/skills',
         skills: ['api-docs'],
       },
     ],
   },
 ]
 `)
-    writeFile(path.join(moluoHome, 'rules', 'AGENTS.md'), 'baseline\n')
+    writeFile(path.join(moluoHome, 'roles', 'development', 'rules', 'AGENTS.md'), 'baseline\n')
+    writeFile(path.join(moluoHome, 'roles', 'common', 'skills', 'session-capture', 'SKILL.md'), 'common\n')
     writeFile(path.join(vendorRepoSkill, 'SKILL.md'), 'vendor-source\n')
     fs.mkdirSync(codexHome, { recursive: true })
 
@@ -249,13 +305,17 @@ export const vendors = [
       realLinkPath(path.join(codexHome, 'skills', 'api-docs')),
       realLinkPath(vendorRepoSkill),
     )
+    assert.equal(
+      realLinkPath(path.join(codexHome, 'skills', 'session-capture')),
+      realLinkPath(path.join(moluoHome, 'roles', 'common', 'skills', 'session-capture')),
+    )
   })
 })
 
 it('tool - syncToHosts 在 workspace 第一方 vendor 且安装目录即仓库根目录时不漏发第一方 skills', async () => {
   // 回归用例：用户把仓库安装进 ~/.moluoxixi（repoRoot === moluoHome），
   // 且第一方 vendor 为 sourceMode:"workspace"（不克隆到 vendor/repos），
-  // 此时第一方 skills 仅能经 syncFirstPartySkillsToVendor 从 repoRoot/skills 投影到 vendor/skills。
+  // 此时第一方 skills 仅能经 syncFirstPartySkillsToVendor 从 repoRoot/roles/development/skills 投影到 vendor/skills。
   // 旧逻辑用 isSamePath(repoRoot, moluoHome) 守卫跳过该调用，导致第一方 skills 整体漏发。
   await withTempDirAsync('airules-tool-workspace-installed-', async (tmpDir) => {
     const userHome = path.join(tmpDir, 'user')
@@ -273,16 +333,17 @@ export const vendors = [
     projections: [
       {
         kind: 'skills',
-        sourceBaseDir: 'skills',
+        sourceBaseDir: 'roles/development/skills',
         skills: ['api-docs'],
       },
     ],
   },
 ]
 `)
-    writeFile(path.join(moluoHome, 'rules', 'AGENTS.md'), 'baseline\n')
-    // 第一方 skill 源直接位于 repoRoot/skills（=== moluoHome/skills），无 vendor/repos 克隆。
-    const firstPartySkill = path.join(moluoHome, 'skills', 'api-docs')
+    writeFile(path.join(moluoHome, 'roles', 'development', 'rules', 'AGENTS.md'), 'baseline\n')
+    writeFile(path.join(moluoHome, 'roles', 'common', 'skills', 'session-capture', 'SKILL.md'), 'common\n')
+    // 第一方 skill 源直接位于 repoRoot/roles/development/skills，无 vendor/repos 克隆。
+    const firstPartySkill = path.join(moluoHome, 'roles', 'development', 'skills', 'api-docs')
     writeFile(path.join(firstPartySkill, 'SKILL.md'), 'first-party-source\n')
     fs.mkdirSync(codexHome, { recursive: true })
 
@@ -295,7 +356,7 @@ export const vendors = [
       verify: false,
     })
 
-    // 第一方 skill 必须出现在 vendor/skills 并指回 repoRoot/skills 源目录。
+    // 第一方 skill 必须出现在 vendor/skills 并指回角色 skill 源目录。
     assert.equal(
       realLinkPath(path.join(moluoHome, 'vendor', 'skills', 'api-docs')),
       realLinkPath(firstPartySkill),
@@ -304,6 +365,10 @@ export const vendors = [
     assert.equal(
       realLinkPath(path.join(codexHome, 'skills', 'api-docs')),
       realLinkPath(firstPartySkill),
+    )
+    assert.equal(
+      realLinkPath(path.join(codexHome, 'skills', 'session-capture')),
+      realLinkPath(path.join(moluoHome, 'roles', 'common', 'skills', 'session-capture')),
     )
   })
 })

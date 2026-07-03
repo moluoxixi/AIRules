@@ -4,12 +4,13 @@ import { existsSync, readdirSync, readFileSync } from 'node:fs'
 import path from 'node:path'
 import { fileURLToPath } from 'node:url'
 import { vendors } from '../constants/skills.js'
+import { COMMON_ROLE, DEFAULT_ROLE, resolveRolePaths } from './lib/roles.js'
 
 // 编码编排资产最小自洽性检查（低成本、非重型治理）：
-// 校验 rules/AGENTS.md、agents/*.md、constants/skills.ts 分发清单、.airules/knowledge/架构/**
+// 校验 roles/development/rules/AGENTS.md、roles/development/agents/*.md、constants/skills.ts 分发清单、.airules/knowledge/架构/**
 // 之间的引用存在性与明显漂移。作用域不含历史 plan、README。
 
-// rules/AGENTS.md 调度索引引用的固定 agent。
+// roles/development/rules/AGENTS.md 调度索引引用的固定 agent。
 const FIXED_AGENTS = ['planner', 'coder', 'debugger', 'consistency-reviewer', 'code-reviewer']
 
 // 旧 9-agent 模型的一方 agent 名，不得在架构文档活引用（superseded ADR 横幅与历史正文除外，靠白名单跳过）。
@@ -98,14 +99,18 @@ export interface CheckResult {
 
 export function checkRulesConsistency(repoRoot: string): CheckResult {
   const errors: string[] = []
-  const agentsDir = path.join(repoRoot, 'agents')
-  const skillsDir = path.join(repoRoot, 'skills')
+  const rolePaths = resolveRolePaths(repoRoot, DEFAULT_ROLE)
+  const commonRolePaths = resolveRolePaths(repoRoot, COMMON_ROLE)
+  const agentsDir = rolePaths.agentsDir
+  const skillRoots = [commonRolePaths, rolePaths].filter(paths => existsSync(paths.skillsDir))
+  const skillsDirs = skillRoots.map(paths => paths.skillsDir)
   const archDir = path.join(repoRoot, '.airules', 'knowledge', '架构')
+  const rulesPath = path.join(rolePaths.rulesDir, 'AGENTS.md')
 
   // 1. 固定 agent 必须有对应文件。
   for (const name of FIXED_AGENTS) {
     if (!existsSync(path.join(agentsDir, `${name}.md`))) {
-      errors.push(`rules/AGENTS.md 引用的固定 agent 缺少文件：agents/${name}.md`)
+      errors.push(`roles/${DEFAULT_ROLE}/rules/AGENTS.md 引用的固定 agent 缺少文件：roles/${DEFAULT_ROLE}/agents/${name}.md`)
     }
   }
 
@@ -117,8 +122,8 @@ export function checkRulesConsistency(repoRoot: string): CheckResult {
       }
       const content = readFileSync(path.join(agentsDir, entry), 'utf8')
       for (const skill of agentSkillRefs(content)) {
-        if (!existsSync(path.join(skillsDir, skill, 'SKILL.md'))) {
-          errors.push(`agents/${entry} 引用的 skill 不存在：skills/${skill}/SKILL.md`)
+        if (!skillsDirs.some(skillsDir => existsSync(path.join(skillsDir, skill, 'SKILL.md')))) {
+          errors.push(`roles/${DEFAULT_ROLE}/agents/${entry} 引用的 skill 不存在：roles/${COMMON_ROLE}/skills/${skill}/SKILL.md 或 roles/${DEFAULT_ROLE}/skills/${skill}/SKILL.md`)
         }
       }
     }
@@ -126,8 +131,8 @@ export function checkRulesConsistency(repoRoot: string): CheckResult {
 
   // 3. constants/skills.ts 分发清单中的 skill 目录必须存在。
   for (const skill of firstPartySkillNames()) {
-    if (!existsSync(path.join(skillsDir, skill))) {
-      errors.push(`constants/skills.ts 分发清单中的 skill 目录不存在：skills/${skill}/`)
+    if (!skillsDirs.some(skillsDir => existsSync(path.join(skillsDir, skill)))) {
+      errors.push(`constants/skills.ts 分发清单中的 skill 目录不存在：roles/${COMMON_ROLE}/skills/${skill}/ 或 roles/${DEFAULT_ROLE}/skills/${skill}/`)
     }
   }
 
@@ -167,31 +172,30 @@ export function checkRulesConsistency(repoRoot: string): CheckResult {
     }
   }
 
-  // 6. 一致性评审时序：rules/AGENTS.md 不得含旧边、须含新边。
-  const rulesPath = path.join(repoRoot, 'rules', 'AGENTS.md')
+  // 6. 一致性评审时序：roles/development/rules/AGENTS.md 不得含旧边、须含新边。
   if (existsSync(rulesPath)) {
     const content = readFileSync(rulesPath, 'utf8')
     if (content.includes('Test -->|PASS| Consist')) {
-      errors.push('rules/AGENTS.md Mermaid 仍含旧时序边：Test -->|PASS| Consist（一致性评审应在测试前）')
+      errors.push(`roles/${DEFAULT_ROLE}/rules/AGENTS.md Mermaid 仍含旧时序边：Test -->|PASS| Consist（一致性评审应在测试前）`)
     }
     if (!content.includes('Consist -->|符合| Test')) {
-      errors.push('rules/AGENTS.md Mermaid 缺少新时序边：Consist -->|符合| Test')
+      errors.push(`roles/${DEFAULT_ROLE}/rules/AGENTS.md Mermaid 缺少新时序边：Consist -->|符合| Test`)
     }
   }
 
-  // 7. 反向登记：skills/ 下每个含 SKILL.md 的第一方目录都必须登记进 constants/skills.ts
+  // 7. 反向登记：common/development 角色下每个含 SKILL.md 的第一方目录都必须登记进 constants/skills.ts
   //    分发清单（防止新增 skill 漏登记而无法被投影/安装）。vendor 投影来源不在此列。
-  if (existsSync(skillsDir)) {
-    const registered = new Set(firstPartySkillNames())
-    for (const entry of readdirSync(skillsDir, { withFileTypes: true })) {
+  const registered = new Set(firstPartySkillNames())
+  for (const skillRoot of skillRoots) {
+    for (const entry of readdirSync(skillRoot.skillsDir, { withFileTypes: true })) {
       if (!entry.isDirectory()) {
         continue
       }
-      if (!existsSync(path.join(skillsDir, entry.name, 'SKILL.md'))) {
+      if (!existsSync(path.join(skillRoot.skillsDir, entry.name, 'SKILL.md'))) {
         continue
       }
       if (!registered.has(entry.name)) {
-        errors.push(`skills/${entry.name}/ 含 SKILL.md 但未登记进 constants/skills.ts 分发清单`)
+        errors.push(`roles/${skillRoot.role}/skills/${entry.name}/ 含 SKILL.md 但未登记进 constants/skills.ts 分发清单`)
       }
     }
   }
@@ -216,55 +220,55 @@ export function checkRulesConsistency(repoRoot: string): CheckResult {
   //    这是低成本 tripwire：命中即"引用"（presence），用于提请人工复核是否在自建全局资产，
   //    不臆断写入意图。匹配 ~/.claude、$HOME/.cursor、${HOME}/.qoder、${HOME}/.qoderwork 等 POSIX 宿主目录；
   //    项目本地 .airules/ 不在此列。
-  if (existsSync(skillsDir)) {
-    const hostGlobalDir = /(?:~|\$HOME|\$\{HOME\})\/\.(?:claude|cursor|qoder|qoderwork)\b/
-    const walk = (dir: string) => {
-      for (const entry of readdirSync(dir, { withFileTypes: true })) {
-        const full = path.join(dir, entry.name)
-        if (entry.isDirectory()) {
-          walk(full)
-        }
-        else if (entry.name === 'SKILL.md' || /\.(?:sh|bash|ps1|py|ts|js|mjs|cjs)$/.test(entry.name)) {
-          const content = readFileSync(full, 'utf8')
-          if (hostGlobalDir.test(content)) {
-            errors.push(`${path.relative(repoRoot, full).replace(/\\/g, '/')} 引用宿主全局目录（~/.claude、$HOME/.cursor、~/.qoder、~/.qoderwork 等），违反 scope 判定 ②/③ 落点限制`)
-          }
+  const hostGlobalDir = /(?:~|\$HOME|\$\{HOME\})\/\.(?:claude|cursor|qoder|qoderwork)\b/
+  const walkSkillDir = (dir: string) => {
+    for (const entry of readdirSync(dir, { withFileTypes: true })) {
+      const full = path.join(dir, entry.name)
+      if (entry.isDirectory()) {
+        walkSkillDir(full)
+      }
+      else if (entry.name === 'SKILL.md' || /\.(?:sh|bash|ps1|py|ts|js|mjs|cjs)$/.test(entry.name)) {
+        const content = readFileSync(full, 'utf8')
+        if (hostGlobalDir.test(content)) {
+          errors.push(`${path.relative(repoRoot, full).replace(/\\/g, '/')} 引用宿主全局目录（~/.claude、$HOME/.cursor、~/.qoder、~/.qoderwork 等），违反 scope 判定 ②/③ 落点限制`)
         }
       }
     }
-    walk(skillsDir)
+  }
+  for (const skillsDir of skillsDirs) {
+    walkSkillDir(skillsDir)
   }
 
   // 10. 需求落档契约：brainstorming/SKILL.md 必须声明需求落档路径（.airules/requirements/），
   //     避免需求分析结论只停留在对话而不落盘。
-  const brainstormingSkillPath = path.join(skillsDir, 'brainstorming', 'SKILL.md')
+  const brainstormingSkillPath = path.join(rolePaths.skillsDir, 'brainstorming', 'SKILL.md')
   if (existsSync(brainstormingSkillPath)) {
     const content = readFileSync(brainstormingSkillPath, 'utf8')
     if (!content.includes('.airules/requirements/')) {
-      errors.push('skills/brainstorming/SKILL.md 未声明需求落档路径 .airules/requirements/（需求文档必须落盘，不得只在对话中交付）')
+      errors.push(`roles/${DEFAULT_ROLE}/skills/brainstorming/SKILL.md 未声明需求落档路径 .airules/requirements/（需求文档必须落盘，不得只在对话中交付）`)
     }
   }
 
-  // 11. 需求路径传递契约：agents/planner.md 输入上下文包必须包含需求文档路径字段，
+  // 11. 需求路径传递契约：roles/development/agents/planner.md 输入上下文包必须包含需求文档路径字段，
   //     确保 planner 接收并传递 .airules/requirements/ 路径给下游。
   const plannerPath = path.join(agentsDir, 'planner.md')
   if (existsSync(plannerPath)) {
     const content = readFileSync(plannerPath, 'utf8')
     if (!content.includes('.airules/requirements/')) {
-      errors.push('agents/planner.md 输入上下文包未包含需求文档路径（.airules/requirements/），planner 必须接收并传递需求文档路径')
+      errors.push(`roles/${DEFAULT_ROLE}/agents/planner.md 输入上下文包未包含需求文档路径（.airules/requirements/），planner 必须接收并传递需求文档路径`)
     }
   }
 
   // 12. writing-plans 参考文件引用：writing-plans/SKILL.md 必须引用前后端参考文件，
   //     防止主入口忘记加载专项规范导致漂移。
-  const writingPlansPath = path.join(skillsDir, 'writing-plans', 'SKILL.md')
+  const writingPlansPath = path.join(rolePaths.skillsDir, 'writing-plans', 'SKILL.md')
   if (existsSync(writingPlansPath)) {
     const content = readFileSync(writingPlansPath, 'utf8')
     if (!content.includes('writing-plans/references/frontend-plan.md')) {
-      errors.push('skills/writing-plans/SKILL.md 未引用 writing-plans/references/frontend-plan.md（前端专项规范必须从主入口可达）')
+      errors.push(`roles/${DEFAULT_ROLE}/skills/writing-plans/SKILL.md 未引用 writing-plans/references/frontend-plan.md（前端专项规范必须从主入口可达）`)
     }
     if (!content.includes('writing-plans/references/backend-plan.md')) {
-      errors.push('skills/writing-plans/SKILL.md 未引用 writing-plans/references/backend-plan.md（后端专项规范必须从主入口可达）')
+      errors.push(`roles/${DEFAULT_ROLE}/skills/writing-plans/SKILL.md 未引用 writing-plans/references/backend-plan.md（后端专项规范必须从主入口可达）`)
     }
   }
 

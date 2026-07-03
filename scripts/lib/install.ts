@@ -22,6 +22,7 @@ import path from 'node:path'
 import * as smolToml from 'smol-toml'
 import { findHostConfig, resolveHostPaths } from '../../constants/hosts.js'
 import { buildLinkPlan } from './links.js'
+import { DEFAULT_ROLE, existingRoleOverlayPaths, roleOverlayOrder } from './roles.js'
 import { collectFlattenedSkillSources, discoverSkillDirectories, flattenedSkillName } from './skill-projection.js'
 import { loadVendorManifest } from './vendors.js'
 
@@ -29,9 +30,6 @@ import { loadVendorManifest } from './vendors.js'
 
 /** 基线文件文件名（宿主与 vendor 目录下均使用此名） */
 const BASELINE_FILE_NAME = 'AGENTS.md'
-
-/** 仓库内基线源文件位于 rules/ 目录 */
-const BASELINE_SOURCE_PATH = path.join('rules', BASELINE_FILE_NAME)
 
 /** append 模式托管块标记：用于幂等注入和清理，保证宿主基线文件里只存在一份 AIRules 块 */
 const BASELINE_BLOCK_START = '<!-- AIRULES:BASELINE:START -->'
@@ -272,6 +270,15 @@ function copyRequiredFile(sourceFile: string, targetFile: string) {
   cpSync(sourceFile, targetFile)
 }
 
+function syncOptionalFile(sourceFile: string, targetFile: string) {
+  if (!existsSync(sourceFile)) {
+    removePath(targetFile)
+    return
+  }
+
+  copyRequiredFile(sourceFile, targetFile)
+}
+
 function syncOptionalDir(sourceDir: string, targetDir: string) {
   if (!existsSync(sourceDir)) {
     removePath(targetDir)
@@ -279,6 +286,15 @@ function syncOptionalDir(sourceDir: string, targetDir: string) {
   }
 
   resetDir(targetDir)
+  copyDirContents(sourceDir, targetDir)
+}
+
+function mergeOptionalDir(sourceDir: string, targetDir: string) {
+  if (!existsSync(sourceDir)) {
+    return
+  }
+
+  mkdirSync(targetDir, { recursive: true })
   copyDirContents(sourceDir, targetDir)
 }
 
@@ -447,48 +463,82 @@ export function syncFlattenedSkills(
 }
 
 /**
- * 同步第一方（当前仓库内）的 agents、rules 和 MCP 中性源到本地 vendor 目录。
+ * 同步第一方角色资产（agents、rules、MCP、hooks）到本地 vendor 目录。
  * skills 统一走 clone → vendor/skills 流程，不在此处理。
  *
- * rules/AGENTS.md 始终复制到 vendor/ 目录下，作为所有宿主基线软链接的统一源。
- * agents/ 与 mcp/ 也复制到 vendor/agents、vendor/mcp，避免安装产物散落在顶层目录。
+ * roles/<role>/rules/AGENTS.md 存在时复制到 vendor/ 目录下，作为宿主基线软链接的统一源。
+ * roles/<role>/agents、mcp、hooks 存在时也复制到 vendor/agents、vendor/mcp、vendor/hooks，避免安装产物散落在顶层目录。
+ * 同步顺序为 roles/common → roles/<role>，目标角色同名资产覆盖 common。
+ * product 等轻量角色可以只提供 skills，不强制带 rules/agents/mcp/hooks。
  */
-export function syncFirstPartyToHome(repoRoot: string, moluoHome: string) {
-  copyRequiredFile(path.join(repoRoot, BASELINE_SOURCE_PATH), vendorBaselinePath(moluoHome))
-  syncOptionalDir(path.join(repoRoot, 'agents'), vendorAgentsPath(moluoHome))
-  // 中性 MCP 源（rulesync 风格 { mcpServers: {} }）同步到 vendor，供各宿主按格式投影。
-  syncOptionalDir(path.join(repoRoot, 'mcp'), vendorMcpPath(moluoHome))
-  // hook 脚本源（如 session-log.mjs）同步到 vendor/hooks，供支持 hook 的宿主投影。
-  syncOptionalDir(path.join(repoRoot, 'hooks'), vendorHooksPath(moluoHome))
+export function syncFirstPartyToHome(repoRoot: string, moluoHome: string, role = DEFAULT_ROLE) {
+  const rolePathsList = existingRoleOverlayPaths(repoRoot, role)
+  removePath(vendorBaselinePath(moluoHome))
+  removePath(vendorAgentsPath(moluoHome))
+  removePath(vendorMcpPath(moluoHome))
+  removePath(vendorHooksPath(moluoHome))
+
+  for (const rolePaths of rolePathsList) {
+    syncOptionalFile(path.join(rolePaths.rulesDir, BASELINE_FILE_NAME), vendorBaselinePath(moluoHome))
+    mergeOptionalDir(rolePaths.agentsDir, vendorAgentsPath(moluoHome))
+    // 中性 MCP 源（rulesync 风格 { mcpServers: {} }）同步到 vendor，供各宿主按格式投影。
+    mergeOptionalDir(rolePaths.mcpDir, vendorMcpPath(moluoHome))
+    // hook 脚本源（如 session-log.mjs）同步到 vendor/hooks，供支持 hook 的宿主投影。
+    mergeOptionalDir(rolePaths.hooksDir, vendorHooksPath(moluoHome))
+  }
 }
 
 /**
  * 将第一方 skills 源目录投影到 vendor/skills，作为第三方 vendor 后的本地覆盖层。
  * 该函数只清理曾经指向同一 source skills 根目录的过时链接，不会删除第三方 vendor 技能。
  */
-export function syncFirstPartySkillsToVendor(sourceRoot: string, moluoHome: string) {
-  const sourceSkillsDir = path.join(sourceRoot, 'skills')
-  if (!existsSync(sourceSkillsDir)) {
+export function syncFirstPartySkillsToVendor(sourceRoot: string, moluoHome: string, role = DEFAULT_ROLE) {
+  const legacySkillsDir = path.join(sourceRoot, 'skills')
+  const rolesRoot = path.join(sourceRoot, 'roles')
+  const sourceSkillRoots = roleOverlayOrder(role)
+    .map(roleName => path.join(sourceRoot, 'roles', roleName, 'skills'))
+    .filter(existsSync)
+
+  if (sourceSkillRoots.length === 0 && existsSync(legacySkillsDir)) {
+    sourceSkillRoots.push(legacySkillsDir)
+  }
+
+  if (sourceSkillRoots.length === 0) {
     return
   }
 
   const vendorSkillsDir = vendorSkillsPath(moluoHome)
   mkdirSync(vendorSkillsDir, { recursive: true })
 
-  const seenSkillNames = new Map<string, string>()
-  const skillSources = discoverSkillDirectories(sourceSkillsDir, { followSymlinks: false }).map((source) => {
-    const name = flattenedSkillName(path.basename(source))
-    const nameKey = name.toLowerCase()
-    const previousSource = seenSkillNames.get(nameKey)
-    if (previousSource && path.resolve(previousSource) !== path.resolve(source)) {
-      throw new Error(`First-party skill name collision "${name}": ${previousSource} conflicts with ${source}`)
-    }
+  const seenSkillNames = new Map<string, { name: string, source: string, root: string }>()
 
-    seenSkillNames.set(nameKey, source)
-    return { name, source }
-  })
+  for (const sourceSkillsDir of sourceSkillRoots) {
+    for (const source of discoverSkillDirectories(sourceSkillsDir, { followSymlinks: false })) {
+      const name = flattenedSkillName(path.basename(source))
+      const nameKey = name.toLowerCase()
+      const previousSource = seenSkillNames.get(nameKey)
+      if (
+        previousSource
+        && path.resolve(previousSource.source) !== path.resolve(source)
+        && path.resolve(previousSource.root) === path.resolve(sourceSkillsDir)
+      ) {
+        throw new Error(`First-party skill name collision "${name}": ${previousSource.source} conflicts with ${source}`)
+      }
+
+      seenSkillNames.set(nameKey, { name, source, root: sourceSkillsDir })
+    }
+  }
+
+  const skillSources = [...seenSkillNames.values()].map(({ name, source }) => ({ name, source }))
   const currentSkillNames = new Set(skillSources.map(skill => skill.name))
-  const normalizedSourceSkillsDir = path.resolve(sourceSkillsDir)
+  const normalizedSourceSkillRoots = sourceSkillRoots.map(sourceSkillsDir => path.resolve(sourceSkillsDir))
+  const normalizedManagedSkillRoots = existsSync(rolesRoot)
+    ? readdirSync(rolesRoot, { withFileTypes: true })
+        .filter(entry => entry.isDirectory())
+        .map(entry => path.join(rolesRoot, entry.name, 'skills'))
+        .filter(existsSync)
+        .map(skillRoot => path.resolve(skillRoot))
+    : normalizedSourceSkillRoots
 
   for (const entry of readdirSync(vendorSkillsDir, { withFileTypes: true })) {
     const targetPath = path.join(vendorSkillsDir, entry.name)
@@ -502,7 +552,7 @@ export function syncFirstPartySkillsToVendor(sourceRoot: string, moluoHome: stri
     }
 
     const resolvedPath = path.resolve(realpathSync(targetPath))
-    if (resolvedPath.startsWith(normalizedSourceSkillsDir) && !currentSkillNames.has(entry.name)) {
+    if (normalizedManagedSkillRoots.some(sourceSkillsDir => resolvedPath.startsWith(sourceSkillsDir)) && !currentSkillNames.has(entry.name)) {
       removePath(targetPath)
     }
   }
@@ -1092,15 +1142,16 @@ export function projectToHost({
   for (const hook of hooks ?? []) {
     projectHooksToHost(moluoHome, hooksHome, hook)
   }
-  if (!projectBaseline) {
+  const baselineSource = vendorBaselinePath(moluoHome)
+  if (!projectBaseline || !existsSync(baselineSource)) {
     return
   }
   if (baselineMode === 'append') {
-    injectBaselineBlock(vendorBaselinePath(moluoHome), hostBaselineFile)
+    injectBaselineBlock(baselineSource, hostBaselineFile)
     return
   }
   replaceWithSymlink(
-    vendorBaselinePath(moluoHome),
+    baselineSource,
     hostBaselineFile,
     linkFileForCurrentPlatform(),
   )
@@ -1114,7 +1165,7 @@ export function linkHostBaseline({ moluoHome, host, userHome = os.homedir() }: {
   }
 
   const { hostBaselineFile, projectBaseline, baselineMode } = resolveHostPaths(config, userHome)
-  if (!projectBaseline) {
+  if (!projectBaseline || !existsSync(source)) {
     return undefined
   }
   if (baselineMode === 'append') {
@@ -1169,5 +1220,5 @@ export function projectHostById(
     hooks: shouldProjectHostHome ? hooks : undefined,
   })
 
-  return { success: true, hostBaselineFile, baselineProjected: projectBaseline && shouldProjectHostHome }
+  return { success: true, hostBaselineFile, baselineProjected: projectBaseline && shouldProjectHostHome && existsSync(vendorBaselinePath(moluoHome)) }
 }

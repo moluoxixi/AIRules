@@ -48,7 +48,7 @@ function runInjectRules(projectRoot: string) {
   return spawnSync(
     process.execPath,
     [
-      path.join(process.cwd(), 'skills', 'init-project', 'scripts', 'inject-rules.mjs'),
+      path.join(process.cwd(), 'roles', 'development', 'skills', 'init-project', 'scripts', 'inject-rules.mjs'),
       projectRoot,
     ],
     { cwd: process.cwd(), encoding: 'utf8' },
@@ -59,7 +59,7 @@ function runLinkClaude(projectRoot: string) {
   return spawnSync(
     process.execPath,
     [
-      path.join(process.cwd(), 'skills', 'init-project', 'scripts', 'link-claude.mjs'),
+      path.join(process.cwd(), 'roles', 'development', 'skills', 'init-project', 'scripts', 'link-claude.mjs'),
       projectRoot,
     ],
     { cwd: process.cwd(), encoding: 'utf8' },
@@ -70,7 +70,7 @@ function runWikiInit(projectRoot: string, homeDir: string) {
   return spawnSync(
     process.execPath,
     [
-      path.join(process.cwd(), 'skills', 'init-project', 'scripts', 'wiki-init.mjs'),
+      path.join(process.cwd(), 'roles', 'development', 'skills', 'init-project', 'scripts', 'wiki-init.mjs'),
       projectRoot,
     ],
     {
@@ -167,7 +167,7 @@ it('inject-rules - 重复标题触发停止并提示人工合并', () => {
 it('inject-rules - 缺少项目根参数时报错', () => {
   const result = spawnSync(
     process.execPath,
-    [path.join(process.cwd(), 'skills', 'init-project', 'scripts', 'inject-rules.mjs')],
+    [path.join(process.cwd(), 'roles', 'development', 'skills', 'init-project', 'scripts', 'inject-rules.mjs')],
     { cwd: process.cwd(), encoding: 'utf8' },
   )
 

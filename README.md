@@ -203,7 +203,7 @@ Moluoxixi AIRules supports a growing ecosystem of AI agents through automated pr
 | **Agent orchestration** | `executing-plans`, `subagent-driven-development`, `dispatching-parallel-agents`, `using-git-worktrees`, `finishing-a-development-branch` |
 | **Memory and evolution** | `session-capture`, `distill-candidates`, `recall-memory`, `remember`, `reflect` |
 
-> First-party skills may live under nested source folders, but installation flattens them by leaf directory name into `vendor/skills/<skill-name>`. First-party rules live in `rules/AGENTS.md`; first-party agents live in `agents/`; CodeGraph install commands live in the vendor setup section of `constants/skills.ts`.
+> First-party role assets live under `roles/<role>/`. Skills may live under nested source folders, but installation flattens them by leaf directory name into `vendor/skills/<skill-name>`. Role sync overlays `roles/common/` first, then the selected role (`development` by default, or `product` via `--role product`); selected-role assets override common assets with the same name. CodeGraph install commands live in the vendor setup section of `constants/skills.ts`.
 
 ### Third-Party Skills (Curated)
 
@@ -222,11 +222,21 @@ Moluoxixi AIRules supports a growing ecosystem of AI agents through automated pr
 
 ```
 ~/.moluoxixi/
-├── rules/
-│   └── AGENTS.md          # Global rules baseline projected to hosts
-├── agents/                 # First-party subagent role contracts
-├── mcp/
-│   └── mcp.json            # Neutral MCP source projected per host format
+├── roles/
+│   ├── common/
+│   │   ├── hooks/
+│   │   │   └── session-log.mjs
+│   │   └── skills/        # Shared capture / distill / memory / reflection skills
+│   ├── development/
+│   │   ├── rules/
+│   │   │   └── AGENTS.md  # Global rules baseline projected to hosts
+│   │   ├── agents/        # First-party subagent role contracts
+│   │   ├── mcp/
+│   │   │   └── mcp.json   # Neutral MCP source projected per host format
+│   │   ├── hooks/
+│   │   └── skills/
+│   └── product/
+│       └── skills/         # First-party product / PM skills
 ├── skills/                  # First-party skills (your core assets)
 │   ├── init-project/
 │   │   ├── references/
@@ -262,7 +272,7 @@ There are many AI rules repositories out there. Here's what makes AIRules differ
 
 ## Roadmap / TODO
 
-- [x] **PreToolUse 客观信号阻断 hook**（回路计数熔断 / `reviewer ≠ coder` 身份隔离）— 已落地（2026-06-29）：[ADR-0006](docs/architecture/decisions/ADR-0006-cross-host-hook-capability-baseline.md) 第二段「阻断边界」经仓库维护者批准转 `accepted`，实现为 `hooks/loop-guard.mjs`（PreToolUse 三类客观信号拦截）+ `hooks/subagent-trace.mjs`（SubagentStop 计数，恒 exit 0）+ 账本 `constants/loop-ledger.ts`（协议见 [loop-ledger-protocol.md](docs/architecture/loop-ledger-protocol.md)）。**承认的限制**：PreToolUse 是 guardrail 而非密闭 boundary（可绕道）、Codex 存量 deny bug、Trae 缺 SubagentStop——这部分语义层仍由 prose + 主代理自律兜底，投影落地前按宿主版本实测 deny 生效性。落地凭据见 [issue/DONE-TODO.md](issue/DONE-TODO.md)。
+- [x] **PreToolUse 客观信号阻断 hook**（回路计数熔断 / `reviewer ≠ coder` 身份隔离）— 已落地（2026-06-29）：[ADR-0006](docs/architecture/decisions/ADR-0006-cross-host-hook-capability-baseline.md) 第二段「阻断边界」经仓库维护者批准转 `accepted`，实现为 `roles/development/hooks/loop-guard.mjs`（PreToolUse 三类客观信号拦截）+ `roles/development/hooks/subagent-trace.mjs`（SubagentStop 计数，恒 exit 0）+ 账本 `constants/loop-ledger.ts`（协议见 [loop-ledger-protocol.md](docs/architecture/loop-ledger-protocol.md)）。**承认的限制**：PreToolUse 是 guardrail 而非密闭 boundary（可绕道）、Codex 存量 deny bug、Trae 缺 SubagentStop——这部分语义层仍由 prose + 主代理自律兜底，投影落地前按宿主版本实测 deny 生效性。落地凭据见 [issue/DONE-TODO.md](issue/DONE-TODO.md)。
 
 ## License
 

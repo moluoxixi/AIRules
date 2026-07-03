@@ -10,7 +10,7 @@ import { projectToHost } from '../install.js'
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url))
 const repoRoot = path.resolve(__dirname, '..', '..', '..')
-const hookScriptSource = path.join(repoRoot, 'hooks', 'session-log.mjs')
+const hookScriptSource = path.join(repoRoot, 'roles', 'common', 'hooks', 'session-log.mjs')
 
 /**
  * 为 hook 投影搭建隔离环境：~/.moluoxixi（含 vendor/skills 与 vendor/hooks/session-log.mjs

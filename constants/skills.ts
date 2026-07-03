@@ -179,9 +179,9 @@ export const vendors: VendorsConfig = [
     source: 'https://github.com/obra/superpowers.git',
     projections: [
       {
-        // Superpowers 的全部方法论已第一方化（抄原文改造、对齐本项目契约后落在 skills/），
-        // 见 skills/{brainstorming,writing-plans,test-driven-development,verification-before-completion,
-        // systematic-debugging,requesting-code-review,distill-candidates,executing-plans,
+        // Superpowers 的全部方法论已第一方化（抄原文改造、对齐本项目契约后落在 roles/development/skills/ 与 roles/common/skills/），
+        // 见 roles/development/skills/{brainstorming,writing-plans,test-driven-development,verification-before-completion,
+        // systematic-debugging,requesting-code-review,executing-plans,
         // subagent-driven-development,dispatching-parallel-agents,receiving-code-review,
         // using-git-worktrees,finishing-a-development-branch}。
         // 因 vendor/skills 扁平命名空间，superpowers 原版不再分发以避免与第一方撞名/双份。
@@ -230,12 +230,23 @@ export const vendors: VendorsConfig = [
     projections: [
       {
         kind: 'skills',
-        sourceBaseDir: 'skills',
+        sourceBaseDir: 'roles/common/skills',
+        skills: [
+          // 公共会话沉淀、提炼、记忆与反思能力
+          'session-capture',
+          'distill-candidates',
+          'remember',
+          'recall-memory',
+          'reflect',
+        ],
+      },
+      {
+        kind: 'skills',
+        sourceBaseDir: 'roles/development/skills',
         skills: [
           // 项目初始化与会话
           'init-project',
           'handoff',
-          'session-capture',
           // 知识库整理（无 description，由编排 diff 触发或用户手动调用）
           'organize-knowledge',
           // 需求 → 计划 → 测试设计
@@ -259,12 +270,6 @@ export const vendors: VendorsConfig = [
           'dispatching-parallel-agents',
           'using-git-worktrees',
           'finishing-a-development-branch',
-          // 会话提炼：双路产出 skill 候选 + 记忆候选（待审）
-          'distill-candidates',
-          // 记忆与反思（持续进化闭环：capture → distill → 审核 → recall → reflect）
-          'remember',
-          'recall-memory',
-          'reflect',
           // 变更规格工作流（第一方 spec-driven）
           'spec-workflow',
         ],
