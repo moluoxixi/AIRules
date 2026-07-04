@@ -95,8 +95,12 @@ it('product spec-init - OpenSpec CLI 存在时初始化项目、校验 schema �
 
     assert.equal(result.status, 0, result.stderr)
     assert.match(result.stdout, /OpenSpec schema 已注册并通过校验：product-pm-bridge/)
+    assert.match(
+      fs.readFileSync(path.join(root, 'openspec', 'config.yaml'), 'utf8'),
+      /^schema: product-pm-bridge$/m,
+    )
     const calls = fs.readFileSync(logPath, 'utf8')
-    assert.match(calls, /init .* --tools none --no-color/)
+    assert.match(calls, /init .* --tools claude,codex,cursor,qoder,trae,opencode --no-color/)
     assert.match(calls, /schema validate product-pm-bridge/)
     assert.match(calls, /^schemas$/m)
   })

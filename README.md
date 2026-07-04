@@ -219,28 +219,33 @@ Moluoxixi AIRules supports a growing ecosystem of AI agents through automated pr
 
 > Curated third-party skills use source suffixes as installation names to avoid bare-name collisions with Superpowers, user-local skills, or other vendors.
 
-## OpenSpec Role Workflows
+## After `init-project`: Using OpenSpec
 
-AIRules uses OpenSpec as a project-local specification layer. Role setup installs the `openspec` CLI, while each role's `init-project` skill copies its schema into the target project under `openspec/schemas/<schema-name>/`. OpenSpec creates and owns its native `openspec/` change, spec and archive directories.
+`init-project` is setup only. It installs OpenSpec host entries for Claude, Codex, Cursor, Qoder, Trae and OpenCode, installs the project-local schema under `openspec/schemas/<schema-name>/`, sets that schema as the project default in `openspec/config.yaml`, and creates `knowledge/index.md`. After initialization, use the OpenSpec `/opsx` workflow.
 
-| Role | Schema | Use When | Main Outputs |
-|------|--------|----------|--------------|
-| **development** | `superpowers-bridge` | A code change needs durable engineering specs, task traceability, verification evidence, or implementation handoff. | `brainstorm.md`, `proposal.md`, `design.md`, `specs/<capability>/spec.md`, `tasks.md`, `plan.md`, `verify.md`, `retrospective.md` |
-| **product** | `product-pm-bridge` | Product discovery, PRD writing, user-story breakdown, acceptance criteria, edge cases, solution briefs, ADRs, or product-to-engineering handoff need a durable source of truth. | `prd.md`, `user-stories.md`, `acceptance-criteria.md`, `edge-cases.md`, `solution-brief.md`, `adr.md`, `specs/<capability>/spec.md` |
+### Development Spec Usage
 
-Development flow:
+Use the development schema after initializing a code repository with the development `init-project` skill.
 
-1. Sync the development role with `npm run sync` or `npm run sync:development`.
-2. Run the development `init-project` skill in a target repository. It initializes OpenSpec when needed, registers `openspec/schemas/superpowers-bridge/`, and creates `knowledge/index.md`.
-3. For changes that deserve a long-lived engineering contract, create an OpenSpec change and produce the schema artifacts in order: brainstorm -> proposal/design -> specs/tasks -> plan -> verify/retrospective.
-4. Superpowers is installed as ordinary skills for multi-host use. Schema instructions refer to plain skill names such as `brainstorming`, `writing-plans`, `using-git-worktrees`, and `subagent-driven-development`.
+```text
+/opsx:propose "<feature-or-bug>"
+/opsx:apply <change-id>
+/opsx:archive <change-id>
+```
 
-Product flow:
+Run `/opsx:apply <change-id>` again to continue a paused implementation. The development `init-project` skill sets `openspec/config.yaml` to `schema: superpowers-bridge`, so this workflow uses `superpowers-bridge` by default.
 
-1. Sync the product role with `npm run sync:product`.
-2. Run the product `init-project` skill in the product or requirement repository. It initializes OpenSpec when needed, registers `openspec/schemas/product-pm-bridge/`, and creates `knowledge/index.md`.
-3. Use PM skills (`deliver-prd`, `deliver-user-stories`, `deliver-acceptance-criteria`, `deliver-edge-cases`, `develop-solution-brief`, `develop-adr`) to produce product artifacts, then normalize confirmed facts into the OpenSpec change.
-4. When the product scope is ready for implementation, hand off the product spec/change context to the development role; development then uses `superpowers-bridge` for implementation planning, verification and archive.
+### Product Spec Usage
+
+Use the product schema after initializing a product, planning, or requirements repository with the product `init-project` skill.
+
+```text
+/opsx:propose "<product-change>"
+/opsx:apply <change-id>
+/opsx:archive <change-id>
+```
+
+Run `/opsx:apply <change-id>` again to continue a paused product package. The product `init-project` skill sets `openspec/config.yaml` to `schema: product-pm-bridge`, so this workflow uses `product-pm-bridge` by default.
 
 ## Project Structure
 

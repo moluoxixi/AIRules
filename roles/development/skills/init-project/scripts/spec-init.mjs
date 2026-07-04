@@ -1,6 +1,6 @@
 #!/usr/bin/env node
 import { spawnSync } from 'node:child_process'
-import { copyFileSync, existsSync, mkdirSync, readdirSync, statSync } from 'node:fs'
+import { copyFileSync, existsSync, mkdirSync, readdirSync, readFileSync, statSync, writeFileSync } from 'node:fs'
 import path from 'node:path'
 import { fileURLToPath } from 'node:url'
 
@@ -11,10 +11,15 @@ import { fileURLToPath } from 'node:url'
 const projectRoot = path.resolve(process.argv[2] ?? process.cwd())
 const skipOpenSpecCommands = process.env.AIRULES_SKIP_OPENSPEC_VALIDATE === '1'
 const schemaName = 'superpowers-bridge'
+const openSpecTools = 'claude,codex,cursor,qoder,trae,opencode'
 
 const skillRoot = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..')
 const schemaSourceDir = path.join(skillRoot, 'assets', schemaName)
 const knowledgeSourcePath = path.join(skillRoot, 'assets', 'knowledge', 'index.md')
+const openspecDir = path.join(projectRoot, 'openspec')
+const schemaTargetDir = path.join(openspecDir, 'schemas', schemaName)
+const knowledgeTargetPath = path.join(projectRoot, 'knowledge', 'index.md')
+const created = []
 
 function rel(filePath) {
   return path.relative(projectRoot, filePath).replace(/\\/g, '/')
@@ -104,13 +109,8 @@ function runOpenSpec(command, args) {
 }
 
 function initializeOpenSpecProject(command) {
-  const openspecDir = path.join(projectRoot, 'openspec')
-  if (existsSync(openspecDir)) {
-    return
-  }
-
-  runOpenSpec(command, ['init', projectRoot, '--tools', 'none', '--no-color'])
-  console.log('[airules] 已运行 openspec init --tools none')
+  runOpenSpec(command, ['init', projectRoot, '--tools', openSpecTools, '--no-color'])
+  console.log(`[airules] 已运行 openspec init --tools ${openSpecTools}`)
 }
 
 function validateOpenSpecSchema(command) {
@@ -125,13 +125,33 @@ function validateOpenSpecSchema(command) {
   console.log(`[airules] OpenSpec schema 已注册并通过校验：${schemaName}`)
 }
 
+function setOpenSpecDefaultSchema() {
+  const configPath = path.join(openspecDir, 'config.yaml')
+  const schemaLine = `schema: ${schemaName}`
+  const nextContent = existsSync(configPath)
+    ? updateSchemaField(readFileSync(configPath, 'utf8'), schemaLine)
+    : `${schemaLine}\n`
+
+  if (existsSync(configPath) && readFileSync(configPath, 'utf8') === nextContent) {
+    return
+  }
+
+  mkdirSync(path.dirname(configPath), { recursive: true })
+  writeFileSync(configPath, nextContent, 'utf8')
+  console.log(`[airules] 已设置 OpenSpec 默认 schema：${schemaName}`)
+}
+
+function updateSchemaField(raw, schemaLine) {
+  if (/^schema\s*:/m.test(raw)) {
+    return raw.replace(/^schema\s*:.*$/m, schemaLine)
+  }
+
+  const trimmed = raw.trimEnd()
+  return trimmed.length > 0 ? `${trimmed}\n${schemaLine}\n` : `${schemaLine}\n`
+}
+
 assertAssetExists(schemaSourceDir, `assets/${schemaName}`)
 assertAssetExists(knowledgeSourcePath, 'assets/knowledge/index.md')
-
-const openspecDir = path.join(projectRoot, 'openspec')
-const schemaTargetDir = path.join(openspecDir, 'schemas', schemaName)
-const knowledgeTargetPath = path.join(projectRoot, 'knowledge', 'index.md')
-const created = []
 
 let openSpecCommand = null
 if (!skipOpenSpecCommands) {
@@ -153,5 +173,6 @@ else {
 }
 
 if (openSpecCommand) {
+  setOpenSpecDefaultSchema()
   validateOpenSpecSchema(openSpecCommand)
 }
