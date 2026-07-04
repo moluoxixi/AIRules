@@ -18,10 +18,10 @@
 |---|---|---|
 | tdd | test-driven-development | 融合：保留我们"核心TDD+集成/UI事后测试豁免"，吸收上游红绿严格度 |
 | verification | verification-before-completion | 对齐我们状态枚举 PASS/FAIL/MISSING/NOT RUN/N/A |
-| requirements-analysis | brainstorming | **去 HARD-GATE**，改为"歧义才澄清、L0/L1直接执行"；产物路径 docs/superpowers/specs → .airules |
+| requirements-analysis | brainstorming | **去 HARD-GATE**，改为"歧义才澄清、L0/L1直接执行"；产物路径 docs/superpowers/specs → knowledge/ + openspec |
 | impl-plan | writing-plans | 保留我们可追溯字段（需求来源/契约来源/前后端字段组） |
 | code-review | requesting-code-review | 对齐我们 reviewer≠coder、独立实例、分级结论 |
-| skill-distill | writing-skills | 对齐我们 candidate 待审、.airules/skills-candidates |
+| skill-distill | writing-skills | 对齐我们 candidate 待审、knowledge/skills-candidates |
 | systematic-debugging | systematic-debugging（已同名）| 吸收上游4阶段，对齐我们只读诊断+docs/diagnosis |
 
 > consistency-check、test-design、unit-testing、interaction-testing、handoff、session-capture、init-project = 我们独有，**不改名、不动**。
@@ -40,7 +40,7 @@
 ## 通用改造规则（逐个抄时统一应用）
 
 1. 去掉 `<HARD-GATE>`、`<EXTREMELY-IMPORTANT>`、`<SUBAGENT-STOP>` 等强制阻断标签，改为与我们门禁一致的"歧义才澄清/L0L1直接执行"。
-2. 产物路径 `docs/superpowers/*` → 对齐我们约定（计划/spec 归 .airules 或 rules 阶段契约位置；诊断 docs/diagnosis）。
+2. 产物路径 `docs/superpowers/*` → 对齐我们约定（计划/spec 归 knowledge/ + openspec 或 rules 阶段契约位置；诊断 docs/diagnosis）。
 3. 去 Claude-Code 专用引用（Skill 工具、特定 slash command）。
 4. description：编码流水线核心环节（test-driven-development/writing-plans/brainstorming/verification-before-completion）保留 description 可自动触发；评审/调试/子代理编排类（requesting/receiving-code-review、systematic-debugging、subagent-driven、dispatching-parallel）省略 description 仅按名加载，避免自动触发污染。
 4. 行数控制：超大原文（writing-skills 689、subagent-driven 418、test-driven 371）精简到必要方法论，不逐字全抄。

@@ -45,6 +45,7 @@ it('tool - resolveToolPaths 支持显式区分 moluoHome 与 userHome', () => wi
   const repoRoot = path.join(tmpDir, 'repo')
   const moluoHome = path.join(tmpDir, 'config', 'airules-home')
   const userHome = path.join(tmpDir, 'user')
+  writeFile(path.join(repoRoot, 'roles', 'development', 'constants', 'skills.ts'), 'export const vendors = []\n')
 
   const paths = resolveToolPaths(repoRoot, moluoHome, userHome)
 
@@ -57,23 +58,23 @@ it('tool - resolveToolPaths 在 tsx 源码运行时优先使用 TypeScript manif
   const repoRoot = path.join(tmpDir, 'repo')
   const moluoHome = path.join(tmpDir, 'home')
 
-  writeFile(path.join(repoRoot, 'constants', 'skills.ts'), 'export const vendors = []\n')
-  writeFile(path.join(repoRoot, 'dist', 'constants', 'skills.js'), 'export const vendors = []\n')
+  writeFile(path.join(repoRoot, 'roles', 'development', 'constants', 'skills.ts'), 'export const vendors = []\n')
+  writeFile(path.join(repoRoot, 'dist', 'roles', 'development', 'constants', 'skills.js'), 'export const vendors = []\n')
 
   const paths = resolveToolPaths(repoRoot, moluoHome)
 
-  assert.equal(paths.manifestPath, path.resolve(repoRoot, 'constants', 'skills.ts'))
+  assert.equal(paths.manifestPath, path.resolve(repoRoot, 'roles', 'development', 'constants', 'skills.ts'))
 }))
 
 it('tool - resolveToolPaths 在缺少 TypeScript manifest 时回退到 dist manifest', () => withTempDir('airules-tool-dist-manifest-', (tmpDir) => {
   const repoRoot = path.join(tmpDir, 'repo')
   const moluoHome = path.join(tmpDir, 'home')
 
-  writeFile(path.join(repoRoot, 'dist', 'constants', 'skills.js'), 'export const vendors = []\n')
+  writeFile(path.join(repoRoot, 'dist', 'roles', 'development', 'constants', 'skills.js'), 'export const vendors = []\n')
 
   const paths = resolveToolPaths(repoRoot, moluoHome)
 
-  assert.equal(paths.manifestPath, path.resolve(repoRoot, 'dist', 'constants', 'skills.js'))
+  assert.equal(paths.manifestPath, path.resolve(repoRoot, 'dist', 'roles', 'development', 'constants', 'skills.js'))
 }))
 
 it('tool - addLocalSkill 复制包含 SKILL.md 的本地 skill', () => withTempDir('airules-tool-add-', (tmpDir) => {
@@ -128,7 +129,7 @@ it('tool - syncToHosts 同步内置和用户自定义 skills 到宿主', async (
     const codexHome = path.join(userHome, '.codex')
 
     writeFile(path.join(repoRoot, 'package.json'), '{"type":"module"}\n')
-    writeFile(path.join(repoRoot, 'constants', 'skills.js'), 'export const vendors = []\n')
+    writeFile(path.join(repoRoot, 'roles', 'development', 'constants', 'skills.js'), 'export const vendors = []\n')
     writeFile(path.join(repoRoot, 'roles', 'development', 'rules', 'AGENTS.md'), 'baseline\n')
     writeFile(path.join(repoRoot, 'roles', 'development', 'agents', 'demo-agent.md'), '---\nname: demo-agent\ndescription: Demo agent\n---\nDo work\n')
     writeFile(path.join(repoRoot, 'roles', 'common', 'skills', 'session-capture', 'SKILL.md'), 'common\n')
@@ -182,7 +183,7 @@ it('tool - syncToHosts 支持只包含 skills 的 product 角色', async () => {
     const codexHome = path.join(userHome, '.codex')
 
     writeFile(path.join(repoRoot, 'package.json'), '{"type":"module"}\n')
-    writeFile(path.join(repoRoot, 'constants', 'skills.js'), 'export const vendors = []\n')
+    writeFile(path.join(repoRoot, 'roles', 'product', 'constants', 'skills.js'), 'export const vendors = []\n')
     writeFile(path.join(repoRoot, 'roles', 'development', 'rules', 'AGENTS.md'), 'development baseline\n')
     writeFile(path.join(repoRoot, 'roles', 'common', 'hooks', 'session-log.mjs'), 'process.stdout.write("{}")\n')
     writeFile(path.join(repoRoot, 'roles', 'common', 'skills', 'session-capture', 'SKILL.md'), 'common skill\n')
@@ -227,7 +228,7 @@ it('tool - syncToHosts 在源码安装目录缺少 dist 时可直接加载 TypeS
     const codexHome = path.join(userHome, '.codex')
 
     writeFile(path.join(repoRoot, 'package.json'), '{"type":"module"}\n')
-    writeFile(path.join(repoRoot, 'constants', 'skills.ts'), 'export const vendors = []\n')
+    writeFile(path.join(repoRoot, 'roles', 'development', 'constants', 'skills.ts'), 'export const vendors = []\n')
     writeFile(path.join(repoRoot, 'roles', 'development', 'rules', 'AGENTS.md'), 'baseline\n')
     writeFile(path.join(repoRoot, 'roles', 'development', 'agents', 'demo-agent.md'), '---\nname: demo-agent\ndescription: Demo agent\n---\nDo work\n')
     writeFile(path.join(repoRoot, 'roles', 'common', 'skills', 'session-capture', 'SKILL.md'), 'common\n')
@@ -264,7 +265,7 @@ it('tool - syncToHosts 在安装目录即仓库根目录时仍从 vendor 投影�
     const vendorRepoSkill = path.join(moluoHome, 'vendor', 'repos', 'moluoxixi', 'roles', 'development', 'skills', 'api-docs')
 
     writeFile(path.join(moluoHome, 'package.json'), '{"type":"module"}\n')
-    writeFile(path.join(moluoHome, 'constants', 'skills.js'), `
+    writeFile(path.join(moluoHome, 'roles', 'development', 'constants', 'skills.js'), `
 export const vendors = [
   {
     name: 'moluoxixi',
@@ -323,7 +324,7 @@ it('tool - syncToHosts 在 workspace 第一方 vendor 且安装目录即仓库�
     const codexHome = path.join(userHome, '.codex')
 
     writeFile(path.join(moluoHome, 'package.json'), '{"type":"module"}\n')
-    writeFile(path.join(moluoHome, 'constants', 'skills.js'), `
+    writeFile(path.join(moluoHome, 'roles', 'development', 'constants', 'skills.js'), `
 export const vendors = [
   {
     name: 'moluoxixi',

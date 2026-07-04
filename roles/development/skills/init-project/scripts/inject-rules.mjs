@@ -26,23 +26,20 @@ function resolvePathPlaceholders(content) {
 }
 
 const baseReferencePath = path.join(skillRoot, 'references', 'airules-base.md')
-const codeCoreReferencePath = path.join(skillRoot, 'references', 'code-core.md')
 
 const projectRoot = path.resolve(projectRootArg)
 const agentsPath = path.join(projectRoot, 'AGENTS.md')
 const currentContent = existsSync(agentsPath) ? readFileSync(agentsPath, 'utf8') : ''
 const hasExistingAgentsContent = currentContent.trim().length > 0
 
-// 注入顺序固定：项目规则骨架（仅在 AGENTS.md 为空/新建时）+ 代码核心纪律。
+// 注入顺序固定：项目规则骨架仅在 AGENTS.md 为空/新建时注入。
 const inlineReferencePaths = [
   ...(hasExistingAgentsContent ? [] : [baseReferencePath]),
-  codeCoreReferencePath,
 ]
 
 /**
  * 解析 Markdown 文件开头的最小 YAML frontmatter，返回去除 frontmatter 的正文。
- * 输入是项目内受控格式（仅 code-core.md 带 frontmatter），结构固定；
- * 无 frontmatter 时返回原文（trim 后）。
+ * 输入是项目内受控格式；无 frontmatter 时返回原文（trim 后）。
  */
 function stripFrontmatter(content) {
   const normalized = content.replace(/\r\n/g, '\n')
@@ -126,9 +123,11 @@ function findDuplicateHeadingTitles(existingContent, incomingContent) {
 
 const inlineSections = inlineReferencePaths.map(referencePath =>
   resolvePathPlaceholders(stripFrontmatter(readFileSync(referencePath, 'utf8'))),
-)
+).filter(section => section.length > 0)
 const incomingRules = inlineSections.join('\n\n')
-const managedRulesBlock = `${MANAGED_BLOCK_BEGIN}\n${incomingRules}\n${MANAGED_BLOCK_END}`
+const managedRulesBlock = incomingRules.length === 0
+  ? ''
+  : `${MANAGED_BLOCK_BEGIN}\n${incomingRules}\n${MANAGED_BLOCK_END}`
 
 function replaceManagedBlock(content, replacement) {
   const beginIndex = content.indexOf(MANAGED_BLOCK_BEGIN)
@@ -150,6 +149,12 @@ function replaceManagedBlock(content, replacement) {
 }
 
 const replacedContent = replaceManagedBlock(currentContent, managedRulesBlock)
+
+if (incomingRules.length === 0) {
+  writeFileSync(agentsPath, replacedContent ?? currentContent, 'utf8')
+  console.log(`[airules] Updated ${agentsPath}`)
+  process.exit(0)
+}
 
 const duplicateTitles = replacedContent === null
   ? findDuplicateHeadingTitles(currentContent, incomingRules)

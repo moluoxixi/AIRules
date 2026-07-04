@@ -9,6 +9,7 @@
   },
   "include": [
     "constants/**/*.ts",
+    "roles/*/constants/**/*.ts",
     "scripts/**/*.ts"
   ],
   "exclude": [

@@ -1,6 +1,6 @@
 # issue 落地 ToDoList（2026-06-29）
 
-本轮处理 `issue/` 目录 5 个问题文档。先由独立子代理逐条核验事实，再按推荐方案实现 O-01/O-02/O-03/E-01（P0–P2），O-04/E-02（P3）按文档本意暂缓。O-01 仅落"声明 + 契约 + 锚点"层，不加 `loop-guard.ts` 运行时 hook（本仓库无派发进程可调用它）。
+本轮处理 `issue/` 目录 5 个问题文档。先由独立子代理逐条核验事实，再按推荐方案实现 O-01/O-02/O-03/E-01（P0–P2），O-04/E-02（P3）按文档本意暂缓。O-01 当前仅保留"声明 + 契约 + 锚点"层，不再分发 development runtime 回路 hook。
 
 ## ✅ 已完成
 
@@ -8,7 +8,7 @@
 - [x] `rules/AGENTS.md` 第 9 条补**计数责任主体**声明：`loop_iteration`/`mismatch_loop` 由主代理维护并持久化进账本；子代理只回执 `current_loop_id` 与建议增量；主代理派发 coder 前 MUST 先读账本计数，达上限立即转 `BLOCKED`。
 - [x] `skills/subagent-driven-development/SKILL.md` 新增 `### 内层回路计数账本` 子节（`LOOP-COUNTERS` 结构 + 读/增/熔断时机）。
 - [x] 回归锚点：`workflow-contract.test.ts` 加 2 条断言（责任主体文本 + `LOOP-COUNTERS`）。
-- [ ] ~~`scripts/lib/loop-guard.ts` 运行时硬熔断~~ — **当时决策不做**（理由：纯 prompt 仓库无派发进程调用，会是无调用方代码）。**已演进并落地**：[ADR-0006](../docs/architecture/decisions/ADR-0006-cross-host-hook-capability-baseline.md)（accepted 2026-06-29）能力调研推翻该论据——宿主 runtime（Claude/Cursor/Codex/Qoder）本身即 hook 调用方。loop-guard 已以 `hooks/loop-guard.mjs`（PreToolUse 拦截）+ `hooks/subagent-trace.mjs`（SubagentStop 计数）+ 账本 `constants/loop-ledger.ts` 正式落地（协议见 `docs/architecture/loop-ledger-protocol.md`、烟测指引见 `docs/architecture/hook-smoke-test-guide.md`）。
+- [ ] ~~运行时硬熔断 hook~~ — **当前决策不做**。development runtime loop hook / ledger 链路已按角色收敛方向撤下；回路熔断继续保留 prose 与 workflow-contract 约束，不作为宿主 hook 分发资产。
 - [ ] ~~baseline 同步 `~/.qoderwork/agents.md`~~ — 宿主侧文件，不在本仓库范围。
 
 ### O-02 · blocked_id 消费契约（P1）

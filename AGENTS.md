@@ -6,18 +6,18 @@
 ## Workspace Constraints & Vendor Protocol
 - **工作区隔离**：禁止修改任何被 Git 忽略的文件或目录；可按任务需要修改已跟踪的源码、测试、配置、`roles/` 与文档。
 - **`vendor/` 读写红线**：`vendor/` 目录被 Git 忽略，属于测试映射生成的只读（Read-Only）沙箱区。**绝对禁止**在任何情况下直接修改、覆写或向 `vendor/` 目录内部主动写入代码。
-- **映射契约**：涉及将内容打包或安装至宿主目录时，必须严格读取并遵循 `constants/skills.ts`、`constants/hosts.ts`、`scripts/lib/skill-projection.ts`、`scripts/lib/vendors.ts` 与 `scripts/lib/install.ts` 中定义的投影和安装协议，禁止凭空捏造任何隐式文件复制逻辑。
+- **映射契约**：涉及将内容打包或安装至宿主目录时，必须严格读取并遵循 `roles/<role>/constants/skills.ts`、`constants/hosts.ts`、`scripts/lib/skill-projection.ts`、`scripts/lib/vendors.ts` 与 `scripts/lib/install.ts` 中定义的投影和安装协议，禁止凭空捏造任何隐式文件复制逻辑。
 
 ## AIRules 规则资产层级判定
 
 审查或修改 `roles/*/rules/`、`roles/*/skills/init-project/references/`、根 `AGENTS.md` 前，先判定资产层级，结论按层级列出，不跨层归因：
 
 - repo-maintenance：根 `AGENTS.md`、`CLAUDE.md`，只约束 AIRules 仓库（本仓库）维护者。
-- global-baseline：`roles/development/rules/AGENTS.md`，提供给宿主/用户的开发角色全局 baseline，手工维护；作为默认宿主基线软链/注入的统一源，按待生成数据处理。
-- project-init：`roles/development/skills/init-project/references/**`，注入用户项目根 `AGENTS.md` 或 `.airules/rules/**`，只能写项目级规则。
-- generated-project：用户项目中的 `docs/**`、`AGENTS.md`、`.airules/rules/**`。
+- role-assets：`roles/development/{constants,skills,mcp,hooks}/**`，提供给开发角色按需安装/投影；开发角色不再分发宿主 always-on 全局 rules baseline。
+- project-init：`roles/development/skills/init-project/references/**` 与脚本，注入用户项目根 `AGENTS.md`，并初始化 `openspec/` 与 `knowledge/`，只能写项目级规则和项目内事实源。
+- generated-project：用户项目中的 `AGENTS.md`、`CLAUDE.md`、`openspec/**`、`knowledge/**`。
 
-# 代码实现核心纪律
+## 代码实现核心纪律
 
 本节为语言无关的代码交付红线，适用于任何技术栈；具体框架/语言的目录与架构规范见对应语言规范文件。
 

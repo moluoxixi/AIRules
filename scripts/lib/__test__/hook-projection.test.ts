@@ -265,7 +265,7 @@ it('hook 投影 - 多事件 TOML：同 config.toml 写多事件块互不覆盖�
 it('hook 投影 - 多事件 TOML：不同脚本各自独立块（Stop+另一脚本不互删）', () => {
   const env = setupEnv()
   try {
-    // 放入第二个源脚本，模拟 session-log + subagent-trace 两脚本。
+    // 放入第二个源脚本，模拟多个 hook 脚本。
     fs.copyFileSync(hookScriptSource, path.join(env.moluoHome, 'vendor', 'hooks', 'trace-stub.mjs'))
     const stop = { relDir: '.', fileName: 'config.toml', format: 'toml' as const, event: 'Stop', scriptName: 'session-log.mjs' }
     const sub = { relDir: '.', fileName: 'config.toml', format: 'toml' as const, event: 'SubagentStop', scriptName: 'trace-stub.mjs' }
@@ -289,7 +289,7 @@ function runScript(input: string, projCwd: string) {
 }
 
 function readAutoLog(projCwd: string): string {
-  const dir = path.join(projCwd, '.airules', 'sessions', 'auto')
+  const dir = path.join(projCwd, 'knowledge', 'sessions', 'auto')
   if (!fs.existsSync(dir)) {
     return ''
   }
@@ -305,7 +305,7 @@ it('脚本 - 有效 stdin 写日志含 session 与 transcript，stdout 为 {}', 
     const log = readAutoLog(env.hostHome)
     assert.match(log, /session=abc/)
     assert.match(log, /transcript=\/x\/y\.jsonl/)
-    assert.ok(fs.existsSync(path.join(env.hostHome, '.airules', 'sessions', 'auto', '.gitignore')), '应落 .gitignore')
+    assert.ok(fs.existsSync(path.join(env.hostHome, 'knowledge', 'sessions', 'auto', '.gitignore')), '应落 .gitignore')
   }
   finally {
     cleanup(env.tmpDir)

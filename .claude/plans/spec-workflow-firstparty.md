@@ -6,7 +6,7 @@ OpenSpec 的 CLI 很薄——propose/apply 全靠 AI 读 prompt，唯一确定�
 
 用户决策：
 - **移除官方 OpenSpec CLI 接入**（不装外部依赖、不被 beta 版本漂移绑架）。
-- **自建契约版放进 init-project**，落进纯 `.airules/changes/`（不带官方硬编码的 `openspec/` 那层）。
+- **自建契约版放进 init-project**，落进纯 `openspec/changes/`（不带官方硬编码的 `openspec/` 那层）。
 - 与我们 brainstorming/writing-plans/test-design 串联，不产生两套需求文档。
 
 ## 一、移除官方接入
@@ -15,10 +15,10 @@ OpenSpec 的 CLI 很薄——propose/apply 全靠 AI 读 prompt，唯一确定�
 - `constants/skills.ts`：删 `openspecSetup`（116-129 行）及 moluoxixi setup 里的 `...openspecSetup`（245 行恢复为 `setup: codegraphSetup`）。
 - `skills/init-project/SKILL.md`：把"OpenSpec store / init-openspec.mjs / openspec init"相关行（8/22/35/44/56）改为自建版。
 
-## 二、目录约定（落进 .airules/，无 openspec/ 层）
+## 二、目录约定（落进 knowledge/ + openspec/，无 openspec/ 层）
 
 ```
-.airules/
+knowledge/ + openspec/
 ├── specs/<capability>/spec.md          # 事实源（## Purpose + ## Requirements）
 ├── changes/
 │   ├── <change-id>/
@@ -35,9 +35,9 @@ OpenSpec 的 CLI 很薄——propose/apply 全靠 AI 读 prompt，唯一确定�
 
 复刻调研确认的规则（出处 OpenSpec src/core/specs-apply.ts + requirement-blocks.ts）：
 
-1. **`spec-init.mjs <project>`**：建 `.airules/{specs,changes,changes/archive}` 骨架。幂等。替代 init-openspec。
+1. **`spec-init.mjs <project>`**：建 `openspec/{specs,changes,changes/archive}` 骨架。幂等。替代 init-openspec。
 2. **`spec-new-change.mjs <project> <change-id>`**：建 `changes/<change-id>/` + proposal.md/tasks.md 模板骨架。重复报错。
-3. **`spec-archive.mjs <project> <change-id>`**：**核心确定性逻辑**——把 change/specs/ delta 合并进 .airules/specs/，再移动 change 到 archive/<date>-<id>/。日期用脚本自取系统日期 `new Date().toISOString().split('T')[0]`（这是分发给用户项目的运行时脚本，非本仓库 workflow 脚本，无 Date 限制）。实现：
+3. **`spec-archive.mjs <project> <change-id>`**：**核心确定性逻辑**——把 change/specs/ delta 合并进 openspec/specs/，再移动 change 到 archive/<date>-<id>/。日期用脚本自取系统日期 `new Date().toISOString().split('T')[0]`（这是分发给用户项目的运行时脚本，非本仓库 workflow 脚本，无 Date 限制）。实现：
    - delta 解析：split `##`，4 个 section 正则（ADDED/MODIFIED/REMOVED/RENAMED Requirements），`### Requirement:` / `#### Scenario:` 正则。
    - 主 spec：提取 `## Requirements` 段，按 trimmed name 建块索引。
    - 应用顺序 RENAMED→REMOVED→MODIFIED→ADDED，冲突硬失败（ADDED已存在/MODIFIED未找到/REMOVED未找到 throw）。
@@ -55,19 +55,19 @@ OpenSpec 的 CLI 很薄——propose/apply 全靠 AI 读 prompt，唯一确定�
 - 三态流程：
   - **propose**：用 brainstorming 想清需求 + writing-plans 拆任务后，把结论落成 proposal.md + specs/delta + tasks.md（`spec-new-change.mjs` 建骨架，AI 填内容）。
   - **apply**：按 tasks.md 逐条实现（coder/编码流水线），勾选 `- [x]`。
-  - **archive**：实现完成后 `spec-archive.mjs` 合并 delta 进 .airules/specs/ 并归档。
+  - **archive**：实现完成后 `spec-archive.mjs` 合并 delta 进 openspec/specs/ 并归档。
 - 与编排串联：spec-workflow 是"书面持久化层"，方法论仍用 brainstorming/writing-plans/test-design；不重复造需求分析。
-- 写入边界：只写 .airules/specs 与 .airules/changes；delta 格式须合法（SHALL/MUST + Scenario）；archive 合并冲突硬失败不静默。
+- 写入边界：只写 openspec/specs 与 openspec/changes；delta 格式须合法（SHALL/MUST + Scenario）；archive 合并冲突硬失败不静默。
 
 ## 五、init-project 集成
 
-- SKILL.md 流程图：codegraph init 后 → `spec-init.mjs` 建 `.airules/{specs,changes}` 骨架（替换 init-openspec 那环）。
-- 交付检查表：`.airules/{specs,changes,changes/archive}` 已建。
+- SKILL.md 流程图：codegraph init 后 → `spec-init.mjs` 建 `openspec/{specs,changes}` 骨架（替换 init-openspec 那环）。
+- 交付检查表：`openspec/{specs,changes,changes/archive}` 已建。
 - spec-init 无外部依赖，不会 MISSING（不像 openspec 命令可能缺失）。
 
 ## 六、rules 三层分工（顺带补，解决"rules 没提 spec 工作流"）
 
-在 `rules/sources/00-overview.md` 或新分节简述：需求/计划的**方法论**用编排 skill（brainstorming/writing-plans/test-design）；需要**正式可追溯、可归档的书面契约**时用 spec-workflow 落进 `.airules/`；二者分工，不重复。
+在 `rules/sources/00-overview.md` 或新分节简述：需求/计划的**方法论**用编排 skill（brainstorming/writing-plans/test-design）；需要**正式可追溯、可归档的书面契约**时用 spec-workflow 落进 `knowledge/ + openspec/`；二者分工，不重复。
 
 ## 七、测试（就近 skills/init-project/__test__/）
 
@@ -77,7 +77,7 @@ OpenSpec 的 CLI 很薄——propose/apply 全靠 AI 读 prompt，唯一确定�
 
 ## 验证
 
-- 临时项目跑全流程：spec-init → spec-new-change → 填 delta → spec-validate → spec-archive，确认 delta 正确合并进 .airules/specs/、change 归档。
+- 临时项目跑全流程：spec-init → spec-new-change → 填 delta → spec-validate → spec-archive，确认 delta 正确合并进 openspec/specs/、change 归档。
 - vitest 全量（含新 archive 合并测试）、typecheck、lint。
 - grep 确认无残留 openspec CLI 引用（constants/SKILL/脚本）。
 

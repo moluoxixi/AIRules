@@ -2,7 +2,7 @@
 
 ## 目标与范围
 
-让"每轮回答结束自动记录会话"成为 AIRules 的一个**可分发能力**：通过 `host-setup` 安装时，自动把一个 Stop hook 写进支持的宿主配置；hook 脚本在**任意项目的当前工作目录**下建 `.airules/sessions/auto/` 并追加一条记录。
+让"每轮回答结束自动记录会话"成为 AIRules 的一个**可分发能力**：通过 `host-setup` 安装时，自动把一个 Stop hook 写进支持的宿主配置；hook 脚本在**任意项目的当前工作目录**下建 `knowledge/sessions/auto/` 并追加一条记录。
 
 记录粒度：**优先 transcript 路径引用**（Claude 与 Codex 的 Stop hook 均提供 `transcript_path`），一行一条 `时间戳 + session_id + transcript 路径 + cwd`，不复制全文、不膨胀、低泄密。
 
@@ -17,11 +17,11 @@
 ## 设计（镜像现有 MCP 投影模式——MCP 已同时处理 JSON 与 TOML 双格式，正好复用）
 
 ### 1. 中性源：新增 `hooks/` 目录（仓库内，跟 `mcp/` 平级）
-- `hooks/session-log.mjs`：Stop hook 脚本，读 stdin JSON（`transcript_path`/`session_id`/`cwd`/`hook_event_name`），在 `<cwd>/.airules/sessions/auto/<YYYY-MM-DD>.log` 追加一行。
+- `hooks/session-log.mjs`：Stop hook 脚本，读 stdin JSON（`transcript_path`/`session_id`/`cwd`/`hook_event_name`），在 `<cwd>/knowledge/sessions/auto/<YYYY-MM-DD>.log` 追加一行。
   - 纯 Node、无依赖；任何异常都 `process.exit(0)`（hook 失败绝不能阻断用户对话）。
   - **跨宿主兼容收尾**：写完日志后向 stdout 打一个空 JSON `{}`——Claude 容忍、Codex 要求 JSON，二者通用。
   - 脱敏：只写路径与 id，不读 transcript 内容、不回显敏感值（与 `session-capture` 写入边界一致）。
-  - 按你的决定：**任意项目 cwd 下都建目录并记**（不判 `.airules/` 是否已存在）。
+  - 按你的决定：**任意项目 cwd 下都建目录并记**（不判 `knowledge/ + openspec/` 是否已存在）。
   - 容错 `transcript_path` 为 null（Codex 声明 transcript 格式不稳定、可能缺失）：缺失时仍记 session_id + cwd，路径字段写 `(none)`。
 
 ### 2. Schema：`constants/hosts.ts` 加可选 `hooks` 字段
@@ -69,12 +69,12 @@ export interface HookProjection {
 - 非 hook 宿主（无 hooks 字段）不写任何配置。
 
 行为（脚本本身）：
-- 假 stdin JSON（`transcript_path`/`cwd` 指向 temp 项目）跑 `session-log.mjs`，断言 `<cwd>/.airules/sessions/auto/<date>.log` 被建且含 transcript 路径与 session_id。
+- 假 stdin JSON（`transcript_path`/`cwd` 指向 temp 项目）跑 `session-log.mjs`，断言 `<cwd>/knowledge/sessions/auto/<date>.log` 被建且含 transcript 路径与 session_id。
 - `transcript_path` 为 null / stdin 为空 / 畸形 JSON 时仍 exit 0、不抛，且 stdout 为合法 JSON（Codex 兼容）。
 
 合约（`__test__/workflow-contract.test.ts`）：
 - `hooks/session-log.mjs` 存在且 exit-0 容错文本锚点。
-- check #9 复核：`hooks/` 不在 `skills/` 下，不会触发"宿主目录引用"误报（脚本里出现 `.airules` 是项目本地、非宿主全局，正则只匹配 `~/.claude` 等，安全）。
+- check #9 复核：`hooks/` 不在 `skills/` 下，不会触发"宿主目录引用"误报（脚本里出现 `knowledge/ + openspec` 是项目本地、非宿主全局，正则只匹配 `~/.claude` 等，安全）。
 
 ## 文档
 - `docs/architecture/host-agent-mcp-mapping.md`（或新增 `host-hook-mapping.md`）补一节：哪些宿主有 Stop hook（Claude/Codex）、各自配置文件与格式、Codex 的 stdout-must-be-JSON 差异、为何其它宿主跳过。
@@ -99,11 +99,11 @@ export interface HookProjection {
 
 ## 已确认的决策
 - 范围：做成 AIRules 可分发能力（非仅本机装一个 hook）。
-- 日志落点：各项目各自 `.airules/sessions/auto/`。
+- 日志落点：各项目各自 `knowledge/sessions/auto/`。
 - 目录策略：任意项目 cwd 下都建并记。
 - 粒度：优先 transcript 路径引用。
 - 现实边界：实际对 **Claude + Codex 双宿主**生效，其余宿主显式跳过 + 告警，机制为多宿主预留。
 
 ## 未决/交付时确认
 - 是否同时加 ADR（我倾向加一条轻量的）。
-- `.airules/sessions/auto/` 是否需要配套 `.gitignore`（自动日志通常不入库）——倾向脚本首次建目录时写一个 `.gitignore` 忽略 `*.log`。
+- `knowledge/sessions/auto/` 是否需要配套 `.gitignore`（自动日志通常不入库）——倾向脚本首次建目录时写一个 `.gitignore` 忽略 `*.log`。

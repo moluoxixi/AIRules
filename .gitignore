@@ -1,21 +1,14 @@
 # 本项目
 vendor
-.cache-git
+
+# ai相关
 .qoder
 .cursor
-# 依赖锁文件（注意：用精确名，避免误伤源码 scripts/lib/vendor-lock.ts）
-/package-lock.json
-/pnpm-lock.yaml
-/yarn.lock
-# vendor 同步生成的锁文件（由 scripts/sync-vendors.ts 重新生成，不入库）
-/vendor-lock.json
+.codex
+.claude
 
-# Mermaid 本地预览产物与机器相关配置（puppeteer 指向本机浏览器路径，不入库）
-.mermaid-puppeteer.json
-docs/other/sample-diagrams/
-
-# 子代理产出/调试产物目录，不入库
-docs/out
+# 依赖锁文件
+*-lock.*
 
 # 项目
 node_modules
@@ -24,8 +17,7 @@ dist
 dist-ssr
 coverage
 *.local
-/cypress/videos/
-/cypress/screenshots/
+cypress
 stats.html
 
 # 日志
@@ -47,6 +39,3 @@ lerna-debug.log*
 *.sln
 *.sw?
 .zed
-
-# 外部知名 skills 参考资料（对标抄优点用，只读，不入库）
-.skill-references/

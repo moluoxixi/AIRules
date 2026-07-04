@@ -1,7 +1,92 @@
-import type { SetupCommand } from '../../constants/skills.js'
 import path from 'node:path'
 import { fileURLToPath, pathToFileURL } from 'node:url'
 import { flattenedSkillName, flattenedVendorSkillTarget } from './skill-projection.js'
+
+/**
+ * 安装前置命令必须以结构化参数声明，避免把配置内容拼进 shell 字符串。
+ */
+export interface SetupCommand {
+  command: string
+  args?: string[]
+  /**
+   * 当指定命令已存在于 PATH 时跳过当前 setup 命令。
+   * 适用于全局工具已安装后不应重复覆盖正在运行二进制的场景。
+   */
+  skipIfCommandAvailable?: string
+}
+
+/**
+ * 单个 skill 的详细配置（适用于需要重命名或前置安装命令的场景）。
+ */
+export interface SkillConfig {
+  /** 仓库内源目录名。 */
+  name: string
+  /** 安装后目录名，默认与 name 相同。 */
+  output?: string
+  /**
+   * 该 skill 的安装前置命令。
+   * 在 skill 链接建立后执行，例如安装对应的全局 CLI 工具。
+   */
+  setup?: SetupCommand[]
+}
+
+/**
+ * 技能定义：字符串简写或对象配置。
+ */
+export type SkillDef = string | SkillConfig
+
+/**
+ * 单个供应商仓库内的一条安装投影规则。
+ */
+export type VendorProjection
+  = | {
+    kind: 'namespace'
+    /** 仓库内要递归扫描的目录。 */
+    sourceDir: string
+    /** 清单中的占位名；实际 vendor 目录由叶子 skill 名称决定。 */
+    output: string
+    /** namespace 级安装前置命令。 */
+    setup?: SetupCommand[]
+  }
+  | {
+    kind: 'skills'
+    /** 仓库内技能所在的基准目录。 */
+    sourceBaseDir: string
+    /** 需要精确安装的技能列表。 */
+    skills: SkillDef[]
+  }
+
+/**
+ * 代表一个外部供应商或 workspace 配置源的技能仓库。
+ */
+export interface VendorRepo {
+  /** 供应商名称，也是克隆到本地后的目录名。 */
+  name: string
+  /** 是否为官方仓库。 */
+  official: boolean
+  /** Git 仓库地址。 */
+  source: string
+  /**
+   * workspace 表示该供应商来自当前 AIRules 安装目录，而不是远程 Git checkout。
+   */
+  sourceMode?: 'git' | 'workspace'
+  /**
+   * 供应商级安装前置命令。
+   */
+  setup?: SetupCommand[]
+  /** 从该仓库投影到 vendor/skills 的安装规则列表。 */
+  projections: VendorProjection[]
+}
+
+/**
+ * 技能节点：可以是一个具体的 VendorRepo，也可以是包含多个节点的分类对象。
+ */
+export type VendorNode = VendorRepo | { [category: string]: VendorNode[] }
+
+/**
+ * 供应商配置根结构。
+ */
+export type VendorsConfig = VendorNode[]
 
 export function normalizePath(value: string): string {
   return value.replace(/\\/g, '/')

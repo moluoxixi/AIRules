@@ -1,7 +1,8 @@
-import type { VendorsConfig } from '../../../constants/skills.js'
+import type { VendorsConfig } from '../vendors.js'
 import assert from 'node:assert'
 import { it } from 'vitest'
-import { vendors as configuredVendors } from '../../../constants/skills.js'
+import { vendors as developmentVendors } from '../../../roles/development/constants/skills.js'
+import { vendors as productVendors } from '../../../roles/product/constants/skills.js'
 import { walkVendorTree } from '../vendors.js'
 
 // ─── 基础结构测试 ────────────────────────────────────────────────────────────
@@ -481,7 +482,7 @@ it('walkVendorTree - 旧版顶层 sourceDir 或 skills 配置应显式失败', (
 it('vendors 配置 - 精选第三方 skill 使用来源后缀避免跨来源裸名冲突', () => {
   const vendors: Record<string, any> = {}
 
-  walkVendorTree(configuredVendors, [], vendors)
+  walkVendorTree(developmentVendors, [], vendors)
 
   assert.deepStrictEqual(
     vendors.gemini.links.map((link: any) => link.target),
@@ -503,6 +504,19 @@ it('vendors 配置 - 精选第三方 skill 使用来源后缀避免跨来源裸�
     ['vendor/skills/playwright-openai'],
     'OpenAI 精选 skill 应使用来源后缀，避免裸名冲突',
   )
+  assert.deepStrictEqual(
+    vendors.superpowers.links.map((link: any) => ({
+      kind: link.kind,
+      source: link.source,
+      target: link.target,
+    })),
+    [{
+      kind: 'namespace-dir',
+      source: 'skills',
+      target: 'vendor/skills/superpowers',
+    }],
+    'Superpowers 应以 skills 版 namespace 接入，后续同步按叶子 skill 名展平',
+  )
 
   const bareThirdPartyTargets = new Set([
     'vendor/skills/code-reviewer',
@@ -522,7 +536,7 @@ it('vendors 配置 - 精选第三方 skill 使用来源后缀避免跨来源裸�
 it('vendors 配置 - 使用 OpenAI Playwright 并移除过时技能', () => {
   const vendors: Record<string, any> = {}
 
-  walkVendorTree(configuredVendors, [], vendors)
+  walkVendorTree(developmentVendors, [], vendors)
 
   assert.ok(vendors.openai, 'openai 供应商应存在')
   assert.strictEqual(vendors.openai.repo, 'https://github.com/openai/skills.git')
@@ -562,14 +576,13 @@ it('vendors 配置 - 使用 OpenAI Playwright 并移除过时技能', () => {
         command: 'codegraph',
         args: ['install', '--yes'],
       },
+      {
+        command: 'npm',
+        args: ['install', '--global', '@fission-ai/openspec'],
+        skipIfCommandAvailable: 'openspec',
+      },
     ],
-    '安装 AIRules 时应同步安装并初始化 CodeGraph；spec 工作流为第一方自建脚本，不装外部 CLI',
-  )
-  assert.ok(
-    !vendors.moluoxixi.setup.some((cmd: any) =>
-      cmd.args?.includes('@fission-ai/openspec') || cmd.skipIfCommandAvailable === 'openspec',
-    ),
-    'setup 不应包含 openspec 全局安装命令（spec 工作流已第一方自建）',
+    '安装 AIRules 时应同步安装 CodeGraph 与 OpenSpec；init-project 会注册 superpowers-bridge schema',
   )
   assert.ok(
     !vendors.moluoxixi.links.some((link: any) => link.target === 'vendor/skills/workflow'),
@@ -584,7 +597,7 @@ it('vendors 配置 - 使用 OpenAI Playwright 并移除过时技能', () => {
 it('vendors 配置 - 仅接入 Anthropic 的前端视觉设计技能', () => {
   const vendors: Record<string, any> = {}
 
-  walkVendorTree(configuredVendors, [], vendors)
+  walkVendorTree(developmentVendors, [], vendors)
 
   assert.ok(vendors.anthropic, 'Anthropic Skills 供应商应存在')
   assert.strictEqual(vendors.anthropic.repo, 'https://github.com/anthropics/skills.git')
@@ -608,26 +621,27 @@ it('vendors 配置 - 仅接入 Anthropic 的前端视觉设计技能', () => {
 it('vendors 配置 - 默认不接入静态代码规范供应商', () => {
   const vendors: Record<string, any> = {}
 
-  walkVendorTree(configuredVendors, [], vendors)
+  walkVendorTree(developmentVendors, [], vendors)
 
   assert.strictEqual(vendors.antfu, undefined, '不应默认安装 Antfu 框架/工具链技能')
   assert.strictEqual(vendors.vercelAgentSkills, undefined, '不应默认安装 Vercel React/React Native 代码技能')
 })
 
-it('vendors 配置 - pm-skills 作为 prd-docs 的需求侧 PM 方法论辅助', () => {
+it('vendors 配置 - PM skills 由 product 角色接入 pmSkills 上游', () => {
   const vendors: Record<string, any> = {}
 
-  walkVendorTree(configuredVendors, [], vendors)
+  walkVendorTree(productVendors, [], vendors)
 
-  assert.ok(vendors.pmSkills, 'pmSkills 供应商应存在')
+  assert.ok(vendors.pmSkills, 'product 角色应接入 pmSkills 上游')
   assert.strictEqual(vendors.pmSkills.repo, 'https://github.com/product-on-purpose/pm-skills.git')
   assert.deepStrictEqual(
-    vendors.pmSkills.links.map((link: any) => ({
-      kind: link.kind,
-      source: link.source,
-      target: link.target,
-      setup: link.setup,
-    })),
+    vendors.pmSkills.links
+      .map((link: any) => ({
+        kind: link.kind,
+        source: link.source,
+        target: link.target,
+        setup: link.setup,
+      })),
     [
       { kind: 'skill', source: 'skills/deliver-prd', target: 'vendor/skills/deliver-prd', setup: undefined },
       { kind: 'skill', source: 'skills/deliver-user-stories', target: 'vendor/skills/deliver-user-stories', setup: undefined },
@@ -636,6 +650,20 @@ it('vendors 配置 - pm-skills 作为 prd-docs 的需求侧 PM 方法论辅助',
       { kind: 'skill', source: 'skills/develop-adr', target: 'vendor/skills/develop-adr', setup: undefined },
       { kind: 'skill', source: 'skills/develop-solution-brief', target: 'vendor/skills/develop-solution-brief', setup: undefined },
     ],
-    'pm-skills 提供 PRD、用户故事、验收标准、边界用例、ADR、解决方案简报等方法论；产品/业务需求事实源仍由 prd-docs 归一化落盘',
+    'product 角色从 pmSkills 上游提供 PRD、用户故事、验收标准、边界用例、ADR、解决方案简报等 PM 方法论',
+  )
+
+  assert.deepStrictEqual(
+    vendors.moluoxixi.links.map((link: any) => ({
+      source: link.source,
+      target: link.target,
+    })),
+    [
+      {
+        source: 'roles/product/skills/init-project',
+        target: 'vendor/skills/init-project',
+      },
+    ],
+    'product 一方只维护 init-project，PM 方法论不复制到 AIRules 源目录',
   )
 })

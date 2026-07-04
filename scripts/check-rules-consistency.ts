@@ -1,17 +1,22 @@
 #!/usr/bin/env npx tsx
-import type { VendorNode, VendorRepo } from '../constants/skills.js'
+import type { VendorNode, VendorRepo, VendorsConfig } from './lib/vendors.js'
 import { existsSync, readdirSync, readFileSync } from 'node:fs'
 import path from 'node:path'
 import { fileURLToPath } from 'node:url'
-import { vendors } from '../constants/skills.js'
+import { vendors as developmentVendors } from '../roles/development/constants/skills.js'
+import { vendors as productVendors } from '../roles/product/constants/skills.js'
 import { COMMON_ROLE, DEFAULT_ROLE, resolveRolePaths } from './lib/roles.js'
 
 // 编码编排资产最小自洽性检查（低成本、非重型治理）：
-// 校验 roles/development/rules/AGENTS.md、roles/development/agents/*.md、constants/skills.ts 分发清单、.airules/knowledge/架构/**
+// 校验 roles/*/constants/skills.ts、development 可选 agents/*.md、
+// 角色 skill 分发清单、AIRules 仓库内 knowledge/架构/**
 // 之间的引用存在性与明显漂移。作用域不含历史 plan、README。
 
-// roles/development/rules/AGENTS.md 调度索引引用的固定 agent。
-const FIXED_AGENTS = ['planner', 'coder', 'debugger', 'consistency-reviewer', 'code-reviewer']
+const PRODUCT_ROLE = 'product'
+const ROLE_VENDOR_CONFIGS: Record<string, VendorsConfig> = {
+  [DEFAULT_ROLE]: developmentVendors,
+  [PRODUCT_ROLE]: productVendors,
+}
 
 // 旧 9-agent 模型的一方 agent 名，不得在架构文档活引用（superseded ADR 横幅与历史正文除外，靠白名单跳过）。
 const STALE_AGENT_NAMES = [
@@ -35,8 +40,8 @@ function isVendorRepo(node: VendorNode): node is VendorRepo {
   return typeof (node as VendorRepo).name === 'string' && Array.isArray((node as VendorRepo).projections)
 }
 
-/** 从 vendors 配置里取出 moluoxixi 第一方分发的 skill 目录名。 */
-export function firstPartySkillNames(): string[] {
+/** 从指定 role 的 vendors 配置里取出 moluoxixi 第一方分发的 skill 目录名。 */
+export function firstPartySkillNames(vendorsConfig: VendorsConfig = developmentVendors): string[] {
   const names: string[] = []
   const walk = (nodes: VendorNode[]) => {
     for (const node of nodes) {
@@ -59,7 +64,7 @@ export function firstPartySkillNames(): string[] {
       }
     }
   }
-  walk(vendors)
+  walk(vendorsConfig)
   return names
 }
 
@@ -83,6 +88,17 @@ function agentSkillRefs(content: string): string[] {
   return refs
 }
 
+/** 角色 skills 目录下含 SKILL.md 的实际 skill 名。 */
+function actualRoleSkillNames(skillsDir: string): string[] {
+  if (!existsSync(skillsDir)) {
+    return []
+  }
+  return readdirSync(skillsDir, { withFileTypes: true })
+    .filter(entry => entry.isDirectory())
+    .filter(entry => existsSync(path.join(skillsDir, entry.name, 'SKILL.md')))
+    .map(entry => entry.name)
+}
+
 /** package.json scripts 键集合。 */
 function packageScripts(repoRoot: string): Set<string> {
   const pkgPath = path.join(repoRoot, 'package.json')
@@ -101,20 +117,14 @@ export function checkRulesConsistency(repoRoot: string): CheckResult {
   const errors: string[] = []
   const rolePaths = resolveRolePaths(repoRoot, DEFAULT_ROLE)
   const commonRolePaths = resolveRolePaths(repoRoot, COMMON_ROLE)
+  const productRolePaths = resolveRolePaths(repoRoot, PRODUCT_ROLE)
   const agentsDir = rolePaths.agentsDir
-  const skillRoots = [commonRolePaths, rolePaths].filter(paths => existsSync(paths.skillsDir))
+  const skillRoots = [commonRolePaths, rolePaths, productRolePaths].filter(paths => existsSync(paths.skillsDir))
   const skillsDirs = skillRoots.map(paths => paths.skillsDir)
-  const archDir = path.join(repoRoot, '.airules', 'knowledge', '架构')
+  const archDir = path.join(repoRoot, 'knowledge', '架构')
   const rulesPath = path.join(rolePaths.rulesDir, 'AGENTS.md')
 
-  // 1. 固定 agent 必须有对应文件。
-  for (const name of FIXED_AGENTS) {
-    if (!existsSync(path.join(agentsDir, `${name}.md`))) {
-      errors.push(`roles/${DEFAULT_ROLE}/rules/AGENTS.md 引用的固定 agent 缺少文件：roles/${DEFAULT_ROLE}/agents/${name}.md`)
-    }
-  }
-
-  // 2. 每个 agent「加载 skill」引用的 skill 必须存在。
+  // 1. 每个可选 agent「加载 skill」引用的 skill 必须存在。agents 目录允许为空。
   if (existsSync(agentsDir)) {
     for (const entry of readdirSync(agentsDir)) {
       if (!entry.endsWith('.md')) {
@@ -129,10 +139,38 @@ export function checkRulesConsistency(repoRoot: string): CheckResult {
     }
   }
 
-  // 3. constants/skills.ts 分发清单中的 skill 目录必须存在。
-  for (const skill of firstPartySkillNames()) {
-    if (!skillsDirs.some(skillsDir => existsSync(path.join(skillsDir, skill)))) {
-      errors.push(`constants/skills.ts 分发清单中的 skill 目录不存在：roles/${COMMON_ROLE}/skills/${skill}/ 或 roles/${DEFAULT_ROLE}/skills/${skill}/`)
+  // 2. roles/<role>/constants/skills.ts 分发清单中的 skill 目录必须存在。
+  for (const [role, vendorsConfig] of Object.entries(ROLE_VENDOR_CONFIGS)) {
+    if (!existsSync(resolveRolePaths(repoRoot, role).roleRoot)) {
+      continue
+    }
+
+    for (const skill of firstPartySkillNames(vendorsConfig)) {
+      if (!skillsDirs.some(skillsDir => existsSync(path.join(skillsDir, skill)))) {
+        errors.push(`roles/${role}/constants/skills.ts 分发清单中的 skill 目录不存在：roles/*/skills/${skill}/`)
+      }
+    }
+  }
+
+  // 3. development/product 角色 constants/skills.ts 必须与各自 skills 目录一致。
+  for (const paths of [rolePaths, productRolePaths].filter(paths => existsSync(paths.roleRoot))) {
+    const registryPath = path.join(paths.roleRoot, 'constants', 'skills.ts')
+    const actual = new Set(actualRoleSkillNames(paths.skillsDir))
+    if (!existsSync(registryPath)) {
+      errors.push(`roles/${paths.role}/constants/skills.ts 缺失，无法核对角色 skills 清单`)
+      continue
+    }
+
+    const registered = new Set(firstPartySkillNames(ROLE_VENDOR_CONFIGS[paths.role] ?? []))
+    for (const name of actual) {
+      if (!registered.has(name)) {
+        errors.push(`roles/${paths.role}/skills/${name}/ 含 SKILL.md 但未登记进 roles/${paths.role}/constants/skills.ts`)
+      }
+    }
+    for (const name of registered) {
+      if (!actual.has(name)) {
+        errors.push(`roles/${paths.role}/constants/skills.ts 登记的 skill 不存在：roles/${paths.role}/skills/${name}/SKILL.md`)
+      }
     }
   }
 
@@ -167,26 +205,23 @@ export function checkRulesConsistency(repoRoot: string): CheckResult {
     for (const token of referenced) {
       // 仅校验看起来像 npm script 名的（含已知前缀），避免误伤普通冒号词。
       if (/^(?:verify|delivery|rules|lint):/.test(token) && !scripts.has(token)) {
-        errors.push(`.airules/knowledge/架构/overview.md 引用了 package.json 不存在的 npm script：${token}`)
+        errors.push(`knowledge/架构/overview.md 引用了 package.json 不存在的 npm script：${token}`)
       }
     }
   }
 
-  // 6. 一致性评审时序：roles/development/rules/AGENTS.md 不得含旧边、须含新边。
-  if (existsSync(rulesPath)) {
-    const content = readFileSync(rulesPath, 'utf8')
-    if (content.includes('Test -->|PASS| Consist')) {
-      errors.push(`roles/${DEFAULT_ROLE}/rules/AGENTS.md Mermaid 仍含旧时序边：Test -->|PASS| Consist（一致性评审应在测试前）`)
-    }
-    if (!content.includes('Consist -->|符合| Test')) {
-      errors.push(`roles/${DEFAULT_ROLE}/rules/AGENTS.md Mermaid 缺少新时序边：Consist -->|符合| Test`)
-    }
+  // 6. development 角色保留空 rules/AGENTS.md 占位，但不分发 always-on 全局规则内容。
+  if (!existsSync(rulesPath)) {
+    errors.push(`roles/${DEFAULT_ROLE}/rules/AGENTS.md 必须存在为空文件，用作 rules 投影占位`)
+  }
+  else if (readFileSync(rulesPath, 'utf8').trim().length > 0) {
+    errors.push(`roles/${DEFAULT_ROLE}/rules/AGENTS.md 必须保持为空：开发角色不分发 always-on 全局规则内容`)
   }
 
-  // 7. 反向登记：common/development 角色下每个含 SKILL.md 的第一方目录都必须登记进 constants/skills.ts
+  // 7. 反向登记：development/product 角色下每个含 SKILL.md 的第一方目录都必须登记进角色 constants/skills.ts
   //    分发清单（防止新增 skill 漏登记而无法被投影/安装）。vendor 投影来源不在此列。
-  const registered = new Set(firstPartySkillNames())
-  for (const skillRoot of skillRoots) {
+  for (const skillRoot of [rolePaths, productRolePaths].filter(paths => existsSync(paths.skillsDir))) {
+    const registered = new Set(firstPartySkillNames(ROLE_VENDOR_CONFIGS[skillRoot.role] ?? []))
     for (const entry of readdirSync(skillRoot.skillsDir, { withFileTypes: true })) {
       if (!entry.isDirectory()) {
         continue
@@ -195,7 +230,7 @@ export function checkRulesConsistency(repoRoot: string): CheckResult {
         continue
       }
       if (!registered.has(entry.name)) {
-        errors.push(`roles/${skillRoot.role}/skills/${entry.name}/ 含 SKILL.md 但未登记进 constants/skills.ts 分发清单`)
+        errors.push(`roles/${skillRoot.role}/skills/${entry.name}/ 含 SKILL.md 但未登记进 roles/${skillRoot.role}/constants/skills.ts 分发清单`)
       }
     }
   }
@@ -210,16 +245,16 @@ export function checkRulesConsistency(repoRoot: string): CheckResult {
         continue
       }
       if (!indexContent.includes(entry)) {
-        errors.push(`.airules/knowledge/架构/decisions/${entry} 未登记进 decisions/index.md`)
+        errors.push(`knowledge/架构/decisions/${entry} 未登记进 decisions/index.md`)
       }
     }
   }
 
   // 9. 项目级 skill 不得在 SKILL.md 或安装脚本中引用宿主全局目录（scope 判定 ②/③ 落点限制：
-  //    项目级洞见落项目 .airules/，全局洞见走上游贡献候选，不在用户仓库内自建「全局」资产）。
+  //    项目级洞见落项目内 openspec/、knowledge/ 或候选区，全局洞见走上游贡献候选，不在用户仓库内自建「全局」资产）。
   //    这是低成本 tripwire：命中即"引用"（presence），用于提请人工复核是否在自建全局资产，
   //    不臆断写入意图。匹配 ~/.claude、$HOME/.cursor、${HOME}/.qoder、${HOME}/.qoderwork 等 POSIX 宿主目录；
-  //    项目本地 .airules/ 不在此列。
+  //    项目本地 openspec/、knowledge/ 不在此列。
   const hostGlobalDir = /(?:~|\$HOME|\$\{HOME\})\/\.(?:claude|cursor|qoder|qoderwork)\b/
   const walkSkillDir = (dir: string) => {
     for (const entry of readdirSync(dir, { withFileTypes: true })) {
@@ -239,23 +274,23 @@ export function checkRulesConsistency(repoRoot: string): CheckResult {
     walkSkillDir(skillsDir)
   }
 
-  // 10. 需求落档契约：brainstorming/SKILL.md 必须声明需求落档路径（.airules/requirements/），
-  //     避免需求分析结论只停留在对话而不落盘。
+  // 10. 需求落档契约：若重新引入 brainstorming/SKILL.md，必须指向 openspec/changes/，
+  //     避免需求分析结论只停留在对话或旧 requirements 目录。
   const brainstormingSkillPath = path.join(rolePaths.skillsDir, 'brainstorming', 'SKILL.md')
   if (existsSync(brainstormingSkillPath)) {
     const content = readFileSync(brainstormingSkillPath, 'utf8')
-    if (!content.includes('.airules/requirements/')) {
-      errors.push(`roles/${DEFAULT_ROLE}/skills/brainstorming/SKILL.md 未声明需求落档路径 .airules/requirements/（需求文档必须落盘，不得只在对话中交付）`)
+    if (!content.includes('openspec/changes/')) {
+      errors.push(`roles/${DEFAULT_ROLE}/skills/brainstorming/SKILL.md 未声明需求落档路径 openspec/changes/（需求文档必须落盘，不得只在对话中交付）`)
     }
   }
 
-  // 11. 需求路径传递契约：roles/development/agents/planner.md 输入上下文包必须包含需求文档路径字段，
-  //     确保 planner 接收并传递 .airules/requirements/ 路径给下游。
+  // 11. 需求路径传递契约：若重新引入 roles/development/agents/planner.md，
+  //     输入上下文包必须包含 openspec/changes/ 路径字段。
   const plannerPath = path.join(agentsDir, 'planner.md')
   if (existsSync(plannerPath)) {
     const content = readFileSync(plannerPath, 'utf8')
-    if (!content.includes('.airules/requirements/')) {
-      errors.push(`roles/${DEFAULT_ROLE}/agents/planner.md 输入上下文包未包含需求文档路径（.airules/requirements/），planner 必须接收并传递需求文档路径`)
+    if (!content.includes('openspec/changes/')) {
+      errors.push(`roles/${DEFAULT_ROLE}/agents/planner.md 输入上下文包未包含需求文档路径（openspec/changes/），planner 必须接收并传递需求文档路径`)
     }
   }
 

@@ -21,13 +21,6 @@ function writeFile(filePath: string, content: string) {
   fs.writeFileSync(filePath, content)
 }
 
-function assertNoTrailingBlankLine(filePath: string) {
-  const content = fs.readFileSync(filePath, 'utf8')
-
-  assert.equal(content.endsWith('\n'), true, `${filePath} must end with a newline`)
-  assert.equal(content.endsWith('\n\n'), false, `${filePath} must not end with a blank line`)
-}
-
 function canCreateFileSymlink(): boolean {
   const tmpDir = fs.mkdtempSync(path.join(os.tmpdir(), 'airules-symlink-support-'))
 
@@ -66,25 +59,7 @@ function runLinkClaude(projectRoot: string) {
   )
 }
 
-function runWikiInit(projectRoot: string, homeDir: string) {
-  return spawnSync(
-    process.execPath,
-    [
-      path.join(process.cwd(), 'roles', 'development', 'skills', 'init-project', 'scripts', 'wiki-init.mjs'),
-      projectRoot,
-    ],
-    {
-      cwd: process.cwd(),
-      encoding: 'utf8',
-      env: {
-        ...process.env,
-        AIRULES_TEST_HOME: homeDir,
-      },
-    },
-  )
-}
-
-it('inject-rules - 新建 AGENTS.md 注入项目规则与代码核心纪律', () => {
+it('inject-rules - 规则源为空时新建空 AGENTS.md', () => {
   withTempDir('airules-inject-new-', (tmpDir) => {
     const result = runInjectRules(tmpDir)
 
@@ -92,33 +67,24 @@ it('inject-rules - 新建 AGENTS.md 注入项目规则与代码核心纪律', ()
     const agentsPath = path.join(tmpDir, 'AGENTS.md')
     const content = fs.readFileSync(agentsPath, 'utf8')
 
-    assert.match(content, /<!-- AIRULES:BEGIN init-project-rules -->/)
-    assert.match(content, /# 项目规范/)
-    assert.match(content, /# 代码实现核心纪律/)
-    assert.match(content, /禁止错误绕行/)
-    assert.match(content, /<!-- AIRULES:END init-project-rules -->/)
-    assertNoTrailingBlankLine(agentsPath)
+    assert.equal(content, '')
   })
 })
-
-it('inject-rules - 已有内容时只追加 code-core，不重复 airules-base', () => {
+it('inject-rules - 规则源为空且已有内容时不追加托管块', () => {
   withTempDir('airules-inject-existing-', (tmpDir) => {
     const agentsPath = path.join(tmpDir, 'AGENTS.md')
-    writeFile(agentsPath, '# 已有项目说明\n\n- 既有内容保留。\n')
+    const originalContent = '# 已有项目说明\n\n- 既有内容保留。\n'
+    writeFile(agentsPath, originalContent)
 
     const result = runInjectRules(tmpDir)
 
     assert.equal(result.status, 0, result.stderr)
     const content = fs.readFileSync(agentsPath, 'utf8')
 
-    assert.match(content, /# 已有项目说明/)
-    assert.match(content, /# 代码实现核心纪律/)
-    // 已有内容时不再注入项目规范骨架。
-    assert.doesNotMatch(content, /## 项目自定义规范/)
+    assert.equal(content, originalContent)
   })
 })
-
-it('inject-rules - 已有托管块时覆盖替换而非追加重复规则', () => {
+it('inject-rules - 规则源为空时移除旧托管块并保留用户内容', () => {
   withTempDir('airules-inject-replace-', (tmpDir) => {
     const agentsPath = path.join(tmpDir, 'AGENTS.md')
     writeFile(
@@ -142,25 +108,10 @@ it('inject-rules - 已有托管块时覆盖替换而非追加重复规则', () =
     assert.equal(result.status, 0, result.stderr)
     const content = fs.readFileSync(agentsPath, 'utf8')
 
-    assert.match(content, /# 用户规则/)
+    assert.equal(content, '# 用户规则\n\n- 保留。')
     assert.doesNotMatch(content, /# 旧托管规则/)
-    assert.match(content, /# 代码实现核心纪律/)
-    assert.equal(content.match(/AIRULES:BEGIN init-project-rules/g)?.length, 1)
-    assert.equal(content.match(/AIRULES:END init-project-rules/g)?.length, 1)
-    assertNoTrailingBlankLine(agentsPath)
-  })
-})
-
-it('inject-rules - 重复标题触发停止并提示人工合并', () => {
-  withTempDir('airules-inject-dup-', (tmpDir) => {
-    const agentsPath = path.join(tmpDir, 'AGENTS.md')
-    // 预置一个与 code-core 同名标题，制造重复。
-    writeFile(agentsPath, '# 项目背景\n\n# 代码实现核心纪律\n\n- 旧内容。\n')
-
-    const result = runInjectRules(tmpDir)
-
-    assert.notEqual(result.status, 0)
-    assert.match(result.stderr, /duplicate headings/i)
+    assert.doesNotMatch(content, /AIRULES:BEGIN init-project-rules/)
+    assert.doesNotMatch(content, /AIRULES:END init-project-rules/)
   })
 })
 
@@ -230,121 +181,5 @@ it('link-claude - CLAUDE.md 已是非托管普通文件时停止', () => {
 
     assert.notEqual(result.status, 0)
     assert.match(result.stderr, /not managed by AIRules/)
-  })
-})
-
-it('wiki-init - 项目存在 .qoder 时覆盖注入用户根 .qoder/AGENTS.md 到项目 .qoder/rules/AGENTS.md', () => {
-  withTempDir('airules-qoder-rules-', (tmpDir) => {
-    const homeDir = path.join(tmpDir, 'home')
-    const projectRoot = path.join(tmpDir, 'project')
-    const globalAgents = '# 全局 Qoder 规则\n\n- 来自用户根目录。\n'
-    fs.mkdirSync(path.join(projectRoot, '.qoder'), { recursive: true })
-    writeFile(path.join(homeDir, '.qoder', 'AGENTS.md'), globalAgents)
-    writeFile(path.join(projectRoot, '.qoder', 'rules', 'AGENTS.md'), '# 旧项目规则\n')
-
-    const result = runWikiInit(projectRoot, homeDir)
-
-    assert.equal(result.status, 0, result.stderr)
-    assert.equal(
-      fs.readFileSync(path.join(projectRoot, '.qoder', 'rules', 'AGENTS.md'), 'utf8'),
-      `---\ntrigger: always_on\n---\n\n${globalAgents}`,
-    )
-    assert.match(result.stdout, /已覆盖注入 \.qoder\/rules\/AGENTS\.md/)
-  })
-})
-
-it('wiki-init - 新建 wiki_plan 时写入 airules note 与 knowledge include', () => {
-  withTempDir('airules-qoder-wiki-new-', (tmpDir) => {
-    const homeDir = path.join(tmpDir, 'home')
-    const projectRoot = path.join(tmpDir, 'project')
-
-    const result = runWikiInit(projectRoot, homeDir)
-
-    assert.equal(result.status, 0, result.stderr)
-    const content = fs.readFileSync(path.join(projectRoot, '.qoder', 'repowiki', 'wiki_plan.yaml'), 'utf8')
-
-    assert.match(content, /scope:\n {4}include:\n {6}- "\.airules\/knowledge\/\*\*"/)
-    assert.match(content, /text: "必须添加\.airules\/knowledge\/ 的内容到 Qoder wiki 知识库，作为背景事实源。"/)
-    assert.match(content, /author: airules/)
-  })
-})
-
-it('wiki-init - 已有 wiki_plan 时替换 airules note 并补充 knowledge include', () => {
-  withTempDir('airules-qoder-wiki-update-', (tmpDir) => {
-    const homeDir = path.join(tmpDir, 'home')
-    const projectRoot = path.join(tmpDir, 'project')
-    const wikiPlanPath = path.join(projectRoot, '.qoder', 'repowiki', 'wiki_plan.yaml')
-    writeFile(
-      wikiPlanPath,
-      [
-        'version: 1',
-        '',
-        'repowiki:',
-        '  scope:',
-        '    include:',
-        '      - "src/**"',
-        '  notes:',
-        '    - text: "旧 airules note"',
-        '      author: airules',
-        '    - text: "团队 note"',
-        '      author: team',
-        '',
-      ].join('\n'),
-    )
-
-    const result = runWikiInit(projectRoot, homeDir)
-
-    assert.equal(result.status, 0, result.stderr)
-    const content = fs.readFileSync(wikiPlanPath, 'utf8')
-
-    assert.doesNotMatch(content, /旧 airules note/)
-    assert.match(content, /text: "必须添加\.airules\/knowledge\/ 的内容到 Qoder wiki 知识库，作为背景事实源。"/)
-    assert.match(content, /- "src\/\*\*"/)
-    assert.match(content, /- "\.airules\/knowledge\/\*\*"/)
-    assert.match(content, /text: "团队 note"/)
-    assert.equal(content.match(/author: airules/g)?.length, 1)
-  })
-})
-
-it('wiki-init - knowledge include 已存在时不重复添加', () => {
-  withTempDir('airules-qoder-wiki-include-idem-', (tmpDir) => {
-    const homeDir = path.join(tmpDir, 'home')
-    const projectRoot = path.join(tmpDir, 'project')
-    const wikiPlanPath = path.join(projectRoot, '.qoder', 'repowiki', 'wiki_plan.yaml')
-    writeFile(
-      wikiPlanPath,
-      [
-        'version: 1',
-        '',
-        'repowiki:',
-        '  scope:',
-        '    include:',
-        '      - ".airules/knowledge/**"',
-        '  notes:',
-        '    - text: "旧 airules note"',
-        '      author: airules',
-        '',
-      ].join('\n'),
-    )
-
-    const result = runWikiInit(projectRoot, homeDir)
-
-    assert.equal(result.status, 0, result.stderr)
-    const content = fs.readFileSync(wikiPlanPath, 'utf8')
-
-    assert.equal(content.match(/\.airules\/knowledge\/\*\*/g)?.length, 1)
-  })
-})
-
-it('wiki-init - 项目不存在 .qoder 时不创建 Qoder rules 注入目录', () => {
-  withTempDir('airules-qoder-rules-skip-', (tmpDir) => {
-    const homeDir = path.join(tmpDir, 'home')
-    const projectRoot = path.join(tmpDir, 'project')
-    writeFile(path.join(homeDir, '.qoder', 'AGENTS.md'), '# 全局 Qoder 规则\n')
-
-    const result = runWikiInit(projectRoot, homeDir)
-
-    assert.equal(result.status, 0, result.stderr)
-    assert.equal(fs.existsSync(path.join(projectRoot, '.qoder', 'rules')), false)
   })
 })

@@ -90,7 +90,7 @@ function parseFrontmatter(content: string): { ok: boolean, top: Record<string, s
 }
 
 function memoryDir(repoRoot: string) {
-  return path.join(repoRoot, '.airules', 'memory')
+  return path.join(repoRoot, 'knowledge', 'memory')
 }
 
 /** 扫描记忆库（排除 MEMORY.md 索引）。缺目录返回空。 */

@@ -1,6 +1,7 @@
 #!/usr/bin/env npx tsx
 import os from 'node:os'
 import path from 'node:path'
+import { fileURLToPath } from 'node:url'
 
 import kleur from 'kleur'
 import { ALL_HOST_IDS, HOST_IDS } from '../constants/hosts.js'
@@ -15,7 +16,7 @@ import {
   syncFirstPartySkillsToVendor,
   syncFirstPartyToHome,
 } from './lib/install.js'
-import { DEFAULT_ROLE } from './lib/roles.js'
+import { DEFAULT_ROLE, resolveRoleManifestPath } from './lib/roles.js'
 import { ensureVendorRepo } from './lib/vendor-sync.js'
 import { loadVendorManifest } from './lib/vendors.js'
 import { verifyHost } from './lib/verify.js'
@@ -96,13 +97,21 @@ function assertRequiredArgs(args: Args) {
   }
 }
 
-async function syncVendorsIfNeeded(homeDir: string, repoRoot: string, skipVendors: boolean) {
+function isRunningFromDist(): boolean {
+  return fileURLToPath(import.meta.url).split(path.sep).includes('dist')
+}
+
+async function syncVendorsIfNeeded(homeDir: string, manifestPath: string, skipVendors: boolean) {
   if (skipVendors) {
     return
   }
 
-  const manifest = await loadVendorManifest(path.join(repoRoot, 'constants', 'skills.js'))
+  const manifest = await loadVendorManifest(manifestPath)
   for (const vendor of Object.values(manifest.vendors ?? {})) {
+    if (vendor.sourceMode === 'workspace') {
+      continue
+    }
+
     ensureVendorRepo(homeDir, vendor)
   }
 
@@ -124,13 +133,14 @@ async function main() {
   const paths = getDefaultInstallPaths(userHome)
   paths.moluoHome = path.resolve(args.home)
   paths.repoRoot = repoRoot
+  const manifestPath = resolveRoleManifestPath(repoRoot, args.role, { preferDist: isRunningFromDist() })
 
   ensureInstallRoot(paths)
   syncFirstPartyToHome(repoRoot, paths.moluoHome, args.role)
-  await syncVendorsIfNeeded(paths.moluoHome, repoRoot, args.skipVendors)
+  await syncVendorsIfNeeded(paths.moluoHome, manifestPath, args.skipVendors)
   await rebuildVendorSkillLinks({
     homeDir: paths.moluoHome,
-    manifestPath: path.join(repoRoot, 'constants', 'skills.js'),
+    manifestPath,
   })
   // 第一方 skills 链路恒为 <repoRoot>/roles/common + roles/<role>/skills/* → <moluoHome>/vendor/skills/*，
   // 源与目标永不相同；即使 repoRoot === moluoHome（仓库装进 ~/.moluoxixi）也必须投影，

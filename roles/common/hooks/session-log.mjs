@@ -2,7 +2,7 @@
 // AIRules 会话自动记录 Stop hook（跨宿主：Claude Code / Codex CLI / Qoder / Trae / Cursor）。
 //
 // 由宿主在每轮回答结束（Stop / stop 事件）时调用，stdin 收一个 JSON 对象。
-// 在当前工作目录下追加一行会话索引到 .airules/sessions/auto/<YYYY-MM-DD>.log。
+// 在当前工作目录下追加一行会话索引到 knowledge/sessions/auto/<YYYY-MM-DD>.log。
 //
 // 设计红线：
 // - 永不阻断对话：任何异常都吞掉并 exit 0（含 stdout 写失败等收尾异常）。
@@ -63,7 +63,7 @@ function main() {
     const transcript = firstString(payload.transcript_path) ?? '(none)'
     const event = firstString(payload.hook_event_name) ?? 'Stop'
 
-    const autoDir = path.join(cwd, '.airules', 'sessions', 'auto')
+    const autoDir = path.join(cwd, 'knowledge', 'sessions', 'auto')
     mkdirSync(autoDir, { recursive: true })
 
     // 首次建目录时落一个 .gitignore：自动日志默认不入库。

@@ -1,0 +1,94 @@
+name: product-pm-bridge
+version: 1
+description: >
+  OpenSpec-native product workflow bridged with PM skills. OpenSpec owns
+  product change lifecycle, schema validation and long-lived specs; pm-skills
+  own PRD, user-story, acceptance-criteria, edge-case, ADR and solution-brief
+  methods; knowledge/ owns durable product context.
+
+artifacts:
+  - id: solution-brief
+    generates: solution-brief.md
+    description: Product solution framing and stakeholder alignment
+    template: solution-brief.md
+    instruction: |
+      Use deliver-solution-brief or develop-solution-brief when available.
+      Summarize problem, target users, proposed direction, trade-offs and
+      open questions. Read knowledge/index.md before writing.
+    requires: []
+
+  - id: prd
+    generates: prd.md
+    description: Product requirements document for the change
+    template: prd.md
+    instruction: |
+      Use deliver-prd when available. Convert the approved solution brief
+      into goals, non-goals, personas, scope, user journeys, requirements,
+      success metrics, dependencies and risks.
+    requires:
+      - solution-brief
+
+  - id: user-stories
+    generates: user-stories.md
+    description: User stories derived from the PRD
+    template: user-stories.md
+    instruction: |
+      Use deliver-user-stories when available. Break prd.md into user stories
+      with persona, action and benefit. Preserve traceability to PRD sections.
+    requires:
+      - prd
+
+  - id: acceptance-criteria
+    generates: acceptance-criteria.md
+    description: Given/When/Then acceptance criteria for the stories
+    template: acceptance-criteria.md
+    instruction: |
+      Use deliver-acceptance-criteria when available. Write testable
+      Given/When/Then criteria for each user story and mark unresolved facts
+      as MISSING.
+    requires:
+      - user-stories
+
+  - id: edge-cases
+    generates: edge-cases.md
+    description: Boundary, failure and recovery scenarios
+    template: edge-cases.md
+    instruction: |
+      Use deliver-edge-cases when available. Catalog limits, invalid inputs,
+      race conditions, permissions, empty states, failure modes and recovery
+      paths. Tie each item back to user stories or PRD requirements.
+    requires:
+      - acceptance-criteria
+
+  - id: adr
+    generates: adr.md
+    description: Product-impacting architecture or platform decision
+    template: adr.md
+    instruction: |
+      Use develop-adr when the product decision implies a material technical,
+      integration, data, platform or operational trade-off. If no ADR is
+      needed, write a short N/A rationale.
+    requires:
+      - prd
+
+  - id: specs
+    generates: 'specs/**/*.md'
+    description: Durable product capability contract deltas
+    template: spec.md
+    instruction: |
+      Create one specs/<capability>/spec.md per durable product capability
+      changed by this PRD. Use ADDED, MODIFIED, REMOVED or RENAMED
+      Requirements sections. Each requirement must use SHALL or MUST and
+      contain at least one #### Scenario grounded in acceptance criteria.
+    requires:
+      - acceptance-criteria
+      - edge-cases
+
+apply:
+  requires: [specs]
+  tracks: acceptance-criteria.md
+  instruction: |
+    Product apply means the product package is ready for engineering intake.
+    Validate OpenSpec, ensure all MISSING items are resolved or explicitly
+    blocked, and hand off prd.md, user-stories.md, acceptance-criteria.md,
+    edge-cases.md, adr.md and specs/ to the development role.

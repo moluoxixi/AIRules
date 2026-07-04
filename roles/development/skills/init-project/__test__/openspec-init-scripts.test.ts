@@ -1,0 +1,137 @@
+import assert from 'node:assert/strict'
+import { spawnSync } from 'node:child_process'
+import fs from 'node:fs'
+import os from 'node:os'
+import path from 'node:path'
+import { it } from 'vitest'
+
+const scriptsDir = path.join(process.cwd(), 'roles', 'development', 'skills', 'init-project', 'scripts')
+
+function withTempDir<T>(run: (tmpDir: string) => T): T {
+  const tmpDir = fs.mkdtempSync(path.join(os.tmpdir(), 'airules-openspec-'))
+  try {
+    return run(tmpDir)
+  }
+  finally {
+    fs.rmSync(tmpDir, { recursive: true, force: true })
+  }
+}
+
+function runSpecInit(projectRoot: string, env: NodeJS.ProcessEnv = {}) {
+  return spawnSync(
+    process.execPath,
+    [path.join(scriptsDir, 'spec-init.mjs'), projectRoot],
+    {
+      encoding: 'utf8',
+      env: {
+        ...process.env,
+        ...env,
+      },
+    },
+  )
+}
+
+function createFakeOpenSpec(root: string) {
+  const binDir = path.join(root, 'bin')
+  const logPath = path.join(root, 'openspec.log')
+  fs.mkdirSync(binDir, { recursive: true })
+
+  if (process.platform === 'win32') {
+    const cmdPath = path.join(binDir, 'openspec.cmd')
+    fs.writeFileSync(
+      cmdPath,
+      [
+        '@echo off',
+        'echo %*>>"%AIRULES_OPEN_SPEC_LOG%"',
+        'if "%1"=="schemas" echo superpowers-bridge',
+        'exit /b 0',
+        '',
+      ].join('\r\n'),
+    )
+  }
+  else {
+    const shPath = path.join(binDir, 'openspec')
+    fs.writeFileSync(
+      shPath,
+      [
+        '#!/bin/sh',
+        'printf "%s\\n" "$*" >> "$AIRULES_OPEN_SPEC_LOG"',
+        'if [ "$1" = "schemas" ]; then echo superpowers-bridge; fi',
+        'exit 0',
+        '',
+      ].join('\n'),
+    )
+    fs.chmodSync(shPath, 0o755)
+  }
+
+  return { binDir, logPath }
+}
+
+it('spec-init - 只注入项目级 schema 与 knowledge，不手建 active/archive 生命周期目录', () => {
+  withTempDir((root) => {
+    const first = runSpecInit(root, { AIRULES_SKIP_OPENSPEC_VALIDATE: '1' })
+    assert.equal(first.status, 0, first.stderr)
+
+    assert.equal(fs.existsSync(path.join(root, 'openspec', 'schemas', 'superpowers-bridge', 'schema.yaml')), true)
+    assert.equal(fs.existsSync(path.join(root, 'openspec', 'schemas', 'superpowers-bridge', 'templates', 'tasks.md')), true)
+    assert.equal(fs.existsSync(path.join(root, 'knowledge', 'index.md')), true)
+    assert.equal(fs.existsSync(path.join(root, 'openspec', 'specs')), false)
+    assert.equal(fs.existsSync(path.join(root, 'openspec', 'changes')), false)
+    assert.equal(fs.existsSync(path.join(root, 'openspec', 'config.yaml')), false)
+    assert.equal(fs.existsSync(path.join(root, '.airules')), false)
+
+    const second = runSpecInit(root, { AIRULES_SKIP_OPENSPEC_VALIDATE: '1' })
+    assert.equal(second.status, 0, second.stderr)
+    assert.match(second.stdout, /已存在，跳过/)
+  })
+})
+
+it('spec-init - OpenSpec CLI 存在时初始化项目、校验 schema 并确认注册', () => {
+  withTempDir((root) => {
+    const { binDir, logPath } = createFakeOpenSpec(root)
+    const nextPath = `${binDir}${path.delimiter}${process.env.PATH ?? process.env.Path ?? ''}`
+    const result = runSpecInit(root, {
+      AIRULES_OPEN_SPEC_LOG: logPath,
+      PATH: nextPath,
+      Path: nextPath,
+    })
+
+    assert.equal(result.status, 0, result.stderr)
+    assert.match(result.stdout, /OpenSpec schema 已注册并通过校验：superpowers-bridge/)
+    const calls = fs.readFileSync(logPath, 'utf8')
+    assert.match(calls, /init .* --tools none --no-color/)
+    assert.match(calls, /schema validate superpowers-bridge/)
+    assert.match(calls, /^schemas$/m)
+  })
+})
+
+it('spec-init - openspec/ 已存在时不重复运行 openspec init', () => {
+  withTempDir((root) => {
+    fs.mkdirSync(path.join(root, 'openspec'), { recursive: true })
+    const { binDir, logPath } = createFakeOpenSpec(root)
+    const nextPath = `${binDir}${path.delimiter}${process.env.PATH ?? process.env.Path ?? ''}`
+    const result = runSpecInit(root, {
+      AIRULES_OPEN_SPEC_LOG: logPath,
+      PATH: nextPath,
+      Path: nextPath,
+    })
+
+    assert.equal(result.status, 0, result.stderr)
+    const calls = fs.readFileSync(logPath, 'utf8')
+    assert.doesNotMatch(calls, /^init /m)
+    assert.match(calls, /schema validate superpowers-bridge/)
+    assert.match(calls, /^schemas$/m)
+  })
+})
+
+it('spec-init - OpenSpec CLI 缺失时显式失败，不伪装为完整初始化', () => {
+  withTempDir((root) => {
+    const result = runSpecInit(root, {
+      PATH: '',
+      Path: '',
+    })
+
+    assert.notEqual(result.status, 0)
+    assert.match(result.stderr, /MISSING openspec CLI/)
+  })
+})

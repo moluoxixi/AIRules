@@ -14,6 +14,7 @@ import {
   syncFirstPartySkillsToVendor,
   syncFirstPartyToHome,
 } from './install.js'
+import { DEFAULT_ROLE, resolveRoleManifestPath } from './roles.js'
 import { flattenedSkillName } from './skill-projection.js'
 import { ensureVendorRepo } from './vendor-sync.js'
 import { loadVendorManifest } from './vendors.js'
@@ -69,33 +70,11 @@ function isRunningFromDist(): boolean {
   return currentFile.split(path.sep).includes('dist')
 }
 
-function resolveManifestPath(repoRoot: string): string {
-  const sourceManifestTs = path.join(repoRoot, 'constants', 'skills.ts')
-  const sourceManifestJs = path.join(repoRoot, 'constants', 'skills.js')
-  const distManifestJs = path.join(repoRoot, 'dist', 'constants', 'skills.js')
-
-  if (isRunningFromDist()) {
-    if (existsSync(distManifestJs)) {
-      return distManifestJs
-    }
-
-    if (existsSync(sourceManifestJs)) {
-      return sourceManifestJs
-    }
-  }
-
-  if (existsSync(sourceManifestTs)) {
-    return sourceManifestTs
-  }
-
-  if (existsSync(sourceManifestJs)) {
-    return sourceManifestJs
-  }
-
-  return distManifestJs
+function resolveManifestPath(repoRoot: string, role = DEFAULT_ROLE): string {
+  return resolveRoleManifestPath(repoRoot, role, { preferDist: isRunningFromDist() })
 }
 
-export function resolveToolPaths(repoRoot: string, home: string, userHome = os.homedir()): ToolPaths {
+export function resolveToolPaths(repoRoot: string, home: string, userHome = os.homedir(), role = DEFAULT_ROLE): ToolPaths {
   const moluoHome = path.resolve(home)
   const resolvedRepoRoot = path.resolve(repoRoot)
 
@@ -103,7 +82,7 @@ export function resolveToolPaths(repoRoot: string, home: string, userHome = os.h
     repoRoot: resolvedRepoRoot,
     moluoHome,
     userHome: path.resolve(userHome),
-    manifestPath: resolveManifestPath(resolvedRepoRoot),
+    manifestPath: resolveManifestPath(resolvedRepoRoot, role),
   }
 }
 
@@ -176,7 +155,7 @@ export function addLocalSkill(options: AddSkillOptions): AddSkillResult {
 }
 
 export async function syncToHosts(options: SyncOptions): Promise<SyncResult> {
-  const paths = resolveToolPaths(options.repoRoot, options.home, options.userHome)
+  const paths = resolveToolPaths(options.repoRoot, options.home, options.userHome, options.role)
 
   await syncVendorStaging(paths, options.skipVendors, options.role)
   await rebuildVendorSkillLinks({

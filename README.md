@@ -20,7 +20,7 @@ AIRules is a **composable AI skill distribution system**. The core idea is simpl
 ```
 ┌─────────────────────────────────────────────┐
 │  🔧 First-Party Skills (your own)           │ ← Your competitive edge
-│  init-project / workflow / spec / memory     │
+│  init-project / handoff / memory / PM skills │
 ├─────────────────────────────────────────────┤
 │  📦 Third-Party Skills (cloned from mature  │ ← Stand on the shoulders
 │  repos) gemini/review · anthropic/design ·  │   of giants
@@ -43,7 +43,7 @@ AIRules is a **composable AI skill distribution system**. The core idea is simpl
 ## What You Get
 
 - 🔥 **Curated** workflow, tool, design, and verification AI Skills out of the box
-- 🧠 **Automatic CodeGraph install** via `npm install --global @colbymchenry/codegraph`, followed by `codegraph install`, during default sync
+- 🧠 **Automatic CodeGraph and OpenSpec install** via role setup commands during default development sync
 - 🧱 **Reserved first-party expansion slots** so you can add your own top-level skills later without changing the distribution model
 - 🌐 **Multi-agent sync**: configure once, works across Claude / Cursor / Codex / Hermes / Qoder / Trae / OpenCode / CC-Switch and the `.agents` shared layer
 - 🔄 **Continuous updates**: one command pulls latest upstream skills
@@ -93,7 +93,7 @@ npm run sync
 ```
 
 > [!TIP]
-> **Sync Process**: `npm run sync` is the default development-role sync (`roles/common` + `roles/development`). Use `npm run sync:development` for an explicit development sync, or `npm run sync:product` to sync the product role (`roles/common` + `roles/product`). Each sync rebuilds vendor skills, runs setup commands, cleans dead links, and runs host verification after projection. The default setup globally installs and initializes CodeGraph; use `airules sync --skip-vendors` when you do not want to refresh third-party vendor repositories or run setup.
+> **Sync Process**: `npm run sync` is the default development-role sync (`roles/common` + `roles/development`). Use `npm run sync:development` for an explicit development sync, or `npm run sync:product` to sync the product role (`roles/common` + `roles/product`). Each sync rebuilds vendor skills, runs setup commands, cleans dead links, and runs host verification after projection. The default development setup globally installs and initializes CodeGraph, and installs OpenSpec (`@fission-ai/openspec`); use `airules sync --skip-vendors` when you do not want to refresh third-party vendor repositories or run setup.
 
 ---
 
@@ -198,16 +198,13 @@ Moluoxixi AIRules supports a growing ecosystem of AI agents through automated pr
 
 ### First-Party Skills (Custom)
 
-| Area | Skills |
+| Role | Skills |
 |------|--------|
-| **Project and spec lifecycle** | `init-project`, `spec-workflow`, `handoff` |
-| **Requirement, planning, and test design** | `brainstorming`, `writing-plans`, `test-design` |
-| **Implementation and testing** | `test-driven-development`, `unit-testing`, `interaction-testing`, `verification-before-completion`, `systematic-debugging` |
-| **Review and correction** | `consistency-check`, `requesting-code-review`, `receiving-code-review` |
-| **Agent orchestration** | `executing-plans`, `subagent-driven-development`, `dispatching-parallel-agents`, `using-git-worktrees`, `finishing-a-development-branch` |
-| **Memory and evolution** | `session-capture`, `distill-candidates`, `recall-memory`, `remember`, `reflect` |
+| **common** | `session-capture`, `distill-candidates`, `recall-memory`, `remember`, `reflect` |
+| **development** | `init-project`, `handoff` |
+| **product** | `init-project` |
 
-> First-party role assets live under `roles/<role>/`. Skills may live under nested source folders, but installation flattens them by leaf directory name into `vendor/skills/<skill-name>`. Role sync overlays `roles/common/` first, then the selected role (`development` by default, or `product` via `--role product`); selected-role assets override common assets with the same name. CodeGraph install commands live in the vendor setup section of `constants/skills.ts`.
+> First-party role assets live under `roles/<role>/`. Development and product role registries are maintained in `roles/development/constants/skills.ts` and `roles/product/constants/skills.ts`. Installation flattens skill source folders by leaf directory name into `vendor/skills/<skill-name>`. Role sync overlays `roles/common/` first, then the selected role (`development` by default, or `product` via `--role product`); selected-role assets override common assets with the same name. Product PM methods (`deliver-prd`, `deliver-user-stories`, `deliver-acceptance-criteria`, `deliver-edge-cases`, `develop-adr`, `develop-solution-brief`) come from the `pmSkills` upstream vendor, while product first-party `init-project` installs OpenSpec's `product-pm-bridge` schema.
 
 ### Third-Party Skills (Curated)
 
@@ -217,8 +214,8 @@ Moluoxixi AIRules supports a growing ecosystem of AI agents through automated pr
 | **Vercel Labs** | find-skills-vercel | Open ecosystem skill discovery and installation |
 | **Anthropic** | frontend-design-anthropic | Production-grade frontend visual design guidance |
 | **OpenAI** | playwright-openai | Browser automation and UI-flow debugging |
-| **Product on Purpose PM Skills** | deliver-prd, deliver-user-stories, deliver-acceptance-criteria, deliver-edge-cases, develop-adr, develop-solution-brief | Product and planning methods used alongside first-party workflow skills |
-| **Superpowers** | N/A by default | Superpowers methods have been adapted into first-party skills; the upstream namespace is not projected by default to avoid duplicate method skills |
+| **Superpowers** | upstream `skills/` namespace | Development role installs the skills version and flattens leaf skill names for multi-host use |
+| **PM Skills** | deliver-prd, deliver-user-stories, deliver-acceptance-criteria, deliver-edge-cases, develop-adr, develop-solution-brief | Product / PM methods used by the product role |
 
 > Curated third-party skills use source suffixes as installation names to avoid bare-name collisions with Superpowers, user-local skills, or other vendors.
 
@@ -232,25 +229,26 @@ Moluoxixi AIRules supports a growing ecosystem of AI agents through automated pr
 │   │   │   └── session-log.mjs
 │   │   └── skills/        # Shared capture / distill / memory / reflection skills
 │   ├── development/
-│   │   ├── rules/
-│   │   │   └── AGENTS.md  # Global rules baseline projected to hosts
-│   │   ├── agents/        # First-party subagent role contracts
+│   │   ├── constants/
+│   │   │   └── skills.ts # Development role skill registry
 │   │   ├── mcp/
 │   │   │   └── mcp.json   # Neutral MCP source projected per host format
 │   │   ├── hooks/
 │   │   └── skills/
 │   └── product/
-│       └── skills/         # First-party product / PM skills
+│       ├── constants/
+│       │   └── skills.ts  # Product / PM skill registry
+│       └── skills/         # First-party product init-project skill
 ├── local/
 │   └── skills/              # User-added skills copied by `airules add`
 ├── vendor/
 │   ├── repos/               # Cloned third-party source repos
 │   └── skills/              # Flattened extracted skills
-├── constants/skills.ts      # Single source of truth for vendor config
 └── scripts/                 # Install / sync scripts (tests colocated in __test__/ beside the code)
 ```
 
 > Source `skills/` folders may be grouped recursively; installed vendor and host skill directories are flattened by leaf skill name.
+> Development no longer projects an always-on global rules baseline. Its setup installs OpenSpec (`@fission-ai/openspec`), and `init-project` writes project-local `AGENTS.md`, runs OpenSpec project initialization, registers project-level `openspec/schemas/superpowers-bridge/`, and creates `knowledge/`. OpenSpec owns its own change/archive directory structure.
 
 ## Why Not Just Another AI Rules Repo?
 
@@ -266,7 +264,7 @@ There are many AI rules repositories out there. Here's what makes AIRules differ
 
 ## Roadmap / TODO
 
-- [x] **PreToolUse 客观信号阻断 hook**（回路计数熔断 / `reviewer ≠ coder` 身份隔离）— 已落地（2026-06-29）：[ADR-0006](docs/architecture/decisions/ADR-0006-cross-host-hook-capability-baseline.md) 第二段「阻断边界」经仓库维护者批准转 `accepted`，实现为 `roles/development/hooks/loop-guard.mjs`（PreToolUse 三类客观信号拦截）+ `roles/development/hooks/subagent-trace.mjs`（SubagentStop 计数，恒 exit 0）+ 账本 `constants/loop-ledger.ts`（协议见 [loop-ledger-protocol.md](docs/architecture/loop-ledger-protocol.md)）。**承认的限制**：PreToolUse 是 guardrail 而非密闭 boundary（可绕道）、Codex 存量 deny bug、Trae 缺 SubagentStop——这部分语义层仍由 prose + 主代理自律兜底，投影落地前按宿主版本实测 deny 生效性。落地凭据见 [issue/DONE-TODO.md](issue/DONE-TODO.md)。
+- [x] **Development runtime loop hooks removed** — development no longer ships the old runtime loop hook / ledger chain. Host hook projection keeps the common `session-log.mjs` Stop hook only; loop limits remain a prose and workflow-contract concern.
 
 ## License
 

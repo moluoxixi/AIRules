@@ -5,7 +5,7 @@ import process from 'node:process'
 import { fileURLToPath } from 'node:url'
 
 // 进化闭环候选区审核工具（低成本、非重型治理）：
-// distill-candidates 把提炼物落 .airules/{skills,memory}-candidates/，每条带 review_status
+// distill-candidates 把提炼物落 knowledge/{skills,memory}-candidates/，每条带 review_status
 // (pending|approved|rejected)；remember 只转正 approved。本脚本补齐写入端缺失的客观信号：
 // - list：只读列出候选并按 review_status 分组，凸显 pending 待审项；
 // - validate：客观门禁——frontmatter 可解析且 review_status 为合法枚举，否则 exit 1。
@@ -64,8 +64,8 @@ function parseFrontmatter(content: string): { ok: boolean, fields: Record<string
 
 function candidatesRoot(repoRoot: string) {
   return {
-    skills: path.join(repoRoot, '.airules', 'skills-candidates'),
-    memory: path.join(repoRoot, '.airules', 'memory-candidates'),
+    skills: path.join(repoRoot, 'knowledge', 'skills-candidates'),
+    memory: path.join(repoRoot, 'knowledge', 'memory-candidates'),
   }
 }
 

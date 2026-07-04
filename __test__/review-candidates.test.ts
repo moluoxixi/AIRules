@@ -24,7 +24,7 @@ function withTempDir<T>(run: (tmpDir: string) => T): T {
 
 /** 写一个 skill 候选 SKILL.md（kind=skill）。 */
 function seedSkillCandidate(root: string, name: string, reviewStatus: string | null) {
-  const dir = path.join(root, '.airules', 'skills-candidates', name)
+  const dir = path.join(root, 'knowledge', 'skills-candidates', name)
   fs.mkdirSync(dir, { recursive: true })
   const fm = reviewStatus === null
     ? `---\nname: ${name}\ndescription: x\n---\n`
@@ -34,7 +34,7 @@ function seedSkillCandidate(root: string, name: string, reviewStatus: string | n
 
 /** 写一条记忆候选 <slug>.md（kind=memory）。 */
 function seedMemoryCandidate(root: string, slug: string, reviewStatus: string | null) {
-  const dir = path.join(root, '.airules', 'memory-candidates')
+  const dir = path.join(root, 'knowledge', 'memory-candidates')
   fs.mkdirSync(dir, { recursive: true })
   const statusLine = reviewStatus === null ? '' : `review_status: ${reviewStatus}\n`
   const fm = `---\nname: ${slug}\ndescription: x\nmetadata:\n  type: decision\n  created_at: 2026-06-29\n  status: active\n${statusLine}---\n`
@@ -43,7 +43,7 @@ function seedMemoryCandidate(root: string, slug: string, reviewStatus: string | 
 
 /** 写一个 frontmatter 未闭合的坏候选。 */
 function seedBrokenFrontmatter(root: string, slug: string) {
-  const dir = path.join(root, '.airules', 'memory-candidates')
+  const dir = path.join(root, 'knowledge', 'memory-candidates')
   fs.mkdirSync(dir, { recursive: true })
   fs.writeFileSync(path.join(dir, `${slug}.md`), `---\nname: ${slug}\ndescription: 没有闭合分隔符\n`)
 }
@@ -203,8 +203,8 @@ describe('review-candidates · CLI 其余分支', () => {
   it('rEADME.md 不被当作候选（memory 排除 + skill 仅扫子目录）', () => {
     withTempDir((root) => {
       // 模拟脚手架：候选目录里只有 README，无真实候选。
-      const memDir = path.join(root, '.airules', 'memory-candidates')
-      const skDir = path.join(root, '.airules', 'skills-candidates')
+      const memDir = path.join(root, 'knowledge', 'memory-candidates')
+      const skDir = path.join(root, 'knowledge', 'skills-candidates')
       fs.mkdirSync(memDir, { recursive: true })
       fs.mkdirSync(skDir, { recursive: true })
       fs.writeFileSync(path.join(memDir, 'README.md'), '# 说明\n无 frontmatter\n')
@@ -216,7 +216,7 @@ describe('review-candidates · CLI 其余分支', () => {
 
   it('skill 候选目录缺 SKILL.md → 跳过', () => {
     withTempDir((root) => {
-      fs.mkdirSync(path.join(root, '.airules', 'skills-candidates', 'empty-dir'), { recursive: true })
+      fs.mkdirSync(path.join(root, 'knowledge', 'skills-candidates', 'empty-dir'), { recursive: true })
       assert.deepEqual(scanCandidates(root), [])
     })
   })

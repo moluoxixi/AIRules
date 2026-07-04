@@ -37,7 +37,6 @@
     "rules:check": "tsx scripts/check-rules-consistency.ts",
     "candidates:review": "tsx scripts/review-candidates.ts",
     "memory:health": "tsx scripts/memory-health.ts",
-    "loop:ledger": "tsx scripts/loop-ledger.ts",
     "pretest": "npx tsx scripts/sync-vendors.ts",
     "test": "vitest run",
     "typecheck": "tsc --noEmit",

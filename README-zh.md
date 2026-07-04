@@ -20,7 +20,7 @@ AIRules 是一个**可组合的 AI 技能分发系统**。它的核心思想很�
 ```
 ┌─────────────────────────────────────────────┐
 │  🔧 第一方 Skills（你自己写的）                │ ← 你的核心竞争力
-│  init-project / workflow / spec / memory       │
+│  init-project / handoff / memory / PM skills   │
 ├─────────────────────────────────────────────┤
 │  📦 第三方 Skills（克隆成熟仓库）              │ ← 站在巨人肩膀上
 │  gemini/review · anthropic/design ·          │
@@ -43,7 +43,7 @@ AIRules 是一个**可组合的 AI 技能分发系统**。它的核心思想很�
 ## 你能得到什么？
 
 - 🔥 **开箱即得** 精选流程、工具、设计和验证类 AI Skills
-- 🧠 **CodeGraph 自动安装**：默认同步时执行 `npm install --global @colbymchenry/codegraph`，随后执行 `codegraph install`
+- 🧠 **CodeGraph 与 OpenSpec 自动安装**：默认开发角色同步时执行对应 setup 命令
 - 🧱 **预留第一方扩展位**：保留顶层自定义 skills 投影入口，后续补充时无需调整整体分发模型
 - 🌐 **多代理同步**：一次配置，Claude / Cursor / Codex / Hermes / Qoder / Trae / OpenCode / CC-Switch 与 `.agents` 共享层全部生效
 - 🔄 **持续更新**：上游 skills 更新后，一条命令同步最新版本
@@ -93,7 +93,7 @@ npm run sync
 ```
 
 > [!TIP]
-> **同步流程**：`npm run sync` 是默认开发角色同步（`roles/common` + `roles/development`）。需要显式开发角色时用 `npm run sync:development`；需要产品角色时用 `npm run sync:product`（`roles/common` + `roles/product`）。每次同步都会重建 vendor skills、执行 setup 命令、清理死链接，并在完成后自动运行宿主验证。默认 setup 会全局安装并初始化 CodeGraph；需要避免拉取第三方供应商和跳过 setup 时，可使用 `airules sync --skip-vendors`。
+> **同步流程**：`npm run sync` 是默认开发角色同步（`roles/common` + `roles/development`）。需要显式开发角色时用 `npm run sync:development`；需要产品角色时用 `npm run sync:product`（`roles/common` + `roles/product`）。每次同步都会重建 vendor skills、执行 setup 命令、清理死链接，并在完成后自动运行宿主验证。默认开发 setup 会全局安装并初始化 CodeGraph，同时安装 OpenSpec（`@fission-ai/openspec`）；需要避免拉取第三方供应商和跳过 setup 时，可使用 `airules sync --skip-vendors`。
 
 ---
 
@@ -198,16 +198,13 @@ Moluoxixi AIRules 通过自动化投影，支持不断增长的 AI 代理生态�
 
 ### 第一方 Skills（自写）
 
-| 能力域 | Skills |
-|--------|--------|
-| **项目与规格生命周期** | `init-project`, `spec-workflow`, `handoff` |
-| **需求、计划与测试设计** | `brainstorming`, `writing-plans`, `test-design` |
-| **实现与测试** | `test-driven-development`, `unit-testing`, `interaction-testing`, `verification-before-completion`, `systematic-debugging` |
-| **评审与修正** | `consistency-check`, `requesting-code-review`, `receiving-code-review` |
-| **Agent 编排** | `executing-plans`, `subagent-driven-development`, `dispatching-parallel-agents`, `using-git-worktrees`, `finishing-a-development-branch` |
-| **记忆与演进** | `session-capture`, `distill-candidates`, `recall-memory`, `remember`, `reflect` |
+| 角色 | Skills |
+|------|--------|
+| **common** | `session-capture`, `distill-candidates`, `recall-memory`, `remember`, `reflect` |
+| **development** | `init-project`, `handoff` |
+| **product** | `init-project` |
 
-> 第一方角色资产位于 `roles/<role>/`。skills 可以继续放在嵌套源目录下，安装时会按叶子目录名展平为 `vendor/skills/<skill-name>`；角色同步先叠加 `roles/common/`，再叠加所选角色（默认 `development`，也可 `--role product`），同名资产由所选角色覆盖 common；CodeGraph 安装命令位于 `constants/skills.ts` 的 vendor setup。
+> 第一方角色资产位于 `roles/<role>/`。开发与产品角色清单分别维护在 `roles/development/constants/skills.ts` 与 `roles/product/constants/skills.ts`。skills 源目录安装时会按叶子目录名展平为 `vendor/skills/<skill-name>`；角色同步先叠加 `roles/common/`，再叠加所选角色（默认 `development`，也可 `--role product`），同名资产由所选角色覆盖 common。产品 PM 方法论（`deliver-prd`、`deliver-user-stories`、`deliver-acceptance-criteria`、`deliver-edge-cases`、`develop-adr`、`develop-solution-brief`）来自 `pmSkills` 上游 vendor；产品一方 `init-project` 负责安装 OpenSpec 的 `product-pm-bridge` schema。
 
 ### 第三方 Skills（精选）
 
@@ -217,8 +214,8 @@ Moluoxixi AIRules 通过自动化投影，支持不断增长的 AI 代理生态�
 | **Vercel Labs** | find-skills-vercel | 开源生态 Skill 发现与安装 |
 | **Anthropic** | frontend-design-anthropic | 生产级前端视觉设计指导 |
 | **OpenAI** | playwright-openai | 浏览器自动化与 UI 流程调试 |
-| **Product on Purpose PM Skills** | deliver-prd, deliver-user-stories, deliver-acceptance-criteria, deliver-edge-cases, develop-adr, develop-solution-brief | 产品与计划方法论，配合第一方 workflow skills 使用 |
-| **Superpowers** | 默认不投影 | Superpowers 方法论已第一方化；默认不分发上游命名空间，避免重复方法论 skill |
+| **Superpowers** | 上游 `skills/` 命名空间 | 开发角色安装 skills 版，并按叶子 skill 名展平给多宿主使用 |
+| **PM Skills** | deliver-prd, deliver-user-stories, deliver-acceptance-criteria, deliver-edge-cases, develop-adr, develop-solution-brief | 产品角色使用的产品 / PM 方法论 |
 
 > 精选第三方 skills 使用来源后缀作为安装名，避免与 Superpowers、用户本地 skills 或其它供应商的同名裸目录冲突。
 
@@ -232,25 +229,26 @@ Moluoxixi AIRules 通过自动化投影，支持不断增长的 AI 代理生态�
 │   │   │   └── session-log.mjs
 │   │   └── skills/        # 共享会话沉淀 / 提炼 / 记忆 / 反思能力
 │   ├── development/
-│   │   ├── rules/
-│   │   │   └── AGENTS.md  # 投影到宿主的全局规则基线
-│   │   ├── agents/        # 第一方子代理角色契约
+│   │   ├── constants/
+│   │   │   └── skills.ts # 开发角色 skill 清单
 │   │   ├── mcp/
 │   │   │   └── mcp.json   # 按宿主格式投影的中性 MCP 源
 │   │   ├── hooks/
 │   │   └── skills/
 │   └── product/
-│       └── skills/         # 第一方产品 / PM skills
+│       ├── constants/
+│       │   └── skills.ts  # 产品 / PM skill 清单
+│       └── skills/         # 第一方产品 init-project skill
 ├── local/
 │   └── skills/              # `airules add` 复制进来的用户自定义 skills
 ├── vendor/
 │   ├── repos/               # 克隆的第三方源仓库
 │   └── skills/              # 展平后的提取 skills
-├── constants/skills.ts      # 唯一的第三方技能配置清单
 └── scripts/                 # 安装/同步脚本（测试就近放在被测代码旁的 __test__/）
 ```
 
 > 源 `skills/` 目录允许递归分组；安装后的 vendor 与宿主 skills 目录统一按叶子 skill 名称展平。
+> development 不再投影 always-on 全局规则基线；setup 会安装 OpenSpec（`@fission-ai/openspec`），`init-project` 改为写项目本地 `AGENTS.md`、运行 OpenSpec 项目初始化、注册项目级 `openspec/schemas/superpowers-bridge/`，并创建 `knowledge/`。OpenSpec 自己维护 change/archive 等目录结构。
 
 ## 为什么不是另一个 AI Rules 集合？
 
@@ -266,7 +264,7 @@ Moluoxixi AIRules 通过自动化投影，支持不断增长的 AI 代理生态�
 
 ## 路线 / TODO
 
-- [x] **PreToolUse 客观信号阻断 hook**（回路计数熔断 / `reviewer ≠ coder` 身份隔离）— 已落地（2026-06-29）：[ADR-0006](docs/architecture/decisions/ADR-0006-cross-host-hook-capability-baseline.md) 第二段「阻断边界」经仓库维护者批准转 `accepted`，实现为 `roles/development/hooks/loop-guard.mjs`（PreToolUse 三类客观信号拦截）+ `roles/development/hooks/subagent-trace.mjs`（SubagentStop 计数，恒 exit 0）+ 账本 `constants/loop-ledger.ts`（协议见 [loop-ledger-protocol.md](docs/architecture/loop-ledger-protocol.md)）。**承认的限制**：PreToolUse 是护栏而非密闭边界（可绕道）、Codex 存量 deny bug、Trae 缺 SubagentStop——这部分语义层仍由 prose + 主代理自律兜底，投影落地前按宿主版本实测 deny 生效性。落地凭据见 [issue/DONE-TODO.md](issue/DONE-TODO.md)。
+- [x] **Development runtime 回路 hook 已移除** — development 不再分发旧的 runtime 回路 hook / ledger 链路。宿主 hook 投影仅保留 common 的 `session-log.mjs` Stop hook；回路上限继续由 prose 与 workflow-contract 约束。
 
 ## 许可证
 

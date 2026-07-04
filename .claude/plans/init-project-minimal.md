@@ -49,7 +49,7 @@ skills/init-project/
 - 入参：`<project-root>`。
 - 行为：把 `references/airules-base.md`（仅在 AGENTS.md 为空/新建时）+ `references/code-core.md` inline 注入项目根 `AGENTS.md`。
 - 幂等：按 Markdown 标题去重，重复标题时停止并提示人工合并（保留旧版的重复标题保护）。
-- 去掉：docs.md 注入、`.airules/rules/**` 路由、按 stack 选择 reference、`<AIRules>` 占位逻辑可保留兼容但第一方不用。
+- 去掉：docs.md 注入、`旧 rules 路由` 路由、按 stack 选择 reference、`<AIRules>` 占位逻辑可保留兼容但第一方不用。
 
 ## 校验脚本最小化改动
 

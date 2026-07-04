@@ -29,7 +29,7 @@ function seedMemory(root: string, slug: string, opts: {
   status?: string | null
   body?: string
 } = {}) {
-  const dir = path.join(root, '.airules', 'memory')
+  const dir = path.join(root, 'knowledge', 'memory')
   fs.mkdirSync(dir, { recursive: true })
   const lines = ['---', `name: ${slug}`, 'description: x', 'metadata:']
   if (opts.type !== null) {
@@ -269,7 +269,7 @@ describe('memory-health · formatAudit', () => {
   })
 
   it('有 findings → 逐条列 slug 与原因', () => {
-    const out = formatAudit({ findings: [{ slug: 'x', relPath: '.airules/memory/x.md', reasons: ['stale(400d>180d)'] }], warnings: [] })
+    const out = formatAudit({ findings: [{ slug: 'x', relPath: 'knowledge/memory/x.md', reasons: ['stale(400d>180d)'] }], warnings: [] })
     assert.match(out, /x\.md/)
     assert.match(out, /stale/)
   })
@@ -286,7 +286,7 @@ describe('memory-health · formatAudit', () => {
 describe('memory-health · frontmatter 嵌套解析', () => {
   /** 直接写原始文件内容，绕过 seedMemory 的规整结构，探边界。 */
   function writeRaw(root: string, name: string, content: string) {
-    const dir = path.join(root, '.airules', 'memory')
+    const dir = path.join(root, 'knowledge', 'memory')
     fs.mkdirSync(dir, { recursive: true })
     fs.writeFileSync(path.join(dir, name), content)
   }

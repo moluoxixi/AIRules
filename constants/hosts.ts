@@ -131,12 +131,7 @@ export const HOST_CONFIGS: HostConfig[] = [
     baselineFileName: 'CLAUDE.md',
     agentFormat: 'markdown',
     mcp: { relDir: '.', fileName: '.mcp.json', serversKey: 'mcpServers', format: 'json' },
-    // 多事件投影：Stop 记录（session-log）+ SubagentStop 计数（subagent-trace）+ PreToolUse 熔断（loop-guard）。
-    hooks: [
-      { relDir: '.', fileName: 'settings.json', format: 'json', event: 'Stop', scriptName: 'session-log.mjs', nesting: 'group', includeType: true },
-      { relDir: '.', fileName: 'settings.json', format: 'json', event: 'SubagentStop', scriptName: 'subagent-trace.mjs', nesting: 'group', includeType: true },
-      { relDir: '.', fileName: 'settings.json', format: 'json', event: 'PreToolUse', scriptName: 'loop-guard.mjs', nesting: 'group', includeType: true },
-    ],
+    hooks: { relDir: '.', fileName: 'settings.json', format: 'json', event: 'Stop', scriptName: 'session-log.mjs', nesting: 'group', includeType: true },
   },
   {
     id: 'codex',
@@ -144,12 +139,7 @@ export const HOST_CONFIGS: HostConfig[] = [
     baselineFileName: 'AGENTS.md',
     agentFormat: 'toml',
     mcp: { relDir: '.', fileName: 'config.toml', serversKey: 'mcp_servers', format: 'toml' },
-    // 多事件投影（TOML 受管块按 event 各写一块）：Stop 记录 + SubagentStop 计数 + PreToolUse 熔断。
-    hooks: [
-      { relDir: '.', fileName: 'config.toml', format: 'toml', event: 'Stop', scriptName: 'session-log.mjs' },
-      { relDir: '.', fileName: 'config.toml', format: 'toml', event: 'SubagentStop', scriptName: 'subagent-trace.mjs' },
-      { relDir: '.', fileName: 'config.toml', format: 'toml', event: 'PreToolUse', scriptName: 'loop-guard.mjs' },
-    ],
+    hooks: { relDir: '.', fileName: 'config.toml', format: 'toml', event: 'Stop', scriptName: 'session-log.mjs' },
   },
   {
     id: 'hermes',
@@ -170,12 +160,8 @@ export const HOST_CONFIGS: HostConfig[] = [
     skillsDirName: 'skills-cursor',
     agentFormat: 'markdown',
     mcp: { relDir: '.', fileName: 'mcp.json', serversKey: 'mcpServers', format: 'json' },
-    // Cursor hooks：顶层 version、事件名小写、扁平条目（无 type 包裹）。多事件投影。
-    hooks: [
-      { relDir: '.', fileName: 'hooks.json', format: 'json', event: 'stop', scriptName: 'session-log.mjs', version: 1, nesting: 'flat' },
-      { relDir: '.', fileName: 'hooks.json', format: 'json', event: 'subagentStop', scriptName: 'subagent-trace.mjs', version: 1, nesting: 'flat' },
-      { relDir: '.', fileName: 'hooks.json', format: 'json', event: 'preToolUse', scriptName: 'loop-guard.mjs', version: 1, nesting: 'flat' },
-    ],
+    // Cursor hooks：顶层 version、事件名小写、扁平条目（无 type 包裹）。
+    hooks: { relDir: '.', fileName: 'hooks.json', format: 'json', event: 'stop', scriptName: 'session-log.mjs', version: 1, nesting: 'flat' },
   },
   {
     id: 'agentsmd',
@@ -265,12 +251,7 @@ export const HOST_CONFIGS: HostConfig[] = [
       },
     },
     mcpHomeImpliesHostHome: true,
-    // Qoder 暂按旧方案完整投影。IDE 未读取全局 rules/skills 视为上游缺口，待 Qoder 修复后再收敛。
-    hooks: [
-      { relDir: '.', fileName: 'settings.json', format: 'json', event: 'Stop', scriptName: 'session-log.mjs', nesting: 'group', includeType: true },
-      { relDir: '.', fileName: 'settings.json', format: 'json', event: 'SubagentStop', scriptName: 'subagent-trace.mjs', nesting: 'group', includeType: true },
-      { relDir: '.', fileName: 'settings.json', format: 'json', event: 'PreToolUse', scriptName: 'loop-guard.mjs', nesting: 'group', includeType: true },
-    ],
+    hooks: { relDir: '.', fileName: 'settings.json', format: 'json', event: 'Stop', scriptName: 'session-log.mjs', nesting: 'group', includeType: true },
   },
   {
     id: 'opencode',
