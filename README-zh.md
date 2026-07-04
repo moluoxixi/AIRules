@@ -221,7 +221,7 @@ Moluoxixi AIRules 通过自动化投影，支持不断增长的 AI 代理生态�
 
 ## `init-project` 之后如何使用 OpenSpec
 
-`init-project` 只做初始化：安装 OpenSpec 面向 Claude、Codex、Cursor、Qoder、Trae、OpenCode 的宿主入口，把项目级 schema 安装到 `openspec/schemas/<schema-name>/`，写入 `openspec/config.yaml` 作为项目默认 schema，并创建 `knowledge/index.md`。初始化后，使用 OpenSpec `/opsx` 工作流。
+`init-project` 只做初始化：根据项目根下已有的宿主目录安装 OpenSpec 入口（`.claude`、`.codex`、`.cursor`、`.qoder`、`.trae`、`.opencode`），如果这些目录都不存在则默认安装 `.qoder` 入口；同时把项目级 schema 安装到 `openspec/schemas/<schema-name>/`，写入 `openspec/config.yaml` 作为项目默认 schema，并创建 `knowledge/index.md`。初始化后，使用 OpenSpec `/opsx` 工作流。
 
 ### 开发规格用法
 

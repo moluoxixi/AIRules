@@ -103,7 +103,7 @@ it('spec-init - OpenSpec CLI 存在时初始化项目、校验 schema 并确认�
       /^schema: superpowers-bridge$/m,
     )
     const calls = fs.readFileSync(logPath, 'utf8')
-    assert.match(calls, /init .* --tools claude,codex,cursor,qoder,trae,opencode --no-color/)
+    assert.match(calls, /init .* --tools qoder --no-color/)
     assert.match(calls, /schema validate superpowers-bridge/)
     assert.match(calls, /^schemas$/m)
   })
@@ -126,9 +126,27 @@ it('spec-init - openspec/ 已存在时仍刷新 OpenSpec 宿主入口', () => {
       /^schema: superpowers-bridge$/m,
     )
     const calls = fs.readFileSync(logPath, 'utf8')
-    assert.match(calls, /init .* --tools claude,codex,cursor,qoder,trae,opencode --no-color/)
+    assert.match(calls, /init .* --tools qoder --no-color/)
     assert.match(calls, /schema validate superpowers-bridge/)
     assert.match(calls, /^schemas$/m)
+  })
+})
+
+it('spec-init - 按目标项目已有宿主目录安装 OpenSpec 入口', () => {
+  withTempDir((root) => {
+    fs.mkdirSync(path.join(root, '.claude'), { recursive: true })
+    fs.mkdirSync(path.join(root, '.codex'), { recursive: true })
+    const { binDir, logPath } = createFakeOpenSpec(root)
+    const nextPath = `${binDir}${path.delimiter}${process.env.PATH ?? process.env.Path ?? ''}`
+    const result = runSpecInit(root, {
+      AIRULES_OPEN_SPEC_LOG: logPath,
+      PATH: nextPath,
+      Path: nextPath,
+    })
+
+    assert.equal(result.status, 0, result.stderr)
+    const calls = fs.readFileSync(logPath, 'utf8')
+    assert.match(calls, /init .* --tools claude,codex --no-color/)
   })
 })
 

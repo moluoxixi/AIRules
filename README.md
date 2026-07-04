@@ -221,7 +221,7 @@ Moluoxixi AIRules supports a growing ecosystem of AI agents through automated pr
 
 ## After `init-project`: Using OpenSpec
 
-`init-project` is setup only. It installs OpenSpec host entries for Claude, Codex, Cursor, Qoder, Trae and OpenCode, installs the project-local schema under `openspec/schemas/<schema-name>/`, sets that schema as the project default in `openspec/config.yaml`, and creates `knowledge/index.md`. After initialization, use the OpenSpec `/opsx` workflow.
+`init-project` is setup only. It installs OpenSpec host entries for host directories already present in the project (`.claude`, `.codex`, `.cursor`, `.qoder`, `.trae`, `.opencode`); if none exist, it installs the Qoder entry by default. It also installs the project-local schema under `openspec/schemas/<schema-name>/`, sets that schema as the project default in `openspec/config.yaml`, and creates `knowledge/index.md`. After initialization, use the OpenSpec `/opsx` workflow.
 
 ### Development Spec Usage
 

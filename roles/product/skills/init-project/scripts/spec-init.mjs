@@ -7,7 +7,15 @@ import { fileURLToPath } from 'node:url'
 const projectRoot = path.resolve(process.argv[2] ?? process.cwd())
 const skipOpenSpecCommands = process.env.AIRULES_SKIP_OPENSPEC_VALIDATE === '1'
 const schemaName = 'product-pm-bridge'
-const openSpecTools = 'claude,codex,cursor,qoder,trae,opencode'
+const openSpecToolTargets = [
+  { dir: '.claude', tool: 'claude' },
+  { dir: '.codex', tool: 'codex' },
+  { dir: '.cursor', tool: 'cursor' },
+  { dir: '.qoder', tool: 'qoder' },
+  { dir: '.trae', tool: 'trae' },
+  { dir: '.opencode', tool: 'opencode' },
+]
+const fallbackOpenSpecTool = 'qoder'
 
 const skillRoot = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..')
 const schemaSourceDir = path.join(skillRoot, 'assets', schemaName)
@@ -105,8 +113,17 @@ function runOpenSpec(command, args) {
 }
 
 function initializeOpenSpecProject(command) {
+  const openSpecTools = resolveOpenSpecTools()
   runOpenSpec(command, ['init', projectRoot, '--tools', openSpecTools, '--no-color'])
   console.log(`[airules] 已运行 openspec init --tools ${openSpecTools}`)
+}
+
+function resolveOpenSpecTools() {
+  const tools = openSpecToolTargets
+    .filter(target => existsSync(path.join(projectRoot, target.dir)))
+    .map(target => target.tool)
+
+  return tools.length > 0 ? tools.join(',') : fallbackOpenSpecTool
 }
 
 function validateOpenSpecSchema(command) {

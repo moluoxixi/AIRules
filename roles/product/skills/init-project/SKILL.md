@@ -31,11 +31,11 @@ flowchart TD
 
 | 环节 | 命令 | 关键输出 | 失败语义 |
 |---|---|---|---|
-| OpenSpec schema | `node "<product-init-project-skill>/scripts/spec-init.mjs" <project>` | 运行 `openspec init <project> --tools claude,codex,cursor,qoder,trae,opencode --no-color` 安装 OpenSpec 官方宿主入口；随后从 `assets/product-pm-bridge/` 与 `assets/knowledge/index.md` 复制缺失文件到 `openspec/schemas/product-pm-bridge/**` 与 `knowledge/index.md`，把 `openspec/config.yaml` 设为 `schema: product-pm-bridge`，并验证 schema 注册 | 幂等，已存在 schema/knowledge 文件不覆盖；`openspec` 命令缺失时标 `MISSING` 并失败 |
+| OpenSpec schema | `node "<product-init-project-skill>/scripts/spec-init.mjs" <project>` | 按目标项目已有宿主目录运行 `openspec init <project> --tools <detected> --no-color` 安装 OpenSpec 官方入口；支持 `.claude`、`.codex`、`.cursor`、`.qoder`、`.trae`、`.opencode`，都不存在时默认 `qoder`。随后从 `assets/product-pm-bridge/` 与 `assets/knowledge/index.md` 复制缺失文件到 `openspec/schemas/product-pm-bridge/**` 与 `knowledge/index.md`，把 `openspec/config.yaml` 设为 `schema: product-pm-bridge`，并验证 schema 注册 | 幂等，已存在 schema/knowledge 文件不覆盖；`openspec` 命令缺失时标 `MISSING` 并失败 |
 
 ## 交付检查
 
 | 检查项 | 期望 |
 |---|---|
-| OpenSpec schema | `.claude`、`.codex`、`.cursor`、`.qoder`、`.trae`、`.opencode` 下存在 OpenSpec 官方入口；`openspec/schemas/product-pm-bridge/` 存在；`openspec/config.yaml` 含 `schema: product-pm-bridge`；`openspec schema validate product-pm-bridge` 通过；`openspec schemas` 能列出 `product-pm-bridge (project)` 或等价项目级条目 |
+| OpenSpec schema | 项目已有宿主目录或默认 `.qoder` 下存在 OpenSpec 官方入口；`openspec/schemas/product-pm-bridge/` 存在；`openspec/config.yaml` 含 `schema: product-pm-bridge`；`openspec schema validate product-pm-bridge` 通过；`openspec schemas` 能列出 `product-pm-bridge (project)` 或等价项目级条目 |
 | knowledge | `knowledge/index.md` 已建；长期产品背景、业务规则、用户洞察和领域事实落 `knowledge/` |
