@@ -190,6 +190,12 @@ artifacts:
       Pass the tasks.md content to the skill as the input for
       decomposition. The plan should reference the specs and
       design artifacts in this change directory.
+
+      If the implementation includes frontend UI work, plan.md MUST
+      include Frontend Planning Notes covering layout, used fields,
+      field display form, API field availability, existing components
+      to use, components to wrap/create, and relevant UI states.
+      This section is a planning aid, not the task split axis.
     requires:
       - tasks
 

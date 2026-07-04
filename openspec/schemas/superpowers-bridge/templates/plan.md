@@ -9,6 +9,36 @@
 
 **Tech Stack:** <!-- Key technologies -->
 
+## Frontend Planning Notes
+
+<!--
+Only fill when the implementation includes frontend UI work. For pure backend,
+data, infra, or docs changes, write: N/A — no frontend UI work.
+
+This section supplements frontend tasks with implementation facts. It does not
+decide task split or execution order.
+-->
+
+### Layout
+
+<!-- Page/route, regions, responsive behavior, workflow entry/exit. -->
+
+### Fields
+
+| Field | Purpose | Display Form | Data Source | API Available | Gap |
+|---|---|---|---|---|---|
+| `<field>` | `<purpose>` | `<plain text / formatter / existing component / new wrapper / input control>` | `<api/store/derived/static>` | `<yes/no/derived/not needed>` | `<none or MISSING blocked: reason>` |
+
+### Components
+
+| Component | Existing / New | Used For | Source / Target Path | Notes |
+|---|---|---|---|---|
+| `<component>` | `<existing/new wrapper/new>` | `<usage>` | `<path/package>` | `<notes>` |
+
+### States
+
+<!-- Loading, empty, error, disabled, permission-denied, optimistic/pending, etc. -->
+
 ---
 
 ## Task 1: <!-- Component Name -->

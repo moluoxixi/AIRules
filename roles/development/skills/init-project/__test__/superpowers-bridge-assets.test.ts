@@ -59,6 +59,22 @@ describe('superpowers-bridge assets', () => {
     assert.doesNotMatch(verify, /Frontend Design Contract Audit/)
   })
 
+  it('plan carries optional frontend planning notes without changing task split semantics', () => {
+    const schema = readAsset('schema.yaml')
+    const plan = readAsset('templates', 'plan.md')
+
+    assert.match(schema, /If the implementation includes frontend UI work/)
+    assert.match(schema, /planning aid, not the task split axis/)
+    assert.match(plan, /## Frontend Planning Notes/)
+    assert.match(plan, /### Layout/)
+    assert.match(plan, /### Fields/)
+    assert.match(plan, /Display Form/)
+    assert.match(plan, /API Available/)
+    assert.match(plan, /### Components/)
+    assert.match(plan, /Existing \/ New/)
+    assert.match(plan, /### States/)
+  })
+
   it('current project OpenSpec schema mirrors the development init-project asset', () => {
     const assetFiles = listFiles(assetDir)
     const projectFiles = listFiles(projectSchemaDir)
