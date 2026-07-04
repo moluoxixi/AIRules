@@ -1,0 +1,105 @@
+name: superpowers-bridge
+version: 1
+description: >
+  OpenSpec-native change lifecycle bridged with Superpowers execution discipline
+  and a project knowledge base. OpenSpec owns change/spec/task artifacts;
+  Superpowers owns brainstorming, planning, TDD, worktrees and review discipline;
+  knowledge/ owns long-lived project context.
+
+artifacts:
+  - id: brainstorm
+    generates: brainstorm.md
+    description: Raw Superpowers brainstorming capture for this change
+    template: brainstorm.md
+    instruction: |
+      Use brainstorming when available.
+      Write the output to openspec/changes/<change-name>/brainstorm.md.
+      Do not write to docs/superpowers/specs/.
+      Before brainstorming, read knowledge/index.md and any linked relevant docs.
+    requires: []
+
+  - id: proposal
+    generates: proposal.md
+    description: Change motivation, scope and impacted capabilities
+    template: proposal.md
+    instruction: |
+      Extract Why, What Changes, Capabilities and Impact from brainstorm.md.
+      Capabilities listed here drive specs/<capability>/spec.md.
+    requires:
+      - brainstorm
+
+  - id: design
+    generates: design.md
+    description: Implementation design and trade-offs
+    template: design.md
+    instruction: |
+      Reorganize brainstorm.md into Context, Goals, Decisions, Risks,
+      Migration Plan and Open Questions. Reference knowledge/ when it
+      provides relevant project facts.
+    requires:
+      - brainstorm
+
+  - id: specs
+    generates: 'specs/**/*.md'
+    description: Delta requirements for changed capabilities
+    template: spec.md
+    instruction: |
+      Create one specs/<capability>/spec.md per proposal capability.
+      Use ADDED, MODIFIED, REMOVED or RENAMED Requirements sections.
+      Each requirement must use SHALL or MUST and contain at least one
+      #### Scenario.
+    requires:
+      - proposal
+
+  - id: tasks
+    generates: tasks.md
+    description: Coarse implementation checklist
+    template: tasks.md
+    instruction: |
+      Create dependency-ordered checkboxes using "- [ ]".
+      Reference specs/ for what to build and design.md for how to build it.
+    requires:
+      - specs
+      - design
+
+  - id: plan
+    generates: plan.md
+    description: Superpowers micro-step implementation plan
+    template: plan.md
+    instruction: |
+      Use writing-plans when available.
+      Write the plan to openspec/changes/<change-name>/plan.md.
+      Do not write to docs/superpowers/plans/.
+      Decompose tasks.md into TDD-sized micro-steps.
+    requires:
+      - tasks
+
+  - id: verify
+    generates: verify.md
+    description: Post-implementation verification evidence
+    template: verify.md
+    instruction: |
+      Run project build/test/lint commands and OpenSpec validation when
+      available. Record command, exit status and result honestly.
+      Verify after implementation, not during planning.
+    requires:
+      - plan
+
+  - id: retrospective
+    generates: retrospective.md
+    description: Evidence-first learning capture
+    template: retrospective.md
+    instruction: |
+      Write after verify.md has no blocking failures. Capture wins, misses,
+      plan deviations and promote candidates for knowledge/.
+    requires:
+      - verify
+
+apply:
+  requires: [plan]
+  tracks: tasks.md
+  instruction: |
+    Use using-git-worktrees and subagent-driven-development when available.
+    subagent-driven-development is expected to enforce TDD and code review
+    transitively. After implementation, produce verify.md and retrospective.md,
+    then archive with OpenSpec so delta specs merge into openspec/specs/.

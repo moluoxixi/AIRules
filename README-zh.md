@@ -219,6 +219,29 @@ Moluoxixi AIRules 通过自动化投影，支持不断增长的 AI 代理生态�
 
 > 精选第三方 skills 使用来源后缀作为安装名，避免与 Superpowers、用户本地 skills 或其它供应商的同名裸目录冲突。
 
+## OpenSpec 角色工作流
+
+AIRules 把 OpenSpec 当作项目本地的规格层。角色 setup 负责安装 `openspec` CLI；各角色的 `init-project` skill 会把自己的 schema 复制到目标项目的 `openspec/schemas/<schema-name>/`。OpenSpec 自己创建和维护原生的 `openspec/` change、spec、archive 目录。
+
+| 角色 | Schema | 什么时候用 | 主要产物 |
+|------|--------|------------|----------|
+| **development** | `superpowers-bridge` | 代码变更需要长期工程规格、任务追踪、验证证据或实现交接时使用。 | `brainstorm.md`、`proposal.md`、`design.md`、`specs/<capability>/spec.md`、`tasks.md`、`plan.md`、`verify.md`、`retrospective.md` |
+| **product** | `product-pm-bridge` | 产品发现、PRD、用户故事、验收标准、边界用例、方案简报、ADR 或产品到研发交接需要长期事实源时使用。 | `prd.md`、`user-stories.md`、`acceptance-criteria.md`、`edge-cases.md`、`solution-brief.md`、`adr.md`、`specs/<capability>/spec.md` |
+
+开发角色用法：
+
+1. 先用 `npm run sync` 或 `npm run sync:development` 同步开发角色。
+2. 在目标代码仓库运行开发角色的 `init-project` skill。它会按需初始化 OpenSpec，注册 `openspec/schemas/superpowers-bridge/`，并创建 `knowledge/index.md`。
+3. 遇到值得长期沉淀的工程契约变更时，创建 OpenSpec change，并按 schema 顺序产出：brainstorm -> proposal/design -> specs/tasks -> plan -> verify/retrospective。
+4. Superpowers 以普通 skills 版安装，供多宿主使用。schema 里引用的是普通 skill 名：`brainstorming`、`writing-plans`、`using-git-worktrees`、`subagent-driven-development`。
+
+产品角色用法：
+
+1. 先用 `npm run sync:product` 同步产品角色。
+2. 在产品或需求仓库运行产品角色的 `init-project` skill。它会按需初始化 OpenSpec，注册 `openspec/schemas/product-pm-bridge/`，并创建 `knowledge/index.md`。
+3. 使用 PM skills（`deliver-prd`、`deliver-user-stories`、`deliver-acceptance-criteria`、`deliver-edge-cases`、`develop-solution-brief`、`develop-adr`）产出产品材料，再把确认后的事实归一化进 OpenSpec change。
+4. 产品范围准备进入实现时，把产品 spec/change 上下文交给开发角色；开发角色再用 `superpowers-bridge` 做实现计划、验证和归档。
+
 ## 项目结构
 
 ```

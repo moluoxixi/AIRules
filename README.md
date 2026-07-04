@@ -219,6 +219,29 @@ Moluoxixi AIRules supports a growing ecosystem of AI agents through automated pr
 
 > Curated third-party skills use source suffixes as installation names to avoid bare-name collisions with Superpowers, user-local skills, or other vendors.
 
+## OpenSpec Role Workflows
+
+AIRules uses OpenSpec as a project-local specification layer. Role setup installs the `openspec` CLI, while each role's `init-project` skill copies its schema into the target project under `openspec/schemas/<schema-name>/`. OpenSpec creates and owns its native `openspec/` change, spec and archive directories.
+
+| Role | Schema | Use When | Main Outputs |
+|------|--------|----------|--------------|
+| **development** | `superpowers-bridge` | A code change needs durable engineering specs, task traceability, verification evidence, or implementation handoff. | `brainstorm.md`, `proposal.md`, `design.md`, `specs/<capability>/spec.md`, `tasks.md`, `plan.md`, `verify.md`, `retrospective.md` |
+| **product** | `product-pm-bridge` | Product discovery, PRD writing, user-story breakdown, acceptance criteria, edge cases, solution briefs, ADRs, or product-to-engineering handoff need a durable source of truth. | `prd.md`, `user-stories.md`, `acceptance-criteria.md`, `edge-cases.md`, `solution-brief.md`, `adr.md`, `specs/<capability>/spec.md` |
+
+Development flow:
+
+1. Sync the development role with `npm run sync` or `npm run sync:development`.
+2. Run the development `init-project` skill in a target repository. It initializes OpenSpec when needed, registers `openspec/schemas/superpowers-bridge/`, and creates `knowledge/index.md`.
+3. For changes that deserve a long-lived engineering contract, create an OpenSpec change and produce the schema artifacts in order: brainstorm -> proposal/design -> specs/tasks -> plan -> verify/retrospective.
+4. Superpowers is installed as ordinary skills for multi-host use. Schema instructions refer to plain skill names such as `brainstorming`, `writing-plans`, `using-git-worktrees`, and `subagent-driven-development`.
+
+Product flow:
+
+1. Sync the product role with `npm run sync:product`.
+2. Run the product `init-project` skill in the product or requirement repository. It initializes OpenSpec when needed, registers `openspec/schemas/product-pm-bridge/`, and creates `knowledge/index.md`.
+3. Use PM skills (`deliver-prd`, `deliver-user-stories`, `deliver-acceptance-criteria`, `deliver-edge-cases`, `develop-solution-brief`, `develop-adr`) to produce product artifacts, then normalize confirmed facts into the OpenSpec change.
+4. When the product scope is ready for implementation, hand off the product spec/change context to the development role; development then uses `superpowers-bridge` for implementation planning, verification and archive.
+
 ## Project Structure
 
 ```
