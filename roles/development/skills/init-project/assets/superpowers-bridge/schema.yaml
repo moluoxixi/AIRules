@@ -12,7 +12,7 @@ description: >
   If your platform lacks subagent support, use spec-driven instead.
   Each artifact / apply step verifies its required skills before
   invoking and surfaces a clear error if any are missing.
-  brainstorm → proposal → specs → tasks → plan → verify → retrospective.
+  intake → brainstorm → proposal → specs → tasks → plan → verify → retrospective.
   design is required (reorganizes raw brainstorm output into structured
   Context / Goals / Decisions / Risks / Migration; referenced by tasks
   and plan for implementation guidance).
@@ -20,6 +20,37 @@ description: >
   (brings TDD and code-review transitively).
 
 artifacts:
+  - id: intake
+    generates: intake.md
+    description: Development document intake gate before planning or coding
+    template: intake.md
+    instruction: |
+      Development must validate that upstream product or requirement documents
+      are ready to build before planning or coding. If the user supplied PRD,
+      stories, acceptance criteria, edge cases, screenshots, API notes or a
+      product-pm-bridge package, inspect them first.
+
+      Use bmad-shard-doc when a source document is too long to inspect
+      reliably. Use bmad-prd to validate/create/update PRD facts when a PRD is
+      present. Use bmad-create-epics-and-stories when PRD exists but developer
+      stories are missing or too vague. Use bmad-generate-project-context when
+      project context must be summarized for downstream implementers.
+
+      The intake gate MUST check:
+      - PRD goals, scope, non-goals and success criteria are clear.
+      - Stories or epics can become implementation work units.
+      - Acceptance criteria are testable.
+      - Edge cases cover permissions, empty states, failure modes and recovery.
+      - API fields, route facts, permissions, state contracts and persistence
+        assumptions are sourced, not invented.
+      - Frontend fields missing from APIs are marked MISSING blocked.
+
+      Do NOT proceed to coding or implementation planning while phase-blocking
+      facts remain unresolved. Record every blocker as MISSING blocked. For
+      tiny internal fixes with no product document input, write an N/A rationale
+      and cite the local evidence that makes development safe.
+    requires: []
+
   - id: brainstorm
     generates: brainstorm.md
     description: Collaborative design exploration using Superpowers brainstorming
@@ -54,7 +85,8 @@ artifacts:
       3. Propose 2-3 approaches with trade-offs
       4. Present design sections for approval
       5. Output the validated design
-    requires: []
+    requires:
+      - intake
 
   - id: proposal
     generates: proposal.md
@@ -114,7 +146,7 @@ artifacts:
       - brainstorm
 
   - id: specs
-    generates: "specs/**/*.md"
+    generates: 'specs/**/*.md'
     description: Detailed specifications for the change
     template: spec.md
     instruction: |
@@ -194,7 +226,11 @@ artifacts:
       If the implementation includes frontend UI work, plan.md MUST
       include Frontend Planning Notes covering layout, used fields,
       field display form, API field availability, existing components
-      to use, components to wrap/create, and relevant UI states.
+      to use, components to wrap/create, relevant UI states and a
+      Frontend Test Matrix. API missing fields MUST be marked MISSING blocked.
+      Use frontend-testing to choose the correct unit/component/E2E/browser
+      checks. gstack-qa-only may be used for report-only frontend QA evidence;
+      gstack-qa is reserved for explicit "test and fix" user requests.
       This section is a planning aid, not the task split axis.
     requires:
       - tasks
@@ -297,6 +333,16 @@ artifacts:
          with identified gaps, provided they're recorded as follow-up.
          Blocks only if §7 is empty AND plan.md has `[~]` rows (means
          the gap analysis was skipped, not that gaps don't exist).
+
+      8. **Frontend testing gate**:
+
+         If plan.md indicates frontend UI work, run the frontend-testing
+         matrix checks with the project's existing test tools. Record actual
+         commands, exit status, desktop/mobile viewport coverage,
+         console/network error checks, screenshots or logs, and any NOT RUN
+         reason. gstack-qa-only may be used for report-only browser QA. Any
+         unresolved API field, route, permission or state contract remains
+         MISSING blocked and prevents a clean PASS.
 
       Verify MAY be re-run multiple times as the implementation is
       refined — each run overwrites verify.md with current state.

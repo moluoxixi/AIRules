@@ -9,9 +9,39 @@ const productSetup: SetupCommand[] = [
     args: ['install', '--global', '@fission-ai/openspec'],
     skipIfCommandAvailable: 'openspec',
   },
+  {
+    command: 'npm',
+    args: ['install', '--global', 'bmad-method'],
+    skipIfCommandAvailable: 'bmad-method',
+  },
 ]
 
 export const vendors: VendorsConfig = [
+  {
+    name: 'bmadMethod',
+    official: true,
+    source: 'https://github.com/bmad-code-org/BMAD-METHOD.git',
+    projections: [
+      {
+        kind: 'skills',
+        sourceBaseDir: 'src/bmm-skills/2-plan-workflows',
+        skills: ['bmad-prd'],
+      },
+      {
+        kind: 'skills',
+        sourceBaseDir: 'src/bmm-skills/3-solutioning',
+        skills: [
+          'bmad-create-epics-and-stories',
+          'bmad-generate-project-context',
+        ],
+      },
+      {
+        kind: 'skills',
+        sourceBaseDir: 'src/core-skills',
+        skills: ['bmad-shard-doc'],
+      },
+    ],
+  },
   {
     // 产品发现 / 用户故事 / 验收标准 / 边界用例 / ADR 等 PM 方法论由 pm-skills 上游做主。
     // AIRules 只提供产品 init-project，把 OpenSpec 项目与 product-pm-bridge schema 初始化好。

@@ -35,6 +35,11 @@ describe('superpowers-bridge assets', () => {
     assert.match(schema, /PRECHECK/)
     assert.match(schema, /brainstorming/)
     assert.match(schema, /writing-plans/)
+    assert.match(schema, /bmad-prd/)
+    assert.match(schema, /bmad-create-epics-and-stories/)
+    assert.match(schema, /bmad-shard-doc/)
+    assert.match(schema, /gstack-qa-only/)
+    assert.match(schema, /frontend-testing/)
     assert.match(schema, /using-git-worktrees/)
     assert.match(schema, /subagent-driven-development/)
     assert.match(schema, /test-driven-development/)
@@ -65,6 +70,8 @@ describe('superpowers-bridge assets', () => {
 
     assert.match(schema, /If the implementation includes frontend UI work/)
     assert.match(schema, /planning aid, not the task split axis/)
+    assert.match(schema, /Frontend Test Matrix/)
+    assert.match(schema, /API missing fields MUST be marked MISSING blocked/)
     assert.match(plan, /## Frontend Planning Notes/)
     assert.match(plan, /### Layout/)
     assert.match(plan, /### Fields/)
@@ -73,6 +80,27 @@ describe('superpowers-bridge assets', () => {
     assert.match(plan, /### Components/)
     assert.match(plan, /Existing \/ New/)
     assert.match(plan, /### States/)
+    assert.match(plan, /### Frontend Test Matrix/)
+    assert.match(plan, /Test Level/)
+    assert.match(plan, /Viewport/)
+    assert.match(plan, /Console \/ Network/)
+  })
+
+  it('schema requires development document intake before planning or coding', () => {
+    const schema = readAsset('schema.yaml')
+    const intake = readAsset('templates', 'intake.md')
+
+    assert.match(schema, /id: intake/)
+    assert.match(schema, /Development document intake gate/)
+    assert.match(schema, /Do NOT proceed to coding/)
+    assert.match(schema, /MISSING blocked/)
+    assert.match(schema, /bmad-prd/)
+    assert.match(schema, /bmad-create-epics-and-stories/)
+    assert.match(schema, /bmad-generate-project-context/)
+    assert.match(schema, /requires:\n {6}- intake/)
+    assert.match(intake, /## Document Package/)
+    assert.match(intake, /## PRD Validation/)
+    assert.match(intake, /## Development Readiness Decision/)
   })
 
   it('current project OpenSpec schema mirrors the development init-project asset', () => {

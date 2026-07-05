@@ -43,7 +43,7 @@ AIRules 是一个**可组合的 AI 技能分发系统**。它的核心思想很�
 ## 你能得到什么？
 
 - 🔥 **开箱即得** 精选流程、工具、设计和验证类 AI Skills
-- 🧠 **CodeGraph 与 OpenSpec 自动安装**：默认开发角色同步时执行对应 setup 命令
+- 🧠 **CodeGraph、OpenSpec 与 BMAD 自动安装**：开发 / 产品角色同步时执行对应 setup 命令
 - 🧱 **预留第一方扩展位**：保留顶层自定义 skills 投影入口，后续补充时无需调整整体分发模型
 - 🌐 **多代理同步**：一次配置，Claude / Cursor / Codex / Hermes / Qoder / Trae / OpenCode / CC-Switch 与 `.agents` 共享层全部生效
 - 🔄 **持续更新**：上游 skills 更新后，一条命令同步最新版本
@@ -93,7 +93,7 @@ npm run sync
 ```
 
 > [!TIP]
-> **同步流程**：`npm run sync` 是默认开发角色同步（`roles/common` + `roles/development`）。需要显式开发角色时用 `npm run sync:development`；需要产品角色时用 `npm run sync:product`（`roles/common` + `roles/product`）。每次同步都会重建 vendor skills、执行 setup 命令、清理死链接，并在完成后自动运行宿主验证。默认开发 setup 会全局安装并初始化 CodeGraph，同时安装 OpenSpec（`@fission-ai/openspec`）；需要避免拉取第三方供应商和跳过 setup 时，可使用 `airules sync --skip-vendors`。
+> **同步流程**：`npm run sync` 是默认开发角色同步（`roles/common` + `roles/development`）。需要显式开发角色时用 `npm run sync:development`；需要产品角色时用 `npm run sync:product`（`roles/common` + `roles/product`）。每次同步都会重建 vendor skills、执行 setup 命令、清理死链接，并在完成后自动运行宿主验证。默认开发 setup 会全局安装并初始化 CodeGraph，安装 OpenSpec（`@fission-ai/openspec`），并安装 BMAD（`bmad-method`）；产品同步会安装 OpenSpec 与 BMAD。需要避免拉取第三方供应商和跳过 setup 时，可使用 `airules sync --skip-vendors`。
 
 ---
 
@@ -201,10 +201,10 @@ Moluoxixi AIRules 通过自动化投影，支持不断增长的 AI 代理生态�
 | 角色 | Skills |
 |------|--------|
 | **common** | `session-capture`, `distill-candidates`, `recall-memory`, `remember`, `reflect` |
-| **development** | `init-project`, `handoff` |
+| **development** | `init-project`, `frontend-testing`, `handoff` |
 | **product** | `init-project` |
 
-> 第一方角色资产位于 `roles/<role>/`。开发与产品角色清单分别维护在 `roles/development/constants/skills.ts` 与 `roles/product/constants/skills.ts`。skills 源目录安装时会按叶子目录名展平为 `vendor/skills/<skill-name>`；角色同步先叠加 `roles/common/`，再叠加所选角色（默认 `development`，也可 `--role product`），同名资产由所选角色覆盖 common。产品 PM 方法论（`deliver-prd`、`deliver-user-stories`、`deliver-acceptance-criteria`、`deliver-edge-cases`、`develop-adr`、`develop-solution-brief`）来自 `pmSkills` 上游 vendor；产品一方 `init-project` 负责安装 OpenSpec 的 `product-pm-bridge` schema。
+> 第一方角色资产位于 `roles/<role>/`。开发与产品角色清单分别维护在 `roles/development/constants/skills.ts` 与 `roles/product/constants/skills.ts`。skills 源目录安装时会按叶子目录名展平为 `vendor/skills/<skill-name>`；角色同步先叠加 `roles/common/`，再叠加所选角色（默认 `development`，也可 `--role product`），同名资产由所选角色覆盖 common。产品 PM 方法论（`deliver-prd`、`deliver-user-stories`、`deliver-acceptance-criteria`、`deliver-edge-cases`、`develop-adr`、`develop-solution-brief`）来自 `pmSkills` 上游 vendor。BMAD 提供重型 PRD 校验、长文档分片、epic/story 拆分与项目上下文生成；产品一方 `init-project` 负责安装 OpenSpec 的 `product-pm-bridge` schema 与 BMAD BMM runtime。
 
 ### 第三方 Skills（精选）
 
@@ -216,12 +216,15 @@ Moluoxixi AIRules 通过自动化投影，支持不断增长的 AI 代理生态�
 | **OpenAI** | playwright-openai | 浏览器自动化与 UI 流程调试 |
 | **Superpowers** | 上游 `skills/` 命名空间 | 开发角色安装 skills 版，并按叶子 skill 名展平给多宿主使用 |
 | **PM Skills** | deliver-prd, deliver-user-stories, deliver-acceptance-criteria, deliver-edge-cases, develop-adr, develop-solution-brief | 产品角色使用的产品 / PM 方法论 |
+| **BMAD Method** | bmad-prd, bmad-create-epics-and-stories, bmad-generate-project-context, bmad-shard-doc | 重型产品文档校验、epic/story 拆分、上下文生成与长文档分片 |
+| **gstack** | gstack-plan-ceo-review, gstack-plan-eng-review, gstack-plan-design-review, gstack-plan-devex-review, gstack-review, gstack-qa-only, gstack-qa, gstack-design-review, gstack-devex-review, gstack-document-release | 评审与 QA skills；默认前端门禁优先用报告型 QA，修复型 QA 需显式触发 |
+| **Matt Pocock** | matt-grill-with-docs, matt-domain-modeling, matt-codebase-design, matt-to-prd, matt-to-issues, matt-tdd, matt-diagnosing-bugs, matt-code-review | 按需工程纪律 skills，统一加 `matt-` 前缀，避免接管主流程 |
 
 > 精选第三方 skills 使用来源后缀作为安装名，避免与 Superpowers、用户本地 skills 或其它供应商的同名裸目录冲突。
 
 ## `init-project` 之后如何使用 OpenSpec
 
-`init-project` 只做初始化：根据项目根下已有的宿主目录安装 OpenSpec 入口（`.claude`、`.codex`、`.cursor`、`.qoder`、`.trae`、`.opencode`），如果这些目录都不存在则默认安装 `.qoder` 入口；同时把项目级 schema 安装到 `openspec/schemas/<schema-name>/`，写入 `openspec/config.yaml` 作为项目默认 schema，并创建 `knowledge/index.md`。初始化后，使用 OpenSpec `/opsx` 工作流。
+`init-project` 只做初始化：根据项目根下已有的宿主目录安装 OpenSpec 入口（`.claude`、`.codex`、`.cursor`、`.qoder`、`.trae`、`.opencode`），如果这些目录都不存在则默认安装 `.qoder` 入口；同时为检测到的 BMAD tool ID 安装 BMAD BMM runtime（`claude-code`、`codex`、`cursor`、`qoder`、`trae`、`opencode`，默认 `qoder`）。最后把项目级 schema 安装到 `openspec/schemas/<schema-name>/`，写入 `openspec/config.yaml` 作为项目默认 schema，并创建 `knowledge/index.md`。初始化后，使用 OpenSpec `/opsx` 工作流。
 
 ### 开发规格用法
 
@@ -235,6 +238,10 @@ Moluoxixi AIRules 通过自动化投影，支持不断增长的 AI 代理生态�
 
 中途暂停后，继续运行 `/opsx:apply <change-id>`。开发角色的 `init-project` 会把 `openspec/config.yaml` 设为 `schema: superpowers-bridge`，所以这套流程默认使用 `superpowers-bridge`。
 
+开发变更先产出 `intake.md`。如果用户提供了 PRD、产品包、story、验收标准、截图或 API 说明，开发角色必须先校验这些文档是否可开发。长文档用 `bmad-shard-doc`；PRD 校验用 `bmad-prd`；缺少开发可执行 story 时用 `bmad-create-epics-and-stories`；需要下游上下文时用 `bmad-generate-project-context`。缺少 API 字段、路由事实、权限或状态契约时标 `MISSING blocked`，不进入编码。
+
+前端 UI 变更必须在 `plan.md` 中填写 `Frontend Planning Notes` 和 `Frontend Test Matrix`。用 `frontend-testing` 选择项目已有的单测/组件测试/E2E/浏览器检查。`gstack-qa-only` 可作为报告型浏览器 QA 证据；`gstack-qa` 只在用户明确要求“测试并修复”时使用。
+
 ### 产品规格用法
 
 产品、规划或需求仓库跑完产品角色 `init-project` 后，使用产品 schema。
@@ -246,6 +253,8 @@ Moluoxixi AIRules 通过自动化投影，支持不断增长的 AI 代理生态�
 ```
 
 中途暂停后，继续运行 `/opsx:apply <change-id>`。产品角色的 `init-project` 会把 `openspec/config.yaml` 设为 `schema: product-pm-bridge`，所以这套流程默认使用 `product-pm-bridge`。
+
+产品变更默认用 pm-skills 产出轻量 solution brief、PRD、验收标准与边界用例。公司正式 PRD、长文档或高风险需求使用 BMAD：`bmad-shard-doc` 拆长文档，`bmad-prd` 创建/更新/校验 PRD，`bmad-create-epics-and-stories` 拆出开发可执行 epic/story，`bmad-generate-project-context` 生成下游上下文。长期上下文只在审核后提升到 `knowledge/index.md`，不能变成新的规则文件。
 
 ## 项目结构
 
@@ -276,7 +285,7 @@ Moluoxixi AIRules 通过自动化投影，支持不断增长的 AI 代理生态�
 ```
 
 > 源 `skills/` 目录允许递归分组；安装后的 vendor 与宿主 skills 目录统一按叶子 skill 名称展平。
-> development 不再投影 always-on 全局规则基线；setup 会安装 OpenSpec（`@fission-ai/openspec`），`init-project` 改为写项目本地 `AGENTS.md`、运行 OpenSpec 项目初始化、注册项目级 `openspec/schemas/superpowers-bridge/`，并创建 `knowledge/`。OpenSpec 自己维护 change/archive 等目录结构。
+> development 不再投影 always-on 全局规则基线；setup 会安装 OpenSpec（`@fission-ai/openspec`）与 BMAD（`bmad-method`），`init-project` 改为写项目本地 `AGENTS.md`、运行 OpenSpec 项目初始化、安装 BMAD BMM runtime、注册项目级 `openspec/schemas/superpowers-bridge/`，并创建 `knowledge/`。OpenSpec 自己维护 change/archive 等目录结构。
 
 ## 为什么不是另一个 AI Rules 集合？
 

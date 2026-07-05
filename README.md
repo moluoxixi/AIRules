@@ -43,7 +43,7 @@ AIRules is a **composable AI skill distribution system**. The core idea is simpl
 ## What You Get
 
 - 🔥 **Curated** workflow, tool, design, and verification AI Skills out of the box
-- 🧠 **Automatic CodeGraph and OpenSpec install** via role setup commands during default development sync
+- 🧠 **Automatic CodeGraph, OpenSpec and BMAD install** via role setup commands during development / product sync
 - 🧱 **Reserved first-party expansion slots** so you can add your own top-level skills later without changing the distribution model
 - 🌐 **Multi-agent sync**: configure once, works across Claude / Cursor / Codex / Hermes / Qoder / Trae / OpenCode / CC-Switch and the `.agents` shared layer
 - 🔄 **Continuous updates**: one command pulls latest upstream skills
@@ -93,7 +93,7 @@ npm run sync
 ```
 
 > [!TIP]
-> **Sync Process**: `npm run sync` is the default development-role sync (`roles/common` + `roles/development`). Use `npm run sync:development` for an explicit development sync, or `npm run sync:product` to sync the product role (`roles/common` + `roles/product`). Each sync rebuilds vendor skills, runs setup commands, cleans dead links, and runs host verification after projection. The default development setup globally installs and initializes CodeGraph, and installs OpenSpec (`@fission-ai/openspec`); use `airules sync --skip-vendors` when you do not want to refresh third-party vendor repositories or run setup.
+> **Sync Process**: `npm run sync` is the default development-role sync (`roles/common` + `roles/development`). Use `npm run sync:development` for an explicit development sync, or `npm run sync:product` to sync the product role (`roles/common` + `roles/product`). Each sync rebuilds vendor skills, runs setup commands, cleans dead links, and runs host verification after projection. The default development setup globally installs and initializes CodeGraph, installs OpenSpec (`@fission-ai/openspec`), and installs BMAD (`bmad-method`); product sync installs OpenSpec and BMAD. Use `airules sync --skip-vendors` when you do not want to refresh third-party vendor repositories or run setup.
 
 ---
 
@@ -201,10 +201,10 @@ Moluoxixi AIRules supports a growing ecosystem of AI agents through automated pr
 | Role | Skills |
 |------|--------|
 | **common** | `session-capture`, `distill-candidates`, `recall-memory`, `remember`, `reflect` |
-| **development** | `init-project`, `handoff` |
+| **development** | `init-project`, `frontend-testing`, `handoff` |
 | **product** | `init-project` |
 
-> First-party role assets live under `roles/<role>/`. Development and product role registries are maintained in `roles/development/constants/skills.ts` and `roles/product/constants/skills.ts`. Installation flattens skill source folders by leaf directory name into `vendor/skills/<skill-name>`. Role sync overlays `roles/common/` first, then the selected role (`development` by default, or `product` via `--role product`); selected-role assets override common assets with the same name. Product PM methods (`deliver-prd`, `deliver-user-stories`, `deliver-acceptance-criteria`, `deliver-edge-cases`, `develop-adr`, `develop-solution-brief`) come from the `pmSkills` upstream vendor, while product first-party `init-project` installs OpenSpec's `product-pm-bridge` schema.
+> First-party role assets live under `roles/<role>/`. Development and product role registries are maintained in `roles/development/constants/skills.ts` and `roles/product/constants/skills.ts`. Installation flattens skill source folders by leaf directory name into `vendor/skills/<skill-name>`. Role sync overlays `roles/common/` first, then the selected role (`development` by default, or `product` via `--role product`); selected-role assets override common assets with the same name. Product PM methods (`deliver-prd`, `deliver-user-stories`, `deliver-acceptance-criteria`, `deliver-edge-cases`, `develop-adr`, `develop-solution-brief`) come from the `pmSkills` upstream vendor. BMAD provides heavy PRD validation, long-document sharding, epic/story splitting and project-context generation. Product first-party `init-project` installs OpenSpec's `product-pm-bridge` schema and BMAD BMM runtime.
 
 ### Third-Party Skills (Curated)
 
@@ -216,12 +216,15 @@ Moluoxixi AIRules supports a growing ecosystem of AI agents through automated pr
 | **OpenAI** | playwright-openai | Browser automation and UI-flow debugging |
 | **Superpowers** | upstream `skills/` namespace | Development role installs the skills version and flattens leaf skill names for multi-host use |
 | **PM Skills** | deliver-prd, deliver-user-stories, deliver-acceptance-criteria, deliver-edge-cases, develop-adr, develop-solution-brief | Product / PM methods used by the product role |
+| **BMAD Method** | bmad-prd, bmad-create-epics-and-stories, bmad-generate-project-context, bmad-shard-doc | Heavy product document validation, epic/story split, context generation and long-document sharding |
+| **gstack** | gstack-plan-ceo-review, gstack-plan-eng-review, gstack-plan-design-review, gstack-plan-devex-review, gstack-review, gstack-qa-only, gstack-qa, gstack-design-review, gstack-devex-review, gstack-document-release | Review and QA skills; report-only QA is preferred as a default frontend gate, fix-mode QA is explicit |
+| **Matt Pocock** | matt-grill-with-docs, matt-domain-modeling, matt-codebase-design, matt-to-prd, matt-to-issues, matt-tdd, matt-diagnosing-bugs, matt-code-review | Optional engineering discipline skills with `matt-` prefix to avoid taking over the main workflow |
 
 > Curated third-party skills use source suffixes as installation names to avoid bare-name collisions with Superpowers, user-local skills, or other vendors.
 
 ## After `init-project`: Using OpenSpec
 
-`init-project` is setup only. It installs OpenSpec host entries for host directories already present in the project (`.claude`, `.codex`, `.cursor`, `.qoder`, `.trae`, `.opencode`); if none exist, it installs the Qoder entry by default. It also installs the project-local schema under `openspec/schemas/<schema-name>/`, sets that schema as the project default in `openspec/config.yaml`, and creates `knowledge/index.md`. After initialization, use the OpenSpec `/opsx` workflow.
+`init-project` is setup only. It installs OpenSpec host entries for host directories already present in the project (`.claude`, `.codex`, `.cursor`, `.qoder`, `.trae`, `.opencode`); if none exist, it installs the Qoder entry by default. It also installs BMAD BMM runtime for the detected BMAD tool IDs (`claude-code`, `codex`, `cursor`, `qoder`, `trae`, `opencode`, default `qoder`). Finally, it installs the project-local schema under `openspec/schemas/<schema-name>/`, sets that schema as the project default in `openspec/config.yaml`, and creates `knowledge/index.md`. After initialization, use the OpenSpec `/opsx` workflow.
 
 ### Development Spec Usage
 
@@ -235,6 +238,10 @@ Use the development schema after initializing a code repository with the develop
 
 Run `/opsx:apply <change-id>` again to continue a paused implementation. The development `init-project` skill sets `openspec/config.yaml` to `schema: superpowers-bridge`, so this workflow uses `superpowers-bridge` by default.
 
+Development changes start with `intake.md`. If a PRD, product package, story list, acceptance criteria, screenshots or API notes are supplied, the development role validates that the documents are buildable before planning. Use `bmad-shard-doc` for oversized documents, `bmad-prd` to validate PRDs, `bmad-create-epics-and-stories` when developer-ready stories are missing, and `bmad-generate-project-context` when downstream implementation context is needed. Missing API fields, route facts, permissions or state contracts are recorded as `MISSING blocked`; coding does not start until blockers are resolved or explicitly carried.
+
+For frontend UI work, `plan.md` must include `Frontend Planning Notes` and a `Frontend Test Matrix`. Use `frontend-testing` to decide unit/component/E2E/browser checks with the project's existing tools. `gstack-qa-only` can provide report-only browser QA evidence; `gstack-qa` is reserved for explicit "test and fix" requests.
+
 ### Product Spec Usage
 
 Use the product schema after initializing a product, planning, or requirements repository with the product `init-project` skill.
@@ -246,6 +253,8 @@ Use the product schema after initializing a product, planning, or requirements r
 ```
 
 Run `/opsx:apply <change-id>` again to continue a paused product package. The product `init-project` skill sets `openspec/config.yaml` to `schema: product-pm-bridge`, so this workflow uses `product-pm-bridge` by default.
+
+Product changes use pm-skills for lightweight solution brief, PRD, acceptance criteria and edge cases. For company PRDs, long documents or high-risk changes, use the BMAD skills installed by init-project: `bmad-shard-doc` to shard long source documents, `bmad-prd` to create/update/validate PRDs, `bmad-create-epics-and-stories` to produce developer-ready epics and stories, and `bmad-generate-project-context` to capture downstream context. Durable context is promoted to `knowledge/index.md` only after review; it does not become a rules file.
 
 ## Project Structure
 
@@ -276,7 +285,7 @@ Run `/opsx:apply <change-id>` again to continue a paused product package. The pr
 ```
 
 > Source `skills/` folders may be grouped recursively; installed vendor and host skill directories are flattened by leaf skill name.
-> Development no longer projects an always-on global rules baseline. Its setup installs OpenSpec (`@fission-ai/openspec`), and `init-project` writes project-local `AGENTS.md`, runs OpenSpec project initialization, registers project-level `openspec/schemas/superpowers-bridge/`, and creates `knowledge/`. OpenSpec owns its own change/archive directory structure.
+> Development no longer projects an always-on global rules baseline. Its setup installs OpenSpec (`@fission-ai/openspec`) and BMAD (`bmad-method`), and `init-project` writes project-local `AGENTS.md`, runs OpenSpec project initialization, installs BMAD BMM runtime, registers project-level `openspec/schemas/superpowers-bridge/`, and creates `knowledge/`. OpenSpec owns its own change/archive directory structure.
 
 ## Why Not Just Another AI Rules Repo?
 

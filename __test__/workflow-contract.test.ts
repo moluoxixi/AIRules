@@ -11,7 +11,7 @@ import { checkRulesConsistency, firstPartySkillNames } from '../scripts/check-ru
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url))
 const repoRoot = path.resolve(__dirname, '..')
-const DEVELOPMENT_SKILLS = ['handoff', 'init-project']
+const DEVELOPMENT_SKILLS = ['frontend-testing', 'handoff', 'init-project']
 const PRODUCT_SKILLS = ['init-project']
 
 function withTempDir<T>(run: (tmpDir: string) => T): T {
@@ -53,7 +53,7 @@ describe('自洽检查器', () => {
       {
         kind: 'skills',
         sourceBaseDir: 'roles/development/skills',
-        skills: ['init-project', 'handoff'],
+        skills: ['init-project', 'frontend-testing', 'handoff'],
       },
     ],
   },

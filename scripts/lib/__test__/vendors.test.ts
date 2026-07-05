@@ -581,8 +581,13 @@ it('vendors 配置 - 使用 OpenAI Playwright 并移除过时技能', () => {
         args: ['install', '--global', '@fission-ai/openspec'],
         skipIfCommandAvailable: 'openspec',
       },
+      {
+        command: 'npm',
+        args: ['install', '--global', 'bmad-method'],
+        skipIfCommandAvailable: 'bmad-method',
+      },
     ],
-    '安装 AIRules 时应同步安装 CodeGraph 与 OpenSpec；init-project 会注册 superpowers-bridge schema',
+    '安装 AIRules 时应同步安装 CodeGraph、OpenSpec 与 BMAD；init-project 会注册 superpowers-bridge schema 并安装 BMAD BMM runtime',
   )
   assert.ok(
     !vendors.moluoxixi.links.some((link: any) => link.target === 'vendor/skills/workflow'),
@@ -591,6 +596,87 @@ it('vendors 配置 - 使用 OpenAI Playwright 并移除过时技能', () => {
   assert.ok(
     !vendors.moluoxixi.links.some((link: any) => link.target.endsWith('/caveman')),
     'caveman 超压缩模式不在默认分发中',
+  )
+})
+
+it('vendors 配置 - development 角色接入 BMAD 文档拆分、gstack 评审 QA 与 Matt 按需工程技能', () => {
+  const vendors: Record<string, any> = {}
+
+  walkVendorTree(developmentVendors, [], vendors)
+
+  assert.ok(vendors.bmadMethod, 'development 角色应接入 BMAD Method')
+  assert.strictEqual(vendors.bmadMethod.repo, 'https://github.com/bmad-code-org/BMAD-METHOD.git')
+  assert.deepStrictEqual(
+    vendors.bmadMethod.links.map((link: any) => ({
+      source: link.source,
+      target: link.target,
+    })),
+    [
+      {
+        source: 'src/bmm-skills/2-plan-workflows/bmad-prd',
+        target: 'vendor/skills/bmad-prd',
+      },
+      {
+        source: 'src/bmm-skills/3-solutioning/bmad-create-epics-and-stories',
+        target: 'vendor/skills/bmad-create-epics-and-stories',
+      },
+      {
+        source: 'src/bmm-skills/3-solutioning/bmad-generate-project-context',
+        target: 'vendor/skills/bmad-generate-project-context',
+      },
+      {
+        source: 'src/core-skills/bmad-shard-doc',
+        target: 'vendor/skills/bmad-shard-doc',
+      },
+    ],
+    'development 角色应接入 BMAD PRD 校验、epic/story 拆分、项目上下文与长文档分片',
+  )
+
+  assert.ok(vendors.gstack, 'development 角色应接入 gstack')
+  assert.strictEqual(vendors.gstack.repo, 'https://github.com/garrytan/gstack.git')
+  assert.deepStrictEqual(
+    vendors.gstack.links.map((link: any) => ({
+      source: link.source,
+      target: link.target,
+    })),
+    [
+      { source: 'plan-ceo-review', target: 'vendor/skills/gstack-plan-ceo-review' },
+      { source: 'plan-eng-review', target: 'vendor/skills/gstack-plan-eng-review' },
+      { source: 'plan-design-review', target: 'vendor/skills/gstack-plan-design-review' },
+      { source: 'plan-devex-review', target: 'vendor/skills/gstack-plan-devex-review' },
+      { source: 'review', target: 'vendor/skills/gstack-review' },
+      { source: 'qa-only', target: 'vendor/skills/gstack-qa-only' },
+      { source: 'qa', target: 'vendor/skills/gstack-qa' },
+      { source: 'design-review', target: 'vendor/skills/gstack-design-review' },
+      { source: 'devex-review', target: 'vendor/skills/gstack-devex-review' },
+      { source: 'document-release', target: 'vendor/skills/gstack-document-release' },
+    ],
+    'gstack 评审与 QA 技能必须带来源前缀，避免抢占通用 review/qa 名称',
+  )
+
+  assert.ok(vendors.mattPocock, 'development 角色应接入 Matt Pocock 精选技能')
+  assert.strictEqual(vendors.mattPocock.repo, 'https://github.com/mattpocock/skills.git')
+  assert.deepStrictEqual(
+    vendors.mattPocock.links.map((link: any) => ({
+      source: link.source,
+      target: link.target,
+    })),
+    [
+      { source: 'skills/engineering/grill-with-docs', target: 'vendor/skills/matt-grill-with-docs' },
+      { source: 'skills/engineering/domain-modeling', target: 'vendor/skills/matt-domain-modeling' },
+      { source: 'skills/engineering/codebase-design', target: 'vendor/skills/matt-codebase-design' },
+      { source: 'skills/engineering/to-prd', target: 'vendor/skills/matt-to-prd' },
+      { source: 'skills/engineering/to-issues', target: 'vendor/skills/matt-to-issues' },
+      { source: 'skills/engineering/tdd', target: 'vendor/skills/matt-tdd' },
+      { source: 'skills/engineering/diagnosing-bugs', target: 'vendor/skills/matt-diagnosing-bugs' },
+      { source: 'skills/engineering/code-review', target: 'vendor/skills/matt-code-review' },
+    ],
+    'Matt Pocock 技能按需精选接入并统一加 matt- 前缀',
+  )
+
+  assert.ok(
+    vendors.moluoxixi.links.some((link: any) => link.target === 'vendor/skills/frontend-testing'),
+    'development 第一方技能应包含 frontend-testing 前端测试门禁',
   )
 })
 
@@ -651,6 +737,39 @@ it('vendors 配置 - PM skills 由 product 角色接入 pmSkills 上游', () => 
       { kind: 'skill', source: 'skills/develop-solution-brief', target: 'vendor/skills/develop-solution-brief', setup: undefined },
     ],
     'product 角色从 pmSkills 上游提供 PRD、用户故事、验收标准、边界用例、ADR、解决方案简报等 PM 方法论',
+  )
+
+  assert.ok(vendors.bmadMethod, 'product 角色应接入 BMAD Method')
+  assert.strictEqual(vendors.bmadMethod.repo, 'https://github.com/bmad-code-org/BMAD-METHOD.git')
+  assert.strictEqual(
+    vendors.bmadMethod.setup,
+    undefined,
+    'BMAD CLI 安装由 product 角色的一方 setup 负责，不在 bmadMethod vendor 上重复声明',
+  )
+  assert.deepStrictEqual(
+    vendors.bmadMethod.links.map((link: any) => ({
+      source: link.source,
+      target: link.target,
+    })),
+    [
+      {
+        source: 'src/bmm-skills/2-plan-workflows/bmad-prd',
+        target: 'vendor/skills/bmad-prd',
+      },
+      {
+        source: 'src/bmm-skills/3-solutioning/bmad-create-epics-and-stories',
+        target: 'vendor/skills/bmad-create-epics-and-stories',
+      },
+      {
+        source: 'src/bmm-skills/3-solutioning/bmad-generate-project-context',
+        target: 'vendor/skills/bmad-generate-project-context',
+      },
+      {
+        source: 'src/core-skills/bmad-shard-doc',
+        target: 'vendor/skills/bmad-shard-doc',
+      },
+    ],
+    'product 角色应接入 BMAD PRD 校验、epic/story 拆分、项目上下文与长文档分片',
   )
 
   assert.deepStrictEqual(

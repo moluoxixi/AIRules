@@ -39,6 +39,12 @@ decide task split or execution order.
 
 <!-- Loading, empty, error, disabled, permission-denied, optimistic/pending, etc. -->
 
+### Frontend Test Matrix
+
+| Scenario | Test Level | Tool / Command | Viewport | Console / Network | Evidence | Gap |
+|---|---|---|---|---|---|---|
+| `<flow/state>` | `<unit/component/e2e/visual smoke/manual>` | `<npm test... / playwright... / gstack-qa-only / existing tool>` | `<desktop/mobile/tablet/N/A>` | `<checked/not applicable>` | `<test file/log/screenshot>` | `<none or MISSING blocked: reason>` |
+
 ---
 
 ## Task 1: <!-- Component Name -->

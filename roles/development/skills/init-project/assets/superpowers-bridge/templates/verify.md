@@ -120,6 +120,26 @@ ls docs/superpowers/specs/*.md 2>/dev/null
 
 ---
 
+## 8. Frontend Testing Gate
+
+当前端 UI work 存在时，必须记录 `frontend-testing` 矩阵的真实执行证据。
+无前端 UI work 时填写 `N/A - no frontend UI work`。
+
+| Check | Command / Evidence | Status | Notes |
+|---|---|---|---|
+| Unit / component tests | — | NOT RUN | — |
+| E2E / browser flow | — | NOT RUN | — |
+| Desktop viewport | — | NOT RUN | — |
+| Mobile viewport | — | NOT RUN | — |
+| Console / network errors | — | NOT RUN | — |
+| gstack-qa-only report | — | N/A | — |
+
+| Missing frontend contract | Needed By | Status |
+|---|---|---|
+| — | — | — |
+
+---
+
 ## Overall Decision
 
 - [ ] ✅ PASS — 可進入 finishing-a-development-branch 與 archive

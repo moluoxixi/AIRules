@@ -31,6 +31,39 @@ function runSpecInit(projectRoot: string, env: NodeJS.ProcessEnv = {}) {
   )
 }
 
+function createFakeBmad(root: string) {
+  const binDir = path.join(root, 'bmad-bin')
+  const logPath = path.join(root, 'bmad.log')
+  fs.mkdirSync(binDir, { recursive: true })
+
+  if (process.platform === 'win32') {
+    fs.writeFileSync(
+      path.join(binDir, 'bmad-method.cmd'),
+      [
+        '@echo off',
+        'echo %*>>"%AIRULES_BMAD_LOG%"',
+        'exit /b 0',
+        '',
+      ].join('\r\n'),
+    )
+  }
+  else {
+    const shPath = path.join(binDir, 'bmad-method')
+    fs.writeFileSync(
+      shPath,
+      [
+        '#!/bin/sh',
+        'printf "%s\\n" "$*" >> "$AIRULES_BMAD_LOG"',
+        'exit 0',
+        '',
+      ].join('\n'),
+    )
+    fs.chmodSync(shPath, 0o755)
+  }
+
+  return { binDir, logPath }
+}
+
 function createFakeOpenSpec(root: string) {
   const binDir = path.join(root, 'bin')
   const logPath = path.join(root, 'openspec.log')
@@ -69,7 +102,10 @@ function createFakeOpenSpec(root: string) {
 
 it('spec-init - 只注入项目级 schema 与 knowledge，不手建 active/archive 生命周期目录', () => {
   withTempDir((root) => {
-    const first = runSpecInit(root, { AIRULES_SKIP_OPENSPEC_VALIDATE: '1' })
+    const first = runSpecInit(root, {
+      AIRULES_SKIP_OPENSPEC_VALIDATE: '1',
+      AIRULES_SKIP_BMAD_INSTALL: '1',
+    })
     assert.equal(first.status, 0, first.stderr)
 
     assert.equal(fs.existsSync(path.join(root, 'openspec', 'schemas', 'superpowers-bridge', 'schema.yaml')), true)
@@ -80,7 +116,10 @@ it('spec-init - 只注入项目级 schema 与 knowledge，不手建 active/archi
     assert.equal(fs.existsSync(path.join(root, 'openspec', 'config.yaml')), false)
     assert.equal(fs.existsSync(path.join(root, '.airules')), false)
 
-    const second = runSpecInit(root, { AIRULES_SKIP_OPENSPEC_VALIDATE: '1' })
+    const second = runSpecInit(root, {
+      AIRULES_SKIP_OPENSPEC_VALIDATE: '1',
+      AIRULES_SKIP_BMAD_INSTALL: '1',
+    })
     assert.equal(second.status, 0, second.stderr)
     assert.match(second.stdout, /已存在，跳过/)
   })
@@ -89,9 +128,11 @@ it('spec-init - 只注入项目级 schema 与 knowledge，不手建 active/archi
 it('spec-init - OpenSpec CLI 存在时初始化项目、校验 schema 并确认注册', () => {
   withTempDir((root) => {
     const { binDir, logPath } = createFakeOpenSpec(root)
-    const nextPath = `${binDir}${path.delimiter}${process.env.PATH ?? process.env.Path ?? ''}`
+    const fakeBmad = createFakeBmad(root)
+    const nextPath = `${binDir}${path.delimiter}${fakeBmad.binDir}${path.delimiter}${process.env.PATH ?? process.env.Path ?? ''}`
     const result = runSpecInit(root, {
       AIRULES_OPEN_SPEC_LOG: logPath,
+      AIRULES_BMAD_LOG: fakeBmad.logPath,
       PATH: nextPath,
       Path: nextPath,
     })
@@ -106,6 +147,9 @@ it('spec-init - OpenSpec CLI 存在时初始化项目、校验 schema 并确认�
     assert.match(calls, /init .* --tools qoder --no-color/)
     assert.match(calls, /schema validate superpowers-bridge/)
     assert.match(calls, /^schemas$/m)
+
+    const bmadCalls = fs.readFileSync(fakeBmad.logPath, 'utf8')
+    assert.match(bmadCalls, /install --directory .* --modules bmm --tools qoder --yes/)
   })
 })
 
@@ -113,9 +157,11 @@ it('spec-init - openspec/ 已存在时仍刷新 OpenSpec 宿主入口', () => {
   withTempDir((root) => {
     fs.mkdirSync(path.join(root, 'openspec'), { recursive: true })
     const { binDir, logPath } = createFakeOpenSpec(root)
-    const nextPath = `${binDir}${path.delimiter}${process.env.PATH ?? process.env.Path ?? ''}`
+    const fakeBmad = createFakeBmad(root)
+    const nextPath = `${binDir}${path.delimiter}${fakeBmad.binDir}${path.delimiter}${process.env.PATH ?? process.env.Path ?? ''}`
     const result = runSpecInit(root, {
       AIRULES_OPEN_SPEC_LOG: logPath,
+      AIRULES_BMAD_LOG: fakeBmad.logPath,
       PATH: nextPath,
       Path: nextPath,
     })
@@ -129,6 +175,10 @@ it('spec-init - openspec/ 已存在时仍刷新 OpenSpec 宿主入口', () => {
     assert.match(calls, /init .* --tools qoder --no-color/)
     assert.match(calls, /schema validate superpowers-bridge/)
     assert.match(calls, /^schemas$/m)
+    assert.match(
+      fs.readFileSync(fakeBmad.logPath, 'utf8'),
+      /install --directory .* --modules bmm --tools qoder --yes/,
+    )
   })
 })
 
@@ -137,9 +187,11 @@ it('spec-init - 按目标项目已有宿主目录安装 OpenSpec 入口', () => 
     fs.mkdirSync(path.join(root, '.claude'), { recursive: true })
     fs.mkdirSync(path.join(root, '.codex'), { recursive: true })
     const { binDir, logPath } = createFakeOpenSpec(root)
-    const nextPath = `${binDir}${path.delimiter}${process.env.PATH ?? process.env.Path ?? ''}`
+    const fakeBmad = createFakeBmad(root)
+    const nextPath = `${binDir}${path.delimiter}${fakeBmad.binDir}${path.delimiter}${process.env.PATH ?? process.env.Path ?? ''}`
     const result = runSpecInit(root, {
       AIRULES_OPEN_SPEC_LOG: logPath,
+      AIRULES_BMAD_LOG: fakeBmad.logPath,
       PATH: nextPath,
       Path: nextPath,
     })
@@ -147,6 +199,10 @@ it('spec-init - 按目标项目已有宿主目录安装 OpenSpec 入口', () => 
     assert.equal(result.status, 0, result.stderr)
     const calls = fs.readFileSync(logPath, 'utf8')
     assert.match(calls, /init .* --tools claude,codex --no-color/)
+    assert.match(
+      fs.readFileSync(fakeBmad.logPath, 'utf8'),
+      /install --directory .* --modules bmm --tools claude-code,codex --yes/,
+    )
   })
 })
 

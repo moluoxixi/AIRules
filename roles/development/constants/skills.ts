@@ -18,9 +18,83 @@ const developmentSetup: SetupCommand[] = [
     args: ['install', '--global', '@fission-ai/openspec'],
     skipIfCommandAvailable: 'openspec',
   },
+  {
+    command: 'npm',
+    args: ['install', '--global', 'bmad-method'],
+    skipIfCommandAvailable: 'bmad-method',
+  },
 ]
 
 export const vendors: VendorsConfig = [
+  {
+    name: 'bmadMethod',
+    official: true,
+    source: 'https://github.com/bmad-code-org/BMAD-METHOD.git',
+    projections: [
+      {
+        kind: 'skills',
+        sourceBaseDir: 'src/bmm-skills/2-plan-workflows',
+        skills: ['bmad-prd'],
+      },
+      {
+        kind: 'skills',
+        sourceBaseDir: 'src/bmm-skills/3-solutioning',
+        skills: [
+          'bmad-create-epics-and-stories',
+          'bmad-generate-project-context',
+        ],
+      },
+      {
+        kind: 'skills',
+        sourceBaseDir: 'src/core-skills',
+        skills: ['bmad-shard-doc'],
+      },
+    ],
+  },
+  {
+    name: 'gstack',
+    official: true,
+    source: 'https://github.com/garrytan/gstack.git',
+    projections: [
+      {
+        kind: 'skills',
+        sourceBaseDir: '.',
+        skills: [
+          { name: 'plan-ceo-review', output: 'gstack-plan-ceo-review' },
+          { name: 'plan-eng-review', output: 'gstack-plan-eng-review' },
+          { name: 'plan-design-review', output: 'gstack-plan-design-review' },
+          { name: 'plan-devex-review', output: 'gstack-plan-devex-review' },
+          { name: 'review', output: 'gstack-review' },
+          { name: 'qa-only', output: 'gstack-qa-only' },
+          { name: 'qa', output: 'gstack-qa' },
+          { name: 'design-review', output: 'gstack-design-review' },
+          { name: 'devex-review', output: 'gstack-devex-review' },
+          { name: 'document-release', output: 'gstack-document-release' },
+        ],
+      },
+    ],
+  },
+  {
+    name: 'mattPocock',
+    official: true,
+    source: 'https://github.com/mattpocock/skills.git',
+    projections: [
+      {
+        kind: 'skills',
+        sourceBaseDir: 'skills/engineering',
+        skills: [
+          { name: 'grill-with-docs', output: 'matt-grill-with-docs' },
+          { name: 'domain-modeling', output: 'matt-domain-modeling' },
+          { name: 'codebase-design', output: 'matt-codebase-design' },
+          { name: 'to-prd', output: 'matt-to-prd' },
+          { name: 'to-issues', output: 'matt-to-issues' },
+          { name: 'tdd', output: 'matt-tdd' },
+          { name: 'diagnosing-bugs', output: 'matt-diagnosing-bugs' },
+          { name: 'code-review', output: 'matt-code-review' },
+        ],
+      },
+    ],
+  },
   {
     name: 'gemini',
     official: true,
@@ -98,6 +172,7 @@ export const vendors: VendorsConfig = [
         kind: 'skills',
         sourceBaseDir: 'roles/development/skills',
         skills: [
+          'frontend-testing',
           'init-project',
           'handoff',
         ],

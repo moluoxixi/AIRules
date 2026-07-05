@@ -10,6 +10,7 @@ import { fileURLToPath } from 'node:url'
 
 const projectRoot = path.resolve(process.argv[2] ?? process.cwd())
 const skipOpenSpecCommands = process.env.AIRULES_SKIP_OPENSPEC_VALIDATE === '1'
+const skipBmadInstall = process.env.AIRULES_SKIP_BMAD_INSTALL === '1'
 const schemaName = 'superpowers-bridge'
 const openSpecToolTargets = [
   { dir: '.claude', tool: 'claude' },
@@ -20,6 +21,15 @@ const openSpecToolTargets = [
   { dir: '.opencode', tool: 'opencode' },
 ]
 const fallbackOpenSpecTool = 'qoder'
+const bmadToolTargets = [
+  { dir: '.claude', tool: 'claude-code' },
+  { dir: '.codex', tool: 'codex' },
+  { dir: '.cursor', tool: 'cursor' },
+  { dir: '.qoder', tool: 'qoder' },
+  { dir: '.trae', tool: 'trae' },
+  { dir: '.opencode', tool: 'opencode' },
+]
+const fallbackBmadTool = 'qoder'
 
 const skillRoot = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..')
 const schemaSourceDir = path.join(skillRoot, 'assets', schemaName)
@@ -71,10 +81,23 @@ function copyDirectoryIfMissing(sourceDir, targetDir, created) {
 }
 
 function resolveOpenSpecCommand() {
+  return resolveCommand(
+    process.platform === 'win32'
+      ? ['openspec.cmd', 'openspec.bat', 'openspec.exe']
+      : ['openspec'],
+  )
+}
+
+function resolveBmadCommand() {
+  return resolveCommand(
+    process.platform === 'win32'
+      ? ['bmad-method.cmd', 'bmad-method.bat', 'bmad-method.exe', 'bmad.cmd', 'bmad.bat', 'bmad.exe']
+      : ['bmad-method', 'bmad'],
+  )
+}
+
+function resolveCommand(candidates) {
   const pathValue = process.env.PATH ?? process.env.Path ?? ''
-  const candidates = process.platform === 'win32'
-    ? ['openspec.cmd', 'openspec.bat', 'openspec.exe']
-    : ['openspec']
 
   for (const dir of pathValue.split(path.delimiter).filter(Boolean)) {
     for (const candidate of candidates) {
@@ -96,7 +119,23 @@ function requireOpenSpecCommand() {
   return command
 }
 
+function requireBmadCommand() {
+  const command = resolveBmadCommand()
+  if (!command) {
+    throw new Error('MISSING bmad-method CLI；请先安装 bmad-method，或先运行 AIRules development role setup。')
+  }
+  return command
+}
+
 function runOpenSpec(command, args) {
+  return runCommand(command, args)
+}
+
+function runBmad(command, args) {
+  return runCommand(command, args)
+}
+
+function runCommand(command, args) {
   const result = spawnSync(command, args, {
     cwd: projectRoot,
     encoding: 'utf8',
@@ -128,6 +167,20 @@ function resolveOpenSpecTools() {
     .map(target => target.tool)
 
   return tools.length > 0 ? tools.join(',') : fallbackOpenSpecTool
+}
+
+function initializeBmadProject(command) {
+  const bmadTools = resolveBmadTools()
+  runBmad(command, ['install', '--directory', projectRoot, '--modules', 'bmm', '--tools', bmadTools, '--yes'])
+  console.log(`[airules] 已运行 bmad-method install --modules bmm --tools ${bmadTools}`)
+}
+
+function resolveBmadTools() {
+  const tools = bmadToolTargets
+    .filter(target => existsSync(path.join(projectRoot, target.dir)))
+    .map(target => target.tool)
+
+  return tools.length > 0 ? tools.join(',') : fallbackBmadTool
 }
 
 function validateOpenSpecSchema(command) {
@@ -177,6 +230,13 @@ if (!skipOpenSpecCommands) {
 }
 else {
   console.log('[airules] 已跳过 OpenSpec CLI 命令（AIRULES_SKIP_OPENSPEC_VALIDATE=1）')
+}
+
+if (!skipBmadInstall) {
+  initializeBmadProject(requireBmadCommand())
+}
+else {
+  console.log('[airules] 已跳过 BMAD BMM runtime 安装（AIRULES_SKIP_BMAD_INSTALL=1）')
 }
 
 copyDirectoryIfMissing(schemaSourceDir, schemaTargetDir, created)
