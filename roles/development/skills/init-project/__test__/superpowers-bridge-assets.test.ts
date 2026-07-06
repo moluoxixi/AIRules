@@ -86,6 +86,23 @@ describe('superpowers-bridge assets', () => {
     assert.match(plan, /Console \/ Network/)
   })
 
+  it('schema and templates connect change units, scenarios and TC coverage', () => {
+    const schema = readAsset('schema.yaml')
+    const spec = readAsset('templates', 'spec.md')
+    const plan = readAsset('templates', 'plan.md')
+    const verify = readAsset('templates', 'verify.md')
+
+    for (const content of [schema, spec, plan, verify]) {
+      assert.match(content, /change_unit_id/)
+    }
+    assert.match(schema, /verify:scenario-coverage/)
+    assert.match(schema, /covers: SCN-/)
+    assert.match(spec, /SCN-<capability>-<NNN>/)
+    assert.match(plan, /Scenario IDs/)
+    assert.match(verify, /Scenario Coverage/)
+    assert.match(verify, /knowledge\/测试/)
+  })
+
   it('schema requires development document intake before planning or coding', () => {
     const schema = readAsset('schema.yaml')
     const intake = readAsset('templates', 'intake.md')

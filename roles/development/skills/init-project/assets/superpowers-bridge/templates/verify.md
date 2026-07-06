@@ -5,6 +5,7 @@
 > 再重跑 verify。
 
 **Change**: `<change-name>`
+**change_unit_id**: `CU-<change-unit>`
 **Verified at**: `YYYY-MM-DD HH:mm`
 **Verifier**: `<who / which agent>`
 
@@ -51,7 +52,25 @@
 
 ---
 
-## 4. Design / Specs Coherence Spot Check
+## 4. Scenario Coverage (`npm run verify:scenario-coverage -- openspec/changes/<change-name>`)
+
+- [ ] 所有 delta spec `SCN-*` Scenario 均被 `knowledge/测试/**/*.md` 中的 `covers: SCN-*` 覆盖。
+
+**结果**：
+
+```text
+<貼上 verify:scenario-coverage 輸出摘要>
+```
+
+**缺口**（若有）：
+
+| Scenario ID | Source | Missing Coverage |
+|---|---|---|
+| — | — | — |
+
+---
+
+## 5. Design / Specs Coherence Spot Check
 
 抽樣比對 `design.md` 的決策是否反映在 `specs/*.md` 的 Requirements 與
 Scenarios 中：
@@ -66,7 +85,7 @@ Scenarios 中：
 
 ---
 
-## 5. Implementation Signal
+## 6. Implementation Signal
 
 - [ ] Worktree 內無未 staged 的檔案
 - [ ] 所有相關 commit 已推送
@@ -75,7 +94,7 @@ Scenarios 中：
 
 ---
 
-## 6. Front-Door Routing Leak Detector（warning,非阻塞）
+## 7. Front-Door Routing Leak Detector（warning,非阻塞）
 
 設計產出不應落在 `docs/superpowers/specs/`(brainstorm artifact 的
 output redirection 會把它導到 `openspec/changes/<name>/brainstorm.md`)。
@@ -99,7 +118,7 @@ ls docs/superpowers/specs/*.md 2>/dev/null
 
 ---
 
-## 7. Deferred Manual Dogfood vs Automated Test Equivalence
+## 8. Deferred Manual Dogfood vs Automated Test Equivalence
 
 對 plan.md 中標 `[~]` deferred 的手動 dogfood / smoke task,逐項列出
 等價的自動化測試覆蓋。若沒有等價自動化測試,該項應視為**真正的 gap**
@@ -120,7 +139,7 @@ ls docs/superpowers/specs/*.md 2>/dev/null
 
 ---
 
-## 8. Frontend Testing Gate
+## 9. Frontend Testing Gate
 
 当前端 UI work 存在时，必须记录 `frontend-testing` 矩阵的真实执行证据。
 无前端 UI work 时填写 `N/A - no frontend UI work`。

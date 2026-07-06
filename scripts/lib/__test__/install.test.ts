@@ -5,6 +5,7 @@ import path from 'node:path'
 import { it } from 'vitest'
 import {
   projectSkillsToHost,
+  rebuildVendorSkillLinks,
   syncFirstPartyToHome,
 } from '../install.js'
 
@@ -53,6 +54,36 @@ it('first-party sync - agents and mcp are stored under vendor', () => {
     assert.ok(!fs.existsSync(path.join(moluoHome, 'agents')), 'agents must not sync to top-level moluoxixi agents')
     assert.ok(!fs.existsSync(path.join(moluoHome, 'mcp')), 'mcp must not sync to top-level moluoxixi mcp')
     assert.ok(!fs.existsSync(path.join(moluoHome, 'skills')), 'skills must not sync to top-level moluoxixi skills')
+  }
+  finally {
+    cleanup(tmpDir)
+  }
+})
+
+it('vendor skill rebuild - missing configured source directory fails with context', async () => {
+  const tmpDir = fs.mkdtempSync(path.join(os.tmpdir(), 'moluoxixi-missing-vendor-'))
+
+  try {
+    const moluoHome = path.join(tmpDir, 'home')
+    const manifestPath = path.join(tmpDir, 'vendors.mjs')
+    fs.mkdirSync(path.dirname(manifestPath), { recursive: true })
+    fs.writeFileSync(manifestPath, `
+export const vendors = [{
+  name: 'brokenVendor',
+  official: false,
+  source: 'https://example.test/broken.git',
+  projections: [{
+    kind: 'skills',
+    sourceBaseDir: 'skills',
+    skills: ['missing-skill'],
+  }],
+}]
+`)
+
+    await assert.rejects(
+      () => rebuildVendorSkillLinks({ homeDir: moluoHome, manifestPath }),
+      /brokenVendor.*skills[\\/]missing-skill/,
+    )
   }
   finally {
     cleanup(tmpDir)

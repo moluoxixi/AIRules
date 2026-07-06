@@ -184,7 +184,7 @@ it('getRemoteDefaultBranch - 无法判断默认分支时显式失败', () => {
   })
 }, GIT_INTEGRATION_TIMEOUT_MS)
 
-it('ensureVendorRepo - 远程仓库使用 sparse clone 和 reapply', () => {
+it('ensureVendorRepo - 远程仓库只检出配置需要的 sparse 目录', () => {
   withTempGitDir((tempRoot) => {
     const originRepo = path.join(tempRoot, 'origin.git')
     const remoteWork = path.join(tempRoot, 'remote-work')
@@ -212,6 +212,47 @@ it('ensureVendorRepo - 远程仓库使用 sparse clone 和 reapply', () => {
     })
 
     assert.ok(fs.existsSync(path.join(cloneDir, 'skills', 'demo', 'SKILL.md')))
+    assert.equal(fs.existsSync(path.join(cloneDir, 'docs', 'README.md')), false)
+  })
+}, GIT_INTEGRATION_TIMEOUT_MS)
+
+it('ensureVendorRepo - 远程仓库重跑时修复历史空 sparse pattern', () => {
+  withTempGitDir((tempRoot) => {
+    const originRepo = path.join(tempRoot, 'origin.git')
+    const remoteWork = path.join(tempRoot, 'remote-work')
+    const homeDir = path.join(tempRoot, 'home')
+    const repoUrl = `file://${normalizePath(originRepo)}`
+
+    git(tempRoot, ['init', '--bare', originRepo])
+    git(tempRoot, ['clone', originRepo, remoteWork])
+    git(remoteWork, ['checkout', '-b', 'main'])
+    fs.mkdirSync(path.join(remoteWork, 'skills', 'demo'), { recursive: true })
+    fs.mkdirSync(path.join(remoteWork, 'docs'), { recursive: true })
+    fs.writeFileSync(path.join(remoteWork, 'skills', 'demo', 'SKILL.md'), 'remote\n')
+    fs.writeFileSync(path.join(remoteWork, 'docs', 'README.md'), 'docs\n')
+    commitAll(remoteWork, 'initial remote')
+    git(remoteWork, ['push', '-u', 'origin', 'main'])
+
+    const cloneDir = path.join(homeDir, 'vendor', 'repos', 'remote-demo')
+    fs.mkdirSync(path.dirname(cloneDir), { recursive: true })
+    git(path.dirname(cloneDir), ['clone', '--depth', '1', '--filter=blob:none', '--sparse', repoUrl, cloneDir])
+    git(cloneDir, ['sparse-checkout', 'set', '--no-cone'])
+
+    assert.equal(git(cloneDir, ['sparse-checkout', 'list']).includes('skills'), false)
+    assert.equal(fs.existsSync(path.join(cloneDir, 'skills', 'demo', 'SKILL.md')), false)
+
+    ensureVendorRepo(homeDir, {
+      repo: repoUrl,
+      cloneDir: 'vendor/repos/remote-demo',
+      links: [{
+        kind: 'skill',
+        source: 'skills/demo',
+        target: 'vendor/skills/demo',
+      }],
+    })
+
+    assert.ok(fs.existsSync(path.join(cloneDir, 'skills', 'demo', 'SKILL.md')))
+    assert.equal(git(cloneDir, ['sparse-checkout', 'list']), 'skills')
     assert.equal(fs.existsSync(path.join(cloneDir, 'docs', 'README.md')), false)
   })
 }, GIT_INTEGRATION_TIMEOUT_MS)

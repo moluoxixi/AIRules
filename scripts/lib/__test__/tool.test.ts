@@ -220,6 +220,83 @@ it('tool - syncToHosts 支持只包含 skills 的 product 角色', async () => {
   })
 })
 
+it('tool - ecc-development 对 ECC 原生宿主使用官方 installer，Qoder 走 AIRules fallback', async () => {
+  await withTempDirAsync('airules-tool-ecc-role-', async (tmpDir) => {
+    const repoRoot = path.join(tmpDir, 'repo')
+    const userHome = path.join(tmpDir, 'user')
+    const moluoHome = path.join(userHome, '.moluoxixi')
+    const claudeHome = path.join(userHome, '.claude')
+    const codexHome = path.join(userHome, '.codex')
+    const cursorHome = path.join(userHome, '.cursor')
+    const qoderHome = path.join(userHome, '.qoder')
+    const opencodeHome = path.join(userHome, '.config', 'opencode')
+    const officialInstalls: Array<{ host: string, target: string, profile: string, args: string[] }> = []
+
+    writeFile(path.join(repoRoot, 'package.json'), '{"type":"module"}\n')
+    writeFile(path.join(repoRoot, 'roles', 'ecc-development', 'constants', 'skills.js'), 'export const vendors = []\n')
+    writeFile(path.join(repoRoot, 'roles', 'common', 'hooks', 'session-log.mjs'), 'process.stdout.write("{}")\n')
+    writeFile(path.join(repoRoot, 'roles', 'common', 'skills', 'session-capture', 'SKILL.md'), 'common skill\n')
+    for (const hostHome of [claudeHome, codexHome, cursorHome, qoderHome, opencodeHome]) {
+      fs.mkdirSync(hostHome, { recursive: true })
+    }
+
+    const result = await syncToHosts({
+      repoRoot,
+      home: moluoHome,
+      userHome,
+      host: 'all',
+      role: 'ecc-development',
+      skipVendors: false,
+      verify: false,
+      runOfficialEccInstall: (invocation) => {
+        officialInstalls.push(invocation)
+      },
+    })
+
+    assert.deepEqual(
+      officialInstalls.map(invocation => ({
+        host: invocation.host,
+        target: invocation.target,
+        profile: invocation.profile,
+        args: invocation.args,
+      })),
+      [
+        {
+          host: 'claude',
+          target: 'claude',
+          profile: 'developer',
+          args: ['-y', '--package', 'ecc-universal', 'ecc', 'install', '--profile', 'developer', '--target', 'claude'],
+        },
+        {
+          host: 'codex',
+          target: 'codex',
+          profile: 'developer',
+          args: ['-y', '--package', 'ecc-universal', 'ecc', 'install', '--profile', 'developer', '--target', 'codex'],
+        },
+        {
+          host: 'cursor',
+          target: 'cursor',
+          profile: 'developer',
+          args: ['-y', '--package', 'ecc-universal', 'ecc', 'install', '--profile', 'developer', '--target', 'cursor'],
+        },
+        {
+          host: 'opencode',
+          target: 'opencode',
+          profile: 'opencode',
+          args: ['-y', '--package', 'ecc-universal', 'ecc', 'install', '--profile', 'opencode', '--target', 'opencode'],
+        },
+      ],
+    )
+    assert.deepEqual(result.officialInstalledHosts, ['claude', 'codex', 'cursor', 'opencode'])
+    assert.deepEqual(result.projectedHosts, ['qoder'])
+    assert.equal(
+      realLinkPath(path.join(qoderHome, 'skills', 'session-capture')),
+      realLinkPath(path.join(repoRoot, 'roles', 'common', 'skills', 'session-capture')),
+    )
+    assert.equal(fs.existsSync(path.join(codexHome, 'skills', 'session-capture')), false)
+  })
+})
+
 it('tool - syncToHosts 在源码安装目录缺少 dist 时可直接加载 TypeScript manifest', async () => {
   await withTempDirAsync('airules-tool-source-no-dist-', async (tmpDir) => {
     const repoRoot = path.join(tmpDir, 'repo')

@@ -59,7 +59,7 @@ function runLinkClaude(projectRoot: string) {
   )
 }
 
-it('inject-rules - 规则源为空时新建空 AGENTS.md', () => {
+it('inject-rules - 新建 AGENTS.md 时注入测试用例 ID 基线', () => {
   withTempDir('airules-inject-new-', (tmpDir) => {
     const result = runInjectRules(tmpDir)
 
@@ -67,7 +67,10 @@ it('inject-rules - 规则源为空时新建空 AGENTS.md', () => {
     const agentsPath = path.join(tmpDir, 'AGENTS.md')
     const content = fs.readFileSync(agentsPath, 'utf8')
 
-    assert.equal(content, '')
+    assert.match(content, /AIRULES:BEGIN init-project-rules/)
+    assert.match(content, /TC-<模块>-<序号>/)
+    assert.match(content, /knowledge\/测试\/<模块>\.md/)
+    assert.doesNotMatch(content, /docs\/test\/<模块>\.md/)
   })
 })
 it('inject-rules - 规则源为空且已有内容时不追加托管块', () => {

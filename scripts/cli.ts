@@ -88,6 +88,9 @@ async function runSync(args: string[]) {
   })
 
   console.log(kleur.green(`[sync] 完成: ${result.projectedHosts.join(', ') || '无宿主投影'}`))
+  if (result.officialInstalledHosts.length > 0) {
+    console.log(`[sync] ECC 官方安装: ${result.officialInstalledHosts.join(', ')}`)
+  }
   console.log(`[home] ${result.moluoHome}`)
   if (result.skippedHosts.length > 0) {
     console.log(`[skip] 宿主目录不存在: ${result.skippedHosts.join(', ')}`)
@@ -127,6 +130,9 @@ async function runAdd(args: string[]) {
   })
 
   console.log(kleur.green(`[sync] 完成: ${result.projectedHosts.join(', ') || '无宿主投影'}`))
+  if (result.officialInstalledHosts.length > 0) {
+    console.log(`[sync] ECC 官方安装: ${result.officialInstalledHosts.join(', ')}`)
+  }
   if (result.skippedHosts.length > 0) {
     console.log(`[skip] 宿主目录不存在: ${result.skippedHosts.join(', ')}`)
   }

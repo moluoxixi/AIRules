@@ -786,3 +786,40 @@ it('vendors 配置 - PM skills 由 product 角色接入 pmSkills 上游', () => 
     'product 一方只维护 init-project，PM 方法论不复制到 AIRules 源目录',
   )
 })
+
+it('vendors 配置 - ecc-development 角色以 ECC 作为主编排来源', async () => {
+  const { vendors: eccDevelopmentVendors } = await import('../../../roles/ecc-development/constants/skills.js')
+  const vendors: Record<string, any> = {}
+
+  walkVendorTree(eccDevelopmentVendors, [], vendors)
+
+  assert.ok(vendors.ecc, 'ecc-development 角色应接入 ECC 上游')
+  assert.strictEqual(vendors.ecc.repo, 'https://github.com/affaan-m/ECC.git')
+  assert.strictEqual(
+    vendors.ecc.setup,
+    undefined,
+    'ECC 角色不应默认全局安装 CLI；原生宿主安装由 npx --package ecc-universal ecc install 执行',
+  )
+  assert.deepStrictEqual(
+    vendors.ecc.links.map((link: any) => ({
+      kind: link.kind,
+      source: link.source,
+      target: link.target,
+      setup: link.setup,
+    })),
+    [
+      {
+        kind: 'namespace-dir',
+        source: 'skills',
+        target: 'vendor/skills/ecc',
+        setup: undefined,
+      },
+    ],
+    'ECC 角色应保留 ECC canonical skills/ namespace，供非原生宿主和 --skip-vendors 兜底分发',
+  )
+
+  assert.strictEqual(vendors.superpowers, undefined, 'ecc-development 不应混入 Superpowers 上游')
+  assert.strictEqual(vendors.gstack, undefined, 'ecc-development 不应混入 gstack 上游')
+  assert.strictEqual(vendors.bmadMethod, undefined, 'ecc-development 不应混入 BMAD 上游')
+  assert.strictEqual(vendors.moluoxixi, undefined, 'ecc-development 初始不维护第一方开发 skill')
+})

@@ -9,6 +9,12 @@
 
 **Tech Stack:** <!-- Key technologies -->
 
+**change_unit_id:** `CU-<change-unit>`
+
+**Source Refs:** <!-- PRD/story/intake/proposal refs, or N/A -->
+
+**Scenario IDs:** <!-- SCN-<capability>-<NNN> list covered by this plan -->
+
 ## Frontend Planning Notes
 
 <!--
@@ -41,7 +47,7 @@ decide task split or execution order.
 
 ### Frontend Test Matrix
 
-| Scenario | Test Level | Tool / Command | Viewport | Console / Network | Evidence | Gap |
+| Scenario ID / Flow | Test Level | Tool / Command | Viewport | Console / Network | Evidence | Gap |
 |---|---|---|---|---|---|---|
 | `<flow/state>` | `<unit/component/e2e/visual smoke/manual>` | `<npm test... / playwright... / gstack-qa-only / existing tool>` | `<desktop/mobile/tablet/N/A>` | `<checked/not applicable>` | `<test file/log/screenshot>` | `<none or MISSING blocked: reason>` |
 

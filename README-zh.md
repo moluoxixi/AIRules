@@ -93,20 +93,7 @@ npm run sync
 ```
 
 > [!TIP]
-> **同步流程**：`npm run sync` 是默认开发角色同步（`roles/common` + `roles/development`）。需要显式开发角色时用 `npm run sync:development`；需要产品角色时用 `npm run sync:product`（`roles/common` + `roles/product`）。每次同步都会重建 vendor skills、执行 setup 命令、清理死链接，并在完成后自动运行宿主验证。默认开发 setup 会全局安装并初始化 CodeGraph，安装 OpenSpec（`@fission-ai/openspec`），并安装 BMAD（`bmad-method`）；产品同步会安装 OpenSpec 与 BMAD。需要避免拉取第三方供应商和跳过 setup 时，可使用 `airules sync --skip-vendors`。
-
----
-
-## 发布
-
-发布由 `.github/workflows/publish.yml` 负责。
-
-1. 创建具备发布权限的 npm automation token，并保存为 GitHub Actions 仓库 secret：`NPM_TOKEN`。
-2. 将 `package.json` 升到准备发布的版本，然后推送匹配的 Git tag，例如 `v0.1.0`。
-3. 推送 tag 会自动发布；也可以在 Actions 页面手动运行 `Publish package` workflow 并填写已有 tag。
-4. workflow 会安装依赖、校验 tag 与 `package.json` 版本一致、执行 lint/typecheck/tests，然后通过 `npm publish --provenance --access public` 发布到 npm。
-
-当前 workflow 使用 `npm install`，因为本仓库有意不跟踪 lockfile。
+> **同步流程**：`npm run sync` 是默认开发角色同步（`roles/common` + `roles/development`）。需要显式开发角色时用 `npm run sync:development`；需要产品角色时用 `npm run sync:product`（`roles/common` + `roles/product`）；需要 ECC 角色时用 `npm run sync:ecc-development`（`roles/common` + `roles/ecc-development`）。每次同步都会重建 vendor skills、执行 setup 命令、清理死链接，并在 AIRules 投影后自动运行宿主验证。默认开发 setup 会全局安装并初始化 CodeGraph，安装 OpenSpec（`@fission-ai/openspec`），并安装 BMAD（`bmad-method`）；产品同步会安装 OpenSpec 与 BMAD。ECC 同步对 Codex、Claude、Cursor、OpenCode 等 ECC 原生宿主调用官方命令 `npx -y --package ecc-universal ecc install --profile <profile> --target <target>`；Qoder 等 ECC 尚未原生支持的宿主保留 AIRules fallback 投影。ECC OpenSpec 工作见上游 [`affaan-m/ECC#2283`](https://github.com/affaan-m/ECC/issues/2283) 与 [`affaan-m/ECC#2318`](https://github.com/affaan-m/ECC/pull/2318)；截至 2026-07-06，PR 仍 open 且未合并，因此本角色不把 OpenSpec ecosystem 当作稳定默认依赖。需要避免拉取第三方供应商、跳过 setup 或跳过 ECC 官方 installer 时，可使用 `airules sync --skip-vendors`。
 
 ---
 
@@ -140,87 +127,6 @@ npm run rules:install -- --host claude
 > 仓库内也可以继续使用 `npm run rules:install -- --host claude`，该脚本现在等价转发到 `airules sync`。
 
 ---
-
-## CLI 命令
-
-| 命令 | 作用 |
-|------|------|
-| `airules sync --host all` | 同步内置、用户自定义和第三方 skills 到所有已存在宿主 |
-| `npm run sync` | 同步默认开发角色到所有已存在宿主 |
-| `npm run sync:development` | 显式同步开发角色到所有已存在宿主 |
-| `npm run sync:product` | 同步产品角色到所有已存在宿主 |
-| `airules add ./my-skill --host all` | 添加本地 skill，并同步到所有宿主 |
-| `airules add ./my-skill --name review-plus --overwrite` | 指定安装名并覆盖已有用户 skill |
-| `airules verify --host codex` | 校验指定宿主的 skills 链接完整性 |
-
-常用选项：
-
-| 选项 | 说明 |
-|------|------|
-| `--home <dir>` | 指定 AIRules 安装目录，默认 `~/.moluoxixi` |
-| `--user-home <dir>` | 指定宿主配置所在的用户目录，默认当前系统用户目录 |
-| `--host <name\|all>` | 指定宿主，默认 `all` |
-| `--role <name>` | 指定第一方角色，默认 `development`；产品 / PM skills 使用 `product` |
-| `--skip-vendors` | `sync` 时不刷新第三方 vendor 仓库 |
-| `--skip-sync` | `add` 后只写入用户 skill，不立即同步宿主 |
-| `--sync-vendors` | 执行 `add` 时同步刷新第三方 vendor；`add` 默认跳过 vendor 刷新 |
-| `--no-verify` | 跳过宿主验证 |
-
----
-
-### 宿主支持矩阵
-
-Moluoxixi AIRules 通过自动化投影，支持不断增长的 AI 代理生态系统：
-
-| 代理 | `--host` 参数 | 宿主 / MCP 路径 | 投影方式 | 规则基线 |
-|-------|---------------|-----------------|----------|----------|
-| **Claude Code** | `claude` | `~/.claude/` | skills + agents 软链接；MCP 位于 `~/.claude/.mcp.json` | `CLAUDE.md` |
-| **Codex** | `codex` | `~/.codex/` | skills 软链接；agents 转译为 TOML；MCP 写入 `config.toml` | `AGENTS.md` |
-| **Hermes** | `hermes` | `~/AppData/Local/hermes/` | skills 软链接 + 基线托管块 | 追加注入 `SOUL.md` |
-| **Hermes Desktop** | `hermes desktop` | `~/AppData/Local/hermes/` | skills 软链接 + 基线托管块 | 追加注入 `SOUL.md` |
-| **Cursor** | `cursor` | `~/.cursor/` | skills 软链接到 `skills-cursor`；agents 软链接；MCP 位于 `mcp.json` | `AGENTS.md` |
-| **Agents.md 共享层** | `agentsmd` | `~/.agents/` | skills 软链接 + agents 投影到 `subagents/`；需显式指定，不包含在 `--host all` | N/A |
-| **Trae** | `trae` | `~/.trae/`；MCP 位于 `~/AppData/Roaming/Trae/User/mcp.json` | skills + agents 软链接；MCP 合并写入 | `AGENTS.md` |
-| **Trae CN** | `trae-cn` | `~/.trae-cn/`；MCP 位于 `~/AppData/Roaming/Trae CN/User/mcp.json` | skills + agents 软链接；MCP 合并写入 | `AGENTS.md` |
-| **Trae Solo** | `trae-solo` | MCP 位于 `~/AppData/Roaming/TRAE SOLO/User/mcp.json` | 仅 MCP | N/A |
-| **Trae Solo CN** | `trae-solo-cn` | MCP 位于 `~/AppData/Roaming/TRAE SOLO CN/User/mcp.json` | 仅 MCP | N/A |
-| **Qoder** | `qoder` | `~/.qoder/`；MCP 位于 `~/AppData/Roaming/Qoder/SharedClientCache/mcp.json` | skills + agents 软链接；三事件 hooks；MCP 合并写入 | `AGENTS.md` |
-| **QoderWork** | `qoderwork` | `~/.qoderwork/` | skills + agents 软链接；暂无已验证 MCP 配置 | `AGENTS.md` |
-| **OpenCode** | `opencode` | `~/.config/opencode/` | skills + agents 软链接；MCP 写入 `opencode.json` | `AGENTS.md` |
-| **CC-Switch** | `cc-switch` | `~/.cc-switch/` | skills + agents 软链接 | `AGENTS.md` |
-
-> [!NOTE]
-> 第一方与精选第三方 skills 在安装过程中都会自动投影到代理专属的 skills 目录中。Hermes `SOUL.md` 是身份/人格文件，AIRules 不整份覆盖它，而是用 `<!-- AIRULES:BASELINE:START/END -->` 托管块把规则基线幂等追加进去：每次 `sync` 先删旧块再写最新块，保证只保留一份且不破坏原有身份内容。AIRules 不再默认分发过去借鉴 Hermes 的学习/策展 skills；学习候选保留为内部文档约定，而不是安装到代理里的 skill。
-
----
-
-## Skills 全景图
-
-### 第一方 Skills（自写）
-
-| 角色 | Skills |
-|------|--------|
-| **common** | `session-capture`, `distill-candidates`, `recall-memory`, `remember`, `reflect` |
-| **development** | `init-project`, `frontend-testing`, `handoff` |
-| **product** | `init-project` |
-
-> 第一方角色资产位于 `roles/<role>/`。开发与产品角色清单分别维护在 `roles/development/constants/skills.ts` 与 `roles/product/constants/skills.ts`。skills 源目录安装时会按叶子目录名展平为 `vendor/skills/<skill-name>`；角色同步先叠加 `roles/common/`，再叠加所选角色（默认 `development`，也可 `--role product`），同名资产由所选角色覆盖 common。产品 PM 方法论（`deliver-prd`、`deliver-user-stories`、`deliver-acceptance-criteria`、`deliver-edge-cases`、`develop-adr`、`develop-solution-brief`）来自 `pmSkills` 上游 vendor。BMAD 提供重型 PRD 校验、长文档分片、epic/story 拆分与项目上下文生成；产品一方 `init-project` 负责安装 OpenSpec 的 `product-pm-bridge` schema 与 BMAD BMM runtime。
-
-### 第三方 Skills（精选）
-
-| 来源 | Skills | 说明 |
-|------|--------|------|
-| **Google Gemini** | code-reviewer-gemini, pr-creator-gemini | 代码审查与 PR 自动创建 |
-| **Vercel Labs** | find-skills-vercel | 开源生态 Skill 发现与安装 |
-| **Anthropic** | frontend-design-anthropic | 生产级前端视觉设计指导 |
-| **OpenAI** | playwright-openai | 浏览器自动化与 UI 流程调试 |
-| **Superpowers** | 上游 `skills/` 命名空间 | 开发角色安装 skills 版，并按叶子 skill 名展平给多宿主使用 |
-| **PM Skills** | deliver-prd, deliver-user-stories, deliver-acceptance-criteria, deliver-edge-cases, develop-adr, develop-solution-brief | 产品角色使用的产品 / PM 方法论 |
-| **BMAD Method** | bmad-prd, bmad-create-epics-and-stories, bmad-generate-project-context, bmad-shard-doc | 重型产品文档校验、epic/story 拆分、上下文生成与长文档分片 |
-| **gstack** | gstack-plan-ceo-review, gstack-plan-eng-review, gstack-plan-design-review, gstack-plan-devex-review, gstack-review, gstack-qa-only, gstack-qa, gstack-design-review, gstack-devex-review, gstack-document-release | 评审与 QA skills；默认前端门禁优先用报告型 QA，修复型 QA 需显式触发 |
-| **Matt Pocock** | matt-grill-with-docs, matt-domain-modeling, matt-codebase-design, matt-to-prd, matt-to-issues, matt-tdd, matt-diagnosing-bugs, matt-code-review | 按需工程纪律 skills，统一加 `matt-` 前缀，避免接管主流程 |
-
-> 精选第三方 skills 使用来源后缀作为安装名，避免与 Superpowers、用户本地 skills 或其它供应商的同名裸目录冲突。
 
 ## `init-project` 之后如何使用 OpenSpec
 
@@ -272,10 +178,13 @@ Moluoxixi AIRules 通过自动化投影，支持不断增长的 AI 代理生态�
 │   │   │   └── mcp.json   # 按宿主格式投影的中性 MCP 源
 │   │   ├── hooks/
 │   │   └── skills/
-│   └── product/
-│       ├── constants/
-│       │   └── skills.ts  # 产品 / PM skill 清单
-│       └── skills/         # 第一方产品 init-project skill
+│   ├── product/
+│   │   ├── constants/
+│   │   │   └── skills.ts  # 产品 / PM skill 清单
+│   │   └── skills/         # 第一方产品 init-project skill
+│   └── ecc-development/
+│       └── constants/
+│           └── skills.ts  # ECC 角色 skill 清单
 ├── local/
 │   └── skills/              # `airules add` 复制进来的用户自定义 skills
 ├── vendor/

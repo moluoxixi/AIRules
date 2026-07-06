@@ -4,6 +4,7 @@ import { existsSync, readdirSync, readFileSync } from 'node:fs'
 import path from 'node:path'
 import { fileURLToPath } from 'node:url'
 import { vendors as developmentVendors } from '../roles/development/constants/skills.js'
+import { vendors as eccDevelopmentVendors } from '../roles/ecc-development/constants/skills.js'
 import { vendors as productVendors } from '../roles/product/constants/skills.js'
 import { COMMON_ROLE, DEFAULT_ROLE, resolveRolePaths } from './lib/roles.js'
 
@@ -13,8 +14,10 @@ import { COMMON_ROLE, DEFAULT_ROLE, resolveRolePaths } from './lib/roles.js'
 // 之间的引用存在性与明显漂移。作用域不含历史 plan、README。
 
 const PRODUCT_ROLE = 'product'
+const ECC_DEVELOPMENT_ROLE = 'ecc-development'
 const ROLE_VENDOR_CONFIGS: Record<string, VendorsConfig> = {
   [DEFAULT_ROLE]: developmentVendors,
+  [ECC_DEVELOPMENT_ROLE]: eccDevelopmentVendors,
   [PRODUCT_ROLE]: productVendors,
 }
 
@@ -117,9 +120,9 @@ export function checkRulesConsistency(repoRoot: string): CheckResult {
   const errors: string[] = []
   const rolePaths = resolveRolePaths(repoRoot, DEFAULT_ROLE)
   const commonRolePaths = resolveRolePaths(repoRoot, COMMON_ROLE)
-  const productRolePaths = resolveRolePaths(repoRoot, PRODUCT_ROLE)
+  const roleVendorPaths = Object.keys(ROLE_VENDOR_CONFIGS).map(role => resolveRolePaths(repoRoot, role))
   const agentsDir = rolePaths.agentsDir
-  const skillRoots = [commonRolePaths, rolePaths, productRolePaths].filter(paths => existsSync(paths.skillsDir))
+  const skillRoots = [commonRolePaths, ...roleVendorPaths].filter(paths => existsSync(paths.skillsDir))
   const skillsDirs = skillRoots.map(paths => paths.skillsDir)
   const archDir = path.join(repoRoot, 'knowledge', '架构')
   const rulesPath = path.join(rolePaths.rulesDir, 'AGENTS.md')
@@ -152,8 +155,8 @@ export function checkRulesConsistency(repoRoot: string): CheckResult {
     }
   }
 
-  // 3. development/product 角色 constants/skills.ts 必须与各自 skills 目录一致。
-  for (const paths of [rolePaths, productRolePaths].filter(paths => existsSync(paths.roleRoot))) {
+  // 3. 角色 constants/skills.ts 必须与各自 skills 目录一致。
+  for (const paths of roleVendorPaths.filter(paths => existsSync(paths.roleRoot))) {
     const registryPath = path.join(paths.roleRoot, 'constants', 'skills.ts')
     const actual = new Set(actualRoleSkillNames(paths.skillsDir))
     if (!existsSync(registryPath)) {
@@ -218,9 +221,9 @@ export function checkRulesConsistency(repoRoot: string): CheckResult {
     errors.push(`roles/${DEFAULT_ROLE}/rules/AGENTS.md 必须保持为空：开发角色不分发 always-on 全局规则内容`)
   }
 
-  // 7. 反向登记：development/product 角色下每个含 SKILL.md 的第一方目录都必须登记进角色 constants/skills.ts
+  // 7. 反向登记：每个 role 下含 SKILL.md 的第一方目录都必须登记进角色 constants/skills.ts
   //    分发清单（防止新增 skill 漏登记而无法被投影/安装）。vendor 投影来源不在此列。
-  for (const skillRoot of [rolePaths, productRolePaths].filter(paths => existsSync(paths.skillsDir))) {
+  for (const skillRoot of roleVendorPaths.filter(paths => existsSync(paths.skillsDir))) {
     const registered = new Set(firstPartySkillNames(ROLE_VENDOR_CONFIGS[skillRoot.role] ?? []))
     for (const entry of readdirSync(skillRoot.skillsDir, { withFileTypes: true })) {
       if (!entry.isDirectory()) {

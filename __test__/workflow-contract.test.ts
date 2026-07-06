@@ -13,6 +13,7 @@ const __dirname = path.dirname(fileURLToPath(import.meta.url))
 const repoRoot = path.resolve(__dirname, '..')
 const DEVELOPMENT_SKILLS = ['frontend-testing', 'handoff', 'init-project']
 const PRODUCT_SKILLS = ['init-project']
+const ECC_DEVELOPMENT_ROLE = 'ecc-development'
 
 function withTempDir<T>(run: (tmpDir: string) => T): T {
   const tmpDir = fs.mkdtempSync(path.join(os.tmpdir(), 'airules-wf-'))
@@ -117,6 +118,22 @@ describe('自洽检查器', () => {
     })
   })
 
+  it('捕获：ecc-development 角色下有 SKILL.md 但未登记 role constants/skills.ts', () => {
+    withTempDir((root) => {
+      seedCleanRepo(root)
+      const orphan = path.join(root, 'roles', ECC_DEVELOPMENT_ROLE, 'skills', 'unregistered-ecc-skill')
+      fs.mkdirSync(path.join(root, 'roles', ECC_DEVELOPMENT_ROLE, 'constants'), { recursive: true })
+      fs.writeFileSync(
+        path.join(root, 'roles', ECC_DEVELOPMENT_ROLE, 'constants', 'skills.ts'),
+        'export const vendors = []\n',
+      )
+      fs.mkdirSync(orphan, { recursive: true })
+      fs.writeFileSync(path.join(orphan, 'SKILL.md'), '---\nname: unregistered-ecc-skill\n---\n')
+      const { errors } = checkRulesConsistency(root)
+      assert.ok(errors.some(e => e.includes('unregistered-ecc-skill') && e.includes(ECC_DEVELOPMENT_ROLE)), errors.join('\n'))
+    })
+  })
+
   it('捕获：ADR 文件未登记 decisions/index.md', () => {
     withTempDir((root) => {
       seedCleanRepo(root)
@@ -146,18 +163,50 @@ describe('编排红线文本', () => {
     assert.deepEqual(firstPartySkillNames(productVendors).sort(), PRODUCT_SKILLS)
   })
 
+  it('ecc-development role 接入 ECC 并保留为空第一方 role', async () => {
+    const roleReadmePath = path.join(repoRoot, 'roles', ECC_DEVELOPMENT_ROLE, 'README.md')
+    const roleManifestPath = path.join(repoRoot, 'roles', ECC_DEVELOPMENT_ROLE, 'constants', 'skills.ts')
+    const pkg = JSON.parse(read('package.json')) as { scripts: Record<string, string> }
+
+    assert.equal(fs.existsSync(roleReadmePath), true)
+    assert.equal(fs.existsSync(roleManifestPath), true)
+    assert.equal(pkg.scripts['sync:ecc-development'], `tsx scripts/cli.ts sync --host all --role ${ECC_DEVELOPMENT_ROLE}`)
+
+    const roleReadme = fs.readFileSync(roleReadmePath, 'utf8')
+    assert.match(roleReadme, /https:\/\/github\.com\/affaan-m\/ECC\/issues\/2283/)
+    assert.match(roleReadme, /https:\/\/github\.com\/affaan-m\/ECC\/pull\/2318/)
+    assert.match(roleReadme, /npx -y --package ecc-universal ecc install/)
+    assert.match(roleReadme, /Qoder.*AIRules/s)
+    for (const host of ['Codex', 'Claude', 'Qoder', 'OpenCode']) {
+      assert.match(roleReadme, new RegExp(host, 'i'))
+    }
+
+    const { vendors } = await import('../roles/ecc-development/constants/skills.js')
+    assert.deepEqual(firstPartySkillNames(vendors).sort(), [])
+  })
+
   it('skill 分发清单只存在于 role constants/skills.ts', () => {
     assert.equal(fs.existsSync(path.join(repoRoot, 'constants', 'skills.ts')), false)
     assert.equal(fs.existsSync(path.join(repoRoot, 'roles', 'development', 'constants', 'skills.ts')), true)
     assert.equal(fs.existsSync(path.join(repoRoot, 'roles', 'product', 'constants', 'skills.ts')), true)
+    assert.equal(fs.existsSync(path.join(repoRoot, 'roles', ECC_DEVELOPMENT_ROLE, 'constants', 'skills.ts')), true)
     assert.equal(fs.existsSync(path.join(repoRoot, 'roles', 'development', 'constants', 'skills.md')), false)
     assert.equal(fs.existsSync(path.join(repoRoot, 'roles', 'product', 'constants', 'skills.md')), false)
+    assert.equal(fs.existsSync(path.join(repoRoot, 'roles', ECC_DEVELOPMENT_ROLE, 'constants', 'skills.md')), false)
   })
 
   it('development role 仅保留空 rules baseline 占位', () => {
     const rulesPath = path.join(repoRoot, 'roles', 'development', 'rules', 'AGENTS.md')
     assert.equal(fs.existsSync(rulesPath), true)
     assert.equal(fs.readFileSync(rulesPath, 'utf8'), '')
+  })
+
+  it('repo-maintenance 测试用例 ID 纪律指向 knowledge/测试', () => {
+    const rootRules = read('AGENTS.md')
+
+    assert.match(rootRules, /TC-<模块>-<序号>/)
+    assert.match(rootRules, /knowledge\/测试\/<模块>\.md/)
+    assert.doesNotMatch(rootRules, /docs\/test\/<模块>\.md/)
   })
 
   it('init-project 只保留规则注入、Claude 链接与 OpenSpec schema 初始化脚本', () => {
@@ -169,10 +218,15 @@ describe('编排红线文本', () => {
     ])
   })
 
-  it('init-project references 只保留空 airules-base.md', () => {
+  it('init-project references 注入下游测试用例 ID 纪律', () => {
     const referencesDir = path.join(repoRoot, 'roles', 'development', 'skills', 'init-project', 'references')
+    const baseRules = fs.readFileSync(path.join(referencesDir, 'airules-base.md'), 'utf8')
+
     assert.deepEqual(fs.readdirSync(referencesDir).sort(), ['airules-base.md'])
-    assert.equal(fs.readFileSync(path.join(referencesDir, 'airules-base.md'), 'utf8'), '')
+    assert.match(baseRules, /TC-<模块>-<序号>/)
+    assert.match(baseRules, /knowledge\/测试\/<模块>\.md/)
+    assert.match(baseRules, /covers: SCN-<capability>-<NNN>/)
+    assert.doesNotMatch(baseRules, /docs\/test\/<模块>\.md/)
   })
 
   it('正式 memory 文件含 created_at 与 status frontmatter', () => {

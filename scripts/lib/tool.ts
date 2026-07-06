@@ -1,8 +1,9 @@
+import { execFileSync } from 'node:child_process'
 import { cpSync, existsSync, mkdirSync, rmSync } from 'node:fs'
 import os from 'node:os'
 import path from 'node:path'
 import { fileURLToPath } from 'node:url'
-import { ALL_HOST_IDS } from '../../constants/hosts.js'
+import { ALL_HOST_IDS, findHostConfig, resolveHostPaths } from '../../constants/hosts.js'
 import {
   ensureInstallRoot,
   getDefaultInstallPaths,
@@ -10,7 +11,9 @@ import {
   linkHostBaseline,
   projectHostById,
   rebuildVendorSkillLinks,
+  resolveSetupCommandExecutable,
   runSkillSetupCommands,
+  shouldUseShellForSetupCommand,
   syncFirstPartySkillsToVendor,
   syncFirstPartyToHome,
 } from './install.js'
@@ -35,13 +38,25 @@ export interface SyncOptions {
   role?: string
   skipVendors: boolean
   verify: boolean
+  runOfficialEccInstall?: OfficialEccInstallRunner
 }
 
 export interface SyncResult {
   moluoHome: string
   projectedHosts: string[]
+  officialInstalledHosts: string[]
   skippedHosts: string[]
 }
+
+export interface OfficialEccInstallInvocation {
+  host: string
+  target: string
+  profile: string
+  args: string[]
+  userHome: string
+}
+
+export type OfficialEccInstallRunner = (invocation: OfficialEccInstallInvocation) => void | Promise<void>
 
 export interface AddSkillOptions {
   sourceDir: string
@@ -88,6 +103,72 @@ export function resolveToolPaths(repoRoot: string, home: string, userHome = os.h
 
 export function resolveHostTargets(host: string): string[] {
   return host === 'all' ? ALL_HOST_IDS : [host]
+}
+
+const ECC_DEVELOPMENT_ROLE = 'ecc-development'
+
+const ECC_OFFICIAL_HOSTS: Record<string, { target: string, profile: string }> = {
+  claude: { target: 'claude', profile: 'developer' },
+  codex: { target: 'codex', profile: 'developer' },
+  cursor: { target: 'cursor', profile: 'developer' },
+  opencode: { target: 'opencode', profile: 'opencode' },
+}
+
+function officialEccInstallInvocation(host: string, userHome: string): OfficialEccInstallInvocation | undefined {
+  const spec = ECC_OFFICIAL_HOSTS[host]
+  if (!spec) {
+    return undefined
+  }
+
+  return {
+    host,
+    target: spec.target,
+    profile: spec.profile,
+    args: [
+      '-y',
+      '--package',
+      'ecc-universal',
+      'ecc',
+      'install',
+      '--profile',
+      spec.profile,
+      '--target',
+      spec.target,
+    ],
+    userHome,
+  }
+}
+
+function hostHomeExists(host: string, userHome: string): boolean {
+  const config = findHostConfig(host)
+  if (!config) {
+    throw new Error(`Unknown host: ${host}`)
+  }
+
+  return existsSync(path.resolve(resolveHostPaths(config, userHome).hostHome))
+}
+
+function officialEccInstallEnv(userHome: string): NodeJS.ProcessEnv {
+  return {
+    ...process.env,
+    HOME: userHome,
+    USERPROFILE: userHome,
+  }
+}
+
+function runOfficialEccInstallCommand(invocation: OfficialEccInstallInvocation): void {
+  console.log(`[ecc] 官方安装: ${invocation.host} -> ${invocation.target} (${invocation.profile})`)
+  try {
+    execFileSync(resolveSetupCommandExecutable('npx'), invocation.args, {
+      env: officialEccInstallEnv(invocation.userHome),
+      shell: shouldUseShellForSetupCommand('npx'),
+      stdio: 'inherit',
+    })
+  }
+  catch (error) {
+    throw new Error(`[ecc] 官方安装失败: ${invocation.host} -> ${invocation.target}
+${String(error)}`)
+  }
 }
 
 async function syncVendorsIfNeeded(paths: ToolPaths, skipVendors: boolean) {
@@ -165,10 +246,28 @@ export async function syncToHosts(options: SyncOptions): Promise<SyncResult> {
   syncLocalSkillLayers(paths, options.role)
 
   const projectedHosts: string[] = []
+  const officialInstalledHosts: string[] = []
   const skippedHosts: string[] = []
   const failedHosts: string[] = []
+  const officialEccRunner = options.runOfficialEccInstall ?? runOfficialEccInstallCommand
+  const useOfficialEccInstall = options.role === ECC_DEVELOPMENT_ROLE && !options.skipVendors
 
   for (const host of resolveHostTargets(options.host)) {
+    const officialEccInvocation = useOfficialEccInstall
+      ? officialEccInstallInvocation(host, paths.userHome)
+      : undefined
+
+    if (officialEccInvocation) {
+      if (!hostHomeExists(host, paths.userHome)) {
+        skippedHosts.push(host)
+        continue
+      }
+
+      await officialEccRunner(officialEccInvocation)
+      officialInstalledHosts.push(host)
+      continue
+    }
+
     const { success, baselineProjected } = projectHostById(host, paths.userHome, paths.moluoHome)
     if (!success) {
       skippedHosts.push(host)
@@ -199,6 +298,7 @@ export async function syncToHosts(options: SyncOptions): Promise<SyncResult> {
   return {
     moluoHome: paths.moluoHome,
     projectedHosts,
+    officialInstalledHosts,
     skippedHosts,
   }
 }

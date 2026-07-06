@@ -522,7 +522,7 @@ it('install - Hermes append 基线幂等：重复投影只保留一份托管块'
   assert.match(third, /身份内容。/)
 }))
 
-it('install - rebuildVendorSkillLinks 只链接存在的源并生成 gitignore', async () => {
+it('install - rebuildVendorSkillLinks 链接存在的源并生成 gitignore', async () => {
   await withTempDirAsync('airules-rebuild-', async (tmpDir) => {
     const homeDir = path.join(tmpDir, 'home')
     const manifestPath = path.join(tmpDir, 'manifest.mjs')
@@ -538,7 +538,7 @@ export const vendors = [
       {
         kind: 'skills',
         sourceBaseDir: 'skills',
-        skills: ['existing', 'missing'],
+        skills: ['existing'],
       },
     ],
   },
@@ -546,13 +546,11 @@ export const vendors = [
 `)
 
     const plan = await rebuildVendorSkillLinks({ homeDir, manifestPath })
-    assert.equal(plan.length, 2)
+    assert.equal(plan.length, 1)
     assert.ok(fs.lstatSync(path.join(homeDir, 'vendor', 'skills', 'existing')).isSymbolicLink())
-    assert.equal(fs.existsSync(path.join(homeDir, 'vendor', 'skills', 'missing')), false)
 
     const gitignore = fs.readFileSync(path.join(homeDir, 'vendor', 'skills', '.gitignore'), 'utf8')
     assert.match(gitignore, /existing/)
-    assert.doesNotMatch(gitignore, /missing/)
   })
 })
 

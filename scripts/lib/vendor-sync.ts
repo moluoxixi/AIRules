@@ -138,12 +138,7 @@ export function ensureVendorRepo(homeDir: string, vendor: Vendor): string {
   }
 
   if (sparsePatterns.length > 0) {
-    if (isLocalRepo(vendor.repo)) {
-      runGit(['-C', cloneDir, 'sparse-checkout', 'set', ...sparsePatterns], process.cwd(), { stdio: 'inherit' })
-    }
-    else {
-      runGit(['-C', cloneDir, 'sparse-checkout', 'reapply'], process.cwd(), { stdio: 'inherit' })
-    }
+    runGit(['-C', cloneDir, 'sparse-checkout', 'set', ...sparsePatterns], process.cwd(), { stdio: 'inherit' })
   }
 
   runGit(['-C', cloneDir, 'reset', '--hard'], process.cwd(), { stdio: 'inherit' })

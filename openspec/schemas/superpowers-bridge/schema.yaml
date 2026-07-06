@@ -165,7 +165,9 @@ artifacts:
       Format requirements:
       - Each requirement: `### Requirement: <name>` followed by description
       - Use SHALL/MUST for normative requirements (avoid should/may)
-      - Each scenario: `#### Scenario: <name>` with WHEN/THEN format
+      - Each spec file MUST declare `change_unit_id: CU-<change-unit>` near the top.
+      - Each scenario: `#### Scenario: SCN-<capability>-<NNN> <name>` with WHEN/THEN format.
+      - Scenario IDs are the canonical anchors for test coverage. Test design files under `knowledge/测试/<模块>.md` MUST map TC IDs back with `covers: SCN-<capability>-<NNN>`.
       - **CRITICAL**: Scenarios MUST use exactly 4 hashtags (`####`). Using 3 hashtags or bullets will fail silently.
       - Every requirement MUST have at least one scenario.
 
@@ -222,6 +224,11 @@ artifacts:
       Pass the tasks.md content to the skill as the input for
       decomposition. The plan should reference the specs and
       design artifacts in this change directory.
+
+      plan.md MUST preserve traceability fields:
+      - `change_unit_id: CU-<change-unit>`
+      - Source refs from PRD/story/intake/proposal, or N/A
+      - Scenario IDs (`SCN-<capability>-<NNN>`) covered by the plan
 
       If the implementation includes frontend UI work, plan.md MUST
       include Frontend Planning Notes covering layout, used fields,
@@ -284,15 +291,23 @@ artifacts:
          - ✗ Needs sync (list the capabilities)
          - N/A (no delta specs produced)
 
-      4. **Design/specs coherence**: Spot-check that design.md
+      4. **Scenario coverage**: Run:
+
+           npm run verify:scenario-coverage -- openspec/changes/<name>
+
+         This checks that every delta spec `SCN-*` Scenario ID is covered
+         by at least one `covers: SCN-*` entry in `knowledge/测试/**/*.md`.
+         Missing Scenario IDs or missing TC coverage are blocking failures.
+
+      5. **Design/specs coherence**: Spot-check that design.md
          decisions reference or align with the requirements listed
          in specs/. Record any drift as a warning (non-blocking).
 
-      5. **Implementation signal**: Confirm all code changes are
+      6. **Implementation signal**: Confirm all code changes are
          committed (no unstaged files in the worktree). Cite the
          commit range if known.
 
-      6. **Front-door routing leak detector** (warning, non-blocking):
+      7. **Front-door routing leak detector** (warning, non-blocking):
 
          For projects using superpowers-bridge, design output
          should never land in `docs/superpowers/specs/` — the
@@ -312,11 +327,11 @@ artifacts:
          of that directory predating schema install. Surfaces the
          leak so the user can decide whether to clean up.
 
-      7. **Deferred dogfood vs automated-test equivalence**:
+      8. **Deferred dogfood vs automated-test equivalence**:
 
          If plan.md has any tasks marked `[~]` deferred (manual smoke /
          dogfood / live-environment checks that weren't run in this
-         cycle), enumerate each in verify.md §7 and identify the
+         cycle), enumerate each in verify.md §8 and identify the
          equivalent automated test that covers the same assertions.
 
          If no equivalent automated test exists for a deferred manual
@@ -331,10 +346,10 @@ artifacts:
 
          Non-blocking on its own — Overall Decision remains PASS even
          with identified gaps, provided they're recorded as follow-up.
-         Blocks only if §7 is empty AND plan.md has `[~]` rows (means
+         Blocks only if §8 is empty AND plan.md has `[~]` rows (means
          the gap analysis was skipped, not that gaps don't exist).
 
-      8. **Frontend testing gate**:
+      9. **Frontend testing gate**:
 
          If plan.md indicates frontend UI work, run the frontend-testing
          matrix checks with the project's existing test tools. Record actual

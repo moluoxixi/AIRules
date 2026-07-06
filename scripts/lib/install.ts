@@ -575,7 +575,7 @@ export async function rebuildVendorSkillLinks({ homeDir, manifestPath }: { homeD
 
   for (const entry of plan) {
     if (!existsSync(entry.source)) {
-      continue
+      throw new Error(`Vendor "${entry.vendorId}" missing configured source directory: ${entry.source} -> ${entry.target}`)
     }
 
     const linkSources = entry.kind === 'namespace-dir'

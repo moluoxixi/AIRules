@@ -11,4 +11,4 @@
 - skills/remember：在用户要求“记住这条”或转正已审核记忆候选时触发。用于写入 `knowledge/memory/`。
 - skills/reflect：在用户要求复盘/追因时触发。用于诊断根因并路由可复用教训。
 
-角色同步默认叠加 common：选择 `development` 或 `product` 时都会先同步 common，再同步目标角色；目标角色同名资产覆盖 common。
+角色同步默认叠加 common：选择 `development`、`product` 或 `ecc-development` 时都会先同步 common，再同步目标角色；目标角色同名资产覆盖 common。
