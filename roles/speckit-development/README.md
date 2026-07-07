@@ -13,18 +13,19 @@
 - Spec Kit 官方产物是 `specify` CLI、项目模板与 `/speckit.*` 命令；AIRules 通过 setup 安装 CLI，不自定义 schema、不伪造成 OpenSpec schema。
 - `speckit-superpowers-bridge` 是该角色的桥接层：Spec Kit 继续拥有 constitution / spec / plan / tasks，bridge 只负责 handoff、guard 与执行入口。
 - Superpowers 官方仓库仍按 namespace 投影，因为 bridge 的执行阶段依赖原生 Superpowers skills，不重新实现 TDD、debug、verification、review 或 branch finishing。
-- AIRules 第一方只提供轻量 `init-project` skill，用于在目标项目中调用 Spec Kit 原生命令和安装 bridge；它不复制 OpenSpec schema 资产。
+- AIRules 第一方提供完整 `init-project` skill，用于在目标项目中注入项目规则、建立 `CLAUDE.md` 链接、调用 Spec Kit 原生命令、安装 bridge、初始化 CodeGraph 并执行 readiness 检查；它不复制 OpenSpec schema 资产。
 
 ## 初始化方式
 
-目标项目内优先使用 Spec Kit 官方命令：
+目标项目优先通过该角色的 `init-project` skill 完整安装；底层命令等价于：
 
 ```bash
 specify init . --integration codex
 specify extension add speckit-superpowers-bridge --from https://github.com/lihan3238/speckit-superpowers-bridge/releases/latest/download/speckit-superpowers-bridge.zip
+codegraph init -i
 ```
 
-其他宿主按 Spec Kit 官方 integration 选择，例如 `claude`、`copilot`、`gemini`；需要保留已有目录时加 `--force`，需要跳过 agent 工具探测时加 `--ignore-agent-tools`。该角色不安装 OpenSpec schema，项目规格目录、命令入口和 bridge extension 都交给 Spec Kit 原生初始化与 extension 机制生成。
+`init-project` 会先处理 `AGENTS.md`/`CLAUDE.md` 项目规则；`airules-base.md` 默认注入，`frontend-only.md` 仅在纯前端项目按需注入。其他宿主按 Spec Kit 官方 integration 选择，例如 `claude`、`copilot`、`gemini`；需要覆盖默认 Codex integration 时设置 `AIRULES_SPECKIT_INTEGRATION=<integration>`。该角色不安装 OpenSpec schema，项目规格目录、命令入口和 bridge extension 都交给 Spec Kit 原生初始化与 extension 机制生成。
 
 ## 工作流
 

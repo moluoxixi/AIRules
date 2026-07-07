@@ -151,7 +151,7 @@ specify extension add speckit-superpowers-bridge --from https://github.com/lihan
 
 Choose another official integration when needed, such as `claude`, `copilot`, or `gemini`. Add `--force` for an existing non-empty directory and `--ignore-agent-tools` when you need to skip agent tool detection. After initialization, use the native Spec Kit design flow: `/speckit.constitution`, `/speckit.specify`, `/speckit.clarify`, `/speckit.plan`, `/speckit.tasks`, and `/speckit.analyze`. In Spec Kit projects, prefer `$speckit-superpowers-bridge` on Codex or `/speckit-superpowers-bridge` on Claude Code over direct `/speckit.implement`; the bridge keeps Spec Kit artifacts canonical and delegates implementation discipline to native Superpowers.
 
-The role also ships a lightweight `init-project` skill so agents can run the native initialization sequence consistently inside target projects. That wrapper calls Spec Kit and bridge extension commands; it does not copy OpenSpec schemas or AIRules OpenSpec initialization assets.
+The role also ships a complete `init-project` skill so agents can run the full initialization sequence consistently inside target projects. That wrapper injects project rules, links `CLAUDE.md`, runs Spec Kit and bridge extension commands, initializes CodeGraph, and does not copy OpenSpec schemas or AIRules OpenSpec initialization assets.
 
 ### Product Spec Usage
 

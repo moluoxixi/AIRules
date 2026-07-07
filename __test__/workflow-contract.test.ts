@@ -147,7 +147,7 @@ describe('编排红线文本', () => {
     assert.deepEqual(entries, [])
   })
 
-  it('speckit-development role 只登记轻量 init-project 一方 skill', () => {
+  it('speckit-development role 只登记完整 init-project 一方 skill', () => {
     assert.deepEqual(firstPartySkillNames(speckitDevelopmentVendors).sort(), SPECKIT_DEVELOPMENT_SKILLS)
   })
 
@@ -161,14 +161,21 @@ describe('编排红线文本', () => {
     assert.match(roleReadme, /specify extension add speckit-superpowers-bridge/)
     assert.match(roleReadme, /\$speckit-superpowers-bridge/)
     assert.doesNotMatch(roleReadme, /社区检索未发现/)
+    assert.match(roleReadme, /完整 `init-project` skill/)
+    assert.match(roleReadme, /frontend-only\.md/)
     assert.match(initSkill, /specify init <project> --integration <integration>/)
     assert.match(initSkill, /specify extension add speckit-superpowers-bridge/)
+    assert.match(initSkill, /inject-rules\.mjs/)
+    assert.match(initSkill, /frontend-only\.md/)
+    assert.match(initSkill, /spec-init\.mjs/)
+    assert.match(initSkill, /codegraph init -i/)
     assert.match(initSkill, /不写 `openspec\/schemas\/\*\*`/)
     assert.match(initSkill, /不设置 `schema: superpowers-bridge`/)
-    assert.doesNotMatch(initSkill, /spec-init\.mjs/)
     assert.doesNotMatch(initSkill, /openspec schema validate/)
     assert.match(rootReadme, /lihan3238\/speckit-superpowers-bridge/)
     assert.match(rootReadmeZh, /lihan3238\/speckit-superpowers-bridge/)
+    assert.doesNotMatch(rootReadme, /lightweight `init-project`/)
+    assert.doesNotMatch(rootReadmeZh, /轻量 `init-project`/)
   })
 
   it('openspec-development role 只登记保留的一方 skills', () => {
@@ -233,6 +240,20 @@ describe('编排红线文本', () => {
     const rulesPath = path.join(repoRoot, 'roles', SPECKIT_DEVELOPMENT_ROLE, 'rules', 'AGENTS.md')
     assert.equal(fs.existsSync(rulesPath), true)
     assert.equal(fs.readFileSync(rulesPath, 'utf8'), '')
+  })
+
+  it('speckit init-project 分发完整安装脚本与项目规则 references', () => {
+    const skillRoot = path.join(repoRoot, 'roles', SPECKIT_DEVELOPMENT_ROLE, 'skills', 'init-project')
+
+    assert.deepEqual(fs.readdirSync(path.join(skillRoot, 'scripts')).sort(), [
+      'inject-rules.mjs',
+      'link-claude.mjs',
+      'spec-init.mjs',
+    ])
+    assert.deepEqual(fs.readdirSync(path.join(skillRoot, 'references')).sort(), [
+      'airules-base.md',
+      'frontend-only.md',
+    ])
   })
 
   it('repo-maintenance 测试用例 ID 纪律指向 knowledge/测试', () => {

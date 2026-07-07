@@ -741,7 +741,7 @@ it('vendors 配置 - speckit-development 接入 Spec Kit + Superpowers bridge，
         target: 'vendor/skills/init-project',
       },
     ],
-    'speckit-development 只分发轻量 init-project，用于原生 Spec Kit 初始化',
+    'speckit-development 分发完整 init-project，用于项目规则、Spec Kit、bridge 与 CodeGraph 初始化',
   )
   assert.strictEqual(vendors.antfu, undefined, '不应默认安装 Antfu 框架/工具链技能')
   assert.strictEqual(vendors.vercelAgentSkills, undefined, '不应默认安装 Vercel React/React Native 代码技能')

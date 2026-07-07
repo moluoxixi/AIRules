@@ -151,7 +151,7 @@ specify extension add speckit-superpowers-bridge --from https://github.com/lihan
 
 其他宿主按官方 integration 选择，例如 `claude`、`copilot`、`gemini`。已有非空目录加 `--force`；需要跳过 agent 工具探测时加 `--ignore-agent-tools`。初始化后使用 Spec Kit 原生设计流：`/speckit.constitution`、`/speckit.specify`、`/speckit.clarify`、`/speckit.plan`、`/speckit.tasks`、`/speckit.analyze`。Spec Kit 项目实现阶段优先用 Codex 的 `$speckit-superpowers-bridge` 或 Claude Code 的 `/speckit-superpowers-bridge`，不要默认直接跑 `/speckit.implement`；bridge 让 Spec Kit 产物保持 canonical，再把实现纪律交给原生 Superpowers。
 
-该角色也分发轻量 `init-project` skill，方便 agent 在目标项目中一致地运行原生初始化链路。这个包装器只调用 Spec Kit 与 bridge extension 命令，不复制 OpenSpec schema 或 AIRules OpenSpec 初始化资产。
+该角色也分发完整 `init-project` skill，方便 agent 在目标项目中一致地运行完整初始化链路。这个包装器会注入项目规则、建立 `CLAUDE.md` 链接、调用 Spec Kit 与 bridge extension 命令、初始化 CodeGraph，且不复制 OpenSpec schema 或 AIRules OpenSpec 初始化资产。
 
 ### 产品规格用法
 
