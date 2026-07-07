@@ -186,17 +186,29 @@ describe('编排红线文本', () => {
   it('ecc-development role 接入 ECC 并保留为空第一方 role', async () => {
     const roleReadmePath = path.join(repoRoot, 'roles', ECC_DEVELOPMENT_ROLE, 'README.md')
     const roleManifestPath = path.join(repoRoot, 'roles', ECC_DEVELOPMENT_ROLE, 'constants', 'skills.ts')
+    const roleRulesPath = path.join(repoRoot, 'roles', ECC_DEVELOPMENT_ROLE, 'rules', 'AGENTS.md')
     const pkg = JSON.parse(read('package.json')) as { scripts: Record<string, string> }
 
     assert.equal(fs.existsSync(roleReadmePath), true)
     assert.equal(fs.existsSync(roleManifestPath), true)
+    assert.equal(fs.existsSync(roleRulesPath), true)
     assert.equal(pkg.scripts['sync:ecc-development'], `tsx scripts/cli.ts sync --host all --role ${ECC_DEVELOPMENT_ROLE}`)
 
     const roleReadme = fs.readFileSync(roleReadmePath, 'utf8')
+    const roleRules = fs.readFileSync(roleRulesPath, 'utf8')
     assert.match(roleReadme, /https:\/\/github\.com\/affaan-m\/ECC\/issues\/2283/)
     assert.match(roleReadme, /https:\/\/github\.com\/affaan-m\/ECC\/pull\/2318/)
     assert.match(roleReadme, /npx -y --package ecc-universal ecc install/)
+    assert.match(roleReadme, /--profile core/)
+    assert.match(roleReadme, /--with lang:\*/)
+    assert.match(roleReadme, /--with framework:\*/)
     assert.match(roleReadme, /Qoder.*AIRules/s)
+    assert.match(roleRules, /knowledge\/\*\*/)
+    assert.match(roleRules, /\.airules\/knowledge\/\*\*/)
+    assert.match(roleRules, /openspec\/\*\*/)
+    assert.match(roleRules, /\/project-init/)
+    assert.match(roleRules, /--with lang:\*/)
+    assert.match(roleRules, /--with framework:\*/)
     for (const host of ['Codex', 'Claude', 'Qoder', 'OpenCode']) {
       assert.match(roleReadme, new RegExp(host, 'i'))
     }

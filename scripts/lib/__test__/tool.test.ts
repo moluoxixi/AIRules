@@ -264,20 +264,20 @@ it('tool - ecc-development 对 ECC 原生宿主使用官方 installer，Qoder �
         {
           host: 'claude',
           target: 'claude',
-          profile: 'developer',
-          args: ['-y', '--package', 'ecc-universal', 'ecc', 'install', '--profile', 'developer', '--target', 'claude'],
+          profile: 'core',
+          args: ['-y', '--package', 'ecc-universal', 'ecc', 'install', '--profile', 'core', '--target', 'claude'],
         },
         {
           host: 'codex',
           target: 'codex',
-          profile: 'developer',
-          args: ['-y', '--package', 'ecc-universal', 'ecc', 'install', '--profile', 'developer', '--target', 'codex'],
+          profile: 'core',
+          args: ['-y', '--package', 'ecc-universal', 'ecc', 'install', '--profile', 'core', '--target', 'codex'],
         },
         {
           host: 'cursor',
           target: 'cursor',
-          profile: 'developer',
-          args: ['-y', '--package', 'ecc-universal', 'ecc', 'install', '--profile', 'developer', '--target', 'cursor'],
+          profile: 'core',
+          args: ['-y', '--package', 'ecc-universal', 'ecc', 'install', '--profile', 'core', '--target', 'cursor'],
         },
         {
           host: 'opencode',

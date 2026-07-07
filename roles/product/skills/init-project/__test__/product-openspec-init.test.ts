@@ -6,6 +6,19 @@ import path from 'node:path'
 import { it } from 'vitest'
 
 const scriptsDir = path.join(process.cwd(), 'roles', 'product', 'skills', 'init-project', 'scripts')
+const allOpenSpecWorkflows = [
+  'propose',
+  'explore',
+  'new',
+  'continue',
+  'apply',
+  'ff',
+  'sync',
+  'archive',
+  'bulk-archive',
+  'verify',
+  'onboard',
+]
 
 function withTempDir<T>(run: (tmpDir: string) => T): T {
   const tmpDir = fs.mkdtempSync(path.join(os.tmpdir(), 'airules-product-openspec-'))
@@ -75,6 +88,7 @@ function createFakeOpenSpec(root: string) {
       [
         '@echo off',
         'echo %*>>"%AIRULES_OPEN_SPEC_LOG%"',
+        'if "%1"=="config" if "%2"=="path" echo %AIRULES_OPEN_SPEC_CONFIG%',
         'if "%1"=="schemas" echo product-pm-bridge',
         'exit /b 0',
         '',
@@ -88,6 +102,7 @@ function createFakeOpenSpec(root: string) {
       [
         '#!/bin/sh',
         'printf "%s\\n" "$*" >> "$AIRULES_OPEN_SPEC_LOG"',
+        'if [ "$1" = "config" ] && [ "$2" = "path" ]; then echo "$AIRULES_OPEN_SPEC_CONFIG"; fi',
         'if [ "$1" = "schemas" ]; then echo product-pm-bridge; fi',
         'exit 0',
         '',
@@ -97,6 +112,20 @@ function createFakeOpenSpec(root: string) {
   }
 
   return { binDir, logPath }
+}
+
+function assertFullOpenSpecWorkflowConfig(configPath: string, calls: string) {
+  const config = JSON.parse(fs.readFileSync(configPath, 'utf8')) as {
+    profile?: string
+    delivery?: string
+    workflows?: string[]
+  }
+
+  assert.equal(config.profile, 'custom')
+  assert.equal(config.delivery, 'both')
+  assert.deepEqual(config.workflows, allOpenSpecWorkflows)
+  assert.equal(config.workflows.includes('continue'), true)
+  assert.match(calls, /^config path$/m)
 }
 
 it('product spec-init - 复制 product-pm-bridge schema 与 product knowledge 入口', () => {
@@ -126,9 +155,11 @@ it('product spec-init - OpenSpec CLI 存在时初始化项目、校验 schema �
   withTempDir((root) => {
     const { binDir, logPath } = createFakeOpenSpec(root)
     const fakeBmad = createFakeBmad(root)
+    const openSpecConfigPath = path.join(root, 'openspec-config', 'config.json')
     const nextPath = `${binDir}${path.delimiter}${fakeBmad.binDir}${path.delimiter}${process.env.PATH ?? process.env.Path ?? ''}`
     const result = runSpecInit(root, {
       AIRULES_OPEN_SPEC_LOG: logPath,
+      AIRULES_OPEN_SPEC_CONFIG: openSpecConfigPath,
       AIRULES_BMAD_LOG: fakeBmad.logPath,
       PATH: nextPath,
       Path: nextPath,
@@ -141,6 +172,7 @@ it('product spec-init - OpenSpec CLI 存在时初始化项目、校验 schema �
       /^schema: product-pm-bridge$/m,
     )
     const calls = fs.readFileSync(logPath, 'utf8')
+    assertFullOpenSpecWorkflowConfig(openSpecConfigPath, calls)
     assert.match(calls, /init .* --tools qoder --no-color/)
     assert.match(calls, /schema validate product-pm-bridge/)
     assert.match(calls, /^schemas$/m)

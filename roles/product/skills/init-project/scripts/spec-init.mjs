@@ -26,6 +26,19 @@ const bmadToolTargets = [
   { dir: '.opencode', tool: 'opencode' },
 ]
 const fallbackBmadTool = 'qoder'
+const openSpecWorkflows = [
+  'propose',
+  'explore',
+  'new',
+  'continue',
+  'apply',
+  'ff',
+  'sync',
+  'archive',
+  'bulk-archive',
+  'verify',
+  'onboard',
+]
 
 const skillRoot = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..')
 const schemaSourceDir = path.join(skillRoot, 'assets', schemaName)
@@ -152,9 +165,47 @@ function runCommand(command, args) {
 }
 
 function initializeOpenSpecProject(command) {
+  configureOpenSpecFullWorkflow(command)
   const openSpecTools = resolveOpenSpecTools()
   runOpenSpec(command, ['init', projectRoot, '--tools', openSpecTools, '--no-color'])
   console.log(`[airules] 已运行 openspec init --tools ${openSpecTools}`)
+}
+
+function configureOpenSpecFullWorkflow(command) {
+  const configPathResult = runOpenSpec(command, ['config', 'path'])
+  const configPath = configPathResult.stdout
+    .split(/\r?\n/)
+    .map(line => line.trim())
+    .find(Boolean)
+
+  if (!configPath) {
+    throw new Error('openspec config path 未返回配置文件路径；无法安装全量 OpenSpec commands。')
+  }
+
+  const existingConfig = readOpenSpecGlobalConfig(configPath)
+  const nextConfig = {
+    ...existingConfig,
+    profile: 'custom',
+    delivery: 'both',
+    workflows: openSpecWorkflows,
+  }
+
+  mkdirSync(path.dirname(configPath), { recursive: true })
+  writeFileSync(configPath, `${JSON.stringify(nextConfig, null, 2)}\n`, 'utf8')
+  console.log(`[airules] 已配置 OpenSpec 全量 workflow commands：${openSpecWorkflows.join(', ')}`)
+}
+
+function readOpenSpecGlobalConfig(configPath) {
+  if (!existsSync(configPath)) {
+    return {}
+  }
+
+  try {
+    return JSON.parse(readFileSync(configPath, 'utf8'))
+  }
+  catch (error) {
+    throw new Error(`OpenSpec 全局配置解析失败 ${configPath}: ${error.message}`)
+  }
 }
 
 function resolveOpenSpecTools() {

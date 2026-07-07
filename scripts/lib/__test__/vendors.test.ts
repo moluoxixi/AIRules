@@ -843,13 +843,84 @@ it('vendors 配置 - ecc-development 角色以 ECC 作为主编排来源', async
     })),
     [
       {
-        kind: 'namespace-dir',
-        source: 'skills',
-        target: 'vendor/skills/ecc',
+        kind: 'skill',
+        source: 'skills/ecc-guide',
+        target: 'vendor/skills/ecc-guide',
+        setup: undefined,
+      },
+      {
+        kind: 'skill',
+        source: 'skills/configure-ecc',
+        target: 'vendor/skills/configure-ecc',
+        setup: undefined,
+      },
+      {
+        kind: 'skill',
+        source: 'skills/repo-scan',
+        target: 'vendor/skills/repo-scan',
+        setup: undefined,
+      },
+      {
+        kind: 'skill',
+        source: 'skills/search-first',
+        target: 'vendor/skills/search-first',
+        setup: undefined,
+      },
+      {
+        kind: 'skill',
+        source: 'skills/codebase-onboarding',
+        target: 'vendor/skills/codebase-onboarding',
+        setup: undefined,
+      },
+      {
+        kind: 'skill',
+        source: 'skills/skill-scout',
+        target: 'vendor/skills/skill-scout',
+        setup: undefined,
+      },
+      {
+        kind: 'skill',
+        source: 'skills/skill-stocktake',
+        target: 'vendor/skills/skill-stocktake',
+        setup: undefined,
+      },
+      {
+        kind: 'skill',
+        source: 'skills/tdd-workflow',
+        target: 'vendor/skills/tdd-workflow',
+        setup: undefined,
+      },
+      {
+        kind: 'skill',
+        source: 'skills/verification-loop',
+        target: 'vendor/skills/verification-loop',
+        setup: undefined,
+      },
+      {
+        kind: 'skill',
+        source: 'skills/error-handling',
+        target: 'vendor/skills/error-handling',
+        setup: undefined,
+      },
+      {
+        kind: 'skill',
+        source: 'skills/iterative-retrieval',
+        target: 'vendor/skills/iterative-retrieval',
+        setup: undefined,
+      },
+      {
+        kind: 'skill',
+        source: 'skills/strategic-compact',
+        target: 'vendor/skills/strategic-compact',
         setup: undefined,
       },
     ],
-    'ECC 角色应保留 ECC canonical skills/ namespace，供非原生宿主和 --skip-vendors 兜底分发',
+    'ECC fallback 只保留 core / onboarding / retrieval skills，不展开全部 ECC skills namespace',
+  )
+  assert.equal(
+    vendors.ecc.links.some((link: any) => /(?:typescript|python|golang|vue|react|django|springboot|rust)-/.test(link.source)),
+    false,
+    'ECC fallback 不应默认分发语言或框架 skill；语言能力交给项目扫描后的 --with lang:* / framework:*',
   )
 
   assert.strictEqual(vendors.superpowers, undefined, 'ecc-development 不应混入 Superpowers 上游')

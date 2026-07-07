@@ -108,9 +108,9 @@ export function resolveHostTargets(host: string): string[] {
 const ECC_DEVELOPMENT_ROLE = 'ecc-development'
 
 const ECC_OFFICIAL_HOSTS: Record<string, { target: string, profile: string }> = {
-  claude: { target: 'claude', profile: 'developer' },
-  codex: { target: 'codex', profile: 'developer' },
-  cursor: { target: 'cursor', profile: 'developer' },
+  claude: { target: 'claude', profile: 'core' },
+  codex: { target: 'codex', profile: 'core' },
+  cursor: { target: 'cursor', profile: 'core' },
   opencode: { target: 'opencode', profile: 'opencode' },
 }
 
