@@ -1,5 +1,5 @@
 <!--
-Raw capture of brainstorming output.
+Raw capture of superpowers:brainstorming output.
 
 本檔原樣捕捉 brainstorming skill 的產出，不強制結構。
 Skill 的自然產出通常是 decision log 格式（背景 → 決議鏈 Q1-Qn → 設計取捨），

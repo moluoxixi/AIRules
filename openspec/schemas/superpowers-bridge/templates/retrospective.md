@@ -52,13 +52,13 @@ Commit chain (時序):
 
 | Skill                                            | Used |
 |--------------------------------------------------|------|
-| brainstorming                        |      |
-| writing-plans                        |      |
-| using-git-worktrees                  |      |
-| subagent-driven-development          |      |
-| (transitive) test-driven-development |      |
-| (transitive) requesting-code-review  |      |
-| finishing-a-development-branch       |      |
+| superpowers:brainstorming                        |      |
+| superpowers:writing-plans                        |      |
+| superpowers:using-git-worktrees                  |      |
+| superpowers:subagent-driven-development          |      |
+| (transitive) superpowers:test-driven-development |      |
+| (transitive) superpowers:requesting-code-review  |      |
+| superpowers:finishing-a-development-branch       |      |
 
 > **Default expectation**: 全部 ✓。每個 skill 都是 schema 設計的一部分,
 > 跳過屬於異常情境。任一項 ✗ 都必須在下方

@@ -10,13 +10,7 @@ Delta spec template for a change.
 - Requirement 句子 MUST 含 `SHALL` 或 `MUST`
 - 每個 Requirement MUST 至少有一個 `#### Scenario:`
 - Scenario MUST 用 level-4 (`####`)，level-3 或 bullet 會 silent fail
-- Scenario heading MUST include a stable Scenario ID:
-  `#### Scenario: SCN-<capability>-<NNN> <scenario name>`
-- Scenario ID is the canonical test anchor. Test design files under
-  `knowledge/测试/<模块>.md` MUST use `covers: SCN-<capability>-<NNN>`.
 -->
-
-change_unit_id: CU-<change-unit>
 
 ## ADDED Requirements
 
@@ -25,7 +19,7 @@ change_unit_id: CU-<change-unit>
 ### Requirement: <!-- requirement name -->
 <!-- requirement text — 須含 SHALL 或 MUST -->
 
-#### Scenario: SCN-<capability>-<NNN> <!-- scenario name -->
+#### Scenario: <!-- scenario name -->
 - **WHEN** <!-- condition -->
 - **THEN** <!-- expected outcome -->
 
@@ -45,7 +39,7 @@ change_unit_id: CU-<change-unit>
 ### Requirement: <!-- 與既有 spec 中相同的 header -->
 <!-- 修改後的完整 requirement text — 含 SHALL 或 MUST -->
 
-#### Scenario: SCN-<capability>-<NNN> <!-- scenario name（可新增、可修改） -->
+#### Scenario: <!-- scenario name（可新增、可修改） -->
 - **WHEN** <!-- condition -->
 - **THEN** <!-- expected outcome -->
 

@@ -71,6 +71,58 @@ it('inject-rules - 新建 AGENTS.md 时注入测试用例 ID 基线', () => {
     assert.match(content, /TC-<模块>-<序号>/)
     assert.match(content, /knowledge\/测试\/<模块>\.md/)
     assert.doesNotMatch(content, /docs\/test\/<模块>\.md/)
+    assert.doesNotMatch(content, /前端字段与组件评估纪律/)
+  })
+})
+it('inject-rules - 纯前端项目按需注入前端专用规则', () => {
+  withTempDir('airules-inject-frontend-', (tmpDir) => {
+    writeFile(
+      path.join(tmpDir, 'package.json'),
+      JSON.stringify({
+        dependencies: {
+          vue: '^3.5.0',
+        },
+        devDependencies: {
+          vite: '^7.0.0',
+        },
+      }),
+    )
+
+    const result = runInjectRules(tmpDir)
+
+    assert.equal(result.status, 0, result.stderr)
+    const content = fs.readFileSync(path.join(tmpDir, 'AGENTS.md'), 'utf8')
+
+    assert.match(content, /AIRULES:BEGIN init-project-rules/)
+    assert.match(content, /TC-<模块>-<序号>/)
+    assert.match(content, /前端字段与组件评估纪律/)
+    assert.match(content, /字段对比/)
+    assert.match(content, /组件复用/)
+    assert.match(content, /frontend-testing/)
+  })
+})
+it('inject-rules - 混合全栈项目不默认注入前端专用规则', () => {
+  withTempDir('airules-inject-mixed-', (tmpDir) => {
+    writeFile(
+      path.join(tmpDir, 'package.json'),
+      JSON.stringify({
+        dependencies: {
+          express: '^5.0.0',
+          react: '^19.0.0',
+        },
+        devDependencies: {
+          vite: '^7.0.0',
+        },
+      }),
+    )
+
+    const result = runInjectRules(tmpDir)
+
+    assert.equal(result.status, 0, result.stderr)
+    const content = fs.readFileSync(path.join(tmpDir, 'AGENTS.md'), 'utf8')
+
+    assert.match(content, /TC-<模块>-<序号>/)
+    assert.doesNotMatch(content, /前端字段与组件评估纪律/)
   })
 })
 it('inject-rules - 规则源为空且已有内容时不追加托管块', () => {

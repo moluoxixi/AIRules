@@ -1,17 +1,20 @@
 #!/usr/bin/env node
 import { spawnSync } from 'node:child_process'
-import { copyFileSync, existsSync, mkdirSync, readdirSync, readFileSync, statSync, writeFileSync } from 'node:fs'
+import { copyFileSync, existsSync, mkdirSync, mkdtempSync, readdirSync, readFileSync, rmSync, statSync, writeFileSync } from 'node:fs'
+import { tmpdir } from 'node:os'
 import path from 'node:path'
 import { fileURLToPath } from 'node:url'
 
 // 项目级 OpenSpec 初始化：
 // - openspec CLI 负责创建 openspec/ 原生目录结构。
-// - AIRules 只把随 init-project skill 分发的资产复制进目标项目。
+// - superpowers-bridge schema 从 JiangWay/openspec-schemas.git 运行时获取。
 
 const projectRoot = path.resolve(process.argv[2] ?? process.cwd())
 const skipOpenSpecCommands = process.env.AIRULES_SKIP_OPENSPEC_VALIDATE === '1'
 const skipBmadInstall = process.env.AIRULES_SKIP_BMAD_INSTALL === '1'
 const schemaName = 'superpowers-bridge'
+const schemaRepositoryUrl = 'https://github.com/JiangWay/openspec-schemas.git'
+const schemaSourceOverride = process.env.AIRULES_OPENSPEC_SCHEMA_SOURCE_DIR
 const openSpecToolTargets = [
   { dir: '.claude', tool: 'claude' },
   { dir: '.codex', tool: 'codex' },
@@ -45,7 +48,6 @@ const openSpecWorkflows = [
 ]
 
 const skillRoot = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..')
-const schemaSourceDir = path.join(skillRoot, 'assets', schemaName)
 const knowledgeSourcePath = path.join(skillRoot, 'assets', 'knowledge', 'index.md')
 const openspecDir = path.join(projectRoot, 'openspec')
 const schemaTargetDir = path.join(openspecDir, 'schemas', schemaName)
@@ -101,6 +103,14 @@ function resolveOpenSpecCommand() {
   )
 }
 
+function resolveGitCommand() {
+  return resolveCommand(
+    process.platform === 'win32'
+      ? ['git.exe', 'git.cmd', 'git.bat']
+      : ['git'],
+  )
+}
+
 function resolveBmadCommand() {
   return resolveCommand(
     process.platform === 'win32'
@@ -132,6 +142,14 @@ function requireOpenSpecCommand() {
   return command
 }
 
+function requireGitCommand() {
+  const command = resolveGitCommand()
+  if (!command) {
+    throw new Error('MISSING git CLI；需要从 JiangWay/openspec-schemas.git 克隆 superpowers-bridge schema。')
+  }
+  return command
+}
+
 function requireBmadCommand() {
   const command = resolveBmadCommand()
   if (!command) {
@@ -145,6 +163,10 @@ function runOpenSpec(command, args) {
 }
 
 function runBmad(command, args) {
+  return runCommand(command, args)
+}
+
+function runGit(command, args) {
   return runCommand(command, args)
 }
 
@@ -271,7 +293,53 @@ function updateSchemaField(raw, schemaLine) {
   return trimmed.length > 0 ? `${trimmed}\n${schemaLine}\n` : `${schemaLine}\n`
 }
 
-assertAssetExists(schemaSourceDir, `assets/${schemaName}`)
+function schemaIsAlreadyInstalled() {
+  return existsSync(path.join(schemaTargetDir, 'schema.yaml'))
+    && existsSync(path.join(schemaTargetDir, 'templates', 'tasks.md'))
+}
+
+function resolveSchemaSourceDir() {
+  if (schemaSourceOverride) {
+    const sourceDir = path.resolve(schemaSourceOverride)
+    assertAssetExists(sourceDir, 'AIRULES_OPENSPEC_SCHEMA_SOURCE_DIR')
+    assertAssetExists(path.join(sourceDir, 'schema.yaml'), 'AIRULES_OPENSPEC_SCHEMA_SOURCE_DIR/schema.yaml')
+    return { sourceDir, cleanup: () => {} }
+  }
+
+  const gitCommand = requireGitCommand()
+  const tempRoot = mkdtempSync(path.join(tmpdir(), 'airules-openspec-schemas-'))
+  const cloneDir = path.join(tempRoot, 'openspec-schemas')
+
+  try {
+    runGit(gitCommand, ['clone', '--depth', '1', schemaRepositoryUrl, cloneDir])
+    const sourceDir = path.join(cloneDir, schemaName)
+    assertAssetExists(sourceDir, `${schemaRepositoryUrl}/${schemaName}`)
+    assertAssetExists(path.join(sourceDir, 'schema.yaml'), `${schemaRepositoryUrl}/${schemaName}/schema.yaml`)
+    return {
+      sourceDir,
+      cleanup: () => rmSync(tempRoot, { recursive: true, force: true }),
+    }
+  }
+  catch (error) {
+    rmSync(tempRoot, { recursive: true, force: true })
+    throw error
+  }
+}
+
+function installOpenSpecSchema(created) {
+  if (schemaIsAlreadyInstalled()) {
+    return
+  }
+
+  const { sourceDir, cleanup } = resolveSchemaSourceDir()
+  try {
+    copyDirectoryIfMissing(sourceDir, schemaTargetDir, created)
+  }
+  finally {
+    cleanup()
+  }
+}
+
 assertAssetExists(knowledgeSourcePath, 'assets/knowledge/index.md')
 
 let openSpecCommand = null
@@ -290,7 +358,7 @@ else {
   console.log('[airules] 已跳过 BMAD BMM runtime 安装（AIRULES_SKIP_BMAD_INSTALL=1）')
 }
 
-copyDirectoryIfMissing(schemaSourceDir, schemaTargetDir, created)
+installOpenSpecSchema(created)
 copyFileIfMissing(knowledgeSourcePath, knowledgeTargetPath, created)
 
 if (created.length === 0) {

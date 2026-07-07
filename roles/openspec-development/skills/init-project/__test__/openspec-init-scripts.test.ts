@@ -44,6 +44,60 @@ function runSpecInit(projectRoot: string, env: NodeJS.ProcessEnv = {}) {
   )
 }
 
+function writeFile(filePath: string, content: string) {
+  fs.mkdirSync(path.dirname(filePath), { recursive: true })
+  fs.writeFileSync(filePath, content)
+}
+
+function createSchemaSource(root: string) {
+  const schemaRoot = path.join(root, 'schema-source', 'superpowers-bridge')
+  writeFile(path.join(schemaRoot, 'schema.yaml'), 'name: superpowers-bridge\nversion: 1\nartifacts: []\n')
+  writeFile(path.join(schemaRoot, 'templates', 'tasks.md'), '# Tasks\n')
+  return schemaRoot
+}
+
+function createFakeGit(root: string, sourceRepo: string) {
+  const binDir = path.join(root, 'git-bin')
+  const logPath = path.join(root, 'git.log')
+  fs.mkdirSync(binDir, { recursive: true })
+
+  if (process.platform === 'win32') {
+    fs.writeFileSync(
+      path.join(binDir, 'git.cmd'),
+      [
+        '@echo off',
+        'echo %*>>"%AIRULES_GIT_LOG%"',
+        'if "%1"=="clone" (',
+        '  xcopy "%AIRULES_FAKE_SCHEMA_REPO%" "%5%" /E /I /Y >nul',
+        '  exit /b 0',
+        ')',
+        'exit /b 1',
+        '',
+      ].join('\r\n'),
+    )
+  }
+  else {
+    const shPath = path.join(binDir, 'git')
+    fs.writeFileSync(
+      shPath,
+      [
+        '#!/bin/sh',
+        'printf "%s\\n" "$*" >> "$AIRULES_GIT_LOG"',
+        'if [ "$1" = "clone" ]; then',
+        '  mkdir -p "$5"',
+        '  cp -R "$AIRULES_FAKE_SCHEMA_REPO/." "$5"',
+        '  exit 0',
+        'fi',
+        'exit 1',
+        '',
+      ].join('\n'),
+    )
+    fs.chmodSync(shPath, 0o755)
+  }
+
+  return { binDir, logPath, sourceRepo }
+}
+
 function createFakeBmad(root: string) {
   const binDir = path.join(root, 'bmad-bin')
   const logPath = path.join(root, 'bmad.log')
@@ -134,6 +188,7 @@ it('spec-init - 只注入项目级 schema 与 knowledge，不手建 active/archi
     const first = runSpecInit(root, {
       AIRULES_SKIP_OPENSPEC_VALIDATE: '1',
       AIRULES_SKIP_BMAD_INSTALL: '1',
+      AIRULES_OPENSPEC_SCHEMA_SOURCE_DIR: createSchemaSource(root),
     })
     assert.equal(first.status, 0, first.stderr)
 
@@ -148,6 +203,7 @@ it('spec-init - 只注入项目级 schema 与 knowledge，不手建 active/archi
     const second = runSpecInit(root, {
       AIRULES_SKIP_OPENSPEC_VALIDATE: '1',
       AIRULES_SKIP_BMAD_INSTALL: '1',
+      AIRULES_OPENSPEC_SCHEMA_SOURCE_DIR: createSchemaSource(root),
     })
     assert.equal(second.status, 0, second.stderr)
     assert.match(second.stdout, /已存在，跳过/)
@@ -158,12 +214,14 @@ it('spec-init - OpenSpec CLI 存在时初始化项目、校验 schema 并确认�
   withTempDir((root) => {
     const { binDir, logPath } = createFakeOpenSpec(root)
     const fakeBmad = createFakeBmad(root)
+    const schemaSource = createSchemaSource(root)
     const openSpecConfigPath = path.join(root, 'openspec-config', 'config.json')
     const nextPath = `${binDir}${path.delimiter}${fakeBmad.binDir}${path.delimiter}${process.env.PATH ?? process.env.Path ?? ''}`
     const result = runSpecInit(root, {
       AIRULES_OPEN_SPEC_LOG: logPath,
       AIRULES_OPEN_SPEC_CONFIG: openSpecConfigPath,
       AIRULES_BMAD_LOG: fakeBmad.logPath,
+      AIRULES_OPENSPEC_SCHEMA_SOURCE_DIR: schemaSource,
       PATH: nextPath,
       Path: nextPath,
     })
@@ -190,12 +248,14 @@ it('spec-init - openspec/ 已存在时仍刷新 OpenSpec 宿主入口', () => {
     fs.mkdirSync(path.join(root, 'openspec'), { recursive: true })
     const { binDir, logPath } = createFakeOpenSpec(root)
     const fakeBmad = createFakeBmad(root)
+    const schemaSource = createSchemaSource(root)
     const openSpecConfigPath = path.join(root, 'openspec-config', 'config.json')
     const nextPath = `${binDir}${path.delimiter}${fakeBmad.binDir}${path.delimiter}${process.env.PATH ?? process.env.Path ?? ''}`
     const result = runSpecInit(root, {
       AIRULES_OPEN_SPEC_LOG: logPath,
       AIRULES_OPEN_SPEC_CONFIG: openSpecConfigPath,
       AIRULES_BMAD_LOG: fakeBmad.logPath,
+      AIRULES_OPENSPEC_SCHEMA_SOURCE_DIR: schemaSource,
       PATH: nextPath,
       Path: nextPath,
     })
@@ -223,12 +283,14 @@ it('spec-init - 按目标项目已有宿主目录安装 OpenSpec 入口', () => 
     fs.mkdirSync(path.join(root, '.codex'), { recursive: true })
     const { binDir, logPath } = createFakeOpenSpec(root)
     const fakeBmad = createFakeBmad(root)
+    const schemaSource = createSchemaSource(root)
     const openSpecConfigPath = path.join(root, 'openspec-config', 'config.json')
     const nextPath = `${binDir}${path.delimiter}${fakeBmad.binDir}${path.delimiter}${process.env.PATH ?? process.env.Path ?? ''}`
     const result = runSpecInit(root, {
       AIRULES_OPEN_SPEC_LOG: logPath,
       AIRULES_OPEN_SPEC_CONFIG: openSpecConfigPath,
       AIRULES_BMAD_LOG: fakeBmad.logPath,
+      AIRULES_OPENSPEC_SCHEMA_SOURCE_DIR: schemaSource,
       PATH: nextPath,
       Path: nextPath,
     })
@@ -241,6 +303,32 @@ it('spec-init - 按目标项目已有宿主目录安装 OpenSpec 入口', () => 
       fs.readFileSync(fakeBmad.logPath, 'utf8'),
       /install --directory .* --modules bmm --tools claude-code,codex --yes/,
     )
+  })
+})
+
+it('spec-init - 默认从 JiangWay/openspec-schemas 克隆 superpowers-bridge schema', () => {
+  withTempDir((root) => {
+    const fakeRepo = path.join(root, 'fake-openspec-schemas')
+    writeFile(path.join(fakeRepo, 'superpowers-bridge', 'schema.yaml'), 'name: superpowers-bridge\nversion: 1\nartifacts: []\n')
+    writeFile(path.join(fakeRepo, 'superpowers-bridge', 'templates', 'tasks.md'), '# Tasks\n')
+    const fakeGit = createFakeGit(root, fakeRepo)
+    const nextPath = `${fakeGit.binDir}${path.delimiter}${process.env.PATH ?? process.env.Path ?? ''}`
+
+    const result = runSpecInit(root, {
+      AIRULES_SKIP_OPENSPEC_VALIDATE: '1',
+      AIRULES_SKIP_BMAD_INSTALL: '1',
+      AIRULES_FAKE_SCHEMA_REPO: fakeRepo,
+      AIRULES_GIT_LOG: fakeGit.logPath,
+      PATH: nextPath,
+      Path: nextPath,
+    })
+
+    assert.equal(result.status, 0, result.stderr)
+    assert.equal(fs.existsSync(path.join(root, 'openspec', 'schemas', 'superpowers-bridge', 'schema.yaml')), true)
+    assert.equal(fs.existsSync(path.join(root, 'openspec', 'schemas', 'superpowers-bridge', 'templates', 'tasks.md')), true)
+
+    const gitCalls = fs.readFileSync(fakeGit.logPath, 'utf8')
+    assert.match(gitCalls, /clone --depth 1 https:\/\/github\.com\/JiangWay\/openspec-schemas\.git/)
   })
 })
 

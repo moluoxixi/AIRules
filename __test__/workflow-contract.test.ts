@@ -256,7 +256,7 @@ describe('编排红线文本', () => {
     const referencesDir = path.join(repoRoot, 'roles', OPENSPEC_DEVELOPMENT_ROLE, 'skills', 'init-project', 'references')
     const baseRules = fs.readFileSync(path.join(referencesDir, 'airules-base.md'), 'utf8')
 
-    assert.deepEqual(fs.readdirSync(referencesDir).sort(), ['airules-base.md'])
+    assert.deepEqual(fs.readdirSync(referencesDir).sort(), ['airules-base.md', 'frontend-only.md'])
     assert.match(baseRules, /TC-<模块>-<序号>/)
     assert.match(baseRules, /knowledge\/测试\/<模块>\.md/)
     assert.match(baseRules, /covers: SCN-<capability>-<NNN>/)
