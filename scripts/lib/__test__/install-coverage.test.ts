@@ -261,7 +261,8 @@ it('install - 同步第一方文件并按宿主投影 baseline 与 skills', () =
   projectToHost({ userHome, moluoHome, hostHome, hostBaselineFile })
   assert.equal(fs.readFileSync(hostBaselineFile, 'utf8'), 'baseline\n')
   assert.ok(fs.lstatSync(path.join(hostHome, 'skills', 'skill-one')).isSymbolicLink())
-  assert.ok(fs.lstatSync(path.join(hostHome, 'agents')).isSymbolicLink())
+  assert.equal(fs.readFileSync(path.join(hostHome, 'agents', 'helper.md'), 'utf8'), 'agent\n')
+  assert.equal(fs.existsSync(path.join(hostHome, 'agents', 'helper.md')), true)
 
   const codexBaseline = linkHostBaseline({ moluoHome, host: 'codex', userHome })
   assert.equal(codexBaseline, hostBaselineFile)

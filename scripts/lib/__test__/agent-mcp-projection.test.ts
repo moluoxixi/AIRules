@@ -24,6 +24,7 @@ function setupEnv(options: { mcpServers?: Record<string, unknown>, withAgents?: 
     const agentsDir = path.join(moluoHome, 'vendor', 'agents')
     fs.mkdirSync(agentsDir, { recursive: true })
     fs.writeFileSync(path.join(agentsDir, 'demo-agent.md'), '---\nname: demo-agent\ndescription: x\nmodel: gpt-5\n---\nbody\n')
+    fs.writeFileSync(path.join(agentsDir, 'docs-researcher.toml'), 'name = "docs-researcher"\ndescription = "native codex agent"\n')
   }
 
   if (options.mcpServers) {
@@ -59,7 +60,7 @@ it('mcp 默认源 - 分发 codegraph workspace server', () => {
   })
 })
 
-it('agent 格式门控 - markdown 宿主软链 agents 目录', () => {
+it('agent 格式门控 - markdown 宿主只投影 Markdown agents', () => {
   const { tmpDir, userHome, moluoHome, hostHome } = setupEnv()
   try {
     projectToHost({
@@ -73,6 +74,7 @@ it('agent 格式门控 - markdown 宿主软链 agents 目录', () => {
     const agentsTarget = path.join(hostHome, 'agents')
     assert.ok(fs.existsSync(agentsTarget), 'markdown 宿主应投影 agents')
     assert.ok(fs.existsSync(path.join(agentsTarget, 'demo-agent.md')), 'agent 文件应可访问')
+    assert.ok(!fs.existsSync(path.join(agentsTarget, 'docs-researcher.toml')), 'markdown 宿主不应收到 Codex 原生 TOML agent')
   }
   finally {
     cleanup(tmpDir)
@@ -91,10 +93,12 @@ it('agent 格式门控 - toml 宿主把 Markdown agents 转成 Codex TOML', () =
       agentFormat: 'toml',
     })
     const toml = fs.readFileSync(path.join(hostHome, 'agents', 'demo-agent.toml'), 'utf8')
+    const nativeToml = fs.readFileSync(path.join(hostHome, 'agents', 'docs-researcher.toml'), 'utf8')
     assert.ok(toml.includes('name = "demo-agent"'), 'Codex TOML 应写入 name')
     assert.ok(toml.includes('description = "x"'), 'Codex TOML 应写入 description')
     assert.ok(toml.includes('model = "gpt-5"'), 'Codex TOML 应写入 model')
     assert.ok(toml.includes(`developer_instructions = '''\nbody\n'''`), 'Codex TOML 应把正文写入 developer_instructions')
+    assert.ok(nativeToml.includes('name = "docs-researcher"'), 'Codex 应保留上游原生 TOML agent')
     assert.ok(!fs.existsSync(path.join(hostHome, 'agents', 'demo-agent.md')), 'Codex 不应安装 Markdown agent')
   }
   finally {
@@ -116,6 +120,7 @@ it('agent 格式门控 - agentsmd 宿主安装到 .agents/subagents', () => {
     const subagentsTarget = path.join(userHome, '.agents', 'subagents')
     assert.ok(fs.existsSync(path.join(userHome, '.agents', 'skills')), '.agents 应保留共享 skills')
     assert.ok(fs.existsSync(path.join(subagentsTarget, 'demo-agent.md')), '.agents 应投影到 subagents')
+    assert.ok(!fs.existsSync(path.join(subagentsTarget, 'docs-researcher.toml')), '.agents/subagents 不应收到 Codex 原生 TOML agent')
     assert.ok(!fs.existsSync(path.join(hostHome, 'agents')), '.agents host 不应额外生成 agents 目录')
   }
   finally {

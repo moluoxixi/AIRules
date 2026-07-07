@@ -288,6 +288,16 @@ function syncOptionalDir(sourceDir: string, targetDir: string) {
   copyDirContents(sourceDir, targetDir)
 }
 
+function syncVendorResourceLink(entry: LinkEntry) {
+  if (isSamePath(entry.source, entry.target)) {
+    console.log(`[link] Skip (source === target): ${entry.target}`)
+    return
+  }
+
+  mkdirSync(path.dirname(entry.target), { recursive: true })
+  replaceWithSymlink(entry.source, entry.target, entry.kind === 'mcp-file' ? linkFileForCurrentPlatform() : linkTypeForCurrentPlatform())
+}
+
 function mergeOptionalDir(sourceDir: string, targetDir: string) {
   if (!existsSync(sourceDir)) {
     return
@@ -578,6 +588,11 @@ export async function rebuildVendorSkillLinks({ homeDir, manifestPath }: { homeD
       throw new Error(`Vendor "${entry.vendorId}" missing configured source directory: ${entry.source} -> ${entry.target}`)
     }
 
+    if (entry.kind === 'agents-dir' || entry.kind === 'mcp-file') {
+      syncVendorResourceLink(entry)
+      continue
+    }
+
     const linkSources = entry.kind === 'namespace-dir'
       ? collectFlattenedSkillSources(entry.source).map(skill => ({
           source: skill.source,
@@ -684,6 +699,11 @@ function readMarkdownAgent(sourceFile: string): MarkdownAgent {
 }
 
 function readVendorMarkdownAgents(moluoHome: string): MarkdownAgent[] {
+  return readVendorMarkdownAgentFiles(moluoHome)
+    .map(sourceFile => readMarkdownAgent(sourceFile))
+}
+
+function readVendorMarkdownAgentFiles(moluoHome: string): string[] {
   const agentsDir = vendorAgentsPath(moluoHome)
   if (!existsSync(agentsDir)) {
     return []
@@ -691,15 +711,31 @@ function readVendorMarkdownAgents(moluoHome: string): MarkdownAgent[] {
 
   return readdirSync(agentsDir, { withFileTypes: true })
     .filter(entry => entry.isFile() && entry.name.endsWith('.md'))
-    .map(entry => readMarkdownAgent(path.join(agentsDir, entry.name)))
+    .map(entry => path.join(agentsDir, entry.name))
+}
+
+function readVendorTomlAgentFiles(moluoHome: string): string[] {
+  const agentsDir = vendorAgentsPath(moluoHome)
+  if (!existsSync(agentsDir)) {
+    return []
+  }
+
+  return readdirSync(agentsDir, { withFileTypes: true })
+    .filter(entry => entry.isFile() && entry.name.endsWith('.toml'))
+    .map(entry => path.join(agentsDir, entry.name))
 }
 
 function projectMarkdownAgentsToDirectory(moluoHome: string, targetDir: string) {
-  if (!existsSync(vendorAgentsPath(moluoHome))) {
+  const agentFiles = readVendorMarkdownAgentFiles(moluoHome)
+  if (agentFiles.length === 0) {
     removePath(targetDir)
     return
   }
-  replaceWithSymlink(vendorAgentsPath(moluoHome), targetDir, linkTypeForCurrentPlatform())
+
+  resetDir(targetDir)
+  for (const sourceFile of agentFiles) {
+    replaceWithSymlink(sourceFile, path.join(targetDir, path.basename(sourceFile)), linkFileForCurrentPlatform())
+  }
 }
 
 function projectAgentsMdSubagents(userHome: string, moluoHome: string) {
@@ -728,15 +764,27 @@ function stringifyCodexAgentToml(agent: MarkdownAgent): string {
 }
 
 function projectCodexAgents(moluoHome: string, hostHome: string) {
-  const agents = readVendorMarkdownAgents(moluoHome)
+  const markdownAgents = readVendorMarkdownAgents(moluoHome)
+  const tomlAgentFiles = readVendorTomlAgentFiles(moluoHome)
   const targetDir = path.join(hostHome, 'agents')
-  if (agents.length === 0) {
+  if (markdownAgents.length === 0 && tomlAgentFiles.length === 0) {
     removePath(targetDir)
     return
   }
 
+  const nativeTomlNames = new Set(tomlAgentFiles.map(file => path.basename(file, '.toml')))
+  const markdownNames = new Set(markdownAgents.map(agent => path.basename(agent.fileName, '.md')))
+  for (const name of markdownNames) {
+    if (nativeTomlNames.has(name)) {
+      throw new Error(`Codex agent name collision: ${name}.md conflicts with native ${name}.toml`)
+    }
+  }
+
   resetDir(targetDir)
-  for (const agent of agents) {
+  for (const sourceFile of tomlAgentFiles) {
+    copyRequiredFile(sourceFile, path.join(targetDir, path.basename(sourceFile)))
+  }
+  for (const agent of markdownAgents) {
     const targetFile = path.join(targetDir, agent.fileName.replace(/\.md$/u, '.toml'))
     writeFileSync(targetFile, `${stringifyCodexAgentToml(agent)}\n`, 'utf8')
   }

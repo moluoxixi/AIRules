@@ -110,8 +110,48 @@ const ECC_DEVELOPMENT_ROLE = 'ecc-development'
 const ECC_OFFICIAL_HOSTS: Record<string, { target: string, profile: string }> = {
   claude: { target: 'claude', profile: 'core' },
   codex: { target: 'codex', profile: 'core' },
-  cursor: { target: 'cursor', profile: 'core' },
   opencode: { target: 'opencode', profile: 'opencode' },
+}
+
+const ECC_FALLBACK_DISABLED_SURFACES = [
+  'rules-core',
+  'commands-core',
+  'hooks-runtime',
+  'codex-native-toml-agents',
+] as const
+
+type EccFallbackDisabledSurface = typeof ECC_FALLBACK_DISABLED_SURFACES[number]
+
+export interface EccFallbackContract {
+  hostHomeRequired: boolean
+  markdownAgentsOnly: boolean
+  activeMcpSource: 'role-audited'
+  disabledSurfaces: readonly EccFallbackDisabledSurface[]
+}
+
+const ECC_FALLBACK_CONTRACTS: Record<string, EccFallbackContract> = {
+  'qoder': {
+    hostHomeRequired: false,
+    markdownAgentsOnly: true,
+    activeMcpSource: 'role-audited',
+    disabledSurfaces: ECC_FALLBACK_DISABLED_SURFACES,
+  },
+  'trae': {
+    hostHomeRequired: true,
+    markdownAgentsOnly: true,
+    activeMcpSource: 'role-audited',
+    disabledSurfaces: ECC_FALLBACK_DISABLED_SURFACES,
+  },
+  'trae-cn': {
+    hostHomeRequired: true,
+    markdownAgentsOnly: true,
+    activeMcpSource: 'role-audited',
+    disabledSurfaces: ECC_FALLBACK_DISABLED_SURFACES,
+  },
+}
+
+export function getEccFallbackContract(host: string): EccFallbackContract | undefined {
+  return ECC_FALLBACK_CONTRACTS[host]
 }
 
 function officialEccInstallInvocation(host: string, userHome: string): OfficialEccInstallInvocation | undefined {
@@ -146,6 +186,15 @@ function hostHomeExists(host: string, userHome: string): boolean {
   }
 
   return existsSync(path.resolve(resolveHostPaths(config, userHome).hostHome))
+}
+
+function eccFallbackHostReady(host: string, userHome: string): boolean {
+  const contract = getEccFallbackContract(host)
+  if (!contract) {
+    return false
+  }
+
+  return !contract.hostHomeRequired || hostHomeExists(host, userHome)
 }
 
 function officialEccInstallEnv(userHome: string): NodeJS.ProcessEnv {
@@ -250,7 +299,8 @@ export async function syncToHosts(options: SyncOptions): Promise<SyncResult> {
   const skippedHosts: string[] = []
   const failedHosts: string[] = []
   const officialEccRunner = options.runOfficialEccInstall ?? runOfficialEccInstallCommand
-  const useOfficialEccInstall = options.role === ECC_DEVELOPMENT_ROLE && !options.skipVendors
+  const isEccDevelopmentRole = options.role === ECC_DEVELOPMENT_ROLE
+  const useOfficialEccInstall = isEccDevelopmentRole && !options.skipVendors
 
   for (const host of resolveHostTargets(options.host)) {
     const officialEccInvocation = useOfficialEccInstall
@@ -265,6 +315,16 @@ export async function syncToHosts(options: SyncOptions): Promise<SyncResult> {
 
       await officialEccRunner(officialEccInvocation)
       officialInstalledHosts.push(host)
+      continue
+    }
+
+    if (isEccDevelopmentRole && !getEccFallbackContract(host)) {
+      skippedHosts.push(host)
+      continue
+    }
+
+    if (isEccDevelopmentRole && !eccFallbackHostReady(host, paths.userHome)) {
+      skippedHosts.push(host)
       continue
     }
 

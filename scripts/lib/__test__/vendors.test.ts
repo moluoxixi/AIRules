@@ -197,6 +197,49 @@ it('walkVendorTree - 空 skills projection 仅保留配置槽位，不生成 ski
   assert.deepStrictEqual(vendors['reserved-slot'].links, [], '空 skills projection 不应生成任何 link')
 })
 
+it('walkVendorTree - agents 与 mcp projection 映射到通用 vendor 分发面', () => {
+  const vendors: Record<string, any> = {}
+  const mockConfig: VendorsConfig = [
+    {
+      name: 'platform-vendor',
+      official: true,
+      source: 'https://github.com/example/platform.git',
+      projections: [
+        {
+          kind: 'agents',
+          sourceDir: 'agents',
+        },
+        {
+          kind: 'mcp',
+          sourceFile: 'mcp-configs/mcp-servers.json',
+        },
+      ],
+    },
+  ]
+
+  walkVendorTree(mockConfig, [], vendors)
+
+  assert.deepStrictEqual(
+    vendors['platform-vendor'].links.map((link: any) => ({
+      kind: link.kind,
+      source: link.source,
+      target: link.target,
+    })),
+    [
+      {
+        kind: 'agents-dir',
+        source: 'agents',
+        target: 'vendor/agents',
+      },
+      {
+        kind: 'mcp-file',
+        source: 'mcp-configs/mcp-servers.json',
+        target: 'vendor/mcp/mcp.json',
+      },
+    ],
+  )
+})
+
 // ─── 分类嵌套结构测试 ────────────────────────────────────────────────────────
 
 it('walkVendorTree - 数组中的嵌套分类对象', () => {
@@ -832,90 +875,36 @@ it('vendors 配置 - ecc-development 角色以 ECC 作为主编排来源', async
   assert.strictEqual(
     vendors.ecc.setup,
     undefined,
-    'ECC 角色不应默认全局安装 CLI；原生宿主安装由 npx --package ecc-universal ecc install 执行',
+    'ECC 角色不应通过 vendor setup 安装 CLI；官方全局 target 由 sync 阶段 npx --package ecc-universal ecc install 执行',
   )
-  assert.deepStrictEqual(
-    vendors.ecc.links.map((link: any) => ({
-      kind: link.kind,
-      source: link.source,
-      target: link.target,
-      setup: link.setup,
-    })),
-    [
-      {
-        kind: 'skill',
-        source: 'skills/ecc-guide',
-        target: 'vendor/skills/ecc-guide',
-        setup: undefined,
-      },
-      {
-        kind: 'skill',
-        source: 'skills/configure-ecc',
-        target: 'vendor/skills/configure-ecc',
-        setup: undefined,
-      },
-      {
-        kind: 'skill',
-        source: 'skills/repo-scan',
-        target: 'vendor/skills/repo-scan',
-        setup: undefined,
-      },
-      {
-        kind: 'skill',
-        source: 'skills/search-first',
-        target: 'vendor/skills/search-first',
-        setup: undefined,
-      },
-      {
-        kind: 'skill',
-        source: 'skills/codebase-onboarding',
-        target: 'vendor/skills/codebase-onboarding',
-        setup: undefined,
-      },
-      {
-        kind: 'skill',
-        source: 'skills/skill-scout',
-        target: 'vendor/skills/skill-scout',
-        setup: undefined,
-      },
-      {
-        kind: 'skill',
-        source: 'skills/skill-stocktake',
-        target: 'vendor/skills/skill-stocktake',
-        setup: undefined,
-      },
-      {
-        kind: 'skill',
-        source: 'skills/tdd-workflow',
-        target: 'vendor/skills/tdd-workflow',
-        setup: undefined,
-      },
-      {
-        kind: 'skill',
-        source: 'skills/verification-loop',
-        target: 'vendor/skills/verification-loop',
-        setup: undefined,
-      },
-      {
-        kind: 'skill',
-        source: 'skills/error-handling',
-        target: 'vendor/skills/error-handling',
-        setup: undefined,
-      },
-      {
-        kind: 'skill',
-        source: 'skills/iterative-retrieval',
-        target: 'vendor/skills/iterative-retrieval',
-        setup: undefined,
-      },
-      {
-        kind: 'skill',
-        source: 'skills/strategic-compact',
-        target: 'vendor/skills/strategic-compact',
-        setup: undefined,
-      },
-    ],
-    'ECC fallback 只保留 core / onboarding / retrieval skills，不展开全部 ECC skills namespace',
+  const eccLinks = vendors.ecc.links.map((link: any) => ({
+    kind: link.kind,
+    source: link.source,
+    target: link.target,
+    setup: link.setup,
+  }))
+  assert.equal(
+    eccLinks.filter((link: any) => link.kind === 'skill' && link.source.startsWith('skills/')).length,
+    21,
+    'ECC fallback 应承接官方 core skills/ecc 的 21 个 core skills',
+  )
+  assert.equal(
+    eccLinks.filter((link: any) => link.kind === 'skill' && link.source.startsWith('.agents/skills/')).length,
+    26,
+    'ECC fallback 应承接官方 .agents/skills 共享集合，并排除与 core skills 重名的条目',
+  )
+  assert.ok(
+    eccLinks.some((link: any) => link.kind === 'agents-dir' && link.source === 'agents' && link.target === 'vendor/agents'),
+    'ECC fallback 应从上游在线 agents/ 投影 subagents',
+  )
+  assert.ok(
+    eccLinks.some((link: any) => link.source === '.agents/skills/api-design' && link.target === 'vendor/skills/api-design'),
+    'ECC fallback 应接入 .agents/skills 的共享在线 skill',
+  )
+  assert.equal(
+    eccLinks.some((link: any) => link.kind === 'mcp-file'),
+    false,
+    'ECC fallback MCP 使用 roles/ecc-development/mcp/mcp.json 的可审计清单，不直接激活上游全量 MCP catalog',
   )
   assert.equal(
     vendors.ecc.links.some((link: any) => /(?:typescript|python|golang|vue|react|django|springboot|rust)-/.test(link.source)),

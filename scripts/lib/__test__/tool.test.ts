@@ -3,7 +3,7 @@ import fs from 'node:fs'
 import os from 'node:os'
 import path from 'node:path'
 import { it } from 'vitest'
-import { addLocalSkill, resolveHostTargets, resolveToolPaths, syncToHosts } from '../tool.js'
+import { addLocalSkill, getEccFallbackContract, resolveHostTargets, resolveToolPaths, syncToHosts } from '../tool.js'
 
 function withTempDir<T>(prefix: string, run: (tmpDir: string) => T): T {
   const tmpDir = fs.mkdtempSync(path.join(os.tmpdir(), prefix))
@@ -220,15 +220,19 @@ it('tool - syncToHosts 支持只包含 skills 的 product 角色', async () => {
   })
 })
 
-it('tool - ecc-development 对 ECC 原生宿主使用官方 installer，Qoder 走 AIRules fallback', async () => {
+it('tool - ecc-development 只对 ECC 全局 target 使用官方 installer，项目级/未支持宿主走 AIRules fallback', async () => {
   await withTempDirAsync('airules-tool-ecc-role-', async (tmpDir) => {
     const repoRoot = path.join(tmpDir, 'repo')
     const userHome = path.join(tmpDir, 'user')
     const moluoHome = path.join(userHome, '.moluoxixi')
     const claudeHome = path.join(userHome, '.claude')
     const codexHome = path.join(userHome, '.codex')
-    const cursorHome = path.join(userHome, '.cursor')
     const qoderHome = path.join(userHome, '.qoder')
+    const traeHome = path.join(userHome, '.trae')
+    const traeCnHome = path.join(userHome, '.trae-cn')
+    const traeSoloHome = path.join(userHome, '.trae-solo')
+    const hermesHome = path.join(userHome, 'AppData', 'Local', 'hermes')
+    const cursorHome = path.join(userHome, '.cursor')
     const opencodeHome = path.join(userHome, '.config', 'opencode')
     const officialInstalls: Array<{ host: string, target: string, profile: string, args: string[] }> = []
 
@@ -236,7 +240,7 @@ it('tool - ecc-development 对 ECC 原生宿主使用官方 installer，Qoder �
     writeFile(path.join(repoRoot, 'roles', 'ecc-development', 'constants', 'skills.js'), 'export const vendors = []\n')
     writeFile(path.join(repoRoot, 'roles', 'common', 'hooks', 'session-log.mjs'), 'process.stdout.write("{}")\n')
     writeFile(path.join(repoRoot, 'roles', 'common', 'skills', 'session-capture', 'SKILL.md'), 'common skill\n')
-    for (const hostHome of [claudeHome, codexHome, cursorHome, qoderHome, opencodeHome]) {
+    for (const hostHome of [claudeHome, codexHome, qoderHome, traeHome, traeCnHome, traeSoloHome, hermesHome, cursorHome, opencodeHome]) {
       fs.mkdirSync(hostHome, { recursive: true })
     }
 
@@ -274,12 +278,6 @@ it('tool - ecc-development 对 ECC 原生宿主使用官方 installer，Qoder �
           args: ['-y', '--package', 'ecc-universal', 'ecc', 'install', '--profile', 'core', '--target', 'codex'],
         },
         {
-          host: 'cursor',
-          target: 'cursor',
-          profile: 'core',
-          args: ['-y', '--package', 'ecc-universal', 'ecc', 'install', '--profile', 'core', '--target', 'cursor'],
-        },
-        {
           host: 'opencode',
           target: 'opencode',
           profile: 'opencode',
@@ -287,13 +285,79 @@ it('tool - ecc-development 对 ECC 原生宿主使用官方 installer，Qoder �
         },
       ],
     )
-    assert.deepEqual(result.officialInstalledHosts, ['claude', 'codex', 'cursor', 'opencode'])
-    assert.deepEqual(result.projectedHosts, ['qoder'])
+    assert.deepEqual(result.officialInstalledHosts, ['claude', 'codex', 'opencode'])
+    assert.deepEqual(result.projectedHosts, ['trae', 'trae-cn', 'qoder'])
     assert.equal(
       realLinkPath(path.join(qoderHome, 'skills', 'session-capture')),
       realLinkPath(path.join(repoRoot, 'roles', 'common', 'skills', 'session-capture')),
     )
+    assert.equal(
+      realLinkPath(path.join(traeHome, 'skills', 'session-capture')),
+      realLinkPath(path.join(repoRoot, 'roles', 'common', 'skills', 'session-capture')),
+    )
+    assert.equal(
+      realLinkPath(path.join(traeCnHome, 'skills', 'session-capture')),
+      realLinkPath(path.join(repoRoot, 'roles', 'common', 'skills', 'session-capture')),
+    )
+    assert.equal(fs.existsSync(path.join(hermesHome, 'skills', 'session-capture')), false)
+    assert.equal(fs.existsSync(path.join(traeSoloHome, 'skills', 'session-capture')), false)
+    assert.equal(fs.existsSync(path.join(cursorHome, 'skills-cursor', 'session-capture')), false)
     assert.equal(fs.existsSync(path.join(codexHome, 'skills', 'session-capture')), false)
+  })
+})
+
+it('tool - ecc-development fallback contract 在代码层裁剪官方安装面', () => {
+  const qoder = getEccFallbackContract('qoder')
+  const trae = getEccFallbackContract('trae')
+  const traeCn = getEccFallbackContract('trae-cn')
+
+  assert.equal(qoder?.hostHomeRequired, false)
+  assert.equal(trae?.hostHomeRequired, true)
+  assert.equal(traeCn?.hostHomeRequired, true)
+  for (const contract of [qoder, trae, traeCn]) {
+    assert.equal(contract?.markdownAgentsOnly, true)
+    assert.equal(contract?.activeMcpSource, 'role-audited')
+    assert.deepEqual(contract?.disabledSurfaces, [
+      'rules-core',
+      'commands-core',
+      'hooks-runtime',
+      'codex-native-toml-agents',
+    ])
+  }
+
+  for (const unsupported of ['hermes', 'trae-solo', 'trae-solo-cn', 'cc-switch', 'qoderwork']) {
+    assert.equal(getEccFallbackContract(unsupported), undefined)
+  }
+})
+
+it('tool - ecc-development 的 Trae fallback 不允许退化成 MCP-only 安装', async () => {
+  await withTempDirAsync('airules-tool-ecc-trae-mcp-only-', async (tmpDir) => {
+    const repoRoot = path.join(tmpDir, 'repo')
+    const userHome = path.join(tmpDir, 'user')
+    const moluoHome = path.join(userHome, '.moluoxixi')
+    const traeMcpHome = path.join(userHome, 'AppData', 'Roaming', 'Trae', 'User')
+
+    writeFile(path.join(repoRoot, 'package.json'), '{"type":"module"}\n')
+    writeFile(path.join(repoRoot, 'roles', 'ecc-development', 'constants', 'skills.js'), 'export const vendors = []\n')
+    writeFile(path.join(repoRoot, 'roles', 'ecc-development', 'rules', 'AGENTS.md'), 'ecc baseline\n')
+    writeFile(path.join(repoRoot, 'roles', 'common', 'skills', 'session-capture', 'SKILL.md'), 'common skill\n')
+    writeFile(path.join(repoRoot, 'roles', 'ecc-development', 'mcp', 'mcp.json'), '{"mcpServers":{"demo":{"command":"demo"}}}\n')
+    fs.mkdirSync(traeMcpHome, { recursive: true })
+
+    const result = await syncToHosts({
+      repoRoot,
+      home: moluoHome,
+      userHome,
+      host: 'trae',
+      role: 'ecc-development',
+      skipVendors: true,
+      verify: false,
+    })
+
+    assert.deepEqual(result.projectedHosts, [])
+    assert.deepEqual(result.skippedHosts, ['trae'])
+    assert.equal(fs.existsSync(path.join(userHome, '.trae', 'skills', 'session-capture')), false)
+    assert.equal(fs.existsSync(path.join(traeMcpHome, 'mcp.json')), false)
   })
 })
 

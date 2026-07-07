@@ -90,6 +90,46 @@ export const vendors = [{
   }
 })
 
+it('vendor rebuild - agents 与 mcp projection 写入 vendor 通用分发面', async () => {
+  const tmpDir = fs.mkdtempSync(path.join(os.tmpdir(), 'moluoxixi-vendor-platform-'))
+
+  try {
+    const moluoHome = path.join(tmpDir, 'home')
+    const manifestPath = path.join(tmpDir, 'vendors.mjs')
+    fs.mkdirSync(path.dirname(manifestPath), { recursive: true })
+    fs.writeFileSync(manifestPath, `
+export const vendors = [{
+  name: 'platform',
+  official: true,
+  source: 'https://example.test/platform.git',
+  projections: [
+    { kind: 'skills', sourceBaseDir: 'skills', skills: ['core-skill'] },
+    { kind: 'agents', sourceDir: 'agents' },
+    { kind: 'mcp', sourceFile: 'mcp-configs/mcp-servers.json' },
+  ],
+}]
+`)
+    fs.mkdirSync(path.join(moluoHome, 'vendor', 'repos', 'platform', 'skills', 'core-skill'), { recursive: true })
+    fs.mkdirSync(path.join(moluoHome, 'vendor', 'repos', 'platform', 'agents'), { recursive: true })
+    fs.mkdirSync(path.join(moluoHome, 'vendor', 'repos', 'platform', 'mcp-configs'), { recursive: true })
+    fs.writeFileSync(path.join(moluoHome, 'vendor', 'repos', 'platform', 'agents', 'reviewer.md'), '---\nname: reviewer\n---\nbody\n')
+    fs.writeFileSync(path.join(moluoHome, 'vendor', 'repos', 'platform', 'mcp-configs', 'mcp-servers.json'), '{"mcpServers":{"demo":{"command":"demo"}}}\n')
+
+    const plan = await rebuildVendorSkillLinks({ homeDir: moluoHome, manifestPath })
+
+    assert.deepStrictEqual(plan.map(entry => entry.kind).sort(), ['agents-dir', 'mcp-file', 'skill'])
+    assert.ok(fs.lstatSync(path.join(moluoHome, 'vendor', 'skills', 'core-skill')).isSymbolicLink())
+    assert.ok(fs.lstatSync(path.join(moluoHome, 'vendor', 'agents')).isSymbolicLink())
+    assert.equal(
+      fs.readFileSync(path.join(moluoHome, 'vendor', 'mcp', 'mcp.json'), 'utf8'),
+      '{"mcpServers":{"demo":{"command":"demo"}}}\n',
+    )
+  }
+  finally {
+    cleanup(tmpDir)
+  }
+})
+
 it('installation linking - .agents is always created as mandatory layer', () => {
   const { tmpDir, userHome, moluoHome, claudeHome } = setupMockEnvironment()
 

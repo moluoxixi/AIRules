@@ -55,6 +55,20 @@ export type VendorProjection
     /** 需要精确安装的技能列表。 */
     skills: SkillDef[]
   }
+  | {
+    kind: 'agents'
+    /** 仓库内 agent 源目录。 */
+    sourceDir: string
+    /** vendor 侧目标目录，默认 vendor/agents。 */
+    targetDir?: string
+  }
+  | {
+    kind: 'mcp'
+    /** 仓库内 MCP 配置源文件。 */
+    sourceFile: string
+    /** vendor 侧目标文件，默认 vendor/mcp/mcp.json。 */
+    targetFile?: string
+  }
 
 /**
  * 代表一个外部供应商或 workspace 配置源的技能仓库。
@@ -74,7 +88,7 @@ export interface VendorRepo {
    * 供应商级安装前置命令。
    */
   setup?: SetupCommand[]
-  /** 从该仓库投影到 vendor/skills 的安装规则列表；仅做 setup 的供应商可为空。 */
+  /** 从该仓库投影到 vendor/{skills,agents,mcp} 的安装规则列表；仅做 setup 的供应商可为空。 */
   projections: VendorProjection[]
 }
 
@@ -190,6 +204,22 @@ function buildLinksForEntry(entry: any): VendorLink[] {
       return projection.skills.map((skillDef: any) =>
         buildSkillLink(projection.sourceBaseDir, skillDef),
       )
+    }
+
+    if (projection.kind === 'agents') {
+      return [{
+        kind: 'agents-dir',
+        source: projection.sourceDir,
+        target: projection.targetDir ?? 'vendor/agents',
+      }]
+    }
+
+    if (projection.kind === 'mcp') {
+      return [{
+        kind: 'mcp-file',
+        source: projection.sourceFile,
+        target: projection.targetFile ?? 'vendor/mcp/mcp.json',
+      }]
     }
 
     throw new Error(`供应商 "${entry.name}" 存在未知 projection 类型: ${projection.kind}`)
