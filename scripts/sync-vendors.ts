@@ -139,7 +139,7 @@ function readArgValue(name: string): string | undefined {
  *   - 指纹不同 / 无 lockfile → 执行完整同步并更新指纹
  *
  * 使用方式：
- *   npx tsx scripts/sync-vendors.ts                  # 同步 development 角色
+ *   npx tsx scripts/sync-vendors.ts                  # 同步默认 speckit-development 角色
  *   npx tsx scripts/sync-vendors.ts --role product   # 同步 product 角色
  *   npx tsx scripts/sync-vendors.ts --force          # 忽略缓存，强制重新克隆
  */

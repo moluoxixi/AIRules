@@ -1,8 +1,9 @@
 import type { VendorsConfig } from '../vendors.js'
 import assert from 'node:assert'
 import { it } from 'vitest'
-import { vendors as developmentVendors } from '../../../roles/development/constants/skills.js'
+import { vendors as openspecDevelopmentVendors } from '../../../roles/openspec-development/constants/skills.js'
 import { vendors as productVendors } from '../../../roles/product/constants/skills.js'
+import { vendors as speckitDevelopmentVendors } from '../../../roles/speckit-development/constants/skills.js'
 import { walkVendorTree } from '../vendors.js'
 
 // ─── 基础结构测试 ────────────────────────────────────────────────────────────
@@ -482,7 +483,7 @@ it('walkVendorTree - 旧版顶层 sourceDir 或 skills 配置应显式失败', (
 it('vendors 配置 - 精选第三方 skill 使用来源后缀避免跨来源裸名冲突', () => {
   const vendors: Record<string, any> = {}
 
-  walkVendorTree(developmentVendors, [], vendors)
+  walkVendorTree(openspecDevelopmentVendors, [], vendors)
 
   assert.deepStrictEqual(
     vendors.gemini.links.map((link: any) => link.target),
@@ -536,7 +537,7 @@ it('vendors 配置 - 精选第三方 skill 使用来源后缀避免跨来源裸�
 it('vendors 配置 - 使用 OpenAI Playwright 并移除过时技能', () => {
   const vendors: Record<string, any> = {}
 
-  walkVendorTree(developmentVendors, [], vendors)
+  walkVendorTree(openspecDevelopmentVendors, [], vendors)
 
   assert.ok(vendors.openai, 'openai 供应商应存在')
   assert.strictEqual(vendors.openai.repo, 'https://github.com/openai/skills.git')
@@ -587,7 +588,7 @@ it('vendors 配置 - 使用 OpenAI Playwright 并移除过时技能', () => {
         skipIfCommandAvailable: 'bmad-method',
       },
     ],
-    '安装 AIRules 时应同步安装 CodeGraph、OpenSpec 与 BMAD；init-project 会注册 superpowers-bridge schema 并安装 BMAD BMM runtime',
+    '安装 AIRules openspec-development 角色时应同步安装 CodeGraph、OpenSpec 与 BMAD；init-project 会注册 superpowers-bridge schema 并安装 BMAD BMM runtime',
   )
   assert.ok(
     !vendors.moluoxixi.links.some((link: any) => link.target === 'vendor/skills/workflow'),
@@ -599,12 +600,12 @@ it('vendors 配置 - 使用 OpenAI Playwright 并移除过时技能', () => {
   )
 })
 
-it('vendors 配置 - development 角色接入 BMAD 文档拆分、gstack 评审 QA 与 Matt 按需工程技能', () => {
+it('vendors 配置 - openspec-development 角色接入 BMAD 文档拆分、gstack 评审 QA 与 Matt 按需工程技能', () => {
   const vendors: Record<string, any> = {}
 
-  walkVendorTree(developmentVendors, [], vendors)
+  walkVendorTree(openspecDevelopmentVendors, [], vendors)
 
-  assert.ok(vendors.bmadMethod, 'development 角色应接入 BMAD Method')
+  assert.ok(vendors.bmadMethod, 'openspec-development 角色应接入 BMAD Method')
   assert.strictEqual(vendors.bmadMethod.repo, 'https://github.com/bmad-code-org/BMAD-METHOD.git')
   assert.deepStrictEqual(
     vendors.bmadMethod.links.map((link: any) => ({
@@ -629,10 +630,10 @@ it('vendors 配置 - development 角色接入 BMAD 文档拆分、gstack 评审 
         target: 'vendor/skills/bmad-shard-doc',
       },
     ],
-    'development 角色应接入 BMAD PRD 校验、epic/story 拆分、项目上下文与长文档分片',
+    'openspec-development 角色应接入 BMAD PRD 校验、epic/story 拆分、项目上下文与长文档分片',
   )
 
-  assert.ok(vendors.gstack, 'development 角色应接入 gstack')
+  assert.ok(vendors.gstack, 'openspec-development 角色应接入 gstack')
   assert.strictEqual(vendors.gstack.repo, 'https://github.com/garrytan/gstack.git')
   assert.deepStrictEqual(
     vendors.gstack.links.map((link: any) => ({
@@ -654,7 +655,7 @@ it('vendors 配置 - development 角色接入 BMAD 文档拆分、gstack 评审 
     'gstack 评审与 QA 技能必须带来源前缀，避免抢占通用 review/qa 名称',
   )
 
-  assert.ok(vendors.mattPocock, 'development 角色应接入 Matt Pocock 精选技能')
+  assert.ok(vendors.mattPocock, 'openspec-development 角色应接入 Matt Pocock 精选技能')
   assert.strictEqual(vendors.mattPocock.repo, 'https://github.com/mattpocock/skills.git')
   assert.deepStrictEqual(
     vendors.mattPocock.links.map((link: any) => ({
@@ -676,14 +677,14 @@ it('vendors 配置 - development 角色接入 BMAD 文档拆分、gstack 评审 
 
   assert.ok(
     vendors.moluoxixi.links.some((link: any) => link.target === 'vendor/skills/frontend-testing'),
-    'development 第一方技能应包含 frontend-testing 前端测试门禁',
+    'openspec-development 第一方技能应包含 frontend-testing 前端测试门禁',
   )
 })
 
 it('vendors 配置 - 仅接入 Anthropic 的前端视觉设计技能', () => {
   const vendors: Record<string, any> = {}
 
-  walkVendorTree(developmentVendors, [], vendors)
+  walkVendorTree(openspecDevelopmentVendors, [], vendors)
 
   assert.ok(vendors.anthropic, 'Anthropic Skills 供应商应存在')
   assert.strictEqual(vendors.anthropic.repo, 'https://github.com/anthropics/skills.git')
@@ -704,11 +705,44 @@ it('vendors 配置 - 仅接入 Anthropic 的前端视觉设计技能', () => {
   )
 })
 
-it('vendors 配置 - 默认不接入静态代码规范供应商', () => {
+it('vendors 配置 - speckit-development 接入 Spec Kit + Superpowers bridge，但不接入静态代码规范供应商', () => {
   const vendors: Record<string, any> = {}
 
-  walkVendorTree(developmentVendors, [], vendors)
+  walkVendorTree(speckitDevelopmentVendors, [], vendors)
 
+  assert.ok(vendors.speckitSuperpowersBridge, 'speckit-development 应接入 speckit-superpowers-bridge')
+  assert.strictEqual(vendors.speckitSuperpowersBridge.repo, 'https://github.com/lihan3238/speckit-superpowers-bridge.git')
+  assert.deepStrictEqual(
+    vendors.speckitSuperpowersBridge.links.map((link: any) => ({
+      kind: link.kind,
+      source: link.source,
+      target: link.target,
+      setup: link.setup,
+    })),
+    [
+      {
+        kind: 'skill',
+        source: '.agents/skills/speckit-superpowers-bridge',
+        target: 'vendor/skills/speckit-superpowers-bridge',
+        setup: undefined,
+      },
+    ],
+    '默认开发角色应直接采用社区 bridge 的 Codex skill surface，而不是复制一方实现',
+  )
+  assert.ok(vendors.superpowers, 'bridge 执行阶段仍需要官方 Superpowers skills namespace')
+  assert.deepStrictEqual(
+    vendors.moluoxixi.links.map((link: any) => ({
+      source: link.source,
+      target: link.target,
+    })),
+    [
+      {
+        source: 'roles/speckit-development/skills/init-project',
+        target: 'vendor/skills/init-project',
+      },
+    ],
+    'speckit-development 只分发轻量 init-project，用于原生 Spec Kit 初始化',
+  )
   assert.strictEqual(vendors.antfu, undefined, '不应默认安装 Antfu 框架/工具链技能')
   assert.strictEqual(vendors.vercelAgentSkills, undefined, '不应默认安装 Vercel React/React Native 代码技能')
 })

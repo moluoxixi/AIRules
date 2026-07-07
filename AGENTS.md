@@ -13,8 +13,8 @@
 审查或修改 `roles/*/rules/`、`roles/*/skills/init-project/references/`、根 `AGENTS.md` 前，先判定资产层级，结论按层级列出，不跨层归因：
 
 - repo-maintenance：根 `AGENTS.md`、`CLAUDE.md`，只约束 AIRules 仓库（本仓库）维护者。
-- role-assets：`roles/development/{constants,skills,mcp,hooks}/**`，提供给开发角色按需安装/投影；开发角色不再分发宿主 always-on 全局 rules baseline。
-- project-init：`roles/development/skills/init-project/references/**` 与脚本，注入用户项目根 `AGENTS.md`，并初始化 `openspec/` 与 `knowledge/`，只能写项目级规则和项目内事实源。
+- role-assets：`roles/{speckit-development,openspec-development,ecc-development,product}/{constants,skills,mcp,hooks}/**`，提供给对应角色按需安装/投影；开发角色不再分发宿主 always-on 全局 rules baseline。
+- project-init：`roles/openspec-development/skills/init-project/references/**` 与脚本，注入用户项目根 `AGENTS.md`，并初始化 `openspec/` 与 `knowledge/`；默认 `speckit-development` 使用 Spec Kit 原生初始化，不维护 OpenSpec schema。
 - generated-project：用户项目中的 `AGENTS.md`、`CLAUDE.md`、`openspec/**`、`knowledge/**`。
 
 ## 代码实现核心纪律

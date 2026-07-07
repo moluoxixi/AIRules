@@ -74,7 +74,7 @@ export interface VendorRepo {
    * 供应商级安装前置命令。
    */
   setup?: SetupCommand[]
-  /** 从该仓库投影到 vendor/skills 的安装规则列表。 */
+  /** 从该仓库投影到 vendor/skills 的安装规则列表；仅做 setup 的供应商可为空。 */
   projections: VendorProjection[]
 }
 
@@ -170,6 +170,10 @@ function buildLinksForEntry(entry: any): VendorLink[] {
 
   if (!Array.isArray(entry.projections)) {
     throw new TypeError(`供应商 "${entry.name}" 必须使用 projections 配置`)
+  }
+
+  if (entry.projections.length === 0 && (!entry.setup || entry.setup.length === 0)) {
+    throw new Error(`供应商 "${entry.name}" 至少需要 projections 或 setup`)
   }
 
   return entry.projections.flatMap((projection: any) => {

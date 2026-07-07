@@ -27,7 +27,7 @@ description: 在用户要求复盘/追因、指出产物不符合规范，或对
 资产层级用中文判断：
 
 - **仓库维护层**：AIRules 仓库自己的根 `AGENTS.md`、`CLAUDE.md`、脚本、测试、README 等维护资产。
-- **角色资产层**：`roles/common/`、`roles/development/`、`roles/product/` 下面会被分发的 skill、hook、规则和配置。
+- **角色资产层**：`roles/common/`、`roles/speckit-development/`、`roles/openspec-development/`、`roles/product/` 下面会被分发的 skill、hook、规则和配置。
 - **项目初始化层**：`init-project` 注入到用户项目的模板、脚本、参考文件。
 - **项目生成层**：已经生成到用户项目里的 `AGENTS.md`、`knowledge/`、`openspec/` 等产物。
 

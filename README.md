@@ -43,7 +43,7 @@ AIRules is a **composable AI skill distribution system**. The core idea is simpl
 ## What You Get
 
 - 🔥 **Curated** workflow, tool, design, and verification AI Skills out of the box
-- 🧠 **Automatic CodeGraph, OpenSpec and BMAD install** via role setup commands during development / product sync
+- 🧠 **Automatic CodeGraph and Spec Kit install** via the default development role; OpenSpec/BMAD stay available through explicit roles
 - 🧱 **Reserved first-party expansion slots** so you can add your own top-level skills later without changing the distribution model
 - 🌐 **Multi-agent sync**: configure once, works across Claude / Cursor / Codex / Hermes / Qoder / Trae / OpenCode / CC-Switch and the `.agents` shared layer
 - 🔄 **Continuous updates**: one command pulls latest upstream skills
@@ -93,7 +93,7 @@ npm run sync
 ```
 
 > [!TIP]
-> **Sync Process**: `npm run sync` is the default development-role sync (`roles/common` + `roles/development`). Use `npm run sync:development` for an explicit development sync, `npm run sync:product` to sync the product role (`roles/common` + `roles/product`), or `npm run sync:ecc-development` to sync the ECC role (`roles/common` + `roles/ecc-development`). Each sync rebuilds vendor skills, runs setup commands, cleans dead links, and runs host verification after AIRules projection. The default development setup globally installs and initializes CodeGraph, installs OpenSpec (`@fission-ai/openspec`), and installs BMAD (`bmad-method`); product sync installs OpenSpec and BMAD. ECC sync uses the official command `npx -y --package ecc-universal ecc install --profile <profile> --target <target>` for ECC-native hosts such as Codex, Claude, Cursor, and OpenCode; AIRules fallback projection is kept for hosts that ECC does not target natively, such as Qoder. ECC OpenSpec work is tracked upstream in [`affaan-m/ECC#2283`](https://github.com/affaan-m/ECC/issues/2283) and [`affaan-m/ECC#2318`](https://github.com/affaan-m/ECC/pull/2318); as of 2026-07-06, the PR was open and unmerged, so this role does not treat the OpenSpec ecosystem as a stable default dependency. Use `airules sync --skip-vendors` when you do not want to refresh third-party vendor repositories, run setup, or invoke ECC official installers.
+> **Sync Process**: `npm run sync` is the default Spec Kit development sync (`roles/common` + `roles/speckit-development`). `npm run sync:development` is kept as an alias for the same default role. Use `npm run sync:openspec-development` for the OpenSpec + BMAD + gstack role, `npm run sync:product` for the product role (`roles/common` + `roles/product`), or `npm run sync:ecc-development` for the ECC role (`roles/common` + `roles/ecc-development`). Each sync rebuilds vendor skills, runs setup commands, cleans dead links, and runs host verification after AIRules projection. The default Spec Kit setup installs CodeGraph and the official GitHub Spec Kit `specify` CLI, projects `lihan3238/speckit-superpowers-bridge`, keeps the official Superpowers skills namespace available for bridge execution, and ships a lightweight first-party `init-project` wrapper for native Spec Kit project initialization; it does not install an OpenSpec schema. Use `airules sync --skip-vendors` when you do not want to refresh third-party vendor repositories, run setup, or invoke ECC official installers.
 
 ---
 
@@ -128,25 +128,28 @@ npm run rules:install -- --host claude
 
 ---
 
-## After `init-project`: Using OpenSpec
+## Default Spec Kit Workflow
 
-`init-project` is setup only. It installs OpenSpec host entries for host directories already present in the project (`.claude`, `.codex`, `.cursor`, `.qoder`, `.trae`, `.opencode`); if none exist, it installs the Qoder entry by default. It also installs BMAD BMM runtime for the detected BMAD tool IDs (`claude-code`, `codex`, `cursor`, `qoder`, `trae`, `opencode`, default `qoder`). Finally, it installs the project-local schema under `openspec/schemas/<schema-name>/`, sets that schema as the project default in `openspec/config.yaml`, and creates `knowledge/index.md`. After initialization, use the OpenSpec `/opsx` workflow.
+The default development role does not install an AIRules schema. It installs GitHub Spec Kit's official `specify` CLI, projects `lihan3238/speckit-superpowers-bridge`, and keeps the official Superpowers skills namespace available for bridge execution. Initialize each target project with Spec Kit itself and then install the bridge extension from its release ZIP:
 
-### Development Spec Usage
+```bash
+specify init . --integration codex
+specify extension add speckit-superpowers-bridge --from https://github.com/lihan3238/speckit-superpowers-bridge/releases/latest/download/speckit-superpowers-bridge.zip
+```
 
-Use the development schema after initializing a code repository with the development `init-project` skill.
+Choose another official integration when needed, such as `claude`, `copilot`, or `gemini`. Add `--force` for an existing non-empty directory and `--ignore-agent-tools` when you need to skip agent tool detection. After initialization, use the native Spec Kit design flow: `/speckit.constitution`, `/speckit.specify`, `/speckit.clarify`, `/speckit.plan`, `/speckit.tasks`, and `/speckit.analyze`. For company projects, prefer `$speckit-superpowers-bridge` on Codex or `/speckit-superpowers-bridge` on Claude Code over direct `/speckit.implement`; the bridge keeps Spec Kit artifacts canonical and delegates implementation discipline to native Superpowers.
+
+The role also ships a lightweight `init-project` skill so agents can run the native initialization sequence consistently inside target projects. That wrapper calls Spec Kit and bridge extension commands; it does not copy OpenSpec schemas or legacy AIRules initialization assets.
+
+### OpenSpec Role Usage
+
+`openspec-development` keeps the previous OpenSpec + Superpowers bridge stack. It installs OpenSpec (`@fission-ai/openspec`), BMAD (`bmad-method`), gstack, and the first-party `init-project` skill that registers `openspec/schemas/superpowers-bridge/`. Use it only when a project explicitly needs the legacy OpenSpec schema workflow:
 
 ```text
 /opsx:propose "<feature-or-bug>"
 /opsx:apply <change-id>
 /opsx:archive <change-id>
 ```
-
-Run `/opsx:apply <change-id>` again to continue a paused implementation. The development `init-project` skill sets `openspec/config.yaml` to `schema: superpowers-bridge`, so this workflow uses `superpowers-bridge` by default.
-
-Development changes start with `intake.md`. If a PRD, product package, story list, acceptance criteria, screenshots or API notes are supplied, the development role validates that the documents are buildable before planning. Use `bmad-shard-doc` for oversized documents, `bmad-prd` to validate PRDs, `bmad-create-epics-and-stories` when developer-ready stories are missing, and `bmad-generate-project-context` when downstream implementation context is needed. Missing API fields, route facts, permissions or state contracts are recorded as `MISSING blocked`; coding does not start until blockers are resolved or explicitly carried.
-
-For frontend UI work, `plan.md` must include `Frontend Planning Notes` and a `Frontend Test Matrix`. Use `frontend-testing` to decide unit/component/E2E/browser checks with the project's existing tools. `gstack-qa-only` can provide report-only browser QA evidence; `gstack-qa` is reserved for explicit "test and fix" requests.
 
 ### Product Spec Usage
 
@@ -171,9 +174,14 @@ Product changes use pm-skills for lightweight solution brief, PRD, acceptance cr
 │   │   ├── hooks/
 │   │   │   └── session-log.mjs
 │   │   └── skills/        # Shared capture / distill / memory / reflection skills
-│   ├── development/
+│   ├── speckit-development/
 │   │   ├── constants/
-│   │   │   └── skills.ts # Development role skill registry
+│   │   │   └── skills.ts # Default Spec Kit + Superpowers role registry
+│   │   ├── mcp/
+│   │   └── rules/
+│   ├── openspec-development/
+│   │   ├── constants/
+│   │   │   └── skills.ts # OpenSpec + BMAD + gstack role registry
 │   │   ├── mcp/
 │   │   │   └── mcp.json   # Neutral MCP source projected per host format
 │   │   ├── hooks/
@@ -194,7 +202,7 @@ Product changes use pm-skills for lightweight solution brief, PRD, acceptance cr
 ```
 
 > Source `skills/` folders may be grouped recursively; installed vendor and host skill directories are flattened by leaf skill name.
-> Development no longer projects an always-on global rules baseline. Its setup installs OpenSpec (`@fission-ai/openspec`) and BMAD (`bmad-method`), and `init-project` writes project-local `AGENTS.md`, runs OpenSpec project initialization, installs BMAD BMM runtime, registers project-level `openspec/schemas/superpowers-bridge/`, and creates `knowledge/`. OpenSpec owns its own change/archive directory structure.
+> The default `speckit-development` role does not project an always-on global rules baseline and does not install a schema. It installs Spec Kit's official CLI, projects the Spec Kit + Superpowers bridge skill, and leaves project structure to `specify init` plus `specify extension add`. The `openspec-development` role preserves the previous OpenSpec schema workflow for projects that still need it.
 
 ## Why Not Just Another AI Rules Repo?
 

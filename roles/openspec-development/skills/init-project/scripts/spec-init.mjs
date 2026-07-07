@@ -114,7 +114,7 @@ function resolveCommand(candidates) {
 function requireOpenSpecCommand() {
   const command = resolveOpenSpecCommand()
   if (!command) {
-    throw new Error('MISSING openspec CLI；请先安装 @fission-ai/openspec，或先运行 AIRules development role setup。')
+    throw new Error('MISSING openspec CLI；请先安装 @fission-ai/openspec，或先运行 AIRules openspec-development role setup。')
   }
   return command
 }
@@ -122,7 +122,7 @@ function requireOpenSpecCommand() {
 function requireBmadCommand() {
   const command = resolveBmadCommand()
   if (!command) {
-    throw new Error('MISSING bmad-method CLI；请先安装 bmad-method，或先运行 AIRules development role setup。')
+    throw new Error('MISSING bmad-method CLI；请先安装 bmad-method，或先运行 AIRules openspec-development role setup。')
   }
   return command
 }

@@ -5,15 +5,19 @@ import os from 'node:os'
 import path from 'node:path'
 import { fileURLToPath } from 'node:url'
 import { describe, it } from 'vitest'
-import { vendors as developmentVendors } from '../roles/development/constants/skills.js'
+import { vendors as openspecDevelopmentVendors } from '../roles/openspec-development/constants/skills.js'
 import { vendors as productVendors } from '../roles/product/constants/skills.js'
+import { vendors as speckitDevelopmentVendors } from '../roles/speckit-development/constants/skills.js'
 import { checkRulesConsistency, firstPartySkillNames } from '../scripts/check-rules-consistency.js'
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url))
 const repoRoot = path.resolve(__dirname, '..')
-const DEVELOPMENT_SKILLS = ['frontend-testing', 'handoff', 'init-project']
+const OPENSPEC_DEVELOPMENT_SKILLS = ['frontend-testing', 'handoff', 'init-project']
+const SPECKIT_DEVELOPMENT_SKILLS = ['init-project']
 const PRODUCT_SKILLS = ['init-project']
 const ECC_DEVELOPMENT_ROLE = 'ecc-development'
+const OPENSPEC_DEVELOPMENT_ROLE = 'openspec-development'
+const SPECKIT_DEVELOPMENT_ROLE = 'speckit-development'
 
 function withTempDir<T>(run: (tmpDir: string) => T): T {
   const tmpDir = fs.mkdtempSync(path.join(os.tmpdir(), 'airules-wf-'))
@@ -39,36 +43,19 @@ describe('自洽检查器', () => {
 
   // 构造一个最小 fixture 仓库，缺省值都是“干净的”，由各用例局部种入缺陷。
   function seedCleanRepo(root: string) {
-    fs.mkdirSync(path.join(root, 'roles', 'development', 'constants'), { recursive: true })
+    fs.mkdirSync(path.join(root, 'roles', SPECKIT_DEVELOPMENT_ROLE, 'constants'), { recursive: true })
     fs.mkdirSync(path.join(root, 'knowledge', '架构'), { recursive: true })
-    fs.mkdirSync(path.join(root, 'roles', 'development', 'rules'), { recursive: true })
+    fs.mkdirSync(path.join(root, 'roles', SPECKIT_DEVELOPMENT_ROLE, 'rules'), { recursive: true })
     fs.writeFileSync(
-      path.join(root, 'roles', 'development', 'constants', 'skills.ts'),
-      `export const vendors = [
-  {
-    name: 'moluoxixi',
-    official: true,
-    source: 'https://example.test/AIRules.git',
-    sourceMode: 'workspace',
-    projections: [
-      {
-        kind: 'skills',
-        sourceBaseDir: 'roles/development/skills',
-        skills: ['init-project', 'frontend-testing', 'handoff'],
-      },
-    ],
-  },
-]\n`,
+      path.join(root, 'roles', SPECKIT_DEVELOPMENT_ROLE, 'constants', 'skills.ts'),
+      'export const vendors = []\n',
     )
-    // check #3 读 development role skill 分发清单 → fixture 须备齐这些 skill 目录。
-    for (const skill of firstPartySkillNames()) {
-      fs.mkdirSync(path.join(root, 'roles', 'development', 'skills', skill), { recursive: true })
-      fs.writeFileSync(path.join(root, 'roles', 'development', 'skills', skill, 'SKILL.md'), `---\nname: ${skill}\n---\n`)
-    }
+    fs.mkdirSync(path.join(root, 'roles', SPECKIT_DEVELOPMENT_ROLE, 'skills', 'init-project'), { recursive: true })
+    fs.writeFileSync(path.join(root, 'roles', SPECKIT_DEVELOPMENT_ROLE, 'skills', 'init-project', 'SKILL.md'), '---\nname: init-project\ndescription: fixture\n---\n')
     fs.writeFileSync(path.join(root, 'knowledge', '架构', 'overview.md'), '质量门禁：lint:check / typecheck。\n')
     fs.mkdirSync(path.join(root, 'knowledge', '架构', 'decisions'), { recursive: true })
     fs.writeFileSync(path.join(root, 'knowledge', '架构', 'decisions', 'index.md'), '| ADR | 决策 |\n|---|---|\n')
-    fs.writeFileSync(path.join(root, 'roles', 'development', 'rules', 'AGENTS.md'), '')
+    fs.writeFileSync(path.join(root, 'roles', SPECKIT_DEVELOPMENT_ROLE, 'rules', 'AGENTS.md'), '')
     fs.writeFileSync(path.join(root, 'package.json'), JSON.stringify({ scripts: { 'lint:check': 'x', 'typecheck': 'x' } }))
   }
 
@@ -91,8 +78,8 @@ describe('自洽检查器', () => {
   it('捕获：agent 引用不存在的 skill', () => {
     withTempDir((root) => {
       seedCleanRepo(root)
-      fs.mkdirSync(path.join(root, 'roles', 'development', 'agents'), { recursive: true })
-      fs.writeFileSync(path.join(root, 'roles', 'development', 'agents', 'coder.md'), '---\nname: coder\n---\n\n## 加载 skill\n\n- \`nonexistent-skill\`：x\n')
+      fs.mkdirSync(path.join(root, 'roles', SPECKIT_DEVELOPMENT_ROLE, 'agents'), { recursive: true })
+      fs.writeFileSync(path.join(root, 'roles', SPECKIT_DEVELOPMENT_ROLE, 'agents', 'coder.md'), '---\nname: coder\n---\n\n## 加载 skill\n\n- \`nonexistent-skill\`：x\n')
       const { errors } = checkRulesConsistency(root)
       assert.ok(errors.some(e => e.includes('nonexistent-skill')), errors.join('\n'))
     })
@@ -110,7 +97,7 @@ describe('自洽检查器', () => {
   it('捕获：skills 目录有 SKILL.md 但未登记 role constants/skills.ts', () => {
     withTempDir((root) => {
       seedCleanRepo(root)
-      const orphan = path.join(root, 'roles', 'development', 'skills', 'unregistered-orphan-skill')
+      const orphan = path.join(root, 'roles', SPECKIT_DEVELOPMENT_ROLE, 'skills', 'unregistered-orphan-skill')
       fs.mkdirSync(orphan, { recursive: true })
       fs.writeFileSync(path.join(orphan, 'SKILL.md'), '---\nname: unregistered-orphan-skill\n---\n')
       const { errors } = checkRulesConsistency(root)
@@ -149,14 +136,38 @@ describe('自洽检查器', () => {
 // ── 2. 红线文本断言 ──────────────────────────────────────────
 
 describe('编排红线文本', () => {
-  it('development agents 目录允许清空', () => {
-    const agentsDir = path.join(repoRoot, 'roles', 'development', 'agents')
+  it('speckit-development agents 目录允许清空', () => {
+    const agentsDir = path.join(repoRoot, 'roles', SPECKIT_DEVELOPMENT_ROLE, 'agents')
     const entries = fs.existsSync(agentsDir) ? fs.readdirSync(agentsDir) : []
     assert.deepEqual(entries, [])
   })
 
-  it('development role 只登记保留的一方 skills', () => {
-    assert.deepEqual(firstPartySkillNames(developmentVendors).sort(), DEVELOPMENT_SKILLS)
+  it('speckit-development role 只登记轻量 init-project 一方 skill', () => {
+    assert.deepEqual(firstPartySkillNames(speckitDevelopmentVendors).sort(), SPECKIT_DEVELOPMENT_SKILLS)
+  })
+
+  it('speckit-development role 使用社区 bridge 作为默认实现入口', () => {
+    const roleReadme = fs.readFileSync(path.join(repoRoot, 'roles', SPECKIT_DEVELOPMENT_ROLE, 'README.md'), 'utf8')
+    const initSkill = fs.readFileSync(path.join(repoRoot, 'roles', SPECKIT_DEVELOPMENT_ROLE, 'skills', 'init-project', 'SKILL.md'), 'utf8')
+    const rootReadme = read('README.md')
+    const rootReadmeZh = read('README-zh.md')
+
+    assert.match(roleReadme, /https:\/\/github\.com\/lihan3238\/speckit-superpowers-bridge/)
+    assert.match(roleReadme, /specify extension add speckit-superpowers-bridge/)
+    assert.match(roleReadme, /\$speckit-superpowers-bridge/)
+    assert.doesNotMatch(roleReadme, /社区检索未发现/)
+    assert.match(initSkill, /specify init <project> --integration <integration>/)
+    assert.match(initSkill, /specify extension add speckit-superpowers-bridge/)
+    assert.match(initSkill, /不写 `openspec\/schemas\/\*\*`/)
+    assert.match(initSkill, /不设置 `schema: superpowers-bridge`/)
+    assert.doesNotMatch(initSkill, /spec-init\.mjs/)
+    assert.doesNotMatch(initSkill, /openspec schema validate/)
+    assert.match(rootReadme, /lihan3238\/speckit-superpowers-bridge/)
+    assert.match(rootReadmeZh, /lihan3238\/speckit-superpowers-bridge/)
+  })
+
+  it('openspec-development role 只登记保留的一方 skills', () => {
+    assert.deepEqual(firstPartySkillNames(openspecDevelopmentVendors).sort(), OPENSPEC_DEVELOPMENT_SKILLS)
   })
 
   it('product role 一方只登记 init-project', () => {
@@ -187,16 +198,18 @@ describe('编排红线文本', () => {
 
   it('skill 分发清单只存在于 role constants/skills.ts', () => {
     assert.equal(fs.existsSync(path.join(repoRoot, 'constants', 'skills.ts')), false)
-    assert.equal(fs.existsSync(path.join(repoRoot, 'roles', 'development', 'constants', 'skills.ts')), true)
+    assert.equal(fs.existsSync(path.join(repoRoot, 'roles', SPECKIT_DEVELOPMENT_ROLE, 'constants', 'skills.ts')), true)
+    assert.equal(fs.existsSync(path.join(repoRoot, 'roles', OPENSPEC_DEVELOPMENT_ROLE, 'constants', 'skills.ts')), true)
     assert.equal(fs.existsSync(path.join(repoRoot, 'roles', 'product', 'constants', 'skills.ts')), true)
     assert.equal(fs.existsSync(path.join(repoRoot, 'roles', ECC_DEVELOPMENT_ROLE, 'constants', 'skills.ts')), true)
-    assert.equal(fs.existsSync(path.join(repoRoot, 'roles', 'development', 'constants', 'skills.md')), false)
+    assert.equal(fs.existsSync(path.join(repoRoot, 'roles', SPECKIT_DEVELOPMENT_ROLE, 'constants', 'skills.md')), false)
+    assert.equal(fs.existsSync(path.join(repoRoot, 'roles', OPENSPEC_DEVELOPMENT_ROLE, 'constants', 'skills.md')), false)
     assert.equal(fs.existsSync(path.join(repoRoot, 'roles', 'product', 'constants', 'skills.md')), false)
     assert.equal(fs.existsSync(path.join(repoRoot, 'roles', ECC_DEVELOPMENT_ROLE, 'constants', 'skills.md')), false)
   })
 
-  it('development role 仅保留空 rules baseline 占位', () => {
-    const rulesPath = path.join(repoRoot, 'roles', 'development', 'rules', 'AGENTS.md')
+  it('speckit-development role 仅保留空 rules baseline 占位', () => {
+    const rulesPath = path.join(repoRoot, 'roles', SPECKIT_DEVELOPMENT_ROLE, 'rules', 'AGENTS.md')
     assert.equal(fs.existsSync(rulesPath), true)
     assert.equal(fs.readFileSync(rulesPath, 'utf8'), '')
   })
@@ -210,7 +223,7 @@ describe('编排红线文本', () => {
   })
 
   it('init-project 只保留规则注入、Claude 链接与 OpenSpec schema 初始化脚本', () => {
-    const scriptsDir = path.join(repoRoot, 'roles', 'development', 'skills', 'init-project', 'scripts')
+    const scriptsDir = path.join(repoRoot, 'roles', OPENSPEC_DEVELOPMENT_ROLE, 'skills', 'init-project', 'scripts')
     assert.deepEqual(fs.readdirSync(scriptsDir).sort(), [
       'inject-rules.mjs',
       'link-claude.mjs',
@@ -219,7 +232,7 @@ describe('编排红线文本', () => {
   })
 
   it('init-project references 注入下游测试用例 ID 纪律', () => {
-    const referencesDir = path.join(repoRoot, 'roles', 'development', 'skills', 'init-project', 'references')
+    const referencesDir = path.join(repoRoot, 'roles', OPENSPEC_DEVELOPMENT_ROLE, 'skills', 'init-project', 'references')
     const baseRules = fs.readFileSync(path.join(referencesDir, 'airules-base.md'), 'utf8')
 
     assert.deepEqual(fs.readdirSync(referencesDir).sort(), ['airules-base.md'])
@@ -263,7 +276,9 @@ describe('宿主目录与 hook 契约', () => {
 
   it('check #9 能捕获种入宿主目录引用的 skill（E-01）', () => {
     withTempDir((root) => {
-      const badSkill = path.join(root, 'roles', 'development', 'skills', 'rogue-skill')
+      fs.mkdirSync(path.join(root, 'roles', SPECKIT_DEVELOPMENT_ROLE, 'rules'), { recursive: true })
+      fs.writeFileSync(path.join(root, 'roles', SPECKIT_DEVELOPMENT_ROLE, 'rules', 'AGENTS.md'), '')
+      const badSkill = path.join(root, 'roles', SPECKIT_DEVELOPMENT_ROLE, 'skills', 'rogue-skill')
       fs.mkdirSync(badSkill, { recursive: true })
       fs.writeFileSync(path.join(badSkill, 'SKILL.md'), '---\nname: rogue-skill\n---\n安装到 ~/.qoder/skills 全局生效\n')
       const { errors } = checkRulesConsistency(root)

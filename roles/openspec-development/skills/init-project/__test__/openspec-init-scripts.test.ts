@@ -5,7 +5,7 @@ import os from 'node:os'
 import path from 'node:path'
 import { it } from 'vitest'
 
-const scriptsDir = path.join(process.cwd(), 'roles', 'development', 'skills', 'init-project', 'scripts')
+const scriptsDir = path.join(process.cwd(), 'roles', 'openspec-development', 'skills', 'init-project', 'scripts')
 
 function withTempDir<T>(run: (tmpDir: string) => T): T {
   const tmpDir = fs.mkdtempSync(path.join(os.tmpdir(), 'airules-openspec-'))

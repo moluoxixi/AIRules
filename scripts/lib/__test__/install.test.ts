@@ -39,12 +39,12 @@ it('first-party sync - agents and mcp are stored under vendor', () => {
   try {
     const repoRoot = path.join(tmpDir, 'repo')
     const moluoHome = path.join(tmpDir, 'user', '.moluoxixi')
-    fs.mkdirSync(path.join(repoRoot, 'roles', 'development', 'rules'), { recursive: true })
-    fs.mkdirSync(path.join(repoRoot, 'roles', 'development', 'agents'), { recursive: true })
-    fs.mkdirSync(path.join(repoRoot, 'roles', 'development', 'mcp'), { recursive: true })
-    fs.writeFileSync(path.join(repoRoot, 'roles', 'development', 'rules', 'AGENTS.md'), '# AIRules\n')
-    fs.writeFileSync(path.join(repoRoot, 'roles', 'development', 'agents', 'demo.md'), 'agent\n')
-    fs.writeFileSync(path.join(repoRoot, 'roles', 'development', 'mcp', 'mcp.json'), '{"mcpServers":{}}\n')
+    fs.mkdirSync(path.join(repoRoot, 'roles', 'speckit-development', 'rules'), { recursive: true })
+    fs.mkdirSync(path.join(repoRoot, 'roles', 'speckit-development', 'agents'), { recursive: true })
+    fs.mkdirSync(path.join(repoRoot, 'roles', 'speckit-development', 'mcp'), { recursive: true })
+    fs.writeFileSync(path.join(repoRoot, 'roles', 'speckit-development', 'rules', 'AGENTS.md'), '# AIRules\n')
+    fs.writeFileSync(path.join(repoRoot, 'roles', 'speckit-development', 'agents', 'demo.md'), 'agent\n')
+    fs.writeFileSync(path.join(repoRoot, 'roles', 'speckit-development', 'mcp', 'mcp.json'), '{"mcpServers":{}}\n')
 
     syncFirstPartyToHome(repoRoot, moluoHome)
 

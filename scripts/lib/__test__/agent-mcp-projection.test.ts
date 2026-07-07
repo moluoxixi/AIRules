@@ -51,7 +51,7 @@ const demoServers = {
 const workspaceFolderPlaceholder = '$' + '{workspaceFolder}'
 
 it('mcp 默认源 - 分发 codegraph workspace server', () => {
-  const source = JSON.parse(fs.readFileSync(path.resolve('roles', 'development', 'mcp', 'mcp.json'), 'utf8'))
+  const source = JSON.parse(fs.readFileSync(path.resolve('roles', 'speckit-development', 'mcp', 'mcp.json'), 'utf8'))
 
   assert.deepStrictEqual(source.mcpServers.codegraph, {
     command: 'codegraph',

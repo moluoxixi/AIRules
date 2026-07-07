@@ -6,7 +6,7 @@ import { describe, it } from 'vitest'
 const assetDir = path.join(
   process.cwd(),
   'roles',
-  'development',
+  'openspec-development',
   'skills',
   'init-project',
   'assets',
@@ -120,7 +120,7 @@ describe('superpowers-bridge assets', () => {
     assert.match(intake, /## Development Readiness Decision/)
   })
 
-  it('current project OpenSpec schema mirrors the development init-project asset', () => {
+  it('current project OpenSpec schema mirrors the openspec-development init-project asset', () => {
     const assetFiles = listFiles(assetDir)
     const projectFiles = listFiles(projectSchemaDir)
 

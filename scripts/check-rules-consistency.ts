@@ -3,9 +3,10 @@ import type { VendorNode, VendorRepo, VendorsConfig } from './lib/vendors.js'
 import { existsSync, readdirSync, readFileSync } from 'node:fs'
 import path from 'node:path'
 import { fileURLToPath } from 'node:url'
-import { vendors as developmentVendors } from '../roles/development/constants/skills.js'
 import { vendors as eccDevelopmentVendors } from '../roles/ecc-development/constants/skills.js'
+import { vendors as openspecDevelopmentVendors } from '../roles/openspec-development/constants/skills.js'
 import { vendors as productVendors } from '../roles/product/constants/skills.js'
+import { vendors as speckitDevelopmentVendors } from '../roles/speckit-development/constants/skills.js'
 import { COMMON_ROLE, DEFAULT_ROLE, resolveRolePaths } from './lib/roles.js'
 
 // 编码编排资产最小自洽性检查（低成本、非重型治理）：
@@ -15,8 +16,11 @@ import { COMMON_ROLE, DEFAULT_ROLE, resolveRolePaths } from './lib/roles.js'
 
 const PRODUCT_ROLE = 'product'
 const ECC_DEVELOPMENT_ROLE = 'ecc-development'
+const OPENSPEC_DEVELOPMENT_ROLE = 'openspec-development'
+const SPECKIT_DEVELOPMENT_ROLE = 'speckit-development'
 const ROLE_VENDOR_CONFIGS: Record<string, VendorsConfig> = {
-  [DEFAULT_ROLE]: developmentVendors,
+  [SPECKIT_DEVELOPMENT_ROLE]: speckitDevelopmentVendors,
+  [OPENSPEC_DEVELOPMENT_ROLE]: openspecDevelopmentVendors,
   [ECC_DEVELOPMENT_ROLE]: eccDevelopmentVendors,
   [PRODUCT_ROLE]: productVendors,
 }
@@ -44,7 +48,7 @@ function isVendorRepo(node: VendorNode): node is VendorRepo {
 }
 
 /** 从指定 role 的 vendors 配置里取出 moluoxixi 第一方分发的 skill 目录名。 */
-export function firstPartySkillNames(vendorsConfig: VendorsConfig = developmentVendors): string[] {
+export function firstPartySkillNames(vendorsConfig: VendorsConfig = speckitDevelopmentVendors): string[] {
   const names: string[] = []
   const walk = (nodes: VendorNode[]) => {
     for (const node of nodes) {
@@ -213,7 +217,7 @@ export function checkRulesConsistency(repoRoot: string): CheckResult {
     }
   }
 
-  // 6. development 角色保留空 rules/AGENTS.md 占位，但不分发 always-on 全局规则内容。
+  // 6. 默认开发角色保留空 rules/AGENTS.md 占位，但不分发 always-on 全局规则内容。
   if (!existsSync(rulesPath)) {
     errors.push(`roles/${DEFAULT_ROLE}/rules/AGENTS.md 必须存在为空文件，用作 rules 投影占位`)
   }
@@ -287,7 +291,7 @@ export function checkRulesConsistency(repoRoot: string): CheckResult {
     }
   }
 
-  // 11. 需求路径传递契约：若重新引入 roles/development/agents/planner.md，
+  // 11. 需求路径传递契约：若重新引入默认角色 agents/planner.md，
   //     输入上下文包必须包含 openspec/changes/ 路径字段。
   const plannerPath = path.join(agentsDir, 'planner.md')
   if (existsSync(plannerPath)) {

@@ -1,7 +1,7 @@
 import { existsSync } from 'node:fs'
 import path from 'node:path'
 
-export const DEFAULT_ROLE = 'development'
+export const DEFAULT_ROLE = 'speckit-development'
 export const COMMON_ROLE = 'common'
 
 export interface RolePaths {

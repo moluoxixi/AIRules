@@ -248,8 +248,8 @@ it('install - 同步第一方文件并按宿主投影 baseline 与 skills', () =
   const hostHome = path.join(userHome, '.codex')
   const hostBaselineFile = path.join(hostHome, 'AGENTS.md')
 
-  writeFile(path.join(repoRoot, 'roles', 'development', 'rules', 'AGENTS.md'), 'baseline\n')
-  writeFile(path.join(repoRoot, 'roles', 'development', 'agents', 'helper.md'), 'agent\n')
+  writeFile(path.join(repoRoot, 'roles', 'speckit-development', 'rules', 'AGENTS.md'), 'baseline\n')
+  writeFile(path.join(repoRoot, 'roles', 'speckit-development', 'agents', 'helper.md'), 'agent\n')
   fs.mkdirSync(path.join(moluoHome, 'vendor', 'skills', 'skill-one'), { recursive: true })
 
   syncFirstPartyToHome(repoRoot, moluoHome)
@@ -602,7 +602,7 @@ export const vendors = [
 it('install - 第一方 skills 覆盖层只管理本地源链接', () => withTempDir('airules-first-party-', (tmpDir) => {
   const repoRoot = path.join(tmpDir, 'repo')
   const moluoHome = path.join(tmpDir, 'home')
-  const localSkill = path.join(repoRoot, 'roles', 'development', 'skills', 'workflow', 'local-review')
+  const localSkill = path.join(repoRoot, 'roles', 'speckit-development', 'skills', 'workflow', 'local-review')
   const vendorSkillsDir = path.join(moluoHome, 'vendor', 'skills')
   const remoteSkill = path.join(moluoHome, 'vendor', 'repos', 'demo', 'skills', 'remote-review')
 
@@ -894,12 +894,12 @@ it('vendors - 合并重复供应商、拒绝本地供应商和未知 projection'
       {
         name: 'demo',
         source: 'https://example.test/one.git',
-        projections: [],
+        projections: [{ kind: 'skills', sourceBaseDir: 'skills', skills: ['a'] }],
       },
       {
         name: 'demo',
         source: 'https://example.test/two.git',
-        projections: [],
+        projections: [{ kind: 'skills', sourceBaseDir: 'skills', skills: ['b'] }],
       },
     ], [], {}),
     /在不同模块中的定义不一致/,

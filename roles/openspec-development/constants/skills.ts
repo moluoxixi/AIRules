@@ -1,9 +1,9 @@
 import type { SetupCommand, VendorsConfig } from '../../../scripts/lib/vendors.js'
 
 /**
- * development 角色同步 CodeGraph 与 OpenSpec，作为代码图谱、规格治理和 schema 校验入口。
+ * openspec-development 角色同步 CodeGraph 与 OpenSpec，作为代码图谱、规格治理和 schema 校验入口。
  */
-const developmentSetup: SetupCommand[] = [
+const openspecDevelopmentSetup: SetupCommand[] = [
   {
     command: 'npm',
     args: ['install', '--global', '@colbymchenry/codegraph'],
@@ -166,11 +166,11 @@ export const vendors: VendorsConfig = [
     official: true,
     source: 'https://github.com/moluoxixi/AIRules.git',
     sourceMode: 'workspace',
-    setup: developmentSetup,
+    setup: openspecDevelopmentSetup,
     projections: [
       {
         kind: 'skills',
-        sourceBaseDir: 'roles/development/skills',
+        sourceBaseDir: 'roles/openspec-development/skills',
         skills: [
           'frontend-testing',
           'init-project',

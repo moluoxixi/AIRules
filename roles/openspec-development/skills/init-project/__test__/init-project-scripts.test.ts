@@ -41,7 +41,7 @@ function runInjectRules(projectRoot: string) {
   return spawnSync(
     process.execPath,
     [
-      path.join(process.cwd(), 'roles', 'development', 'skills', 'init-project', 'scripts', 'inject-rules.mjs'),
+      path.join(process.cwd(), 'roles', 'openspec-development', 'skills', 'init-project', 'scripts', 'inject-rules.mjs'),
       projectRoot,
     ],
     { cwd: process.cwd(), encoding: 'utf8' },
@@ -52,7 +52,7 @@ function runLinkClaude(projectRoot: string) {
   return spawnSync(
     process.execPath,
     [
-      path.join(process.cwd(), 'roles', 'development', 'skills', 'init-project', 'scripts', 'link-claude.mjs'),
+      path.join(process.cwd(), 'roles', 'openspec-development', 'skills', 'init-project', 'scripts', 'link-claude.mjs'),
       projectRoot,
     ],
     { cwd: process.cwd(), encoding: 'utf8' },
@@ -121,7 +121,7 @@ it('inject-rules - 规则源为空时移除旧托管块并保留用户内容', (
 it('inject-rules - 缺少项目根参数时报错', () => {
   const result = spawnSync(
     process.execPath,
-    [path.join(process.cwd(), 'roles', 'development', 'skills', 'init-project', 'scripts', 'inject-rules.mjs')],
+    [path.join(process.cwd(), 'roles', 'openspec-development', 'skills', 'init-project', 'scripts', 'inject-rules.mjs')],
     { cwd: process.cwd(), encoding: 'utf8' },
   )
 
