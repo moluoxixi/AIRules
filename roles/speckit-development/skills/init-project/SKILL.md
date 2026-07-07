@@ -1,21 +1,21 @@
 ---
 name: init-project
-description: 用于创建新项目、初始化项目、为已有项目首次接入默认 Spec Kit + Superpowers bridge 开发工作流，或需要在目标项目安装 Spec Kit 原生命令与 speckit-superpowers-bridge 时触发。
+description: 用于创建新项目、初始化项目、为已有项目首次接入可选 Spec Kit + Superpowers bridge 开发工作流，或需要在目标项目安装 Spec Kit 原生命令与 speckit-superpowers-bridge 时触发。
 ---
 
 # Init Project
 
-默认开发角色的轻量项目初始化入口。它只负责把目标项目接入 **GitHub Spec Kit 原生项目结构** 与 **speckit-superpowers-bridge extension**，不创建 OpenSpec schema，不复制 AIRules 自研 OpenSpec 资产，不接入旧 BMAD/gstack 初始化链路。
+可选 Spec Kit 开发角色的轻量项目初始化入口。它只负责把目标项目接入 **GitHub Spec Kit 原生项目结构** 与 **speckit-superpowers-bridge extension**，不创建 OpenSpec schema，不复制 AIRules 自研 OpenSpec 资产，不接入 BMAD/gstack 初始化链路。
 
 ## 触发条件
 
-- 用户创建新项目、初始化项目，或首次为已有项目接入 AIRules 默认开发角色。
+- 用户创建新项目、初始化项目，或首次为已有项目接入 AIRules 可选 Spec Kit 开发角色。
 - 目标项目需要 `specify init` 生成 `.specify/`、agent integration 命令和 Spec Kit 项目骨架。
 - 目标项目需要安装 `lihan3238/speckit-superpowers-bridge`，让 Spec Kit `tasks.md` 交给原生 Superpowers 执行纪律。
 
 ## 不适合场景
 
-- 项目明确要求旧 OpenSpec schema 工作流；应切换到 `openspec-development` 的 `init-project`。
+- 项目明确要求默认 OpenSpec schema 工作流；应使用 `openspec-development` 的 `init-project`。
 - 用户只要求普通业务开发、文档修改或已有 Spec Kit 项目的单个 feature 实现。
 - 无法确认目标项目根目录时，不猜测、不写入。
 
@@ -61,4 +61,4 @@ flowchart TD
 | Bridge | `.specify/extensions/speckit-superpowers-bridge/` 存在；`specify extension add` 使用 release ZIP 完成 |
 | Superpowers handoff | 用户后续可在 `tasks.md` 生成后运行 `$speckit-superpowers-bridge` 或 `/speckit-superpowers-bridge` |
 | CodeGraph | `codegraph init -i` 真实执行并报告 PASS、already initialized、FAIL、MISSING 或 NOT RUN |
-| Schema 边界 | 目标项目没有因默认 `speckit-development` 初始化而新增 OpenSpec schema |
+| Schema 边界 | 目标项目没有因 `speckit-development` 初始化而新增 OpenSpec schema |

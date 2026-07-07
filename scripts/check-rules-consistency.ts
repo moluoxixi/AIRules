@@ -48,7 +48,7 @@ function isVendorRepo(node: VendorNode): node is VendorRepo {
 }
 
 /** 从指定 role 的 vendors 配置里取出 moluoxixi 第一方分发的 skill 目录名。 */
-export function firstPartySkillNames(vendorsConfig: VendorsConfig = speckitDevelopmentVendors): string[] {
+export function firstPartySkillNames(vendorsConfig: VendorsConfig = openspecDevelopmentVendors): string[] {
   const names: string[] = []
   const walk = (nodes: VendorNode[]) => {
     for (const node of nodes) {

@@ -30,7 +30,7 @@
     "presync": "git pull && command -v pnpm >/dev/null 2>&1 || npm install -g pnpm && pnpm install",
     "setup": "tsx scripts/cli.ts sync",
     "sync": "tsx scripts/cli.ts sync --host all",
-    "sync:development": "tsx scripts/cli.ts sync --host all --role speckit-development",
+    "sync:development": "tsx scripts/cli.ts sync --host all --role openspec-development",
     "sync:speckit-development": "tsx scripts/cli.ts sync --host all --role speckit-development",
     "sync:openspec-development": "tsx scripts/cli.ts sync --host all --role openspec-development",
     "sync:ecc-development": "tsx scripts/cli.ts sync --host all --role ecc-development",

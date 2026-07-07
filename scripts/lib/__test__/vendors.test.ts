@@ -727,7 +727,7 @@ it('vendors 配置 - speckit-development 接入 Spec Kit + Superpowers bridge，
         setup: undefined,
       },
     ],
-    '默认开发角色应直接采用社区 bridge 的 Codex skill surface，而不是复制一方实现',
+    'speckit-development 可选角色应直接采用社区 bridge 的 Codex skill surface，而不是复制一方实现',
   )
   assert.ok(vendors.superpowers, 'bridge 执行阶段仍需要官方 Superpowers skills namespace')
   assert.deepStrictEqual(

@@ -1,6 +1,6 @@
 # speckit-development role
 
-默认开发角色。该角色把 GitHub Spec Kit 作为规格驱动开发主线，通过 `lihan3238/speckit-superpowers-bridge` 把 Spec Kit `tasks.md` 交给官方 Superpowers 执行纪律。
+可选开发角色。该角色把 GitHub Spec Kit 作为规格驱动开发主线，通过 `lihan3238/speckit-superpowers-bridge` 把 Spec Kit `tasks.md` 交给官方 Superpowers 执行纪律，适用于个人、轻量项目或明确选择 Spec Kit 的团队。
 
 ## 上游来源
 
@@ -11,9 +11,9 @@
 ## 采用边界
 
 - Spec Kit 官方产物是 `specify` CLI、项目模板与 `/speckit.*` 命令；AIRules 通过 setup 安装 CLI，不自定义 schema、不伪造成 OpenSpec schema。
-- `speckit-superpowers-bridge` 是默认桥接层：Spec Kit 继续拥有 constitution / spec / plan / tasks，bridge 只负责 handoff、guard 与执行入口。
+- `speckit-superpowers-bridge` 是该角色的桥接层：Spec Kit 继续拥有 constitution / spec / plan / tasks，bridge 只负责 handoff、guard 与执行入口。
 - Superpowers 官方仓库仍按 namespace 投影，因为 bridge 的执行阶段依赖原生 Superpowers skills，不重新实现 TDD、debug、verification、review 或 branch finishing。
-- AIRules 第一方只提供轻量 `init-project` skill，用于在目标项目中调用 Spec Kit 原生命令和安装 bridge；它不复制旧 OpenSpec schema 资产。
+- AIRules 第一方只提供轻量 `init-project` skill，用于在目标项目中调用 Spec Kit 原生命令和安装 bridge；它不复制 OpenSpec schema 资产。
 
 ## 初始化方式
 
@@ -36,4 +36,4 @@ specify extension add speckit-superpowers-bridge --from https://github.com/lihan
 - `/speckit.analyze`：实现前做跨产物一致性检查。
 - `$speckit-superpowers-bridge` / `/speckit-superpowers-bridge`：在 `tasks.md` 生成后执行 bridge handoff，用原生 Superpowers skills 推进实现、验证、review 与分支收尾。
 
-默认不再推荐直接跑 `/speckit.implement` 作为公司项目实现入口；实现阶段优先走 bridge，使 Spec Kit 保持规格主线和项目内落档事实源，Superpowers 负责工程执行纪律。
+显式采用 Spec Kit 的项目不推荐直接跑 `/speckit.implement` 作为公司项目实现入口；实现阶段优先走 bridge，使 Spec Kit 保持规格主线和项目内落档事实源，Superpowers 负责工程执行纪律。
