@@ -9,6 +9,7 @@ import { vendors as openspecDevelopmentVendors } from '../roles/openspec-develop
 import { vendors as productVendors } from '../roles/product/constants/skills.js'
 import { vendors as speckitDevelopmentVendors } from '../roles/speckit-development/constants/skills.js'
 import { checkRulesConsistency, firstPartySkillNames } from '../scripts/check-rules-consistency.js'
+import { DEFAULT_ROLE } from '../scripts/lib/roles.js'
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url))
 const repoRoot = path.resolve(__dirname, '..')
@@ -44,10 +45,16 @@ describe('自洽检查器', () => {
   // 构造一个最小 fixture 仓库，缺省值都是“干净的”，由各用例局部种入缺陷。
   function seedCleanRepo(root: string) {
     fs.mkdirSync(path.join(root, 'roles', OPENSPEC_DEVELOPMENT_ROLE, 'constants'), { recursive: true })
+    fs.mkdirSync(path.join(root, 'roles', ECC_DEVELOPMENT_ROLE, 'constants'), { recursive: true })
     fs.mkdirSync(path.join(root, 'knowledge', '架构'), { recursive: true })
     fs.mkdirSync(path.join(root, 'roles', OPENSPEC_DEVELOPMENT_ROLE, 'rules'), { recursive: true })
+    fs.mkdirSync(path.join(root, 'roles', ECC_DEVELOPMENT_ROLE, 'rules'), { recursive: true })
     fs.writeFileSync(
       path.join(root, 'roles', OPENSPEC_DEVELOPMENT_ROLE, 'constants', 'skills.ts'),
+      'export const vendors = []\n',
+    )
+    fs.writeFileSync(
+      path.join(root, 'roles', ECC_DEVELOPMENT_ROLE, 'constants', 'skills.ts'),
       'export const vendors = []\n',
     )
     for (const skillName of OPENSPEC_DEVELOPMENT_SKILLS) {
@@ -61,6 +68,7 @@ describe('自洽检查器', () => {
     fs.mkdirSync(path.join(root, 'knowledge', '架构', 'decisions'), { recursive: true })
     fs.writeFileSync(path.join(root, 'knowledge', '架构', 'decisions', 'index.md'), '| ADR | 决策 |\n|---|---|\n')
     fs.writeFileSync(path.join(root, 'roles', OPENSPEC_DEVELOPMENT_ROLE, 'rules', 'AGENTS.md'), '')
+    fs.writeFileSync(path.join(root, 'roles', ECC_DEVELOPMENT_ROLE, 'rules', 'AGENTS.md'), '')
     fs.writeFileSync(path.join(root, 'package.json'), JSON.stringify({ scripts: { 'lint:check': 'x', 'typecheck': 'x' } }))
   }
 
@@ -203,6 +211,7 @@ describe('编排红线文本', () => {
 
     const roleReadme = fs.readFileSync(roleReadmePath, 'utf8')
     const roleRules = fs.readFileSync(roleRulesPath, 'utf8')
+    assert.equal(DEFAULT_ROLE, ECC_DEVELOPMENT_ROLE)
     assert.match(roleReadme, /https:\/\/github\.com\/affaan-m\/ECC\/issues\/2283/)
     assert.match(roleReadme, /https:\/\/github\.com\/affaan-m\/ECC\/pull\/2318/)
     assert.match(roleReadme, /npx -y --package ecc-universal ecc install/)
@@ -235,6 +244,7 @@ describe('编排红线文本', () => {
     assert.match(roleReadme, /rules\/AGENTS\.md` 只保留空占位/)
     assert.match(roleReadme, /\.agents\/skills/)
     assert.match(roleReadme, /原生 TOML agents/)
+    assert.match(roleReadme, /内容等价 Markdown 转译/)
     assert.match(roleReadme, /不直接激活上游全量 catalog/)
     assert.match(roleReadme, /Claude core 选择 `hooks-runtime`/)
     assert.match(roleReadme, /Codex core 跳过 `hooks-runtime`/)

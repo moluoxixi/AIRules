@@ -10,7 +10,7 @@
 
 - 主编排来源：[`affaan-m/ECC`](https://github.com/affaan-m/ECC)
 - 原生宿主：同步时只调用 ECC 官方**全局 target** installer，命令形态为 `npx -y --package ecc-universal ecc install --profile <profile> --target <target>`；Codex / Claude 使用 `--profile core`，OpenCode 使用 ECC 官方 `opencode` profile。项目级 target 必须在目标项目 cwd 下由项目初始化流程触发，不在 AIRules role sync 阶段执行。
-- fallback 分发：AIRules 不伪装 ECC 官方 installer，而是把 ECC core 的可承接子集映射到既有 `skills`、`agents`、`mcp` 通道；本次仅用于 Qoder、Trae、Trae CN。在线上游只直接承接 `skills` / Markdown agents；MCP 必须先落为 AIRules role 资产再分发。ECC 专属 rules / hooks 不作为 fallback 分发面。
+- fallback 分发：AIRules 不伪装 ECC 官方 installer，而是把 ECC core 的可承接子集映射到既有 `skills`、`agents`、`mcp` 通道；本次仅用于 Qoder、Trae、Trae CN。在线上游直接承接 `skills` / Markdown agents，并把 Codex 原生 TOML agents 按内容等价转译为 Markdown agents；MCP 必须先落为 AIRules role 资产再分发。ECC 专属 rules / hooks 不作为 fallback 分发面。
 - 公共层：选择 `ecc-development` 时仍会先叠加 `roles/common/`。
 
 ## ECC core 安装面
@@ -23,7 +23,7 @@
 | 安装面 | 官方 core 落地 | AIRules fallback 处理 |
 |---|---|---|
 | Skills | Claude: `skills/ecc/` 21 个 core skills + `.agents/skills/` 33 个共享 skills；Codex: 21 个 core skills + `.agents/skills/` 33 个共享 skills | 从 ECC 上游在线 `skills/` 精确投影 21 个 core skills；从 `.agents/skills/` 投影 26 个非重名共享 skills。AIRules 的扁平 skill namespace 不能同时保留同名双份条目，重名项以 core skills 为准 |
-| Agents | Claude: `agents/` 64 个 Markdown agents；Codex: `agents/` 67 个 agents，其中包含 `docs-researcher.toml`、`explorer.toml`、`reviewer.toml` 这类原生 TOML agents | 从 ECC 上游在线 `agents/` 投影到 `vendor/agents`；Markdown 宿主只接收 `.md`；Codex 保留原生 `.toml` 并把 `.md` 转成 TOML |
+| Agents | Claude: `agents/` 64 个 Markdown agents；Codex: `agents/` 67 个 agents，其中包含 `docs-researcher.toml`、`explorer.toml`、`reviewer.toml` 这类原生 TOML agents | 从 ECC 上游在线 `agents/` 投影到 `vendor/agents`；Codex 保留原生 `.toml` 并把 `.md` 转成 TOML；Qoder、Trae、Trae CN 把 Codex 原生 TOML agents 按内容等价转成 `.md` 后分发 |
 | MCP | Codex `config.toml` 实际启用 GitHub、Context7、Exa、Memory、Playwright、Sequential Thinking；上游 `mcp-configs/mcp-servers.json` 是全量 catalog，含占位环境变量和可选重型服务 | 不直接激活上游全量 catalog；fallback 使用 `roles/ecc-development/mcp/mcp.json` 的可审计精简清单，再由 AIRules MCP adapter 按宿主格式写入 |
 | Rules | Claude 有 `rules/ecc/` 约 104 个文件；Codex 无 `rules/` 目录，使用 `AGENTS.md` 指令化约束 | fallback 不分发 ECC 专属 global rules；`roles/ecc-development/rules/AGENTS.md` 仅保留空占位，避免把工具说明塞给运行时 agent |
 | Hooks | Claude core 选择 `hooks-runtime` 并写入 Stop / SubagentStop / PreToolUse hooks；Codex core 跳过 `hooks-runtime`，仅复制 hook runtime 脚本且不配置启用 | 不把 ECC hook runtime 自动转成 fallback；仅继续叠加 AIRules `roles/common/hooks/session-log.mjs` |
@@ -59,7 +59,7 @@
 - 不承接 `rules-core`：Claude 的 `rules/ecc/**` 是宿主专用注入面；Qoder/Trae/Trae CN fallback 不用 global rules 承接 ECC 语义，也不复制上游全量 rules。
 - 不承接 `commands-core`：三宿主没有已审计的 ECC slash commands 分发面。
 - 不承接 `hooks-runtime`：Qoder 虽有 Claude-like hook 配置，但 ECC runtime 脚本不是 AIRules 受管 hook；Trae/Trae CN 还缺 SubagentStop，不能还原 Claude 的 subagent trace 语义。
-- 不承接 Codex TOML agents：三宿主当前按 Markdown agents 处理，忽略上游 Codex 原生 TOML agents。
+- 不承接 Codex 原始 TOML 格式：三宿主按 Markdown agents 处理，接收上游 Codex 原生 TOML agents 的内容等价 Markdown 转译，不直接安装 `.toml` 文件。
 
 ## 宿主支持
 
@@ -67,7 +67,7 @@
 - Codex：全局 sync 走 ECC 官方 target `codex`，profile 使用 `core`；ECC 官方当前没有 `codex-project`，所以 `.codex/` 项目目录不能触发项目级 ECC install。
 - OpenCode：全局 sync 走 ECC 官方 target `opencode`，profile 使用 `opencode`，避免把 hooks-runtime 强行带入 OpenCode 默认配置。
 - Cursor / Gemini / Zed / Antigravity / CodeBuddy / JoyCode：ECC 官方 target 是项目级，分别写入 `./.cursor/`、`./.gemini/`、`./.zed/`、`./.agent/`、`./.codebuddy/`、`./.joycode/`；这些不得在 AIRules role sync 阶段执行，必须在目标项目 cwd 下按目录存在性触发。
-- Qoder / Trae / Trae CN：ECC 官方当前没有对应 target；AIRules 使用既有 host adapter 投影 fallback skills / Markdown agents / MCP，并继续叠加 common Stop hook。ECC 官方 hooks-runtime 只在 Claude core 中启用；fallback 不把官方 hook 配置强行转换到这些宿主。
+- Qoder / Trae / Trae CN：ECC 官方当前没有对应 target；AIRules 使用既有 host adapter 投影 fallback skills / Markdown agents / Codex 原生 TOML agents 的 Markdown 等价转译 / MCP，并继续叠加 common Stop hook。ECC 官方 hooks-runtime 只在 Claude core 中启用；fallback 不把官方 hook 配置强行转换到这些宿主。
 - Hermes / Trae Solo / Trae Solo CN / CC-Switch / QoderWork：本次不启用 ECC fallback；Trae Solo 只有 MCP 面，Hermes 缺少已审计的 ECC MCP/hook 对齐面，不能承接完整 rules/skills/agents/MCP fallback。
 
 ## ECC 官方 target 支持矩阵

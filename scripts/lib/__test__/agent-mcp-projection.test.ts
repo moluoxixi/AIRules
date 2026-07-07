@@ -74,7 +74,56 @@ it('agent 格式门控 - markdown 宿主只投影 Markdown agents', () => {
     const agentsTarget = path.join(hostHome, 'agents')
     assert.ok(fs.existsSync(agentsTarget), 'markdown 宿主应投影 agents')
     assert.ok(fs.existsSync(path.join(agentsTarget, 'demo-agent.md')), 'agent 文件应可访问')
+    assert.ok(!fs.existsSync(path.join(agentsTarget, 'docs-researcher.md')), '默认 markdown 宿主不应收到 Codex 原生 TOML agent 的 Markdown 转译')
     assert.ok(!fs.existsSync(path.join(agentsTarget, 'docs-researcher.toml')), 'markdown 宿主不应收到 Codex 原生 TOML agent')
+  }
+  finally {
+    cleanup(tmpDir)
+  }
+})
+
+it('agent 格式门控 - 指定宿主可把 Codex 原生 TOML agents 按内容等价转成 Markdown', () => {
+  const { tmpDir, userHome, moluoHome, hostHome } = setupEnv()
+  try {
+    const nativeTomlAgent = [
+      'model = "gpt-5.5"',
+      'model_reasoning_effort = "medium"',
+      'sandbox_mode = "read-only"',
+      '',
+      'developer_instructions = """',
+      'Verify APIs, framework behavior, and release-note claims against primary documentation before changes land.',
+      'Cite the exact docs or file paths that support each claim.',
+      'Do not invent undocumented behavior.',
+      '"""',
+      '',
+    ].join('\n')
+    fs.writeFileSync(path.join(moluoHome, 'vendor', 'agents', 'docs-researcher.toml'), nativeTomlAgent)
+
+    projectToHost({
+      userHome,
+      moluoHome,
+      hostHome,
+      hostBaselineFile: path.join(hostHome, 'AGENTS.md'),
+      projectBaseline: false,
+      agentFormat: 'markdown',
+      includeNativeTomlAgentsAsMarkdown: true,
+    })
+
+    const markdown = fs.readFileSync(path.join(hostHome, 'agents', 'docs-researcher.md'), 'utf8')
+    assert.equal(markdown, [
+      '---',
+      'name: docs-researcher',
+      'model: gpt-5.5',
+      'model_reasoning_effort: medium',
+      'sandbox_mode: read-only',
+      '---',
+      '',
+      'Verify APIs, framework behavior, and release-note claims against primary documentation before changes land.',
+      'Cite the exact docs or file paths that support each claim.',
+      'Do not invent undocumented behavior.',
+      '',
+    ].join('\n'))
+    assert.ok(!fs.existsSync(path.join(hostHome, 'agents', 'docs-researcher.toml')), 'Markdown 宿主不应收到原始 TOML 文件')
   }
   finally {
     cleanup(tmpDir)

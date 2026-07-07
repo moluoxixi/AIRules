@@ -45,7 +45,7 @@ it('tool - resolveToolPaths 支持显式区分 moluoHome 与 userHome', () => wi
   const repoRoot = path.join(tmpDir, 'repo')
   const moluoHome = path.join(tmpDir, 'config', 'airules-home')
   const userHome = path.join(tmpDir, 'user')
-  writeFile(path.join(repoRoot, 'roles', 'openspec-development', 'constants', 'skills.ts'), 'export const vendors = []\n')
+  writeFile(path.join(repoRoot, 'roles', 'ecc-development', 'constants', 'skills.ts'), 'export const vendors = []\n')
 
   const paths = resolveToolPaths(repoRoot, moluoHome, userHome)
 
@@ -58,23 +58,23 @@ it('tool - resolveToolPaths 在 tsx 源码运行时优先使用 TypeScript manif
   const repoRoot = path.join(tmpDir, 'repo')
   const moluoHome = path.join(tmpDir, 'home')
 
-  writeFile(path.join(repoRoot, 'roles', 'openspec-development', 'constants', 'skills.ts'), 'export const vendors = []\n')
-  writeFile(path.join(repoRoot, 'dist', 'roles', 'openspec-development', 'constants', 'skills.js'), 'export const vendors = []\n')
+  writeFile(path.join(repoRoot, 'roles', 'ecc-development', 'constants', 'skills.ts'), 'export const vendors = []\n')
+  writeFile(path.join(repoRoot, 'dist', 'roles', 'ecc-development', 'constants', 'skills.js'), 'export const vendors = []\n')
 
   const paths = resolveToolPaths(repoRoot, moluoHome)
 
-  assert.equal(paths.manifestPath, path.resolve(repoRoot, 'roles', 'openspec-development', 'constants', 'skills.ts'))
+  assert.equal(paths.manifestPath, path.resolve(repoRoot, 'roles', 'ecc-development', 'constants', 'skills.ts'))
 }))
 
 it('tool - resolveToolPaths 在缺少 TypeScript manifest 时回退到 dist manifest', () => withTempDir('airules-tool-dist-manifest-', (tmpDir) => {
   const repoRoot = path.join(tmpDir, 'repo')
   const moluoHome = path.join(tmpDir, 'home')
 
-  writeFile(path.join(repoRoot, 'dist', 'roles', 'openspec-development', 'constants', 'skills.js'), 'export const vendors = []\n')
+  writeFile(path.join(repoRoot, 'dist', 'roles', 'ecc-development', 'constants', 'skills.js'), 'export const vendors = []\n')
 
   const paths = resolveToolPaths(repoRoot, moluoHome)
 
-  assert.equal(paths.manifestPath, path.resolve(repoRoot, 'dist', 'roles', 'openspec-development', 'constants', 'skills.js'))
+  assert.equal(paths.manifestPath, path.resolve(repoRoot, 'dist', 'roles', 'ecc-development', 'constants', 'skills.js'))
 }))
 
 it('tool - addLocalSkill 复制包含 SKILL.md 的本地 skill', () => withTempDir('airules-tool-add-', (tmpDir) => {
@@ -142,6 +142,7 @@ it('tool - syncToHosts 同步内置和用户自定义 skills 到宿主', async (
       home: moluoHome,
       userHome,
       host: 'codex',
+      role: 'openspec-development',
       skipVendors: true,
       verify: false,
     })
@@ -240,6 +241,18 @@ it('tool - ecc-development 只对 ECC 全局 target 使用官方 installer，项
     writeFile(path.join(repoRoot, 'roles', 'ecc-development', 'constants', 'skills.js'), 'export const vendors = []\n')
     writeFile(path.join(repoRoot, 'roles', 'common', 'hooks', 'session-log.mjs'), 'process.stdout.write("{}")\n')
     writeFile(path.join(repoRoot, 'roles', 'common', 'skills', 'session-capture', 'SKILL.md'), 'common skill\n')
+    writeFile(path.join(repoRoot, 'roles', 'ecc-development', 'agents', 'reviewer.toml'), [
+      'model = "gpt-5.5"',
+      'model_reasoning_effort = "high"',
+      'sandbox_mode = "read-only"',
+      '',
+      'developer_instructions = """',
+      'Review like an owner.',
+      'Prioritize correctness, security, behavioral regressions, and missing tests.',
+      'Lead with concrete findings and avoid style-only feedback unless it hides a real bug.',
+      '"""',
+      '',
+    ].join('\n'))
     for (const hostHome of [claudeHome, codexHome, qoderHome, traeHome, traeCnHome, traeSoloHome, hermesHome, cursorHome, opencodeHome]) {
       fs.mkdirSync(hostHome, { recursive: true })
     }
@@ -299,6 +312,23 @@ it('tool - ecc-development 只对 ECC 全局 target 使用官方 installer，项
       realLinkPath(path.join(traeCnHome, 'skills', 'session-capture')),
       realLinkPath(path.join(repoRoot, 'roles', 'common', 'skills', 'session-capture')),
     )
+    const expectedReviewerMarkdown = [
+      '---',
+      'name: reviewer',
+      'model: gpt-5.5',
+      'model_reasoning_effort: high',
+      'sandbox_mode: read-only',
+      '---',
+      '',
+      'Review like an owner.',
+      'Prioritize correctness, security, behavioral regressions, and missing tests.',
+      'Lead with concrete findings and avoid style-only feedback unless it hides a real bug.',
+      '',
+    ].join('\n')
+    assert.equal(fs.readFileSync(path.join(qoderHome, 'agents', 'reviewer.md'), 'utf8'), expectedReviewerMarkdown)
+    assert.equal(fs.readFileSync(path.join(traeHome, 'agents', 'reviewer.md'), 'utf8'), expectedReviewerMarkdown)
+    assert.equal(fs.readFileSync(path.join(traeCnHome, 'agents', 'reviewer.md'), 'utf8'), expectedReviewerMarkdown)
+    assert.equal(fs.existsSync(path.join(codexHome, 'agents', 'reviewer.md')), false)
     assert.equal(fs.existsSync(path.join(hermesHome, 'skills', 'session-capture')), false)
     assert.equal(fs.existsSync(path.join(traeSoloHome, 'skills', 'session-capture')), false)
     assert.equal(fs.existsSync(path.join(cursorHome, 'skills-cursor', 'session-capture')), false)
@@ -321,7 +351,6 @@ it('tool - ecc-development fallback contract 在代码层裁剪官方安装面',
       'rules-core',
       'commands-core',
       'hooks-runtime',
-      'codex-native-toml-agents',
     ])
   }
 
@@ -381,6 +410,7 @@ it('tool - syncToHosts 在源码安装目录缺少 dist 时可直接加载 TypeS
       home: moluoHome,
       userHome,
       host: 'codex',
+      role: 'openspec-development',
       skipVendors: false,
       verify: false,
     })
@@ -432,6 +462,7 @@ export const vendors = [
       home: moluoHome,
       userHome,
       host: 'codex',
+      role: 'openspec-development',
       skipVendors: true,
       verify: false,
     })
@@ -494,6 +525,7 @@ export const vendors = [
       home: moluoHome,
       userHome,
       host: 'codex',
+      role: 'openspec-development',
       skipVendors: true,
       verify: false,
     })

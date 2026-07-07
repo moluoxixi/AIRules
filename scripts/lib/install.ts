@@ -113,6 +113,12 @@ interface MarkdownAgent {
   body: string
 }
 
+interface NativeTomlAgentAsMarkdown {
+  fileName: string
+  frontmatter: Array<[string, string]>
+  body: string
+}
+
 function resetDir(targetDir: string) {
   removePath(targetDir)
   mkdirSync(targetDir, { recursive: true })
@@ -725,9 +731,59 @@ function readVendorTomlAgentFiles(moluoHome: string): string[] {
     .map(entry => path.join(agentsDir, entry.name))
 }
 
-function projectMarkdownAgentsToDirectory(moluoHome: string, targetDir: string) {
+function formatYamlScalar(value: string): string {
+  if (/^[\w./-]+$/u.test(value) && !/^(?:true|false|null|~)$/iu.test(value)) {
+    return value
+  }
+  return JSON.stringify(value)
+}
+
+function stringifyMarkdownAgent(frontmatter: Array<[string, string]>, body: string): string {
+  const header = frontmatter.map(([key, value]) => `${key}: ${formatYamlScalar(value)}`).join('\n')
+  return `---\n${header}\n---\n\n${body.trimEnd()}\n`
+}
+
+function readNativeTomlAgentAsMarkdown(sourceFile: string): NativeTomlAgentAsMarkdown {
+  const raw = readFileSync(sourceFile, 'utf8')
+  const parsed = smolToml.parse(raw) as Record<string, unknown>
+  const developerInstructions = parsed.developer_instructions
+  if (typeof developerInstructions !== 'string') {
+    throw new TypeError(`Codex TOML agent 缺少 developer_instructions: ${sourceFile}`)
+  }
+
+  const name = typeof parsed.name === 'string' && parsed.name.trim()
+    ? parsed.name.trim()
+    : path.basename(sourceFile, '.toml')
+  const frontmatter: Array<[string, string]> = [['name', name]]
+  for (const [key, value] of Object.entries(parsed)) {
+    if (key === 'developer_instructions' || key === 'name') {
+      continue
+    }
+    if (!/^\w[\w-]*$/u.test(key)) {
+      throw new Error(`Codex TOML agent 字段名无法转成 Markdown frontmatter: ${sourceFile} (${key})`)
+    }
+    if (typeof value !== 'string' && typeof value !== 'number' && typeof value !== 'boolean') {
+      throw new TypeError(`Codex TOML agent 字段无法转成 Markdown frontmatter: ${sourceFile} (${key})`)
+    }
+    frontmatter.push([key, String(value)])
+  }
+
+  return {
+    fileName: `${path.basename(sourceFile, '.toml')}.md`,
+    frontmatter,
+    body: developerInstructions,
+  }
+}
+
+function readNativeTomlAgentsAsMarkdown(moluoHome: string): NativeTomlAgentAsMarkdown[] {
+  return readVendorTomlAgentFiles(moluoHome)
+    .map(sourceFile => readNativeTomlAgentAsMarkdown(sourceFile))
+}
+
+function projectMarkdownAgentsToDirectory(moluoHome: string, targetDir: string, includeNativeTomlAgentsAsMarkdown = false) {
   const agentFiles = readVendorMarkdownAgentFiles(moluoHome)
-  if (agentFiles.length === 0) {
+  const nativeTomlAgents = includeNativeTomlAgentsAsMarkdown ? readNativeTomlAgentsAsMarkdown(moluoHome) : []
+  if (agentFiles.length === 0 && nativeTomlAgents.length === 0) {
     removePath(targetDir)
     return
   }
@@ -735,6 +791,9 @@ function projectMarkdownAgentsToDirectory(moluoHome: string, targetDir: string) 
   resetDir(targetDir)
   for (const sourceFile of agentFiles) {
     replaceWithSymlink(sourceFile, path.join(targetDir, path.basename(sourceFile)), linkFileForCurrentPlatform())
+  }
+  for (const agent of nativeTomlAgents) {
+    writeFileSync(path.join(targetDir, agent.fileName), stringifyMarkdownAgent(agent.frontmatter, agent.body), 'utf8')
   }
 }
 
@@ -797,6 +856,7 @@ function projectSharedSkillsHost(
   customSkillsDirName: string = 'skills',
   excludedSkills: string[] = [],
   agentFormat: AgentFormat = 'markdown',
+  includeNativeTomlAgentsAsMarkdown = false,
 ) {
   mkdirSync(hostHome, { recursive: true })
   removePath(path.join(hostHome, 'rules'))
@@ -810,7 +870,7 @@ function projectSharedSkillsHost(
   }
 
   if (agentFormat === 'markdown') {
-    projectMarkdownAgentsToDirectory(moluoHome, path.join(hostHome, 'agents'))
+    projectMarkdownAgentsToDirectory(moluoHome, path.join(hostHome, 'agents'), includeNativeTomlAgentsAsMarkdown)
     return
   }
 
@@ -1163,6 +1223,7 @@ export function projectToHost({
   mcp,
   hooksHome = hostHome,
   hooks,
+  includeNativeTomlAgentsAsMarkdown = false,
 }: {
   userHome: string
   moluoHome: string
@@ -1178,9 +1239,10 @@ export function projectToHost({
   mcp?: McpProjection
   hooksHome?: string
   hooks?: HookProjection[]
+  includeNativeTomlAgentsAsMarkdown?: boolean
 }) {
   if (projectSharedResources) {
-    projectSharedSkillsHost(userHome, hostHome, moluoHome, customSkillsDirName, excludedSkills, agentFormat)
+    projectSharedSkillsHost(userHome, hostHome, moluoHome, customSkillsDirName, excludedSkills, agentFormat, includeNativeTomlAgentsAsMarkdown)
   }
   if (mcp) {
     projectMcpToHost(moluoHome, mcpHome, mcp)
@@ -1236,7 +1298,7 @@ export function projectHostById(
     throw new Error(`Unknown host: ${host}`)
   }
 
-  const { hostHome, hostBaselineFile, projectBaseline, projectSharedResources, baselineMode, skillsDirName, excludedSkills, agentFormat, mcpHome, mcp, hooksHome, hooks } = resolveHostPaths(config, userHome)
+  const { hostHome, hostBaselineFile, projectBaseline, projectSharedResources, baselineMode, skillsDirName, excludedSkills, agentFormat, includeNativeTomlAgentsAsMarkdown, mcpHome, mcp, hooksHome, hooks } = resolveHostPaths(config, userHome)
 
   const hostHomePath = path.resolve(hostHome)
   const mcpHomePath = path.resolve(mcpHome)
@@ -1259,6 +1321,7 @@ export function projectHostById(
     customSkillsDirName: skillsDirName,
     excludedSkills,
     agentFormat,
+    includeNativeTomlAgentsAsMarkdown,
     projectSharedResources: projectSharedResources && shouldProjectHostHome,
     mcpHome,
     mcp,

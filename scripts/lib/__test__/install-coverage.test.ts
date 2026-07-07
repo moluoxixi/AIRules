@@ -113,9 +113,11 @@ it('hosts - 解析默认和自定义宿主路径', () => {
   const traePaths = resolveHostPaths(trae, 'C:/Users/example')
   assert.equal(normalizePath(traePaths.mcpHome), 'C:/Users/example/AppData/Roaming/Trae/User')
   assert.deepEqual(traePaths.mcp?.defaultTopLevel, { inputs: [] })
+  assert.equal(traePaths.includeNativeTomlAgentsAsMarkdown, true)
 
   const traeCnPaths = resolveHostPaths(traeCn, 'C:/Users/example')
   assert.equal(normalizePath(traeCnPaths.mcpHome), 'C:/Users/example/AppData/Roaming/Trae CN/User')
+  assert.equal(traeCnPaths.includeNativeTomlAgentsAsMarkdown, true)
 
   const traeSoloPaths = resolveHostPaths(traeSolo, 'C:/Users/example')
   assert.equal(normalizePath(traeSoloPaths.mcpHome), 'C:/Users/example/AppData/Roaming/TRAE SOLO/User')
@@ -133,6 +135,7 @@ it('hosts - 解析默认和自定义宿主路径', () => {
   assert.equal(normalizePath(qoderPaths.hostBaselineFile), 'C:/Users/example/.qoder/AGENTS.md')
   assert.equal(qoderPaths.projectSharedResources, true)
   assert.equal(qoderPaths.projectBaseline, true)
+  assert.equal(qoderPaths.includeNativeTomlAgentsAsMarkdown, true)
   assert.equal(qoder.mcpHomeImpliesHostHome, true)
   assert.deepEqual(qoderPaths.mcp?.serverOverrides?.codegraph, { type: 'stdio' })
   assert.deepEqual(qoderPaths.hooks.map(h => h.event).sort(), ['Stop'])
@@ -252,7 +255,7 @@ it('install - 同步第一方文件并按宿主投影 baseline 与 skills', () =
   writeFile(path.join(repoRoot, 'roles', 'openspec-development', 'agents', 'helper.md'), 'agent\n')
   fs.mkdirSync(path.join(moluoHome, 'vendor', 'skills', 'skill-one'), { recursive: true })
 
-  syncFirstPartyToHome(repoRoot, moluoHome)
+  syncFirstPartyToHome(repoRoot, moluoHome, 'openspec-development')
   assert.equal(fs.readFileSync(path.join(moluoHome, 'vendor', 'AGENTS.md'), 'utf8'), 'baseline\n')
   assert.equal(fs.readFileSync(path.join(moluoHome, 'vendor', 'agents', 'helper.md'), 'utf8'), 'agent\n')
   assert.equal(fs.existsSync(path.join(moluoHome, 'agents')), false)
@@ -616,7 +619,7 @@ it('install - 第一方 skills 覆盖层只管理本地源链接', () => withTem
     process.platform === 'win32' ? 'junction' : 'dir',
   )
 
-  syncFirstPartySkillsToVendor(repoRoot, moluoHome)
+  syncFirstPartySkillsToVendor(repoRoot, moluoHome, 'openspec-development')
 
   assert.equal(
     realLinkPath(path.join(vendorSkillsDir, 'local-review')),
@@ -628,7 +631,7 @@ it('install - 第一方 skills 覆盖层只管理本地源链接', () => withTem
   )
 
   fs.rmSync(localSkill, { recursive: true, force: true })
-  syncFirstPartySkillsToVendor(repoRoot, moluoHome)
+  syncFirstPartySkillsToVendor(repoRoot, moluoHome, 'openspec-development')
 
   assert.equal(fs.existsSync(path.join(vendorSkillsDir, 'local-review')), false)
   assert.equal(

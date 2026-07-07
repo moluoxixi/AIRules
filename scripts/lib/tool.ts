@@ -117,7 +117,6 @@ const ECC_FALLBACK_DISABLED_SURFACES = [
   'rules-core',
   'commands-core',
   'hooks-runtime',
-  'codex-native-toml-agents',
 ] as const
 
 type EccFallbackDisabledSurface = typeof ECC_FALLBACK_DISABLED_SURFACES[number]

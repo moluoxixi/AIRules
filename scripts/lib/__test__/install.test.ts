@@ -46,7 +46,7 @@ it('first-party sync - agents and mcp are stored under vendor', () => {
     fs.writeFileSync(path.join(repoRoot, 'roles', 'openspec-development', 'agents', 'demo.md'), 'agent\n')
     fs.writeFileSync(path.join(repoRoot, 'roles', 'openspec-development', 'mcp', 'mcp.json'), '{"mcpServers":{}}\n')
 
-    syncFirstPartyToHome(repoRoot, moluoHome)
+    syncFirstPartyToHome(repoRoot, moluoHome, 'openspec-development')
 
     assert.ok(fs.existsSync(path.join(moluoHome, 'vendor', 'AGENTS.md')), 'rules/AGENTS.md should sync to vendor/AGENTS.md')
     assert.ok(fs.existsSync(path.join(moluoHome, 'vendor', 'agents', 'demo.md')), 'agents should sync to vendor/agents')

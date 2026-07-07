@@ -101,6 +101,8 @@ export interface HostConfig {
    * 'json' 宿主需转译层（暂未实现，投影时显式跳过并告警，不静默软链错误格式）。
    */
   agentFormat?: AgentFormat
+  /** Markdown 宿主是否把 vendor/agents 中的原生 TOML agents 转译成 Markdown 分发。 */
+  includeNativeTomlAgentsAsMarkdown?: boolean
   /**
    * 宿主 MCP 配置投影规格，未声明则该宿主不参与 MCP 投影。
    */
@@ -180,6 +182,7 @@ export const HOST_CONFIGS: HostConfig[] = [
     id: 'trae',
     homeRelPath: '.trae',
     baselineFileName: 'AGENTS.md',
+    includeNativeTomlAgentsAsMarkdown: true,
     mcp: {
       homeRelPath: path.join('AppData', 'Roaming', 'Trae', 'User'),
       relDir: '.',
@@ -195,6 +198,7 @@ export const HOST_CONFIGS: HostConfig[] = [
     id: 'trae-cn',
     homeRelPath: '.trae-cn',
     baselineFileName: 'AGENTS.md',
+    includeNativeTomlAgentsAsMarkdown: true,
     mcp: {
       homeRelPath: path.join('AppData', 'Roaming', 'Trae CN', 'User'),
       relDir: '.',
@@ -240,6 +244,7 @@ export const HOST_CONFIGS: HostConfig[] = [
     id: 'qoder',
     homeRelPath: '.qoder',
     baselineFileName: 'AGENTS.md',
+    includeNativeTomlAgentsAsMarkdown: true,
     mcp: {
       homeRelPath: path.join('AppData', 'Roaming', 'Qoder', 'SharedClientCache'),
       relDir: '.',
@@ -295,6 +300,7 @@ export interface ResolvedHostPaths {
   skillsDirName: string
   excludedSkills: string[]
   agentFormat: AgentFormat
+  includeNativeTomlAgentsAsMarkdown: boolean
   mcpHome: string
   mcp?: McpProjection
   hooksHome: string
@@ -328,6 +334,7 @@ export function resolveHostPaths(config: HostConfig, userHome: string): Resolved
     skillsDirName: config.skillsDirName ?? 'skills',
     excludedSkills: config.excludedSkills ?? [],
     agentFormat: config.agentFormat ?? 'markdown',
+    includeNativeTomlAgentsAsMarkdown: config.includeNativeTomlAgentsAsMarkdown ?? false,
     mcpHome,
     mcp: config.mcp,
     hooksHome: hostHome,

@@ -123,9 +123,10 @@ export interface CheckResult {
 export function checkRulesConsistency(repoRoot: string): CheckResult {
   const errors: string[] = []
   const rolePaths = resolveRolePaths(repoRoot, DEFAULT_ROLE)
+  const openspecRolePaths = resolveRolePaths(repoRoot, OPENSPEC_DEVELOPMENT_ROLE)
   const commonRolePaths = resolveRolePaths(repoRoot, COMMON_ROLE)
   const roleVendorPaths = Object.keys(ROLE_VENDOR_CONFIGS).map(role => resolveRolePaths(repoRoot, role))
-  const agentsDir = rolePaths.agentsDir
+  const agentsDir = openspecRolePaths.agentsDir
   const skillRoots = [commonRolePaths, ...roleVendorPaths].filter(paths => existsSync(paths.skillsDir))
   const skillsDirs = skillRoots.map(paths => paths.skillsDir)
   const archDir = path.join(repoRoot, 'knowledge', '架构')
@@ -140,7 +141,7 @@ export function checkRulesConsistency(repoRoot: string): CheckResult {
       const content = readFileSync(path.join(agentsDir, entry), 'utf8')
       for (const skill of agentSkillRefs(content)) {
         if (!skillsDirs.some(skillsDir => existsSync(path.join(skillsDir, skill, 'SKILL.md')))) {
-          errors.push(`roles/${DEFAULT_ROLE}/agents/${entry} 引用的 skill 不存在：roles/${COMMON_ROLE}/skills/${skill}/SKILL.md 或 roles/${DEFAULT_ROLE}/skills/${skill}/SKILL.md`)
+          errors.push(`roles/${OPENSPEC_DEVELOPMENT_ROLE}/agents/${entry} 引用的 skill 不存在：roles/${COMMON_ROLE}/skills/${skill}/SKILL.md 或 roles/${OPENSPEC_DEVELOPMENT_ROLE}/skills/${skill}/SKILL.md`)
         }
       }
     }
@@ -283,11 +284,11 @@ export function checkRulesConsistency(repoRoot: string): CheckResult {
 
   // 10. 需求落档契约：若重新引入 brainstorming/SKILL.md，必须指向 openspec/changes/，
   //     避免需求分析结论只停留在对话或旧 requirements 目录。
-  const brainstormingSkillPath = path.join(rolePaths.skillsDir, 'brainstorming', 'SKILL.md')
+  const brainstormingSkillPath = path.join(openspecRolePaths.skillsDir, 'brainstorming', 'SKILL.md')
   if (existsSync(brainstormingSkillPath)) {
     const content = readFileSync(brainstormingSkillPath, 'utf8')
     if (!content.includes('openspec/changes/')) {
-      errors.push(`roles/${DEFAULT_ROLE}/skills/brainstorming/SKILL.md 未声明需求落档路径 openspec/changes/（需求文档必须落盘，不得只在对话中交付）`)
+      errors.push(`roles/${OPENSPEC_DEVELOPMENT_ROLE}/skills/brainstorming/SKILL.md 未声明需求落档路径 openspec/changes/（需求文档必须落盘，不得只在对话中交付）`)
     }
   }
 
@@ -297,20 +298,20 @@ export function checkRulesConsistency(repoRoot: string): CheckResult {
   if (existsSync(plannerPath)) {
     const content = readFileSync(plannerPath, 'utf8')
     if (!content.includes('openspec/changes/')) {
-      errors.push(`roles/${DEFAULT_ROLE}/agents/planner.md 输入上下文包未包含需求文档路径（openspec/changes/），planner 必须接收并传递需求文档路径`)
+      errors.push(`roles/${OPENSPEC_DEVELOPMENT_ROLE}/agents/planner.md 输入上下文包未包含需求文档路径（openspec/changes/），planner 必须接收并传递需求文档路径`)
     }
   }
 
   // 12. writing-plans 参考文件引用：writing-plans/SKILL.md 必须引用前后端参考文件，
   //     防止主入口忘记加载专项规范导致漂移。
-  const writingPlansPath = path.join(rolePaths.skillsDir, 'writing-plans', 'SKILL.md')
+  const writingPlansPath = path.join(openspecRolePaths.skillsDir, 'writing-plans', 'SKILL.md')
   if (existsSync(writingPlansPath)) {
     const content = readFileSync(writingPlansPath, 'utf8')
     if (!content.includes('writing-plans/references/frontend-plan.md')) {
-      errors.push(`roles/${DEFAULT_ROLE}/skills/writing-plans/SKILL.md 未引用 writing-plans/references/frontend-plan.md（前端专项规范必须从主入口可达）`)
+      errors.push(`roles/${OPENSPEC_DEVELOPMENT_ROLE}/skills/writing-plans/SKILL.md 未引用 writing-plans/references/frontend-plan.md（前端专项规范必须从主入口可达）`)
     }
     if (!content.includes('writing-plans/references/backend-plan.md')) {
-      errors.push(`roles/${DEFAULT_ROLE}/skills/writing-plans/SKILL.md 未引用 writing-plans/references/backend-plan.md（后端专项规范必须从主入口可达）`)
+      errors.push(`roles/${OPENSPEC_DEVELOPMENT_ROLE}/skills/writing-plans/SKILL.md 未引用 writing-plans/references/backend-plan.md（后端专项规范必须从主入口可达）`)
     }
   }
 
