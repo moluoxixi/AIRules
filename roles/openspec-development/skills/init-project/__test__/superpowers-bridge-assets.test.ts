@@ -13,6 +13,7 @@ const deprecatedLocalSchemaDir = path.join(
   'superpowers-bridge',
 )
 const projectSchemaDir = path.join(process.cwd(), 'openspec', 'schemas', 'superpowers-bridge')
+const frontendProjectSchemaDir = path.join(process.cwd(), 'openspec', 'schemas', 'frontend-superpowers-bridge')
 const referencesDir = path.join(process.cwd(), 'roles', 'openspec-development', 'skills', 'init-project', 'references')
 
 function readReference(fileName: string) {
@@ -54,5 +55,28 @@ describe('superpowers-bridge upstream schema', () => {
 
     assert.equal(projectFiles.includes('schema.yaml'), true)
     assert.equal(projectFiles.includes('templates/tasks.md'), true)
+  })
+
+  it('frontend-superpowers-bridge schema carries frontend gates without modifying upstream bridge', () => {
+    const frontendFiles = listFiles(frontendProjectSchemaDir)
+    const upstreamSchema = fs.readFileSync(path.join(projectSchemaDir, 'schema.yaml'), 'utf8')
+    const frontendSchema = fs.readFileSync(path.join(frontendProjectSchemaDir, 'schema.yaml'), 'utf8')
+    const frontendDesign = fs.readFileSync(path.join(frontendProjectSchemaDir, 'templates', 'design.md'), 'utf8')
+    const frontendVerify = fs.readFileSync(path.join(frontendProjectSchemaDir, 'templates', 'verify.md'), 'utf8')
+
+    assert.equal(frontendFiles.includes('schema.yaml'), true)
+    assert.equal(frontendFiles.includes('templates/design.md'), true)
+    assert.equal(frontendFiles.includes('templates/verify.md'), true)
+    assert.match(frontendSchema, /^name: frontend-superpowers-bridge/m)
+    assert.doesNotMatch(upstreamSchema, /^name: frontend-superpowers-bridge/m)
+    assert.match(frontendSchema, /MISSING blocked/)
+    assert.match(frontendSchema, /existing.*wrap existing.*new/s)
+    assert.match(frontendDesign, /## Layout/)
+    assert.match(frontendDesign, /## Fields/)
+    assert.match(frontendDesign, /## Components/)
+    assert.match(frontendDesign, /## States/)
+    assert.match(frontendDesign, /## Frontend Test Matrix/)
+    assert.match(frontendVerify, /## 5\. Frontend Design Gate/)
+    assert.match(frontendVerify, /## 6\. Frontend Verification Evidence/)
   })
 })
