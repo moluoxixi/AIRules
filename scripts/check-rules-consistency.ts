@@ -7,7 +7,7 @@ import { vendors as eccDevelopmentVendors } from '../roles/ecc-development/const
 import { vendors as openspecDevelopmentVendors } from '../roles/openspec-development/constants/skills.js'
 import { vendors as productVendors } from '../roles/product/constants/skills.js'
 import { vendors as speckitDevelopmentVendors } from '../roles/speckit-development/constants/skills.js'
-import { COMMON_ROLE, DEFAULT_ROLE, resolveRolePaths } from './lib/roles.js'
+import { COMMON_ROLE, resolveRolePaths } from './lib/roles.js'
 
 // 编码编排资产最小自洽性检查（低成本、非重型治理）：
 // 校验 roles/*/constants/skills.ts、development 可选 agents/*.md、
@@ -122,15 +122,15 @@ export interface CheckResult {
 
 export function checkRulesConsistency(repoRoot: string): CheckResult {
   const errors: string[] = []
-  const rolePaths = resolveRolePaths(repoRoot, DEFAULT_ROLE)
   const openspecRolePaths = resolveRolePaths(repoRoot, OPENSPEC_DEVELOPMENT_ROLE)
+  const eccRolePaths = resolveRolePaths(repoRoot, ECC_DEVELOPMENT_ROLE)
   const commonRolePaths = resolveRolePaths(repoRoot, COMMON_ROLE)
   const roleVendorPaths = Object.keys(ROLE_VENDOR_CONFIGS).map(role => resolveRolePaths(repoRoot, role))
   const agentsDir = openspecRolePaths.agentsDir
   const skillRoots = [commonRolePaths, ...roleVendorPaths].filter(paths => existsSync(paths.skillsDir))
   const skillsDirs = skillRoots.map(paths => paths.skillsDir)
   const archDir = path.join(repoRoot, 'knowledge', '架构')
-  const rulesPath = path.join(rolePaths.rulesDir, 'AGENTS.md')
+  const eccRulesPath = path.join(eccRolePaths.rulesDir, 'AGENTS.md')
 
   // 1. 每个可选 agent「加载 skill」引用的 skill 必须存在。agents 目录允许为空。
   if (existsSync(agentsDir)) {
@@ -218,17 +218,17 @@ export function checkRulesConsistency(repoRoot: string): CheckResult {
     }
   }
 
-  // 6. 默认开发角色必须分发中性 ECC fallback baseline，但不得混入 Codex 专属安装说明。
-  if (!existsSync(rulesPath)) {
-    errors.push(`roles/${DEFAULT_ROLE}/rules/AGENTS.md 必须存在，用作 ECC fallback baseline`)
+  // 6. ecc-development 角色必须分发中性 ECC fallback baseline，但不得混入 Codex 专属安装说明。
+  if (!existsSync(eccRulesPath)) {
+    errors.push(`roles/${ECC_DEVELOPMENT_ROLE}/rules/AGENTS.md 必须存在，用作 ECC fallback baseline`)
   }
   else {
-    const rulesContent = readFileSync(rulesPath, 'utf8')
+    const rulesContent = readFileSync(eccRulesPath, 'utf8')
     if (!rulesContent.includes('# ECC Fallback Baseline')) {
-      errors.push(`roles/${DEFAULT_ROLE}/rules/AGENTS.md 必须声明 "# ECC Fallback Baseline"`)
+      errors.push(`roles/${ECC_DEVELOPMENT_ROLE}/rules/AGENTS.md 必须声明 "# ECC Fallback Baseline"`)
     }
     if (!rulesContent.includes('不要把本 baseline 解读为 Claude `rules-core`')) {
-      errors.push(`roles/${DEFAULT_ROLE}/rules/AGENTS.md 必须明确不承接 Claude rules-core`)
+      errors.push(`roles/${ECC_DEVELOPMENT_ROLE}/rules/AGENTS.md 必须明确不承接 Claude rules-core`)
     }
     for (const forbidden of [
       '# ECC for Codex CLI',
@@ -242,7 +242,7 @@ export function checkRulesConsistency(repoRoot: string): CheckResult {
       'Context file | CLAUDE.md + AGENTS.md',
     ]) {
       if (rulesContent.includes(forbidden)) {
-        errors.push(`roles/${DEFAULT_ROLE}/rules/AGENTS.md 不得包含 Codex 专属片段：${forbidden}`)
+        errors.push(`roles/${ECC_DEVELOPMENT_ROLE}/rules/AGENTS.md 不得包含 Codex 专属片段：${forbidden}`)
       }
     }
   }

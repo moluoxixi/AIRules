@@ -45,7 +45,7 @@ it('tool - resolveToolPaths 支持显式区分 moluoHome 与 userHome', () => wi
   const repoRoot = path.join(tmpDir, 'repo')
   const moluoHome = path.join(tmpDir, 'config', 'airules-home')
   const userHome = path.join(tmpDir, 'user')
-  writeFile(path.join(repoRoot, 'roles', 'ecc-development', 'constants', 'skills.ts'), 'export const vendors = []\n')
+  writeFile(path.join(repoRoot, 'roles', 'openspec-development', 'constants', 'skills.ts'), 'export const vendors = []\n')
 
   const paths = resolveToolPaths(repoRoot, moluoHome, userHome)
 
@@ -58,23 +58,23 @@ it('tool - resolveToolPaths 在 tsx 源码运行时优先使用 TypeScript manif
   const repoRoot = path.join(tmpDir, 'repo')
   const moluoHome = path.join(tmpDir, 'home')
 
-  writeFile(path.join(repoRoot, 'roles', 'ecc-development', 'constants', 'skills.ts'), 'export const vendors = []\n')
-  writeFile(path.join(repoRoot, 'dist', 'roles', 'ecc-development', 'constants', 'skills.js'), 'export const vendors = []\n')
+  writeFile(path.join(repoRoot, 'roles', 'openspec-development', 'constants', 'skills.ts'), 'export const vendors = []\n')
+  writeFile(path.join(repoRoot, 'dist', 'roles', 'openspec-development', 'constants', 'skills.js'), 'export const vendors = []\n')
 
   const paths = resolveToolPaths(repoRoot, moluoHome)
 
-  assert.equal(paths.manifestPath, path.resolve(repoRoot, 'roles', 'ecc-development', 'constants', 'skills.ts'))
+  assert.equal(paths.manifestPath, path.resolve(repoRoot, 'roles', 'openspec-development', 'constants', 'skills.ts'))
 }))
 
 it('tool - resolveToolPaths 在缺少 TypeScript manifest 时回退到 dist manifest', () => withTempDir('airules-tool-dist-manifest-', (tmpDir) => {
   const repoRoot = path.join(tmpDir, 'repo')
   const moluoHome = path.join(tmpDir, 'home')
 
-  writeFile(path.join(repoRoot, 'dist', 'roles', 'ecc-development', 'constants', 'skills.js'), 'export const vendors = []\n')
+  writeFile(path.join(repoRoot, 'dist', 'roles', 'openspec-development', 'constants', 'skills.js'), 'export const vendors = []\n')
 
   const paths = resolveToolPaths(repoRoot, moluoHome)
 
-  assert.equal(paths.manifestPath, path.resolve(repoRoot, 'dist', 'roles', 'ecc-development', 'constants', 'skills.js'))
+  assert.equal(paths.manifestPath, path.resolve(repoRoot, 'dist', 'roles', 'openspec-development', 'constants', 'skills.js'))
 }))
 
 it('tool - addLocalSkill 复制包含 SKILL.md 的本地 skill', () => withTempDir('airules-tool-add-', (tmpDir) => {

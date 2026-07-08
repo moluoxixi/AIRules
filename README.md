@@ -93,7 +93,7 @@ npm run sync
 ```
 
 > [!TIP]
-> **Sync Process**: `npm run sync` is the default ECC development sync (`roles/common` + `roles/ecc-development`). `npm run sync:ecc-development` is the explicit alias for the same role. Use `npm run sync:development` or `npm run sync:openspec-development` for the OpenSpec + BMAD + gstack role, `npm run sync:speckit-development` for the optional Spec Kit + Superpowers bridge role, or `npm run sync:product` for the product role (`roles/common` + `roles/product`). Each sync rebuilds vendor skills, runs setup commands, cleans dead links, and runs host verification after AIRules projection. The default ECC setup uses ECC official installers for native global targets and AIRules fallback projection for Qoder, Trae, and Trae CN. Use `airules sync --skip-vendors` when you do not want to refresh third-party vendor repositories, run setup, or invoke ECC official installers.
+> **Sync Process**: `npm run sync` is the default OpenSpec development sync (`roles/common` + `roles/openspec-development`). `npm run sync:development` and `npm run sync:openspec-development` are explicit aliases for the same role. Use `npm run sync:ecc-development` only when you explicitly want the ECC role, `npm run sync:speckit-development` for the optional Spec Kit + Superpowers bridge role, or `npm run sync:product` for the product role (`roles/common` + `roles/product`). Each sync rebuilds vendor skills, runs setup commands, cleans dead links, and runs host verification after AIRules projection. Use `airules sync --skip-vendors` when you do not want to refresh third-party vendor repositories or run setup commands.
 
 ---
 
@@ -128,21 +128,59 @@ npm run rules:install -- --host claude
 
 ---
 
-## Default ECC Workflow
+## Default OpenSpec Workflow
 
-The default development role is `ecc-development`. It uses ECC as the primary orchestration source, keeps AIRules common session capture / memory / reflection assets layered in, and uses audited fallback projection for hosts that do not have an ECC native target. This is the default personal / ECC-native workflow.
+The default development role is `openspec-development`. It uses OpenSpec as the durable specification and change lifecycle, with Superpowers, BMAD, and gstack around it for execution discipline, product planning, review, and release support. Initialize target projects with the OpenSpec `init-project` skill, then use the workflow depth that matches the risk.
 
-### Explicit OpenSpec Role
-
-Use `openspec-development` when a project needs OpenSpec as the durable specification and change lifecycle. Superpowers, BMAD, and gstack act as execution, product-planning, review, and shipping modules around that source of truth. Initialize target projects with the OpenSpec `init-project` skill, then use the OpenSpec lifecycle commands:
+Simple loop for small changes:
 
 ```text
+/opsx:explore "<problem-or-context>"
 /opsx:propose "<feature-or-bug>"
 /opsx:apply <change-id>
 /opsx:archive <change-id>
 ```
 
+Rigorous loop for larger or ambiguous work:
+
+```text
+/opsx:new "<initiative-or-capability>"
+/opsx:continue <change-id>
+```
+
+Use `new` when the work needs a fuller OpenSpec package. Use `continue` to resume that package and follow the next command it prints, such as `apply`, `verify`, or `archive`.
+
 The OpenSpec role installs OpenSpec (`@fission-ai/openspec`), BMAD (`bmad-method`), gstack, CodeGraph, and the first-party `init-project` skill that registers `openspec/schemas/superpowers-bridge/`. Keep OpenSpec in its native `openspec/` directory; AIRules does not wrap it under `.airules/`.
+
+## ECC Workflow
+
+ECC is an explicit role, not the default. It is useful when you want ECC's upstream agent catalog and core skills to be the main orchestration surface instead of the OpenSpec lifecycle.
+
+Enable it with:
+
+```bash
+npm run sync:ecc-development
+```
+
+or:
+
+```bash
+airules sync --host all --role ecc-development
+```
+
+Start with ECC when:
+
+- You want ECC's agents and core skills as the primary day-to-day interface.
+- You are working in Claude, Codex, or OpenCode and want ECC's official global target where available.
+- You accept AIRules' audited fallback projection for Qoder, Trae, or Trae CN.
+
+Do not start with ECC when:
+
+- You want OpenSpec change records to be the source of truth.
+- You need the default AIRules flow with CodeGraph, OpenSpec, BMAD, and gstack.
+- You are unsure which system should own planning; start with OpenSpec and switch to ECC only after you deliberately choose that surface.
+
+AIRules syncs ECC by using official ECC installers for native global targets where possible, and by projecting an audited fallback subset for non-native hosts. The common AIRules skills still layer in first, so handoff, memory, reflection, and frontend testing remain available.
 
 ### Optional Spec Kit Role
 
@@ -208,7 +246,7 @@ Product changes use pm-skills for lightweight solution brief, PRD, acceptance cr
 ```
 
 > Source `skills/` folders may be grouped recursively; installed vendor and host skill directories are flattened by leaf skill name.
-> The default `ecc-development` role uses ECC official installers where possible and AIRules fallback projection for audited non-native hosts. The explicit `openspec-development` role does not project an always-on global rules baseline; it installs OpenSpec, BMAD, gstack, CodeGraph, and the first-party OpenSpec schema bootstrap. The optional `speckit-development` role does not install an OpenSpec schema; it installs Spec Kit's official CLI, projects the Spec Kit + Superpowers bridge skill, and leaves project structure to `specify init` plus `specify extension add`.
+> The default `openspec-development` role does not project an always-on global rules baseline; it installs OpenSpec, BMAD, gstack, CodeGraph, and the first-party OpenSpec schema bootstrap. The explicit `ecc-development` role uses ECC official installers where possible and AIRules fallback projection for audited non-native hosts. The optional `speckit-development` role does not install an OpenSpec schema; it installs Spec Kit's official CLI, projects the Spec Kit + Superpowers bridge skill, and leaves project structure to `specify init` plus `specify extension add`.
 
 ## Why Not Just Another AI Rules Repo?
 

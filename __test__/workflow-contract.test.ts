@@ -207,10 +207,25 @@ describe('编排红线文本', () => {
 
   it('openspec-development role 只登记保留的一方 skills', () => {
     const pkg = JSON.parse(read('package.json')) as { scripts: Record<string, string> }
+    const rootReadme = read('README.md')
+    const rootReadmeZh = read('README-zh.md')
 
+    assert.equal(DEFAULT_ROLE, OPENSPEC_DEVELOPMENT_ROLE)
     assert.equal(pkg.scripts['sync:development'], `tsx scripts/cli.ts sync --host all --role ${OPENSPEC_DEVELOPMENT_ROLE}`)
     assert.equal(pkg.scripts['sync:openspec-development'], `tsx scripts/cli.ts sync --host all --role ${OPENSPEC_DEVELOPMENT_ROLE}`)
     assert.deepEqual(firstPartySkillNames(openspecDevelopmentVendors).sort(), OPENSPEC_DEVELOPMENT_SKILLS)
+    assert.match(rootReadme, /## Default OpenSpec Workflow/)
+    assert.match(rootReadme, /\/opsx:explore/)
+    assert.match(rootReadme, /\/opsx:propose/)
+    assert.match(rootReadme, /\/opsx:apply/)
+    assert.match(rootReadme, /\/opsx:archive/)
+    assert.match(rootReadme, /\/opsx:new/)
+    assert.match(rootReadme, /\/opsx:continue/)
+    assert.doesNotMatch(rootReadme, /default ECC development sync/)
+    assert.doesNotMatch(rootReadme, /The default development role is `ecc-development`/)
+    assert.match(rootReadmeZh, /## 默认 OpenSpec 工作流/)
+    assert.match(rootReadmeZh, /\/opsx:explore/)
+    assert.match(rootReadmeZh, /\/opsx:new/)
   })
 
   it('product role 一方只登记 init-project', () => {
@@ -222,15 +237,24 @@ describe('编排红线文本', () => {
     const roleManifestPath = path.join(repoRoot, 'roles', ECC_DEVELOPMENT_ROLE, 'constants', 'skills.ts')
     const roleRulesPath = path.join(repoRoot, 'roles', ECC_DEVELOPMENT_ROLE, 'rules', 'AGENTS.md')
     const pkg = JSON.parse(read('package.json')) as { scripts: Record<string, string> }
+    const rootReadme = read('README.md')
+    const rootReadmeZh = read('README-zh.md')
 
     assert.equal(fs.existsSync(roleReadmePath), true)
     assert.equal(fs.existsSync(roleManifestPath), true)
     assert.equal(fs.existsSync(roleRulesPath), true)
     assert.equal(pkg.scripts['sync:ecc-development'], `tsx scripts/cli.ts sync --host all --role ${ECC_DEVELOPMENT_ROLE}`)
+    assert.match(rootReadme, /## ECC Workflow/)
+    assert.match(rootReadme, /npm run sync:ecc-development/)
+    assert.match(rootReadme, /Start with ECC when/)
+    assert.match(rootReadme, /Do not start with ECC when/)
+    assert.match(rootReadmeZh, /## ECC 工作流/)
+    assert.match(rootReadmeZh, /npm run sync:ecc-development/)
+    assert.match(rootReadmeZh, /适合先用 ECC/)
+    assert.match(rootReadmeZh, /不适合先用 ECC/)
 
     const roleReadme = fs.readFileSync(roleReadmePath, 'utf8')
     const roleRules = fs.readFileSync(roleRulesPath, 'utf8')
-    assert.equal(DEFAULT_ROLE, ECC_DEVELOPMENT_ROLE)
     assert.match(roleReadme, /https:\/\/github\.com\/affaan-m\/ECC\/issues\/2283/)
     assert.match(roleReadme, /https:\/\/github\.com\/affaan-m\/ECC\/pull\/2318/)
     assert.match(roleReadme, /npx -y --package ecc-universal ecc install/)

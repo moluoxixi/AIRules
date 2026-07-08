@@ -93,7 +93,7 @@ npm run sync
 ```
 
 > [!TIP]
-> **同步流程**：`npm run sync` 是默认 ECC 开发角色同步（`roles/common` + `roles/ecc-development`）。`npm run sync:ecc-development` 是同一角色的显式别名；需要 OpenSpec + BMAD + gstack 角色时用 `npm run sync:development` 或 `npm run sync:openspec-development`；需要可选 Spec Kit + Superpowers bridge 角色时用 `npm run sync:speckit-development`；需要产品角色时用 `npm run sync:product`（`roles/common` + `roles/product`）。每次同步都会重建 vendor skills、执行 setup 命令、清理死链接，并在 AIRules 投影后自动运行宿主验证。默认 ECC setup 会对原生全局 target 使用 ECC 官方 installer，并对 Qoder、Trae、Trae CN 使用 AIRules fallback 投影。需要避免拉取第三方供应商、跳过 setup 或跳过 ECC 官方 installer 时，可使用 `airules sync --skip-vendors`。
+> **同步流程**：`npm run sync` 是默认 OpenSpec 开发角色同步（`roles/common` + `roles/openspec-development`）。`npm run sync:development` 和 `npm run sync:openspec-development` 是同一角色的显式别名；只有明确要使用 ECC 角色时才运行 `npm run sync:ecc-development`；需要可选 Spec Kit + Superpowers bridge 角色时用 `npm run sync:speckit-development`；需要产品角色时用 `npm run sync:product`（`roles/common` + `roles/product`）。每次同步都会重建 vendor skills、执行 setup 命令、清理死链接，并在 AIRules 投影后自动运行宿主验证。需要避免拉取第三方供应商或跳过 setup 时，可使用 `airules sync --skip-vendors`。
 
 ---
 
@@ -128,21 +128,59 @@ npm run rules:install -- --host claude
 
 ---
 
-## 默认 ECC 工作流
+## 默认 OpenSpec 工作流
 
-默认开发角色是 `ecc-development`。它以 ECC 作为主编排来源，叠加 AIRules common 会话沉淀 / 记忆 / 反思资产，并在 ECC 没有 native target 的宿主上使用已审计 fallback 投影。这是默认个人 / ECC 原生工作流。
+默认开发角色是 `openspec-development`。它以 OpenSpec 作为长期规格与变更生命周期事实源，Superpowers、BMAD、gstack 围绕这条主线承担实现纪律、产品拆解、review 与发布辅助。目标项目先用 OpenSpec `init-project` skill 初始化，再按风险选择工作流深度。
 
-### 显式 OpenSpec 角色
-
-当项目需要 OpenSpec 作为长期规格与变更生命周期事实源时，显式使用 `openspec-development`。Superpowers、BMAD、gstack 围绕这条主线承担实现纪律、产品拆解、review 与发布辅助。目标项目先用 OpenSpec `init-project` skill 初始化，再使用 OpenSpec 生命周期命令：
+小变更用简单闭环：
 
 ```text
+/opsx:explore "<问题或上下文>"
 /opsx:propose "<功能或缺陷>"
 /opsx:apply <change-id>
 /opsx:archive <change-id>
 ```
 
+较大或不明确的工作用严谨闭环：
+
+```text
+/opsx:new "<计划或能力>"
+/opsx:continue <change-id>
+```
+
+需要完整 OpenSpec 包时用 `new`。中途暂停或需要接着推进时用 `continue`，然后按它输出的下一步继续，例如 `apply`、`verify` 或 `archive`。
+
 OpenSpec 角色安装 OpenSpec（`@fission-ai/openspec`）、BMAD（`bmad-method`）、gstack、CodeGraph，以及会注册 `openspec/schemas/superpowers-bridge/` 的第一方 `init-project` skill。OpenSpec 保持原生 `openspec/` 根目录，AIRules 不把它包进 `.airules/`。
+
+## ECC 工作流
+
+ECC 是显式角色，不是默认角色。当你想让 ECC 上游 agents 与 core skills 成为主要编排界面，而不是走 OpenSpec 生命周期时，再启用它。
+
+启用方式：
+
+```bash
+npm run sync:ecc-development
+```
+
+或：
+
+```bash
+airules sync --host all --role ecc-development
+```
+
+适合先用 ECC：
+
+- 你希望 ECC agents 和 core skills 成为日常主界面。
+- 你使用 Claude、Codex 或 OpenCode，并希望尽量走 ECC 官方全局 target。
+- 你接受 AIRules 对 Qoder、Trae、Trae CN 的已审计 fallback 投影。
+
+不适合先用 ECC：
+
+- 你希望 OpenSpec 变更记录作为事实源。
+- 你需要默认 AIRules 流程里的 CodeGraph、OpenSpec、BMAD 与 gstack。
+- 你还没决定由谁负责规划；这种情况先用 OpenSpec，确定要换编排面时再切 ECC。
+
+AIRules 同步 ECC 时，会优先使用 ECC 官方 installer 处理可用的原生全局 target，并对非原生宿主投影一组已审计 fallback 子集。AIRules common 层仍会先叠加，所以 handoff、记忆、反思和前端测试仍然可用。
 
 ### 可选 Spec Kit 角色
 
@@ -208,7 +246,7 @@ specify extension add speckit-superpowers-bridge --from https://github.com/lihan
 ```
 
 > 源 `skills/` 目录允许递归分组；安装后的 vendor 与宿主 skills 目录统一按叶子 skill 名称展平。
-> 默认 `ecc-development` 在可用时使用 ECC 官方 installer，并对已审计的非原生宿主使用 AIRules fallback 投影。显式 `openspec-development` 不投影 always-on 全局规则基线；它安装 OpenSpec、BMAD、gstack、CodeGraph 与第一方 OpenSpec schema 初始化链路。可选 `speckit-development` 不安装 OpenSpec schema；它安装 Spec Kit 官方 CLI，投影 Spec Kit + Superpowers bridge skill，并把项目结构交给 `specify init` + `specify extension add` 原生生成。
+> 默认 `openspec-development` 不投影 always-on 全局规则基线；它安装 OpenSpec、BMAD、gstack、CodeGraph 与第一方 OpenSpec schema 初始化链路。显式 `ecc-development` 在可用时使用 ECC 官方 installer，并对已审计的非原生宿主使用 AIRules fallback 投影。可选 `speckit-development` 不安装 OpenSpec schema；它安装 Spec Kit 官方 CLI，投影 Spec Kit + Superpowers bridge skill，并把项目结构交给 `specify init` + `specify extension add` 原生生成。
 
 ## 为什么不是另一个 AI Rules 集合？
 

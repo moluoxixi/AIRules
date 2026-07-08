@@ -1,7 +1,7 @@
 import { existsSync } from 'node:fs'
 import path from 'node:path'
 
-export const DEFAULT_ROLE = 'ecc-development'
+export const DEFAULT_ROLE = 'openspec-development'
 export const COMMON_ROLE = 'common'
 
 export interface RolePaths {
