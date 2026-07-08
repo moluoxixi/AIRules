@@ -15,6 +15,9 @@ const deprecatedLocalSchemaDir = path.join(
 const projectSchemaDir = path.join(process.cwd(), 'openspec', 'schemas', 'superpowers-bridge')
 const frontendProjectSchemaDir = path.join(process.cwd(), 'openspec', 'schemas', 'frontend-superpowers-bridge')
 const referencesDir = path.join(process.cwd(), 'roles', 'openspec-development', 'skills', 'init-project', 'references')
+const initProjectSkill = path.join(process.cwd(), 'roles', 'openspec-development', 'skills', 'init-project', 'SKILL.md')
+const frontendSchemaSkillDir = path.join(process.cwd(), 'roles', 'openspec-development', 'skills', 'frontend-superpowers-bridge')
+const openspecSkillsManifest = path.join(process.cwd(), 'roles', 'openspec-development', 'constants', 'skills.ts')
 
 function listFiles(root: string, dir = root): string[] {
   return fs.readdirSync(dir, { withFileTypes: true }).flatMap((entry) => {
@@ -94,5 +97,16 @@ describe('superpowers-bridge upstream schema', () => {
     assert.match(frontendDesign, /## Frontend Test Matrix/)
     assert.match(frontendVerify, /## 5\. Frontend Design Gate/)
     assert.match(frontendVerify, /## 6\. Frontend Verification Evidence/)
+  })
+
+  it('frontend-superpowers-bridge schema is selected by init-project, not exposed as a standalone skill', () => {
+    const manifest = fs.readFileSync(openspecSkillsManifest, 'utf8')
+    const skill = fs.readFileSync(initProjectSkill, 'utf8')
+
+    assert.equal(fs.existsSync(path.join(frontendSchemaSkillDir, 'SKILL.md')), false)
+    assert.doesNotMatch(manifest, /frontend-superpowers-bridge/)
+    assert.match(skill, /前端项目/)
+    assert.match(skill, /从克隆到的 `superpowers-bridge\/` 派生 `frontend-superpowers-bridge`/)
+    assert.match(skill, /openspec schema validate <selected-schema>/)
   })
 })

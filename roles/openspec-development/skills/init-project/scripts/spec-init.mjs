@@ -11,10 +11,45 @@ import { fileURLToPath } from 'node:url'
 
 const projectRoot = path.resolve(process.argv[2] ?? process.cwd())
 const skipOpenSpecCommands = process.env.AIRULES_SKIP_OPENSPEC_VALIDATE === '1'
-const schemaName = 'superpowers-bridge'
+const baseSchemaName = 'superpowers-bridge'
+const frontendSchemaName = 'frontend-superpowers-bridge'
 const schemaRepositoryUrl = 'https://github.com/JiangWay/openspec-schemas.git'
 const schemaSourceOverride = process.env.AIRULES_OPENSPEC_SCHEMA_SOURCE_DIR
 const projectedBmadSkillsDirOverride = process.env.AIRULES_PROJECTED_BMAD_SKILLS_DIR
+const frontendDependencySignals = [
+  '@angular/core',
+  '@remix-run/react',
+  '@vitejs/plugin-react',
+  '@vitejs/plugin-vue',
+  'astro',
+  'next',
+  'nuxt',
+  'react',
+  'solid-js',
+  'svelte',
+  'vite',
+  'vue',
+]
+const frontendScriptSignals = [
+  'astro',
+  'next',
+  'nuxt',
+  'svelte-kit',
+  'vite',
+  'webpack',
+]
+const frontendConfigSignals = [
+  'angular.json',
+  'astro.config.mjs',
+  'astro.config.ts',
+  'next.config.js',
+  'next.config.mjs',
+  'nuxt.config.ts',
+  'svelte.config.js',
+  'vite.config.js',
+  'vite.config.mjs',
+  'vite.config.ts',
+]
 const openSpecToolTargets = [
   { dir: '.claude', tool: 'claude' },
   { dir: '.codex', tool: 'codex' },
@@ -43,6 +78,19 @@ const requiredBmadProjectedSkills = [
   'bmad-generate-project-context',
   'bmad-shard-doc',
 ]
+const frontendExecutionAgents = [
+  'planner',
+  'tdd-guide',
+  'pr-test-analyzer',
+  'e2e-runner',
+  'code-reviewer',
+  'typescript-reviewer',
+  'react-reviewer',
+  'vue-reviewer',
+  'react-build-resolver',
+  'build-error-resolver',
+  'silent-failure-hunter',
+]
 
 const skillRoot = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..')
 const projectedBmadSkillsDir = projectedBmadSkillsDirOverride
@@ -50,6 +98,7 @@ const projectedBmadSkillsDir = projectedBmadSkillsDirOverride
   : path.dirname(skillRoot)
 const knowledgeSourcePath = path.join(skillRoot, 'assets', 'knowledge', 'index.md')
 const openspecDir = path.join(projectRoot, 'openspec')
+const schemaName = detectFrontendProject() ? frontendSchemaName : baseSchemaName
 const schemaTargetDir = path.join(openspecDir, 'schemas', schemaName)
 const knowledgeTargetPath = path.join(projectRoot, 'knowledge', 'index.md')
 const created = []
@@ -62,6 +111,65 @@ function assertAssetExists(assetPath, label) {
   if (!existsSync(assetPath)) {
     throw new Error(`init-project asset missing: ${label}`)
   }
+}
+
+function detectFrontendProject() {
+  const packageJsonPath = path.join(projectRoot, 'package.json')
+  if (existsSync(packageJsonPath)) {
+    const pkg = readPackageJson(packageJsonPath)
+    if (packageHasFrontendDependency(pkg) || packageHasFrontendScript(pkg)) {
+      console.log(`[airules] 已检测到前端项目，使用 ${frontendSchemaName} schema`)
+      return true
+    }
+  }
+
+  if (frontendConfigSignals.some(fileName => existsSync(path.join(projectRoot, fileName)))) {
+    console.log(`[airules] 已检测到前端项目，使用 ${frontendSchemaName} schema`)
+    return true
+  }
+
+  return false
+}
+
+function readPackageJson(packageJsonPath) {
+  try {
+    const parsed = JSON.parse(readFileSync(packageJsonPath, 'utf8'))
+    if (typeof parsed !== 'object' || parsed === null || Array.isArray(parsed)) {
+      throw new Error('package.json 根节点必须是对象')
+    }
+    return parsed
+  }
+  catch (error) {
+    throw new Error(`package.json 解析失败 ${packageJsonPath}: ${error.message}`)
+  }
+}
+
+function packageHasFrontendDependency(pkg) {
+  const dependencySections = [
+    pkg.dependencies,
+    pkg.devDependencies,
+    pkg.peerDependencies,
+    pkg.optionalDependencies,
+  ]
+
+  return dependencySections.some(section =>
+    section
+    && typeof section === 'object'
+    && !Array.isArray(section)
+    && Object.keys(section).some(name => frontendDependencySignals.includes(name)),
+  )
+}
+
+function packageHasFrontendScript(pkg) {
+  const scripts = pkg.scripts
+  if (!scripts || typeof scripts !== 'object' || Array.isArray(scripts)) {
+    return false
+  }
+
+  return Object.values(scripts).some(value =>
+    typeof value === 'string'
+    && frontendScriptSignals.some(signal => new RegExp(`(^|\\s)${escapeRegExp(signal)}(\\s|$|:)`).test(value)),
+  )
 }
 
 function copyFileIfMissing(sourcePath, targetPath, created) {
@@ -290,9 +398,9 @@ function resolveSchemaSourceDir() {
 
   try {
     runGit(gitCommand, ['clone', '--depth', '1', schemaRepositoryUrl, cloneDir])
-    const sourceDir = path.join(cloneDir, schemaName)
-    assertAssetExists(sourceDir, `${schemaRepositoryUrl}/${schemaName}`)
-    assertAssetExists(path.join(sourceDir, 'schema.yaml'), `${schemaRepositoryUrl}/${schemaName}/schema.yaml`)
+    const sourceDir = path.join(cloneDir, baseSchemaName)
+    assertAssetExists(sourceDir, `${schemaRepositoryUrl}/${baseSchemaName}`)
+    assertAssetExists(path.join(sourceDir, 'schema.yaml'), `${schemaRepositoryUrl}/${baseSchemaName}/schema.yaml`)
     return {
       sourceDir,
       cleanup: () => rmSync(tempRoot, { recursive: true, force: true }),
@@ -304,12 +412,301 @@ function resolveSchemaSourceDir() {
   }
 }
 
+function resolveInstallSchemaSourceDir() {
+  const baseSource = resolveSchemaSourceDir()
+  if (schemaName !== frontendSchemaName) {
+    return baseSource
+  }
+
+  const tempRoot = mkdtempSync(path.join(tmpdir(), 'airules-frontend-schema-'))
+  const sourceDir = path.join(tempRoot, frontendSchemaName)
+
+  try {
+    deriveFrontendSchema(baseSource.sourceDir, sourceDir)
+    return {
+      sourceDir,
+      cleanup: () => {
+        baseSource.cleanup()
+        rmSync(tempRoot, { recursive: true, force: true })
+      },
+    }
+  }
+  catch (error) {
+    baseSource.cleanup()
+    rmSync(tempRoot, { recursive: true, force: true })
+    throw error
+  }
+}
+
+function deriveFrontendSchema(sourceDir, targetDir) {
+  copyDirectoryWithTransform(sourceDir, targetDir, (relativePath, content) => {
+    const normalizedPath = relativePath.replace(/\\/g, '/')
+    if (normalizedPath === 'schema.yaml') {
+      return deriveFrontendSchemaYaml(content)
+    }
+    if (normalizedPath === 'README.md' || normalizedPath === 'README.zh-TW.md') {
+      return appendIfMissing(content, '## Frontend Superpowers Bridge', frontendReadmeAppendix())
+    }
+    if (normalizedPath === 'templates/adopters/CLAUDE.md.fragment.md' || normalizedPath === 'templates/adopters/CLAUDE.md.fragment.zh-TW.md') {
+      return appendIfMissing(content, '## ECC Execution Agents', frontendAdopterAppendix())
+    }
+    if (normalizedPath === 'templates/design.md') {
+      return appendIfMissing(content, '## Frontend Test Matrix', frontendDesignTemplateAppendix())
+    }
+    if (normalizedPath === 'templates/verify.md') {
+      return appendIfMissing(content, '## 6. Frontend Verification Evidence', frontendVerifyTemplateAppendix())
+    }
+    return content
+  })
+}
+
+function copyDirectoryWithTransform(sourceDir, targetDir, transform, rootDir = sourceDir) {
+  assertAssetExists(sourceDir, path.relative(skillRoot, sourceDir).replace(/\\/g, '/'))
+  mkdirSync(targetDir, { recursive: true })
+
+  for (const entry of readdirSync(sourceDir, { withFileTypes: true })) {
+    const sourcePath = path.join(sourceDir, entry.name)
+    const targetPath = path.join(targetDir, entry.name)
+
+    if (entry.isDirectory()) {
+      copyDirectoryWithTransform(sourcePath, targetPath, transform, rootDir)
+      continue
+    }
+
+    if (entry.isFile()) {
+      mkdirSync(path.dirname(targetPath), { recursive: true })
+      const relativePath = path.relative(rootDir, sourcePath)
+      if (isTextSchemaAsset(sourcePath)) {
+        writeFileSync(targetPath, transform(relativePath, readFileSync(sourcePath, 'utf8')), 'utf8')
+      }
+      else {
+        copyFileSync(sourcePath, targetPath)
+      }
+      continue
+    }
+
+    throw new Error(`Unsupported init-project asset type: ${sourcePath}`)
+  }
+}
+
+function isTextSchemaAsset(sourcePath) {
+  return /\.(?:md|ya?ml|txt|json)$/i.test(sourcePath)
+}
+
+function deriveFrontendSchemaYaml(raw) {
+  let next = raw.replace(/^name:\s*superpowers-bridge\s*$/m, `name: ${frontendSchemaName}`)
+  if (next === raw) {
+    throw new Error('frontend schema 派生失败：schema.yaml 缺少 name: superpowers-bridge')
+  }
+
+  next = appendToDescription(next, frontendSchemaDescription())
+  next = appendToArtifactInstruction(next, 'design', frontendDesignInstruction())
+  next = appendToArtifactInstruction(next, 'tasks', frontendTasksInstruction())
+  next = appendToArtifactInstruction(next, 'plan', frontendPlanInstruction())
+  next = appendToArtifactInstruction(next, 'verify', frontendVerifyInstruction())
+  next = appendToApplyInstruction(next, frontendApplyInstruction())
+  return next
+}
+
+function appendToDescription(raw, block) {
+  if (raw.includes('Frontend execution agent bridge')) {
+    return raw
+  }
+  if (!/^description:\s*>\s*$/m.test(raw)) {
+    throw new Error('frontend schema 派生失败：schema.yaml 缺少 description: > 块')
+  }
+  if (!/\nartifacts:/.test(raw)) {
+    throw new Error('frontend schema 派生失败：schema.yaml 缺少 artifacts 块')
+  }
+  return raw.replace(/\nartifacts:/, `\n${indentBlock(block, 2)}\n\nartifacts:`)
+}
+
+function appendToArtifactInstruction(raw, artifactId, block) {
+  if (raw.includes(block.trim().split('\n')[0])) {
+    return raw
+  }
+
+  const pattern = new RegExp(`(\\n  - id: ${escapeRegExp(artifactId)}\\n[\\s\\S]*?\\n    instruction: \\|\\n)([\\s\\S]*?)(\\n    requires:)`)
+  if (!pattern.test(raw)) {
+    throw new Error(`frontend schema 派生失败：schema.yaml 缺少 ${artifactId}.instruction`)
+  }
+
+  return raw.replace(pattern, (_match, head, body, tail) =>
+    `${head}${body.trimEnd()}\n${indentBlock(block, 6)}${tail}`)
+}
+
+function appendToApplyInstruction(raw, block) {
+  if (raw.includes('Confirm these ECC agents are available before frontend apply')) {
+    return raw
+  }
+
+  const pattern = /(\napply:\n[\s\S]*?\n {2}instruction: \|\n)([\s\S]*)$/
+  if (!pattern.test(raw)) {
+    throw new Error('frontend schema 派生失败：schema.yaml 缺少 apply.instruction')
+  }
+
+  return raw.replace(pattern, (_match, head, body) =>
+    `${head}${body.trimEnd()}\n${indentBlock(block, 4)}\n`)
+}
+
+function appendIfMissing(raw, marker, block) {
+  return raw.includes(marker) ? raw : `${raw.trimEnd()}\n\n${block.trim()}\n`
+}
+
+function indentBlock(block, spaces) {
+  const indent = ' '.repeat(spaces)
+  return block.trim().split('\n').map(line => line.length > 0 ? `${indent}${line}` : '').join('\n')
+}
+
+function frontendSchemaDescription() {
+  return `
+Frontend execution agent bridge:
+Requires ECC agents for frontend execution: ${frontendExecutionAgents.join(', ')}.
+Frontend additions: design MUST include Layout, Fields, Components,
+States, and Frontend Test Matrix. UI-required fields missing from API,
+OpenAPI, interface code, API client, store, route params, permission,
+state, persistence, static, or derived contracts MUST be marked
+\`MISSING blocked: <reason>\` and block apply. Every UI unit MUST be
+classified as existing, wrap existing, or new.
+`
+}
+
+function frontendDesignInstruction() {
+  return `
+Frontend design gate:
+- Include Layout, Fields, Components, States, and Frontend Test Matrix.
+- Fields rows must map every UI field to API, OpenAPI, interface code,
+  API client, store, route params, permission, state, persistence,
+  static, or derived.
+- Missing UI-required fields must be written as
+  \`MISSING blocked: <reason>\` and must stop implementation.
+- Components must classify each UI unit as existing, wrap existing, or new.
+`
+}
+
+function frontendTasksInstruction() {
+  return `
+Frontend task gate:
+- Add explicit tasks for field-contract comparison, component reuse search,
+  layout/state review, TDD implementation, frontend verification evidence,
+  and review.
+- If design.md contains any \`MISSING blocked:\` row, stop instead of
+  creating implementation tasks that assume the field exists.
+`
+}
+
+function frontendPlanInstruction() {
+  return `
+Frontend planning gate:
+- Preserve design.md Fields, Components, States, and Frontend Test Matrix.
+- Do not introduce UI fields, store fields, route params, permission checks,
+  or component abstractions absent from design.md.
+- Missing automated tooling must be recorded as
+  \`MISSING blocked: no frontend test runner\` or
+  \`NOT RUN automated: <reason>\`.
+`
+}
+
+function frontendVerifyInstruction() {
+  return `
+Frontend verification gate:
+- Confirm design.md contains Layout, Fields, Components, States, and
+  Frontend Test Matrix.
+- Record commands, exit status, desktop/mobile coverage, console/network
+  checks, and screenshot/log paths where applicable.
+- Missing tools must be marked \`MISSING blocked\` or
+  \`NOT RUN automated: <reason>\`; do not infer PASS.
+`
+}
+
+function frontendApplyInstruction() {
+  return `
+Frontend execution agent bridge:
+- Confirm these ECC agents are available before frontend apply:
+  ${frontendExecutionAgents.join(', ')}.
+- Read design.md before implementation and stop on any
+  \`MISSING blocked: <reason>\` field row.
+- Use the ECC agents for planning, TDD guidance, test analysis,
+  E2E/browser validation, code review, framework review, build resolution,
+  and silent-failure hunting where the task surface matches the agent.
+`
+}
+
+function frontendReadmeAppendix() {
+  return `
+## Frontend Superpowers Bridge
+
+This derived schema is generated from \`superpowers-bridge\` for frontend projects. It adds field, component, state, route, permission, responsive, browser, and frontend test evidence gates.
+
+## ECC Execution Agent Bridge
+
+Expected ECC agents: ${frontendExecutionAgents.join(', ')}.
+`
+}
+
+function frontendAdopterAppendix() {
+  return `
+## ECC Execution Agents
+
+For frontend changes, use these ECC agents where the task surface matches: ${frontendExecutionAgents.join(', ')}.
+`
+}
+
+function frontendDesignTemplateAppendix() {
+  return `
+## Layout
+
+Page regions, responsive behavior, navigation, and interaction flow.
+
+## Fields
+
+| Area | Field Name | UI Purpose | Source Type | Source Path / Endpoint | Exists? | Missing Status | Component Decision | Component Path | Display Shape | Permission Control | State Coverage | Test Point |
+|---|---|---|---|---|---|---|---|---|---|---|---|---|
+
+Use \`MISSING blocked: <reason>\` for any UI-required field absent from its source contract.
+
+## Components
+
+Classify each UI unit as \`existing\`, \`wrap existing\`, or \`new\`.
+
+## States
+
+Cover loading, empty, error, disabled, success, permission-denied, pending, and N/A decisions.
+
+## Frontend Test Matrix
+
+Map fields, states, routes, interactions, permissions, responsive behavior, and observable errors to automated or explicitly blocked evidence.
+`
+}
+
+function frontendVerifyTemplateAppendix() {
+  return `
+## 5. Frontend Design Gate
+
+- Layout:
+- Fields:
+- Components:
+- States:
+- Frontend Test Matrix:
+- Blocking \`MISSING blocked:\` rows:
+
+## 6. Frontend Verification Evidence
+
+| Surface | Command / Evidence | Exit Status | Desktop | Mobile | Console / Network | Result |
+|---|---|---|---|---|---|---|
+`
+}
+
+function escapeRegExp(value) {
+  return value.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')
+}
+
 function installOpenSpecSchema(created) {
   if (schemaIsAlreadyInstalled()) {
     return
   }
 
-  const { sourceDir, cleanup } = resolveSchemaSourceDir()
+  const { sourceDir, cleanup } = resolveInstallSchemaSourceDir()
   try {
     copyDirectoryIfMissing(sourceDir, schemaTargetDir, created)
   }

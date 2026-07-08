@@ -766,6 +766,7 @@ it('vendors 配置 - openspec-development 角色接入 BMAD 文档拆分、gstac
       target: link.target,
     })),
     [
+      { kind: 'agent-file', source: 'agents/planner.md', target: 'vendor/agents/planner.md' },
       { kind: 'agent-file', source: 'agents/tdd-guide.md', target: 'vendor/agents/tdd-guide.md' },
       { kind: 'agent-file', source: 'agents/pr-test-analyzer.md', target: 'vendor/agents/pr-test-analyzer.md' },
       { kind: 'agent-file', source: 'agents/e2e-runner.md', target: 'vendor/agents/e2e-runner.md' },

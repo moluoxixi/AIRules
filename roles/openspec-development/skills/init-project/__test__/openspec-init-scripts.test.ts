@@ -57,8 +57,58 @@ function writeFile(filePath: string, content: string) {
 
 function createSchemaSource(root: string) {
   const schemaRoot = path.join(root, 'schema-source', 'superpowers-bridge')
-  writeFile(path.join(schemaRoot, 'schema.yaml'), 'name: superpowers-bridge\nversion: 1\nartifacts: []\n')
+  writeFile(path.join(schemaRoot, 'schema.yaml'), [
+    'name: superpowers-bridge',
+    'version: 1',
+    'description: >',
+    '  Base bridge schema.',
+    '',
+    'artifacts:',
+    '  - id: design',
+    '    generates: design.md',
+    '    description: Base design',
+    '    template: design.md',
+    '    instruction: |',
+    '      Base design instruction.',
+    '    requires:',
+    '      - brainstorm',
+    '  - id: tasks',
+    '    generates: tasks.md',
+    '    description: Base tasks',
+    '    template: tasks.md',
+    '    instruction: |',
+    '      Base tasks instruction.',
+    '    requires:',
+    '      - design',
+    '  - id: plan',
+    '    generates: plan.md',
+    '    description: Base plan',
+    '    template: plan.md',
+    '    instruction: |',
+    '      Base plan instruction.',
+    '    requires:',
+    '      - tasks',
+    '  - id: verify',
+    '    generates: verify.md',
+    '    description: Base verify',
+    '    template: verify.md',
+    '    instruction: |',
+    '      Base verify instruction.',
+    '    requires:',
+    '      - plan',
+    '',
+    'apply:',
+    '  requires: [plan]',
+    '  tracks: tasks.md',
+    '  instruction: |',
+    '    Base apply instruction.',
+    '',
+  ].join('\n'))
+  writeFile(path.join(schemaRoot, 'README.md'), '# superpowers-bridge\n')
   writeFile(path.join(schemaRoot, 'templates', 'tasks.md'), '# Tasks\n')
+  writeFile(path.join(schemaRoot, 'templates', 'design.md'), '# Design\n')
+  writeFile(path.join(schemaRoot, 'templates', 'verify.md'), '# Verify\n')
+  writeFile(path.join(schemaRoot, 'templates', 'adopters', 'CLAUDE.md.fragment.md'), '# Bridge Fragment\n')
   return schemaRoot
 }
 
@@ -112,7 +162,7 @@ function createFakeGit(root: string, sourceRepo: string) {
   return { binDir, logPath, sourceRepo }
 }
 
-function createFakeOpenSpec(root: string) {
+function createFakeOpenSpec(root: string, schemasOutput = 'superpowers-bridge') {
   const binDir = path.join(root, 'bin')
   const logPath = path.join(root, 'openspec.log')
   fs.mkdirSync(binDir, { recursive: true })
@@ -125,7 +175,7 @@ function createFakeOpenSpec(root: string) {
         '@echo off',
         'echo %*>>"%AIRULES_OPEN_SPEC_LOG%"',
         'if "%1"=="config" if "%2"=="path" echo %AIRULES_OPEN_SPEC_CONFIG%',
-        'if "%1"=="schemas" echo superpowers-bridge',
+        `if "%1"=="schemas" echo ${schemasOutput}`,
         'exit /b 0',
         '',
       ].join('\r\n'),
@@ -139,7 +189,7 @@ function createFakeOpenSpec(root: string) {
         '#!/bin/sh',
         'printf "%s\\n" "$*" >> "$AIRULES_OPEN_SPEC_LOG"',
         'if [ "$1" = "config" ] && [ "$2" = "path" ]; then echo "$AIRULES_OPEN_SPEC_CONFIG"; fi',
-        'if [ "$1" = "schemas" ]; then echo superpowers-bridge; fi',
+        `if [ "$1" = "schemas" ]; then echo ${schemasOutput}; fi`,
         'exit 0',
         '',
       ].join('\n'),
@@ -222,6 +272,55 @@ it('spec-init - OpenSpec CLI 存在时初始化项目、校验 schema 并确认�
     assert.match(calls, /schema validate superpowers-bridge/)
     assert.match(calls, /^schemas$/m)
     assert.doesNotMatch(result.stdout, /bmad-method install/)
+  })
+})
+
+it('spec-init - 前端项目从克隆的 superpowers-bridge 派生并注册 frontend-superpowers-bridge schema', () => {
+  withTempDir((root) => {
+    writeFile(path.join(root, 'package.json'), JSON.stringify({
+      dependencies: {
+        react: '19.0.0',
+      },
+      devDependencies: {
+        vite: '7.0.0',
+      },
+    }))
+    const { binDir, logPath } = createFakeOpenSpec(root, 'frontend-superpowers-bridge')
+    const schemaSource = createSchemaSource(root)
+    const openSpecConfigPath = path.join(root, 'openspec-config', 'config.json')
+    const nextPath = binDir
+    const result = runSpecInit(root, {
+      AIRULES_OPEN_SPEC_LOG: logPath,
+      AIRULES_OPEN_SPEC_CONFIG: openSpecConfigPath,
+      AIRULES_OPENSPEC_SCHEMA_SOURCE_DIR: schemaSource,
+      AIRULES_PROJECTED_BMAD_SKILLS_DIR: createProjectedBmadSkills(root),
+      PATH: nextPath,
+      Path: nextPath,
+    })
+
+    assert.equal(result.status, 0, result.stderr)
+    assert.match(result.stdout, /OpenSpec schema 已注册并通过校验：frontend-superpowers-bridge/)
+    assert.equal(fs.existsSync(path.join(root, 'openspec', 'schemas', 'superpowers-bridge')), false)
+    assert.equal(fs.existsSync(path.join(root, 'openspec', 'schemas', 'frontend-superpowers-bridge', 'schema.yaml')), true)
+    assert.match(
+      fs.readFileSync(path.join(root, 'openspec', 'config.yaml'), 'utf8'),
+      /^schema: frontend-superpowers-bridge$/m,
+    )
+
+    const frontendSchema = fs.readFileSync(path.join(root, 'openspec', 'schemas', 'frontend-superpowers-bridge', 'schema.yaml'), 'utf8')
+    assert.match(frontendSchema, /^name: frontend-superpowers-bridge$/m)
+    assert.match(frontendSchema, /Frontend execution agent bridge/)
+    assert.match(frontendSchema, /planner/)
+    assert.match(frontendSchema, /MISSING blocked/)
+    assert.match(frontendSchema, /existing.*wrap existing.*new/s)
+
+    const frontendDesign = fs.readFileSync(path.join(root, 'openspec', 'schemas', 'frontend-superpowers-bridge', 'templates', 'design.md'), 'utf8')
+    assert.match(frontendDesign, /## Layout/)
+    assert.match(frontendDesign, /## Frontend Test Matrix/)
+
+    const calls = fs.readFileSync(logPath, 'utf8')
+    assert.match(calls, /schema validate frontend-superpowers-bridge/)
+    assert.match(calls, /^schemas$/m)
   })
 })
 
