@@ -179,7 +179,7 @@ specify extension add speckit-superpowers-bridge --from https://github.com/lihan
 │   ├── common/
 │   │   ├── hooks/
 │   │   │   └── session-log.mjs
-│   │   └── skills/        # 共享会话沉淀 / 提炼 / 记忆 / 反思能力
+│   │   └── skills/        # 共享 handoff / 前端测试 / 记忆能力
 │   ├── openspec-development/
 │   │   ├── constants/
 │   │   │   └── skills.ts # 显式 OpenSpec + BMAD + gstack 角色清单

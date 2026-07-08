@@ -13,9 +13,11 @@ import { DEFAULT_ROLE } from '../scripts/lib/roles.js'
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url))
 const repoRoot = path.resolve(__dirname, '..')
-const OPENSPEC_DEVELOPMENT_SKILLS = ['frontend-testing', 'handoff', 'init-project']
+const COMMON_SKILLS = ['distill-candidates', 'frontend-testing', 'handoff', 'recall-memory', 'reflect', 'remember', 'session-capture']
+const OPENSPEC_DEVELOPMENT_SKILLS = ['init-project']
 const SPECKIT_DEVELOPMENT_SKILLS = ['init-project']
 const PRODUCT_SKILLS = ['init-project']
+const COMMON_ROLE = 'common'
 const ECC_DEVELOPMENT_ROLE = 'ecc-development'
 const OPENSPEC_DEVELOPMENT_ROLE = 'openspec-development'
 const SPECKIT_DEVELOPMENT_ROLE = 'speckit-development'
@@ -36,6 +38,15 @@ function withTempDir<T>(run: (tmpDir: string) => T): T {
 
 function read(rel: string): string {
   return fs.readFileSync(path.join(repoRoot, rel), 'utf8')
+}
+
+function roleSkillNames(role: string): string[] {
+  const skillsDir = path.join(repoRoot, 'roles', role, 'skills')
+  return fs.readdirSync(skillsDir, { withFileTypes: true })
+    .filter(entry => entry.isDirectory())
+    .filter(entry => fs.existsSync(path.join(skillsDir, entry.name, 'SKILL.md')))
+    .map(entry => entry.name)
+    .sort()
 }
 
 // ── 1. 自洽检查器：真实仓库 + 种入缺陷的 fixture ──────────────
@@ -153,6 +164,10 @@ describe('自洽检查器', () => {
 // ── 2. 红线文本断言 ──────────────────────────────────────────
 
 describe('编排红线文本', () => {
+  it('common role 承载跨角色通用一方 skills', () => {
+    assert.deepEqual(roleSkillNames(COMMON_ROLE), COMMON_SKILLS)
+  })
+
   it('speckit-development agents 目录允许清空', () => {
     const agentsDir = path.join(repoRoot, 'roles', SPECKIT_DEVELOPMENT_ROLE, 'agents')
     const entries = fs.existsSync(agentsDir) ? fs.readdirSync(agentsDir) : []

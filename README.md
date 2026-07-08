@@ -179,7 +179,7 @@ Product changes use pm-skills for lightweight solution brief, PRD, acceptance cr
 │   ├── common/
 │   │   ├── hooks/
 │   │   │   └── session-log.mjs
-│   │   └── skills/        # Shared capture / distill / memory / reflection skills
+│   │   └── skills/        # Shared handoff / frontend testing / memory skills
 │   ├── openspec-development/
 │   │   ├── constants/
 │   │   │   └── skills.ts # Explicit OpenSpec + BMAD + gstack role registry

@@ -171,11 +171,7 @@ export const vendors: VendorsConfig = [
       {
         kind: 'skills',
         sourceBaseDir: 'roles/openspec-development/skills',
-        skills: [
-          'frontend-testing',
-          'init-project',
-          'handoff',
-        ],
+        skills: ['init-project'],
       },
     ],
   },

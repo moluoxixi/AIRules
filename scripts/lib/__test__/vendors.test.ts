@@ -718,9 +718,18 @@ it('vendors 配置 - openspec-development 角色接入 BMAD 文档拆分、gstac
     'Matt Pocock 技能按需精选接入并统一加 matt- 前缀',
   )
 
-  assert.ok(
-    vendors.moluoxixi.links.some((link: any) => link.target === 'vendor/skills/frontend-testing'),
-    'openspec-development 第一方技能应包含 frontend-testing 前端测试门禁',
+  assert.deepStrictEqual(
+    vendors.moluoxixi.links.map((link: any) => ({
+      source: link.source,
+      target: link.target,
+    })),
+    [
+      {
+        source: 'roles/openspec-development/skills/init-project',
+        target: 'vendor/skills/init-project',
+      },
+    ],
+    'openspec-development 专属一方 skill 只保留 init-project；handoff 与 frontend-testing 由 common overlay 分发',
   )
 })
 
