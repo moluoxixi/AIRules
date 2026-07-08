@@ -20,6 +20,26 @@ brainstorm -> proposal -> design -> specs -> tasks -> plan -> apply -> verify ->
 - 每個 UI 單元必須分類為 `existing`、`wrap existing` 或 `new`。
 - `plan.md` 必須在 TDD micro-step 中保留前端欄位、元件、狀態與測試矩陣門禁。
 - `verify.md` 必須記錄命令、退出碼、desktop/mobile、console/network、截圖或 log 等前端驗證證據。
+- apply 階段在平台支援 agents 時，必須橋接下列 ECC execution agents。
+
+## ECC Execution Agent Bridge
+
+`frontend-superpowers-bridge` 預期 adopter role 會暴露這些 ECC agents 供前端執行鏈使用：
+
+| Agent | 用途 |
+|---|---|
+| `tdd-guide` | 強制 RED-GREEN-REFACTOR 實作步驟 |
+| `pr-test-analyzer` | 對照測試矩陣檢查本次前端改動面 |
+| `e2e-runner` | 執行或協調 browser/E2E 驗證 |
+| `code-reviewer` | 執行通用 implementation review |
+| `typescript-reviewer` | 審查 TypeScript types、contracts、compile-time safety |
+| `react-reviewer` | 審查 React components、hooks、state、rendering behavior |
+| `vue-reviewer` | 審查 Vue components、composables、state、rendering behavior |
+| `react-build-resolver` | 診斷 React build failures |
+| `build-error-resolver` | 診斷通用 build/type/lint/test failures |
+| `silent-failure-hunter` | 檢查缺失 assertion、swallowed errors、false-positive success paths |
+
+若這些 agents 不可用，apply 必須停止；只有使用者明確同意時才可 fallback，並在 `verify.md` 記錄 `NOT RUN automated: <reason>` / `MISSING blocked: <reason>`。
 
 ## 分流
 

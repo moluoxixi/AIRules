@@ -20,6 +20,26 @@ It adds frontend gates to the existing Superpowers-driven execution flow:
 - Every UI unit must be classified as `existing`, `wrap existing`, or `new`.
 - `plan.md` must preserve the frontend gates while decomposing work into TDD micro-steps.
 - `verify.md` must record frontend evidence: commands, exit status, desktop/mobile coverage, console/network checks, and screenshots/logs where applicable.
+- Apply must bridge to the ECC execution agents listed below when the platform supports agents.
+
+## ECC Execution Agent Bridge
+
+`frontend-superpowers-bridge` expects the adopter role to expose these ECC agents for frontend execution:
+
+| Agent | Use |
+|---|---|
+| `tdd-guide` | Enforce RED-GREEN-REFACTOR implementation steps |
+| `pr-test-analyzer` | Check changed frontend surfaces against the test matrix |
+| `e2e-runner` | Run or coordinate browser/E2E validation |
+| `code-reviewer` | Perform general implementation review |
+| `typescript-reviewer` | Review TypeScript types, contracts, and compile-time safety |
+| `react-reviewer` | Review React components, hooks, state, and rendering behavior |
+| `vue-reviewer` | Review Vue components, composables, state, and rendering behavior |
+| `react-build-resolver` | Diagnose React build failures |
+| `build-error-resolver` | Diagnose general build/type/lint/test failures |
+| `silent-failure-hunter` | Hunt missing assertions, swallowed errors, and false-positive success paths |
+
+If these agents are unavailable, apply must stop or fall back only with explicit user approval and a recorded `NOT RUN automated: <reason>` / `MISSING blocked: <reason>` entry in `verify.md`.
 
 ## Routing
 

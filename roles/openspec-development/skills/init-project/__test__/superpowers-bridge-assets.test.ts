@@ -61,6 +61,8 @@ describe('superpowers-bridge upstream schema', () => {
     const frontendFiles = listFiles(frontendProjectSchemaDir)
     const upstreamSchema = fs.readFileSync(path.join(projectSchemaDir, 'schema.yaml'), 'utf8')
     const frontendSchema = fs.readFileSync(path.join(frontendProjectSchemaDir, 'schema.yaml'), 'utf8')
+    const frontendReadme = fs.readFileSync(path.join(frontendProjectSchemaDir, 'README.md'), 'utf8')
+    const frontendAdopter = fs.readFileSync(path.join(frontendProjectSchemaDir, 'templates', 'adopters', 'CLAUDE.md.fragment.md'), 'utf8')
     const frontendDesign = fs.readFileSync(path.join(frontendProjectSchemaDir, 'templates', 'design.md'), 'utf8')
     const frontendVerify = fs.readFileSync(path.join(frontendProjectSchemaDir, 'templates', 'verify.md'), 'utf8')
 
@@ -71,6 +73,25 @@ describe('superpowers-bridge upstream schema', () => {
     assert.doesNotMatch(upstreamSchema, /^name: frontend-superpowers-bridge/m)
     assert.match(frontendSchema, /MISSING blocked/)
     assert.match(frontendSchema, /existing.*wrap existing.*new/s)
+    assert.match(frontendSchema, /Frontend execution agent bridge/)
+    assert.match(frontendReadme, /ECC Execution Agent Bridge/)
+    assert.match(frontendAdopter, /ECC Execution Agents/)
+    for (const agent of [
+      'tdd-guide',
+      'pr-test-analyzer',
+      'e2e-runner',
+      'code-reviewer',
+      'typescript-reviewer',
+      'react-reviewer',
+      'vue-reviewer',
+      'react-build-resolver',
+      'build-error-resolver',
+      'silent-failure-hunter',
+    ]) {
+      assert.match(frontendSchema, new RegExp(agent))
+      assert.match(frontendReadme, new RegExp(agent))
+      assert.match(frontendAdopter, new RegExp(agent))
+    }
     assert.match(frontendDesign, /## Layout/)
     assert.match(frontendDesign, /## Fields/)
     assert.match(frontendDesign, /## Components/)

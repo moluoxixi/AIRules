@@ -22,6 +22,10 @@ description: >
   and plan for implementation guidance).
   Apply phase uses git worktrees + subagent-driven-development
   (brings TDD and code-review transitively).
+  Frontend apply additionally expects ECC execution agents:
+  tdd-guide, pr-test-analyzer, e2e-runner, code-reviewer,
+  typescript-reviewer, react-reviewer, vue-reviewer,
+  react-build-resolver, build-error-resolver, silent-failure-hunter.
   Frontend additions: design MUST include Layout, Fields,
   Components, States, and Frontend Test Matrix sections. UI-required
   fields missing from API/OpenAPI/interface code/API client/store/
@@ -545,6 +549,20 @@ apply:
                         superpowers:requesting-code-review)
        - superpowers:finishing-a-development-branch
 
+       Frontend execution agent bridge:
+       Confirm the adopter role exposes these ECC agents before
+       frontend apply:
+       - tdd-guide
+       - pr-test-analyzer
+       - e2e-runner
+       - code-reviewer
+       - typescript-reviewer
+       - react-reviewer
+       - vue-reviewer
+       - react-build-resolver
+       - build-error-resolver
+       - silent-failure-hunter
+
        If any required skill is missing, STOP and inform the user —
        do NOT proceed and do NOT silently fall back to manual
        implementation. The user can install the Superpowers plugin,
@@ -583,6 +601,10 @@ apply:
        - Read plan.md in this change directory for micro-tasks
        - Update tasks.md checkboxes as coarse tasks complete
        - Work within the created worktree
+       - Use the ECC agents above for TDD guidance, test analysis,
+         E2E/browser execution, code review, framework review, build
+         resolution, and silent-failure hunting where the task surface
+         matches the agent.
 
        IMPORTANT — transitive skill activation:
        subagent-driven-development internally enforces the

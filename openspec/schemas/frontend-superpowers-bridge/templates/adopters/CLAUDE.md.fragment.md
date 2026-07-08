@@ -32,6 +32,23 @@ If any UI-required field is absent, ambiguous, or permission-unverifiable in API
 
 Every UI unit must be classified as `existing`, `wrap existing`, or `new`.
 
+### ECC Execution Agents
+
+For `frontend-superpowers-bridge` apply/review work, use the projected ECC agents when available:
+
+| Agent | Use |
+|---|---|
+| `tdd-guide` | TDD execution discipline |
+| `pr-test-analyzer` | Frontend test matrix coverage analysis |
+| `e2e-runner` | Browser/E2E execution |
+| `code-reviewer` | General code review |
+| `typescript-reviewer` | TypeScript contract review |
+| `react-reviewer` | React implementation review |
+| `vue-reviewer` | Vue implementation review |
+| `react-build-resolver` | React build failure diagnosis |
+| `build-error-resolver` | Build/type/lint/test failure diagnosis |
+| `silent-failure-hunter` | Missing assertion and swallowed-error review |
+
 ### Front-door anti-patterns (don't do)
 
 - Letting brainstorming write to `docs/superpowers/specs/`
@@ -39,3 +56,4 @@ Every UI unit must be classified as `existing`, `wrap existing`, or `new`.
 - Coding frontend UI with unresolved `MISSING blocked:` field rows
 - Creating new components before checking existing components/hooks/utilities/UI libraries
 - Marking frontend tests PASS without commands, exit status, viewport, console/network, or screenshot/log evidence
+- Ignoring the ECC execution agents during apply/review when they are available

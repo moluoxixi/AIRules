@@ -32,6 +32,23 @@
 
 每個 UI 單元必須分類為 `existing`、`wrap existing` 或 `new`。
 
+### ECC Execution Agents
+
+`frontend-superpowers-bridge` 的 apply/review 階段，在 agents 可用時使用已投影的 ECC agents：
+
+| Agent | 用途 |
+|---|---|
+| `tdd-guide` | TDD execution discipline |
+| `pr-test-analyzer` | 前端測試矩陣覆蓋分析 |
+| `e2e-runner` | Browser/E2E 執行 |
+| `code-reviewer` | 通用 code review |
+| `typescript-reviewer` | TypeScript contract review |
+| `react-reviewer` | React implementation review |
+| `vue-reviewer` | Vue implementation review |
+| `react-build-resolver` | React build failure 診斷 |
+| `build-error-resolver` | Build/type/lint/test failure 診斷 |
+| `silent-failure-hunter` | 缺失 assertion 與 swallowed-error review |
+
 ### Front-door 反模式(別做)
 
 - 讓 brainstorming 寫到 `docs/superpowers/specs/`
@@ -39,3 +56,4 @@
 - UI 欄位仍有 `MISSING blocked:` 就 coding
 - 未檢索既有 components/hooks/utilities/UI libraries 就新建元件
 - 沒有命令、退出碼、viewport、console/network、截圖或 log 證據就把前端測試標 PASS
+- agents 可用時忽略 ECC execution agents 直接進行 apply/review
