@@ -23,8 +23,8 @@ description: >
   Apply phase uses git worktrees + subagent-driven-development
   (brings TDD and code-review transitively).
   Frontend apply additionally expects ECC execution agents:
-  tdd-guide, pr-test-analyzer, e2e-runner, code-reviewer,
-  typescript-reviewer, react-reviewer, vue-reviewer,
+  planner, tdd-guide, pr-test-analyzer, e2e-runner,
+  code-reviewer, typescript-reviewer, react-reviewer, vue-reviewer,
   react-build-resolver, build-error-resolver, silent-failure-hunter.
   Frontend additions: design MUST include Layout, Fields,
   Components, States, and Frontend Test Matrix sections. UI-required
@@ -552,6 +552,7 @@ apply:
        Frontend execution agent bridge:
        Confirm the adopter role exposes these ECC agents before
        frontend apply:
+       - planner
        - tdd-guide
        - pr-test-analyzer
        - e2e-runner

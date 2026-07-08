@@ -94,6 +94,7 @@ export const vendors: VendorsConfig = [
         kind: 'agents',
         sourceDir: 'agents',
         agents: [
+          'planner',
           'tdd-guide',
           'pr-test-analyzer',
           'e2e-runner',

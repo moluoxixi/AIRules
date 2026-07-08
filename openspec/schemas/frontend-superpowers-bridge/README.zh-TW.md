@@ -28,6 +28,7 @@ brainstorm -> proposal -> design -> specs -> tasks -> plan -> apply -> verify ->
 
 | Agent | 用途 |
 |---|---|
+| `planner` | 為複雜前端功能、重構與多步驟變更產出 implementation plan |
 | `tdd-guide` | 強制 RED-GREEN-REFACTOR 實作步驟 |
 | `pr-test-analyzer` | 對照測試矩陣檢查本次前端改動面 |
 | `e2e-runner` | 執行或協調 browser/E2E 驗證 |

@@ -33,10 +33,15 @@ describe('superpowers-bridge upstream schema', () => {
 
   it('init-project references keep frontend policy out of injected project rules', () => {
     const airulesBase = fs.readFileSync(path.join(referencesDir, 'airules-base.md'), 'utf8')
+    const agentsBaseline = fs.readFileSync(path.join(referencesDir, 'agents.md'), 'utf8')
+    const injectedRules = `${airulesBase}\n\n${agentsBaseline}`
 
-    assert.deepEqual(fs.readdirSync(referencesDir).sort(), ['airules-base.md'])
-    assert.doesNotMatch(airulesBase, /前端字段与组件评估纪律/)
-    assert.doesNotMatch(airulesBase, /frontend-testing/)
+    assert.deepEqual(fs.readdirSync(referencesDir).sort(), ['agents.md', 'airules-base.md'])
+    assert.match(agentsBaseline, /Everything Claude Code \(ECC\) — Agent Instructions/)
+    assert.match(agentsBaseline, /\| planner \| Implementation planning \|/)
+    assert.doesNotMatch(injectedRules, /前端字段与组件评估纪律/)
+    assert.doesNotMatch(injectedRules, /frontend-testing/)
+    assert.doesNotMatch(agentsBaseline, /frontend-superpowers-bridge/)
   })
 
   it('current project OpenSpec schema remains installed as a generated project schema', () => {
@@ -66,6 +71,7 @@ describe('superpowers-bridge upstream schema', () => {
     assert.match(frontendReadme, /ECC Execution Agent Bridge/)
     assert.match(frontendAdopter, /ECC Execution Agents/)
     for (const agent of [
+      'planner',
       'tdd-guide',
       'pr-test-analyzer',
       'e2e-runner',

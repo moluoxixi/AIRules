@@ -28,6 +28,7 @@ It adds frontend gates to the existing Superpowers-driven execution flow:
 
 | Agent | Use |
 |---|---|
+| `planner` | Produce implementation plans for complex frontend features, refactors, and multi-step changes |
 | `tdd-guide` | Enforce RED-GREEN-REFACTOR implementation steps |
 | `pr-test-analyzer` | Check changed frontend surfaces against the test matrix |
 | `e2e-runner` | Run or coordinate browser/E2E validation |

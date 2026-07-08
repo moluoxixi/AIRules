@@ -38,6 +38,7 @@ For `frontend-superpowers-bridge` apply/review work, use the projected ECC agent
 
 | Agent | Use |
 |---|---|
+| `planner` | Implementation planning |
 | `tdd-guide` | TDD execution discipline |
 | `pr-test-analyzer` | Frontend test matrix coverage analysis |
 | `e2e-runner` | Browser/E2E execution |

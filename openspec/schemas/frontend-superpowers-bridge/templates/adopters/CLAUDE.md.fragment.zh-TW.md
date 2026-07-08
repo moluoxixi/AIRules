@@ -38,6 +38,7 @@
 
 | Agent | 用途 |
 |---|---|
+| `planner` | Implementation planning |
 | `tdd-guide` | TDD execution discipline |
 | `pr-test-analyzer` | 前端測試矩陣覆蓋分析 |
 | `e2e-runner` | Browser/E2E 執行 |

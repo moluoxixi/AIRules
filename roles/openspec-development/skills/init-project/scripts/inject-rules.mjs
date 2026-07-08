@@ -32,13 +32,15 @@ function resolvePathPlaceholders(content) {
 }
 
 const baseReferencePath = path.join(skillRoot, 'references', 'airules-base.md')
+const agentsReferencePath = path.join(skillRoot, 'references', 'agents.md')
 
 const projectRoot = path.resolve(projectRootArg)
 const agentsPath = path.join(projectRoot, 'AGENTS.md')
 const currentContent = existsSync(agentsPath) ? readFileSync(agentsPath, 'utf8') : ''
 
-// 注入顺序固定：OpenSpec 项目规则只注入 baseline；前端纪律由 frontend-superpowers-bridge schema 承载。
-const inlineReferencePaths = [baseReferencePath]
+// 注入顺序固定：OpenSpec 项目规则注入通用 baseline 与 ECC agents baseline；
+// 前端字段、组件与测试矩阵纪律由 frontend-superpowers-bridge schema 承载。
+const inlineReferencePaths = [baseReferencePath, agentsReferencePath]
 
 /**
  * 解析 Markdown 文件开头的最小 YAML frontmatter，返回去除 frontmatter 的正文。
