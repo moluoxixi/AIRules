@@ -218,12 +218,33 @@ export function checkRulesConsistency(repoRoot: string): CheckResult {
     }
   }
 
-  // 6. 默认开发角色保留空 rules/AGENTS.md 占位，但不分发 always-on 全局规则内容。
+  // 6. 默认开发角色必须分发中性 ECC fallback baseline，但不得混入 Codex 专属安装说明。
   if (!existsSync(rulesPath)) {
-    errors.push(`roles/${DEFAULT_ROLE}/rules/AGENTS.md 必须存在为空文件，用作 rules 投影占位`)
+    errors.push(`roles/${DEFAULT_ROLE}/rules/AGENTS.md 必须存在，用作 ECC fallback baseline`)
   }
-  else if (readFileSync(rulesPath, 'utf8').trim().length > 0) {
-    errors.push(`roles/${DEFAULT_ROLE}/rules/AGENTS.md 必须保持为空：开发角色不分发 always-on 全局规则内容`)
+  else {
+    const rulesContent = readFileSync(rulesPath, 'utf8')
+    if (!rulesContent.includes('# ECC Fallback Baseline')) {
+      errors.push(`roles/${DEFAULT_ROLE}/rules/AGENTS.md 必须声明 "# ECC Fallback Baseline"`)
+    }
+    if (!rulesContent.includes('不要把本 baseline 解读为 Claude `rules-core`')) {
+      errors.push(`roles/${DEFAULT_ROLE}/rules/AGENTS.md 必须明确不承接 Claude rules-core`)
+    }
+    for (const forbidden of [
+      '# ECC for Codex CLI',
+      '.codex/config.toml',
+      'codex mcp add',
+      'features.multi_agent',
+      'Use `/agent`',
+      'sandbox_mode = "workspace-write"',
+      'Skills are auto-loaded from `.agents/skills/`',
+      'Hooks | 8+ event types',
+      'Context file | CLAUDE.md + AGENTS.md',
+    ]) {
+      if (rulesContent.includes(forbidden)) {
+        errors.push(`roles/${DEFAULT_ROLE}/rules/AGENTS.md 不得包含 Codex 专属片段：${forbidden}`)
+      }
+    }
   }
 
   // 7. 反向登记：每个 role 下含 SKILL.md 的第一方目录都必须登记进角色 constants/skills.ts
