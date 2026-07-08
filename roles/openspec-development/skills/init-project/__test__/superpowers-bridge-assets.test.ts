@@ -16,10 +16,6 @@ const projectSchemaDir = path.join(process.cwd(), 'openspec', 'schemas', 'superp
 const frontendProjectSchemaDir = path.join(process.cwd(), 'openspec', 'schemas', 'frontend-superpowers-bridge')
 const referencesDir = path.join(process.cwd(), 'roles', 'openspec-development', 'skills', 'init-project', 'references')
 
-function readReference(fileName: string) {
-  return fs.readFileSync(path.join(referencesDir, fileName), 'utf8')
-}
-
 function listFiles(root: string, dir = root): string[] {
   return fs.readdirSync(dir, { withFileTypes: true }).flatMap((entry) => {
     const absolutePath = path.join(dir, entry.name)
@@ -35,19 +31,12 @@ describe('superpowers-bridge upstream schema', () => {
     assert.equal(fs.existsSync(deprecatedLocalSchemaDir), false)
   })
 
-  it('optional frontend-only reference carries frontend field and component assessment policy', () => {
-    const airulesBase = readReference('airules-base.md')
-    const frontendOnly = readReference('frontend-only.md')
+  it('init-project references keep frontend policy out of injected project rules', () => {
+    const airulesBase = fs.readFileSync(path.join(referencesDir, 'airules-base.md'), 'utf8')
 
+    assert.deepEqual(fs.readdirSync(referencesDir).sort(), ['airules-base.md'])
     assert.doesNotMatch(airulesBase, /前端字段与组件评估纪律/)
-    assert.match(frontendOnly, /前端字段与组件评估纪律/)
-    assert.match(frontendOnly, /UI 字段/)
-    assert.match(frontendOnly, /API|接口/)
-    assert.match(frontendOnly, /字段对比/)
-    assert.match(frontendOnly, /组件复用/)
-    assert.match(frontendOnly, /封装/)
-    assert.match(frontendOnly, /MISSING blocked/)
-    assert.match(frontendOnly, /frontend-testing/)
+    assert.doesNotMatch(airulesBase, /frontend-testing/)
   })
 
   it('current project OpenSpec schema remains installed as a generated project schema', () => {

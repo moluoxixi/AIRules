@@ -32,111 +32,13 @@ function resolvePathPlaceholders(content) {
 }
 
 const baseReferencePath = path.join(skillRoot, 'references', 'airules-base.md')
-const frontendReferencePath = path.join(skillRoot, 'references', 'frontend-only.md')
-const frontendDependencyNames = [
-  '@angular/core',
-  '@sveltejs/kit',
-  '@vitejs/plugin-react',
-  '@vitejs/plugin-vue',
-  'antd',
-  'element-plus',
-  'next',
-  'nuxt',
-  'react',
-  'react-dom',
-  'solid-js',
-  'svelte',
-  'tailwindcss',
-  'vite',
-  'vue',
-]
-const backendDependencyNames = [
-  '@hapi/hapi',
-  '@nestjs/core',
-  'express',
-  'fastify',
-  'hapi',
-  'koa',
-  'prisma',
-  'typeorm',
-]
-const frontendConfigFiles = [
-  'angular.json',
-  'index.html',
-  'next.config.js',
-  'next.config.mjs',
-  'next.config.ts',
-  'nuxt.config.js',
-  'nuxt.config.mjs',
-  'nuxt.config.ts',
-  'svelte.config.js',
-  'svelte.config.mjs',
-  'vite.config.js',
-  'vite.config.mjs',
-  'vite.config.ts',
-]
 
 const projectRoot = path.resolve(projectRootArg)
 const agentsPath = path.join(projectRoot, 'AGENTS.md')
 const currentContent = existsSync(agentsPath) ? readFileSync(agentsPath, 'utf8') : ''
 
-function readPackageJson(projectRoot) {
-  const packageJsonPath = path.join(projectRoot, 'package.json')
-  if (!existsSync(packageJsonPath)) {
-    return null
-  }
-
-  try {
-    const parsed = JSON.parse(readFileSync(packageJsonPath, 'utf8'))
-    if (parsed === null || typeof parsed !== 'object' || Array.isArray(parsed)) {
-      throw new Error('package.json root must be an object')
-    }
-    return parsed
-  }
-  catch (error) {
-    throw new Error(`读取 package.json 失败：${packageJsonPath}`, { cause: error })
-  }
-}
-
-function dependencyNamesFromPackage(packageJson) {
-  const names = new Set()
-  for (const sectionName of ['dependencies', 'devDependencies', 'peerDependencies', 'optionalDependencies']) {
-    const section = packageJson[sectionName]
-    if (section === undefined) {
-      continue
-    }
-    if (section === null || typeof section !== 'object' || Array.isArray(section)) {
-      throw new Error(`package.json ${sectionName} must be an object when present`)
-    }
-    for (const name of Object.keys(section)) {
-      names.add(name)
-    }
-  }
-  return names
-}
-
-function hasAnyDependency(dependencies, names) {
-  return names.some(name => dependencies.has(name))
-}
-
-function hasFrontendConfig(projectRoot) {
-  return frontendConfigFiles.some(fileName => existsSync(path.join(projectRoot, fileName)))
-}
-
-function isFrontendOnlyProject(projectRoot) {
-  const packageJson = readPackageJson(projectRoot)
-  const dependencies = packageJson === null ? new Set() : dependencyNamesFromPackage(packageJson)
-  const hasFrontendSignal = hasAnyDependency(dependencies, frontendDependencyNames) || hasFrontendConfig(projectRoot)
-  const hasBackendSignal = hasAnyDependency(dependencies, backendDependencyNames)
-
-  return hasFrontendSignal && !hasBackendSignal
-}
-
-// 注入顺序固定：AIRules 项目规则始终放进可替换托管块；前端专用规则只给纯前端项目。
-const inlineReferencePaths = [
-  baseReferencePath,
-  ...(isFrontendOnlyProject(projectRoot) ? [frontendReferencePath] : []),
-]
+// 注入顺序固定：OpenSpec 项目规则只注入 baseline；前端纪律由 frontend-superpowers-bridge schema 承载。
+const inlineReferencePaths = [baseReferencePath]
 
 /**
  * 解析 Markdown 文件开头的最小 YAML frontmatter，返回去除 frontmatter 的正文。

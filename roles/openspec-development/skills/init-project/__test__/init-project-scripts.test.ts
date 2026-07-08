@@ -74,7 +74,7 @@ it('inject-rules - 新建 AGENTS.md 时注入测试用例 ID 基线', () => {
     assert.doesNotMatch(content, /前端字段与组件评估纪律/)
   })
 })
-it('inject-rules - 纯前端项目按需注入前端专用规则', () => {
+it('inject-rules - 纯前端项目不再注入 frontend-only 规则', () => {
   withTempDir('airules-inject-frontend-', (tmpDir) => {
     writeFile(
       path.join(tmpDir, 'package.json'),
@@ -95,10 +95,10 @@ it('inject-rules - 纯前端项目按需注入前端专用规则', () => {
 
     assert.match(content, /< airules start: init-project-rules !>/)
     assert.match(content, /TC-<模块>-<序号>/)
-    assert.match(content, /前端字段与组件评估纪律/)
-    assert.match(content, /字段对比/)
-    assert.match(content, /组件复用/)
-    assert.match(content, /frontend-testing/)
+    assert.doesNotMatch(content, /前端字段与组件评估纪律/)
+    assert.doesNotMatch(content, /字段对比/)
+    assert.doesNotMatch(content, /组件复用/)
+    assert.doesNotMatch(content, /frontend-testing/)
   })
 })
 it('inject-rules - 混合全栈项目不默认注入前端专用规则', () => {
