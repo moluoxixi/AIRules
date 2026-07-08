@@ -150,7 +150,7 @@ npm run rules:install -- --host claude
 
 需要完整 OpenSpec 包时用 `new`。中途暂停或需要接着推进时用 `continue`，然后按它输出的下一步继续，例如 `apply`、`verify` 或 `archive`。
 
-OpenSpec 角色安装 OpenSpec（`@fission-ai/openspec`）、BMAD（`bmad-method`）、gstack、CodeGraph，以及会注册 `openspec/schemas/superpowers-bridge/` 的第一方 `init-project` skill。OpenSpec 保持原生 `openspec/` 根目录，AIRules 不把它包进 `.airules/`。
+OpenSpec 角色安装 OpenSpec（`@fission-ai/openspec`）与 CodeGraph，并通过 AIRules vendor sparse clone skill pipeline 投影精选 BMAD 与 gstack skills，同时提供会注册 `openspec/schemas/superpowers-bridge/` 的第一方 `init-project` skill。OpenSpec 保持原生 `openspec/` 根目录，AIRules 不把它包进 `.airules/`。
 
 ## ECC 工作流
 
@@ -246,7 +246,7 @@ specify extension add speckit-superpowers-bridge --from https://github.com/lihan
 ```
 
 > 源 `skills/` 目录允许递归分组；安装后的 vendor 与宿主 skills 目录统一按叶子 skill 名称展平。
-> 默认 `openspec-development` 不投影 always-on 全局规则基线；它安装 OpenSpec、BMAD、gstack、CodeGraph 与第一方 OpenSpec schema 初始化链路。显式 `ecc-development` 在可用时使用 ECC 官方 installer，并对已审计的非原生宿主使用 AIRules fallback 投影。可选 `speckit-development` 不安装 OpenSpec schema；它安装 Spec Kit 官方 CLI，投影 Spec Kit + Superpowers bridge skill，并把项目结构交给 `specify init` + `specify extension add` 原生生成。
+> 默认 `openspec-development` 不投影 always-on 全局规则基线；它安装 OpenSpec 与 CodeGraph，投影精选 BMAD/gstack skills，并包含第一方 OpenSpec schema 初始化链路。显式 `ecc-development` 在可用时使用 ECC 官方 installer，并对已审计的非原生宿主使用 AIRules fallback 投影。可选 `speckit-development` 不安装 OpenSpec schema；它安装 Spec Kit 官方 CLI，投影 Spec Kit + Superpowers bridge skill，并把项目结构交给 `specify init` + `specify extension add` 原生生成。
 
 ## 为什么不是另一个 AI Rules 集合？
 

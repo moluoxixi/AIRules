@@ -625,13 +625,8 @@ it('vendors 配置 - 使用 OpenAI Playwright 并移除过时技能', () => {
         args: ['install', '--global', '@fission-ai/openspec'],
         skipIfCommandAvailable: 'openspec',
       },
-      {
-        command: 'npm',
-        args: ['install', '--global', 'bmad-method'],
-        skipIfCommandAvailable: 'bmad-method',
-      },
     ],
-    '安装 AIRules openspec-development 角色时应同步安装 CodeGraph、OpenSpec 与 BMAD；init-project 会注册 superpowers-bridge schema 并安装 BMAD BMM runtime',
+    '安装 AIRules openspec-development 角色时只需要同步 CodeGraph 与 OpenSpec CLI；BMAD 通过 vendor skills projection 接入，不安装 bmad-method CLI',
   )
   assert.ok(
     !vendors.moluoxixi.links.some((link: any) => link.target === 'vendor/skills/workflow'),

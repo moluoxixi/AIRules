@@ -67,7 +67,7 @@ it('inject-rules - 新建 AGENTS.md 时注入测试用例 ID 基线', () => {
     const agentsPath = path.join(tmpDir, 'AGENTS.md')
     const content = fs.readFileSync(agentsPath, 'utf8')
 
-    assert.match(content, /AIRULES:BEGIN init-project-rules/)
+    assert.match(content, /< airules start: init-project-rules !>/)
     assert.match(content, /TC-<模块>-<序号>/)
     assert.match(content, /knowledge\/测试\/<模块>\.md/)
     assert.doesNotMatch(content, /docs\/test\/<模块>\.md/)
@@ -93,7 +93,7 @@ it('inject-rules - 纯前端项目按需注入前端专用规则', () => {
     assert.equal(result.status, 0, result.stderr)
     const content = fs.readFileSync(path.join(tmpDir, 'AGENTS.md'), 'utf8')
 
-    assert.match(content, /AIRULES:BEGIN init-project-rules/)
+    assert.match(content, /< airules start: init-project-rules !>/)
     assert.match(content, /TC-<模块>-<序号>/)
     assert.match(content, /前端字段与组件评估纪律/)
     assert.match(content, /字段对比/)
@@ -125,7 +125,7 @@ it('inject-rules - 混合全栈项目不默认注入前端专用规则', () => {
     assert.doesNotMatch(content, /前端字段与组件评估纪律/)
   })
 })
-it('inject-rules - 规则源为空且已有内容时不追加托管块', () => {
+it('inject-rules - 已有 AGENTS.md 时追加可替换托管块并保留用户内容', () => {
   withTempDir('airules-inject-existing-', (tmpDir) => {
     const agentsPath = path.join(tmpDir, 'AGENTS.md')
     const originalContent = '# 已有项目说明\n\n- 既有内容保留。\n'
@@ -136,10 +136,12 @@ it('inject-rules - 规则源为空且已有内容时不追加托管块', () => {
     assert.equal(result.status, 0, result.stderr)
     const content = fs.readFileSync(agentsPath, 'utf8')
 
-    assert.equal(content, originalContent)
+    assert.match(content, /^# 已有项目说明\n\n- 既有内容保留。/)
+    assert.match(content, /< airules start: init-project-rules !>/)
+    assert.match(content, /TC-<模块>-<序号>/)
   })
 })
-it('inject-rules - 规则源为空时移除旧托管块并保留用户内容', () => {
+it('inject-rules - 旧托管块会整块替换为新标记托管块', () => {
   withTempDir('airules-inject-replace-', (tmpDir) => {
     const agentsPath = path.join(tmpDir, 'AGENTS.md')
     writeFile(
@@ -163,10 +165,36 @@ it('inject-rules - 规则源为空时移除旧托管块并保留用户内容', (
     assert.equal(result.status, 0, result.stderr)
     const content = fs.readFileSync(agentsPath, 'utf8')
 
-    assert.equal(content, '# 用户规则\n\n- 保留。')
+    assert.match(content, /^# 用户规则\n\n- 保留。/)
+    assert.match(content, /< airules start: init-project-rules !>/)
+    assert.match(content, /< airules end: init-project-rules !>/)
+    assert.match(content, /TC-<模块>-<序号>/)
     assert.doesNotMatch(content, /# 旧托管规则/)
     assert.doesNotMatch(content, /AIRULES:BEGIN init-project-rules/)
     assert.doesNotMatch(content, /AIRULES:END init-project-rules/)
+  })
+})
+it('inject-rules - 多个托管块时报错并要求人工合并', () => {
+  withTempDir('airules-inject-multiple-blocks-', (tmpDir) => {
+    const agentsPath = path.join(tmpDir, 'AGENTS.md')
+    writeFile(
+      agentsPath,
+      [
+        '< airules start: init-project-rules !>',
+        '# 旧托管规则 A',
+        '< airules end: init-project-rules !>',
+        '',
+        '< airules start: init-project-rules !>',
+        '# 旧托管规则 B',
+        '< airules end: init-project-rules !>',
+        '',
+      ].join('\n'),
+    )
+
+    const result = runInjectRules(tmpDir)
+
+    assert.notEqual(result.status, 0)
+    assert.match(result.stderr, /multiple AIRules managed blocks/)
   })
 })
 

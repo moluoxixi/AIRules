@@ -11,10 +11,10 @@ import { fileURLToPath } from 'node:url'
 
 const projectRoot = path.resolve(process.argv[2] ?? process.cwd())
 const skipOpenSpecCommands = process.env.AIRULES_SKIP_OPENSPEC_VALIDATE === '1'
-const skipBmadInstall = process.env.AIRULES_SKIP_BMAD_INSTALL === '1'
 const schemaName = 'superpowers-bridge'
 const schemaRepositoryUrl = 'https://github.com/JiangWay/openspec-schemas.git'
 const schemaSourceOverride = process.env.AIRULES_OPENSPEC_SCHEMA_SOURCE_DIR
+const projectedBmadSkillsDirOverride = process.env.AIRULES_PROJECTED_BMAD_SKILLS_DIR
 const openSpecToolTargets = [
   { dir: '.claude', tool: 'claude' },
   { dir: '.codex', tool: 'codex' },
@@ -24,15 +24,6 @@ const openSpecToolTargets = [
   { dir: '.opencode', tool: 'opencode' },
 ]
 const fallbackOpenSpecTool = 'qoder'
-const bmadToolTargets = [
-  { dir: '.claude', tool: 'claude-code' },
-  { dir: '.codex', tool: 'codex' },
-  { dir: '.cursor', tool: 'cursor' },
-  { dir: '.qoder', tool: 'qoder' },
-  { dir: '.trae', tool: 'trae' },
-  { dir: '.opencode', tool: 'opencode' },
-]
-const fallbackBmadTool = 'qoder'
 const openSpecWorkflows = [
   'propose',
   'explore',
@@ -46,8 +37,17 @@ const openSpecWorkflows = [
   'verify',
   'onboard',
 ]
+const requiredBmadProjectedSkills = [
+  'bmad-prd',
+  'bmad-create-epics-and-stories',
+  'bmad-generate-project-context',
+  'bmad-shard-doc',
+]
 
 const skillRoot = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..')
+const projectedBmadSkillsDir = projectedBmadSkillsDirOverride
+  ? path.resolve(projectedBmadSkillsDirOverride)
+  : path.dirname(skillRoot)
 const knowledgeSourcePath = path.join(skillRoot, 'assets', 'knowledge', 'index.md')
 const openspecDir = path.join(projectRoot, 'openspec')
 const schemaTargetDir = path.join(openspecDir, 'schemas', schemaName)
@@ -111,14 +111,6 @@ function resolveGitCommand() {
   )
 }
 
-function resolveBmadCommand() {
-  return resolveCommand(
-    process.platform === 'win32'
-      ? ['bmad-method.cmd', 'bmad-method.bat', 'bmad-method.exe', 'bmad.cmd', 'bmad.bat', 'bmad.exe']
-      : ['bmad-method', 'bmad'],
-  )
-}
-
 function resolveCommand(candidates) {
   const pathValue = process.env.PATH ?? process.env.Path ?? ''
 
@@ -150,19 +142,7 @@ function requireGitCommand() {
   return command
 }
 
-function requireBmadCommand() {
-  const command = resolveBmadCommand()
-  if (!command) {
-    throw new Error('MISSING bmad-method CLI；请先安装 bmad-method，或先运行 AIRules openspec-development role setup。')
-  }
-  return command
-}
-
 function runOpenSpec(command, args) {
-  return runCommand(command, args)
-}
-
-function runBmad(command, args) {
   return runCommand(command, args)
 }
 
@@ -242,18 +222,16 @@ function resolveOpenSpecTools() {
   return tools.length > 0 ? tools.join(',') : fallbackOpenSpecTool
 }
 
-function initializeBmadProject(command) {
-  const bmadTools = resolveBmadTools()
-  runBmad(command, ['install', '--directory', projectRoot, '--modules', 'bmm', '--tools', bmadTools, '--yes'])
-  console.log(`[airules] 已运行 bmad-method install --modules bmm --tools ${bmadTools}`)
-}
+function validateProjectedBmadSkills() {
+  const missingSkills = requiredBmadProjectedSkills.filter(skillName =>
+    !existsSync(path.join(projectedBmadSkillsDir, skillName, 'SKILL.md')),
+  )
 
-function resolveBmadTools() {
-  const tools = bmadToolTargets
-    .filter(target => existsSync(path.join(projectRoot, target.dir)))
-    .map(target => target.tool)
+  if (missingSkills.length > 0) {
+    throw new Error(`MISSING BMAD projected skills：${missingSkills.join(', ')}；请先运行 AIRules openspec-development role sync，确保 BMAD skills 通过 vendor sparse clone/projection 安装。`)
+  }
 
-  return tools.length > 0 ? tools.join(',') : fallbackBmadTool
+  console.log(`[airules] 已确认 BMAD projected skills：${requiredBmadProjectedSkills.join(', ')}`)
 }
 
 function validateOpenSpecSchema(command) {
@@ -341,6 +319,7 @@ function installOpenSpecSchema(created) {
 }
 
 assertAssetExists(knowledgeSourcePath, 'assets/knowledge/index.md')
+validateProjectedBmadSkills()
 
 let openSpecCommand = null
 if (!skipOpenSpecCommands) {
@@ -349,13 +328,6 @@ if (!skipOpenSpecCommands) {
 }
 else {
   console.log('[airules] 已跳过 OpenSpec CLI 命令（AIRULES_SKIP_OPENSPEC_VALIDATE=1）')
-}
-
-if (!skipBmadInstall) {
-  initializeBmadProject(requireBmadCommand())
-}
-else {
-  console.log('[airules] 已跳过 BMAD BMM runtime 安装（AIRULES_SKIP_BMAD_INSTALL=1）')
 }
 
 installOpenSpecSchema(created)

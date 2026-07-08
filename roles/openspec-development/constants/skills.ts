@@ -18,11 +18,6 @@ const openspecDevelopmentSetup: SetupCommand[] = [
     args: ['install', '--global', '@fission-ai/openspec'],
     skipIfCommandAvailable: 'openspec',
   },
-  {
-    command: 'npm',
-    args: ['install', '--global', 'bmad-method'],
-    skipIfCommandAvailable: 'bmad-method',
-  },
 ]
 
 export const vendors: VendorsConfig = [

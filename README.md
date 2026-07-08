@@ -150,7 +150,7 @@ Rigorous loop for larger or ambiguous work:
 
 Use `new` when the work needs a fuller OpenSpec package. Use `continue` to resume that package and follow the next command it prints, such as `apply`, `verify`, or `archive`.
 
-The OpenSpec role installs OpenSpec (`@fission-ai/openspec`), BMAD (`bmad-method`), gstack, CodeGraph, and the first-party `init-project` skill that registers `openspec/schemas/superpowers-bridge/`. Keep OpenSpec in its native `openspec/` directory; AIRules does not wrap it under `.airules/`.
+The OpenSpec role installs OpenSpec (`@fission-ai/openspec`) and CodeGraph, then projects selected BMAD and gstack skills through AIRules' vendor sparse-clone skill pipeline plus the first-party `init-project` skill that registers `openspec/schemas/superpowers-bridge/`. Keep OpenSpec in its native `openspec/` directory; AIRules does not wrap it under `.airules/`.
 
 ## ECC Workflow
 
@@ -207,7 +207,7 @@ Use the product schema after initializing a product, planning, or requirements r
 
 Run `/opsx:apply <change-id>` again to continue a paused product package. The product `init-project` skill sets `openspec/config.yaml` to `schema: product-pm-bridge`, so this workflow uses `product-pm-bridge` by default.
 
-Product changes use pm-skills for lightweight solution brief, PRD, acceptance criteria and edge cases. For company PRDs, long documents or high-risk changes, use the BMAD skills installed by init-project: `bmad-shard-doc` to shard long source documents, `bmad-prd` to create/update/validate PRDs, `bmad-create-epics-and-stories` to produce developer-ready epics and stories, and `bmad-generate-project-context` to capture downstream context. Durable context is promoted to `knowledge/index.md` only after review; it does not become a rules file.
+Product changes use pm-skills for lightweight solution brief, PRD, acceptance criteria and edge cases. For company PRDs, long documents or high-risk changes, use the BMAD skills projected by role sync: `bmad-shard-doc` to shard long source documents, `bmad-prd` to create/update/validate PRDs, `bmad-create-epics-and-stories` to produce developer-ready epics and stories, and `bmad-generate-project-context` to capture downstream context. Durable context is promoted to `knowledge/index.md` only after review; it does not become a rules file.
 
 ## Project Structure
 
@@ -246,7 +246,7 @@ Product changes use pm-skills for lightweight solution brief, PRD, acceptance cr
 ```
 
 > Source `skills/` folders may be grouped recursively; installed vendor and host skill directories are flattened by leaf skill name.
-> The default `openspec-development` role does not project an always-on global rules baseline; it installs OpenSpec, BMAD, gstack, CodeGraph, and the first-party OpenSpec schema bootstrap. The explicit `ecc-development` role uses ECC official installers where possible and AIRules fallback projection for audited non-native hosts. The optional `speckit-development` role does not install an OpenSpec schema; it installs Spec Kit's official CLI, projects the Spec Kit + Superpowers bridge skill, and leaves project structure to `specify init` plus `specify extension add`.
+> The default `openspec-development` role does not project an always-on global rules baseline; it installs OpenSpec and CodeGraph, projects selected BMAD/gstack skills, and includes the first-party OpenSpec schema bootstrap. The explicit `ecc-development` role uses ECC official installers where possible and AIRules fallback projection for audited non-native hosts. The optional `speckit-development` role does not install an OpenSpec schema; it installs Spec Kit's official CLI, projects the Spec Kit + Superpowers bridge skill, and leaves project structure to `specify init` plus `specify extension add`.
 
 ## Why Not Just Another AI Rules Repo?
 

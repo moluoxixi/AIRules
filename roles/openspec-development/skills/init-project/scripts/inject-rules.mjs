@@ -15,8 +15,14 @@ const skillRoot = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..
 // 用户项目规则绑到 AIRules 安装根的全局 scripts/ 目录。
 const INIT_PROJECT_SKILL_PLACEHOLDER = '<init-project-skill>'
 const initProjectSkillRootPosix = skillRoot.split(path.sep).join('/')
-const MANAGED_BLOCK_BEGIN = '<!-- AIRULES:BEGIN init-project-rules -->'
-const MANAGED_BLOCK_END = '<!-- AIRULES:END init-project-rules -->'
+const MANAGED_BLOCK_BEGIN = '< airules start: init-project-rules !>'
+const MANAGED_BLOCK_END = '< airules end: init-project-rules !>'
+const LEGACY_MANAGED_BLOCK_BEGIN = '<!-- AIRULES:BEGIN init-project-rules -->'
+const LEGACY_MANAGED_BLOCK_END = '<!-- AIRULES:END init-project-rules -->'
+const MANAGED_BLOCK_MARKER_PAIRS = [
+  { begin: MANAGED_BLOCK_BEGIN, end: MANAGED_BLOCK_END },
+  { begin: LEGACY_MANAGED_BLOCK_BEGIN, end: LEGACY_MANAGED_BLOCK_END },
+]
 
 /** 把规则正文里的 init-project skill 占位符替换成真实绝对路径（POSIX 斜杠）。 */
 function resolvePathPlaceholders(content) {
@@ -73,7 +79,6 @@ const frontendConfigFiles = [
 const projectRoot = path.resolve(projectRootArg)
 const agentsPath = path.join(projectRoot, 'AGENTS.md')
 const currentContent = existsSync(agentsPath) ? readFileSync(agentsPath, 'utf8') : ''
-const hasExistingAgentsContent = currentContent.trim().length > 0
 
 function readPackageJson(projectRoot) {
   const packageJsonPath = path.join(projectRoot, 'package.json')
@@ -127,14 +132,10 @@ function isFrontendOnlyProject(projectRoot) {
   return hasFrontendSignal && !hasBackendSignal
 }
 
-// 注入顺序固定：项目规则骨架仅在 AGENTS.md 为空/新建时注入；前端专用规则只给纯前端项目。
+// 注入顺序固定：AIRules 项目规则始终放进可替换托管块；前端专用规则只给纯前端项目。
 const inlineReferencePaths = [
-  ...(hasExistingAgentsContent
-    ? []
-    : [
-        baseReferencePath,
-        ...(isFrontendOnlyProject(projectRoot) ? [frontendReferencePath] : []),
-      ]),
+  baseReferencePath,
+  ...(isFrontendOnlyProject(projectRoot) ? [frontendReferencePath] : []),
 ]
 
 /**
@@ -156,71 +157,6 @@ function stripFrontmatter(content) {
   return normalized.slice(afterMarker + 1).trim()
 }
 
-function normalizeHeadingTitle(title) {
-  return title.trim().toLowerCase()
-}
-
-function parseHeadingTitle(line) {
-  const trimmedLine = line.trimStart()
-  let markerLength = 0
-
-  while (trimmedLine[markerLength] === '#') {
-    markerLength++
-  }
-
-  if (markerLength === 0 || markerLength > 6) {
-    return ''
-  }
-
-  const nextCharacter = trimmedLine[markerLength]
-  if (nextCharacter !== ' ' && nextCharacter !== '\t') {
-    return ''
-  }
-
-  let title = trimmedLine.slice(markerLength).trim()
-  while (title.endsWith('#')) {
-    title = title.slice(0, -1).trimEnd()
-  }
-
-  return title.trim()
-}
-
-function collectHeadingTitles(content) {
-  const titles = new Map()
-  let insideFence = false
-
-  for (const rawLine of content.split('\n')) {
-    const line = rawLine.endsWith('\r') ? rawLine.slice(0, -1) : rawLine
-    const trimmedLine = line.trimStart()
-
-    if (trimmedLine.startsWith('```') || trimmedLine.startsWith('~~~')) {
-      insideFence = !insideFence
-      continue
-    }
-
-    if (insideFence) {
-      continue
-    }
-
-    const title = parseHeadingTitle(line)
-    const normalizedTitle = normalizeHeadingTitle(title)
-    if (normalizedTitle) {
-      titles.set(normalizedTitle, title)
-    }
-  }
-
-  return titles
-}
-
-function findDuplicateHeadingTitles(existingContent, incomingContent) {
-  const currentTitles = collectHeadingTitles(existingContent)
-  const incomingTitles = collectHeadingTitles(incomingContent)
-
-  return [...incomingTitles.entries()]
-    .filter(([normalizedTitle]) => currentTitles.has(normalizedTitle))
-    .map(([, title]) => title)
-}
-
 const inlineSections = inlineReferencePaths.map(referencePath =>
   resolvePathPlaceholders(stripFrontmatter(readFileSync(referencePath, 'utf8'))),
 ).filter(section => section.length > 0)
@@ -230,20 +166,38 @@ const managedRulesBlock = incomingRules.length === 0
   : `${MANAGED_BLOCK_BEGIN}\n${incomingRules}\n${MANAGED_BLOCK_END}`
 
 function replaceManagedBlock(content, replacement) {
-  const beginIndex = content.indexOf(MANAGED_BLOCK_BEGIN)
-  const endIndex = content.indexOf(MANAGED_BLOCK_END)
+  let matchedBlock = null
 
-  if (beginIndex === -1 && endIndex === -1) {
+  for (const markerPair of MANAGED_BLOCK_MARKER_PAIRS) {
+    const beginIndex = content.indexOf(markerPair.begin)
+    const endIndex = content.indexOf(markerPair.end)
+    const secondBeginIndex = beginIndex === -1 ? -1 : content.indexOf(markerPair.begin, beginIndex + markerPair.begin.length)
+    const secondEndIndex = endIndex === -1 ? -1 : content.indexOf(markerPair.end, endIndex + markerPair.end.length)
+
+    if (beginIndex === -1 && endIndex === -1) {
+      continue
+    }
+
+    if (beginIndex === -1 || endIndex === -1 || endIndex < beginIndex) {
+      throw new Error('AGENTS.md contains an incomplete AIRules managed block; fix markers before reinjecting rules.')
+    }
+
+    if (matchedBlock !== null || secondBeginIndex !== -1 || secondEndIndex !== -1) {
+      throw new Error('AGENTS.md contains multiple AIRules managed blocks; keep one block before reinjecting rules.')
+    }
+
+    matchedBlock = {
+      beginIndex,
+      afterEndIndex: endIndex + markerPair.end.length,
+    }
+  }
+
+  if (matchedBlock === null) {
     return null
   }
 
-  if (beginIndex === -1 || endIndex === -1 || endIndex < beginIndex) {
-    throw new Error('AGENTS.md contains an incomplete AIRules managed block; fix markers before reinjecting rules.')
-  }
-
-  const afterEndIndex = endIndex + MANAGED_BLOCK_END.length
-  const before = content.slice(0, beginIndex).trimEnd()
-  const after = content.slice(afterEndIndex).trimStart()
+  const before = content.slice(0, matchedBlock.beginIndex).trimEnd()
+  const after = content.slice(matchedBlock.afterEndIndex).trimStart()
 
   return [before, replacement, after].filter(section => section.length > 0).join('\n\n')
 }
@@ -254,19 +208,6 @@ if (incomingRules.length === 0) {
   writeFileSync(agentsPath, replacedContent ?? currentContent, 'utf8')
   console.log(`[airules] Updated ${agentsPath}`)
   process.exit(0)
-}
-
-const duplicateTitles = replacedContent === null
-  ? findDuplicateHeadingTitles(currentContent, incomingRules)
-  : []
-
-if (duplicateTitles.length > 0) {
-  console.error('[airules] AGENTS.md contains duplicate headings that require AI review:')
-  for (const title of duplicateTitles) {
-    console.error(`- ${title}`)
-  }
-
-  throw new Error('Duplicate AGENTS.md headings detected; review the existing file and merge the incoming rules manually.')
 }
 
 const nextContent = currentContent.trim().length === 0
