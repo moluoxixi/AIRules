@@ -25,7 +25,7 @@
 | Skills | Claude: `skills/ecc/` 21 个 core skills + `.agents/skills/` 33 个共享 skills；Codex: 21 个 core skills + `.agents/skills/` 33 个共享 skills | 从 ECC 上游在线 `skills/` 精确投影 21 个 core skills；从 `.agents/skills/` 投影 26 个非重名共享 skills。AIRules 的扁平 skill namespace 不能同时保留同名双份条目，重名项以 core skills 为准 |
 | Agents | Claude: `agents/` 64 个 Markdown agents；Codex: `agents/` 67 个 agents，其中包含 `docs-researcher.toml`、`explorer.toml`、`reviewer.toml` 这类原生 TOML agents | 从 ECC 上游在线 `agents/` 投影到 `vendor/agents`；Codex 保留原生 `.toml` 并把 `.md` 转成 TOML；Qoder、Trae、Trae CN 把 Codex 原生 TOML agents 按内容等价转成 `.md` 后分发 |
 | MCP | Codex `config.toml` 实际启用 GitHub、Context7、Exa、Memory、Playwright、Sequential Thinking；上游 `mcp-configs/mcp-servers.json` 是全量 catalog，含占位环境变量和可选重型服务 | 不直接激活上游全量 catalog；fallback 使用 `roles/ecc-development/mcp/mcp.json` 的可审计精简清单，再由 AIRules MCP adapter 按宿主格式写入 |
-| Rules | Claude 有 `rules/ecc/` 约 104 个文件；Codex 无 `rules/` 目录，使用 `AGENTS.md` 指令化约束 | fallback 不分发 ECC 专属 global rules；`roles/ecc-development/rules/AGENTS.md` 仅保留空占位，避免把工具说明塞给运行时 agent |
+| Rules | Claude 有 `rules/ecc/` 约 104 个文件；Codex 无 `rules/` 目录，使用 `AGENTS.md` 指令化约束 | fallback 不分发 ECC 专属 global rules；`roles/ecc-development/rules/AGENTS.md` 分发中性 fallback baseline，只描述 assets 可见面、能力边界和运行纪律 |
 | Hooks | Claude core 选择 `hooks-runtime` 并写入 Stop / SubagentStop / PreToolUse hooks；Codex core 跳过 `hooks-runtime`，仅复制 hook runtime 脚本且不配置启用 | 不把 ECC hook runtime 自动转成 fallback；仅继续叠加 AIRules `roles/common/hooks/session-log.mjs` |
 | Commands | Claude core 安装 `commands/` 约 84 个 slash commands；Codex core 跳过 `commands-core` | AIRules 当前没有 commands 分发通道，不作为 fallback 激活面 |
 | Scripts / state | Claude / Codex 均有安装状态文件和少量 runtime scripts；Claude scripts 面更完整 | 不作为 fallback 通用分发面；配置通过 rules/MCP/agents/skills 可见契约表达 |
@@ -108,7 +108,7 @@ OpenCode 继续使用 `--profile opencode --target opencode`，如需额外语�
 
 ## 全局规则边界
 
-`roles/ecc-development/rules/AGENTS.md` 只保留空占位。ECC 是外部工具/资产来源，不应在分发给运行时 agent 的 global rules 中解释；项目知识检索、语言识别、能力选择应由具体 skill / agent / 项目自身规则承担。
+`roles/ecc-development/rules/AGENTS.md` 分发中性 fallback baseline。它不复制 Claude `rules/ecc/**`，也不写入 Codex 专属 `config.toml`、`/agent` 或 sandbox 说明；只向 Qoder、Trae、Trae CN 这类 fallback 宿主声明 `skills/`、`agents/`、MCP 可见面、能力边界和通用执行纪律。项目知识检索、语言识别、能力选择仍由具体 skill / agent / 项目自身规则承担。
 
 ## OpenSpec 跟踪
 

@@ -19,6 +19,10 @@ const PRODUCT_SKILLS = ['init-project']
 const ECC_DEVELOPMENT_ROLE = 'ecc-development'
 const OPENSPEC_DEVELOPMENT_ROLE = 'openspec-development'
 const SPECKIT_DEVELOPMENT_ROLE = 'speckit-development'
+const ECC_FALLBACK_BASELINE_FIXTURE = `# ECC Fallback Baseline
+
+不要把本 baseline 解读为 Claude \`rules-core\`。
+`
 
 function withTempDir<T>(run: (tmpDir: string) => T): T {
   const tmpDir = fs.mkdtempSync(path.join(os.tmpdir(), 'airules-wf-'))
@@ -68,7 +72,7 @@ describe('自洽检查器', () => {
     fs.mkdirSync(path.join(root, 'knowledge', '架构', 'decisions'), { recursive: true })
     fs.writeFileSync(path.join(root, 'knowledge', '架构', 'decisions', 'index.md'), '| ADR | 决策 |\n|---|---|\n')
     fs.writeFileSync(path.join(root, 'roles', OPENSPEC_DEVELOPMENT_ROLE, 'rules', 'AGENTS.md'), '')
-    fs.writeFileSync(path.join(root, 'roles', ECC_DEVELOPMENT_ROLE, 'rules', 'AGENTS.md'), '')
+    fs.writeFileSync(path.join(root, 'roles', ECC_DEVELOPMENT_ROLE, 'rules', 'AGENTS.md'), ECC_FALLBACK_BASELINE_FIXTURE)
     fs.writeFileSync(path.join(root, 'package.json'), JSON.stringify({ scripts: { 'lint:check': 'x', 'typecheck': 'x' } }))
   }
 
