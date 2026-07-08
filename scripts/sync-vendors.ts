@@ -115,6 +115,14 @@ function rememberTarget(targets: Map<string, string>, target: string, source: st
   targets.set(key, source)
 }
 
+function resolveVendorTarget(link: { kind: string, target: string }): string {
+  if (link.kind === 'skill') {
+    return join(PROJECT_ROOT, 'vendor', 'skills', flattenedSkillName(link.target))
+  }
+
+  return join(PROJECT_ROOT, link.target)
+}
+
 function readArgValue(name: string): string | undefined {
   const index = process.argv.indexOf(name)
   if (index === -1) {
@@ -243,7 +251,7 @@ async function main() {
             }))
           : [{
               source: sourcePath,
-              target: join(PROJECT_ROOT, 'vendor', 'skills', flattenedSkillName(link.target)),
+              target: resolveVendorTarget(link),
             }]
 
         for (const source of sources) {

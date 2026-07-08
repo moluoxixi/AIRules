@@ -130,6 +130,48 @@ export const vendors = [{
   }
 })
 
+it('vendor rebuild - selected agent files link into vendor agents', async () => {
+  const tmpDir = fs.mkdtempSync(path.join(os.tmpdir(), 'moluoxixi-vendor-agent-files-'))
+
+  try {
+    const moluoHome = path.join(tmpDir, 'home')
+    const manifestPath = path.join(tmpDir, 'vendors.mjs')
+    fs.mkdirSync(path.dirname(manifestPath), { recursive: true })
+    fs.writeFileSync(manifestPath, `
+export const vendors = [{
+  name: 'ecc',
+  official: true,
+  source: 'https://example.test/ecc.git',
+  projections: [{
+    kind: 'agents',
+    sourceDir: 'agents',
+    agents: [
+      'tdd-guide',
+      { name: 'review/code-reviewer', output: 'code-reviewer' },
+    ],
+  }],
+}]
+`)
+    fs.mkdirSync(path.join(moluoHome, 'vendor', 'repos', 'ecc', 'agents', 'review'), { recursive: true })
+    fs.writeFileSync(path.join(moluoHome, 'vendor', 'repos', 'ecc', 'agents', 'tdd-guide.md'), 'tdd\n')
+    fs.writeFileSync(path.join(moluoHome, 'vendor', 'repos', 'ecc', 'agents', 'review', 'code-reviewer.md'), 'review\n')
+
+    const plan = await rebuildVendorSkillLinks({ homeDir: moluoHome, manifestPath })
+
+    assert.deepStrictEqual(plan.map(entry => entry.kind), ['agent-file', 'agent-file'])
+    const tddAgent = path.join(moluoHome, 'vendor', 'agents', 'tdd-guide.md')
+    const codeReviewAgent = path.join(moluoHome, 'vendor', 'agents', 'code-reviewer.md')
+    assert.ok(fs.existsSync(tddAgent), 'selected string agent should be projected as a vendor agent file')
+    assert.ok(fs.existsSync(codeReviewAgent), 'selected renamed agent should be projected as a vendor agent file')
+    assert.equal(fs.readFileSync(tddAgent, 'utf8'), 'tdd\n')
+    assert.equal(fs.readFileSync(codeReviewAgent, 'utf8'), 'review\n')
+    assert.ok(!fs.existsSync(path.join(moluoHome, 'vendor', 'agents', 'review')), 'selected nested source dirs must not be projected wholesale')
+  }
+  finally {
+    cleanup(tmpDir)
+  }
+})
+
 it('installation linking - .agents is always created as mandatory layer', () => {
   const { tmpDir, userHome, moluoHome, claudeHome } = setupMockEnvironment()
 

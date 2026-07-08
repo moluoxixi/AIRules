@@ -301,7 +301,10 @@ function syncVendorResourceLink(entry: LinkEntry) {
   }
 
   mkdirSync(path.dirname(entry.target), { recursive: true })
-  replaceWithSymlink(entry.source, entry.target, entry.kind === 'mcp-file' ? linkFileForCurrentPlatform() : linkTypeForCurrentPlatform())
+  const linkType = entry.kind === 'mcp-file' || entry.kind === 'agent-file'
+    ? linkFileForCurrentPlatform()
+    : linkTypeForCurrentPlatform()
+  replaceWithSymlink(entry.source, entry.target, linkType)
 }
 
 function mergeOptionalDir(sourceDir: string, targetDir: string) {
@@ -594,7 +597,7 @@ export async function rebuildVendorSkillLinks({ homeDir, manifestPath }: { homeD
       throw new Error(`Vendor "${entry.vendorId}" missing configured source directory: ${entry.source} -> ${entry.target}`)
     }
 
-    if (entry.kind === 'agents-dir' || entry.kind === 'mcp-file') {
+    if (entry.kind === 'agents-dir' || entry.kind === 'agent-file' || entry.kind === 'mcp-file') {
       syncVendorResourceLink(entry)
       continue
     }

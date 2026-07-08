@@ -240,6 +240,55 @@ it('walkVendorTree - agents 与 mcp projection 映射到通用 vendor 分发面'
   )
 })
 
+it('walkVendorTree - agents projection 支持精选单文件 agent', () => {
+  const vendors: Record<string, any> = {}
+  const mockConfig: VendorsConfig = [
+    {
+      name: 'selected-agents',
+      official: true,
+      source: 'https://github.com/example/agents.git',
+      projections: [
+        {
+          kind: 'agents',
+          sourceDir: 'agents',
+          agents: [
+            'reviewer',
+            { name: 'framework/react-reviewer', output: 'react-reviewer' },
+            'already-suffixed.md',
+          ],
+        },
+      ],
+    },
+  ]
+
+  walkVendorTree(mockConfig, [], vendors)
+
+  assert.deepStrictEqual(
+    vendors['selected-agents'].links.map((link: any) => ({
+      kind: link.kind,
+      source: link.source,
+      target: link.target,
+    })),
+    [
+      {
+        kind: 'agent-file',
+        source: 'agents/reviewer.md',
+        target: 'vendor/agents/reviewer.md',
+      },
+      {
+        kind: 'agent-file',
+        source: 'agents/framework/react-reviewer.md',
+        target: 'vendor/agents/react-reviewer.md',
+      },
+      {
+        kind: 'agent-file',
+        source: 'agents/already-suffixed.md',
+        target: 'vendor/agents/already-suffixed.md',
+      },
+    ],
+  )
+})
+
 // ─── 分类嵌套结构测试 ────────────────────────────────────────────────────────
 
 it('walkVendorTree - 数组中的嵌套分类对象', () => {
@@ -704,13 +753,31 @@ it('vendors 配置 - openspec-development 角色接入 BMAD 文档拆分、gstac
       { source: 'skills/engineering/grill-with-docs', target: 'vendor/skills/matt-grill-with-docs' },
       { source: 'skills/engineering/domain-modeling', target: 'vendor/skills/matt-domain-modeling' },
       { source: 'skills/engineering/codebase-design', target: 'vendor/skills/matt-codebase-design' },
-      { source: 'skills/engineering/to-spec', target: 'vendor/skills/matt-to-spec' },
-      { source: 'skills/engineering/to-tickets', target: 'vendor/skills/matt-to-tickets' },
-      { source: 'skills/engineering/tdd', target: 'vendor/skills/matt-tdd' },
-      { source: 'skills/engineering/diagnosing-bugs', target: 'vendor/skills/matt-diagnosing-bugs' },
-      { source: 'skills/engineering/code-review', target: 'vendor/skills/matt-code-review' },
     ],
-    'Matt Pocock 技能按需精选接入并统一加 matt- 前缀',
+    'Matt Pocock 仅保留追问、领域建模与代码库设计技能，执行链条由 ECC agents 承接',
+  )
+
+  assert.ok(vendors.ecc, 'openspec-development 角色应接入 ECC 精选执行 agents')
+  assert.strictEqual(vendors.ecc.repo, 'https://github.com/affaan-m/ECC.git')
+  assert.deepStrictEqual(
+    vendors.ecc.links.map((link: any) => ({
+      kind: link.kind,
+      source: link.source,
+      target: link.target,
+    })),
+    [
+      { kind: 'agent-file', source: 'agents/tdd-guide.md', target: 'vendor/agents/tdd-guide.md' },
+      { kind: 'agent-file', source: 'agents/pr-test-analyzer.md', target: 'vendor/agents/pr-test-analyzer.md' },
+      { kind: 'agent-file', source: 'agents/e2e-runner.md', target: 'vendor/agents/e2e-runner.md' },
+      { kind: 'agent-file', source: 'agents/code-reviewer.md', target: 'vendor/agents/code-reviewer.md' },
+      { kind: 'agent-file', source: 'agents/typescript-reviewer.md', target: 'vendor/agents/typescript-reviewer.md' },
+      { kind: 'agent-file', source: 'agents/react-reviewer.md', target: 'vendor/agents/react-reviewer.md' },
+      { kind: 'agent-file', source: 'agents/vue-reviewer.md', target: 'vendor/agents/vue-reviewer.md' },
+      { kind: 'agent-file', source: 'agents/react-build-resolver.md', target: 'vendor/agents/react-build-resolver.md' },
+      { kind: 'agent-file', source: 'agents/build-error-resolver.md', target: 'vendor/agents/build-error-resolver.md' },
+      { kind: 'agent-file', source: 'agents/silent-failure-hunter.md', target: 'vendor/agents/silent-failure-hunter.md' },
+    ],
+    'ECC 精选 agents 承接 TDD、测试分析、E2E、Review 与构建/静默失败诊断链条',
   )
 
   assert.deepStrictEqual(
