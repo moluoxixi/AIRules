@@ -40,4 +40,4 @@ flowchart TD
 |---|---|
 | OpenSpec schema | 项目已有宿主目录或默认 `.qoder` 下存在 OpenSpec 官方入口；OpenSpec 全局配置为 `profile: custom`、`delivery: both` 且 workflows 包含 `continue` 等全量 workflow；宿主入口中存在 `/opsx:continue` 等全量 `/opsx:*` commands；`openspec/schemas/product-pm-bridge/` 存在；`openspec/config.yaml` 含 `schema: product-pm-bridge`；`openspec schema validate product-pm-bridge` 通过；`openspec schemas` 能列出 `product-pm-bridge (project)` 或等价项目级条目 |
 | BMAD BMM runtime | 项目已有宿主目录或默认 `.qoder` 下存在 BMAD BMM skills；`bmad-prd`、`bmad-create-epics-and-stories`、`bmad-shard-doc`、`bmad-generate-project-context` 可被宿主发现 |
-| knowledge | `knowledge/index.md` 已建；长期产品背景、业务规则、用户洞察和领域事实落 `knowledge/` |
+| knowledge | `knowledge/index.md` 已建；其中声明每次任务开始必须读取知识库入口；长期产品背景、业务规则、用户洞察和领域事实落 `knowledge/` |

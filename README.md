@@ -193,7 +193,7 @@ specify extension add speckit-superpowers-bridge --from https://github.com/lihan
 
 Choose another official integration when needed, such as `claude`, `copilot`, or `gemini`. Add `--force` for an existing non-empty directory and `--ignore-agent-tools` when you need to skip agent tool detection. After initialization, use the native Spec Kit design flow: `/speckit.constitution`, `/speckit.specify`, `/speckit.clarify`, `/speckit.plan`, `/speckit.tasks`, and `/speckit.analyze`. In Spec Kit projects, prefer `$speckit-superpowers-bridge` on Codex or `/speckit-superpowers-bridge` on Claude Code over direct `/speckit.implement`; the bridge keeps Spec Kit artifacts canonical and delegates implementation discipline to native Superpowers.
 
-The role also ships a complete `init-project` skill so agents can run the full initialization sequence consistently inside target projects. That wrapper injects project rules, links `CLAUDE.md`, runs Spec Kit and bridge extension commands, initializes CodeGraph, and does not copy OpenSpec schemas or AIRules OpenSpec initialization assets.
+The role also ships a complete `init-project` skill so agents can run the full initialization sequence consistently inside target projects. That wrapper injects project rules, links `CLAUDE.md`, runs Spec Kit and bridge extension commands, rewrites upstream plugin-install wording to AIRules projected-skills wording, initializes CodeGraph, and does not copy OpenSpec schemas or AIRules OpenSpec initialization assets. For frontend projects, it installs the project-local `.specify/airules-schemas/frontend-superpowers-bridge/` schema prompt asset instead of injecting frontend rules into `AGENTS.md`.
 
 ### Product Spec Usage
 
@@ -246,7 +246,7 @@ Product changes use pm-skills for lightweight solution brief, PRD, acceptance cr
 ```
 
 > Source `skills/` folders may be grouped recursively; installed vendor and host skill directories are flattened by leaf skill name.
-> The default `openspec-development` role does not project an always-on global rules baseline; it installs OpenSpec and CodeGraph, projects selected BMAD/gstack skills, and includes the first-party OpenSpec schema bootstrap. The explicit `ecc-development` role uses ECC official installers where possible and AIRules fallback projection for audited non-native hosts. The optional `speckit-development` role does not install an OpenSpec schema; it installs Spec Kit's official CLI, projects the Spec Kit + Superpowers bridge skill, and leaves project structure to `specify init` plus `specify extension add`.
+> The default `openspec-development` role does not project an always-on global rules baseline; it installs OpenSpec and CodeGraph, projects selected BMAD/gstack skills, and includes the first-party OpenSpec schema bootstrap. The explicit `ecc-development` role uses ECC official installers where possible and AIRules fallback projection for audited non-native hosts. The optional `speckit-development` role does not install an OpenSpec schema; it installs Spec Kit's official CLI, projects the Spec Kit + Superpowers bridge skill, leaves project structure to `specify init` plus `specify extension add`, and adds a project-local frontend schema prompt asset only when a frontend project is detected.
 
 ## Why Not Just Another AI Rules Repo?
 

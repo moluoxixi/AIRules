@@ -139,6 +139,8 @@ it('product spec-init - 复制 product-pm-bridge schema 与 product knowledge �
     assert.equal(fs.existsSync(path.join(root, 'openspec', 'schemas', 'product-pm-bridge', 'schema.yaml')), true)
     assert.equal(fs.existsSync(path.join(root, 'openspec', 'schemas', 'product-pm-bridge', 'templates', 'prd.md')), true)
     assert.equal(fs.existsSync(path.join(root, 'knowledge', 'index.md')), true)
+    assert.match(fs.readFileSync(path.join(root, 'knowledge', 'index.md'), 'utf8'), /knowledge\/index\.md/)
+    assert.match(fs.readFileSync(path.join(root, 'knowledge', 'index.md'), 'utf8'), /每次任务开始/)
     assert.equal(fs.existsSync(path.join(root, 'openspec', 'specs')), false)
     assert.equal(fs.existsSync(path.join(root, 'openspec', 'changes')), false)
 

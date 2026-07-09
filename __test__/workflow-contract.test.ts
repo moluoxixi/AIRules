@@ -21,6 +21,7 @@ const COMMON_ROLE = 'common'
 const ECC_DEVELOPMENT_ROLE = 'ecc-development'
 const OPENSPEC_DEVELOPMENT_ROLE = 'openspec-development'
 const SPECKIT_DEVELOPMENT_ROLE = 'speckit-development'
+const PRODUCT_ROLE = 'product'
 const ECC_FALLBACK_BASELINE_FIXTURE = `# ECC Fallback Baseline
 
 不要把本 baseline 解读为 Claude \`rules-core\`。
@@ -47,6 +48,12 @@ function roleSkillNames(role: string): string[] {
     .filter(entry => fs.existsSync(path.join(skillsDir, entry.name, 'SKILL.md')))
     .map(entry => entry.name)
     .sort()
+}
+
+function assertKnowledgeContract(content: string, label: string) {
+  assert.match(content, /knowledge\/index\.md/, `${label} 缺 knowledge/index.md 入口`)
+  assert.match(content, /每次任务开始|任务开始/, `${label} 缺任务起始读取要求`)
+  assert.match(content, /必须.*读取|先读/, `${label} 缺强制读取语义`)
 }
 
 // ── 1. 自洽检查器：真实仓库 + 种入缺陷的 fixture ──────────────
@@ -189,11 +196,13 @@ describe('编排红线文本', () => {
     assert.match(roleReadme, /\$speckit-superpowers-bridge/)
     assert.doesNotMatch(roleReadme, /社区检索未发现/)
     assert.match(roleReadme, /完整 `init-project` skill/)
-    assert.match(roleReadme, /frontend-only\.md/)
+    assert.match(roleReadme, /frontend-superpowers-bridge/)
+    assert.doesNotMatch(roleReadme, /frontend-only\.md/)
     assert.match(initSkill, /specify init <project> --integration <integration>/)
     assert.match(initSkill, /specify extension add speckit-superpowers-bridge/)
     assert.match(initSkill, /inject-rules\.mjs/)
-    assert.match(initSkill, /frontend-only\.md/)
+    assert.match(initSkill, /frontend-superpowers-bridge/)
+    assert.doesNotMatch(initSkill, /frontend-only\.md/)
     assert.match(initSkill, /spec-init\.mjs/)
     assert.match(initSkill, /codegraph init -i/)
     assert.match(initSkill, /不写 `openspec\/schemas\/\*\*`/)
@@ -342,11 +351,11 @@ describe('编排红线文本', () => {
     assert.equal(fs.existsSync(path.join(repoRoot, 'constants', 'skills.ts')), false)
     assert.equal(fs.existsSync(path.join(repoRoot, 'roles', SPECKIT_DEVELOPMENT_ROLE, 'constants', 'skills.ts')), true)
     assert.equal(fs.existsSync(path.join(repoRoot, 'roles', OPENSPEC_DEVELOPMENT_ROLE, 'constants', 'skills.ts')), true)
-    assert.equal(fs.existsSync(path.join(repoRoot, 'roles', 'product', 'constants', 'skills.ts')), true)
+    assert.equal(fs.existsSync(path.join(repoRoot, 'roles', PRODUCT_ROLE, 'constants', 'skills.ts')), true)
     assert.equal(fs.existsSync(path.join(repoRoot, 'roles', ECC_DEVELOPMENT_ROLE, 'constants', 'skills.ts')), true)
     assert.equal(fs.existsSync(path.join(repoRoot, 'roles', SPECKIT_DEVELOPMENT_ROLE, 'constants', 'skills.md')), false)
     assert.equal(fs.existsSync(path.join(repoRoot, 'roles', OPENSPEC_DEVELOPMENT_ROLE, 'constants', 'skills.md')), false)
-    assert.equal(fs.existsSync(path.join(repoRoot, 'roles', 'product', 'constants', 'skills.md')), false)
+    assert.equal(fs.existsSync(path.join(repoRoot, 'roles', PRODUCT_ROLE, 'constants', 'skills.md')), false)
     assert.equal(fs.existsSync(path.join(repoRoot, 'roles', ECC_DEVELOPMENT_ROLE, 'constants', 'skills.md')), false)
   })
 
@@ -366,8 +375,30 @@ describe('编排红线文本', () => {
     ])
     assert.deepEqual(fs.readdirSync(path.join(skillRoot, 'references')).sort(), [
       'airules-base.md',
-      'frontend-only.md',
     ])
+    assert.equal(fs.existsSync(path.join(skillRoot, 'references', 'frontend-only.md')), false)
+    const frontendSchemaPath = path.join(skillRoot, 'assets', 'schemas', 'frontend-superpowers-bridge', 'schema.yaml')
+    assert.equal(fs.existsSync(frontendSchemaPath), true)
+    assert.equal(fs.existsSync(path.join(skillRoot, 'assets', 'schemas', 'frontend-superpowers-bridge', 'templates', 'tasks-template.md')), true)
+    assert.equal(fs.existsSync(path.join(skillRoot, 'assets', 'schemas', 'frontend-superpowers-bridge', 'commands', 'speckit.speckit-superpowers-bridge.execute.md')), true)
+    const frontendSchema = fs.readFileSync(frontendSchemaPath, 'utf8')
+    assert.match(frontendSchema, /lihan3238\/speckit-superpowers-bridge/)
+    assert.match(frontendSchema, /\.specify\/templates\/tasks-template\.md/)
+    assert.doesNotMatch(frontendSchema, /openspec\/changes|artifacts:/)
+    assert.doesNotMatch(frontendSchema, /Superpowers plugin|claude plugin|Skill tool/)
+  })
+
+  it('三角色 init-project 分发知识库契约与 knowledge/index.md 入口', () => {
+    for (const role of [OPENSPEC_DEVELOPMENT_ROLE, SPECKIT_DEVELOPMENT_ROLE, PRODUCT_ROLE]) {
+      const skillRoot = path.join(repoRoot, 'roles', role, 'skills', 'init-project')
+      const baseRulesPath = path.join(skillRoot, 'references', 'airules-base.md')
+      const knowledgeIndexPath = path.join(skillRoot, 'assets', 'knowledge', 'index.md')
+
+      assert.equal(fs.existsSync(baseRulesPath), true, `${role} 缺 airules-base.md`)
+      assert.equal(fs.existsSync(knowledgeIndexPath), true, `${role} 缺 assets/knowledge/index.md`)
+      assertKnowledgeContract(fs.readFileSync(baseRulesPath, 'utf8'), `${role} airules-base.md`)
+      assertKnowledgeContract(fs.readFileSync(knowledgeIndexPath, 'utf8'), `${role} knowledge/index.md`)
+    }
   })
 
   it('repo-maintenance 测试用例 ID 纪律指向 knowledge/测试', () => {
@@ -394,6 +425,7 @@ describe('编排红线文本', () => {
     assert.deepEqual(fs.readdirSync(referencesDir).sort(), ['agents.md', 'airules-base.md'])
     assert.match(baseRules, /TC-<模块>-<序号>/)
     assert.match(baseRules, /knowledge\/测试\/<模块>\.md/)
+    assertKnowledgeContract(baseRules, 'openspec airules-base.md')
     assert.match(baseRules, /covers: SCN-<capability>-<NNN>/)
     assert.doesNotMatch(baseRules, /docs\/test\/<模块>\.md/)
   })

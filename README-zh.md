@@ -193,7 +193,7 @@ specify extension add speckit-superpowers-bridge --from https://github.com/lihan
 
 其他宿主按官方 integration 选择，例如 `claude`、`copilot`、`gemini`。已有非空目录加 `--force`；需要跳过 agent 工具探测时加 `--ignore-agent-tools`。初始化后使用 Spec Kit 原生设计流：`/speckit.constitution`、`/speckit.specify`、`/speckit.clarify`、`/speckit.plan`、`/speckit.tasks`、`/speckit.analyze`。Spec Kit 项目实现阶段优先用 Codex 的 `$speckit-superpowers-bridge` 或 Claude Code 的 `/speckit-superpowers-bridge`，不要默认直接跑 `/speckit.implement`；bridge 让 Spec Kit 产物保持 canonical，再把实现纪律交给原生 Superpowers。
 
-该角色也分发完整 `init-project` skill，方便 agent 在目标项目中一致地运行完整初始化链路。这个包装器会注入项目规则、建立 `CLAUDE.md` 链接、调用 Spec Kit 与 bridge extension 命令、初始化 CodeGraph，且不复制 OpenSpec schema 或 AIRules OpenSpec 初始化资产。
+该角色也分发完整 `init-project` skill，方便 agent 在目标项目中一致地运行完整初始化链路。这个包装器会注入项目规则、建立 `CLAUDE.md` 链接、调用 Spec Kit 与 bridge extension 命令、把上游插件安装文案改写为 AIRules projected skills 文案、初始化 CodeGraph，且不复制 OpenSpec schema 或 AIRules OpenSpec 初始化资产。前端项目会额外安装项目内 `.specify/airules-schemas/frontend-superpowers-bridge/` schema 提示资产，而不是把前端规则注入 `AGENTS.md`。
 
 ### 产品规格用法
 
@@ -246,7 +246,7 @@ specify extension add speckit-superpowers-bridge --from https://github.com/lihan
 ```
 
 > 源 `skills/` 目录允许递归分组；安装后的 vendor 与宿主 skills 目录统一按叶子 skill 名称展平。
-> 默认 `openspec-development` 不投影 always-on 全局规则基线；它安装 OpenSpec 与 CodeGraph，投影精选 BMAD/gstack skills，并包含第一方 OpenSpec schema 初始化链路。显式 `ecc-development` 在可用时使用 ECC 官方 installer，并对已审计的非原生宿主使用 AIRules fallback 投影。可选 `speckit-development` 不安装 OpenSpec schema；它安装 Spec Kit 官方 CLI，投影 Spec Kit + Superpowers bridge skill，并把项目结构交给 `specify init` + `specify extension add` 原生生成。
+> 默认 `openspec-development` 不投影 always-on 全局规则基线；它安装 OpenSpec 与 CodeGraph，投影精选 BMAD/gstack skills，并包含第一方 OpenSpec schema 初始化链路。显式 `ecc-development` 在可用时使用 ECC 官方 installer，并对已审计的非原生宿主使用 AIRules fallback 投影。可选 `speckit-development` 不安装 OpenSpec schema；它安装 Spec Kit 官方 CLI，投影 Spec Kit + Superpowers bridge skill，把项目结构交给 `specify init` + `specify extension add` 原生生成，并且只在检测到前端项目时新增项目内前端 schema 提示资产。
 
 ## 为什么不是另一个 AI Rules 集合？
 

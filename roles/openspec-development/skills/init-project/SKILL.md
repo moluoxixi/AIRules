@@ -56,4 +56,4 @@ flowchart TD
 | CodeGraph | `codegraph init -i` 真实执行并报告 `PASS`、`FAIL`、`MISSING` 或 `NOT RUN` |
 | OpenSpec schema | `openspec/` 由 OpenSpec CLI 初始化；项目已有宿主目录或默认 `.qoder` 下存在 OpenSpec 官方入口；OpenSpec 全局配置为 `profile: custom`、`delivery: both` 且 workflows 包含 `continue` 等全量 workflow；宿主入口中存在 `/opsx:continue` 等全量 `/opsx:*` commands；`openspec/schemas/<selected-schema>/` 存在；`openspec/config.yaml` 含 `schema: <selected-schema>`；`openspec schema validate <selected-schema>` 通过；`openspec schemas` 能列出 `<selected-schema> (project)` 或等价项目级条目；前端项目的 `<selected-schema>` 必须是 `frontend-superpowers-bridge` |
 | BMAD projected skills | 同一宿主 skills 目录下存在 AIRules 精选 BMAD skills；`bmad-prd`、`bmad-create-epics-and-stories`、`bmad-shard-doc`、`bmad-generate-project-context` 可被宿主发现；不得通过 `bmad-method install --modules bmm` 扩大安装面 |
-| knowledge | `knowledge/index.md` 已建，长期背景事实落 `knowledge/`；变更生命周期产物由 OpenSpec 管理 |
+| knowledge | `knowledge/index.md` 已建；其中声明每次任务开始必须读取知识库入口；长期背景事实落 `knowledge/`，变更生命周期产物由 OpenSpec 管理 |
