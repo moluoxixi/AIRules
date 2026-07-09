@@ -486,11 +486,11 @@ export function syncFlattenedSkills(
  *
  * roles/<role>/rules/AGENTS.md 存在时复制到 vendor/ 目录下，作为宿主基线软链接的统一源。
  * roles/<role>/agents、mcp、hooks 存在时也复制到 vendor/agents、vendor/mcp、vendor/hooks，避免安装产物散落在顶层目录。
- * 同步顺序为 roles/common → roles/<role>，目标角色同名资产覆盖 common。
+ * 同步顺序由 roles/<role>/constants/skills.ts 的 extendsRoles 决定，后声明角色同名资产覆盖前置角色。
  * product 等轻量角色可以只提供 skills，不强制带 rules/agents/mcp/hooks。
  */
-export function syncFirstPartyToHome(repoRoot: string, moluoHome: string, role = DEFAULT_ROLE) {
-  const rolePathsList = existingRoleOverlayPaths(repoRoot, role)
+export async function syncFirstPartyToHome(repoRoot: string, moluoHome: string, role = DEFAULT_ROLE) {
+  const rolePathsList = await existingRoleOverlayPaths(repoRoot, role)
   removePath(vendorBaselinePath(moluoHome))
   removePath(vendorAgentsPath(moluoHome))
   removePath(vendorMcpPath(moluoHome))
@@ -510,12 +510,14 @@ export function syncFirstPartyToHome(repoRoot: string, moluoHome: string, role =
  * 将第一方 skills 源目录投影到 vendor/skills，作为第三方 vendor 后的本地覆盖层。
  * 该函数只清理曾经指向同一 source skills 根目录的过时链接，不会删除第三方 vendor 技能。
  */
-export function syncFirstPartySkillsToVendor(sourceRoot: string, moluoHome: string, role = DEFAULT_ROLE) {
+export async function syncFirstPartySkillsToVendor(sourceRoot: string, moluoHome: string, role = DEFAULT_ROLE) {
   const legacySkillsDir = path.join(sourceRoot, 'skills')
   const rolesRoot = path.join(sourceRoot, 'roles')
-  const sourceSkillRoots = roleOverlayOrder(role)
-    .map(roleName => path.join(sourceRoot, 'roles', roleName, 'skills'))
-    .filter(existsSync)
+  const sourceSkillRoots = existsSync(rolesRoot)
+    ? (await roleOverlayOrder(sourceRoot, role))
+        .map(roleName => path.join(sourceRoot, 'roles', roleName, 'skills'))
+        .filter(existsSync)
+    : []
 
   if (sourceSkillRoots.length === 0 && existsSync(legacySkillsDir)) {
     sourceSkillRoots.push(legacySkillsDir)

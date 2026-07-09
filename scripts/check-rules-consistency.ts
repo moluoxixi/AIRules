@@ -3,10 +3,12 @@ import type { VendorNode, VendorRepo, VendorsConfig } from './lib/vendors.js'
 import { existsSync, readdirSync, readFileSync } from 'node:fs'
 import path from 'node:path'
 import { fileURLToPath } from 'node:url'
+import { vendors as commonVendors } from '../roles/common/constants/skills.js'
 import { vendors as eccDevelopmentVendors } from '../roles/ecc-development/constants/skills.js'
 import { vendors as openspecDevelopmentVendors } from '../roles/openspec-development/constants/skills.js'
 import { vendors as productVendors } from '../roles/product/constants/skills.js'
 import { vendors as speckitDevelopmentVendors } from '../roles/speckit-development/constants/skills.js'
+import { vendors as trellisDevelopmentVendors } from '../roles/trellis-development/constants/skills.js'
 import { COMMON_ROLE, resolveRolePaths } from './lib/roles.js'
 
 // 编码编排资产最小自洽性检查（低成本、非重型治理）：
@@ -18,10 +20,13 @@ const PRODUCT_ROLE = 'product'
 const ECC_DEVELOPMENT_ROLE = 'ecc-development'
 const OPENSPEC_DEVELOPMENT_ROLE = 'openspec-development'
 const SPECKIT_DEVELOPMENT_ROLE = 'speckit-development'
+const TRELLIS_DEVELOPMENT_ROLE = 'trellis-development'
 const ROLE_VENDOR_CONFIGS: Record<string, VendorsConfig> = {
+  [COMMON_ROLE]: commonVendors,
   [SPECKIT_DEVELOPMENT_ROLE]: speckitDevelopmentVendors,
   [OPENSPEC_DEVELOPMENT_ROLE]: openspecDevelopmentVendors,
   [ECC_DEVELOPMENT_ROLE]: eccDevelopmentVendors,
+  [TRELLIS_DEVELOPMENT_ROLE]: trellisDevelopmentVendors,
   [PRODUCT_ROLE]: productVendors,
 }
 
@@ -124,10 +129,9 @@ export function checkRulesConsistency(repoRoot: string): CheckResult {
   const errors: string[] = []
   const openspecRolePaths = resolveRolePaths(repoRoot, OPENSPEC_DEVELOPMENT_ROLE)
   const eccRolePaths = resolveRolePaths(repoRoot, ECC_DEVELOPMENT_ROLE)
-  const commonRolePaths = resolveRolePaths(repoRoot, COMMON_ROLE)
   const roleVendorPaths = Object.keys(ROLE_VENDOR_CONFIGS).map(role => resolveRolePaths(repoRoot, role))
   const agentsDir = openspecRolePaths.agentsDir
-  const skillRoots = [commonRolePaths, ...roleVendorPaths].filter(paths => existsSync(paths.skillsDir))
+  const skillRoots = roleVendorPaths.filter(paths => existsSync(paths.skillsDir))
   const skillsDirs = skillRoots.map(paths => paths.skillsDir)
   const archDir = path.join(repoRoot, 'knowledge', '架构')
   const eccRulesPath = path.join(eccRolePaths.rulesDir, 'AGENTS.md')

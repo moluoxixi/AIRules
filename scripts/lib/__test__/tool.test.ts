@@ -129,7 +129,8 @@ it('tool - syncToHosts 同步内置和用户自定义 skills 到宿主', async (
     const codexHome = path.join(userHome, '.codex')
 
     writeFile(path.join(repoRoot, 'package.json'), '{"type":"module"}\n')
-    writeFile(path.join(repoRoot, 'roles', 'openspec-development', 'constants', 'skills.js'), 'export const vendors = []\n')
+    writeFile(path.join(repoRoot, 'roles', 'common', 'constants', 'skills.js'), 'export const vendors = []\n')
+    writeFile(path.join(repoRoot, 'roles', 'openspec-development', 'constants', 'skills.js'), 'export const extendsRoles = [\'common\']\nexport const vendors = []\n')
     writeFile(path.join(repoRoot, 'roles', 'openspec-development', 'rules', 'AGENTS.md'), 'baseline\n')
     writeFile(path.join(repoRoot, 'roles', 'openspec-development', 'agents', 'demo-agent.md'), '---\nname: demo-agent\ndescription: Demo agent\n---\nDo work\n')
     writeFile(path.join(repoRoot, 'roles', 'common', 'skills', 'session-capture', 'SKILL.md'), 'common\n')
@@ -184,7 +185,8 @@ it('tool - syncToHosts 支持只包含 skills 的 product 角色', async () => {
     const codexHome = path.join(userHome, '.codex')
 
     writeFile(path.join(repoRoot, 'package.json'), '{"type":"module"}\n')
-    writeFile(path.join(repoRoot, 'roles', 'product', 'constants', 'skills.js'), 'export const vendors = []\n')
+    writeFile(path.join(repoRoot, 'roles', 'common', 'constants', 'skills.js'), 'export const vendors = []\n')
+    writeFile(path.join(repoRoot, 'roles', 'product', 'constants', 'skills.js'), 'export const extendsRoles = [\'common\']\nexport const vendors = []\n')
     writeFile(path.join(repoRoot, 'roles', 'openspec-development', 'rules', 'AGENTS.md'), 'openspec-development baseline\n')
     writeFile(path.join(repoRoot, 'roles', 'common', 'hooks', 'session-log.mjs'), 'process.stdout.write("{}")\n')
     writeFile(path.join(repoRoot, 'roles', 'common', 'skills', 'session-capture', 'SKILL.md'), 'common skill\n')
@@ -238,7 +240,8 @@ it('tool - ecc-development 只对 ECC 全局 target 使用官方 installer，项
     const officialInstalls: Array<{ host: string, target: string, profile: string, args: string[] }> = []
 
     writeFile(path.join(repoRoot, 'package.json'), '{"type":"module"}\n')
-    writeFile(path.join(repoRoot, 'roles', 'ecc-development', 'constants', 'skills.js'), 'export const vendors = []\n')
+    writeFile(path.join(repoRoot, 'roles', 'common', 'constants', 'skills.js'), 'export const vendors = []\n')
+    writeFile(path.join(repoRoot, 'roles', 'ecc-development', 'constants', 'skills.js'), 'export const extendsRoles = [\'common\']\nexport const vendors = []\n')
     writeFile(path.join(repoRoot, 'roles', 'common', 'hooks', 'session-log.mjs'), 'process.stdout.write("{}")\n')
     writeFile(path.join(repoRoot, 'roles', 'common', 'skills', 'session-capture', 'SKILL.md'), 'common skill\n')
     writeFile(path.join(repoRoot, 'roles', 'ecc-development', 'agents', 'reviewer.toml'), [
@@ -367,7 +370,8 @@ it('tool - ecc-development 的 Trae fallback 不允许退化成 MCP-only 安装'
     const traeMcpHome = path.join(userHome, 'AppData', 'Roaming', 'Trae', 'User')
 
     writeFile(path.join(repoRoot, 'package.json'), '{"type":"module"}\n')
-    writeFile(path.join(repoRoot, 'roles', 'ecc-development', 'constants', 'skills.js'), 'export const vendors = []\n')
+    writeFile(path.join(repoRoot, 'roles', 'common', 'constants', 'skills.js'), 'export const vendors = []\n')
+    writeFile(path.join(repoRoot, 'roles', 'ecc-development', 'constants', 'skills.js'), 'export const extendsRoles = [\'common\']\nexport const vendors = []\n')
     writeFile(path.join(repoRoot, 'roles', 'ecc-development', 'rules', 'AGENTS.md'), 'ecc baseline\n')
     writeFile(path.join(repoRoot, 'roles', 'common', 'skills', 'session-capture', 'SKILL.md'), 'common skill\n')
     writeFile(path.join(repoRoot, 'roles', 'ecc-development', 'mcp', 'mcp.json'), '{"mcpServers":{"demo":{"command":"demo"}}}\n')
@@ -398,7 +402,8 @@ it('tool - syncToHosts 在源码安装目录缺少 dist 时可直接加载 TypeS
     const codexHome = path.join(userHome, '.codex')
 
     writeFile(path.join(repoRoot, 'package.json'), '{"type":"module"}\n')
-    writeFile(path.join(repoRoot, 'roles', 'openspec-development', 'constants', 'skills.ts'), 'export const vendors = []\n')
+    writeFile(path.join(repoRoot, 'roles', 'common', 'constants', 'skills.ts'), 'export const vendors = []\n')
+    writeFile(path.join(repoRoot, 'roles', 'openspec-development', 'constants', 'skills.ts'), 'export const extendsRoles = [\'common\']\nexport const vendors = []\n')
     writeFile(path.join(repoRoot, 'roles', 'openspec-development', 'rules', 'AGENTS.md'), 'baseline\n')
     writeFile(path.join(repoRoot, 'roles', 'openspec-development', 'agents', 'demo-agent.md'), '---\nname: demo-agent\ndescription: Demo agent\n---\nDo work\n')
     writeFile(path.join(repoRoot, 'roles', 'common', 'skills', 'session-capture', 'SKILL.md'), 'common\n')
@@ -436,7 +441,9 @@ it('tool - syncToHosts 在安装目录即仓库根目录时仍从 vendor 投影�
     const vendorRepoSkill = path.join(moluoHome, 'vendor', 'repos', 'moluoxixi', 'roles', 'openspec-development', 'skills', 'api-docs')
 
     writeFile(path.join(moluoHome, 'package.json'), '{"type":"module"}\n')
+    writeFile(path.join(moluoHome, 'roles', 'common', 'constants', 'skills.js'), 'export const vendors = []\n')
     writeFile(path.join(moluoHome, 'roles', 'openspec-development', 'constants', 'skills.js'), `
+export const extendsRoles = ['common']
 export const vendors = [
   {
     name: 'moluoxixi',
@@ -496,7 +503,9 @@ it('tool - syncToHosts 在 workspace 第一方 vendor 且安装目录即仓库�
     const codexHome = path.join(userHome, '.codex')
 
     writeFile(path.join(moluoHome, 'package.json'), '{"type":"module"}\n')
+    writeFile(path.join(moluoHome, 'roles', 'common', 'constants', 'skills.js'), 'export const vendors = []\n')
     writeFile(path.join(moluoHome, 'roles', 'openspec-development', 'constants', 'skills.js'), `
+export const extendsRoles = ['common']
 export const vendors = [
   {
     name: 'moluoxixi',

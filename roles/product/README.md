@@ -6,4 +6,4 @@
 
 当前只建立 product `init-project` skill；rules、mcp、hooks、agents 暂未按产品角色拆分。
 
-同步 product 角色时会默认叠加 `roles/common/`，因此仍包含公共的会话索引 hook 与手动会话沉淀 / 提炼 / 记忆能力。
+同步 product 角色时会按 `extendsRoles = ['common']` 显式叠加 `roles/common/`，因此仍包含公共的会话索引 hook 与手动会话沉淀 / 提炼 / 记忆能力。

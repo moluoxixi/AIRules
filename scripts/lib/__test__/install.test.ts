@@ -33,7 +33,7 @@ function cleanup(tmpDir: string) {
   fs.rmSync(tmpDir, { recursive: true, force: true })
 }
 
-it('first-party sync - agents and mcp are stored under vendor', () => {
+it('first-party sync - agents and mcp are stored under vendor', async () => {
   const tmpDir = fs.mkdtempSync(path.join(os.tmpdir(), 'moluoxixi-firstparty-'))
 
   try {
@@ -42,11 +42,13 @@ it('first-party sync - agents and mcp are stored under vendor', () => {
     fs.mkdirSync(path.join(repoRoot, 'roles', 'openspec-development', 'rules'), { recursive: true })
     fs.mkdirSync(path.join(repoRoot, 'roles', 'openspec-development', 'agents'), { recursive: true })
     fs.mkdirSync(path.join(repoRoot, 'roles', 'openspec-development', 'mcp'), { recursive: true })
+    fs.mkdirSync(path.join(repoRoot, 'roles', 'openspec-development', 'constants'), { recursive: true })
+    fs.writeFileSync(path.join(repoRoot, 'roles', 'openspec-development', 'constants', 'skills.ts'), 'export const vendors = []\n')
     fs.writeFileSync(path.join(repoRoot, 'roles', 'openspec-development', 'rules', 'AGENTS.md'), '# AIRules\n')
     fs.writeFileSync(path.join(repoRoot, 'roles', 'openspec-development', 'agents', 'demo.md'), 'agent\n')
     fs.writeFileSync(path.join(repoRoot, 'roles', 'openspec-development', 'mcp', 'mcp.json'), '{"mcpServers":{}}\n')
 
-    syncFirstPartyToHome(repoRoot, moluoHome, 'openspec-development')
+    await syncFirstPartyToHome(repoRoot, moluoHome, 'openspec-development')
 
     assert.ok(fs.existsSync(path.join(moluoHome, 'vendor', 'AGENTS.md')), 'rules/AGENTS.md should sync to vendor/AGENTS.md')
     assert.ok(fs.existsSync(path.join(moluoHome, 'vendor', 'agents', 'demo.md')), 'agents should sync to vendor/agents')

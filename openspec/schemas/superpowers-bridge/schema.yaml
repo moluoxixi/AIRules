@@ -114,7 +114,7 @@ artifacts:
       - brainstorm
 
   - id: specs
-    generates: "specs/**/*.md"
+    generates: 'specs/**/*.md'
     description: Detailed specifications for the change
     template: spec.md
     instruction: |

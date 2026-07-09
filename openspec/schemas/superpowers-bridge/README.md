@@ -360,7 +360,7 @@ Implemented purely via context injection at invocation time, not by modifying sk
 
 `/opsx:apply` triggers the steps inside [schema.yaml](./schema.yaml)'s `apply.instruction`:
 
-#### 0. Pre-flight — verify required Superpowers skills
+### 0. Pre-flight — verify required Superpowers skills
 
 Confirms these skills are installed before proceeding:
 
@@ -372,11 +372,11 @@ Missing skill → STOP with explicit error. No silent fallback, no manual mode w
 
 > The v0 version of this schema once placed an "auto-commit change artifacts to current branch" step here. It was removed after the [PR #970 review](https://github.com/Fission-AI/OpenSpec/pull/970): handling untracked change directories is the worktree skill's responsibility, not the schema's.
 
-#### 1. Workspace — `superpowers:using-git-worktrees`
+### 1. Workspace — `superpowers:using-git-worktrees`
 
 Creates `.worktrees/<change-name>/`, switches to a new branch, runs setup, confirms a clean test baseline.
 
-#### 2. Executor — `superpowers:subagent-driven-development`
+### 2. Executor — `superpowers:subagent-driven-development`
 
 Main agent reads `plan.md`, dispatches a fresh subagent per micro-task. Each subagent transitively activates:
 
@@ -387,7 +387,7 @@ Coarse `tasks.md` checkboxes tick as tasks complete. After all tasks, a final co
 
 This schema does NOT support `superpowers:executing-plans` as a fallback. See the "Six design touches" section below for rationale.
 
-#### 3. Verification — `openspec-verify-change`
+### 3. Verification — `openspec-verify-change`
 
 Produces `verify.md` from 7 checks: structural validation (`openspec validate --all --json`), task completion, delta-spec sync state, design/specs coherence (non-blocking warning), implementation signal (committed code), front-door routing leak detector (non-blocking warning), and deferred-dogfood vs automated-test equivalence. The last check blocks only when `plan.md` has `[~]` deferrals but the equivalence section is empty (gap analysis skipped); otherwise it is informational.
 
@@ -395,17 +395,17 @@ Failures route back to the corresponding artifact for fix; verify can be re-run.
 
 > **Steps 4–6 are the canonical post-verify sequence: retro → archive → PR. Reordering produces incomplete PRs (retrospective + archive land as trailing post-merge commits, losing hot context).**
 
-#### 4. Retrospective — `retrospective` artifact (recommended; per Entry & exit gates skip rules, trivial fixes may skip)
+### 4. Retrospective — `retrospective` artifact (recommended; per Entry & exit gates skip rules, trivial fixes may skip)
 
 Evidence-first reflection: §0 Evidence (quantitative front-matter — commit count, diff size, tasks-done ratio, dependencies, validate state, etc.) plus 6 analysis sections (Wins / Misses / Plan deviations / Skill compliance / Surprises / Promote candidates). Each claim cites a commit / file / measurable fact, typically referencing §0 instead of inlining evidence per bullet. The procedure is embedded in the artifact's instruction — no external skill required (Decision 3 in the design spec defers Claude Code plugin packaging to v1.x).
 
 Written **before** opening the PR so retro lands in the same PR diff.
 
-#### 5. Archive — `openspec archive -y` (or `/opsx:archive`)
+### 5. Archive — `openspec archive -y` (or `/opsx:archive`)
 
 Syncs delta specs into `openspec/specs/<capability>/spec.md` and moves the change folder to `openspec/changes/archive/YYYY-MM-DD-<name>/`. Run **before** the PR opens so the diff reflects the complete archived cycle (all artifacts done, spec synced, folder under archive/).
 
-#### 6. Completion — `superpowers:finishing-a-development-branch`
+### 6. Completion — `superpowers:finishing-a-development-branch`
 
 Confirms tests are green, presents merge / PR / keep-branch / discard options, cleans up the worktree. **PR is the last step** — if retro or archive haven't been done, finish them first.
 

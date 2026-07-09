@@ -1,5 +1,6 @@
 import { existsSync } from 'node:fs'
 import path from 'node:path'
+import { pathToFileURL } from 'node:url'
 
 export const DEFAULT_ROLE = 'openspec-development'
 export const COMMON_ROLE = 'common'
@@ -38,18 +39,39 @@ export function requireRolePaths(repoRoot: string, role = DEFAULT_ROLE): RolePat
   return paths
 }
 
-export function roleOverlayOrder(role = DEFAULT_ROLE): string[] {
-  return role === COMMON_ROLE ? [COMMON_ROLE] : [COMMON_ROLE, role]
-}
+export async function roleOverlayOrder(repoRoot: string, role = DEFAULT_ROLE): Promise<string[]> {
+  const orderedRoles: string[] = []
+  const seenRoles = new Set<string>()
+  const visitingRoles = new Set<string>()
 
-export function existingRoleOverlayPaths(repoRoot: string, role = DEFAULT_ROLE): RolePaths[] {
-  const selected = requireRolePaths(repoRoot, role)
-  if (role === COMMON_ROLE) {
-    return [selected]
+  async function visit(roleName: string) {
+    requireRolePaths(repoRoot, roleName)
+
+    if (seenRoles.has(roleName)) {
+      return
+    }
+
+    if (visitingRoles.has(roleName)) {
+      throw new Error(`AIRules role inheritance cycle detected at "${roleName}"`)
+    }
+
+    visitingRoles.add(roleName)
+    for (const extendedRole of await loadRoleExtendsRoles(repoRoot, roleName)) {
+      await visit(extendedRole)
+    }
+    visitingRoles.delete(roleName)
+
+    seenRoles.add(roleName)
+    orderedRoles.push(roleName)
   }
 
-  const common = resolveRolePaths(repoRoot, COMMON_ROLE)
-  return existsSync(common.roleRoot) ? [common, selected] : [selected]
+  await visit(role)
+  return orderedRoles
+}
+
+export async function existingRoleOverlayPaths(repoRoot: string, role = DEFAULT_ROLE): Promise<RolePaths[]> {
+  const roles = await roleOverlayOrder(repoRoot, role)
+  return roles.map(roleName => requireRolePaths(repoRoot, roleName))
 }
 
 export function resolveRoleManifestPath(
@@ -84,4 +106,17 @@ export function resolveRoleManifestPath(
   }
 
   throw new Error(`Missing AIRules role skill manifest: roles/${role}/constants/skills.ts`)
+}
+
+async function loadRoleExtendsRoles(repoRoot: string, role: string): Promise<string[]> {
+  const manifestPath = resolveRoleManifestPath(repoRoot, role)
+  const manifestUrl = pathToFileURL(path.resolve(manifestPath)).href
+  const module = await import(manifestUrl)
+  const extendsRoles = module.extendsRoles ?? module.default?.extendsRoles ?? []
+
+  if (!Array.isArray(extendsRoles) || !extendsRoles.every(roleName => typeof roleName === 'string')) {
+    throw new TypeError(`roles/${role}/constants/skills.ts export "extendsRoles" must be a string array`)
+  }
+
+  return extendsRoles
 }

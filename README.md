@@ -43,7 +43,7 @@ AIRules is a **composable AI skill distribution system**. The core idea is simpl
 ## What You Get
 
 - 🔥 **Curated** workflow, tool, design, and verification AI Skills out of the box
-- 🧠 **Automatic CodeGraph, OpenSpec, BMAD, and gstack install** via the default development role; Spec Kit bridge and ECC stay available through explicit roles
+- 🧠 **Automatic CodeGraph, OpenSpec, BMAD, and gstack install** via the default development role; Spec Kit bridge, ECC, and Trellis stay available through explicit roles
 - 🧱 **Reserved first-party expansion slots** so you can add your own top-level skills later without changing the distribution model
 - 🌐 **Multi-agent sync**: configure once, works across Claude / Cursor / Codex / Hermes / Qoder / Trae / OpenCode / CC-Switch and the `.agents` shared layer
 - 🔄 **Continuous updates**: one command pulls latest upstream skills
@@ -93,7 +93,7 @@ npm run sync
 ```
 
 > [!TIP]
-> **Sync Process**: `npm run sync` is the default OpenSpec development sync (`roles/common` + `roles/openspec-development`). `npm run sync:development` and `npm run sync:openspec-development` are explicit aliases for the same role. Use `npm run sync:ecc-development` only when you explicitly want the ECC role, `npm run sync:speckit-development` for the optional Spec Kit + Superpowers bridge role, or `npm run sync:product` for the product role (`roles/common` + `roles/product`). Each sync rebuilds vendor skills, runs setup commands, cleans dead links, and runs host verification after AIRules projection. Use `airules sync --skip-vendors` when you do not want to refresh third-party vendor repositories or run setup commands.
+> **Sync Process**: `npm run sync` is the default OpenSpec development sync. `npm run sync:development` and `npm run sync:openspec-development` are explicit aliases for the same role. Use `npm run sync:ecc-development` only when you explicitly want the ECC role, `npm run sync:speckit-development` for the optional Spec Kit + Superpowers bridge role, `npm run sync:trellis-development` for the optional Trellis workflow runtime role, or `npm run sync:product` for the product role. Common skills are not implicit; roles opt in through `extendsRoles = ['common']` in their `constants/skills.ts`. Each sync rebuilds vendor skills, runs setup commands, cleans dead links, and runs host verification after AIRules projection. Use `airules sync --skip-vendors` when you do not want to refresh third-party vendor repositories or run setup commands.
 
 ---
 
@@ -180,7 +180,7 @@ Do not start with ECC when:
 - You need the default AIRules flow with CodeGraph, OpenSpec, BMAD, and gstack.
 - You are unsure which system should own planning; start with OpenSpec and switch to ECC only after you deliberately choose that surface.
 
-AIRules syncs ECC by using official ECC installers for native global targets where possible, and by projecting an audited fallback subset for non-native hosts. The common AIRules skills still layer in first, so handoff, memory, reflection, and frontend testing remain available.
+AIRules syncs ECC by using official ECC installers for native global targets where possible, and by projecting an audited fallback subset for non-native hosts. ECC explicitly inherits `common`, so handoff, memory, reflection, and frontend testing remain available without making common a global default.
 
 ### Optional Spec Kit Role
 
@@ -194,6 +194,16 @@ specify extension add speckit-superpowers-bridge --from https://github.com/lihan
 Choose another official integration when needed, such as `claude`, `copilot`, or `gemini`. Add `--force` for an existing non-empty directory and `--ignore-agent-tools` when you need to skip agent tool detection. After initialization, use the native Spec Kit design flow: `/speckit.constitution`, `/speckit.specify`, `/speckit.clarify`, `/speckit.plan`, `/speckit.tasks`, and `/speckit.analyze`. In Spec Kit projects, prefer `$speckit-superpowers-bridge` on Codex or `/speckit-superpowers-bridge` on Claude Code over direct `/speckit.implement`; the bridge keeps Spec Kit artifacts canonical and delegates implementation discipline to native Superpowers.
 
 The role also ships a complete `init-project` skill so agents can run the full initialization sequence consistently inside target projects. That wrapper injects project rules, links `CLAUDE.md`, runs Spec Kit and bridge extension commands, rewrites upstream plugin-install wording to AIRules projected-skills wording, initializes CodeGraph, and does not copy OpenSpec schemas or AIRules OpenSpec initialization assets. For frontend projects, it installs the project-local `.specify/airules-schemas/frontend-superpowers-bridge/` schema prompt asset instead of injecting frontend rules into `AGENTS.md`.
+
+### Optional Trellis Role
+
+Use `trellis-development` when a project explicitly chooses Trellis as its project-local AI workflow runtime. It installs the `@mindfoldhq/trellis` CLI and projects only an AIRules first-party `init-project` wrapper. The target project then runs Trellis' own initialization to create `.trellis/spec/` as the durable knowledge base, `.trellis/workspace/` as session memory, and `.trellis/tasks/` as task state.
+
+```bash
+npm run sync:trellis-development
+```
+
+This role does not inherit `common` by default. Trellis already ships its own workflow, memory, hooks, agents, and multi-host adapters, so AIRules keeps the integration thin: no Trellis AGPL templates are copied into `roles/`, and the init skill only writes inside the target project.
 
 ### Product Spec Usage
 
@@ -215,6 +225,8 @@ Product changes use pm-skills for lightweight solution brief, PRD, acceptance cr
 ~/.moluoxixi/
 ├── roles/
 │   ├── common/
+│   │   ├── constants/
+│   │   │   └── skills.ts  # Explicit reusable common skill registry
 │   │   ├── hooks/
 │   │   │   └── session-log.mjs
 │   │   └── skills/        # Shared handoff / frontend testing / memory skills
@@ -234,6 +246,10 @@ Product changes use pm-skills for lightweight solution brief, PRD, acceptance cr
 │   │   ├── constants/
 │   │   │   └── skills.ts  # Product / PM skill registry
 │   │   └── skills/         # First-party product init-project skill
+│   ├── trellis-development/
+│   │   ├── constants/
+│   │   │   └── skills.ts  # Trellis CLI setup + init-project wrapper registry
+│   │   └── skills/
 │   └── ecc-development/
 │       └── constants/
 │           └── skills.ts  # ECC role skill registry

@@ -136,17 +136,17 @@ async function main() {
   const manifestPath = resolveRoleManifestPath(repoRoot, args.role, { preferDist: isRunningFromDist() })
 
   ensureInstallRoot(paths)
-  syncFirstPartyToHome(repoRoot, paths.moluoHome, args.role)
+  await syncFirstPartyToHome(repoRoot, paths.moluoHome, args.role)
   await syncVendorsIfNeeded(paths.moluoHome, manifestPath, args.skipVendors)
   await rebuildVendorSkillLinks({
     homeDir: paths.moluoHome,
     manifestPath,
   })
-  // 第一方 skills 链路恒为 <repoRoot>/roles/common + roles/<role>/skills/* → <moluoHome>/vendor/skills/*，
+  // 第一方 skills 链路由 roles/<role>/constants/skills.ts 的 extendsRoles 显式决定，
   // 源与目标永不相同；即使 repoRoot === moluoHome（仓库装进 ~/.moluoxixi）也必须投影，
   // 否则第一方 skills 会被整体漏发。
-  syncFirstPartySkillsToVendor(repoRoot, paths.moluoHome, args.role)
-  syncFirstPartySkillsToVendor(path.join(paths.moluoHome, 'local'), paths.moluoHome)
+  await syncFirstPartySkillsToVendor(repoRoot, paths.moluoHome, args.role)
+  await syncFirstPartySkillsToVendor(path.join(paths.moluoHome, 'local'), paths.moluoHome)
   ensureGlobalSkillLink(paths)
 
   const targets = args.host === 'all' ? ALL_HOST_IDS : [args.host]

@@ -16,6 +16,8 @@ const productSetup: SetupCommand[] = [
   },
 ]
 
+export const extendsRoles = ['common']
+
 export const vendors: VendorsConfig = [
   {
     name: 'bmadMethod',

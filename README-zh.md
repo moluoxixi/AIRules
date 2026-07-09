@@ -43,7 +43,7 @@ AIRules 是一个**可组合的 AI 技能分发系统**。它的核心思想很�
 ## 你能得到什么？
 
 - 🔥 **开箱即得** 精选流程、工具、设计和验证类 AI Skills
-- 🧠 **CodeGraph、OpenSpec、BMAD 与 gstack 自动安装**：默认开发角色同步公司项目规格主线；Spec Kit bridge 与 ECC 通过显式角色保留
+- 🧠 **CodeGraph、OpenSpec、BMAD 与 gstack 自动安装**：默认开发角色同步公司项目规格主线；Spec Kit bridge、ECC 与 Trellis 通过显式角色保留
 - 🧱 **预留第一方扩展位**：保留顶层自定义 skills 投影入口，后续补充时无需调整整体分发模型
 - 🌐 **多代理同步**：一次配置，Claude / Cursor / Codex / Hermes / Qoder / Trae / OpenCode / CC-Switch 与 `.agents` 共享层全部生效
 - 🔄 **持续更新**：上游 skills 更新后，一条命令同步最新版本
@@ -93,7 +93,7 @@ npm run sync
 ```
 
 > [!TIP]
-> **同步流程**：`npm run sync` 是默认 OpenSpec 开发角色同步（`roles/common` + `roles/openspec-development`）。`npm run sync:development` 和 `npm run sync:openspec-development` 是同一角色的显式别名；只有明确要使用 ECC 角色时才运行 `npm run sync:ecc-development`；需要可选 Spec Kit + Superpowers bridge 角色时用 `npm run sync:speckit-development`；需要产品角色时用 `npm run sync:product`（`roles/common` + `roles/product`）。每次同步都会重建 vendor skills、执行 setup 命令、清理死链接，并在 AIRules 投影后自动运行宿主验证。需要避免拉取第三方供应商或跳过 setup 时，可使用 `airules sync --skip-vendors`。
+> **同步流程**：`npm run sync` 是默认 OpenSpec 开发角色同步。`npm run sync:development` 和 `npm run sync:openspec-development` 是同一角色的显式别名；只有明确要使用 ECC 角色时才运行 `npm run sync:ecc-development`；需要可选 Spec Kit + Superpowers bridge 角色时用 `npm run sync:speckit-development`；需要可选 Trellis 工作流 runtime 角色时用 `npm run sync:trellis-development`；需要产品角色时用 `npm run sync:product`。common skills 不再隐式叠加；角色通过各自 `constants/skills.ts` 里的 `extendsRoles = ['common']` 显式继承。每次同步都会重建 vendor skills、执行 setup 命令、清理死链接，并在 AIRules 投影后自动运行宿主验证。需要避免拉取第三方供应商或跳过 setup 时，可使用 `airules sync --skip-vendors`。
 
 ---
 
@@ -180,7 +180,7 @@ airules sync --host all --role ecc-development
 - 你需要默认 AIRules 流程里的 CodeGraph、OpenSpec、BMAD 与 gstack。
 - 你还没决定由谁负责规划；这种情况先用 OpenSpec，确定要换编排面时再切 ECC。
 
-AIRules 同步 ECC 时，会优先使用 ECC 官方 installer 处理可用的原生全局 target，并对非原生宿主投影一组已审计 fallback 子集。AIRules common 层仍会先叠加，所以 handoff、记忆、反思和前端测试仍然可用。
+AIRules 同步 ECC 时，会优先使用 ECC 官方 installer 处理可用的原生全局 target，并对非原生宿主投影一组已审计 fallback 子集。ECC 显式继承 `common`，所以 handoff、记忆、反思和前端测试仍然可用，但 common 不再是全局默认层。
 
 ### 可选 Spec Kit 角色
 
@@ -194,6 +194,16 @@ specify extension add speckit-superpowers-bridge --from https://github.com/lihan
 其他宿主按官方 integration 选择，例如 `claude`、`copilot`、`gemini`。已有非空目录加 `--force`；需要跳过 agent 工具探测时加 `--ignore-agent-tools`。初始化后使用 Spec Kit 原生设计流：`/speckit.constitution`、`/speckit.specify`、`/speckit.clarify`、`/speckit.plan`、`/speckit.tasks`、`/speckit.analyze`。Spec Kit 项目实现阶段优先用 Codex 的 `$speckit-superpowers-bridge` 或 Claude Code 的 `/speckit-superpowers-bridge`，不要默认直接跑 `/speckit.implement`；bridge 让 Spec Kit 产物保持 canonical，再把实现纪律交给原生 Superpowers。
 
 该角色也分发完整 `init-project` skill，方便 agent 在目标项目中一致地运行完整初始化链路。这个包装器会注入项目规则、建立 `CLAUDE.md` 链接、调用 Spec Kit 与 bridge extension 命令、把上游插件安装文案改写为 AIRules projected skills 文案、初始化 CodeGraph，且不复制 OpenSpec schema 或 AIRules OpenSpec 初始化资产。前端项目会额外安装项目内 `.specify/airules-schemas/frontend-superpowers-bridge/` schema 提示资产，而不是把前端规则注入 `AGENTS.md`。
+
+### 可选 Trellis 角色
+
+只有项目明确选择 Trellis 作为项目内 AI workflow runtime 时，才使用 `trellis-development`。它安装 `@mindfoldhq/trellis` CLI，并只投影 AIRules 第一方 `init-project` 包装器。目标项目随后运行 Trellis 自己的初始化，生成作为长期知识库的 `.trellis/spec/`、作为会话记忆的 `.trellis/workspace/`，以及作为任务事实源的 `.trellis/tasks/`。
+
+```bash
+npm run sync:trellis-development
+```
+
+该角色默认不继承 `common`。Trellis 自带 workflow、memory、hooks、agents 与多宿主适配，所以 AIRules 保持轻量接入：不把 Trellis AGPL 模板复制进 `roles/`，init skill 也只写目标项目内部。
 
 ### 产品规格用法
 
@@ -215,6 +225,8 @@ specify extension add speckit-superpowers-bridge --from https://github.com/lihan
 ~/.moluoxixi/
 ├── roles/
 │   ├── common/
+│   │   ├── constants/
+│   │   │   └── skills.ts  # 显式公共 skill 清单
 │   │   ├── hooks/
 │   │   │   └── session-log.mjs
 │   │   └── skills/        # 共享 handoff / 前端测试 / 记忆能力
@@ -234,6 +246,10 @@ specify extension add speckit-superpowers-bridge --from https://github.com/lihan
 │   │   ├── constants/
 │   │   │   └── skills.ts  # 产品 / PM skill 清单
 │   │   └── skills/         # 第一方产品 init-project skill
+│   ├── trellis-development/
+│   │   ├── constants/
+│   │   │   └── skills.ts  # Trellis CLI setup + init-project 包装器清单
+│   │   └── skills/
 │   └── ecc-development/
 │       └── constants/
 │           └── skills.ts  # ECC 角色 skill 清单

@@ -1,6 +1,6 @@
-﻿# common role
+# common assets
 
-公共角色资产放置不属于单一开发/产品角色、且不携带角色规则语义的通用能力。
+`common` 不是业务角色；它是可被其它角色通过 `extendsRoles = ['common']` 显式继承的公共资产包。新角色默认不会自动接入 common，只有在自己的 `roles/<role>/constants/skills.ts` 中声明继承后，才会获得这些公共 skills / hooks。
 
 当前包含：
 
@@ -13,4 +13,17 @@
 - skills/remember：在用户要求“记住这条”或转正已审核记忆候选时触发。用于写入 `knowledge/memory/`。
 - skills/reflect：在用户要求复盘/追因时触发。用于诊断根因并路由可复用教训。
 
-角色同步默认叠加 common：选择 `openspec-development`、`speckit-development`、`product` 或 `ecc-development` 时都会先同步 common，再同步目标角色；目标角色同名资产覆盖 common。
+## 显式继承
+
+当前显式继承 common 的角色：
+
+- `openspec-development`
+- `speckit-development`
+- `product`
+- `ecc-development`
+
+`trellis-development` 故意不继承 common：Trellis 自带 `.trellis/workspace/` session journal 与 `trellis mem` 检索；若未来需要把 AIRules 候选审核式记忆叠加到 Trellis，应新增组合角色或显式调整 `trellis-development/constants/skills.ts`。
+
+## 资产登记
+
+common 的第一方 skills 必须登记在 `roles/common/constants/skills.ts`。新增、删除或重命名 common skill 时，同步修改该清单；`npm run rules:check` 会检查目录与清单一致性。

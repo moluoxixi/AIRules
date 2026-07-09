@@ -61,6 +61,8 @@ const eccSharedAgentSkills: SkillDef[] = [
   'x-api',
 ]
 
+export const extendsRoles = ['common']
+
 export const vendors: VendorsConfig = [
   {
     name: 'ecc',

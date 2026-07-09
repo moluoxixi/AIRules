@@ -236,27 +236,27 @@ async function syncVendorsIfNeeded(paths: ToolPaths, skipVendors: boolean) {
   runSkillSetupCommands(manifest)
 }
 
-function syncLocalSkillLayers(paths: ToolPaths, role?: string) {
-  // 第一方 skills 链路恒为 <repoRoot>/roles/common + roles/<role>/skills/* → <moluoHome>/vendor/skills/*。
+async function syncLocalSkillLayers(paths: ToolPaths, role?: string) {
+  // 第一方 skills 链路由 roles/<role>/constants/skills.ts 的 extendsRoles 显式决定。
   // 源目录 skills/ 与目标 vendor/skills/ 永不相同，即使仓库被安装进 ~/.moluoxixi
   // （repoRoot === moluoHome）也不会产生自链接，因此必须无条件投影；
   // 否则该布局下第一方 skills 会被整体漏发。
-  syncFirstPartySkillsToVendor(paths.repoRoot, paths.moluoHome, role)
+  await syncFirstPartySkillsToVendor(paths.repoRoot, paths.moluoHome, role)
 
-  syncFirstPartySkillsToVendor(path.join(paths.moluoHome, 'local'), paths.moluoHome, role)
+  await syncFirstPartySkillsToVendor(path.join(paths.moluoHome, 'local'), paths.moluoHome, role)
 }
 
 /**
  * 先把所有可安装内容汇入 vendor，再从 vendor 分发到各宿主。
  * 这一步只负责 staging，不做宿主投影。
  */
-function syncVendorStaging(paths: ToolPaths, skipVendors: boolean, role?: string) {
+async function syncVendorStaging(paths: ToolPaths, skipVendors: boolean, role?: string) {
   ensureInstallRoot({
     ...getDefaultInstallPaths(paths.userHome),
     moluoHome: paths.moluoHome,
     repoRoot: paths.repoRoot,
   })
-  syncFirstPartyToHome(paths.repoRoot, paths.moluoHome, role)
+  await syncFirstPartyToHome(paths.repoRoot, paths.moluoHome, role)
   return syncVendorsIfNeeded(paths, skipVendors)
 }
 export function addLocalSkill(options: AddSkillOptions): AddSkillResult {
@@ -291,7 +291,7 @@ export async function syncToHosts(options: SyncOptions): Promise<SyncResult> {
     homeDir: paths.moluoHome,
     manifestPath: paths.manifestPath,
   })
-  syncLocalSkillLayers(paths, options.role)
+  await syncLocalSkillLayers(paths, options.role)
 
   const projectedHosts: string[] = []
   const officialInstalledHosts: string[] = []

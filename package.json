@@ -34,6 +34,7 @@
     "sync:speckit-development": "tsx scripts/cli.ts sync --host all --role speckit-development",
     "sync:openspec-development": "tsx scripts/cli.ts sync --host all --role openspec-development",
     "sync:ecc-development": "tsx scripts/cli.ts sync --host all --role ecc-development",
+    "sync:trellis-development": "tsx scripts/cli.ts sync --host all --role trellis-development",
     "sync:product": "tsx scripts/cli.ts sync --host all --role product",
     "sync:update-lock": "tsx scripts/sync-vendors.ts --update-lock",
     "rules:install": "tsx scripts/cli.ts sync",

@@ -1,9 +1,11 @@
 import type { VendorsConfig } from '../vendors.js'
 import assert from 'node:assert'
 import { it } from 'vitest'
+import { vendors as commonVendors } from '../../../roles/common/constants/skills.js'
 import { vendors as openspecDevelopmentVendors } from '../../../roles/openspec-development/constants/skills.js'
 import { vendors as productVendors } from '../../../roles/product/constants/skills.js'
 import { vendors as speckitDevelopmentVendors } from '../../../roles/speckit-development/constants/skills.js'
+import { vendors as trellisDevelopmentVendors } from '../../../roles/trellis-development/constants/skills.js'
 import { walkVendorTree } from '../vendors.js'
 
 // ─── 基础结构测试 ────────────────────────────────────────────────────────────
@@ -796,6 +798,30 @@ it('vendors 配置 - openspec-development 角色接入 BMAD 文档拆分、gstac
   )
 })
 
+it('vendors 配置 - common 公共能力包显式登记第一方 skills', () => {
+  const vendors: Record<string, any> = {}
+
+  walkVendorTree(commonVendors, [], vendors)
+
+  assert.ok(vendors.moluoxixi, 'common 应作为 AIRules 第一方公共能力包登记')
+  assert.strictEqual(vendors.moluoxixi.sourceMode, 'workspace')
+  assert.deepStrictEqual(
+    vendors.moluoxixi.links.map((link: any) => ({
+      source: link.source,
+      target: link.target,
+    })),
+    [
+      { source: 'roles/common/skills/distill-candidates', target: 'vendor/skills/distill-candidates' },
+      { source: 'roles/common/skills/frontend-testing', target: 'vendor/skills/frontend-testing' },
+      { source: 'roles/common/skills/handoff', target: 'vendor/skills/handoff' },
+      { source: 'roles/common/skills/recall-memory', target: 'vendor/skills/recall-memory' },
+      { source: 'roles/common/skills/reflect', target: 'vendor/skills/reflect' },
+      { source: 'roles/common/skills/remember', target: 'vendor/skills/remember' },
+      { source: 'roles/common/skills/session-capture', target: 'vendor/skills/session-capture' },
+    ],
+  )
+})
+
 it('vendors 配置 - 仅接入 Anthropic 的前端视觉设计技能', () => {
   const vendors: Record<string, any> = {}
 
@@ -988,4 +1014,39 @@ it('vendors 配置 - ecc-development 角色以 ECC 作为主编排来源', async
   assert.strictEqual(vendors.gstack, undefined, 'ecc-development 不应混入 gstack 上游')
   assert.strictEqual(vendors.bmadMethod, undefined, 'ecc-development 不应混入 BMAD 上游')
   assert.strictEqual(vendors.moluoxixi, undefined, 'ecc-development 初始不维护第一方开发 skill')
+})
+
+it('vendors 配置 - trellis-development 只接入 Trellis 初始化入口且不隐式继承 common', () => {
+  const vendors: Record<string, any> = {}
+
+  walkVendorTree(trellisDevelopmentVendors, [], vendors)
+
+  assert.ok(vendors.moluoxixi, 'trellis-development 应接入 AIRules 一方 init-project')
+  assert.strictEqual(vendors.moluoxixi.sourceMode, 'workspace')
+  assert.deepStrictEqual(
+    vendors.moluoxixi.setup,
+    [
+      {
+        command: 'npm',
+        args: ['install', '--global', '@mindfoldhq/trellis@latest'],
+        skipIfCommandAvailable: 'trellis',
+      },
+    ],
+  )
+  assert.deepStrictEqual(
+    vendors.moluoxixi.links.map((link: any) => ({
+      source: link.source,
+      target: link.target,
+    })),
+    [
+      {
+        source: 'roles/trellis-development/skills/init-project',
+        target: 'vendor/skills/init-project',
+      },
+    ],
+  )
+  assert.ok(
+    !vendors.moluoxixi.links.some((link: any) => link.source.startsWith('roles/common/skills/')),
+    'trellis-development 不应通过 vendors 隐式接入 common',
+  )
 })

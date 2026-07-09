@@ -20,6 +20,8 @@ const openspecDevelopmentSetup: SetupCommand[] = [
   },
 ]
 
+export const extendsRoles = ['common']
+
 export const vendors: VendorsConfig = [
   {
     name: 'bmadMethod',

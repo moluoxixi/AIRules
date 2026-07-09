@@ -22,6 +22,7 @@ import {
   syncFirstPartyToHome,
 } from '../install.js'
 import { buildLinkPlan } from '../links.js'
+import { roleOverlayOrder } from '../roles.js'
 import { getRepoRoot, loadVendorManifest, normalizePath, resolveHomePath, walkVendorTree } from '../vendors.js'
 
 /**
@@ -244,20 +245,66 @@ it('install - replaceWithSymlink 跳过同路径、复用正确链接并替换�
   assert.equal(realLinkPath(target), realLinkPath(other))
 }))
 
-it('install - 同步第一方文件并按宿主投影 baseline 与 skills', () => withTempDir('airules-project-', (tmpDir) => {
+it('roles - 未声明继承的角色不隐式叠加 common', async () => {
+  await withTempDirAsync('airules-role-overlay-', async (tmpDir) => {
+    const repoRoot = path.join(tmpDir, 'repo')
+
+    writeFile(path.join(repoRoot, 'roles', 'common', 'constants', 'skills.ts'), `
+export const vendors = []
+`)
+    writeFile(path.join(repoRoot, 'roles', 'trellis-development', 'constants', 'skills.ts'), `
+export const vendors = []
+`)
+
+    assert.deepEqual(
+      await roleOverlayOrder(repoRoot, 'trellis-development'),
+      ['trellis-development'],
+    )
+  })
+})
+
+it('roles - 声明 extendsRoles 的角色显式叠加 common', async () => {
+  await withTempDirAsync('airules-role-extends-', async (tmpDir) => {
+    const repoRoot = path.join(tmpDir, 'repo')
+
+    writeFile(path.join(repoRoot, 'roles', 'common', 'constants', 'skills.ts'), `
+export const vendors = []
+`)
+    writeFile(path.join(repoRoot, 'roles', 'openspec-development', 'constants', 'skills.ts'), `
+export const extendsRoles = ['common']
+export const vendors = []
+`)
+
+    assert.deepEqual(
+      await roleOverlayOrder(repoRoot, 'openspec-development'),
+      ['common', 'openspec-development'],
+    )
+  })
+})
+
+it('install - 同步第一方文件并按宿主投影 baseline 与 skills', async () => withTempDirAsync('airules-project-', async (tmpDir) => {
   const userHome = path.join(tmpDir, 'user')
   const repoRoot = path.join(tmpDir, 'repo')
   const moluoHome = path.join(userHome, '.moluoxixi')
   const hostHome = path.join(userHome, '.codex')
   const hostBaselineFile = path.join(hostHome, 'AGENTS.md')
 
+  writeFile(path.join(repoRoot, 'roles', 'common', 'constants', 'skills.ts'), `
+export const vendors = []
+`)
+  writeFile(path.join(repoRoot, 'roles', 'openspec-development', 'constants', 'skills.ts'), `
+export const extendsRoles = ['common']
+export const vendors = []
+`)
+  writeFile(path.join(repoRoot, 'roles', 'common', 'hooks', 'session-log.mjs'), 'hook\n')
   writeFile(path.join(repoRoot, 'roles', 'openspec-development', 'rules', 'AGENTS.md'), 'baseline\n')
   writeFile(path.join(repoRoot, 'roles', 'openspec-development', 'agents', 'helper.md'), 'agent\n')
   fs.mkdirSync(path.join(moluoHome, 'vendor', 'skills', 'skill-one'), { recursive: true })
 
-  syncFirstPartyToHome(repoRoot, moluoHome, 'openspec-development')
+  await syncFirstPartyToHome(repoRoot, moluoHome, 'openspec-development')
   assert.equal(fs.readFileSync(path.join(moluoHome, 'vendor', 'AGENTS.md'), 'utf8'), 'baseline\n')
   assert.equal(fs.readFileSync(path.join(moluoHome, 'vendor', 'agents', 'helper.md'), 'utf8'), 'agent\n')
+  assert.equal(fs.readFileSync(path.join(moluoHome, 'vendor', 'hooks', 'session-log.mjs'), 'utf8'), 'hook\n')
   assert.equal(fs.existsSync(path.join(moluoHome, 'agents')), false)
   assert.equal(fs.existsSync(path.join(moluoHome, 'skills')), false)
 
@@ -603,7 +650,42 @@ export const vendors = [
   })
 })
 
-it('install - 第一方 skills 覆盖层只管理本地源链接', () => withTempDir('airules-first-party-', (tmpDir) => {
+it('install - 第一方 skills 覆盖层按 manifest 继承关系选择 common', async () => {
+  await withTempDirAsync('airules-first-party-extends-', async (tmpDir) => {
+    const repoRoot = path.join(tmpDir, 'repo')
+    const moluoHome = path.join(tmpDir, 'home')
+    const commonSkill = path.join(repoRoot, 'roles', 'common', 'skills', 'handoff')
+    const trellisSkill = path.join(repoRoot, 'roles', 'trellis-development', 'skills', 'init-project')
+    const openspecSkill = path.join(repoRoot, 'roles', 'openspec-development', 'skills', 'init-project')
+    const vendorSkillsDir = path.join(moluoHome, 'vendor', 'skills')
+
+    writeFile(path.join(repoRoot, 'roles', 'common', 'constants', 'skills.ts'), `
+export const vendors = []
+`)
+    writeFile(path.join(repoRoot, 'roles', 'trellis-development', 'constants', 'skills.ts'), `
+export const vendors = []
+`)
+    writeFile(path.join(repoRoot, 'roles', 'openspec-development', 'constants', 'skills.ts'), `
+export const extendsRoles = ['common']
+export const vendors = []
+`)
+    writeFile(path.join(commonSkill, 'SKILL.md'), 'common\n')
+    writeFile(path.join(trellisSkill, 'SKILL.md'), 'trellis\n')
+    writeFile(path.join(openspecSkill, 'SKILL.md'), 'openspec\n')
+
+    await syncFirstPartySkillsToVendor(repoRoot, moluoHome, 'trellis-development')
+
+    assert.equal(realLinkPath(path.join(vendorSkillsDir, 'init-project')), realLinkPath(trellisSkill))
+    assert.equal(fs.existsSync(path.join(vendorSkillsDir, 'handoff')), false)
+
+    await syncFirstPartySkillsToVendor(repoRoot, moluoHome, 'openspec-development')
+
+    assert.equal(realLinkPath(path.join(vendorSkillsDir, 'init-project')), realLinkPath(openspecSkill))
+    assert.equal(realLinkPath(path.join(vendorSkillsDir, 'handoff')), realLinkPath(commonSkill))
+  })
+})
+
+it('install - 第一方 skills 覆盖层只管理本地源链接', async () => withTempDirAsync('airules-first-party-', async (tmpDir) => {
   const repoRoot = path.join(tmpDir, 'repo')
   const moluoHome = path.join(tmpDir, 'home')
   const localSkill = path.join(repoRoot, 'roles', 'openspec-development', 'skills', 'workflow', 'local-review')
@@ -618,8 +700,11 @@ it('install - 第一方 skills 覆盖层只管理本地源链接', () => withTem
     path.join(vendorSkillsDir, 'remote-review'),
     process.platform === 'win32' ? 'junction' : 'dir',
   )
+  writeFile(path.join(repoRoot, 'roles', 'openspec-development', 'constants', 'skills.ts'), `
+export const vendors = []
+`)
 
-  syncFirstPartySkillsToVendor(repoRoot, moluoHome, 'openspec-development')
+  await syncFirstPartySkillsToVendor(repoRoot, moluoHome, 'openspec-development')
 
   assert.equal(
     realLinkPath(path.join(vendorSkillsDir, 'local-review')),
@@ -631,7 +716,7 @@ it('install - 第一方 skills 覆盖层只管理本地源链接', () => withTem
   )
 
   fs.rmSync(localSkill, { recursive: true, force: true })
-  syncFirstPartySkillsToVendor(repoRoot, moluoHome, 'openspec-development')
+  await syncFirstPartySkillsToVendor(repoRoot, moluoHome, 'openspec-development')
 
   assert.equal(fs.existsSync(path.join(vendorSkillsDir, 'local-review')), false)
   assert.equal(
@@ -640,7 +725,7 @@ it('install - 第一方 skills 覆盖层只管理本地源链接', () => withTem
   )
 }))
 
-it('install - 第一方 skills 覆盖层不跟随软链接来源', () => withTempDir('airules-first-party-symlink-', (tmpDir) => {
+it('install - 第一方 skills 覆盖层不跟随软链接来源', async () => withTempDirAsync('airules-first-party-symlink-', async (tmpDir) => {
   const moluoHome = path.join(tmpDir, 'home')
   const localSourceRoot = path.join(tmpDir, 'local-root')
   const localSkillsDir = path.join(localSourceRoot, 'skills')
@@ -657,7 +742,7 @@ it('install - 第一方 skills 覆盖层不跟随软链接来源', () => withTem
     process.platform === 'win32' ? 'junction' : 'dir',
   )
 
-  syncFirstPartySkillsToVendor(localSourceRoot, moluoHome)
+  await syncFirstPartySkillsToVendor(localSourceRoot, moluoHome)
 
   assert.equal(
     realLinkPath(path.join(vendorSkillsDir, 'real-local')),

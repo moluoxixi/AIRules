@@ -360,7 +360,7 @@ Superpowers skill 有預設輸出路徑(例如 brainstorming 寫到 `docs/superp
 
 `/opsx:apply` 會觸發 [schema.yaml](./schema.yaml) `apply.instruction` 中的步驟:
 
-#### 0. Pre-flight — 驗證必要的 Superpowers skill
+### 0. Pre-flight — 驗證必要的 Superpowers skill
 
 確認以下 skill 都安裝才繼續:
 
@@ -372,11 +372,11 @@ skill 缺失 → STOP 並通知使用者,不靜默 fallback,本 schema 內也沒
 
 > 本 schema 的 v0 版本曾在這裡放「自動 commit change artifacts 到當前分支」邏輯,在 [PR #970 review](https://github.com/Fission-AI/OpenSpec/pull/970) 後移除:處理未追蹤的 change 目錄是 worktree skill 的責任,schema 不該主動改寫使用者的 git history。
 
-#### 1. Workspace — `superpowers:using-git-worktrees`
+### 1. Workspace — `superpowers:using-git-worktrees`
 
 建立 `.worktrees/<change-name>/`、切到新 branch、跑專案 setup、確認 test baseline 乾淨。
 
-#### 2. Executor — `superpowers:subagent-driven-development`
+### 2. Executor — `superpowers:subagent-driven-development`
 
 Main agent 讀 `plan.md`,為每個 micro-task 派發 fresh subagent。每個 subagent 自動傳遞:
 
@@ -387,7 +387,7 @@ Main agent 讀 `plan.md`,為每個 micro-task 派發 fresh subagent。每個 sub
 
 本 schema **不支援** `superpowers:executing-plans` 作為 fallback。理由見下方「六個值得記住的設計觸點」段。
 
-#### 3. Verification — `openspec-verify-change`
+### 3. Verification — `openspec-verify-change`
 
 產出 `verify.md`,跑 7 項檢查:結構驗證(`openspec validate --all --json`)、task 完成度、delta-spec sync 狀態、design/specs 一致性(non-blocking warning)、實作信號(commit 狀態)、front-door routing leak detector(non-blocking warning)、以及 deferred-dogfood vs automated-test 等價性。最後一項僅在 `plan.md` 有 `[~]` 但等價性章節空白(gap 分析被跳過)時才 block,其他情境屬 informational。
 
@@ -395,17 +395,17 @@ Main agent 讀 `plan.md`,為每個 micro-task 派發 fresh subagent。每個 sub
 
 > **Steps 4–6 是 verify 後的 canonical 順序:retro → archive → PR。順序顛倒會產出不完整的 PR(retrospective 跟 archive 變成 merge 後才補的 trailing commits,失去 hot context)。**
 
-#### 4. Retrospective — `retrospective` artifact(建議,依 Entry & exit gates 的 skip 規則 trivial fix 可跳)
+### 4. Retrospective — `retrospective` artifact(建議,依 Entry & exit gates 的 skip 規則 trivial fix 可跳)
 
 Evidence-first 反思:§0 Evidence(量化前置數據 —— commit 數、diff 大小、tasks done 比例、新依賴、validate 狀態等)加上 6 段分析(Wins / Misses / Plan deviations / Skill compliance / Surprises / Promote candidates)。每個 claim 引用 commit / file / 可量化事實,通常指向 §0 而非每行 inline 證據。procedure 直接內嵌在 artifact instruction —— 不依賴外部 skill(Decision 3 in 設計 spec:Claude Code plugin 化延後到 v1.x)。
 
 在開 PR **之前**寫好,讓 retro 跟其他 artifact 一起落在同一個 PR diff。
 
-#### 5. Archive — `openspec archive -y`(或 `/opsx:archive`)
+### 5. Archive — `openspec archive -y`(或 `/opsx:archive`)
 
 把 delta spec sync 到 `openspec/specs/<capability>/spec.md`、把 change 目錄搬到 `openspec/changes/archive/YYYY-MM-DD-<name>/`。在開 PR **之前**跑完,這樣 PR diff 反映完整的 archived cycle 狀態(所有 artifact 完成、spec 已 sync、folder 在 `archive/`)。
 
-#### 6. Completion — `superpowers:finishing-a-development-branch`
+### 6. Completion — `superpowers:finishing-a-development-branch`
 
 確認 tests 全綠、呈現 merge / PR / keep-branch / discard 選項、清理 worktree。**PR 是最後一步** —— 若 retro 或 archive 還沒跑,先補完。
 

@@ -1,6 +1,6 @@
 # ecc-development role
 
-`ecc-development` 是独立的 ECC 原生开发角色。它不继承 `development` 角色里的 Superpowers、gstack、BMAD 或 AIRules 第一方开发编排；AIRules 负责选择该 role、叠加 `roles/common/` 的会话沉淀/记忆/反思能力，并在 ECC 没有 native target 的宿主上提供 fallback 投影。
+`ecc-development` 是独立的 ECC 原生开发角色。它不继承 `development` 角色里的 Superpowers、gstack、BMAD 或 AIRules 第一方开发编排；本角色在 `constants/skills.ts` 中显式 `extendsRoles = ['common']`，因此会接入 `roles/common/` 的会话沉淀/记忆/反思能力，并在 ECC 没有 native target 的宿主上提供 fallback 投影。
 
 角色清单见：
 
@@ -11,7 +11,7 @@
 - 主编排来源：[`affaan-m/ECC`](https://github.com/affaan-m/ECC)
 - 原生宿主：同步时只调用 ECC 官方**全局 target** installer，命令形态为 `npx -y --package ecc-universal ecc install --profile <profile> --target <target>`；Codex / Claude 使用 `--profile core`，OpenCode 使用 ECC 官方 `opencode` profile。项目级 target 必须在目标项目 cwd 下由项目初始化流程触发，不在 AIRules role sync 阶段执行。
 - fallback 分发：AIRules 不伪装 ECC 官方 installer，而是把 ECC core 的可承接子集映射到既有 `skills`、`agents`、`mcp` 通道；本次仅用于 Qoder、Trae、Trae CN。在线上游直接承接 `skills` / Markdown agents，并把 Codex 原生 TOML agents 按内容等价转译为 Markdown agents；MCP 必须先落为 AIRules role 资产再分发。ECC 专属 rules / hooks 不作为 fallback 分发面。
-- 公共层：选择 `ecc-development` 时仍会先叠加 `roles/common/`。
+- 公共层：选择 `ecc-development` 时会按 `extendsRoles = ['common']` 先叠加 `roles/common/`。
 
 ## ECC core 安装面
 
