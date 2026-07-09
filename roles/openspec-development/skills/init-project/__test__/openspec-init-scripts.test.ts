@@ -62,7 +62,7 @@ function createSchemaSource(root: string) {
     'name: superpowers-bridge',
     'version: 1',
     'description: >',
-    '  Base bridge schema.',
+    '  Requirements: Superpowers plugin installed, providing skills:',
     '',
     'artifacts:',
     '  - id: design',
@@ -70,7 +70,9 @@ function createSchemaSource(root: string) {
     '    description: Base design',
     '    template: design.md',
     '    instruction: |',
-    '      Base design instruction.',
+    '      Before invoking, confirm `superpowers:brainstorming` appears in',
+    '      your available skills list. If missing, STOP and inform the user',
+    '      that the Superpowers plugin must be installed.',
     '    requires:',
     '      - brainstorm',
     '  - id: tasks',
@@ -102,14 +104,27 @@ function createSchemaSource(root: string) {
     '  requires: [plan]',
     '  tracks: tasks.md',
     '  instruction: |',
-    '    Base apply instruction.',
+    '    The user can install the Superpowers plugin,',
+    '    or explicitly opt into the manual fallback path.',
     '',
   ].join('\n'))
-  writeFile(path.join(schemaRoot, 'README.md'), '# superpowers-bridge\n')
+  writeFile(path.join(schemaRoot, 'README.md'), [
+    '# superpowers-bridge',
+    '',
+    'Verify Superpowers plugin is installed by running `claude plugin list`.',
+    'If not listed, run `claude plugin install superpowers@claude-plugins-official`.',
+    'To inspect runtime state, run `openspec schemas` + `claude plugin list`.',
+    '',
+  ].join('\n'))
   writeFile(path.join(schemaRoot, 'templates', 'tasks.md'), '# Tasks\n')
   writeFile(path.join(schemaRoot, 'templates', 'design.md'), '# Design\n')
   writeFile(path.join(schemaRoot, 'templates', 'verify.md'), '# Verify\n')
-  writeFile(path.join(schemaRoot, 'templates', 'adopters', 'CLAUDE.md.fragment.md'), '# Bridge Fragment\n')
+  writeFile(path.join(schemaRoot, 'templates', 'adopters', 'CLAUDE.md.fragment.md'), [
+    '# Bridge Fragment',
+    '',
+    'Install the Superpowers plugin before using this bridge.',
+    '',
+  ].join('\n'))
   return schemaRoot
 }
 
@@ -228,6 +243,14 @@ it('spec-init - 只注入项目级 schema 与 knowledge，不手建 active/archi
 
     assert.equal(fs.existsSync(path.join(root, 'openspec', 'schemas', 'superpowers-bridge', 'schema.yaml')), true)
     assert.equal(fs.existsSync(path.join(root, 'openspec', 'schemas', 'superpowers-bridge', 'templates', 'tasks.md')), true)
+    const installedSchema = fs.readFileSync(path.join(root, 'openspec', 'schemas', 'superpowers-bridge', 'schema.yaml'), 'utf8')
+    const installedReadme = fs.readFileSync(path.join(root, 'openspec', 'schemas', 'superpowers-bridge', 'README.md'), 'utf8')
+    const installedAdopter = fs.readFileSync(path.join(root, 'openspec', 'schemas', 'superpowers-bridge', 'templates', 'adopters', 'CLAUDE.md.fragment.md'), 'utf8')
+    const installedBaseSchemaText = `${installedSchema}\n${installedReadme}\n${installedAdopter}`
+    assert.doesNotMatch(installedBaseSchemaText, /Superpowers plugin/)
+    assert.doesNotMatch(installedBaseSchemaText, /claude plugin (?:list|install)/)
+    assert.match(installedBaseSchemaText, /AIRules projected skills/)
+    assert.match(installedSchema, /role sync has projected the required skills/)
     assert.equal(fs.existsSync(path.join(root, 'knowledge', 'index.md')), true)
     assert.equal(fs.existsSync(path.join(root, 'openspec', 'specs')), false)
     assert.equal(fs.existsSync(path.join(root, 'openspec', 'changes')), false)
@@ -383,7 +406,20 @@ it('spec-init - 按目标项目已有宿主目录安装 OpenSpec 入口', () => 
 it('spec-init - 默认从 JiangWay/openspec-schemas 克隆 superpowers-bridge schema', () => {
   withTempDir((root) => {
     const fakeRepo = path.join(root, 'fake-openspec-schemas')
-    writeFile(path.join(fakeRepo, 'superpowers-bridge', 'schema.yaml'), 'name: superpowers-bridge\nversion: 1\nartifacts: []\n')
+    writeFile(path.join(fakeRepo, 'superpowers-bridge', 'schema.yaml'), [
+      'name: superpowers-bridge',
+      'version: 1',
+      'description: >',
+      '  Requirements: Superpowers plugin installed, providing skills:',
+      'artifacts: []',
+      '',
+    ].join('\n'))
+    writeFile(path.join(fakeRepo, 'superpowers-bridge', 'README.md'), [
+      '# superpowers-bridge',
+      '',
+      'Run `claude plugin list`; if missing, run `claude plugin install superpowers@claude-plugins-official`.',
+      '',
+    ].join('\n'))
     writeFile(path.join(fakeRepo, 'superpowers-bridge', 'templates', 'tasks.md'), '# Tasks\n')
     const fakeGit = createFakeGit(root, fakeRepo)
     const nextPath = `${fakeGit.binDir}${path.delimiter}${process.env.PATH ?? process.env.Path ?? ''}`
@@ -400,6 +436,10 @@ it('spec-init - 默认从 JiangWay/openspec-schemas 克隆 superpowers-bridge sc
     assert.equal(result.status, 0, result.stderr)
     assert.equal(fs.existsSync(path.join(root, 'openspec', 'schemas', 'superpowers-bridge', 'schema.yaml')), true)
     assert.equal(fs.existsSync(path.join(root, 'openspec', 'schemas', 'superpowers-bridge', 'templates', 'tasks.md')), true)
+    const installedSchema = fs.readFileSync(path.join(root, 'openspec', 'schemas', 'superpowers-bridge', 'schema.yaml'), 'utf8')
+    const installedReadme = fs.readFileSync(path.join(root, 'openspec', 'schemas', 'superpowers-bridge', 'README.md'), 'utf8')
+    assert.doesNotMatch(`${installedSchema}\n${installedReadme}`, /Superpowers plugin|claude plugin/)
+    assert.match(`${installedSchema}\n${installedReadme}`, /AIRules projected skills/)
 
     const gitCalls = fs.readFileSync(fakeGit.logPath, 'utf8')
     assert.match(gitCalls, /clone --depth 1 https:\/\/github\.com\/JiangWay\/openspec-schemas\.git/)

@@ -191,6 +191,46 @@ function copyDirectoryIfMissing(sourceDir, targetDir, created) {
   }
 }
 
+function copyDirectoryWithSchemaTransformIfMissing(sourceDir, targetDir, created) {
+  assertAssetExists(sourceDir, path.relative(skillRoot, sourceDir).replace(/\\/g, '/'))
+
+  for (const entry of readdirSync(sourceDir, { withFileTypes: true })) {
+    const sourcePath = path.join(sourceDir, entry.name)
+    const targetPath = path.join(targetDir, entry.name)
+
+    if (entry.isDirectory()) {
+      copyDirectoryWithSchemaTransformIfMissing(sourcePath, targetPath, created)
+      continue
+    }
+
+    if (entry.isFile()) {
+      copySchemaFileWithTransformIfMissing(sourcePath, targetPath, created)
+      continue
+    }
+
+    throw new Error(`Unsupported init-project asset type: ${sourcePath}`)
+  }
+}
+
+function copySchemaFileWithTransformIfMissing(sourcePath, targetPath, created) {
+  if (existsSync(targetPath)) {
+    return
+  }
+
+  mkdirSync(path.dirname(targetPath), { recursive: true })
+  if (isTextSchemaAsset(sourcePath)) {
+    writeFileSync(targetPath, rewriteBaseSchemaForProjectedSkills(readFileSync(sourcePath, 'utf8')), 'utf8')
+  }
+  else {
+    copyFileSync(sourcePath, targetPath)
+  }
+  created.push(rel(targetPath))
+}
+
+function isTextSchemaAsset(sourcePath) {
+  return /\.(?:md|ya?ml|txt|json)$/i.test(sourcePath)
+}
+
 function resolveOpenSpecCommand() {
   return resolveCommand(
     process.platform === 'win32'
@@ -410,6 +450,18 @@ function resolveInstallSchemaSourceDir() {
   return resolveSchemaSourceDir()
 }
 
+function rewriteBaseSchemaForProjectedSkills(raw) {
+  return raw
+    .replaceAll('Superpowers plugin installed, providing skills:', 'AIRules projected skills are available because role sync has projected the required skills:')
+    .replaceAll('Superpowers plugin must be installed', 'AIRules projected skills must be available')
+    .replaceAll('install the Superpowers plugin', 'run AIRules role sync so projected skills are available')
+    .replaceAll('Install the Superpowers plugin', 'Run AIRules role sync so projected skills are available')
+    .replaceAll('the Superpowers plugin', 'AIRules projected skills')
+    .replaceAll('Superpowers plugin', 'AIRules projected skills')
+    .replaceAll('claude plugin install superpowers@claude-plugins-official', 'AIRules role sync')
+    .replaceAll('claude plugin list', 'inspect the host available skills list')
+}
+
 function escapeRegExp(value) {
   return value.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')
 }
@@ -421,7 +473,12 @@ function installOpenSpecSchema(created) {
 
   const { sourceDir, cleanup } = resolveInstallSchemaSourceDir()
   try {
-    copyDirectoryIfMissing(sourceDir, schemaTargetDir, created)
+    if (schemaName === frontendSchemaName) {
+      copyDirectoryIfMissing(sourceDir, schemaTargetDir, created)
+    }
+    else {
+      copyDirectoryWithSchemaTransformIfMissing(sourceDir, schemaTargetDir, created)
+    }
   }
   finally {
     cleanup()
