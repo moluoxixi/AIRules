@@ -14,6 +14,16 @@ const deprecatedLocalSchemaDir = path.join(
 )
 const projectSchemaDir = path.join(process.cwd(), 'openspec', 'schemas', 'superpowers-bridge')
 const frontendProjectSchemaDir = path.join(process.cwd(), 'openspec', 'schemas', 'frontend-superpowers-bridge')
+const frontendInstallSchemaAssetDir = path.join(
+  process.cwd(),
+  'roles',
+  'openspec-development',
+  'skills',
+  'init-project',
+  'assets',
+  'schemas',
+  'frontend-superpowers-bridge',
+)
 const referencesDir = path.join(process.cwd(), 'roles', 'openspec-development', 'skills', 'init-project', 'references')
 const initProjectSkill = path.join(process.cwd(), 'roles', 'openspec-development', 'skills', 'init-project', 'SKILL.md')
 const frontendSchemaSkillDir = path.join(process.cwd(), 'roles', 'openspec-development', 'skills', 'frontend-superpowers-bridge')
@@ -56,8 +66,10 @@ describe('superpowers-bridge upstream schema', () => {
 
   it('frontend-superpowers-bridge schema carries frontend gates without modifying upstream bridge', () => {
     const frontendFiles = listFiles(frontendProjectSchemaDir)
+    const frontendInstallAssetFiles = listFiles(frontendInstallSchemaAssetDir)
     const upstreamSchema = fs.readFileSync(path.join(projectSchemaDir, 'schema.yaml'), 'utf8')
     const frontendSchema = fs.readFileSync(path.join(frontendProjectSchemaDir, 'schema.yaml'), 'utf8')
+    const frontendInstallAssetSchema = fs.readFileSync(path.join(frontendInstallSchemaAssetDir, 'schema.yaml'), 'utf8')
     const frontendReadme = fs.readFileSync(path.join(frontendProjectSchemaDir, 'README.md'), 'utf8')
     const frontendAdopter = fs.readFileSync(path.join(frontendProjectSchemaDir, 'templates', 'adopters', 'CLAUDE.md.fragment.md'), 'utf8')
     const frontendDesign = fs.readFileSync(path.join(frontendProjectSchemaDir, 'templates', 'design.md'), 'utf8')
@@ -66,6 +78,8 @@ describe('superpowers-bridge upstream schema', () => {
     assert.equal(frontendFiles.includes('schema.yaml'), true)
     assert.equal(frontendFiles.includes('templates/design.md'), true)
     assert.equal(frontendFiles.includes('templates/verify.md'), true)
+    assert.deepEqual(frontendInstallAssetFiles, frontendFiles)
+    assert.equal(frontendInstallAssetSchema, frontendSchema)
     assert.match(frontendSchema, /^name: frontend-superpowers-bridge/m)
     assert.doesNotMatch(upstreamSchema, /^name: frontend-superpowers-bridge/m)
     assert.match(frontendSchema, /MISSING blocked/)
@@ -106,7 +120,8 @@ describe('superpowers-bridge upstream schema', () => {
     assert.equal(fs.existsSync(path.join(frontendSchemaSkillDir, 'SKILL.md')), false)
     assert.doesNotMatch(manifest, /frontend-superpowers-bridge/)
     assert.match(skill, /前端项目/)
-    assert.match(skill, /从克隆到的 `superpowers-bridge\/` 派生 `frontend-superpowers-bridge`/)
+    assert.match(skill, /直接复制维护的 `frontend-superpowers-bridge` schema 资产/)
+    assert.doesNotMatch(skill, /派生 `frontend-superpowers-bridge`/)
     assert.match(skill, /openspec schema validate <selected-schema>/)
   })
 })

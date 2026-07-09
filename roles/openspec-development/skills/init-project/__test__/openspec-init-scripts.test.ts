@@ -6,6 +6,7 @@ import path from 'node:path'
 import { it } from 'vitest'
 
 const scriptsDir = path.join(process.cwd(), 'roles', 'openspec-development', 'skills', 'init-project', 'scripts')
+const canonicalFrontendSchemaDir = path.join(process.cwd(), 'openspec', 'schemas', 'frontend-superpowers-bridge')
 const allOpenSpecWorkflows = [
   'propose',
   'explore',
@@ -275,7 +276,7 @@ it('spec-init - OpenSpec CLI 存在时初始化项目、校验 schema 并确认�
   })
 })
 
-it('spec-init - 前端项目从克隆的 superpowers-bridge 派生并注册 frontend-superpowers-bridge schema', () => {
+it('spec-init - 前端项目直接安装维护的 frontend-superpowers-bridge schema 资产', () => {
   withTempDir((root) => {
     writeFile(path.join(root, 'package.json'), JSON.stringify({
       dependencies: {
@@ -286,13 +287,11 @@ it('spec-init - 前端项目从克隆的 superpowers-bridge 派生并注册 fron
       },
     }))
     const { binDir, logPath } = createFakeOpenSpec(root, 'frontend-superpowers-bridge')
-    const schemaSource = createSchemaSource(root)
     const openSpecConfigPath = path.join(root, 'openspec-config', 'config.json')
     const nextPath = binDir
     const result = runSpecInit(root, {
       AIRULES_OPEN_SPEC_LOG: logPath,
       AIRULES_OPEN_SPEC_CONFIG: openSpecConfigPath,
-      AIRULES_OPENSPEC_SCHEMA_SOURCE_DIR: schemaSource,
       AIRULES_PROJECTED_BMAD_SKILLS_DIR: createProjectedBmadSkills(root),
       PATH: nextPath,
       Path: nextPath,
@@ -313,10 +312,12 @@ it('spec-init - 前端项目从克隆的 superpowers-bridge 派生并注册 fron
     assert.match(frontendSchema, /planner/)
     assert.match(frontendSchema, /MISSING blocked/)
     assert.match(frontendSchema, /existing.*wrap existing.*new/s)
+    assert.equal(frontendSchema, fs.readFileSync(path.join(canonicalFrontendSchemaDir, 'schema.yaml'), 'utf8'))
 
     const frontendDesign = fs.readFileSync(path.join(root, 'openspec', 'schemas', 'frontend-superpowers-bridge', 'templates', 'design.md'), 'utf8')
     assert.match(frontendDesign, /## Layout/)
     assert.match(frontendDesign, /## Frontend Test Matrix/)
+    assert.equal(frontendDesign, fs.readFileSync(path.join(canonicalFrontendSchemaDir, 'templates', 'design.md'), 'utf8'))
 
     const calls = fs.readFileSync(logPath, 'utf8')
     assert.match(calls, /schema validate frontend-superpowers-bridge/)
