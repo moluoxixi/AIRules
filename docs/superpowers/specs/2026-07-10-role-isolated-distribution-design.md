@@ -10,6 +10,7 @@ AIRules 作为远程资产分发工具，根据必填 `--role <name>` 选择一�
 
 - 不保留 `common` 继承、`extendsRoles`、overlay 或隐式跨角色共享。
 - 不提供默认角色；`sync`、`add`、`verify` 均强制指定 role。
+- 不存在 workspace/local vendor、本地 assets 层、repoRoot 直读或远程失败后的本地 fallback。
 - 不把 vendor 仓库中的 Prompt、规则或脚本作为 AIRules 运行时代码执行。
 - 不从目录结构猜测远程资产语义；除 `moluoxixi` 的显式 `role-assets` 外，远程资产必须由 projection 声明。
 - 不允许远程路径、角色路径或符号链接逃逸各自仓库根。
@@ -55,14 +56,13 @@ roles/
 {
   name: 'moluoxixi',
   source: 'https://github.com/moluoxixi/AIRules.git',
-  sourceMode: 'workspace',
   projections: [
     { kind: 'role-assets', sourceDir: 'roles/<role>' },
   ],
 }
 ```
 
-`sourceMode: 'workspace'` 使用当前 AIRules checkout；`git` 模式使用远程 checkout。两种模式执行同一 projection，不存在第一方旁路。
+所有 vendor 均使用 Git remote checkout。当前仓库在分发模型中的 vendor ID 是 `moluoxixi`；运行时不得直接读取当前 repoRoot 作为资产源，也不得保留 `sourceMode: 'workspace'`。
 
 ## moluoxixi 全量复制
 
@@ -126,7 +126,7 @@ airules add <skill-dir> --role <name> [--name <skill-name>] [--home <dir>] [--ov
 airules verify --role <name> [--host <name|all>] [--home <dir>] [--user-home <dir>]
 ```
 
-`add` 写入 `roles/<role>/skills/<skill-name>`。Vendor 获取是 `sync` 的正常阶段，不提供跳过 vendor 后伪装完整同步的路径。
+`add` 是仓库维护命令，写入当前 checkout 的 `roles/<role>/skills/<skill-name>`，产物必须提交并推送后才会成为远程分发源。`sync` 始终重新对照 remote checkout，不直接消费尚未推送的本地 add 结果。Vendor 获取是 `sync` 的必经阶段，不提供跳过 vendor 后伪装完整同步的路径。
 
 ## 数据流
 
@@ -149,6 +149,7 @@ CLI role + home
 
 - 缺失 role、非法 role、角色目录或 constants 缺失：失败。
 - vendor 获取失败、revision 不可解析或远程路径缺失：失败。
+- 配置声明 workspace/local source、repoRoot source 或本地 fallback：失败。
 - 非法 `SKILL.md`、agent、rules、hook、MCP JSON 或符号链接逃逸：宿主写入前失败。
 - 普通 vendor staging 冲突：失败；不得按遍历顺序静默覆盖。
 - staging 构建、原子替换、宿主合并、链接/复制、旧投影清理或状态提交失败：失败。
@@ -185,5 +186,6 @@ CLI role + home
 1. 远程 vendor 可转发 skills、agents、rules、hooks、mcp。
 2. moluoxixi 全量复制所选 `roles/<role>` 的所有可分发资产。
 3. role 只决定路径，运行时代码不存在继承、overlay 或默认角色。
-4. canonical staging 与宿主投影均可验证，失败不提交半成品。
-5. 双角色切换证明无跨角色资产串流且保留用户内容。
+4. 所有运行时资产均来自 remote checkout；代码中不存在 workspace/local source 分支。
+5. canonical staging 与宿主投影均可验证，失败不提交半成品。
+6. 双角色切换证明无跨角色资产串流且保留用户内容。
