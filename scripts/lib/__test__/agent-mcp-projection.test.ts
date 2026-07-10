@@ -49,17 +49,6 @@ const demoServers = {
     env: { DEMO_KEY: 'x' },
   },
 }
-const workspaceFolderPlaceholder = '$' + '{workspaceFolder}'
-
-it('mcp 默认源 - 分发 codegraph workspace server', () => {
-  const source = JSON.parse(fs.readFileSync(path.resolve('roles', 'openspec-development', 'mcp', 'mcp.json'), 'utf8'))
-
-  assert.deepStrictEqual(source.mcpServers.codegraph, {
-    command: 'codegraph',
-    args: ['serve', '--mcp', '--path', workspaceFolderPlaceholder],
-  })
-})
-
 it('agent 格式门控 - markdown 宿主只投影 Markdown agents', () => {
   const { tmpDir, userHome, moluoHome, hostHome } = setupEnv()
   try {

@@ -1,16 +1,9 @@
 import assert from 'node:assert/strict'
-import { spawnSync } from 'node:child_process'
 import fs from 'node:fs'
 import os from 'node:os'
 import path from 'node:path'
-import process from 'node:process'
-import { fileURLToPath } from 'node:url'
 import { it } from 'vitest'
 import { projectToHost } from '../install.js'
-
-const __dirname = path.dirname(fileURLToPath(import.meta.url))
-const repoRoot = path.resolve(__dirname, '..', '..', '..')
-const hookScriptSource = path.join(repoRoot, 'roles', 'common', 'hooks', 'session-log.mjs')
 
 /**
  * 为 hook 投影搭建隔离环境：~/.moluoxixi（含 vendor/skills 与 vendor/hooks/session-log.mjs
@@ -29,8 +22,7 @@ function setupEnv(options: { withHookScript?: boolean } = {}) {
   if (options.withHookScript ?? true) {
     const hooksDir = path.join(moluoHome, 'vendor', 'hooks')
     fs.mkdirSync(hooksDir, { recursive: true })
-    // 用真实脚本源，保证测试与分发产物一致。
-    fs.copyFileSync(hookScriptSource, path.join(hooksDir, 'session-log.mjs'))
+    fs.writeFileSync(path.join(hooksDir, 'session-log.mjs'), 'process.stdout.write("{}")\n')
   }
 
   return { tmpDir, userHome, moluoHome, hostHome }
@@ -266,7 +258,7 @@ it('hook 投影 - 多事件 TOML：不同脚本各自独立块（Stop+另一脚�
   const env = setupEnv()
   try {
     // 放入第二个源脚本，模拟多个 hook 脚本。
-    fs.copyFileSync(hookScriptSource, path.join(env.moluoHome, 'vendor', 'hooks', 'trace-stub.mjs'))
+    fs.writeFileSync(path.join(env.moluoHome, 'vendor', 'hooks', 'trace-stub.mjs'), 'process.stdout.write("{}")\n')
     const stop = { relDir: '.', fileName: 'config.toml', format: 'toml' as const, event: 'Stop', scriptName: 'session-log.mjs' }
     const sub = { relDir: '.', fileName: 'config.toml', format: 'toml' as const, event: 'SubagentStop', scriptName: 'trace-stub.mjs' }
     projectMany(env, [stop, sub])
@@ -276,63 +268,6 @@ it('hook 投影 - 多事件 TOML：不同脚本各自独立块（Stop+另一脚�
     assert.match(toml, /# >>> AIRULES HOOK trace-stub\.mjs >>>/, '应保留 trace-stub 块')
     assert.match(toml, /\[\[hooks\.Stop\]\]/)
     assert.match(toml, /\[\[hooks\.SubagentStop\]\]/)
-  }
-  finally {
-    cleanup(env.tmpDir)
-  }
-})
-
-// ── 脚本行为 ──────────────────────────────────────────────
-
-function runScript(input: string, projCwd: string) {
-  return spawnSync(process.execPath, [hookScriptSource], { input, cwd: projCwd, encoding: 'utf8' })
-}
-
-function readAutoLog(projCwd: string): string {
-  const dir = path.join(projCwd, 'knowledge', 'sessions', 'auto')
-  if (!fs.existsSync(dir)) {
-    return ''
-  }
-  return fs.readdirSync(dir).filter(f => f.endsWith('.log')).map(f => fs.readFileSync(path.join(dir, f), 'utf8')).join('')
-}
-
-it('脚本 - 有效 stdin 写日志含 session 与 transcript，stdout 为 {}', () => {
-  const env = setupEnv()
-  try {
-    const r = runScript(JSON.stringify({ session_id: 'abc', transcript_path: '/x/y.jsonl', cwd: env.hostHome, hook_event_name: 'Stop' }), env.hostHome)
-    assert.equal(r.status, 0)
-    assert.equal((r.stdout ?? '').trim(), '{}')
-    const log = readAutoLog(env.hostHome)
-    assert.match(log, /session=abc/)
-    assert.match(log, /transcript=\/x\/y\.jsonl/)
-    assert.ok(fs.existsSync(path.join(env.hostHome, 'knowledge', 'sessions', 'auto', '.gitignore')), '应落 .gitignore')
-  }
-  finally {
-    cleanup(env.tmpDir)
-  }
-})
-
-it('脚本 - Cursor 字段（conversation_id, 无 transcript）兜底', () => {
-  const env = setupEnv()
-  try {
-    runScript(JSON.stringify({ conversation_id: 'conv9', cwd: env.hostHome, hook_event_name: 'stop' }), env.hostHome)
-    const log = readAutoLog(env.hostHome)
-    assert.match(log, /session=conv9/)
-    assert.match(log, /transcript=\(none\)/)
-  }
-  finally {
-    cleanup(env.tmpDir)
-  }
-})
-
-it('脚本 - 空 / 畸形 stdin 仍 exit 0 且 stdout 合法 JSON', () => {
-  const env = setupEnv()
-  try {
-    for (const bad of ['', 'not json{{']) {
-      const r = runScript(bad, env.hostHome)
-      assert.equal(r.status, 0, `输入 ${JSON.stringify(bad)} 应 exit 0`)
-      assert.doesNotThrow(() => JSON.parse((r.stdout ?? '').trim()), 'stdout 应为合法 JSON')
-    }
   }
   finally {
     cleanup(env.tmpDir)

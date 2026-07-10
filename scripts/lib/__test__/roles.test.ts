@@ -2,7 +2,7 @@ import fs from 'node:fs'
 import os from 'node:os'
 import path from 'node:path'
 import { afterEach, expect, it } from 'vitest'
-import { requireRolePaths, resolveRoleManifestPath } from '../roles.js'
+import { DEFAULT_ROLE, requireRolePaths, resolveRoleManifestPath } from '../roles.js'
 
 const temporaryRoots: string[] = []
 
@@ -33,6 +33,10 @@ function createOutsideConstants(extension: 'ts' | 'js'): string {
 function platformDirectoryLinkType(): 'dir' | 'junction' {
   return process.platform === 'win32' ? 'junction' : 'dir'
 }
+
+it('uses an empty string as the default role', () => {
+  expect(DEFAULT_ROLE).toBe('')
+})
 
 it('requires an explicit role even when the former default role exists', () => {
   const repoRoot = createRepo()
