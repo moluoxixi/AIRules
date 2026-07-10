@@ -18,4 +18,10 @@ export default eslintConfig({
     'no-console': 'off',
     'regexp/no-unused-capturing-group': 'off',
   },
+}, {
+  files: ['**/agents/openai.yaml'],
+  rules: {
+    // Codex skill metadata requires these interface strings to remain quoted.
+    'yaml/plain-scalar': 'off',
+  },
 })

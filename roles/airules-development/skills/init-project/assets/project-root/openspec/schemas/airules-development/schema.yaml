@@ -1,0 +1,98 @@
+name: airules-development
+version: 1
+description: AIRules single-mainline workflow from requirement scenarios through verified learning
+artifacts:
+  - id: proposal
+    generates: proposal.md
+    description: Change intent, scope, constraints, success measures, and missing facts
+    template: proposal.md
+    instruction: |
+      Define why the change is needed, goals, non-goals, constraints, affected capabilities,
+      success measures, and unresolved business facts. Do not include implementation detail.
+      Keep the workflow in intake while a material fact is missing.
+    requires: []
+
+  - id: specs
+    generates: 'specs/**/*.md'
+    description: Testable capability requirements and observable scenarios
+    template: spec.md
+    instruction: |
+      Define what the system must do. Every requirement must contain one or more observable
+      scenarios named SCN-<capability>-<NNN>. Cover applicable success, failure, authorization,
+      state, persistence, compatibility, concurrency, and recovery behavior. Development must
+      verify feasibility and testability before the requirement gate passes.
+    requires:
+      - proposal
+
+  - id: design
+    generates: design.md
+    description: Architecture, contracts, ownership, migration, rollback, and alternatives
+    template: design.md
+    instruction: |
+      Define cohesive module boundaries, public APIs, data flow, failure semantics, dependency
+      direction, observability, migration, and rollback. Cite the scenarios that each decision
+      satisfies. Do not invent fields or capabilities absent from real project contracts.
+    requires:
+      - proposal
+      - specs
+
+  - id: tasks
+    generates: tasks.md
+    description: Dependency-ordered implementation work units with bounded write ownership
+    template: tasks.md
+    instruction: |
+      Break the design into cohesive, dependency-ordered work units. Use checkbox tasks. For each
+      work unit name its scenario refs, allowed write roots, expected failing test, implementation
+      boundary, verification command, and completion evidence. Document shape must not determine
+      the number of work units.
+    requires:
+      - design
+
+  - id: test-plan
+    generates: test-plan.md
+    description: Risk-based scenario-to-test traceability and executable oracles
+    template: test-plan.md
+    instruction: |
+      Map every SCN-* to one or more test cases using covers: SCN-*. Record layer, risk,
+      environment, data, command, oracle, and evidence location. Select unit, contract,
+      integration, browser/E2E, security, performance, migration, and resilience coverage by risk.
+      Missing tooling is MISSING blocked or NOT RUN, never an inferred PASS.
+    requires:
+      - specs
+      - design
+
+  - id: verify
+    generates: verify.md
+    description: Independent evidence for scenario coverage and release readiness
+    template: verify.md
+    instruction: |
+      Verify independently from the implementer. Re-run the relevant commands; record exit status,
+      output summaries, artifact paths, scenario coverage, unresolved findings, exceptions, and
+      rollback readiness. Classify failures before routing correction. Do not infer PASS from task
+      checkboxes or Agent summaries.
+    requires:
+      - tasks
+      - test-plan
+
+  - id: retrospective
+    generates: retrospective.md
+    description: Evidence-based learning and governed promotion candidates
+    template: retrospective.md
+    instruction: |
+      Compare plan and actual evidence. Record wins, misses, failure signatures, deviations, and
+      surprises. Emit scoped knowledge candidates with provenance, trigger, claim, confidence,
+      sensitivity, expiry, destination, eval cases, and rollback condition. Do not promote raw
+      transcripts or candidates directly into approved memory.
+    requires:
+      - verify
+
+apply:
+  requires:
+    - tasks
+    - test-plan
+  tracks: tasks.md
+  instruction: |
+    Ask the AIRules conductor for the current state and required gate. Execute only the selected
+    task envelope in its allowed write roots. Use test-first implementation, record exact evidence,
+    and return classified failures to the conductor. Never mutate change.json or events.jsonl by
+    hand and never let an external framework maintain parallel workflow state.

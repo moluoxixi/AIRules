@@ -1,0 +1,40 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://moluoxixi.dev/airules/workflow-event.schema.json",
+  "title": "AIRules Workflow Event",
+  "type": "object",
+  "additionalProperties": true,
+  "required": [
+    "schema_version",
+    "sequence",
+    "event_id",
+    "occurred_at",
+    "policy_version",
+    "change_unit_id",
+    "event_type",
+    "to_state"
+  ],
+  "properties": {
+    "schema_version": { "const": 1 },
+    "sequence": { "type": "integer", "minimum": 1 },
+    "event_id": { "type": "string", "format": "uuid" },
+    "occurred_at": { "type": "string", "format": "date-time" },
+    "policy_version": { "type": "string", "minLength": 1 },
+    "change_unit_id": { "type": "string", "pattern": "^CU-" },
+    "event_type": { "enum": ["change_initialized", "gate_passed", "gate_failed"] },
+    "from_state": { "type": ["string", "null"] },
+    "to_state": { "type": "string", "minLength": 1 },
+    "gate": { "type": "string" },
+    "status": { "enum": ["pass", "fail"] },
+    "evidence_refs": {
+      "type": "array",
+      "items": { "type": "string", "minLength": 1 },
+      "minItems": 1
+    },
+    "idempotency_key": { "type": "string", "minLength": 1, "maxLength": 256 },
+    "failure_class": { "type": "string" },
+    "failure_signature": { "type": "string" },
+    "failure_count": { "type": "integer", "minimum": 1 },
+    "blocked": { "type": "boolean" }
+  }
+}

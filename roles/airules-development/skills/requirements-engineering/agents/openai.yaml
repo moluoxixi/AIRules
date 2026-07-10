@@ -1,0 +1,4 @@
+interface:
+  display_name: 'Requirements Engineering'
+  short_description: 'Turn ambiguous intent into testable scenarios'
+  default_prompt: 'Use $requirements-engineering to turn this request into implementable OpenSpec scenarios.'

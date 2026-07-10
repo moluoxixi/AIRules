@@ -1,0 +1,4 @@
+interface:
+  display_name: 'Workflow Control'
+  short_description: 'Operate evidence-backed change state and gates'
+  default_prompt: 'Use $workflow-control to inspect and advance this change through its evidence gates.'

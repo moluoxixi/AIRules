@@ -19,6 +19,7 @@ import {
 } from './install.js'
 import { DEFAULT_ROLE, resolveRoleManifestPath } from './roles.js'
 import { flattenedSkillName } from './skill-projection.js'
+import { rebuildVendorAssets } from './vendor-staging.js'
 import { ensureVendorRepo } from './vendor-sync.js'
 import { loadVendorManifest } from './vendors.js'
 import { verifyHost } from './verify.js'
@@ -220,11 +221,11 @@ ${String(error)}`)
 }
 
 async function syncVendorsIfNeeded(paths: ToolPaths, skipVendors: boolean) {
+  const manifest = await loadVendorManifest(paths.manifestPath)
   if (skipVendors) {
-    return
+    return manifest
   }
 
-  const manifest = await loadVendorManifest(paths.manifestPath)
   for (const vendor of Object.values(manifest.vendors)) {
     if (vendor.sourceMode === 'workspace') {
       continue
@@ -234,6 +235,7 @@ async function syncVendorsIfNeeded(paths: ToolPaths, skipVendors: boolean) {
   }
 
   runSkillSetupCommands(manifest)
+  return manifest
 }
 
 async function syncLocalSkillLayers(paths: ToolPaths, role?: string) {
@@ -256,8 +258,25 @@ async function syncVendorStaging(paths: ToolPaths, skipVendors: boolean, role?: 
     moluoHome: paths.moluoHome,
     repoRoot: paths.repoRoot,
   })
+  const manifest = await syncVendorsIfNeeded(paths, skipVendors)
+  const usesRemoteRoleAssets = Object.values(manifest.vendors).some(vendor =>
+    vendor.links.some(link => link.kind === 'role-assets-dir'),
+  )
+
+  if (usesRemoteRoleAssets) {
+    if (!role) {
+      throw new Error('A remote role-assets manifest requires an explicit role')
+    }
+    await rebuildVendorAssets({
+      homeDir: paths.moluoHome,
+      manifestPath: paths.manifestPath,
+      role,
+    })
+    return { usesRemoteRoleAssets: true }
+  }
+
   await syncFirstPartyToHome(paths.repoRoot, paths.moluoHome, role)
-  return syncVendorsIfNeeded(paths, skipVendors)
+  return { usesRemoteRoleAssets: false }
 }
 export function addLocalSkill(options: AddSkillOptions): AddSkillResult {
   const sourceDir = path.resolve(options.sourceDir)
@@ -286,12 +305,14 @@ export function addLocalSkill(options: AddSkillOptions): AddSkillResult {
 export async function syncToHosts(options: SyncOptions): Promise<SyncResult> {
   const paths = resolveToolPaths(options.repoRoot, options.home, options.userHome, options.role)
 
-  await syncVendorStaging(paths, options.skipVendors, options.role)
-  await rebuildVendorSkillLinks({
-    homeDir: paths.moluoHome,
-    manifestPath: paths.manifestPath,
-  })
-  await syncLocalSkillLayers(paths, options.role)
+  const staging = await syncVendorStaging(paths, options.skipVendors, options.role)
+  if (!staging.usesRemoteRoleAssets) {
+    await rebuildVendorSkillLinks({
+      homeDir: paths.moluoHome,
+      manifestPath: paths.manifestPath,
+    })
+    await syncLocalSkillLayers(paths, options.role)
+  }
 
   const projectedHosts: string[] = []
   const officialInstalledHosts: string[] = []

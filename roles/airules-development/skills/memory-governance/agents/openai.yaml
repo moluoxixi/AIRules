@@ -1,0 +1,4 @@
+interface:
+  display_name: 'Memory Governance'
+  short_description: 'Isolate context and govern knowledge promotion'
+  default_prompt: 'Use $memory-governance to distill verified evidence into safely scoped knowledge candidates.'

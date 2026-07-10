@@ -1,0 +1,4 @@
+interface:
+  display_name: 'Correction Loop'
+  short_description: 'Classify failures and run bounded correction'
+  default_prompt: 'Use $correction-loop to classify this failure and route a bounded evidence-backed fix.'

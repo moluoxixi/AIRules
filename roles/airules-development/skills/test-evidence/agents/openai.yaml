@@ -1,0 +1,4 @@
+interface:
+  display_name: 'Test Evidence'
+  short_description: 'Map scenarios to risk-based executable evidence'
+  default_prompt: 'Use $test-evidence to build and verify the scenario coverage matrix for this change.'

@@ -1,0 +1,42 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://moluoxixi.dev/airules/memory-candidate.schema.json",
+  "title": "AIRules Memory Candidate",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "candidate_id",
+    "change_unit_id",
+    "scope",
+    "trigger",
+    "claim",
+    "evidence_refs",
+    "confidence",
+    "sensitivity",
+    "destination",
+    "status",
+    "created_at"
+  ],
+  "properties": {
+    "candidate_id": { "type": "string", "pattern": "^MEMC-" },
+    "change_unit_id": { "type": "string", "pattern": "^CU-" },
+    "scope": { "type": "string", "minLength": 1 },
+    "trigger": { "type": "string", "minLength": 1 },
+    "claim": { "type": "string", "minLength": 1 },
+    "evidence_refs": {
+      "type": "array",
+      "items": { "type": "string", "minLength": 1 },
+      "minItems": 1
+    },
+    "confidence": { "type": "number", "minimum": 0, "maximum": 1 },
+    "conflicts": { "type": "array", "items": { "type": "string" } },
+    "sensitivity": { "enum": ["none", "internal", "restricted"] },
+    "expires_at": { "type": ["string", "null"], "format": "date-time" },
+    "destination": { "enum": ["memory", "skill", "rule", "hook", "agent", "schema", "one-off"] },
+    "positive_evals": { "type": "array", "items": { "type": "string" } },
+    "negative_evals": { "type": "array", "items": { "type": "string" } },
+    "rollback_condition": { "type": "string" },
+    "status": { "enum": ["candidate", "approved", "rejected", "expired", "reverted"] },
+    "created_at": { "type": "string", "format": "date-time" }
+  }
+}
