@@ -29,12 +29,21 @@ export function requireRolePaths(repoRoot: string, roleValue: unknown): RolePath
   }
 
   const roleRoot = fs.realpathSync(requestedRoot)
-  requireInsideRoot(rolesRoot, roleRoot)
+  requireInsideRoot(rolesRoot, roleRoot, 'role', 'roles root')
   const paths = buildRolePaths(role, roleRoot)
-  if (!fs.statSync(paths.constantsFile, { throwIfNoEntry: false })?.isFile()) {
+  if (!fs.statSync(paths.constantsDir, { throwIfNoEntry: false })?.isDirectory()) {
+    throw new Error(`Missing AIRules role constants directory: ${paths.constantsDir}`)
+  }
+  const constantsDir = fs.realpathSync(paths.constantsDir)
+  requireInsideRoot(roleRoot, constantsDir, 'role constants directory', 'role root')
+
+  const requestedConstantsFile = path.join(constantsDir, 'skills.ts')
+  if (!fs.statSync(requestedConstantsFile, { throwIfNoEntry: false })?.isFile()) {
     throw new Error(`Missing AIRules role constants: ${paths.constantsFile}`)
   }
-  return paths
+  const constantsFile = fs.realpathSync(requestedConstantsFile)
+  requireInsideRoot(constantsDir, constantsFile, 'role constants file', 'constants directory')
+  return { ...paths, constantsDir, constantsFile }
 }
 
 export function resolveRoleManifestPath(
@@ -43,26 +52,42 @@ export function resolveRoleManifestPath(
   options: { preferDist?: boolean } = {},
 ): string {
   const role = requireRoleName(roleValue)
-  const sourceManifestTs = path.join(repoRoot, 'roles', role, 'constants', 'skills.ts')
-  const sourceManifestJs = path.join(repoRoot, 'roles', role, 'constants', 'skills.js')
-  const distManifestJs = path.join(repoRoot, 'dist', 'roles', role, 'constants', 'skills.js')
+  const resolvedRepoRoot = fs.realpathSync(path.resolve(repoRoot))
+  const sourceRoleRoot = path.join(resolvedRepoRoot, 'roles', role)
+  const distRoleRoot = path.join(resolvedRepoRoot, 'dist', 'roles', role)
+  const candidates = options.preferDist
+    ? [
+        [distRoleRoot, path.join(distRoleRoot, 'constants', 'skills.js')],
+        [sourceRoleRoot, path.join(sourceRoleRoot, 'constants', 'skills.js')],
+        [sourceRoleRoot, path.join(sourceRoleRoot, 'constants', 'skills.ts')],
+      ] as const
+    : [
+        [sourceRoleRoot, path.join(sourceRoleRoot, 'constants', 'skills.ts')],
+        [sourceRoleRoot, path.join(sourceRoleRoot, 'constants', 'skills.js')],
+        [distRoleRoot, path.join(distRoleRoot, 'constants', 'skills.js')],
+      ] as const
 
-  if (options.preferDist && fs.existsSync(distManifestJs)) {
-    return distManifestJs
-  }
-  if (options.preferDist && fs.existsSync(sourceManifestJs)) {
-    return sourceManifestJs
-  }
-  if (fs.existsSync(sourceManifestTs)) {
-    return sourceManifestTs
-  }
-  if (fs.existsSync(sourceManifestJs)) {
-    return sourceManifestJs
-  }
-  if (fs.existsSync(distManifestJs)) {
-    return distManifestJs
+  for (const [roleRoot, manifestPath] of candidates) {
+    if (fs.existsSync(manifestPath)) {
+      return resolveManifestCandidate(resolvedRepoRoot, roleRoot, manifestPath)
+    }
   }
   throw new Error(`Missing AIRules role skill manifest: roles/${role}/constants/skills.ts`)
+}
+
+function resolveManifestCandidate(repoRoot: string, requestedRoleRoot: string, manifestPath: string): string {
+  const roleRoot = fs.realpathSync(requestedRoleRoot)
+  requireInsideRoot(repoRoot, roleRoot, 'manifest role', 'repository root')
+
+  const constantsDir = fs.realpathSync(path.dirname(manifestPath))
+  requireInsideRoot(roleRoot, constantsDir, 'manifest constants directory', 'role root')
+
+  if (!fs.statSync(manifestPath).isFile()) {
+    throw new Error(`AIRules role manifest is not a file: ${manifestPath}`)
+  }
+  const resolvedManifest = fs.realpathSync(manifestPath)
+  requireInsideRoot(constantsDir, resolvedManifest, 'role manifest', 'constants directory')
+  return resolvedManifest
 }
 
 function buildRolePaths(role: string, roleRoot: string): RolePaths {
@@ -80,9 +105,9 @@ function buildRolePaths(role: string, roleRoot: string): RolePaths {
   }
 }
 
-function requireInsideRoot(root: string, target: string): void {
+function requireInsideRoot(root: string, target: string, field: string, rootLabel: string): void {
   const relative = path.relative(root, target)
   if (relative === '..' || relative.startsWith(`..${path.sep}`) || path.isAbsolute(relative)) {
-    throw new Error(`AIRules role resolves outside roles root: ${target}`)
+    throw new Error(`AIRules ${field} resolves outside ${rootLabel}: ${target}`)
   }
 }

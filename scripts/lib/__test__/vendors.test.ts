@@ -1095,6 +1095,68 @@ it('walkVendorTree - 远程 rules、hooks 与 role-assets 投影进入通用分�
   )
 })
 
+it('walkVendorTree - 接受 camelCase vendor ID 与受支持的远程 Git URL', () => {
+  const sources = [
+    'https://example.com/repo.git',
+    'http://example.com/repo.git',
+    'ssh://git@example.com/repo.git',
+    'git://example.com/repo.git',
+    'git+ssh://git@example.com/repo.git',
+    'git@example.com:org/repo.git',
+  ]
+
+  for (const [index, source] of sources.entries()) {
+    const name = `camelCaseVendor${index}`
+    const vendors: Record<string, any> = {}
+    walkVendorTree([{
+      name,
+      official: true,
+      source,
+      projections: [{ kind: 'skills', sourceBaseDir: 'skills', skills: [] }],
+    }], [], vendors)
+
+    assert.strictEqual(vendors[name].repo, source)
+    assert.strictEqual(vendors[name].cloneDir, `vendor/repos/${name}`)
+  }
+})
+
+it('walkVendorTree - 拒绝可逃逸 vendor/repos 的 vendor ID', () => {
+  for (const name of ['../escape', 'nested/name', 'nested\\name', '/absolute', 'C:\\absolute']) {
+    assert.throws(
+      () => walkVendorTree([{
+        name,
+        official: true,
+        source: 'https://example.com/repo.git',
+        projections: [{ kind: 'skills', sourceBaseDir: 'skills', skills: [] }],
+      }], [], {}),
+      /vendor name|供应商名称/i,
+      name,
+    )
+  }
+})
+
+it('walkVendorTree - 拒绝文件系统路径、file URL 与空 host', () => {
+  for (const source of [
+    'file:///tmp/repo.git',
+    '../repo.git',
+    '/tmp/repo.git',
+    'C:\\repo.git',
+    'https://',
+    'git@:org/repo.git',
+  ]) {
+    assert.throws(
+      () => walkVendorTree([{
+        name: 'remoteVendor',
+        official: true,
+        source,
+        projections: [{ kind: 'skills', sourceBaseDir: 'skills', skills: [] }],
+      }], [], {}),
+      /remote Git URL|远程 Git/i,
+      source,
+    )
+  }
+})
+
 it('walkVendorTree - 拒绝 workspace 或 local vendor 源', () => {
   const vendors: Record<string, any> = {}
 

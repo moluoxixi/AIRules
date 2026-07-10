@@ -2,7 +2,7 @@ import fs from 'node:fs'
 import os from 'node:os'
 import path from 'node:path'
 import { afterEach, expect, it } from 'vitest'
-import { requireRolePaths } from '../roles.js'
+import { requireRolePaths, resolveRoleManifestPath } from '../roles.js'
 
 const temporaryRoots: string[] = []
 
@@ -21,6 +21,17 @@ function createRepo(): string {
     fs.writeFileSync(path.join(constantsDir, 'skills.ts'), 'export const vendors = []\n', 'utf8')
   }
   return repoRoot
+}
+
+function createOutsideConstants(extension: 'ts' | 'js'): string {
+  const constantsDir = fs.mkdtempSync(path.join(os.tmpdir(), 'airules-outside-constants-'))
+  temporaryRoots.push(constantsDir)
+  fs.writeFileSync(path.join(constantsDir, `skills.${extension}`), 'export const vendors = []\n', 'utf8')
+  return constantsDir
+}
+
+function platformDirectoryLinkType(): 'dir' | 'junction' {
+  return process.platform === 'win32' ? 'junction' : 'dir'
 }
 
 it('requires an explicit role even when the former default role exists', () => {
@@ -44,4 +55,43 @@ it('rejects a role path escape', () => {
   const repoRoot = createRepo()
 
   expect(() => requireRolePaths(repoRoot, '../alpha')).toThrow(/role name/i)
+})
+
+it('rejects a constants directory symlink outside the selected role', () => {
+  const repoRoot = createRepo()
+  const constantsDir = path.join(repoRoot, 'roles', 'alpha', 'constants')
+  fs.rmSync(constantsDir, { recursive: true })
+  fs.symlinkSync(createOutsideConstants('ts'), constantsDir, platformDirectoryLinkType())
+
+  expect(() => requireRolePaths(repoRoot, 'alpha')).toThrow(/constants.*outside|outside.*role/i)
+})
+
+it('rejects a source manifest symlink outside the selected role', () => {
+  const repoRoot = createRepo()
+  const constantsDir = path.join(repoRoot, 'roles', 'alpha', 'constants')
+  const outsideConstants = createOutsideConstants('ts')
+  if (process.platform === 'win32') {
+    fs.rmSync(constantsDir, { recursive: true })
+    fs.symlinkSync(outsideConstants, constantsDir, platformDirectoryLinkType())
+  }
+  else {
+    const manifestFile = path.join(constantsDir, 'skills.ts')
+    fs.rmSync(manifestFile)
+    fs.symlinkSync(path.join(outsideConstants, 'skills.ts'), manifestFile, 'file')
+  }
+
+  expect(() => resolveRoleManifestPath(repoRoot, 'alpha')).toThrow(/manifest.*outside|outside.*role/i)
+})
+
+it('rejects a dist constants symlink outside the repository', () => {
+  const repoRoot = createRepo()
+  const distRoleRoot = path.join(repoRoot, 'dist', 'roles', 'alpha')
+  fs.mkdirSync(distRoleRoot, { recursive: true })
+  fs.symlinkSync(
+    createOutsideConstants('js'),
+    path.join(distRoleRoot, 'constants'),
+    platformDirectoryLinkType(),
+  )
+
+  expect(() => resolveRoleManifestPath(repoRoot, 'alpha', { preferDist: true })).toThrow(/manifest.*outside|outside.*repo/i)
 })

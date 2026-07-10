@@ -1,6 +1,10 @@
 import path from 'node:path'
-import { fileURLToPath, pathToFileURL } from 'node:url'
+import { fileURLToPath, pathToFileURL, URL } from 'node:url'
 import { flattenedSkillName, flattenedVendorSkillTarget } from './skill-projection.js'
+
+const vendorNamePattern = /^[A-Za-z0-9][\w-]*$/u
+const remoteGitProtocols = new Set(['https:', 'http:', 'ssh:', 'git:', 'git+ssh:'])
+const scpStyleRemotePattern = /^[^@\s/:]+@[^@\s/:]+:\S+$/u
 
 /**
  * 安装前置命令必须以结构化参数声明，避免把配置内容拼进 shell 字符串。
@@ -191,6 +195,32 @@ function isVendorEntry(value: any): boolean {
   )
 }
 
+function requireVendorName(value: string): string {
+  if (!vendorNamePattern.test(value)) {
+    throw new Error(`Invalid vendor name "${value}": expected a safe single-path identifier`)
+  }
+  return value
+}
+
+function requireRemoteGitSource(value: string, vendorName: string): string {
+  if (scpStyleRemotePattern.test(value)) {
+    return value
+  }
+
+  try {
+    const sourceUrl = new URL(value)
+    const authority = value.match(/^[A-Za-z][A-Za-z0-9+.-]*:\/\/([^/?#]*)/u)?.[1]
+    if (remoteGitProtocols.has(sourceUrl.protocol) && authority && sourceUrl.hostname) {
+      return value
+    }
+  }
+  catch {
+    // Fall through to the manifest boundary error below.
+  }
+
+  throw new Error(`Vendor "${vendorName}" source must be a remote Git URL: ${value}`)
+}
+
 /**
  * 构造 vendor 侧技能目标路径。
  * 源配置允许多级分类或嵌套源路径，但 vendor/skills 始终以叶子 skill 名称展平。
@@ -365,13 +395,15 @@ function mergeVendor(vendors: Record<string, Vendor>, vendorName: string, entry:
     throw new Error('暂不支持本地供应商实体 (Local vendor entries)')
   }
 
-  const cloneDir = path.posix.join('vendor', 'repos', vendorName)
+  const safeVendorName = requireVendorName(vendorName)
+  const remoteSource = requireRemoteGitSource(entry.source, safeVendorName)
+  const cloneDir = path.posix.join('vendor', 'repos', safeVendorName)
   const links = buildLinksForEntry(entry)
 
-  if (!vendors[vendorName]) {
-    vendors[vendorName] = {
+  if (!vendors[safeVendorName]) {
+    vendors[safeVendorName] = {
       official: entry.official,
-      repo: entry.source,
+      repo: remoteSource,
       cloneDir,
       setup: entry.setup,
       links,
@@ -379,12 +411,12 @@ function mergeVendor(vendors: Record<string, Vendor>, vendorName: string, entry:
     return
   }
 
-  const existing = vendors[vendorName]
+  const existing = vendors[safeVendorName]
   if (
-    existing.repo !== entry.source
+    existing.repo !== remoteSource
     || existing.cloneDir !== cloneDir
   ) {
-    throw new Error(`供应商 "${vendorName}" 在不同模块中的定义不一致`)
+    throw new Error(`供应商 "${safeVendorName}" 在不同模块中的定义不一致`)
   }
 
   existing.official = existing.official || entry.official
