@@ -13,10 +13,6 @@ export function buildLinkPlan(manifest: VendorManifest, homeDir: string): LinkEn
   const plan: LinkEntry[] = []
 
   for (const [vendorId, vendor] of Object.entries(manifest.vendors ?? {})) {
-    if (vendor.sourceMode === 'workspace') {
-      continue
-    }
-
     for (const link of vendor.links ?? []) {
       const source = resolveHomePath(homeDir, path.posix.join(vendor.cloneDir, link.source))
       const target = resolveHomePath(homeDir, link.target)

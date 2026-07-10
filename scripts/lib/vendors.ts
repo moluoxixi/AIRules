@@ -50,6 +50,15 @@ export interface AgentConfig {
  */
 export type AgentDef = string | AgentConfig
 
+export interface HookConfig {
+  /** 仓库内 hook 文件名。 */
+  name: string
+  /** 安装后的 hook 文件名，默认与 name 相同。 */
+  output?: string
+}
+
+export type HookDef = string | HookConfig
+
 /**
  * 单个供应商仓库内的一条安装投影规则。
  */
@@ -86,9 +95,30 @@ export type VendorProjection
     /** vendor 侧目标文件，默认 vendor/mcp/mcp.json。 */
     targetFile?: string
   }
+  | {
+    kind: 'rules'
+    /** 仓库内中性规则文件。 */
+    sourceFile: string
+    /** vendor 侧目标文件，默认 vendor/AGENTS.md。 */
+    targetFile?: string
+  }
+  | {
+    kind: 'hooks'
+    /** 仓库内 hook 源目录。 */
+    sourceDir: string
+    /** vendor 侧目标目录，默认 vendor/hooks。 */
+    targetDir?: string
+    /** 需要精确转发的 hook 文件；省略时转发整个目录。 */
+    hooks?: HookDef[]
+  }
+  | {
+    kind: 'role-assets'
+    /** 远程仓库内所选角色根目录，如 roles/openspec-development。 */
+    sourceDir: string
+  }
 
 /**
- * 代表一个外部供应商或 workspace 配置源的技能仓库。
+ * 代表一个必须通过 Git remote checkout 获取的供应商仓库。
  */
 export interface VendorRepo {
   /** 供应商名称，也是克隆到本地后的目录名。 */
@@ -98,14 +128,10 @@ export interface VendorRepo {
   /** Git 仓库地址。 */
   source: string
   /**
-   * workspace 表示该供应商来自当前 AIRules 安装目录，而不是远程 Git checkout。
-   */
-  sourceMode?: 'git' | 'workspace'
-  /**
    * 供应商级安装前置命令。
    */
   setup?: SetupCommand[]
-  /** 从该仓库投影到 vendor/{skills,agents,mcp} 的安装规则列表；仅做 setup 的供应商可为空。 */
+  /** 从远程 checkout 投影到 vendor staging 的安装规则列表；仅做 setup 的供应商可为空。 */
   projections: VendorProjection[]
 }
 
@@ -124,7 +150,16 @@ export function normalizePath(value: string): string {
 }
 
 export interface VendorLink {
-  kind: string
+  kind:
+    | 'namespace-dir'
+    | 'skill'
+    | 'agents-dir'
+    | 'agent-file'
+    | 'rules-file'
+    | 'hooks-dir'
+    | 'hook-file'
+    | 'mcp-file'
+    | 'role-assets-dir'
   source: string
   target: string
   /** 该 skill 的安装前置命令（来自 SkillConfig.setup） */
@@ -134,7 +169,6 @@ export interface VendorLink {
 export interface Vendor {
   official?: boolean
   repo: string
-  sourceMode?: 'git' | 'workspace'
   cloneDir: string
   setup?: SetupCommand[]
   links: VendorLink[]
@@ -213,11 +247,31 @@ function buildAgentLink(sourceDir: string, targetDir: string, agentDef: any): Ve
   }
 }
 
+function buildHookLink(sourceDir: string, targetDir: string, hookDef: any): VendorLink {
+  if (typeof hookDef === 'string') {
+    return {
+      kind: 'hook-file',
+      source: path.posix.join(sourceDir, hookDef),
+      target: path.posix.join(targetDir, hookDef),
+    }
+  }
+
+  return {
+    kind: 'hook-file',
+    source: path.posix.join(sourceDir, hookDef.name as string),
+    target: path.posix.join(targetDir, (hookDef.output ?? hookDef.name) as string),
+  }
+}
+
 /**
  * 构建单个供应商实体的链接计划
  * @param entry 供应商定义实体
  */
 function buildLinksForEntry(entry: any): VendorLink[] {
+  if (Object.hasOwn(entry, 'sourceMode')) {
+    throw new Error(`供应商 "${entry.name}" 禁止声明 sourceMode；所有资产必须来自 Git remote checkout`)
+  }
+
   if (entry.sourceDir || entry.sourceBaseDir || entry.skills) {
     throw new Error(`供应商 "${entry.name}" 必须使用 projections 配置`)
   }
@@ -269,6 +323,36 @@ function buildLinksForEntry(entry: any): VendorLink[] {
       }]
     }
 
+    if (projection.kind === 'rules') {
+      return [{
+        kind: 'rules-file',
+        source: projection.sourceFile,
+        target: projection.targetFile ?? 'vendor/AGENTS.md',
+      }]
+    }
+
+    if (projection.kind === 'hooks') {
+      const targetDir = projection.targetDir ?? 'vendor/hooks'
+      if (Array.isArray(projection.hooks)) {
+        return projection.hooks.map((hookDef: any) =>
+          buildHookLink(projection.sourceDir, targetDir, hookDef),
+        )
+      }
+      return [{
+        kind: 'hooks-dir',
+        source: projection.sourceDir,
+        target: targetDir,
+      }]
+    }
+
+    if (projection.kind === 'role-assets') {
+      return [{
+        kind: 'role-assets-dir',
+        source: projection.sourceDir,
+        target: 'vendor',
+      }]
+    }
+
     throw new Error(`供应商 "${entry.name}" 存在未知 projection 类型: ${projection.kind}`)
   })
 }
@@ -288,7 +372,6 @@ function mergeVendor(vendors: Record<string, Vendor>, vendorName: string, entry:
     vendors[vendorName] = {
       official: entry.official,
       repo: entry.source,
-      sourceMode: entry.sourceMode,
       cloneDir,
       setup: entry.setup,
       links,
@@ -299,7 +382,6 @@ function mergeVendor(vendors: Record<string, Vendor>, vendorName: string, entry:
   const existing = vendors[vendorName]
   if (
     existing.repo !== entry.source
-    || existing.sourceMode !== entry.sourceMode
     || existing.cloneDir !== cloneDir
   ) {
     throw new Error(`供应商 "${vendorName}" 在不同模块中的定义不一致`)

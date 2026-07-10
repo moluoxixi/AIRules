@@ -61,8 +61,6 @@ const eccSharedAgentSkills: SkillDef[] = [
   'x-api',
 ]
 
-export const extendsRoles = ['common']
-
 export const vendors: VendorsConfig = [
   {
     name: 'ecc',
@@ -82,6 +80,17 @@ export const vendors: VendorsConfig = [
       {
         kind: 'agents',
         sourceDir: 'agents',
+      },
+    ],
+  },
+  {
+    name: 'moluoxixi',
+    official: true,
+    source: 'https://github.com/moluoxixi/AIRules.git',
+    projections: [
+      {
+        kind: 'role-assets',
+        sourceDir: 'roles/ecc-development',
       },
     ],
   },

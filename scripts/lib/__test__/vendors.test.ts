@@ -655,10 +655,11 @@ it('vendors 配置 - 使用 OpenAI Playwright 并移除过时技能', () => {
     '不应继续安装 create-handless-skill',
   )
   assert.strictEqual(
-    vendors.moluoxixi.sourceMode,
-    'workspace',
-    'AIRules 第一方 skills 应从当前 workspace 同步，避免新增 skill 必须先存在于远程仓库',
+    vendors.moluoxixi.repo,
+    'https://github.com/moluoxixi/AIRules.git',
+    'AIRules 角色资产必须来自 moluoxixi 远程仓库',
   )
+  assert.strictEqual('sourceMode' in vendors.moluoxixi, false, '远程 vendor 不应保留 workspace sourceMode')
   assert.deepStrictEqual(
     vendors.moluoxixi.setup,
     [
@@ -785,39 +786,37 @@ it('vendors 配置 - openspec-development 角色接入 BMAD 文档拆分、gstac
 
   assert.deepStrictEqual(
     vendors.moluoxixi.links.map((link: any) => ({
+      kind: link.kind,
       source: link.source,
       target: link.target,
     })),
     [
       {
-        source: 'roles/openspec-development/skills/init-project',
-        target: 'vendor/skills/init-project',
+        kind: 'role-assets-dir',
+        source: 'roles/openspec-development',
+        target: 'vendor',
       },
     ],
-    'openspec-development 专属一方 skill 只保留 init-project；handoff 与 frontend-testing 由 common overlay 分发',
+    'openspec-development 应从远程 checkout 全量分发所选角色资产，不叠加 common',
   )
 })
 
-it('vendors 配置 - common 公共能力包显式登记第一方 skills', () => {
+it('vendors 配置 - common 是可独立选择的普通远程角色', () => {
   const vendors: Record<string, any> = {}
 
   walkVendorTree(commonVendors, [], vendors)
 
-  assert.ok(vendors.moluoxixi, 'common 应作为 AIRules 第一方公共能力包登记')
-  assert.strictEqual(vendors.moluoxixi.sourceMode, 'workspace')
+  assert.ok(vendors.moluoxixi, 'common 应作为可独立选择的 AIRules 角色登记')
+  assert.strictEqual(vendors.moluoxixi.repo, 'https://github.com/moluoxixi/AIRules.git')
+  assert.strictEqual('sourceMode' in vendors.moluoxixi, false)
   assert.deepStrictEqual(
     vendors.moluoxixi.links.map((link: any) => ({
+      kind: link.kind,
       source: link.source,
       target: link.target,
     })),
     [
-      { source: 'roles/common/skills/distill-candidates', target: 'vendor/skills/distill-candidates' },
-      { source: 'roles/common/skills/frontend-testing', target: 'vendor/skills/frontend-testing' },
-      { source: 'roles/common/skills/handoff', target: 'vendor/skills/handoff' },
-      { source: 'roles/common/skills/recall-memory', target: 'vendor/skills/recall-memory' },
-      { source: 'roles/common/skills/reflect', target: 'vendor/skills/reflect' },
-      { source: 'roles/common/skills/remember', target: 'vendor/skills/remember' },
-      { source: 'roles/common/skills/session-capture', target: 'vendor/skills/session-capture' },
+      { kind: 'role-assets-dir', source: 'roles/common', target: 'vendor' },
     ],
   )
 })
@@ -873,16 +872,18 @@ it('vendors 配置 - speckit-development 接入 Spec Kit + Superpowers bridge，
   assert.ok(vendors.superpowers, 'bridge 执行阶段仍需要官方 Superpowers skills namespace')
   assert.deepStrictEqual(
     vendors.moluoxixi.links.map((link: any) => ({
+      kind: link.kind,
       source: link.source,
       target: link.target,
     })),
     [
       {
-        source: 'roles/speckit-development/skills/init-project',
-        target: 'vendor/skills/init-project',
+        kind: 'role-assets-dir',
+        source: 'roles/speckit-development',
+        target: 'vendor',
       },
     ],
-    'speckit-development 分发完整 init-project，用于项目规则、Spec Kit、bridge 与 CodeGraph 初始化',
+    'speckit-development 从远程 checkout 分发完整角色资产',
   )
   assert.strictEqual(vendors.antfu, undefined, '不应默认安装 Antfu 框架/工具链技能')
   assert.strictEqual(vendors.vercelAgentSkills, undefined, '不应默认安装 Vercel React/React Native 代码技能')
@@ -949,16 +950,18 @@ it('vendors 配置 - PM skills 由 product 角色接入 pmSkills 上游', () => 
 
   assert.deepStrictEqual(
     vendors.moluoxixi.links.map((link: any) => ({
+      kind: link.kind,
       source: link.source,
       target: link.target,
     })),
     [
       {
-        source: 'roles/product/skills/init-project',
-        target: 'vendor/skills/init-project',
+        kind: 'role-assets-dir',
+        source: 'roles/product',
+        target: 'vendor',
       },
     ],
-    'product 一方只维护 init-project，PM 方法论不复制到 AIRules 源目录',
+    'product 从远程 checkout 分发完整角色资产，PM 方法论仍由第三方 vendor 提供',
   )
 })
 
@@ -1013,16 +1016,33 @@ it('vendors 配置 - ecc-development 角色以 ECC 作为主编排来源', async
   assert.strictEqual(vendors.superpowers, undefined, 'ecc-development 不应混入 Superpowers 上游')
   assert.strictEqual(vendors.gstack, undefined, 'ecc-development 不应混入 gstack 上游')
   assert.strictEqual(vendors.bmadMethod, undefined, 'ecc-development 不应混入 BMAD 上游')
-  assert.strictEqual(vendors.moluoxixi, undefined, 'ecc-development 初始不维护第一方开发 skill')
+  assert.deepStrictEqual(
+    {
+      repo: vendors.moluoxixi.repo,
+      links: vendors.moluoxixi.links.map((link: any) => ({
+        kind: link.kind,
+        source: link.source,
+        target: link.target,
+      })),
+    },
+    {
+      repo: 'https://github.com/moluoxixi/AIRules.git',
+      links: [
+        { kind: 'role-assets-dir', source: 'roles/ecc-development', target: 'vendor' },
+      ],
+    },
+    'ecc-development 应从 moluoxixi 远程仓库分发完整角色资产',
+  )
 })
 
-it('vendors 配置 - trellis-development 只接入 Trellis 初始化入口且不隐式继承 common', () => {
+it('vendors 配置 - trellis-development 独立分发完整远程角色资产', () => {
   const vendors: Record<string, any> = {}
 
   walkVendorTree(trellisDevelopmentVendors, [], vendors)
 
-  assert.ok(vendors.moluoxixi, 'trellis-development 应接入 AIRules 一方 init-project')
-  assert.strictEqual(vendors.moluoxixi.sourceMode, 'workspace')
+  assert.ok(vendors.moluoxixi, 'trellis-development 应接入 AIRules 远程角色资产')
+  assert.strictEqual(vendors.moluoxixi.repo, 'https://github.com/moluoxixi/AIRules.git')
+  assert.strictEqual('sourceMode' in vendors.moluoxixi, false)
   assert.deepStrictEqual(
     vendors.moluoxixi.setup,
     [
@@ -1035,18 +1055,61 @@ it('vendors 配置 - trellis-development 只接入 Trellis 初始化入口且不
   )
   assert.deepStrictEqual(
     vendors.moluoxixi.links.map((link: any) => ({
+      kind: link.kind,
       source: link.source,
       target: link.target,
     })),
     [
       {
-        source: 'roles/trellis-development/skills/init-project',
-        target: 'vendor/skills/init-project',
+        kind: 'role-assets-dir',
+        source: 'roles/trellis-development',
+        target: 'vendor',
       },
     ],
   )
-  assert.ok(
-    !vendors.moluoxixi.links.some((link: any) => link.source.startsWith('roles/common/skills/')),
-    'trellis-development 不应通过 vendors 隐式接入 common',
+})
+
+it('walkVendorTree - 远程 rules、hooks 与 role-assets 投影进入通用分发面', () => {
+  const vendors: Record<string, any> = {}
+
+  walkVendorTree([
+    {
+      name: 'remote-assets',
+      official: true,
+      source: 'https://example.com/remote-assets.git',
+      projections: [
+        { kind: 'rules', sourceFile: 'rules/AGENTS.md' },
+        { kind: 'hooks', sourceDir: 'hooks' },
+        { kind: 'role-assets', sourceDir: 'roles/alpha' },
+      ],
+    },
+  ], [], vendors)
+
+  assert.deepStrictEqual(
+    vendors['remote-assets'].links.map((link: any) => ({ kind: link.kind, source: link.source, target: link.target })),
+    [
+      { kind: 'rules-file', source: 'rules/AGENTS.md', target: 'vendor/AGENTS.md' },
+      { kind: 'hooks-dir', source: 'hooks', target: 'vendor/hooks' },
+      { kind: 'role-assets-dir', source: 'roles/alpha', target: 'vendor' },
+    ],
+  )
+})
+
+it('walkVendorTree - 拒绝 workspace 或 local vendor 源', () => {
+  const vendors: Record<string, any> = {}
+
+  assert.throws(
+    () => walkVendorTree([
+      {
+        name: 'local-assets',
+        official: true,
+        source: 'https://example.com/local-assets.git',
+        sourceMode: 'workspace',
+        projections: [
+          { kind: 'skills', sourceBaseDir: 'skills', skills: [] },
+        ],
+      },
+    ] as any, [], vendors),
+    /sourceMode|workspace|local/i,
   )
 })

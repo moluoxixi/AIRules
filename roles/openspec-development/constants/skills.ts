@@ -20,8 +20,6 @@ const openspecDevelopmentSetup: SetupCommand[] = [
   },
 ]
 
-export const extendsRoles = ['common']
-
 export const vendors: VendorsConfig = [
   {
     name: 'bmadMethod',
@@ -181,13 +179,11 @@ export const vendors: VendorsConfig = [
     name: 'moluoxixi',
     official: true,
     source: 'https://github.com/moluoxixi/AIRules.git',
-    sourceMode: 'workspace',
     setup: openspecDevelopmentSetup,
     projections: [
       {
-        kind: 'skills',
-        sourceBaseDir: 'roles/openspec-development/skills',
-        skills: ['init-project'],
+        kind: 'role-assets',
+        sourceDir: 'roles/openspec-development',
       },
     ],
   },

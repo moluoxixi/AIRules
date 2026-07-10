@@ -2,8 +2,8 @@ import type { SetupCommand, VendorsConfig } from '../../../scripts/lib/vendors.j
 
 /**
  * trellis-development 角色把 Trellis 作为项目内任务状态机、规格知识库与会话记忆运行时。
- * 该角色故意不 extends common：Trellis 自带 .trellis/workspace 与 trellis mem，
- * 需要 AIRules common 时由后续角色显式继承或用户另行选择。
+ * 该角色保持独立：Trellis 自带 .trellis/workspace 与 trellis mem；
+ * common 如有需要应作为另一角色独立选择。
  */
 const trellisDevelopmentSetup: SetupCommand[] = [
   {
@@ -18,13 +18,11 @@ export const vendors: VendorsConfig = [
     name: 'moluoxixi',
     official: true,
     source: 'https://github.com/moluoxixi/AIRules.git',
-    sourceMode: 'workspace',
     setup: trellisDevelopmentSetup,
     projections: [
       {
-        kind: 'skills',
-        sourceBaseDir: 'roles/trellis-development/skills',
-        skills: ['init-project'],
+        kind: 'role-assets',
+        sourceDir: 'roles/trellis-development',
       },
     ],
   },

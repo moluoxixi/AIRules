@@ -16,8 +16,6 @@ const productSetup: SetupCommand[] = [
   },
 ]
 
-export const extendsRoles = ['common']
-
 export const vendors: VendorsConfig = [
   {
     name: 'bmadMethod',
@@ -69,13 +67,11 @@ export const vendors: VendorsConfig = [
     name: 'moluoxixi',
     official: true,
     source: 'https://github.com/moluoxixi/AIRules.git',
-    sourceMode: 'workspace',
     setup: productSetup,
     projections: [
       {
-        kind: 'skills',
-        sourceBaseDir: 'roles/product/skills',
-        skills: ['init-project'],
+        kind: 'role-assets',
+        sourceDir: 'roles/product',
       },
     ],
   },

@@ -27,8 +27,6 @@ const speckitDevelopmentSetup: SetupCommand[] = [
   },
 ]
 
-export const extendsRoles = ['common']
-
 export const vendors: VendorsConfig = [
   {
     name: 'speckitSuperpowersBridge',
@@ -58,13 +56,11 @@ export const vendors: VendorsConfig = [
     name: 'moluoxixi',
     official: true,
     source: 'https://github.com/moluoxixi/AIRules.git',
-    sourceMode: 'workspace',
     setup: speckitDevelopmentSetup,
     projections: [
       {
-        kind: 'skills',
-        sourceBaseDir: 'roles/speckit-development/skills',
-        skills: ['init-project'],
+        kind: 'role-assets',
+        sourceDir: 'roles/speckit-development',
       },
     ],
   },
