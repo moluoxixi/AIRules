@@ -5,6 +5,7 @@ export interface RoleAssets {
   role: string
   roleRoot: string
   skillsDir?: string
+  agentsDir?: string
   rulesFile?: string
   hooksDir?: string
   mcpFile?: string
@@ -34,6 +35,7 @@ export function resolveRoleAssets(home: string, roleValue: unknown): RoleAssets 
     role,
     roleRoot,
     skillsDir: resolveOptionalAsset(roleRoot, 'skills', 'directory'),
+    agentsDir: resolveOptionalAsset(roleRoot, 'agents', 'directory'),
     rulesFile: resolveOptionalAsset(roleRoot, 'rules/AGENTS.md', 'file'),
     hooksDir: resolveOptionalAsset(roleRoot, 'hooks', 'directory'),
     mcpFile: resolveOptionalAsset(roleRoot, 'mcp/mcp.json', 'file'),

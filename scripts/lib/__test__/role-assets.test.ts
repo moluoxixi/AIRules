@@ -61,7 +61,7 @@ describe('resolveRoleAssets', () => {
 
   it('returns only the selected role assets', () => {
     const { home } = createHome()
-    createRole(home, 'alpha', ['skills', 'rules', 'hooks', 'mcp'])
+    createRole(home, 'alpha', ['skills', 'agents', 'rules', 'hooks', 'mcp'])
     createRole(home, 'beta', ['skills'])
 
     const assets = resolveRoleAssets(home, 'alpha')
@@ -69,6 +69,7 @@ describe('resolveRoleAssets', () => {
     expect(assets).toMatchObject({ role: 'alpha' })
     expect(assets.skillsDir).toContain('alpha')
     expect(assets.skillsDir).not.toContain('beta')
+    expect(assets.agentsDir).toContain(path.join('alpha', 'agents'))
     expect(assets.rulesFile).toContain(path.join('alpha', 'rules', 'AGENTS.md'))
     expect(assets.hooksDir).toContain(path.join('alpha', 'hooks'))
     expect(assets.mcpFile).toContain(path.join('alpha', 'mcp', 'mcp.json'))
