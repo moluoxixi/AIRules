@@ -1,6 +1,10 @@
 import fs from 'node:fs'
 import path from 'node:path'
+import { pathToFileURL } from 'node:url'
 import { requireRoleName } from './role-assets.js'
+
+export const DEFAULT_ROLE = ''
+export const COMMON_ROLE = ''
 
 export interface RolePaths {
   role: string
@@ -46,11 +50,61 @@ export function requireRolePaths(repoRoot: string, roleValue: unknown): RolePath
   return { ...paths, constantsDir, constantsFile }
 }
 
+export async function roleOverlayOrder(repoRoot: string, roleValue: unknown = DEFAULT_ROLE): Promise<string[]> {
+  if (roleValue === '') {
+    return []
+  }
+
+  const role = requireRoleName(roleValue)
+  const orderedRoles: string[] = []
+  const seenRoles = new Set<string>()
+  const visitingRoles = new Set<string>()
+
+  async function visit(roleName: string): Promise<void> {
+    requireRolePaths(repoRoot, roleName)
+    if (seenRoles.has(roleName)) {
+      return
+    }
+    if (visitingRoles.has(roleName)) {
+      throw new Error(`AIRules role inheritance cycle detected at "${roleName}"`)
+    }
+
+    visitingRoles.add(roleName)
+    for (const extendedRole of await loadRoleExtendsRoles(repoRoot, roleName)) {
+      await visit(extendedRole)
+    }
+    visitingRoles.delete(roleName)
+    seenRoles.add(roleName)
+    orderedRoles.push(roleName)
+  }
+
+  await visit(role)
+  return orderedRoles
+}
+
+export async function existingRoleOverlayPaths(
+  repoRoot: string,
+  roleValue: unknown = DEFAULT_ROLE,
+): Promise<RolePaths[]> {
+  const roles = await roleOverlayOrder(repoRoot, roleValue)
+  return roles.map(role => requireRolePaths(repoRoot, role))
+}
+
 export function resolveRoleManifestPath(
   repoRoot: string,
   roleValue: unknown,
   options: { preferDist?: boolean } = {},
 ): string {
+  if (roleValue === '') {
+    const resolvedRepoRoot = fs.realpathSync(path.resolve(repoRoot))
+    const sourceManifest = path.join(resolvedRepoRoot, 'scripts', 'lib', 'empty-role-manifest.ts')
+    const distManifest = path.join(resolvedRepoRoot, 'dist', 'scripts', 'lib', 'empty-role-manifest.js')
+    if (options.preferDist && fs.existsSync(distManifest)) {
+      return distManifest
+    }
+    return sourceManifest
+  }
+
   const role = requireRoleName(roleValue)
   const resolvedRepoRoot = fs.realpathSync(path.resolve(repoRoot))
   const sourceRoleRoot = path.join(resolvedRepoRoot, 'roles', role)
@@ -88,6 +142,19 @@ function resolveManifestCandidate(repoRoot: string, requestedRoleRoot: string, m
   const resolvedManifest = fs.realpathSync(manifestPath)
   requireInsideRoot(constantsDir, resolvedManifest, 'role manifest', 'constants directory')
   return resolvedManifest
+}
+
+async function loadRoleExtendsRoles(repoRoot: string, role: string): Promise<string[]> {
+  const manifestPath = resolveRoleManifestPath(repoRoot, role)
+  const manifestUrl = pathToFileURL(path.resolve(manifestPath)).href
+  const module = await import(manifestUrl)
+  const extendsRoles = module.extendsRoles ?? module.default?.extendsRoles ?? []
+
+  if (!Array.isArray(extendsRoles) || !extendsRoles.every(roleName => typeof roleName === 'string')) {
+    throw new TypeError(`roles/${role}/constants/skills.ts export "extendsRoles" must be a string array`)
+  }
+
+  return extendsRoles
 }
 
 function buildRolePaths(role: string, roleRoot: string): RolePaths {

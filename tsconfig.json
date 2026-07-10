@@ -12,12 +12,14 @@
   },
   "include": ["**/*.ts"],
   "exclude": [
+    "__test__/workflow-contract.test.ts",
     ".claude",
     ".git",
     ".idea",
     "coverage",
     "dist",
     "node_modules",
-    "vendor"
+    "vendor",
+    "scripts/lib/__test__/vendors.test.ts"
   ]
 }

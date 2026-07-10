@@ -174,6 +174,7 @@ export interface Vendor {
   official?: boolean
   repo: string
   cloneDir: string
+  sourceMode?: 'workspace'
   setup?: SetupCommand[]
   links: VendorLink[]
 }

@@ -1,3 +1,4 @@
+import type { Vendor } from '../vendors.js'
 import assert from 'node:assert'
 import { execFileSync } from 'node:child_process'
 import fs from 'node:fs'
@@ -44,7 +45,7 @@ it('ensureVendorRepo - overwrites a diverged local vendor repo with remote state
     commitAll(remoteWork, 'initial remote skill')
     git(remoteWork, ['push', '-u', 'origin', 'main'])
 
-    const vendor = {
+    const vendor: Vendor = {
       repo: originRepo,
       cloneDir: 'vendor/repos/demo',
       links: [{
@@ -95,7 +96,7 @@ it('ensureVendorRepo - handles non-fast-forward remote branch updates', () => {
     commitAll(remoteWork, 'initial remote skill')
     git(remoteWork, ['push', '-u', 'origin', 'main'])
 
-    const vendor = {
+    const vendor: Vendor = {
       repo: originRepo,
       cloneDir: 'vendor/repos/demo',
       links: [{

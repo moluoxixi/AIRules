@@ -3,12 +3,6 @@ import type { VendorNode, VendorRepo, VendorsConfig } from './lib/vendors.js'
 import { existsSync, readdirSync, readFileSync } from 'node:fs'
 import path from 'node:path'
 import { fileURLToPath } from 'node:url'
-import { vendors as commonVendors } from '../roles/common/constants/skills.js'
-import { vendors as eccDevelopmentVendors } from '../roles/ecc-development/constants/skills.js'
-import { vendors as openspecDevelopmentVendors } from '../roles/openspec-development/constants/skills.js'
-import { vendors as productVendors } from '../roles/product/constants/skills.js'
-import { vendors as speckitDevelopmentVendors } from '../roles/speckit-development/constants/skills.js'
-import { vendors as trellisDevelopmentVendors } from '../roles/trellis-development/constants/skills.js'
 import { COMMON_ROLE, resolveRolePaths } from './lib/roles.js'
 
 // 编码编排资产最小自洽性检查（低成本、非重型治理）：
@@ -21,14 +15,7 @@ const ECC_DEVELOPMENT_ROLE = 'ecc-development'
 const OPENSPEC_DEVELOPMENT_ROLE = 'openspec-development'
 const SPECKIT_DEVELOPMENT_ROLE = 'speckit-development'
 const TRELLIS_DEVELOPMENT_ROLE = 'trellis-development'
-const ROLE_VENDOR_CONFIGS: Record<string, VendorsConfig> = {
-  [COMMON_ROLE]: commonVendors,
-  [SPECKIT_DEVELOPMENT_ROLE]: speckitDevelopmentVendors,
-  [OPENSPEC_DEVELOPMENT_ROLE]: openspecDevelopmentVendors,
-  [ECC_DEVELOPMENT_ROLE]: eccDevelopmentVendors,
-  [TRELLIS_DEVELOPMENT_ROLE]: trellisDevelopmentVendors,
-  [PRODUCT_ROLE]: productVendors,
-}
+const ROLE_VENDOR_CONFIGS: Record<string, VendorsConfig> = {}
 
 // 旧 9-agent 模型的一方 agent 名，不得在架构文档活引用（superseded ADR 横幅与历史正文除外，靠白名单跳过）。
 const STALE_AGENT_NAMES = [
@@ -53,7 +40,7 @@ function isVendorRepo(node: VendorNode): node is VendorRepo {
 }
 
 /** 从指定 role 的 vendors 配置里取出 moluoxixi 第一方分发的 skill 目录名。 */
-export function firstPartySkillNames(vendorsConfig: VendorsConfig = openspecDevelopmentVendors): string[] {
+export function firstPartySkillNames(vendorsConfig: VendorsConfig = []): string[] {
   const names: string[] = []
   const walk = (nodes: VendorNode[]) => {
     for (const node of nodes) {

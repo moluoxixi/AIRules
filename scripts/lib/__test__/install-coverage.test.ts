@@ -1,3 +1,4 @@
+import type { VendorManifest } from '../vendors.js'
 import assert from 'node:assert/strict'
 import fs from 'node:fs'
 import os from 'node:os'
@@ -781,7 +782,7 @@ it('install - 宿主投影跳过循环来源链接并自愈目标死链', () => 
 }))
 
 it('install - runSkillSetupCommands 执行 setup 成功命令', () => {
-  const manifest = {
+  const manifest: VendorManifest = {
     version: 1,
     vendors: {
       demo: {
@@ -810,7 +811,7 @@ it('install - runSkillSetupCommands 执行 setup 成功命令', () => {
 })
 
 it('install - runSkillSetupCommands 支持已存在命令时跳过 setup', () => {
-  const manifest = {
+  const manifest: VendorManifest = {
     version: 1,
     vendors: {
       demo: {
@@ -845,7 +846,7 @@ it('install - setup 命令在 Windows 下使用 cmd shim', () => {
 })
 
 it('install - runSkillSetupCommands 保留供应商级 setup 失败语义', () => {
-  const manifest = {
+  const manifest: VendorManifest = {
     version: 1,
     vendors: {
       demo: {
@@ -866,7 +867,7 @@ it('install - runSkillSetupCommands 保留供应商级 setup 失败语义', () =
 })
 
 it('install - runSkillSetupCommands 保留 setup 失败语义', () => {
-  const manifest = {
+  const manifest: VendorManifest = {
     version: 1,
     vendors: {
       demo: {

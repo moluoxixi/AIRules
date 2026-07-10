@@ -154,6 +154,11 @@ function readArgValue(name: string): string | undefined {
 async function main() {
   const force = process.argv.includes('--force')
   const role = readArgValue('--role') ?? DEFAULT_ROLE
+  if (role === '') {
+    console.log('[SYNC] 未选择 role，跳过供应商同步。')
+    return
+  }
+
   const manifestPath = resolveRoleManifestPath(PROJECT_ROOT, role)
   // --update-lock：拉取默认分支最新，并把每个 vendor 的 HEAD SHA 写回 vendor-lock.json。
   // 不带该标志时：若 vendor-lock.json 存在锁定项，则 checkout 锁定 SHA（可复现）；否则按默认分支最新同步。
