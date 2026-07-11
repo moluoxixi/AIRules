@@ -140,7 +140,13 @@ it('hosts - 解析默认和自定义宿主路径', () => {
   assert.equal(qoderPaths.includeNativeTomlAgentsAsMarkdown, true)
   assert.equal(qoder.mcpHomeImpliesHostHome, true)
   assert.deepEqual(qoderPaths.mcp?.serverOverrides?.codegraph, { type: 'stdio' })
-  assert.deepEqual(qoderPaths.hooks.map(h => h.event).sort(), ['Stop'])
+  assert.deepEqual(qoderPaths.hookAdapter, {
+    relDir: '.',
+    fileName: 'settings.json',
+    format: 'json',
+    nesting: 'group',
+    includeType: true,
+  })
 
   const qoderworkPaths = resolveHostPaths(qoderwork, 'C:/Users/example')
   assert.equal(qoderworkPaths.mcp, undefined)
@@ -443,6 +449,10 @@ it('install - Qoder 投影全局 AGENTS、skills、agents、Stop hook 与 Shared
   fs.mkdirSync(path.join(vendorSkillsDir, 'api-docs'), { recursive: true })
   writeFile(path.join(moluoHome, 'vendor', 'agents', 'demo-agent.md'), '---\nname: demo-agent\ndescription: demo\n---\nbody\n')
   writeFile(path.join(moluoHome, 'vendor', 'hooks', 'session-log.mjs'), 'process.stdout.write("{}")\n')
+  writeFile(path.join(moluoHome, 'vendor', 'hooks', 'hooks.json'), `${JSON.stringify({
+    version: 1,
+    hooks: [{ event: 'Stop', script: 'session-log.mjs', hosts: ['qoder'] }],
+  })}\n`)
   writeFile(path.join(moluoHome, 'vendor', 'mcp', 'mcp.json'), `${JSON.stringify({
     mcpServers: {
       codegraph: {
@@ -456,7 +466,6 @@ it('install - Qoder 投影全局 AGENTS、skills、agents、Stop hook 与 Shared
   writeFile(path.join(qoderHome, 'settings.json'), `${JSON.stringify({
     hooks: {
       Stop: [
-        { hooks: [{ type: 'command', command: `node "${path.join(qoderHome, 'hooks', 'session-log.mjs')}" --airules-host=qoder-cli` }] },
         { hooks: [{ type: 'command', command: 'echo user-stop' }] },
       ],
     },
@@ -487,6 +496,105 @@ it('install - Qoder 投影全局 AGENTS、skills、agents、Stop hook 与 Shared
   })
 }))
 
+it('install - 本地角色 hook 清单无效时保留上一版 vendor hooks', async () => withTempDirAsync('airules-invalid-local-hooks-', async (tmpDir) => {
+  const repoRoot = path.join(tmpDir, 'repo')
+  const moluoHome = path.join(tmpDir, 'home')
+
+  writeFile(path.join(repoRoot, 'roles', 'alpha', 'constants', 'skills.ts'), 'export const vendors = []\n')
+  writeFile(path.join(repoRoot, 'roles', 'alpha', 'hooks', 'hooks.json'), `${JSON.stringify({
+    version: 1,
+    hooks: [{ event: 'Stop', script: 'missing.mjs' }],
+  })}\n`)
+  writeFile(path.join(moluoHome, 'vendor', 'hooks', 'stable.mjs'), 'export const stable = true\n')
+
+  await assert.rejects(
+    syncFirstPartyToHome(repoRoot, moluoHome, 'alpha'),
+    /script does not exist/i,
+  )
+  assert.equal(fs.readFileSync(path.join(moluoHome, 'vendor', 'hooks', 'stable.mjs'), 'utf8'), 'export const stable = true\n')
+}))
+
+it('install - 角色 hook 清单按事件分发并保留用户 hook', () => withTempDir('airules-role-hook-dispatch-', (tmpDir) => {
+  const userHome = path.join(tmpDir, 'user')
+  const moluoHome = path.join(userHome, '.moluoxixi')
+  const claudeHome = path.join(userHome, '.claude')
+
+  writeFile(path.join(moluoHome, 'vendor', 'hooks', 'workflow-dispatcher.mjs'), 'process.stdout.write("{}")\n')
+  writeFile(path.join(moluoHome, 'vendor', 'hooks', 'hooks.json'), `${JSON.stringify({
+    version: 1,
+    hooks: [
+      { event: 'PreToolUse', script: 'workflow-dispatcher.mjs', hosts: ['claude'] },
+      { event: 'Stop', script: 'workflow-dispatcher.mjs' },
+    ],
+  }, null, 2)}\n`)
+  writeFile(path.join(claudeHome, 'settings.json'), `${JSON.stringify({
+    hooks: { Stop: [{ hooks: [{ type: 'command', command: 'echo user-stop' }] }] },
+  }, null, 2)}\n`)
+
+  const projected = projectHostById('claude', userHome, moluoHome)
+
+  assert.equal(projected.success, true)
+  const settings = JSON.parse(fs.readFileSync(path.join(claudeHome, 'settings.json'), 'utf8'))
+  assert.deepEqual(Object.keys(settings.hooks).sort(), ['PreToolUse', 'Stop'])
+  assert.match(settings.hooks.PreToolUse[0].hooks[0].command, /workflow-dispatcher\.mjs/)
+  assert.equal(JSON.stringify(settings.hooks.Stop).includes('echo user-stop'), true)
+  assert.equal(JSON.stringify(settings.hooks.Stop).includes('workflow-dispatcher.mjs'), true)
+  assert.equal(fs.existsSync(path.join(claudeHome, 'hooks', 'workflow-dispatcher.mjs')), true)
+}))
+
+it('install - 角色 hook 清单收敛删除旧受管事件但保留用户同目录脚本', () => withTempDir('airules-role-hook-reconcile-', (tmpDir) => {
+  const userHome = path.join(tmpDir, 'user')
+  const moluoHome = path.join(userHome, '.moluoxixi')
+  const claudeHome = path.join(userHome, '.claude')
+  const vendorHooks = path.join(moluoHome, 'vendor', 'hooks')
+  const manifestFile = path.join(vendorHooks, 'hooks.json')
+
+  writeFile(path.join(vendorHooks, 'dispatcher.mjs'), 'process.stdout.write("{}")\n')
+  writeFile(manifestFile, `${JSON.stringify({ version: 1, hooks: [{ event: 'PreToolUse', script: 'dispatcher.mjs' }] })}\n`)
+  fs.mkdirSync(claudeHome, { recursive: true })
+  projectHostById('claude', userHome, moluoHome)
+
+  const customScript = path.join(claudeHome, 'hooks', 'custom.mjs')
+  writeFile(customScript, 'export const user = true\n')
+  const first = JSON.parse(fs.readFileSync(path.join(claudeHome, 'settings.json'), 'utf8'))
+  first.hooks.Stop = [{ hooks: [{ type: 'command', command: `node "${customScript}"` }] }]
+  first.hooks.EmptyUserEvent = [{ matcher: 'never', hooks: [] }]
+  fs.writeFileSync(path.join(claudeHome, 'settings.json'), `${JSON.stringify(first, null, 2)}\n`)
+
+  writeFile(manifestFile, `${JSON.stringify({ version: 1, hooks: [{ event: 'Stop', script: 'dispatcher.mjs' }] })}\n`)
+  projectHostById('claude', userHome, moluoHome)
+
+  const settings = JSON.parse(fs.readFileSync(path.join(claudeHome, 'settings.json'), 'utf8'))
+  assert.equal(settings.hooks.PreToolUse, undefined)
+  assert.equal(JSON.stringify(settings.hooks.Stop).includes('--airules-managed-hook'), true)
+  assert.equal(JSON.stringify(settings.hooks.Stop).includes('custom.mjs'), true)
+  assert.deepEqual(settings.hooks.EmptyUserEvent, [{ matcher: 'never', hooks: [] }])
+  assert.equal(fs.existsSync(customScript), true)
+}))
+
+it('install - JSON 同事件相似脚本名不会互相误删', () => withTempDir('airules-role-hook-similar-names-', (tmpDir) => {
+  const userHome = path.join(tmpDir, 'user')
+  const moluoHome = path.join(userHome, '.moluoxixi')
+  const claudeHome = path.join(userHome, '.claude')
+  const vendorHooks = path.join(moluoHome, 'vendor', 'hooks')
+
+  writeFile(path.join(vendorHooks, 'a.mjs'), 'export {}\n')
+  writeFile(path.join(vendorHooks, 'ba.mjs'), 'export {}\n')
+  writeFile(path.join(vendorHooks, 'hooks.json'), `${JSON.stringify({
+    version: 1,
+    hooks: [{ event: 'Stop', script: 'ba.mjs' }, { event: 'Stop', script: 'a.mjs' }],
+  })}\n`)
+  fs.mkdirSync(claudeHome, { recursive: true })
+
+  projectHostById('claude', userHome, moluoHome)
+
+  const settings = JSON.parse(fs.readFileSync(path.join(claudeHome, 'settings.json'), 'utf8'))
+  const commands = settings.hooks.Stop.flatMap((group: { hooks: Array<{ command: string }> }) => group.hooks.map(hook => hook.command))
+  assert.equal(commands.filter((command: string) => command.includes('a.mjs')).length, 2)
+  assert.equal(commands.some((command: string) => command.includes('ba.mjs')), true)
+  assert.equal(commands.some((command: string) => /[\\/]a\.mjs"/u.test(command)), true)
+}))
+
 it('install - Qoder 只有 SharedClientCache 存在时仍创建 .qoder 完整投影', () => withTempDir('airules-qoder-mcp-only-', (tmpDir) => {
   const userHome = path.join(tmpDir, 'user')
   const moluoHome = path.join(userHome, '.moluoxixi')
@@ -498,6 +606,10 @@ it('install - Qoder 只有 SharedClientCache 存在时仍创建 .qoder 完整投
   fs.mkdirSync(path.join(vendorSkillsDir, 'api-docs'), { recursive: true })
   writeFile(path.join(moluoHome, 'vendor', 'agents', 'demo-agent.md'), '---\nname: demo-agent\ndescription: demo\n---\nbody\n')
   writeFile(path.join(moluoHome, 'vendor', 'hooks', 'session-log.mjs'), 'process.stdout.write("{}")\n')
+  writeFile(path.join(moluoHome, 'vendor', 'hooks', 'hooks.json'), `${JSON.stringify({
+    version: 1,
+    hooks: [{ event: 'Stop', script: 'session-log.mjs', hosts: ['qoder'] }],
+  })}\n`)
   writeFile(path.join(moluoHome, 'vendor', 'mcp', 'mcp.json'), `${JSON.stringify({
     mcpServers: {
       codegraph: {

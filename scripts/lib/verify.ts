@@ -1,10 +1,12 @@
-import type { HookProjection, McpProjection } from '../../constants/hosts.js'
+import type { HookHostAdapter, HookProjection, McpProjection } from '../../constants/hosts.js'
+import { createHash } from 'node:crypto'
 import { existsSync, lstatSync, readdirSync, readFileSync, realpathSync } from 'node:fs'
 import os from 'node:os'
 import path from 'node:path'
 import kleur from 'kleur'
 import * as smolToml from 'smol-toml'
 import { findHostConfig, resolveHostPaths } from '../../constants/hosts.js'
+import { managedHookCommand, resolveHookDispatches } from './hook-dispatch.js'
 
 function isRecord(value: unknown): value is Record<string, unknown> {
   return typeof value === 'object' && value !== null && !Array.isArray(value)
@@ -101,24 +103,36 @@ function verifyMcpProjection(host: string, moluoHome: string, mcpHome: string, m
 }
 
 /**
- * 验证宿主 hook 投影：声明 hooks 的宿主，其配置文件须含一条指向 session-log 脚本的受管
- * Stop hook，且脚本文件已就位。未声明 hooks 的宿主跳过（不算失败）。
+ * 验证宿主 hook 投影：角色清单声明的每个 hook 都必须具有精确的受管配置条目，
+ * 且宿主脚本须与角色源一致。未声明 hook 的宿主跳过（不算失败）。
  * 宿主可声明多条投影（多事件）：逐条校验，全部通过才算 PASS。
  */
-function verifyHookProjection(host: string, hooksHome: string, hooks: HookProjection[]): boolean {
-  if (hooks.length === 0) {
+function verifyHookProjection(
+  host: string,
+  hooksHome: string,
+  vendorHooksRoot: string,
+  adapter: HookHostAdapter | undefined,
+  hooks: HookProjection[],
+): boolean {
+  if (!adapter) {
     return true
   }
-  return hooks.every(hook => verifyOneHook(host, hooksHome, hook))
+  return hooks.every(hook => verifyOneHook(host, hooksHome, vendorHooksRoot, hook))
+    && verifyExactManagedHookSet(host, hooksHome, adapter, hooks)
 }
 
 /** 校验单条 hook 投影：脚本就位 + 配置含指向该脚本的受管条目。 */
-function verifyOneHook(host: string, hooksHome: string, hooks: HookProjection): boolean {
-  // 中性源脚本不存在 → 无可分发 hook，跳过（与 MCP 源缺失同义，不算失败）。
+function verifyOneHook(host: string, hooksHome: string, vendorHooksRoot: string, hooks: HookProjection): boolean {
   const hostScript = path.join(hooksHome, 'hooks', hooks.scriptName)
-  if (!existsSync(hostScript)) {
-    console.log(`[info] 未发现 hook 脚本，跳过 hook 校验: ${host}`)
-    return true
+  const hostScriptStats = lstatSync(hostScript, { throwIfNoEntry: false })
+  if (!hostScriptStats?.isFile() || hostScriptStats.isSymbolicLink()) {
+    console.error(`[FAIL] hook 脚本缺失或不是普通文件: ${hostScript} (${host})`)
+    return false
+  }
+  const vendorScript = path.join(vendorHooksRoot, hooks.scriptName)
+  if (!existsSync(vendorScript) || fileHash(vendorScript) !== fileHash(hostScript)) {
+    console.error(`[FAIL] hook 脚本内容与角色源不一致: ${hostScript}`)
+    return false
   }
 
   const targetFile = path.join(hooksHome, hooks.relDir, hooks.fileName)
@@ -128,12 +142,21 @@ function verifyOneHook(host: string, hooksHome: string, hooks: HookProjection): 
   }
 
   const raw = readFileSync(targetFile, 'utf8').replace(/^\uFEFF/u, '')
-  // 受管条目以脚本名为锚点。
+  const expectedCommands = [managedHookCommand(hostScript)]
 
   // TOML（Codex）：断言受管块存在且块内引用脚本名。
   if (hooks.format === 'toml') {
-    // 受管块标识按 scriptName 区分（多事件投影互不覆盖），断言本脚本专属块存在。
-    if (!raw.includes(`# >>> AIRULES HOOK ${hooks.scriptName} >>>`) || !raw.includes(hooks.scriptName)) {
+    const marker = `AIRULES HOOK ${hooks.event} ${hooks.scriptName}`
+    const escapedMarker = marker.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')
+    const block = raw.match(new RegExp(`# >>> ${escapedMarker} >>>\\r?\\n([\\s\\S]*?)# <<< ${escapedMarker} <<<`, 'u'))
+    let parsedBlock: unknown
+    try {
+      parsedBlock = block ? smolToml.parse(block[1]) : undefined
+    }
+    catch {
+      parsedBlock = undefined
+    }
+    if (!block || !containsTomlHookCommand(parsedBlock, hooks.event, expectedCommands)) {
       console.error(`[FAIL] hook 配置未含指向 ${hooks.scriptName} 的 ${hooks.event} 受管块: ${targetFile}`)
       return false
     }
@@ -152,21 +175,32 @@ function verifyOneHook(host: string, hooksHome: string, hooks: HookProjection): 
     return false
   }
 
-  const refsScript = (entry: unknown): boolean => {
-    if (typeof entry !== 'object' || entry === null) {
+  const matchesCommand = (entry: unknown): boolean => {
+    if (typeof entry !== 'object' || entry === null || Array.isArray(entry)) {
       return false
     }
-    const e = entry as { command?: unknown, args?: unknown, hooks?: unknown }
-    const inCommand = typeof e.command === 'string' && e.command.includes(hooks.scriptName)
-    const inArgs = Array.isArray(e.args) && e.args.some(a => typeof a === 'string' && a.includes(hooks.scriptName))
-    // group 嵌套：递归看内层 hooks 数组。
-    const inInner = Array.isArray(e.hooks) && e.hooks.some(refsScript)
-    return inCommand || inArgs || inInner
+    const command = entry as { command?: unknown, type?: unknown }
+    return expectedCommands.includes(String(command.command))
+      && (!hooks.includeType || command.type === 'command')
   }
 
-  const root = parsed as { version?: unknown, hooks?: Record<string, unknown> }
-  const eventEntries = root.hooks && Array.isArray(root.hooks[hooks.event]) ? root.hooks[hooks.event] as unknown[] : []
-  if (!eventEntries.some(refsScript)) {
+  if (!isRecord(parsed)) {
+    console.error(`[FAIL] hook 配置根节点必须是对象: ${targetFile}`)
+    return false
+  }
+  const root = parsed
+  const rootHooks = isRecord(root.hooks) ? root.hooks : undefined
+  const eventEntries = rootHooks && Array.isArray(rootHooks[hooks.event]) ? rootHooks[hooks.event] as unknown[] : []
+  const hasExpectedEntry = hooks.nesting === 'flat'
+    ? eventEntries.some(matchesCommand)
+    : eventEntries.some((entry) => {
+        if (typeof entry !== 'object' || entry === null || Array.isArray(entry)) {
+          return false
+        }
+        const group = entry as { hooks?: unknown }
+        return Array.isArray(group.hooks) && group.hooks.some(matchesCommand)
+      })
+  if (!hasExpectedEntry) {
     console.error(`[FAIL] hook 配置 ${hooks.event} 下未含指向 ${hooks.scriptName} 的受管条目: ${targetFile}`)
     return false
   }
@@ -177,6 +211,245 @@ function verifyOneHook(host: string, hooksHome: string, hooks: HookProjection): 
 
   console.log(`[info] hook 配置校验通过: ${host}`)
   return true
+}
+
+interface ManagedHookScan {
+  dispatches: string[]
+  invalid: boolean
+}
+
+function verifyExactManagedHookSet(
+  host: string,
+  hooksHome: string,
+  adapter: HookHostAdapter,
+  hooks: HookProjection[],
+): boolean {
+  const targetDir = adapter.relDir === '.' ? hooksHome : path.join(hooksHome, adapter.relDir)
+  const targetFile = path.join(targetDir, adapter.fileName)
+  if (!existsSync(targetFile)) {
+    if (hooks.length === 0) {
+      return true
+    }
+    console.error(`[FAIL] hook 配置缺失: ${targetFile}`)
+    return false
+  }
+
+  const raw = readFileSync(targetFile, 'utf8').replace(/^\uFEFF/u, '')
+  const hostHooksDir = path.join(hooksHome, 'hooks')
+  const scan = adapter.format === 'json'
+    ? scanManagedJsonHooks(raw, adapter, hostHooksDir)
+    : scanManagedTomlHooks(raw, hostHooksDir)
+  const expected = hooks.map(hook => managedDispatchKey(hook.event, hook.scriptName)).sort()
+  const actual = [...scan.dispatches].sort()
+
+  if (scan.invalid || expected.length !== actual.length || expected.some((value, index) => value !== actual[index])) {
+    console.error(`[FAIL] hook 受管集合与角色清单不一致: ${targetFile} (${host})`)
+    return false
+  }
+  return true
+}
+
+function scanManagedJsonHooks(raw: string, adapter: HookHostAdapter, hostHooksDir: string): ManagedHookScan {
+  let parsed: unknown
+  try {
+    parsed = JSON.parse(raw)
+  }
+  catch {
+    return { dispatches: [], invalid: true }
+  }
+  if (!isRecord(parsed)) {
+    return { dispatches: [], invalid: true }
+  }
+
+  const allManaged = collectManagedJsonCommands(parsed)
+  const accepted = new Set<Record<string, unknown>>()
+  const dispatches: string[] = []
+  const hooksRoot = isRecord(parsed.hooks) ? parsed.hooks : undefined
+  if (hooksRoot) {
+    for (const [event, value] of Object.entries(hooksRoot)) {
+      if (!Array.isArray(value)) {
+        continue
+      }
+      for (const entry of value) {
+        if ((adapter.nesting ?? 'group') === 'flat') {
+          const managed = managedJsonCommand(entry, hostHooksDir)
+          if (managed && isExactManagedJsonCommand(entry, managed, adapter.includeType ?? false, hostHooksDir)) {
+            accepted.add(entry as Record<string, unknown>)
+            dispatches.push(managedDispatchKey(event, managed.scriptName))
+          }
+          continue
+        }
+
+        if (!isRecord(entry) || !hasExactFields(entry, ['hooks']) || !Array.isArray(entry.hooks) || entry.hooks.length !== 1) {
+          continue
+        }
+        const command = entry.hooks[0]
+        const managed = managedJsonCommand(command, hostHooksDir)
+        if (managed && isExactManagedJsonCommand(command, managed, adapter.includeType ?? false, hostHooksDir)) {
+          accepted.add(command as Record<string, unknown>)
+          dispatches.push(managedDispatchKey(event, managed.scriptName))
+        }
+      }
+    }
+  }
+
+  return {
+    dispatches,
+    invalid: allManaged.some(managed => !accepted.has(managed.entry)),
+  }
+}
+
+function scanManagedTomlHooks(raw: string, hostHooksDir: string): ManagedHookScan {
+  const openingPattern = /^# >>> AIRULES HOOK ([A-Za-z][\w-]{0,63}) ([^\W_][\w.-]*\.mjs) >>>\r?$/gmu
+  const closingPattern = /^# <<< AIRULES HOOK ([A-Za-z][\w-]{0,63}) ([^\W_][\w.-]*\.mjs) <<<\r?$/gmu
+  const blockPattern = /^# >>> AIRULES HOOK ([A-Za-z][\w-]{0,63}) ([^\W_][\w.-]*\.mjs) >>>\r?\n([\s\S]*?)^# <<< AIRULES HOOK \1 \2 <<<\r?$/gmu
+  const openings = [...raw.matchAll(openingPattern)]
+  const closings = [...raw.matchAll(closingPattern)]
+  const blocks = [...raw.matchAll(blockPattern)]
+  const dispatches: string[] = []
+  let invalid = openings.length !== closings.length || openings.length !== blocks.length
+
+  for (const block of blocks) {
+    const event = block[1]
+    const scriptName = block[2]
+    const command = managedHookCommand(path.join(hostHooksDir, scriptName))
+    let parsed: unknown
+    try {
+      parsed = smolToml.parse(block[3])
+    }
+    catch {
+      parsed = undefined
+    }
+    if (!isExactTomlHookBlock(parsed, event, command)) {
+      invalid = true
+      continue
+    }
+    dispatches.push(managedDispatchKey(event, scriptName))
+  }
+
+  return { dispatches, invalid }
+}
+
+function collectManagedJsonCommands(
+  value: unknown,
+  output: Array<{ entry: Record<string, unknown> }> = [],
+): Array<{ entry: Record<string, unknown> }> {
+  if (Array.isArray(value)) {
+    for (const item of value) {
+      collectManagedJsonCommands(item, output)
+    }
+    return output
+  }
+  if (!isRecord(value)) {
+    return output
+  }
+
+  if (hasManagedHookArgument(value)) {
+    output.push({ entry: value })
+  }
+  for (const child of Object.values(value)) {
+    collectManagedJsonCommands(child, output)
+  }
+  return output
+}
+
+function hasManagedHookArgument(value: Record<string, unknown>): boolean {
+  return typeof value.command === 'string'
+    && /(?:^|\s)--airules-managed-hook(?:\s|$)/u.test(value.command)
+}
+
+function managedJsonCommand(
+  value: unknown,
+  hostHooksDir: string,
+): { scriptName: string, command: string } | undefined {
+  if (!isRecord(value) || typeof value.command !== 'string') {
+    return undefined
+  }
+  const match = /^node "([^"]+\.mjs)" --airules-managed-hook$/u.exec(value.command)
+  if (!match) {
+    return undefined
+  }
+  const scriptTarget = path.resolve(match[1])
+  if (path.dirname(scriptTarget) !== path.resolve(hostHooksDir)) {
+    return undefined
+  }
+  return { scriptName: path.basename(scriptTarget), command: value.command }
+}
+
+function isExactManagedJsonCommand(
+  value: unknown,
+  managed: { scriptName: string, command: string },
+  includeType: boolean,
+  hostHooksDir: string,
+): boolean {
+  if (!isRecord(value)) {
+    return false
+  }
+  const fields = includeType ? ['command', 'type'] : ['command']
+  return hasExactFields(value, fields)
+    && managed.command === managedHookCommand(path.join(hostHooksDir, managed.scriptName))
+    && (!includeType || value.type === 'command')
+}
+
+function isExactTomlHookBlock(value: unknown, event: string, command: string): boolean {
+  if (!isRecord(value) || !hasExactFields(value, ['hooks']) || !isRecord(value.hooks)) {
+    return false
+  }
+  if (!hasExactFields(value.hooks, [event])) {
+    return false
+  }
+  const groups = value.hooks[event]
+  if (!Array.isArray(groups) || groups.length !== 1 || !isRecord(groups[0]) || !hasExactFields(groups[0], ['hooks'])) {
+    return false
+  }
+  const commands = groups[0].hooks
+  if (!Array.isArray(commands) || commands.length !== 1 || !isRecord(commands[0])) {
+    return false
+  }
+  return hasExactFields(commands[0], ['command', 'type'])
+    && commands[0].type === 'command'
+    && commands[0].command === command
+}
+
+function hasExactFields(value: Record<string, unknown>, fields: string[]): boolean {
+  const actual = Object.keys(value).sort()
+  const expected = [...fields].sort()
+  return actual.length === expected.length && actual.every((field, index) => field === expected[index])
+}
+
+function managedDispatchKey(event: string, scriptName: string): string {
+  return `${event}\u0000${scriptName}`
+}
+
+function fileHash(filePath: string): string {
+  return createHash('sha256').update(readFileSync(filePath)).digest('hex')
+}
+
+function containsTomlHookCommand(value: unknown, event: string, expectedCommands: string[]): boolean {
+  if (typeof value !== 'object' || value === null || Array.isArray(value)) {
+    return false
+  }
+  const hooks = (value as Record<string, unknown>).hooks
+  if (typeof hooks !== 'object' || hooks === null || Array.isArray(hooks)) {
+    return false
+  }
+  const eventHooks = (hooks as Record<string, unknown>)[event]
+  if (!Array.isArray(eventHooks)) {
+    return false
+  }
+  return eventHooks.some((group) => {
+    if (typeof group !== 'object' || group === null || Array.isArray(group)) {
+      return false
+    }
+    const commands = (group as Record<string, unknown>).hooks
+    return Array.isArray(commands) && commands.some((command) => {
+      return typeof command === 'object'
+        && command !== null
+        && !Array.isArray(command)
+        && (command as Record<string, unknown>).type === 'command'
+        && expectedCommands.includes(String((command as Record<string, unknown>).command))
+    })
+  })
 }
 
 /**
@@ -192,13 +465,15 @@ export async function verifyHost(host: string, moluoHome: string, userHome = os.
   if (!config)
     return false
 
-  const { hostHome, skillsDirName, excludedSkills, projectSharedResources, mcpHome, mcp, hooksHome, hooks } = resolveHostPaths(config, userHome)
+  const { hostHome, skillsDirName, excludedSkills, projectSharedResources, mcpHome, mcp, hooksHome, hookAdapter } = resolveHostPaths(config, userHome)
+  const vendorHooksRoot = path.join(moluoHome, 'vendor', 'hooks')
+  const resolvedHooks = resolveHookDispatches(vendorHooksRoot, host, hookAdapter)
 
   const resolvedHostHome = path.resolve(hostHome)
   const resolvedMcpHome = path.resolve(mcpHome)
   const hasHostHome = existsSync(resolvedHostHome)
   const hasMcpHome = Boolean(mcp && existsSync(resolvedMcpHome))
-  const requiresHostHome = Boolean(config.mcpHomeImpliesHostHome) && (projectSharedResources || hooks.length > 0)
+  const requiresHostHome = Boolean(config.mcpHomeImpliesHostHome) && (projectSharedResources || resolvedHooks.length > 0)
 
   if (!hasHostHome && !hasMcpHome) {
     console.warn(`[SKIP] 宿主目录不存在: ${resolvedHostHome}`)
@@ -212,7 +487,7 @@ export async function verifyHost(host: string, moluoHome: string, userHome = os.
   }
 
   // mcpHome-only 证据不等同于所有宿主都启用 host-home 校验；Trae 等宿主仍可只验 MCP。
-  const hookSuccess = hasHostHome ? verifyHookProjection(host, path.resolve(hooksHome), hooks) : true
+  const hookSuccess = hasHostHome ? verifyHookProjection(host, path.resolve(hooksHome), vendorHooksRoot, hookAdapter, resolvedHooks) : true
   const shouldVerifySharedResources = projectSharedResources && hasHostHome
 
   if (!shouldVerifySharedResources) {

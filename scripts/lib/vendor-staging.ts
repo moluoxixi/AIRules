@@ -2,6 +2,7 @@ import type { VendorLink, VendorManifest } from './vendors.js'
 import fs from 'node:fs'
 import os from 'node:os'
 import path from 'node:path'
+import { readNeutralHookManifest } from './hook-dispatch.js'
 import { requireRoleName } from './role-assets.js'
 import { collectFlattenedSkillSources } from './skill-projection.js'
 import { loadVendorManifest } from './vendors.js'
@@ -440,9 +441,11 @@ function validateInventory(
 
   const rulesFile = path.join(stagingRoot, 'AGENTS.md')
   const mcpFile = path.join(stagingRoot, 'mcp', 'mcp.json')
+  const hooksRoot = path.join(stagingRoot, 'hooks')
   if (fs.existsSync(mcpFile)) {
     requireNeutralMcp(mcpFile)
   }
+  readNeutralHookManifest(hooksRoot)
 
   return {
     role,

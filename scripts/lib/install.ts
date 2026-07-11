@@ -1,4 +1,4 @@
-import type { AgentFormat, HookProjection, McpProjection } from '../../constants/hosts.js'
+import type { AgentFormat, HookHostAdapter, HookProjection, McpProjection } from '../../constants/hosts.js'
 import type { LinkEntry } from './links.js'
 import type { SetupCommand, VendorManifest } from './vendors.js'
 import { execFileSync } from 'node:child_process'
@@ -7,6 +7,7 @@ import {
   existsSync,
   lstatSync,
   mkdirSync,
+  mkdtempSync,
   readdirSync,
   readFileSync,
   realpathSync,
@@ -20,6 +21,7 @@ import os from 'node:os'
 import path from 'node:path'
 import * as smolToml from 'smol-toml'
 import { findHostConfig, resolveHostPaths } from '../../constants/hosts.js'
+import { managedHookCommand, readNeutralHookManifest, resolveHookDispatches } from './hook-dispatch.js'
 import { buildLinkPlan } from './links.js'
 import { DEFAULT_ROLE, existingRoleOverlayPaths, roleOverlayOrder } from './roles.js'
 import { collectFlattenedSkillSources, discoverSkillDirectories, flattenedSkillName } from './skill-projection.js'
@@ -491,18 +493,28 @@ export function syncFlattenedSkills(
  */
 export async function syncFirstPartyToHome(repoRoot: string, moluoHome: string, role = DEFAULT_ROLE) {
   const rolePathsList = await existingRoleOverlayPaths(repoRoot, role)
-  removePath(vendorBaselinePath(moluoHome))
-  removePath(vendorAgentsPath(moluoHome))
-  removePath(vendorMcpPath(moluoHome))
-  removePath(vendorHooksPath(moluoHome))
+  const stagedHooks = mkdtempSync(path.join(os.tmpdir(), 'airules-role-hooks-'))
+  try {
+    for (const rolePaths of rolePathsList) {
+      mergeOptionalDir(rolePaths.hooksDir, stagedHooks)
+    }
+    readNeutralHookManifest(stagedHooks)
 
-  for (const rolePaths of rolePathsList) {
-    syncOptionalFile(path.join(rolePaths.rulesDir, BASELINE_FILE_NAME), vendorBaselinePath(moluoHome))
-    mergeOptionalDir(rolePaths.agentsDir, vendorAgentsPath(moluoHome))
-    // 中性 MCP 源（rulesync 风格 { mcpServers: {} }）同步到 vendor，供各宿主按格式投影。
-    mergeOptionalDir(rolePaths.mcpDir, vendorMcpPath(moluoHome))
-    // hook 脚本源（如 session-log.mjs）同步到 vendor/hooks，供支持 hook 的宿主投影。
-    mergeOptionalDir(rolePaths.hooksDir, vendorHooksPath(moluoHome))
+    removePath(vendorBaselinePath(moluoHome))
+    removePath(vendorAgentsPath(moluoHome))
+    removePath(vendorMcpPath(moluoHome))
+    removePath(vendorHooksPath(moluoHome))
+
+    for (const rolePaths of rolePathsList) {
+      syncOptionalFile(path.join(rolePaths.rulesDir, BASELINE_FILE_NAME), vendorBaselinePath(moluoHome))
+      mergeOptionalDir(rolePaths.agentsDir, vendorAgentsPath(moluoHome))
+      // 中性 MCP 源（rulesync 风格 { mcpServers: {} }）同步到 vendor，供各宿主按格式投影。
+      mergeOptionalDir(rolePaths.mcpDir, vendorMcpPath(moluoHome))
+    }
+    copyDirContents(stagedHooks, vendorHooksPath(moluoHome))
+  }
+  finally {
+    rmSync(stagedHooks, { recursive: true, force: true })
   }
 }
 
@@ -1055,19 +1067,21 @@ function projectMcpToHost(moluoHome: string, mcpHome: string, mcp: McpProjection
   writeFileSync(targetFile, next, 'utf8')
 }
 
-/** 受管条目识别：command 串含本脚本名即视为 AIRULES 受管（兼容扁平/嵌套两种条目形态）。 */
-function isManagedHookCommand(value: unknown, scriptName: string): boolean {
+function hookCommand(hostScript: string): string {
+  return managedHookCommand(hostScript)
+}
+
+/** 只识别带 AIRules 管理标记的当前精确命令，避免脚本名子串误伤用户条目。 */
+function isManagedHookCommand(value: unknown, hostScript: string): boolean {
   if (typeof value !== 'object' || value === null) {
     return false
   }
   const cmd = value as { command?: unknown, args?: unknown }
-  const inArgs = Array.isArray(cmd.args) && cmd.args.some(a => typeof a === 'string' && a.includes(scriptName))
-  const inCommand = typeof cmd.command === 'string' && cmd.command.includes(scriptName)
-  return inArgs || inCommand
+  return cmd.command === hookCommand(hostScript)
 }
 
 /**
- * 把会话自动记录 Stop hook 投影到宿主配置文件。
+ * 把角色清单解析出的单条 hook 投影到宿主配置文件。
  * - 先把 vendor/hooks/<scriptName> 拷到宿主 hooks 目录（稳定绝对路径）。
  * - JSON 宿主（Claude/Qoder/Trae/Cursor settings.json|hooks.json）：浅合并 hooks.<event>，幂等
  *   替换指向本脚本的受管条目，保留用户手写的其它 hook 与其它顶层键。按 version/nesting/includeType
@@ -1100,7 +1114,7 @@ function projectHooksToHost(moluoHome: string, hooksHome: string, hooks: HookPro
 
 /** 构造一条受管条目：command 统一用 shell 串 `node "<脚本>"`（各 JSON 宿主都接受 command 串）。 */
 function buildManagedJsonEntry(hooks: HookProjection, hostScript: string): Record<string, unknown> {
-  const entry: Record<string, unknown> = { command: `node "${hostScript}"` }
+  const entry: Record<string, unknown> = { command: hookCommand(hostScript) }
   if (hooks.includeType) {
     entry.type = 'command'
   }
@@ -1110,12 +1124,16 @@ function buildManagedJsonEntry(hooks: HookProjection, hostScript: string): Recor
 
 /** JSON 宿主：在 hooks.<event>[] 里幂等放置一条受管条目，保留用户内容。 */
 function projectHooksJson(targetFile: string, hooks: HookProjection, hostScript: string) {
-  const { event, scriptName, nesting = 'group', version } = hooks
+  const { event, nesting = 'group', version } = hooks
   const prev = readHostConfigForMerge(targetFile)
   let root: Record<string, unknown> = {}
   if (prev.trim().length > 0) {
     try {
-      root = JSON.parse(prev) as Record<string, unknown>
+      const parsed: unknown = JSON.parse(prev)
+      if (typeof parsed !== 'object' || parsed === null || Array.isArray(parsed)) {
+        throw new TypeError('root must be an object')
+      }
+      root = parsed as Record<string, unknown>
     }
     catch (error) {
       throw new Error(`宿主 hooks 配置解析失败 ${targetFile}（请修复其 JSON 语法后重试）: ${String(error)}`)
@@ -1137,7 +1155,7 @@ function projectHooksJson(targetFile: string, hooks: HookProjection, hostScript:
   for (const item of eventEntries) {
     if (nesting === 'flat') {
       // 扁平：条目本身就是 {command}。
-      if (!isManagedHookCommand(item, scriptName)) {
+      if (!isManagedHookCommand(item, hostScript)) {
         cleaned.push(item)
       }
       continue
@@ -1152,7 +1170,7 @@ function projectHooksJson(targetFile: string, hooks: HookProjection, hostScript:
       cleaned.push(item)
       continue
     }
-    const keptInner = g.hooks.filter(h => !isManagedHookCommand(h, scriptName))
+    const keptInner = g.hooks.filter(h => !isManagedHookCommand(h, hostScript))
     if (keptInner.length > 0) {
       cleaned.push({ ...item, hooks: keptInner })
     }
@@ -1168,23 +1186,18 @@ function projectHooksJson(targetFile: string, hooks: HookProjection, hostScript:
   writeFileSync(targetFile, `${JSON.stringify(root, null, 2)}\n`, 'utf8')
 }
 
-/** 迁移兼容：清理旧版无 scriptName 的通用受管块（`# >>> AIRULES HOOK >>>` 后直接 `>>>`）。 */
-const LEGACY_HOOK_BLOCK_REGEX = /\n*# >>> AIRULES HOOK >>>[\s\S]*?(?:# <<< AIRULES HOOK <<<|$)\n*/g
-
 /** TOML 宿主（Codex）：用受管块写 [[hooks.<event>]]，幂等替换、保留块外用户内容。 */
 function projectHooksToml(targetFile: string, event: string, hostScript: string, scriptName: string) {
   const prev = readHostConfigForMerge(targetFile)
-  // 受管块按 scriptName 作唯一标识，使同一文件的多事件投影（Stop / SubagentStop / PreToolUse）
-  // 各自独立幂等——只替换本脚本的块，不误删其它脚本的块。旧版无 scriptName 的通用块一并清理（迁移兼容）。
-  const marker = scriptMarker(scriptName)
+  // 受管块按 event + scriptName 作唯一标识，使同一脚本可安全订阅多个事件。
+  const marker = hookMarker(event, scriptName)
   const cleaned = prev
     .replace(scopedHookBlockRegex(marker), '\n')
-    .replace(LEGACY_HOOK_BLOCK_REGEX, '\n')
     .trimEnd()
 
   // command 是 shell 命令串：node "<脚本绝对路径>"（.mjs 非直接可执行，必须经 node 启动）。
   // 整串用单引号 TOML 字面量（不转义反斜杠，Windows 路径安全）；脚本路径含单引号时回退双引号转义。
-  const shellCommand = `node "${hostScript}"`
+  const shellCommand = hookCommand(hostScript)
   const commandLiteral = shellCommand.includes('\'')
     ? `"${escapeTomlString(shellCommand)}"`
     : `'${shellCommand}'`
@@ -1202,15 +1215,158 @@ function projectHooksToml(targetFile: string, event: string, hostScript: string,
   writeFileSync(targetFile, next, 'utf8')
 }
 
-/** 受管块标识：按 scriptName 区分，使同一 TOML 文件多事件投影互不覆盖。 */
-function scriptMarker(scriptName: string): string {
-  return `AIRULES HOOK ${scriptName}`
+/** 受管块标识：按 event + scriptName 区分，使同一脚本的多事件投影互不覆盖。 */
+function hookMarker(event: string, scriptName: string): string {
+  return `AIRULES HOOK ${event} ${scriptName}`
 }
 
 /** 匹配某脚本专属受管块（含起止哨兵）。 */
 function scopedHookBlockRegex(marker: string): RegExp {
   const escaped = marker.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')
   return new RegExp(`\\n*# >>> ${escaped} >>>[\\s\\S]*?(?:# <<< ${escaped} <<<|$)\\n*`, 'g')
+}
+
+function managedHookScriptFromCommand(value: unknown, hostHooksDir: string): string | undefined {
+  if (typeof value !== 'object' || value === null || Array.isArray(value)) {
+    return undefined
+  }
+  const command = (value as { command?: unknown }).command
+  if (typeof command !== 'string') {
+    return undefined
+  }
+  const managedMatch = /^node "([^"]+\.mjs)" --airules-managed-hook$/u.exec(command)
+  const match = managedMatch
+  if (!match) {
+    return undefined
+  }
+  const scriptTarget = path.resolve(match[1])
+  if (path.dirname(scriptTarget) !== path.resolve(hostHooksDir)) {
+    return undefined
+  }
+  return path.basename(scriptTarget)
+}
+
+function reconcileManagedJsonHooks(targetFile: string, adapter: HookHostAdapter, hostHooksDir: string): Set<string> {
+  const removedScripts = new Set<string>()
+  if (!existsSync(targetFile)) {
+    return removedScripts
+  }
+
+  const raw = readHostConfigForMerge(targetFile)
+  let root: Record<string, unknown>
+  try {
+    const parsed: unknown = JSON.parse(raw)
+    if (typeof parsed !== 'object' || parsed === null || Array.isArray(parsed)) {
+      throw new TypeError('root must be an object')
+    }
+    root = parsed as Record<string, unknown>
+  }
+  catch (error) {
+    throw new Error(`宿主 hooks 配置解析失败 ${targetFile}（请修复其 JSON 语法后重试）: ${String(error)}`)
+  }
+  if (typeof root.hooks !== 'object' || root.hooks === null || Array.isArray(root.hooks)) {
+    return removedScripts
+  }
+
+  const hooks = root.hooks as Record<string, unknown>
+  let changed = false
+  for (const [event, value] of Object.entries(hooks)) {
+    if (!Array.isArray(value)) {
+      continue
+    }
+    const next: unknown[] = []
+    let eventChanged = false
+    for (const entry of value) {
+      if (adapter.nesting === 'flat') {
+        const script = managedHookScriptFromCommand(entry, hostHooksDir)
+        if (script) {
+          removedScripts.add(script)
+          eventChanged = true
+        }
+        else {
+          next.push(entry)
+        }
+        continue
+      }
+      if (typeof entry !== 'object' || entry === null || Array.isArray(entry)) {
+        next.push(entry)
+        continue
+      }
+      const group = entry as Record<string, unknown>
+      if (!Array.isArray(group.hooks)) {
+        next.push(entry)
+        continue
+      }
+      let groupChanged = false
+      const kept = group.hooks.filter((inner) => {
+        const script = managedHookScriptFromCommand(inner, hostHooksDir)
+        if (!script) {
+          return true
+        }
+        removedScripts.add(script)
+        groupChanged = true
+        return false
+      })
+      if (!groupChanged) {
+        next.push(entry)
+      }
+      else if (kept.length > 0) {
+        next.push({ ...group, hooks: kept })
+      }
+      eventChanged ||= groupChanged
+    }
+    if (!eventChanged) {
+      continue
+    }
+    changed = true
+    if (next.length > 0) {
+      hooks[event] = next
+    }
+    else {
+      delete hooks[event]
+    }
+  }
+
+  if (changed) {
+    root.hooks = hooks
+    writeFileSync(targetFile, `${JSON.stringify(root, null, 2)}\n`, 'utf8')
+  }
+  return removedScripts
+}
+
+function reconcileManagedTomlHooks(targetFile: string): Set<string> {
+  const removedScripts = new Set<string>()
+  if (!existsSync(targetFile)) {
+    return removedScripts
+  }
+  const current = readHostConfigForMerge(targetFile)
+  const blockPattern = /\n*# >>> AIRULES HOOK ([A-Za-z][\w-]{0,63}) ([^\W_][\w.-]*\.mjs) >>>\r?\n[\s\S]*?# <<< AIRULES HOOK \1 \2 <<<\r?\n*/gu
+  const next = current.replace(blockPattern, (_block, _event: string, scriptName: string) => {
+    removedScripts.add(scriptName)
+    return '\n'
+  }).trimEnd()
+  if (next !== current.trimEnd()) {
+    writeFileSync(targetFile, next.length > 0 ? `${next}\n` : '', 'utf8')
+  }
+  return removedScripts
+}
+
+function reconcileManagedHooks(hooksHome: string, adapter: HookHostAdapter, desiredHooks: HookProjection[]): void {
+  const hostHooksDir = path.join(hooksHome, 'hooks')
+  const targetDir = adapter.relDir === '.' ? hooksHome : path.join(hooksHome, adapter.relDir)
+  const targetFile = path.join(targetDir, adapter.fileName)
+  const removedScripts = adapter.format === 'json'
+    ? reconcileManagedJsonHooks(targetFile, adapter, hostHooksDir)
+    : reconcileManagedTomlHooks(targetFile)
+  const desiredScripts = new Set(desiredHooks.map(hook => hook.scriptName))
+  for (const scriptName of removedScripts) {
+    if (!desiredScripts.has(scriptName)) {
+      const staleScript = path.join(hostHooksDir, scriptName)
+      if (lstatSync(staleScript, { throwIfNoEntry: false })?.isFile()) {
+        unlinkSync(staleScript)
+      }
+    }
+  }
 }
 
 export function projectToHost({
@@ -1228,6 +1384,8 @@ export function projectToHost({
   mcp,
   hooksHome = hostHome,
   hooks,
+  hookAdapter,
+  reconcileHooks = false,
   includeNativeTomlAgentsAsMarkdown = false,
 }: {
   userHome: string
@@ -1244,6 +1402,8 @@ export function projectToHost({
   mcp?: McpProjection
   hooksHome?: string
   hooks?: HookProjection[]
+  hookAdapter?: HookHostAdapter
+  reconcileHooks?: boolean
   includeNativeTomlAgentsAsMarkdown?: boolean
 }) {
   if (projectSharedResources) {
@@ -1251,6 +1411,9 @@ export function projectToHost({
   }
   if (mcp) {
     projectMcpToHost(moluoHome, mcpHome, mcp)
+  }
+  if (reconcileHooks && hookAdapter) {
+    reconcileManagedHooks(hooksHome, hookAdapter, hooks ?? [])
   }
   // 一个宿主可声明多条 hook 投影（多事件）；受管条目按 scriptName + event 各自幂等。
   for (const hook of hooks ?? []) {
@@ -1303,13 +1466,14 @@ export function projectHostById(
     throw new Error(`Unknown host: ${host}`)
   }
 
-  const { hostHome, hostBaselineFile, projectBaseline, projectSharedResources, baselineMode, skillsDirName, excludedSkills, agentFormat, includeNativeTomlAgentsAsMarkdown, mcpHome, mcp, hooksHome, hooks } = resolveHostPaths(config, userHome)
+  const { hostHome, hostBaselineFile, projectBaseline, projectSharedResources, baselineMode, skillsDirName, excludedSkills, agentFormat, includeNativeTomlAgentsAsMarkdown, mcpHome, mcp, hooksHome, hookAdapter } = resolveHostPaths(config, userHome)
+  const resolvedHooks = resolveHookDispatches(vendorHooksPath(moluoHome), host, hookAdapter)
 
   const hostHomePath = path.resolve(hostHome)
   const mcpHomePath = path.resolve(mcpHome)
   const hasHostHome = existsSync(hostHomePath)
   const hasMcpHome = Boolean(mcp && existsSync(mcpHomePath))
-  const shouldProjectHostHome = hasHostHome || (hasMcpHome && Boolean(config.mcpHomeImpliesHostHome) && (projectBaseline || projectSharedResources || hooks.length > 0))
+  const shouldProjectHostHome = hasHostHome || (hasMcpHome && Boolean(config.mcpHomeImpliesHostHome) && (projectBaseline || projectSharedResources || resolvedHooks.length > 0))
 
   if (!hasHostHome && !hasMcpHome) {
     console.warn(`[skip] 宿主目录不存在，跳过投影: ${host} (${hostHomePath})`)
@@ -1331,8 +1495,10 @@ export function projectHostById(
     mcpHome,
     mcp,
     hooksHome,
+    hookAdapter,
+    reconcileHooks: true,
     // mcpHome 可作为宿主存在证据；完整宿主不能静默退化为 MCP-only。
-    hooks: shouldProjectHostHome ? hooks : undefined,
+    hooks: shouldProjectHostHome ? resolvedHooks : undefined,
   })
 
   return { success: true, hostBaselineFile, baselineProjected: projectBaseline && shouldProjectHostHome && existsSync(vendorBaselinePath(moluoHome)) }
