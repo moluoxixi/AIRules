@@ -1,0 +1,9 @@
+{
+  "schema_version": 1,
+  "enforcement": "advisory",
+  "separation_of_duties": true,
+  "required_reviewers": 1,
+  "evidence_max_age_hours": 24,
+  "waivable_gates": [],
+  "checks": []
+}
