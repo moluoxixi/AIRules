@@ -9,6 +9,9 @@ vendor
 
 # 依赖锁文件
 *-lock.*
+# 角色安装器必须随远程 role_path 完整同步其可复现安装锁与上游锁定说明
+!roles/**/skills/**/assets/tool/package-lock.json
+!roles/**/skills/**/references/upstream-lock.md
 
 # 项目
 node_modules

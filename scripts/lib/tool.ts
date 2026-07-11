@@ -19,7 +19,8 @@ import {
 } from './install.js'
 import { DEFAULT_ROLE, resolveRoleManifestPath } from './roles.js'
 import { flattenedSkillName } from './skill-projection.js'
-import { ensureVendorRepo } from './vendor-sync.js'
+import { rebuildVendorAssets } from './vendor-staging.js'
+import { ensureVendorRepo, verifyVendorRepoRevision } from './vendor-sync.js'
 import { loadVendorManifest } from './vendors.js'
 import { verifyHost } from './verify.js'
 
@@ -220,30 +221,43 @@ ${String(error)}`)
 }
 
 async function syncVendorsIfNeeded(paths: ToolPaths, skipVendors: boolean) {
-  if (skipVendors) {
-    return
-  }
-
   const manifest = await loadVendorManifest(paths.manifestPath)
-  for (const vendor of Object.values(manifest.vendors)) {
-    if (vendor.sourceMode === 'workspace') {
-      continue
+  if (!skipVendors) {
+    for (const vendor of Object.values(manifest.vendors)) {
+      if (vendor.sourceMode === 'workspace') {
+        continue
+      }
+
+      ensureVendorRepo(paths.moluoHome, vendor)
     }
 
-    ensureVendorRepo(paths.moluoHome, vendor)
+    runSkillSetupCommands(manifest)
   }
-
-  runSkillSetupCommands(manifest)
+  else {
+    for (const vendor of Object.values(manifest.vendors)) {
+      verifyVendorRepoRevision(paths.moluoHome, vendor)
+    }
+  }
+  return manifest
 }
 
-async function syncLocalSkillLayers(paths: ToolPaths, role?: string) {
+async function syncLocalSkillLayers(paths: ToolPaths, role: string | undefined, includeRepositoryRole: boolean) {
   // 第一方 skills 链路由 roles/<role>/constants/skills.ts 的 extendsRoles 显式决定。
   // 源目录 skills/ 与目标 vendor/skills/ 永不相同，即使仓库被安装进 ~/.moluoxixi
   // （repoRoot === moluoHome）也不会产生自链接，因此必须无条件投影；
   // 否则该布局下第一方 skills 会被整体漏发。
-  await syncFirstPartySkillsToVendor(paths.repoRoot, paths.moluoHome, role)
+  if (includeRepositoryRole) {
+    await syncFirstPartySkillsToVendor(paths.repoRoot, paths.moluoHome, role)
+  }
 
   await syncFirstPartySkillsToVendor(path.join(paths.moluoHome, 'local'), paths.moluoHome, role)
+}
+
+function usesRemoteRoleAssets(manifest: Awaited<ReturnType<typeof loadVendorManifest>>, role: string | undefined): role is string {
+  if (!role) {
+    return false
+  }
+  return Object.values(manifest.vendors).some(vendor => vendor.links.some(link => link.kind === 'role-assets-dir'))
 }
 
 /**
@@ -256,8 +270,23 @@ async function syncVendorStaging(paths: ToolPaths, skipVendors: boolean, role?: 
     moluoHome: paths.moluoHome,
     repoRoot: paths.repoRoot,
   })
-  await syncFirstPartyToHome(paths.repoRoot, paths.moluoHome, role)
-  return syncVendorsIfNeeded(paths, skipVendors)
+  const manifest = await syncVendorsIfNeeded(paths, skipVendors)
+  const remoteRoleAssets = usesRemoteRoleAssets(manifest, role)
+  if (remoteRoleAssets) {
+    await rebuildVendorAssets({
+      homeDir: paths.moluoHome,
+      role,
+      manifestPath: paths.manifestPath,
+    })
+  }
+  else {
+    await syncFirstPartyToHome(paths.repoRoot, paths.moluoHome, role)
+    await rebuildVendorSkillLinks({
+      homeDir: paths.moluoHome,
+      manifestPath: paths.manifestPath,
+    })
+    await syncLocalSkillLayers(paths, role, true)
+  }
 }
 export function addLocalSkill(options: AddSkillOptions): AddSkillResult {
   const sourceDir = path.resolve(options.sourceDir)
@@ -287,11 +316,6 @@ export async function syncToHosts(options: SyncOptions): Promise<SyncResult> {
   const paths = resolveToolPaths(options.repoRoot, options.home, options.userHome, options.role)
 
   await syncVendorStaging(paths, options.skipVendors, options.role)
-  await rebuildVendorSkillLinks({
-    homeDir: paths.moluoHome,
-    manifestPath: paths.manifestPath,
-  })
-  await syncLocalSkillLayers(paths, options.role)
 
   const projectedHosts: string[] = []
   const officialInstalledHosts: string[] = []

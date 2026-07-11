@@ -53,6 +53,57 @@ function validAgent(name: string) {
 }
 
 describe('rebuildVendorAssets', () => {
+  it('commits local skill overrides in the same vendor staging transaction', async () => {
+    const { root, homeDir } = createFixture()
+    writeFile(repoPath(homeDir, 'remote', 'skills', 'shared', 'SKILL.md'), '# remote\n')
+    writeFile(path.join(homeDir, 'local', 'skills', 'shared', 'SKILL.md'), '# local\n')
+    writeFile(path.join(homeDir, 'local', 'skills', 'local-only', 'SKILL.md'), '# local only\n')
+    const manifestPath = writeManifest(root, 'local-overlay', [
+      vendorDefinition('remote', [{ kind: 'skills', sourceBaseDir: 'skills', skills: ['shared'] }]),
+    ])
+
+    const inventory = await rebuildVendorAssets({ homeDir, role: 'alpha', manifestPath })
+
+    const shared = path.join(homeDir, 'vendor', 'skills', 'shared')
+    const localOnly = path.join(homeDir, 'vendor', 'skills', 'local-only')
+    expect(inventory.skills).toEqual(['local-only', 'shared'])
+    expect(fs.realpathSync(shared)).toBe(fs.realpathSync(path.join(homeDir, 'local', 'skills', 'shared')))
+    expect(fs.realpathSync(localOnly)).toBe(fs.realpathSync(path.join(homeDir, 'local', 'skills', 'local-only')))
+    expect(fs.readFileSync(path.join(shared, 'SKILL.md'), 'utf8')).toBe('# local\n')
+  })
+
+  it('keeps the previous vendor staging when the local overlay cannot be built', async () => {
+    const { root, homeDir } = createFixture()
+    writeFile(path.join(homeDir, 'vendor', 'skills', 'stable', 'SKILL.md'), '# stable\n')
+    writeFile(repoPath(homeDir, 'remote', 'skills', 'fresh', 'SKILL.md'), '# fresh\n')
+    writeFile(path.join(homeDir, 'local', 'skills', 'one', 'duplicate', 'SKILL.md'), '# one\n')
+    writeFile(path.join(homeDir, 'local', 'skills', 'two', 'duplicate', 'SKILL.md'), '# two\n')
+    const manifestPath = writeManifest(root, 'invalid-local-overlay', [
+      vendorDefinition('remote', [{ kind: 'skills', sourceBaseDir: 'skills', skills: ['fresh'] }]),
+    ])
+
+    await expect(rebuildVendorAssets({ homeDir, role: 'alpha', manifestPath })).rejects.toThrow(/skill name collision/i)
+
+    expect(fs.readFileSync(path.join(homeDir, 'vendor', 'skills', 'stable', 'SKILL.md'), 'utf8')).toBe('# stable\n')
+    expect(fs.existsSync(path.join(homeDir, 'vendor', 'skills', 'fresh'))).toBe(false)
+  })
+
+  it('rejects a local override of a revision-pinned vendor skill', async () => {
+    const { root, homeDir } = createFixture()
+    writeFile(path.join(homeDir, 'vendor', 'skills', 'stable', 'SKILL.md'), '# stable\n')
+    writeFile(repoPath(homeDir, 'pinned', 'skills', 'protected', 'SKILL.md'), '# pinned\n')
+    writeFile(path.join(homeDir, 'local', 'skills', 'protected', 'SKILL.md'), '# local shadow\n')
+    const manifestPath = writeManifest(root, 'protected-local-overlay', [{
+      ...vendorDefinition('pinned', [{ kind: 'skills', sourceBaseDir: 'skills', skills: ['protected'] }]),
+      revision: '1111111111111111111111111111111111111111',
+    }])
+
+    await expect(rebuildVendorAssets({ homeDir, role: 'alpha', manifestPath })).rejects.toThrow(/cannot shadow protected remote skill/i)
+
+    expect(fs.readFileSync(path.join(homeDir, 'vendor', 'skills', 'stable', 'SKILL.md'), 'utf8')).toBe('# stable\n')
+    expect(fs.existsSync(path.join(homeDir, 'vendor', 'skills', 'protected'))).toBe(false)
+  })
+
   it('forwards remote skills, namespace skills, agents, rules, hooks, and mcp as copies', async () => {
     const { root, homeDir } = createFixture()
     writeFile(repoPath(homeDir, 'platform', 'skills', 'core-skill', 'SKILL.md'), '# core\n')

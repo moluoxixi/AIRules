@@ -3,6 +3,7 @@ import fs from 'node:fs'
 import os from 'node:os'
 import path from 'node:path'
 import { readNeutralHookManifest } from './hook-dispatch.js'
+import { syncFirstPartySkillsToVendor } from './install.js'
 import { requireRoleName } from './role-assets.js'
 import { collectFlattenedSkillSources } from './skill-projection.js'
 import { loadVendorManifest } from './vendors.js'
@@ -432,7 +433,8 @@ function validateInventory(
         .sort((left, right) => compareStable(left.name, right.name))
         .map((entry) => {
           const skillRoot = path.join(skillsRoot, entry.name)
-          if (!entry.isDirectory() || !fs.statSync(path.join(skillRoot, 'SKILL.md')).isFile()) {
+          const skillFile = path.join(skillRoot, 'SKILL.md')
+          if (!fs.statSync(skillRoot).isDirectory() || !fs.existsSync(skillFile) || !fs.statSync(skillFile).isFile()) {
             throw new Error(`Staged skill is missing SKILL.md: ${skillRoot}`)
           }
           return entry.name
@@ -454,6 +456,35 @@ function validateInventory(
     rules: fs.existsSync(rulesFile) ? path.join(finalVendorRoot, 'AGENTS.md') : undefined,
     hooks: listRelativeFiles(path.join(stagingRoot, 'hooks')),
     mcp: fs.existsSync(mcpFile) ? path.join(finalVendorRoot, 'mcp', 'mcp.json') : undefined,
+  }
+}
+
+function protectedSkillNames(plan: VendorStagingPlan, manifest: VendorManifest): Set<string> {
+  const protectedNames = new Set<string>()
+  for (const asset of plan.roleAssets) {
+    if (asset.kind === 'skill') {
+      protectedNames.add(path.basename(asset.target).toLowerCase())
+    }
+  }
+  for (const asset of plan.ordinary) {
+    if (asset.kind === 'skill' && manifest.vendors[asset.vendorId]?.revision) {
+      protectedNames.add(path.basename(asset.target).toLowerCase())
+    }
+  }
+  return protectedNames
+}
+
+function requireNoProtectedSkillShadows(stagingRoot: string, protectedNames: Set<string>): void {
+  const skillsRoot = path.join(stagingRoot, 'skills')
+  if (!fs.existsSync(skillsRoot) || protectedNames.size === 0) {
+    return
+  }
+  for (const entry of fs.readdirSync(skillsRoot, { withFileTypes: true })) {
+    if (protectedNames.has(entry.name.toLowerCase()) && fs.lstatSync(path.join(skillsRoot, entry.name)).isSymbolicLink()) {
+      throw new Error(
+        `Local skill override cannot shadow protected remote skill "${entry.name}"; remove the same-name ~/.moluoxixi/local skill and sync again`,
+      )
+    }
   }
 }
 
@@ -486,19 +517,30 @@ function rollbackManagedEntries(entries: ManagedEntryCommit[]): Error[] {
   return rollbackErrors
 }
 
-function commitManagedEntries(stagingRoot: string, homeDir: string): void {
+async function commitManagedEntries(
+  stagingRoot: string,
+  homeDir: string,
+  role: string,
+  protectedNames: Set<string>,
+): Promise<void> {
   const vendorRoot = path.resolve(homeDir, 'vendor')
   if (fs.existsSync(vendorRoot) && !fs.lstatSync(vendorRoot).isDirectory()) {
     throw new Error(`Vendor staging root has invalid type: ${vendorRoot}`)
   }
   fs.mkdirSync(vendorRoot, { recursive: true })
 
-  const nextRoot = fs.mkdtempSync(path.join(path.resolve(homeDir), '.airules-vendor-next-'))
+  const nextWorkspace = fs.mkdtempSync(path.join(path.resolve(homeDir), '.airules-vendor-next-'))
+  const nextRoot = path.join(nextWorkspace, 'vendor')
   const backupRoot = fs.mkdtempSync(path.join(path.resolve(homeDir), '.airules-vendor-backup-'))
   const committedEntries: ManagedEntryCommit[] = []
 
   try {
+    fs.mkdirSync(nextRoot)
     fs.cpSync(stagingRoot, nextRoot, { recursive: true, dereference: true })
+    // Recreate user overlay links inside the transaction root. Any link failure occurs
+    // before current managed entries move, so the previous vendor staging remains intact.
+    await syncFirstPartySkillsToVendor(path.join(homeDir, 'local'), nextWorkspace, role)
+    requireNoProtectedSkillShadows(nextRoot, protectedNames)
     for (const name of managedEntryNames) {
       const current = path.join(vendorRoot, name)
       const next = path.join(nextRoot, name)
@@ -524,7 +566,7 @@ function commitManagedEntries(stagingRoot: string, homeDir: string): void {
   }
   catch (error) {
     const rollbackErrors = rollbackManagedEntries(committedEntries)
-    fs.rmSync(nextRoot, { recursive: true, force: true })
+    fs.rmSync(nextWorkspace, { recursive: true, force: true })
     if (rollbackErrors.length > 0) {
       throw new AggregateError(
         [error, ...rollbackErrors],
@@ -536,7 +578,7 @@ function commitManagedEntries(stagingRoot: string, homeDir: string): void {
     throw new Error(`Vendor staging commit failed; previous managed assets restored: ${String(error)}`, { cause: error })
   }
 
-  fs.rmSync(nextRoot, { recursive: true, force: true })
+  fs.rmSync(nextWorkspace, { recursive: true, force: true })
   fs.rmSync(backupRoot, { recursive: true, force: true })
 }
 
@@ -544,12 +586,15 @@ export async function rebuildVendorAssets(options: RebuildVendorAssetsOptions): 
   const role = requireRoleName(options.role)
   const manifest = await loadVendorManifest(options.manifestPath)
   const plan = buildStagingPlan(manifest, options.homeDir, role)
+  const protectedNames = protectedSkillNames(plan, manifest)
   const { buildRoot, stagingRoot } = materializePlan(plan)
   const finalVendorRoot = path.resolve(options.homeDir, 'vendor')
 
   try {
+    await syncFirstPartySkillsToVendor(path.join(options.homeDir, 'local'), buildRoot, role)
+    requireNoProtectedSkillShadows(stagingRoot, protectedNames)
     const inventory = validateInventory(stagingRoot, finalVendorRoot, role)
-    commitManagedEntries(stagingRoot, options.homeDir)
+    await commitManagedEntries(stagingRoot, options.homeDir, role, protectedNames)
     return inventory
   }
   finally {

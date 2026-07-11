@@ -5,7 +5,7 @@ import fs from 'node:fs'
 import os from 'node:os'
 import path from 'node:path'
 import { it } from 'vitest'
-import { ensureVendorRepo, getRemoteDefaultBranch } from '../vendor-sync.js'
+import { ensureVendorRepo, getRemoteDefaultBranch, verifyVendorRepoRevision } from '../vendor-sync.js'
 
 const GIT_INTEGRATION_TIMEOUT_MS = 30000
 
@@ -118,6 +118,192 @@ it('ensureVendorRepo - handles non-fast-forward remote branch updates', () => {
     assert.strictEqual(
       fs.readFileSync(path.join(cloneDir, 'skills', 'demo', 'SKILL.md'), 'utf8').replace(/\r\n/g, '\n'),
       'remote rewritten\n',
+    )
+  })
+}, GIT_INTEGRATION_TIMEOUT_MS)
+
+it('ensureVendorRepo - pinned revision remains stable after the remote branch advances', () => {
+  withTempGitDir((tempRoot) => {
+    const originRepo = path.join(tempRoot, 'origin.git')
+    const remoteWork = path.join(tempRoot, 'remote-work')
+    const homeDir = path.join(tempRoot, 'home')
+
+    git(tempRoot, ['init', '--bare', originRepo])
+    git(tempRoot, ['clone', originRepo, remoteWork])
+    git(remoteWork, ['checkout', '-b', 'main'])
+
+    const skillDir = path.join(remoteWork, 'skills', 'demo')
+    fs.mkdirSync(skillDir, { recursive: true })
+    fs.writeFileSync(path.join(skillDir, 'SKILL.md'), 'pinned\n')
+    commitAll(remoteWork, 'pinned revision')
+    const revision = git(remoteWork, ['rev-parse', 'HEAD'])
+    git(remoteWork, ['push', '-u', 'origin', 'main'])
+
+    fs.writeFileSync(path.join(skillDir, 'SKILL.md'), 'newer\n')
+    commitAll(remoteWork, 'newer revision')
+    git(remoteWork, ['push'])
+
+    const cloneDir = ensureVendorRepo(homeDir, {
+      repo: originRepo,
+      revision,
+      cloneDir: 'vendor/repos/demo',
+      links: [{
+        kind: 'skill',
+        source: 'skills/demo',
+        target: 'vendor/skills/demo',
+      }],
+    })
+
+    assert.equal(fs.readFileSync(path.join(cloneDir, 'skills', 'demo', 'SKILL.md'), 'utf8').replace(/\r\n/gu, '\n'), 'pinned\n')
+    assert.equal(git(cloneDir, ['rev-parse', 'HEAD']), revision)
+    verifyVendorRepoRevision(homeDir, {
+      repo: originRepo,
+      revision,
+      cloneDir: 'vendor/repos/demo',
+      links: [],
+    })
+    git(cloneDir, ['checkout', 'main'])
+    assert.throws(
+      () => verifyVendorRepoRevision(homeDir, {
+        repo: originRepo,
+        revision,
+        cloneDir: 'vendor/repos/demo',
+        links: [],
+      }),
+      /checkout drifted/i,
+    )
+  })
+}, GIT_INTEGRATION_TIMEOUT_MS)
+
+it('verifyVendorRepoRevision - rejects dirty pinned and unpinned checkouts', () => {
+  withTempGitDir((tempRoot) => {
+    const originRepo = path.join(tempRoot, 'origin.git')
+    const remoteWork = path.join(tempRoot, 'remote-work')
+    const homeDir = path.join(tempRoot, 'home')
+
+    git(tempRoot, ['init', '--bare', originRepo])
+    git(tempRoot, ['clone', originRepo, remoteWork])
+    git(remoteWork, ['checkout', '-b', 'main'])
+    fs.mkdirSync(path.join(remoteWork, 'skills', 'demo'), { recursive: true })
+    fs.writeFileSync(path.join(remoteWork, 'skills', 'demo', 'SKILL.md'), 'clean\n')
+    fs.writeFileSync(path.join(remoteWork, '.gitignore'), 'scratch/\n')
+    commitAll(remoteWork, 'initial')
+    const revision = git(remoteWork, ['rev-parse', 'HEAD'])
+    git(remoteWork, ['push', '-u', 'origin', 'main'])
+
+    const baseVendor: Vendor = {
+      repo: originRepo,
+      cloneDir: 'vendor/repos/demo',
+      links: [{
+        kind: 'skill',
+        source: 'skills/demo',
+        target: 'vendor/skills/demo',
+      }],
+    }
+    const cloneDir = ensureVendorRepo(homeDir, baseVendor)
+    fs.writeFileSync(path.join(cloneDir, 'skills', 'demo', 'SKILL.md'), 'dirty\n')
+
+    assert.throws(
+      () => verifyVendorRepoRevision(homeDir, baseVendor),
+      /checkout is dirty/i,
+    )
+    assert.throws(
+      () => verifyVendorRepoRevision(homeDir, { ...baseVendor, revision }),
+      /checkout is dirty/i,
+    )
+
+    git(cloneDir, ['reset', '--hard'])
+    fs.mkdirSync(path.join(cloneDir, 'scratch'), { recursive: true })
+    fs.writeFileSync(path.join(cloneDir, 'scratch', 'ignored.txt'), 'ignored but unsafe\n')
+    assert.throws(
+      () => verifyVendorRepoRevision(homeDir, baseVendor),
+      /checkout is dirty/i,
+    )
+  })
+}, GIT_INTEGRATION_TIMEOUT_MS)
+
+it('verifyVendorRepoRevision - requires an existing checkout even when unpinned', () => {
+  withTempGitDir((tempRoot) => {
+    assert.throws(
+      () => verifyVendorRepoRevision(path.join(tempRoot, 'home'), {
+        repo: path.join(tempRoot, 'origin.git'),
+        cloneDir: 'vendor/repos/demo',
+        links: [],
+      }),
+      /checkout is missing/i,
+    )
+  })
+})
+
+it('verifyVendorRepoRevision - rejects clean unpinned remote role assets', () => {
+  withTempGitDir((tempRoot) => {
+    const originRepo = path.join(tempRoot, 'origin.git')
+    const remoteWork = path.join(tempRoot, 'remote-work')
+    const homeDir = path.join(tempRoot, 'home')
+
+    git(tempRoot, ['init', '--bare', originRepo])
+    git(tempRoot, ['clone', originRepo, remoteWork])
+    git(remoteWork, ['checkout', '-b', 'main'])
+    fs.mkdirSync(path.join(remoteWork, 'roles', 'demo'), { recursive: true })
+    fs.writeFileSync(path.join(remoteWork, 'roles', 'demo', 'README.md'), 'fixture\n')
+    commitAll(remoteWork, 'initial')
+    git(remoteWork, ['push', '-u', 'origin', 'main'])
+
+    ensureVendorRepo(homeDir, {
+      repo: originRepo,
+      cloneDir: 'vendor/repos/demo',
+      links: [{
+        kind: 'role-assets-dir',
+        source: 'roles/demo',
+        target: 'vendor',
+      }],
+    })
+
+    assert.throws(
+      () => verifyVendorRepoRevision(homeDir, {
+        repo: originRepo,
+        cloneDir: 'vendor/repos/demo',
+        links: [{
+          kind: 'role-assets-dir',
+          source: 'roles/demo',
+          target: 'vendor',
+        }],
+      }),
+      /unpinned remote role assets.*--skip-vendors/i,
+    )
+  })
+}, GIT_INTEGRATION_TIMEOUT_MS)
+
+it('verifyVendorRepoRevision - rejects a checkout whose origin differs from the manifest', () => {
+  withTempGitDir((tempRoot) => {
+    const originRepo = path.join(tempRoot, 'origin.git')
+    const otherRepo = path.join(tempRoot, 'other.git')
+    const remoteWork = path.join(tempRoot, 'remote-work')
+    const homeDir = path.join(tempRoot, 'home')
+
+    git(tempRoot, ['init', '--bare', originRepo])
+    git(tempRoot, ['init', '--bare', otherRepo])
+    git(tempRoot, ['clone', originRepo, remoteWork])
+    git(remoteWork, ['checkout', '-b', 'main'])
+    fs.writeFileSync(path.join(remoteWork, 'README.md'), 'fixture\n')
+    commitAll(remoteWork, 'initial')
+    git(remoteWork, ['push', '-u', 'origin', 'main'])
+
+    const vendor: Vendor = {
+      repo: originRepo,
+      cloneDir: 'vendor/repos/demo',
+      links: [],
+    }
+    const cloneDir = ensureVendorRepo(homeDir, vendor)
+    git(cloneDir, ['remote', 'set-url', 'origin', otherRepo])
+
+    assert.throws(
+      () => verifyVendorRepoRevision(homeDir, vendor),
+      /origin mismatch/i,
+    )
+    assert.throws(
+      () => ensureVendorRepo(homeDir, vendor),
+      /origin mismatch/i,
     )
   })
 }, GIT_INTEGRATION_TIMEOUT_MS)

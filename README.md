@@ -2,7 +2,7 @@
 
 AIRules distributes AI skills and host configuration through the `airules` CLI.
 
-First-party skills, agents, hooks, and rules are synchronized from remote repositories as a complete role path. This repository does not embed role assets. The default role is empty; pass `--role <name>` to select a role explicitly.
+Role manifests ship with the package. At runtime, first-party skills, agents, hooks, and rules are synchronized from remote repositories as a complete role path instead of being projected from the package's local role directory. The default role is empty; pass `--role <name>` to select a role explicitly.
 
 ## Install
 
@@ -21,10 +21,20 @@ airules add ./my-skill --host all
 airules verify --host all
 ```
 
+Two peer installation roles are available, with neither selected by default:
+
+```bash
+airules sync --host all --role trellis-development
+airules sync --host all --role superpowers-openspec-development
+```
+
+- `trellis-development` distributes a pinned Trellis installation skill; project initialization requires explicit license acceptance, platform, developer identity, and monorepo selection.
+- `superpowers-openspec-development` distributes Superpowers skills from a pinned commit and provides a pinned local OpenSpec tool cache with safe ledger initialization.
+
 - `sync` refreshes selected remote assets and projects them to supported hosts.
-- `add` copies a directory containing `SKILL.md` into `~/.moluoxixi/local/skills/` and syncs it.
+- `add` copies a directory containing `SKILL.md` into `~/.moluoxixi/local/skills/` and syncs it; local skills may add capabilities but cannot shadow protected skills from a complete remote role or revision-pinned vendor.
 - `verify` checks managed host projections.
-- `--skip-vendors` skips remote vendor refresh during `sync`.
+- `--skip-vendors` skips refresh only after validating the cached checkout origin, worktree, and any pinned revision; an unpinned complete remote role path must be refreshed.
 - `--no-verify` skips post-sync host verification.
 
 ## Role hook manifest

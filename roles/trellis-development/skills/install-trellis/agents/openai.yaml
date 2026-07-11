@@ -1,0 +1,4 @@
+interface:
+  display_name: Install Trellis
+  short_description: Install pinned Trellis safely into a project
+  default_prompt: Use $install-trellis to install pinned Trellis safely in this project.

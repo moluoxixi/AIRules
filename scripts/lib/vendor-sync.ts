@@ -4,6 +4,8 @@ import { spawnSync } from 'node:child_process'
 import { existsSync, mkdirSync } from 'node:fs'
 import path from 'node:path'
 
+const gitCommitPattern = /^[a-f0-9]{40}$/u
+
 function runGit(args: string[], cwd: string, options: { stdio?: StdioOptions } = {}): string {
   const result = spawnSync('git', args, {
     cwd,
@@ -105,6 +107,19 @@ function isLocalRepo(repoUrl: string): boolean {
   return !repoUrl.includes('://')
 }
 
+function normalizeGitRemote(value: string): string {
+  return value.trim().replace(/\\/gu, '/').replace(/\/+$/u, '')
+}
+
+function verifyVendorOrigin(cloneDir: string, expectedRepo: string): void {
+  const actualRepo = runGit(['-C', cloneDir, 'remote', 'get-url', 'origin'], process.cwd())
+  if (normalizeGitRemote(actualRepo) !== normalizeGitRemote(expectedRepo)) {
+    throw new Error(
+      `Vendor checkout origin mismatch: ${cloneDir} uses ${actualRepo}, expected ${expectedRepo}`,
+    )
+  }
+}
+
 export function ensureVendorRepo(homeDir: string, vendor: Vendor): string {
   const cloneDir = path.resolve(homeDir, vendor.cloneDir)
   mkdirSync(path.dirname(cloneDir), { recursive: true })
@@ -126,6 +141,27 @@ export function ensureVendorRepo(homeDir: string, vendor: Vendor): string {
     }
   }
 
+  verifyVendorOrigin(cloneDir, vendor.repo)
+
+  if (vendor.revision) {
+    if (!gitCommitPattern.test(vendor.revision)) {
+      throw new Error(`Vendor revision must be a lowercase 40-character Git commit SHA: ${vendor.revision}`)
+    }
+    const fetchArgs = isLocalRepo(vendor.repo)
+      ? ['-C', cloneDir, 'fetch', '--prune', 'origin', vendor.revision]
+      : ['-C', cloneDir, 'fetch', '--depth', '1', '--prune', 'origin', vendor.revision]
+    runGit(fetchArgs, process.cwd(), { stdio: 'inherit' })
+    if (sparsePatterns.length > 0) {
+      runGit(['-C', cloneDir, 'sparse-checkout', 'set', ...sparsePatterns], process.cwd(), { stdio: 'inherit' })
+    }
+    runGit(['-C', cloneDir, 'reset', '--hard'], process.cwd(), { stdio: 'inherit' })
+    runGit(['-C', cloneDir, 'clean', '-fdx'], process.cwd(), { stdio: 'inherit' })
+    runGit(['-C', cloneDir, 'checkout', '--detach', vendor.revision], process.cwd(), { stdio: 'inherit' })
+    runGit(['-C', cloneDir, 'reset', '--hard', vendor.revision], process.cwd(), { stdio: 'inherit' })
+    runGit(['-C', cloneDir, 'clean', '-fdx'], process.cwd(), { stdio: 'inherit' })
+    return cloneDir
+  }
+
   const defaultBranch = getRemoteDefaultBranch(cloneDir)
   const remoteRef = `origin/${defaultBranch}`
   const fetchRefSpec = `+refs/heads/${defaultBranch}:refs/remotes/${remoteRef}`
@@ -142,9 +178,45 @@ export function ensureVendorRepo(homeDir: string, vendor: Vendor): string {
   }
 
   runGit(['-C', cloneDir, 'reset', '--hard'], process.cwd(), { stdio: 'inherit' })
-  runGit(['-C', cloneDir, 'clean', '-fd'], process.cwd(), { stdio: 'inherit' })
+  runGit(['-C', cloneDir, 'clean', '-fdx'], process.cwd(), { stdio: 'inherit' })
   runGit(['-C', cloneDir, 'checkout', '-B', defaultBranch, remoteRef], process.cwd(), { stdio: 'inherit' })
   runGit(['-C', cloneDir, 'reset', '--hard', remoteRef], process.cwd(), { stdio: 'inherit' })
-  runGit(['-C', cloneDir, 'clean', '-fd'], process.cwd(), { stdio: 'inherit' })
+  runGit(['-C', cloneDir, 'clean', '-fdx'], process.cwd(), { stdio: 'inherit' })
   return cloneDir
+}
+
+export function verifyVendorRepoRevision(homeDir: string, vendor: Vendor): void {
+  if (vendor.revision && !gitCommitPattern.test(vendor.revision)) {
+    throw new Error(`Vendor revision must be a lowercase 40-character Git commit SHA: ${vendor.revision}`)
+  }
+  const cloneDir = path.resolve(homeDir, vendor.cloneDir)
+  if (!existsSync(path.join(cloneDir, '.git'))) {
+    throw new Error(`Vendor checkout is missing: ${cloneDir}`)
+  }
+  verifyVendorOrigin(cloneDir, vendor.repo)
+
+  const dirty = runGit(
+    ['-C', cloneDir, 'status', '--porcelain=v1', '--untracked-files=all'],
+    process.cwd(),
+  )
+  const ignoredUntracked = runGit(
+    ['-C', cloneDir, 'ls-files', '--others', '--ignored', '--exclude-standard'],
+    process.cwd(),
+  )
+  if (dirty || ignoredUntracked) {
+    throw new Error(`Vendor checkout is dirty: ${cloneDir}; rerun without --skip-vendors to restore it`)
+  }
+
+  if (!vendor.revision) {
+    if (vendor.links.some(link => link.kind === 'role-assets-dir')) {
+      throw new Error(
+        `Unpinned remote role assets cannot use --skip-vendors: ${cloneDir}; rerun without --skip-vendors`,
+      )
+    }
+    return
+  }
+  const actual = runGit(['-C', cloneDir, 'rev-parse', 'HEAD'], process.cwd())
+  if (actual !== vendor.revision) {
+    throw new Error(`Pinned vendor checkout drifted: ${cloneDir} is ${actual}, expected ${vendor.revision}`)
+  }
 }

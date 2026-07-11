@@ -3,6 +3,7 @@ import { fileURLToPath, pathToFileURL, URL } from 'node:url'
 import { flattenedSkillName, flattenedVendorSkillTarget } from './skill-projection.js'
 
 const vendorNamePattern = /^[A-Za-z0-9][\w-]*$/u
+const gitCommitPattern = /^[a-f0-9]{40}$/u
 const remoteGitProtocols = new Set(['https:', 'http:', 'ssh:', 'git:', 'git+ssh:'])
 const scpStyleRemotePattern = /^[^@\s/:]+@[^@\s/:]+:\S+$/u
 
@@ -131,6 +132,8 @@ export interface VendorRepo {
   official: boolean
   /** Git 仓库地址。 */
   source: string
+  /** 固定 checkout 的完整 Git commit SHA；省略时跟随远端默认分支。 */
+  revision?: string
   /**
    * 供应商级安装前置命令。
    */
@@ -173,6 +176,7 @@ export interface VendorLink {
 export interface Vendor {
   official?: boolean
   repo: string
+  revision?: string
   cloneDir: string
   sourceMode?: 'workspace'
   setup?: SetupCommand[]
@@ -220,6 +224,16 @@ function requireRemoteGitSource(value: string, vendorName: string): string {
   }
 
   throw new Error(`Vendor "${vendorName}" source must be a remote Git URL: ${value}`)
+}
+
+function requireGitRevision(value: unknown, vendorName: string): string | undefined {
+  if (value === undefined) {
+    return undefined
+  }
+  if (typeof value !== 'string' || !gitCommitPattern.test(value)) {
+    throw new Error(`Vendor "${vendorName}" revision must be a lowercase 40-character Git commit SHA`)
+  }
+  return value
 }
 
 /**
@@ -398,6 +412,7 @@ function mergeVendor(vendors: Record<string, Vendor>, vendorName: string, entry:
 
   const safeVendorName = requireVendorName(vendorName)
   const remoteSource = requireRemoteGitSource(entry.source, safeVendorName)
+  const revision = requireGitRevision(entry.revision, safeVendorName)
   const cloneDir = path.posix.join('vendor', 'repos', safeVendorName)
   const links = buildLinksForEntry(entry)
 
@@ -405,6 +420,7 @@ function mergeVendor(vendors: Record<string, Vendor>, vendorName: string, entry:
     vendors[safeVendorName] = {
       official: entry.official,
       repo: remoteSource,
+      revision,
       cloneDir,
       setup: entry.setup,
       links,
@@ -415,6 +431,7 @@ function mergeVendor(vendors: Record<string, Vendor>, vendorName: string, entry:
   const existing = vendors[safeVendorName]
   if (
     existing.repo !== remoteSource
+    || existing.revision !== revision
     || existing.cloneDir !== cloneDir
   ) {
     throw new Error(`供应商 "${safeVendorName}" 在不同模块中的定义不一致`)

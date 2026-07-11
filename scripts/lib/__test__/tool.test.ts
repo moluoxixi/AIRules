@@ -1,4 +1,5 @@
 import assert from 'node:assert/strict'
+import { execFileSync } from 'node:child_process'
 import fs from 'node:fs'
 import os from 'node:os'
 import path from 'node:path'
@@ -35,6 +36,18 @@ function writeFile(filePath: string, content: string) {
 function writeRoleManifest(repoRoot: string, role: string, content: string) {
   writeFile(path.join(repoRoot, 'roles', role, 'constants', 'skills.ts'), content)
   writeFile(path.join(repoRoot, 'roles', role, 'constants', 'skills.js'), content)
+}
+
+function commitFixtureRepo(repoRoot: string, origin: string): string {
+  execFileSync('git', ['init'], { cwd: repoRoot, stdio: 'ignore' })
+  execFileSync('git', ['remote', 'add', 'origin', origin], { cwd: repoRoot, stdio: 'ignore' })
+  execFileSync('git', ['add', '.'], { cwd: repoRoot, stdio: 'ignore' })
+  execFileSync(
+    'git',
+    ['-c', 'user.name=Test User', '-c', 'user.email=test@example.com', 'commit', '-m', 'fixture'],
+    { cwd: repoRoot, stdio: 'ignore' },
+  )
+  return execFileSync('git', ['rev-parse', 'HEAD'], { cwd: repoRoot, encoding: 'utf8' }).trim()
 }
 
 function realLinkPath(linkPath: string) {
@@ -438,6 +451,72 @@ it('tool - syncToHosts 在源码安装目录缺少 dist 时可直接加载 TypeS
   })
 })
 
+it('tool - syncToHosts 对 role-assets 使用远程完整 role path 并保留本地用户 skill 覆盖层', async () => {
+  await withTempDirAsync('airules-tool-remote-role-', async (tmpDir) => {
+    const repoRoot = path.join(tmpDir, 'repo')
+    const userHome = path.join(tmpDir, 'user')
+    const moluoHome = path.join(userHome, '.moluoxixi')
+    const codexHome = path.join(userHome, '.codex')
+    const role = 'remote-development'
+
+    writeFile(path.join(repoRoot, 'package.json'), '{"type":"module"}\n')
+    writeFile(path.join(repoRoot, 'roles', role, 'rules', 'AGENTS.md'), 'local draft must not project\n')
+    writeFile(path.join(repoRoot, 'roles', role, 'skills', 'role-skill', 'SKILL.md'), 'local draft\n')
+
+    const remoteRoleRoot = path.join(moluoHome, 'vendor', 'repos', 'moluoxixi', 'roles', role)
+    writeFile(path.join(remoteRoleRoot, 'rules', 'AGENTS.md'), 'remote baseline\n')
+    writeFile(path.join(remoteRoleRoot, 'skills', 'role-skill', 'SKILL.md'), 'remote role skill\n')
+    writeFile(path.join(remoteRoleRoot, 'agents', 'remote-reviewer.md'), '---\nname: remote-reviewer\ndescription: Remote reviewer\n---\nReview\n')
+    writeFile(path.join(moluoHome, 'vendor', 'repos', 'upstream', 'skills', 'upstream-skill', 'SKILL.md'), 'upstream skill\n')
+    writeFile(path.join(moluoHome, 'local', 'skills', 'local-skill', 'SKILL.md'), 'local skill\n')
+    const moluoxixiRevision = commitFixtureRepo(
+      path.join(moluoHome, 'vendor', 'repos', 'moluoxixi'),
+      'https://example.test/AIRules.git',
+    )
+    const upstreamRevision = commitFixtureRepo(
+      path.join(moluoHome, 'vendor', 'repos', 'upstream'),
+      'https://example.test/upstream.git',
+    )
+    writeRoleManifest(repoRoot, role, `
+export const vendors = [
+  {
+    name: 'moluoxixi',
+    official: true,
+    source: 'https://example.test/AIRules.git',
+    revision: '${moluoxixiRevision}',
+    projections: [{ kind: 'role-assets', sourceDir: 'roles/${role}' }],
+  },
+  {
+    name: 'upstream',
+    official: true,
+    source: 'https://example.test/upstream.git',
+    revision: '${upstreamRevision}',
+    projections: [{ kind: 'skills', sourceBaseDir: 'skills', skills: ['upstream-skill'] }],
+  },
+]
+`)
+    fs.mkdirSync(codexHome, { recursive: true })
+
+    const result = await syncToHosts({
+      repoRoot,
+      home: moluoHome,
+      userHome,
+      host: 'codex',
+      role,
+      skipVendors: true,
+      verify: false,
+    })
+
+    assert.deepEqual(result.projectedHosts, ['codex'])
+    assert.equal(fs.readFileSync(path.join(moluoHome, 'vendor', 'AGENTS.md'), 'utf8'), 'remote baseline\n')
+    assert.equal(fs.readFileSync(path.join(moluoHome, 'vendor', 'skills', 'role-skill', 'SKILL.md'), 'utf8'), 'remote role skill\n')
+    assert.equal(fs.readFileSync(path.join(moluoHome, 'vendor', 'skills', 'upstream-skill', 'SKILL.md'), 'utf8'), 'upstream skill\n')
+    assert.equal(fs.readFileSync(path.join(moluoHome, 'vendor', 'skills', 'local-skill', 'SKILL.md'), 'utf8'), 'local skill\n')
+    assert.equal(fs.existsSync(path.join(codexHome, 'agents', 'remote-reviewer.toml')), true)
+    assert.equal(realLinkPath(path.join(codexHome, 'skills', 'role-skill')), realLinkPath(path.join(userHome, '.agents', 'skills', 'role-skill')))
+  })
+})
+
 it('tool - syncToHosts 在安装目录即仓库根目录时仍从 vendor 投影第一方 skills', async () => {
   await withTempDirAsync('airules-tool-installed-repo-', async (tmpDir) => {
     const userHome = path.join(tmpDir, 'user')
@@ -447,6 +526,11 @@ it('tool - syncToHosts 在安装目录即仓库根目录时仍从 vendor 投影�
 
     writeFile(path.join(moluoHome, 'package.json'), '{"type":"module"}\n')
     writeRoleManifest(moluoHome, 'common', 'export const vendors = []\n')
+    writeFile(path.join(vendorRepoSkill, 'SKILL.md'), 'vendor-source\n')
+    const vendorRevision = commitFixtureRepo(
+      path.join(moluoHome, 'vendor', 'repos', 'moluoxixi'),
+      'https://example.test/AIRules.git',
+    )
     writeFile(path.join(moluoHome, 'roles', 'openspec-development', 'constants', 'skills.js'), `
 export const extendsRoles = ['common']
 export const vendors = [
@@ -454,6 +538,7 @@ export const vendors = [
     name: 'moluoxixi',
     official: true,
     source: 'https://example.test/AIRules.git',
+    revision: '${vendorRevision}',
     projections: [
       {
         kind: 'skills',
@@ -470,7 +555,6 @@ export const vendors = [
     )
     writeFile(path.join(moluoHome, 'roles', 'openspec-development', 'rules', 'AGENTS.md'), 'baseline\n')
     writeFile(path.join(moluoHome, 'roles', 'common', 'skills', 'session-capture', 'SKILL.md'), 'common\n')
-    writeFile(path.join(vendorRepoSkill, 'SKILL.md'), 'vendor-source\n')
     fs.mkdirSync(codexHome, { recursive: true })
 
     await syncToHosts({

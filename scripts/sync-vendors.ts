@@ -225,9 +225,10 @@ async function main() {
         }
 
         // 版本固定：非 --update-lock 且锁文件存在该 vendor 的 SHA 时，checkout 锁定提交以保证可复现。
-        const lockedSha = updateLock ? undefined : getLockedSha(vendorLock, vendorName, vendor.repo)
+        const lockedSha = vendor.revision ?? (updateLock ? undefined : getLockedSha(vendorLock, vendorName, vendor.repo))
         if (lockedSha) {
-          console.log(`[LOCK] ${vendorName} 固定到 ${lockedSha.slice(0, 12)}`)
+          const source = vendor.revision ? 'manifest' : 'vendor-lock.json'
+          console.log(`[LOCK] ${vendorName} 由 ${source} 固定到 ${lockedSha.slice(0, 12)}`)
           runGit(['checkout', lockedSha], cacheTarget)
         }
         else {
