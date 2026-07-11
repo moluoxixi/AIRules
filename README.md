@@ -24,12 +24,8 @@ airules verify --host all
 Two peer installation roles are available, with neither selected by default:
 
 ```bash
-airules sync --host all --role trellis-development
-airules sync --host all --role superpowers-openspec-development
 ```
 
-- `trellis-development` distributes a pinned Trellis installation skill; project initialization requires explicit license acceptance, platform, developer identity, and monorepo selection.
-- `superpowers-openspec-development` distributes Superpowers skills from a pinned commit and provides a pinned local OpenSpec tool cache with safe ledger initialization.
 
 - `sync` refreshes selected remote assets and projects them to supported hosts.
 - `add` copies a directory containing `SKILL.md` into `~/.moluoxixi/local/skills/` and syncs it; local skills may add capabilities but cannot shadow protected skills from a complete remote role or revision-pinned vendor.

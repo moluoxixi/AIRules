@@ -24,12 +24,8 @@ airules verify --host all
 提供两个并列、无默认选择的安装角色：
 
 ```bash
-airules sync --host all --role trellis-development
-airules sync --host all --role superpowers-openspec-development
 ```
 
-- `trellis-development` 分发固定版本的 Trellis 安装 skill；项目初始化必须显式确认许可证、平台、开发者身份和 monorepo 选择。
-- `superpowers-openspec-development` 分发固定提交的 Superpowers skills，并提供固定版本 OpenSpec 的本地工具缓存与安全账本初始化入口。
 
 - `sync` 更新所选远程资产并投影到支持的宿主。
 - `add` 将包含 `SKILL.md` 的目录复制到 `~/.moluoxixi/local/skills/` 后执行同步；本地 skill 可以追加能力，但不能同名覆盖完整远程 role 或固定 revision vendor 的受保护 skill。
