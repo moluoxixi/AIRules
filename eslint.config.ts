@@ -5,6 +5,7 @@ export default eslintConfig({
     'public',
     '.zed',
     '.cache-git',
+    '.tmp',
     'coverage',
     'docs',
     'dist',

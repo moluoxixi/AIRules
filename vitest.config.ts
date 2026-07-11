@@ -5,6 +5,7 @@ export default defineConfig({
     exclude: [
       '**/node_modules/**',
       '**/dist/**',
+      '.tmp/**',
       '.skill-references/**',
       'vendor/**',
       '.cache-git/**',

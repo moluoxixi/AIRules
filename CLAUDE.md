@@ -1,2 +1,0 @@
-本项目的skills，agents，hooks，rules均采用远程同步方式
-本项目对应skills中的moluoxixi资产，以role path全量同步
