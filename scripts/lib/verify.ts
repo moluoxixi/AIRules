@@ -134,6 +134,16 @@ function verifyOneHook(host: string, hooksHome: string, vendorHooksRoot: string,
     console.error(`[FAIL] hook 脚本内容与角色源不一致: ${hostScript}`)
     return false
   }
+  for (const supportFile of hooks.supportFiles ?? []) {
+    const vendorSupport = path.join(vendorHooksRoot, supportFile)
+    const hostSupport = path.join(hooksHome, 'hooks', supportFile)
+    const hostSupportStats = lstatSync(hostSupport, { throwIfNoEntry: false })
+    if (!hostSupportStats?.isFile() || hostSupportStats.isSymbolicLink()
+      || !existsSync(vendorSupport) || fileHash(vendorSupport) !== fileHash(hostSupport)) {
+      console.error(`[FAIL] hook 辅助模块缺失或与角色源不一致: ${hostSupport}`)
+      return false
+    }
+  }
 
   const targetFile = path.join(hooksHome, hooks.relDir, hooks.fileName)
   if (!existsSync(targetFile)) {

@@ -1099,6 +1099,12 @@ function projectHooksToHost(moluoHome: string, hooksHome: string, hooks: HookPro
   // 1. 脚本拷到宿主 hooks 目录，配置里引用其绝对路径。
   const hostHooksDir = path.join(hooksHome, 'hooks')
   const hostScript = path.join(hostHooksDir, hooks.scriptName)
+  for (const supportFile of hooks.supportFiles ?? []) {
+    copyRequiredFile(
+      path.join(vendorHooksPath(moluoHome), supportFile),
+      path.join(hostHooksDir, supportFile),
+    )
+  }
   copyRequiredFile(sourceScript, hostScript)
 
   const targetDir = hooks.relDir === '.' ? hooksHome : path.join(hooksHome, hooks.relDir)

@@ -17,6 +17,7 @@ function createHooks(manifest?: unknown): string {
   const root = fs.mkdtempSync(path.join(os.tmpdir(), 'airules-hook-dispatch-'))
   temporaryRoots.push(root)
   fs.writeFileSync(path.join(root, 'dispatcher.mjs'), 'export {}\n')
+  fs.writeFileSync(path.join(root, 'helper.mjs'), 'export {}\n')
   fs.writeFileSync(path.join(root, 'stop.mjs'), 'export {}\n')
   if (manifest !== undefined) {
     fs.writeFileSync(path.join(root, 'hooks.json'), `${JSON.stringify(manifest, null, 2)}\n`)
@@ -42,13 +43,13 @@ describe('role hook dispatch manifest', () => {
     const hooksRoot = createHooks({
       version: 1,
       hooks: [
-        { event: 'PreToolUse', script: 'dispatcher.mjs', hosts: ['claude', 'cursor'], event_by_host: { cursor: 'beforeShellExecution' } },
+        { event: 'PreToolUse', script: 'dispatcher.mjs', support_files: ['helper.mjs'], hosts: ['claude', 'cursor'], event_by_host: { cursor: 'beforeShellExecution' } },
         { event: 'Stop', script: 'dispatcher.mjs' },
       ],
     })
 
     expect(resolveHookDispatches(hooksRoot, 'claude', claudeAdapter)).toEqual([
-      { relDir: '.', fileName: 'settings.json', format: 'json', nesting: 'group', includeType: true, event: 'PreToolUse', scriptName: 'dispatcher.mjs' },
+      { relDir: '.', fileName: 'settings.json', format: 'json', nesting: 'group', includeType: true, event: 'PreToolUse', scriptName: 'dispatcher.mjs', supportFiles: ['helper.mjs'] },
       { relDir: '.', fileName: 'settings.json', format: 'json', nesting: 'group', includeType: true, event: 'Stop', scriptName: 'dispatcher.mjs' },
     ])
 
@@ -87,6 +88,16 @@ describe('role hook dispatch manifest', () => {
       name: 'missing script',
       manifest: { version: 1, hooks: [{ event: 'Stop', script: 'missing.mjs' }] },
       error: /does not exist/i,
+    },
+    {
+      name: 'missing support file',
+      manifest: { version: 1, hooks: [{ event: 'Stop', script: 'dispatcher.mjs', support_files: ['missing.mjs'] }] },
+      error: /does not exist/i,
+    },
+    {
+      name: 'support file path traversal',
+      manifest: { version: 1, hooks: [{ event: 'Stop', script: 'dispatcher.mjs', support_files: ['../escape.mjs'] }] },
+      error: /safe \.mjs file names/i,
     },
     {
       name: 'unknown host',

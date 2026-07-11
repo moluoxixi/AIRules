@@ -48,6 +48,7 @@ Roles declare distributable hooks only through `roles/<role>/hooks/hooks.json`; 
     {
       "event": "Stop",
       "script": "workflow-dispatcher.mjs",
+      "support_files": ["workflow-hook-lib.mjs"],
       "hosts": ["claude", "codex", "cursor"],
       "event_by_host": { "cursor": "stop" }
     }
@@ -55,7 +56,7 @@ Roles declare distributable hooks only through `roles/<role>/hooks/hooks.json`; 
 }
 ```
 
-Sync converts the manifest to each host's JSON or TOML shape, removes AIRules-managed entries that are no longer declared, preserves user hooks, and makes `verify` check script hashes and exact command structure.
+`support_files` declares same-directory `.mjs` helper modules imported by the main script; sync copies and verifies them without registering them as event commands. Sync converts the manifest to each host's JSON or TOML shape, removes AIRules-managed entries that are no longer declared, preserves user hooks, and makes `verify` check script hashes and exact command structure.
 
 ## Maintenance
 

@@ -23,6 +23,7 @@ function setupEnv(options: { withHookScript?: boolean } = {}) {
     const hooksDir = path.join(moluoHome, 'vendor', 'hooks')
     fs.mkdirSync(hooksDir, { recursive: true })
     fs.writeFileSync(path.join(hooksDir, 'session-log.mjs'), 'process.stdout.write("{}")\n')
+    fs.writeFileSync(path.join(hooksDir, 'helper.mjs'), 'export const helper = true\n')
   }
 
   return { tmpDir, userHome, moluoHome, hostHome }
@@ -36,8 +37,9 @@ const jsonHook = { relDir: '.', fileName: 'settings.json', format: 'json' as con
 const tomlHook = { relDir: '.', fileName: 'config.toml', format: 'toml' as const, event: 'Stop', scriptName: 'session-log.mjs' }
 const cursorHook = { relDir: '.', fileName: 'hooks.json', format: 'json' as const, event: 'stop', scriptName: 'session-log.mjs', version: 1, nesting: 'flat' as const }
 const traeHook = { relDir: '.', fileName: 'hooks.json', format: 'json' as const, event: 'Stop', scriptName: 'session-log.mjs', version: 1, nesting: 'group' as const, includeType: true }
+const supportHook = { ...jsonHook, supportFiles: ['helper.mjs'] }
 
-type AnyHook = typeof jsonHook | typeof tomlHook | typeof cursorHook | typeof traeHook
+type AnyHook = typeof jsonHook | typeof tomlHook | typeof cursorHook | typeof traeHook | typeof supportHook
 
 function projectOnce(env: ReturnType<typeof setupEnv>, hooks: AnyHook) {
   projectToHost({
@@ -66,6 +68,20 @@ it('hook 投影 - Claude JSON 宿主写 group 嵌套 + type', () => {
     assert.match(inner.command, /session-log\.mjs/)
     assert.equal(cfg.version, undefined) // Claude 不写 version
     assert.ok(fs.existsSync(path.join(env.hostHome, 'hooks', 'session-log.mjs')), '脚本应拷到宿主 hooks 目录')
+  }
+  finally {
+    cleanup(env.tmpDir)
+  }
+})
+
+it('hook 投影 - 显式辅助模块随主脚本复制', () => {
+  const env = setupEnv()
+  try {
+    projectOnce(env, supportHook)
+    assert.equal(
+      fs.readFileSync(path.join(env.hostHome, 'hooks', 'helper.mjs'), 'utf8'),
+      'export const helper = true\n',
+    )
   }
   finally {
     cleanup(env.tmpDir)

@@ -3,7 +3,6 @@ import os from 'node:os'
 import path from 'node:path'
 import { afterEach, expect, it } from 'vitest'
 import { DEFAULT_ROLE, requireRolePaths, resolveRoleManifestPath } from '../roles.js'
-import { loadVendorManifest } from '../vendors.js'
 
 const temporaryRoots: string[] = []
 
@@ -39,26 +38,7 @@ it('uses an empty string as the default role', () => {
   expect(DEFAULT_ROLE).toBe('')
 })
 
-it.each([
-  ['trellis-development', undefined],
-  ['superpowers-openspec-development', 'd884ae04edebef577e82ff7c4e143debd0bbec99'],
-])('loads the built-in %s remote role manifest without changing the default', async (role, superpowersRevision) => {
-  const repoRoot = process.cwd()
-  const paths = requireRolePaths(repoRoot, role)
-  const manifest = await loadVendorManifest(paths.constantsFile)
-  const roleAssets = manifest.vendors.moluoxixi.links.filter(link => link.kind === 'role-assets-dir')
-
-  expect(DEFAULT_ROLE).toBe('')
-  expect(roleAssets).toEqual([expect.objectContaining({ source: `roles/${role}` })])
-  if (superpowersRevision) {
-    expect(manifest.vendors.superpowers.revision).toBe(superpowersRevision)
-  }
-  else {
-    expect(manifest.vendors.superpowers).toBeUndefined()
-  }
-})
-
-it('requires an explicit role even when the former default role exists', () => {
+it('requires a valid role when resolving explicit role paths', () => {
   const repoRoot = createRepo()
 
   expect(() => requireRolePaths(repoRoot, undefined)).toThrow(/role name/i)

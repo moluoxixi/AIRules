@@ -71,6 +71,8 @@ export interface HookProjection extends HookHostAdapter {
   event: string
   /** 位于 vendor/hooks 下的脚本文件名。 */
   scriptName: string
+  /** 与主脚本一起复制并校验、但不直接注册为事件命令的辅助模块。 */
+  supportFiles?: string[]
 }
 
 /**

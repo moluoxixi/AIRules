@@ -48,6 +48,7 @@ airules sync --host all --role superpowers-openspec-development
     {
       "event": "Stop",
       "script": "workflow-dispatcher.mjs",
+      "support_files": ["workflow-hook-lib.mjs"],
       "hosts": ["claude", "codex", "cursor"],
       "event_by_host": { "cursor": "stop" }
     }
@@ -55,7 +56,7 @@ airules sync --host all --role superpowers-openspec-development
 }
 ```
 
-同步会把清单转换成各宿主的 JSON/TOML 结构，收敛删除不再声明的 AIRules 受管条目，保留用户 hook，并在 `verify` 时校验脚本哈希与精确命令结构。
+`support_files` 用于声明主脚本导入的同目录 `.mjs` 辅助模块；同步会复制并校验这些文件，但不会把它们注册成事件命令。同步会把清单转换成各宿主的 JSON/TOML 结构，收敛删除不再声明的 AIRules 受管条目，保留用户 hook，并在 `verify` 时校验脚本哈希与精确命令结构。
 
 ## 维护
 

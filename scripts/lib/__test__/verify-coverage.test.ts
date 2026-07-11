@@ -234,13 +234,33 @@ it.each([
     fs.mkdirSync(path.join(hostHome, 'skills'), { recursive: true })
     fs.mkdirSync(vendorHooks, { recursive: true })
     fs.writeFileSync(path.join(vendorHooks, 'dispatcher.mjs'), 'export {}\n')
+    fs.writeFileSync(path.join(vendorHooks, 'helper.mjs'), 'export const helper = true\n')
     fs.writeFileSync(path.join(vendorHooks, 'hooks.json'), `${JSON.stringify({
       version: 1,
-      hooks: [{ event: 'Stop', script: 'dispatcher.mjs', hosts: [host] }],
+      hooks: [{ event: 'Stop', script: 'dispatcher.mjs', support_files: ['helper.mjs'], hosts: [host] }],
     })}\n`)
 
     assert.equal(projectHostById(host, userHome, moluoHome).success, true)
     assert.equal(await verifyHost(host, moluoHome, userHome), true)
+  })
+})
+
+it('verifyHost - hook 辅助模块被篡改时失败', async () => {
+  await withTempHome(async (userHome, moluoHome) => {
+    const codexHome = path.join(userHome, '.codex')
+    const vendorHooks = path.join(moluoHome, 'vendor', 'hooks')
+    fs.mkdirSync(path.join(codexHome, 'skills'), { recursive: true })
+    fs.mkdirSync(vendorHooks, { recursive: true })
+    fs.writeFileSync(path.join(vendorHooks, 'dispatcher.mjs'), 'export {}\n')
+    fs.writeFileSync(path.join(vendorHooks, 'helper.mjs'), 'export const helper = true\n')
+    fs.writeFileSync(path.join(vendorHooks, 'hooks.json'), `${JSON.stringify({
+      version: 1,
+      hooks: [{ event: 'Stop', script: 'dispatcher.mjs', support_files: ['helper.mjs'], hosts: ['codex'] }],
+    })}\n`)
+
+    assert.equal(projectHostById('codex', userHome, moluoHome).success, true)
+    fs.writeFileSync(path.join(codexHome, 'hooks', 'helper.mjs'), 'tampered\n')
+    assert.equal(await verifyHost('codex', moluoHome, userHome), false)
   })
 })
 

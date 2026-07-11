@@ -6,6 +6,7 @@ import { HOST_IDS } from '../../constants/hosts.js'
 interface NeutralHookEntry {
   event: string
   script: string
+  supportFiles?: string[]
   hosts?: string[]
   eventByHost?: Record<string, string>
 }
@@ -79,6 +80,28 @@ function parseEventByHost(value: unknown, context: string): Record<string, strin
   return parsed
 }
 
+function parseSupportFiles(value: unknown, script: string, context: string): string[] | undefined {
+  if (value === undefined) {
+    return undefined
+  }
+  if (!Array.isArray(value) || value.length === 0) {
+    throw new TypeError(`${context} must be a non-empty array`)
+  }
+  const files = value.map((file) => {
+    if (typeof file !== 'string' || !scriptPattern.test(file) || path.basename(file) !== file) {
+      throw new TypeError(`${context} must contain safe .mjs file names`)
+    }
+    return file
+  })
+  if (new Set(files).size !== files.length) {
+    throw new Error(`${context} must not contain duplicates`)
+  }
+  if (files.includes(script)) {
+    throw new Error(`${context} must not repeat the main script`)
+  }
+  return files
+}
+
 function parseManifest(value: unknown, source: string): NeutralHookManifest {
   const root = requireRecord(value, source)
   requireExactFields(root, ['version', 'hooks'], source)
@@ -92,13 +115,14 @@ function parseManifest(value: unknown, source: string): NeutralHookManifest {
   const hooks = root.hooks.map((value, index) => {
     const context = `${source} hooks[${index}]`
     const entry = requireRecord(value, context)
-    requireExactFields(entry, ['event', 'script', 'hosts', 'event_by_host'], context)
+    requireExactFields(entry, ['event', 'script', 'support_files', 'hosts', 'event_by_host'], context)
     const script = entry.script
     if (typeof script !== 'string' || !scriptPattern.test(script) || path.basename(script) !== script) {
       throw new TypeError(`${context} script must be a safe .mjs file name`)
     }
     const hosts = parseHosts(entry.hosts, `${context} hosts`)
     const eventByHost = parseEventByHost(entry.event_by_host, `${context} event_by_host`)
+    const supportFiles = parseSupportFiles(entry.support_files, script, `${context} support_files`)
     if (hosts && eventByHost) {
       const unrelatedHost = Object.keys(eventByHost).find(host => !hosts.includes(host))
       if (unrelatedHost) {
@@ -108,6 +132,7 @@ function parseManifest(value: unknown, source: string): NeutralHookManifest {
     return {
       event: requireIdentifier(entry.event, 'event'),
       script,
+      supportFiles,
       hosts,
       eventByHost,
     }
@@ -142,10 +167,12 @@ export function readNeutralHookManifest(hooksRoot: string): NeutralHookManifest 
   }
   const manifest = parseManifest(value, source)
   for (const hook of manifest.hooks) {
-    const script = path.join(hooksRoot, hook.script)
-    const stats = fs.lstatSync(script, { throwIfNoEntry: false })
-    if (!stats?.isFile() || stats.isSymbolicLink()) {
-      throw new Error(`AIRules hook manifest script does not exist: ${script}`)
+    for (const fileName of [hook.script, ...(hook.supportFiles ?? [])]) {
+      const script = path.join(hooksRoot, fileName)
+      const stats = fs.lstatSync(script, { throwIfNoEntry: false })
+      if (!stats?.isFile() || stats.isSymbolicLink()) {
+        throw new Error(`AIRules hook manifest script does not exist: ${script}`)
+      }
     }
   }
   return manifest
@@ -173,6 +200,7 @@ export function resolveHookDispatches(
       ...adapter,
       event: hook.eventByHost?.[host] ?? hook.event,
       scriptName: hook.script,
+      ...(hook.supportFiles ? { supportFiles: [...hook.supportFiles] } : {}),
     }))
 
   const unique = new Set<string>()
