@@ -1,4 +1,0 @@
-interface:
-  display_name: "公司级研发工作流"
-  short_description: "覆盖需求接入、规格、验证、交付、记忆与能力演进的公司级工作流"
-  default_prompt: "Use $company-dev-workflow to drive this requirement from intake through evidence-backed delivery."

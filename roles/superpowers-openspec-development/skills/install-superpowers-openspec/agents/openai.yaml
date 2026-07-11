@@ -1,4 +1,0 @@
-interface:
-  display_name: 'Install Superpowers + OpenSpec'
-  short_description: Set up pinned OpenSpec with Superpowers skills
-  default_prompt: Use $install-superpowers-openspec to set up Superpowers and OpenSpec in this project.
