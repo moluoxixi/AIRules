@@ -3,6 +3,7 @@ import fs from 'node:fs'
 import os from 'node:os'
 import path from 'node:path'
 import { afterEach, it, vi } from 'vitest'
+import { projectHostById } from '../install.js'
 import { verifyHost } from '../verify.js'
 
 const workspaceFolderPlaceholder = '$' + '{workspaceFolder}'
@@ -220,6 +221,138 @@ it('verifyHost - Codex TOML MCP 配置带 BOM 仍可解析', async () => {
     )
 
     assert.equal(await verifyHost('codex', moluoHome), true)
+  })
+})
+
+it.each([
+  { host: 'claude', homeDir: '.claude' },
+  { host: 'codex', homeDir: '.codex' },
+])('verifyHost - $host 精确 hook 投影通过', async ({ host, homeDir }) => {
+  await withTempHome(async (userHome, moluoHome) => {
+    const hostHome = path.join(userHome, homeDir)
+    const vendorHooks = path.join(moluoHome, 'vendor', 'hooks')
+    fs.mkdirSync(path.join(hostHome, 'skills'), { recursive: true })
+    fs.mkdirSync(vendorHooks, { recursive: true })
+    fs.writeFileSync(path.join(vendorHooks, 'dispatcher.mjs'), 'export {}\n')
+    fs.writeFileSync(path.join(vendorHooks, 'hooks.json'), `${JSON.stringify({
+      version: 1,
+      hooks: [{ event: 'Stop', script: 'dispatcher.mjs', hosts: [host] }],
+    })}\n`)
+
+    assert.equal(projectHostById(host, userHome, moluoHome).success, true)
+    assert.equal(await verifyHost(host, moluoHome, userHome), true)
+  })
+})
+
+it('verifyHost - 角色 hook 清单声明的宿主脚本缺失时失败', async () => {
+  await withTempHome(async (userHome, moluoHome) => {
+    fs.mkdirSync(path.join(userHome, '.codex', 'skills'), { recursive: true })
+    fs.mkdirSync(path.join(moluoHome, 'vendor', 'hooks'), { recursive: true })
+    fs.writeFileSync(path.join(moluoHome, 'vendor', 'hooks', 'dispatcher.mjs'), 'export {}\n')
+    fs.writeFileSync(path.join(moluoHome, 'vendor', 'hooks', 'hooks.json'), `${JSON.stringify({
+      version: 1,
+      hooks: [{ event: 'Stop', script: 'dispatcher.mjs' }],
+    })}\n`)
+
+    assert.equal(await verifyHost('codex', moluoHome), false)
+  })
+})
+
+it('verifyHost - 角色 hook 脚本被篡改或 TOML 块不完整时失败', async () => {
+  await withTempHome(async (userHome, moluoHome) => {
+    const codexHome = path.join(userHome, '.codex')
+    const vendorHooks = path.join(moluoHome, 'vendor', 'hooks')
+    const hostScript = path.join(codexHome, 'hooks', 'dispatcher.mjs')
+    fs.mkdirSync(path.join(codexHome, 'skills'), { recursive: true })
+    fs.mkdirSync(vendorHooks, { recursive: true })
+    fs.mkdirSync(path.dirname(hostScript), { recursive: true })
+    fs.writeFileSync(path.join(vendorHooks, 'dispatcher.mjs'), 'export {}\n')
+    fs.writeFileSync(path.join(vendorHooks, 'hooks.json'), `${JSON.stringify({ version: 1, hooks: [{ event: 'Stop', script: 'dispatcher.mjs' }] })}\n`)
+    fs.writeFileSync(hostScript, 'tampered\n')
+    fs.writeFileSync(path.join(codexHome, 'config.toml'), '# >>> AIRULES HOOK Stop dispatcher.mjs >>>\n')
+
+    assert.equal(await verifyHost('codex', moluoHome), false)
+
+    fs.writeFileSync(hostScript, 'export {}\n')
+    assert.equal(await verifyHost('codex', moluoHome), false)
+  })
+})
+
+it('verifyHost - JSON hook 配置根节点不是对象时返回失败', async () => {
+  await withTempHome(async (userHome, moluoHome) => {
+    const claudeHome = path.join(userHome, '.claude')
+    const vendorHooks = path.join(moluoHome, 'vendor', 'hooks')
+    const hostScript = path.join(claudeHome, 'hooks', 'dispatcher.mjs')
+    fs.mkdirSync(path.join(claudeHome, 'skills'), { recursive: true })
+    fs.mkdirSync(vendorHooks, { recursive: true })
+    fs.mkdirSync(path.dirname(hostScript), { recursive: true })
+    fs.writeFileSync(path.join(vendorHooks, 'dispatcher.mjs'), 'export {}\n')
+    fs.writeFileSync(path.join(vendorHooks, 'hooks.json'), `${JSON.stringify({ version: 1, hooks: [{ event: 'Stop', script: 'dispatcher.mjs' }] })}\n`)
+    fs.writeFileSync(hostScript, 'export {}\n')
+    fs.writeFileSync(path.join(claudeHome, 'settings.json'), 'null\n')
+
+    assert.equal(await verifyHost('claude', moluoHome), false)
+  })
+})
+
+it('verifyHost - JSON hook 受管集合含重复条目时失败', async () => {
+  await withTempHome(async (userHome, moluoHome) => {
+    const claudeHome = path.join(userHome, '.claude')
+    const vendorHooks = path.join(moluoHome, 'vendor', 'hooks')
+    const hostScript = path.join(claudeHome, 'hooks', 'dispatcher.mjs')
+    const command = `node "${hostScript}" --airules-managed-hook`
+    fs.mkdirSync(path.join(claudeHome, 'skills'), { recursive: true })
+    fs.mkdirSync(vendorHooks, { recursive: true })
+    fs.mkdirSync(path.dirname(hostScript), { recursive: true })
+    fs.writeFileSync(path.join(vendorHooks, 'dispatcher.mjs'), 'export {}\n')
+    fs.writeFileSync(path.join(vendorHooks, 'hooks.json'), `${JSON.stringify({ version: 1, hooks: [{ event: 'Stop', script: 'dispatcher.mjs' }] })}\n`)
+    fs.writeFileSync(hostScript, 'export {}\n')
+    fs.writeFileSync(path.join(claudeHome, 'settings.json'), `${JSON.stringify({
+      hooks: {
+        Stop: [
+          { hooks: [{ type: 'command', command }] },
+          { hooks: [{ type: 'command', command }] },
+        ],
+      },
+    }, null, 2)}\n`)
+
+    assert.equal(await verifyHost('claude', moluoHome), false)
+  })
+})
+
+it('verifyHost - JSON hook 含非规范管理标记命令时失败', async () => {
+  await withTempHome(async (userHome, moluoHome) => {
+    const claudeHome = path.join(userHome, '.claude')
+    const foreignScript = path.join(userHome, 'outside', 'stale.mjs')
+    fs.mkdirSync(path.join(claudeHome, 'skills'), { recursive: true })
+    fs.writeFileSync(path.join(claudeHome, 'settings.json'), `${JSON.stringify({
+      hooks: {
+        Stop: [{ hooks: [{ type: 'command', command: `node "${foreignScript}" --airules-managed-hook --extra` }] }],
+      },
+    }, null, 2)}\n`)
+
+    assert.equal(await verifyHost('claude', moluoHome), false)
+  })
+})
+
+it('verifyHost - 空清单存在残留 TOML 受管块时失败', async () => {
+  await withTempHome(async (userHome, moluoHome) => {
+    const codexHome = path.join(userHome, '.codex')
+    const hostScript = path.join(codexHome, 'hooks', 'stale.mjs')
+    fs.mkdirSync(path.join(codexHome, 'skills'), { recursive: true })
+    fs.writeFileSync(path.join(codexHome, 'config.toml'), [
+      '# >>> AIRULES HOOK Stop stale.mjs >>>',
+      '[[hooks.Stop]]',
+      '',
+      '[[hooks.Stop.hooks]]',
+      'type = "command"',
+      `command = 'node "${hostScript}" --airules-managed-hook'`,
+      '',
+      '# <<< AIRULES HOOK Stop stale.mjs <<<',
+      '',
+    ].join('\n'))
+
+    assert.equal(await verifyHost('codex', moluoHome), false)
   })
 })
 

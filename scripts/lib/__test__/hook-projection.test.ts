@@ -106,7 +106,7 @@ it('hook 投影 - Codex TOML 受管块 + node 启动', () => {
   try {
     projectOnce(env, tomlHook)
     const toml = readTarget(env, tomlHook)
-    assert.match(toml, /# >>> AIRULES HOOK session-log\.mjs >>>/)
+    assert.match(toml, /# >>> AIRULES HOOK Stop session-log\.mjs >>>/)
     assert.match(toml, /\[\[hooks\.Stop\]\]/)
     assert.match(toml, /command = .node /) // 必须经 node 启动 .mjs
   }
@@ -134,7 +134,7 @@ it('hook 投影 - TOML 幂等：连投两次 HOOK 块仅 1 个', () => {
     projectOnce(env, tomlHook)
     projectOnce(env, tomlHook)
     const raw = readTarget(env, tomlHook)
-    assert.equal((raw.match(/AIRULES HOOK session-log\.mjs >>>/g) ?? []).length, 1)
+    assert.equal((raw.match(/AIRULES HOOK Stop session-log\.mjs >>>/g) ?? []).length, 1)
   }
   finally {
     cleanup(env.tmpDir)
@@ -168,6 +168,40 @@ it('hook 投影 - 用户优先：保留 TOML 块外用户内容（Codex）', () 
     const raw = readTarget(env, tomlHook)
     assert.match(raw, /model = "gpt"/)
     assert.match(raw, /echo user/)
+  }
+  finally {
+    cleanup(env.tmpDir)
+  }
+})
+
+it('hook 收敛 - 不识别旧格式 TOML marker', () => {
+  const env = setupEnv()
+  try {
+    const target = path.join(env.hostHome, 'config.toml')
+    fs.writeFileSync(target, [
+      '# >>> AIRULES HOOK session-log.mjs >>>',
+      '[[hooks.Stop]]',
+      '[[hooks.Stop.hooks]]',
+      'type = "command"',
+      'command = "echo legacy"',
+      '# <<< AIRULES HOOK session-log.mjs <<<',
+      '',
+    ].join('\n'))
+
+    projectToHost({
+      userHome: env.userHome,
+      moluoHome: env.moluoHome,
+      hostHome: env.hostHome,
+      hostBaselineFile: path.join(env.hostHome, 'AGENTS.md'),
+      projectBaseline: false,
+      projectSharedResources: false,
+      hooksHome: env.hostHome,
+      hookAdapter: { relDir: '.', fileName: 'config.toml', format: 'toml' },
+      reconcileHooks: true,
+      hooks: [],
+    })
+
+    assert.match(fs.readFileSync(target, 'utf8'), /AIRULES HOOK session-log\.mjs/, '旧 marker 应作为非受管内容保留')
   }
   finally {
     cleanup(env.tmpDir)
@@ -235,19 +269,18 @@ it('hook 投影 - 多事件：不同脚本分属不同事件互不干扰（幂�
   }
 })
 
-it('hook 投影 - 多事件 TOML：同 config.toml 写多事件块互不覆盖（回归 scriptName 标识）', () => {
+it('hook 投影 - 多事件 TOML：同一脚本订阅多个事件互不覆盖', () => {
   const env = setupEnv()
   try {
-    // 三条 TOML 投影写同一 config.toml，不同 event + 不同 scriptName（复用同一源脚本文件名）。
     const stop = { relDir: '.', fileName: 'config.toml', format: 'toml' as const, event: 'Stop', scriptName: 'session-log.mjs' }
     const sub = { relDir: '.', fileName: 'config.toml', format: 'toml' as const, event: 'SubagentStop', scriptName: 'session-log.mjs' }
-    // 三条用同一 scriptName 时会互相清理——这里验证「不同 event 同 scriptName」的边界：
-    // 按 scriptName 标识，同 scriptName 的块会被后者替换，故只验证不同 scriptName 的互不覆盖场景。
     projectMany(env, [stop, sub])
     const toml = fs.readFileSync(path.join(env.hostHome, 'config.toml'), 'utf8')
-    // 同 scriptName（session-log.mjs）两条：受管块按 scriptName 标识，后写覆盖前写，留最后一条 SubagentStop。
+    assert.match(toml, /# >>> AIRULES HOOK Stop session-log\.mjs >>>/, '应含 Stop 块')
+    assert.match(toml, /\[\[hooks\.Stop\]\]/, '应含 Stop 事件')
+    assert.match(toml, /# >>> AIRULES HOOK SubagentStop session-log\.mjs >>>/, '应含 SubagentStop 块')
     assert.match(toml, /\[\[hooks\.SubagentStop\]\]/, '应含 SubagentStop 块')
-    assert.equal((toml.match(/# >>> AIRULES HOOK session-log\.mjs >>>/g) ?? []).length, 1, '同脚本仅 1 块')
+    assert.equal((toml.match(/session-log\.mjs >>>/g) ?? []).length, 2, '同脚本应按事件保留两个块')
   }
   finally {
     cleanup(env.tmpDir)
@@ -264,8 +297,8 @@ it('hook 投影 - 多事件 TOML：不同脚本各自独立块（Stop+另一脚�
     projectMany(env, [stop, sub])
     const toml = fs.readFileSync(path.join(env.hostHome, 'config.toml'), 'utf8')
     // 两个不同脚本的受管块都应存在，互不覆盖。
-    assert.match(toml, /# >>> AIRULES HOOK session-log\.mjs >>>/, '应保留 session-log 块')
-    assert.match(toml, /# >>> AIRULES HOOK trace-stub\.mjs >>>/, '应保留 trace-stub 块')
+    assert.match(toml, /# >>> AIRULES HOOK Stop session-log\.mjs >>>/, '应保留 session-log 块')
+    assert.match(toml, /# >>> AIRULES HOOK SubagentStop trace-stub\.mjs >>>/, '应保留 trace-stub 块')
     assert.match(toml, /\[\[hooks\.Stop\]\]/)
     assert.match(toml, /\[\[hooks\.SubagentStop\]\]/)
   }

@@ -44,17 +44,13 @@ export interface McpProjection {
  * - Cursor：~/.cursor/hooks.json（JSON，顶层 version:1，事件名小写 'stop'，扁平条目、无 type）
  * 映射依据见 .airules/knowledge/架构/host-hook-mapping.md。
  */
-export interface HookProjection {
+export interface HookHostAdapter {
   /** hook 配置文件相对宿主 home 的目录片段（'.' 表示宿主 home 根） */
   relDir: string
   /** 配置文件名：settings.json / config.toml / hooks.json */
   fileName: string
   /** 文件格式，决定合并写法：JSON 浅合并 / TOML 受管块 */
   format: 'json' | 'toml'
-  /** hook 事件名：多数为 'Stop'，Cursor 为小写 'stop' */
-  event: string
-  /** 脚本源文件名（位于 vendor/hooks 下，投影时拷到宿主 hooks 目录） */
-  scriptName: string
   /** JSON 宿主：是否需要顶层 `version: 1`（Trae/Cursor 需要） */
   version?: number
   /**
@@ -65,6 +61,16 @@ export interface HookProjection {
   nesting?: 'group' | 'flat'
   /** JSON 宿主内层条目是否带 `type: 'command'`（Claude/Qoder 带；Cursor 不带） */
   includeType?: boolean
+}
+
+/**
+ * 解析角色中性 hooks/hooks.json 后形成的单条宿主投影。
+ */
+export interface HookProjection extends HookHostAdapter {
+  /** 宿主原生事件名。 */
+  event: string
+  /** 位于 vendor/hooks 下的脚本文件名。 */
+  scriptName: string
 }
 
 /**
@@ -112,13 +118,8 @@ export interface HostConfig {
    * 仅用于 Qoder 这类 MCP 目录与规则/skills home 分离、但旧合同仍要求完整 host home 的宿主。
    */
   mcpHomeImpliesHostHome?: boolean
-  /**
-   * 宿主生命周期 hook 投影规格，未声明则该宿主不参与 hook 投影。
-   * - 单值：宿主只投影一个事件（如仅 Stop）——历史形态，保持兼容。
-   * - 数组：宿主同时投影多个事件（如 PreToolUse + SubagentStop + Stop）。
-   * 每条 HookProjection 仍是单事件；多事件由数组承载。内部经 normalizeHooks 统一为数组遍历。
-   */
-  hooks?: HookProjection | HookProjection[]
+  /** 宿主 hook 配置格式适配；实际事件与脚本只允许由角色 hooks/hooks.json 声明。 */
+  hookAdapter?: HookHostAdapter
 }
 
 /**
@@ -133,7 +134,7 @@ export const HOST_CONFIGS: HostConfig[] = [
     baselineFileName: 'CLAUDE.md',
     agentFormat: 'markdown',
     mcp: { relDir: '.', fileName: '.mcp.json', serversKey: 'mcpServers', format: 'json' },
-    hooks: { relDir: '.', fileName: 'settings.json', format: 'json', event: 'Stop', scriptName: 'session-log.mjs', nesting: 'group', includeType: true },
+    hookAdapter: { relDir: '.', fileName: 'settings.json', format: 'json', nesting: 'group', includeType: true },
   },
   {
     id: 'codex',
@@ -141,7 +142,7 @@ export const HOST_CONFIGS: HostConfig[] = [
     baselineFileName: 'AGENTS.md',
     agentFormat: 'toml',
     mcp: { relDir: '.', fileName: 'config.toml', serversKey: 'mcp_servers', format: 'toml' },
-    hooks: { relDir: '.', fileName: 'config.toml', format: 'toml', event: 'Stop', scriptName: 'session-log.mjs' },
+    hookAdapter: { relDir: '.', fileName: 'config.toml', format: 'toml' },
   },
   {
     id: 'hermes',
@@ -163,7 +164,7 @@ export const HOST_CONFIGS: HostConfig[] = [
     agentFormat: 'markdown',
     mcp: { relDir: '.', fileName: 'mcp.json', serversKey: 'mcpServers', format: 'json' },
     // Cursor hooks：顶层 version、事件名小写、扁平条目（无 type 包裹）。
-    hooks: { relDir: '.', fileName: 'hooks.json', format: 'json', event: 'stop', scriptName: 'session-log.mjs', version: 1, nesting: 'flat' },
+    hookAdapter: { relDir: '.', fileName: 'hooks.json', format: 'json', version: 1, nesting: 'flat' },
   },
   {
     id: 'agentsmd',
@@ -192,7 +193,7 @@ export const HOST_CONFIGS: HostConfig[] = [
       defaultTopLevel: { inputs: [] },
     },
     // Trae hooks：~/.trae/hooks.json，顶层 version、group 嵌套、事件名 Stop。
-    hooks: { relDir: '.', fileName: 'hooks.json', format: 'json', event: 'Stop', scriptName: 'session-log.mjs', version: 1, nesting: 'group', includeType: true },
+    hookAdapter: { relDir: '.', fileName: 'hooks.json', format: 'json', version: 1, nesting: 'group', includeType: true },
   },
   {
     id: 'trae-cn',
@@ -208,7 +209,7 @@ export const HOST_CONFIGS: HostConfig[] = [
       defaultTopLevel: { inputs: [] },
     },
     // Trae CN hooks：~/.trae-cn/hooks.json（官方文档示例的全局路径）。
-    hooks: { relDir: '.', fileName: 'hooks.json', format: 'json', event: 'Stop', scriptName: 'session-log.mjs', version: 1, nesting: 'group', includeType: true },
+    hookAdapter: { relDir: '.', fileName: 'hooks.json', format: 'json', version: 1, nesting: 'group', includeType: true },
   },
   {
     id: 'trae-solo',
@@ -256,7 +257,7 @@ export const HOST_CONFIGS: HostConfig[] = [
       },
     },
     mcpHomeImpliesHostHome: true,
-    hooks: { relDir: '.', fileName: 'settings.json', format: 'json', event: 'Stop', scriptName: 'session-log.mjs', nesting: 'group', includeType: true },
+    hookAdapter: { relDir: '.', fileName: 'settings.json', format: 'json', nesting: 'group', includeType: true },
   },
   {
     id: 'opencode',
@@ -304,16 +305,7 @@ export interface ResolvedHostPaths {
   mcpHome: string
   mcp?: McpProjection
   hooksHome: string
-  /** 规范化为数组：未声明则空数组；单值/数组均归一为数组，供下游统一遍历。 */
-  hooks: HookProjection[]
-}
-
-/** 把 HostConfig.hooks（单值 | 数组 | undefined）归一为数组，供 install/verify 统一遍历。 */
-export function normalizeHooks(hooks?: HookProjection | HookProjection[]): HookProjection[] {
-  if (!hooks) {
-    return []
-  }
-  return Array.isArray(hooks) ? hooks : [hooks]
+  hookAdapter?: HookHostAdapter
 }
 
 function resolveUserRelativePath(userHome: string, relPath: string): string {
@@ -338,6 +330,6 @@ export function resolveHostPaths(config: HostConfig, userHome: string): Resolved
     mcpHome,
     mcp: config.mcp,
     hooksHome: hostHome,
-    hooks: normalizeHooks(config.hooks),
+    hookAdapter: config.hookAdapter,
   }
 }

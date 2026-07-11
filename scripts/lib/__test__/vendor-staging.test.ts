@@ -124,6 +124,21 @@ describe('rebuildVendorAssets', () => {
     expect(fs.existsSync(path.join(homeDir, 'vendor', 'constants'))).toBe(false)
   })
 
+  it('rejects an invalid role hook manifest before replacing vendor assets', async () => {
+    const { root, homeDir } = createFixture()
+    writeFile(path.join(homeDir, 'vendor', 'hooks', 'stable.mjs'), 'export const stable = true\n')
+    writeFile(repoPath(homeDir, 'moluoxixi', 'roles', 'alpha', 'hooks', 'hooks.json'), `${JSON.stringify({
+      version: 1,
+      hooks: [{ event: 'Stop', script: '../escape.mjs' }],
+    })}\n`)
+    const manifestPath = writeManifest(root, 'invalid-role-hooks', [
+      vendorDefinition('moluoxixi', [{ kind: 'role-assets', sourceDir: 'roles/alpha' }]),
+    ])
+
+    await expect(rebuildVendorAssets({ homeDir, role: 'alpha', manifestPath })).rejects.toThrow(/safe \.mjs file name/i)
+    expect(fs.readFileSync(path.join(homeDir, 'vendor', 'hooks', 'stable.mjs'), 'utf8')).toBe('export const stable = true\n')
+  })
+
   it.each([
     {
       name: 'the same target',

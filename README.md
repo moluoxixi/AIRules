@@ -27,6 +27,26 @@ airules verify --host all
 - `--skip-vendors` skips remote vendor refresh during `sync`.
 - `--no-verify` skips post-sync host verification.
 
+## Role hook manifest
+
+Roles declare distributable hooks only through `roles/<role>/hooks/hooks.json`; scripts without a manifest are not enabled. Scripts must be regular `.mjs` files in the same directory, and event names may be overridden per host:
+
+```json
+{
+  "version": 1,
+  "hooks": [
+    {
+      "event": "Stop",
+      "script": "workflow-dispatcher.mjs",
+      "hosts": ["claude", "codex", "cursor"],
+      "event_by_host": { "cursor": "stop" }
+    }
+  ]
+}
+```
+
+Sync converts the manifest to each host's JSON or TOML shape, removes AIRules-managed entries that are no longer declared, preserves user hooks, and makes `verify` check script hashes and exact command structure.
+
 ## Maintenance
 
 ```bash

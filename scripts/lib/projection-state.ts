@@ -440,7 +440,7 @@ function removeManagedHookEntry(hook: ProjectionState['hooks'][number]): boolean
 
 function removeManagedTomlHookEntry(hook: ProjectionState['hooks'][number]): boolean {
   const current = fs.readFileSync(hook.target, 'utf8')
-  const marker = `AIRULES HOOK ${hook.scriptName}`
+  const marker = `AIRULES HOOK ${hook.event} ${hook.scriptName}`
   const escapedMarker = escapeRegExp(marker)
   const blockPattern = new RegExp(
     `\\n*# >>> ${escapedMarker} >>>\\n([\\s\\S]*?)(?:# <<< ${escapedMarker} <<<\\n*|$)`,
