@@ -5,7 +5,6 @@ import { fileURLToPath } from 'node:url'
 import { parseArgs } from 'node:util'
 import kleur from 'kleur'
 import {
-  addLocalSkill,
   getDefaultMoluoHome,
   syncToHosts,
   verifyHosts,
@@ -31,12 +30,10 @@ const PACKAGE_ROOT = findPackageRoot(import.meta.url)
 function printHelp() {
   console.log(`Usage:
   airules sync [--role <name>] [--host <name|all>] [--home <dir>] [--user-home <dir>] [--skip-vendors] [--no-verify]
-  airules add <skill-dir> [--name <skill-name>] [--host <name|all>] [--home <dir>] [--user-home <dir>] [--overwrite] [--skip-sync] [--sync-vendors]
   airules verify [--host <name|all>] [--home <dir>] [--user-home <dir>]
 
 Commands:
-  sync      同步内置、用户自定义和第三方 skills 到宿主
-  add       添加包含 SKILL.md 的本地 skill 目录，并默认同步到宿主
+  sync      同步远程 skills 到宿主
   verify    校验宿主 skills 链接完整性
 `)
 }
@@ -49,14 +46,10 @@ function parseCommandArgs(args: string[]) {
       'help': { type: 'boolean', short: 'h' },
       'home': { type: 'string' },
       'host': { type: 'string' },
-      'name': { type: 'string' },
-      'overwrite': { type: 'boolean' },
       'no-verify': { type: 'boolean' },
       'repo-root': { type: 'string' },
       'role': { type: 'string' },
-      'skip-sync': { type: 'boolean' },
       'skip-vendors': { type: 'boolean' },
-      'sync-vendors': { type: 'boolean' },
       'user-home': { type: 'string' },
     },
     strict: true,
@@ -97,47 +90,6 @@ async function runSync(args: string[]) {
   }
 }
 
-async function runAdd(args: string[]) {
-  const { positionals, values } = parseCommandArgs(args)
-  if (values.help === true) {
-    printHelp()
-    return
-  }
-
-  const options = commonOptions(values)
-  const sourceDir = positionals[0]
-  if (sourceDir === undefined) {
-    throw new Error('Missing <skill-dir> for add command')
-  }
-
-  const added = addLocalSkill({
-    sourceDir,
-    moluoHome: options.home,
-    name: values.name === undefined ? undefined : String(values.name),
-    overwrite: values.overwrite === true,
-  })
-
-  console.log(kleur.green(`[add] ${added.skillName} -> ${added.targetDir}`))
-
-  if (values['skip-sync'] === true) {
-    return
-  }
-
-  const result = await syncToHosts({
-    ...options,
-    skipVendors: values['sync-vendors'] !== true,
-    verify: values['no-verify'] !== true,
-  })
-
-  console.log(kleur.green(`[sync] 完成: ${result.projectedHosts.join(', ') || '无宿主投影'}`))
-  if (result.officialInstalledHosts.length > 0) {
-    console.log(`[sync] ECC 官方安装: ${result.officialInstalledHosts.join(', ')}`)
-  }
-  if (result.skippedHosts.length > 0) {
-    console.log(`[skip] 宿主目录不存在: ${result.skippedHosts.join(', ')}`)
-  }
-}
-
 async function runVerify(args: string[]) {
   const { values } = parseCommandArgs(args)
   if (values.help === true) {
@@ -164,11 +116,6 @@ async function main() {
 
   if (command === 'sync') {
     await runSync(commandArgs)
-    return
-  }
-
-  if (command === 'add') {
-    await runAdd(commandArgs)
     return
   }
 

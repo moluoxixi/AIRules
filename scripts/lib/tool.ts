@@ -1,5 +1,5 @@
 import { execFileSync } from 'node:child_process'
-import { cpSync, existsSync, mkdirSync, rmSync } from 'node:fs'
+import { existsSync } from 'node:fs'
 import os from 'node:os'
 import path from 'node:path'
 import { fileURLToPath } from 'node:url'
@@ -7,18 +7,14 @@ import { ALL_HOST_IDS, findHostConfig, resolveHostPaths } from '../../constants/
 import {
   ensureInstallRoot,
   getDefaultInstallPaths,
-  isSamePath,
   linkHostBaseline,
   projectHostById,
   rebuildVendorSkillLinks,
   resolveSetupCommandExecutable,
   runSkillSetupCommands,
   shouldUseShellForSetupCommand,
-  syncFirstPartySkillsToVendor,
-  syncFirstPartyToHome,
 } from './install.js'
 import { DEFAULT_ROLE, resolveRoleManifestPath } from './roles.js'
-import { flattenedSkillName } from './skill-projection.js'
 import { rebuildVendorAssets } from './vendor-staging.js'
 import { ensureVendorRepo, verifyVendorRepoRevision } from './vendor-sync.js'
 import { loadVendorManifest } from './vendors.js'
@@ -58,18 +54,6 @@ export interface OfficialEccInstallInvocation {
 }
 
 export type OfficialEccInstallRunner = (invocation: OfficialEccInstallInvocation) => void | Promise<void>
-
-export interface AddSkillOptions {
-  sourceDir: string
-  moluoHome: string
-  name?: string
-  overwrite: boolean
-}
-
-export interface AddSkillResult {
-  skillName: string
-  targetDir: string
-}
 
 export interface VerifyOptions {
   home: string
@@ -241,25 +225,6 @@ async function syncVendorsIfNeeded(paths: ToolPaths, skipVendors: boolean) {
   return manifest
 }
 
-async function syncLocalSkillLayers(paths: ToolPaths, role: string | undefined, includeRepositoryRole: boolean) {
-  // 第一方 skills 链路由 roles/<role>/constants/skills.ts 的 extendsRoles 显式决定。
-  // 源目录 skills/ 与目标 vendor/skills/ 永不相同，即使仓库被安装进 ~/.moluoxixi
-  // （repoRoot === moluoHome）也不会产生自链接，因此必须无条件投影；
-  // 否则该布局下第一方 skills 会被整体漏发。
-  if (includeRepositoryRole) {
-    await syncFirstPartySkillsToVendor(paths.repoRoot, paths.moluoHome, role)
-  }
-
-  await syncFirstPartySkillsToVendor(path.join(paths.moluoHome, 'local'), paths.moluoHome, role)
-}
-
-function usesRemoteRoleAssets(manifest: Awaited<ReturnType<typeof loadVendorManifest>>, role: string | undefined): role is string {
-  if (!role) {
-    return false
-  }
-  return Object.values(manifest.vendors).some(vendor => vendor.links.some(link => link.kind === 'role-assets-dir'))
-}
-
 /**
  * 先把所有可安装内容汇入 vendor，再从 vendor 分发到各宿主。
  * 这一步只负责 staging，不做宿主投影。
@@ -270,9 +235,8 @@ async function syncVendorStaging(paths: ToolPaths, skipVendors: boolean, role?: 
     moluoHome: paths.moluoHome,
     repoRoot: paths.repoRoot,
   })
-  const manifest = await syncVendorsIfNeeded(paths, skipVendors)
-  const remoteRoleAssets = usesRemoteRoleAssets(manifest, role)
-  if (remoteRoleAssets) {
+  await syncVendorsIfNeeded(paths, skipVendors)
+  if (role) {
     await rebuildVendorAssets({
       homeDir: paths.moluoHome,
       role,
@@ -280,36 +244,11 @@ async function syncVendorStaging(paths: ToolPaths, skipVendors: boolean, role?: 
     })
   }
   else {
-    await syncFirstPartyToHome(paths.repoRoot, paths.moluoHome, role)
     await rebuildVendorSkillLinks({
       homeDir: paths.moluoHome,
       manifestPath: paths.manifestPath,
     })
-    await syncLocalSkillLayers(paths, role, true)
   }
-}
-export function addLocalSkill(options: AddSkillOptions): AddSkillResult {
-  const sourceDir = path.resolve(options.sourceDir)
-  const skillName = flattenedSkillName(options.name ?? path.basename(sourceDir))
-  const targetDir = path.join(path.resolve(options.moluoHome), 'local', 'skills', skillName)
-
-  if (!existsSync(path.join(sourceDir, 'SKILL.md'))) {
-    throw new Error(`Skill source must contain SKILL.md: ${sourceDir}`)
-  }
-
-  if (existsSync(targetDir) && !options.overwrite && !isSamePath(sourceDir, targetDir)) {
-    throw new Error(`Skill already exists: ${targetDir}. Re-run with --overwrite to replace it.`)
-  }
-
-  if (isSamePath(sourceDir, targetDir)) {
-    return { skillName, targetDir }
-  }
-
-  mkdirSync(path.dirname(targetDir), { recursive: true })
-  rmSync(targetDir, { recursive: true, force: true })
-  cpSync(sourceDir, targetDir, { recursive: true })
-
-  return { skillName, targetDir }
 }
 
 export async function syncToHosts(options: SyncOptions): Promise<SyncResult> {

@@ -17,7 +17,6 @@ npm link
 ```bash
 airules sync --host all
 airules sync --host all --role <name>
-airules add ./my-skill --host all
 airules verify --host all
 ```
 
@@ -28,7 +27,6 @@ Two peer installation roles are available, with neither selected by default:
 
 
 - `sync` refreshes selected remote assets and projects them to supported hosts.
-- `add` copies a directory containing `SKILL.md` into `~/.moluoxixi/local/skills/` and syncs it; local skills may add capabilities but cannot shadow protected skills from a complete remote role or revision-pinned vendor.
 - `verify` checks managed host projections.
 - `--skip-vendors` skips refresh only after validating the cached checkout origin, worktree, and any pinned revision; an unpinned complete remote role path must be refreshed.
 - `--no-verify` skips post-sync host verification.

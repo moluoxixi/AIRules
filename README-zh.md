@@ -17,7 +17,6 @@ npm link
 ```bash
 airules sync --host all
 airules sync --host all --role <name>
-airules add ./my-skill --host all
 airules verify --host all
 ```
 
@@ -28,7 +27,6 @@ airules verify --host all
 
 
 - `sync` 更新所选远程资产并投影到支持的宿主。
-- `add` 将包含 `SKILL.md` 的目录复制到 `~/.moluoxixi/local/skills/` 后执行同步；本地 skill 可以追加能力，但不能同名覆盖完整远程 role 或固定 revision vendor 的受保护 skill。
 - `verify` 检查受管宿主投影。
 - `--skip-vendors` 仅在缓存 checkout 的 origin、工作树和固定 revision 校验通过后跳过更新；未固定的完整远程 role path 必须刷新，不能跳过。
 - `--no-verify` 跳过同步后的宿主校验。
