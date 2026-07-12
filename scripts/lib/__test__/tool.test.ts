@@ -46,6 +46,7 @@ it('tool - resolveToolPaths separates the AIRules home from the user home', () =
   assert.equal(paths.repoRoot, path.resolve(repoRoot))
   assert.equal(paths.moluoHome, path.resolve(moluoHome))
   assert.equal(paths.userHome, path.resolve(userHome))
+  assert.equal(paths.role, 'demo')
 }))
 
 it('tool - source execution prefers the TypeScript role manifest', () => withTempDir('airules-tool-source-manifest-', (tmpDir) => {

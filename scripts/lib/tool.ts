@@ -24,6 +24,7 @@ export interface ToolPaths {
   repoRoot: string
   moluoHome: string
   userHome: string
+  role: string
   manifestPath: string
 }
 
@@ -82,6 +83,7 @@ export function resolveToolPaths(repoRoot: string, home: string, userHome = os.h
     repoRoot: resolvedRepoRoot,
     moluoHome,
     userHome: path.resolve(userHome),
+    role,
     manifestPath: resolveManifestPath(resolvedRepoRoot, role),
   }
 }
@@ -229,17 +231,17 @@ async function syncVendorsIfNeeded(paths: ToolPaths, skipVendors: boolean) {
  * 先把所有可安装内容汇入 vendor，再从 vendor 分发到各宿主。
  * 这一步只负责 staging，不做宿主投影。
  */
-async function syncVendorStaging(paths: ToolPaths, skipVendors: boolean, role?: string) {
+async function syncVendorStaging(paths: ToolPaths, skipVendors: boolean) {
   ensureInstallRoot({
     ...getDefaultInstallPaths(paths.userHome),
     moluoHome: paths.moluoHome,
     repoRoot: paths.repoRoot,
   })
   await syncVendorsIfNeeded(paths, skipVendors)
-  if (role) {
+  if (paths.role) {
     await rebuildVendorAssets({
       homeDir: paths.moluoHome,
-      role,
+      role: paths.role,
       manifestPath: paths.manifestPath,
     })
   }
@@ -254,7 +256,7 @@ async function syncVendorStaging(paths: ToolPaths, skipVendors: boolean, role?: 
 export async function syncToHosts(options: SyncOptions): Promise<SyncResult> {
   const paths = resolveToolPaths(options.repoRoot, options.home, options.userHome, options.role)
 
-  await syncVendorStaging(paths, options.skipVendors, options.role)
+  await syncVendorStaging(paths, options.skipVendors)
 
   const projectedHosts: string[] = []
   const officialInstalledHosts: string[] = []
