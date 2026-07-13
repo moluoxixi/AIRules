@@ -1,0 +1,315 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://moluoxixi.dev/airules/integration-audit.schema.json",
+  "title": "AIRules Integration Contract Audit",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["schema_version", "tool", "status", "sources", "summary", "gaps", "errors"],
+  "properties": {
+    "schema_version": { "const": 1 },
+    "tool": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["name", "report_version"],
+      "properties": {
+        "name": { "const": "airules-contract-diff" },
+        "report_version": { "const": 1 }
+      }
+    },
+    "status": { "enum": ["pass", "fail", "error"] },
+    "sources": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["expected", "actual"],
+      "properties": {
+        "expected": { "$ref": "#/$defs/source" },
+        "actual": { "$ref": "#/$defs/source" }
+      }
+    },
+    "summary": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["total", "blocking", "warnings", "by_kind"],
+      "properties": {
+        "total": { "type": "integer", "minimum": 0 },
+        "blocking": { "type": "integer", "minimum": 0 },
+        "warnings": { "type": "integer", "minimum": 0 },
+        "by_kind": {
+          "type": "object",
+          "additionalProperties": { "type": "integer", "minimum": 1 }
+        }
+      }
+    },
+    "gaps": {
+      "type": "array",
+      "items": { "$ref": "#/$defs/gap" }
+    },
+    "errors": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["code", "message"],
+        "properties": {
+          "code": { "const": "CONTRACT_INPUT_ERROR" },
+          "message": { "type": "string", "minLength": 1 }
+        }
+      }
+    }
+  },
+  "allOf": [
+    {
+      "if": { "type": "object", "properties": { "status": { "const": "pass" } }, "required": ["status"] },
+      "then": {
+        "type": "object",
+        "properties": {
+          "errors": { "type": "array", "maxItems": 0 },
+          "gaps": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": { "severity": { "const": "warning" } },
+              "required": ["severity"]
+            }
+          },
+          "summary": { "type": "object", "properties": { "blocking": { "type": "integer", "const": 0 } } }
+        }
+      }
+    },
+    {
+      "if": { "type": "object", "properties": { "status": { "const": "fail" } }, "required": ["status"] },
+      "then": {
+        "type": "object",
+        "properties": {
+          "errors": { "type": "array", "maxItems": 0 },
+          "gaps": {
+            "type": "array",
+            "contains": {
+              "type": "object",
+              "properties": { "severity": { "const": "blocking" } },
+              "required": ["severity"]
+            },
+            "minContains": 1
+          },
+          "summary": { "type": "object", "properties": { "blocking": { "type": "integer", "minimum": 1 } } }
+        }
+      }
+    },
+    {
+      "if": { "type": "object", "properties": { "status": { "const": "error" } }, "required": ["status"] },
+      "then": {
+        "type": "object",
+        "properties": {
+          "errors": { "type": "array", "minItems": 1 },
+          "gaps": { "type": "array", "maxItems": 0 },
+          "summary": {
+            "type": "object",
+            "properties": {
+              "total": { "type": "integer", "const": 0 },
+              "blocking": { "type": "integer", "const": 0 },
+              "warnings": { "type": "integer", "const": 0 },
+              "by_kind": { "type": "object", "maxProperties": 0 }
+            }
+          }
+        }
+      }
+    }
+  ],
+  "$defs": {
+    "source": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["label", "path"],
+      "properties": {
+        "label": { "type": "string", "minLength": 1 },
+        "path": { "type": "string", "minLength": 1 },
+        "version": { "type": "string", "minLength": 1 },
+        "sha256": { "type": "string", "pattern": "^[a-f0-9]{64}$" },
+        "openapi": { "type": "string", "pattern": "^3\\." }
+      }
+    },
+    "value": {
+      "type": ["object", "null"],
+      "additionalProperties": false,
+      "properties": {
+        "document_pointer": { "type": "string", "minLength": 1 },
+        "type": { "type": "string", "minLength": 1 },
+        "format": { "type": "string", "minLength": 1 },
+        "required": { "type": "boolean" },
+        "nullable": { "type": "boolean" },
+        "enum": { "type": "array" },
+        "additional_properties": { "enum": [true, false, "schema"] },
+        "access": { "enum": ["read-only", "write-only"] },
+        "style": { "type": "string", "minLength": 1 },
+        "explode": { "type": "boolean" },
+        "allow_reserved": { "type": "boolean" }
+      }
+    },
+    "gap": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["id", "severity", "kind", "subject", "method", "path", "expected", "actual"],
+      "properties": {
+        "id": { "type": "string", "pattern": "^GAP-[0-9]{3,}$" },
+        "severity": { "enum": ["blocking", "warning"] },
+        "kind": {
+          "enum": [
+            "MISSING_IN_ACTUAL",
+            "MISSING_IN_EXPECTED",
+            "TYPE_MISMATCH",
+            "FORMAT_MISMATCH",
+            "REQUIREDNESS_MISMATCH",
+            "NULLABILITY_MISMATCH",
+            "ENUM_MISMATCH",
+            "ADDITIONAL_PROPERTIES_MISMATCH",
+            "ACCESS_MISMATCH",
+            "STYLE_MISMATCH",
+            "EXPLODE_MISMATCH",
+            "ALLOW_RESERVED_MISMATCH"
+          ]
+        },
+        "subject": { "enum": ["operation", "parameter", "request_body", "media_type", "response", "field"] },
+        "method": { "type": "string", "minLength": 1 },
+        "path": { "type": "string", "minLength": 1 },
+        "parameter_in": { "enum": ["query", "header", "path", "cookie"] },
+        "status_code": { "type": "string", "minLength": 1 },
+        "media_type": { "type": "string", "minLength": 1 },
+        "field_path": { "type": "string", "minLength": 1 },
+        "expected": { "$ref": "#/$defs/value" },
+        "actual": { "$ref": "#/$defs/value" }
+      },
+      "allOf": [
+        {
+          "if": { "type": "object", "properties": { "subject": { "const": "operation" } }, "required": ["subject"] },
+          "then": {
+            "type": "object",
+            "not": {
+              "anyOf": [
+                { "type": "object", "required": ["parameter_in"] },
+                { "type": "object", "required": ["status_code"] },
+                { "type": "object", "required": ["media_type"] },
+                { "type": "object", "required": ["field_path"] }
+              ]
+            }
+          }
+        },
+        {
+          "if": { "type": "object", "properties": { "subject": { "const": "request_body" } }, "required": ["subject"] },
+          "then": {
+            "type": "object",
+            "not": {
+              "anyOf": [
+                { "type": "object", "required": ["parameter_in"] },
+                { "type": "object", "required": ["status_code"] },
+                { "type": "object", "required": ["media_type"] },
+                { "type": "object", "required": ["field_path"] }
+              ]
+            }
+          }
+        },
+        {
+          "if": { "type": "object", "properties": { "subject": { "const": "parameter" } }, "required": ["subject"] },
+          "then": {
+            "type": "object",
+            "required": ["parameter_in", "field_path"],
+            "not": {
+              "anyOf": [
+                { "type": "object", "required": ["status_code"] },
+                { "type": "object", "required": ["media_type"] }
+              ]
+            }
+          }
+        },
+        {
+          "if": { "type": "object", "properties": { "subject": { "const": "response" } }, "required": ["subject"] },
+          "then": {
+            "type": "object",
+            "required": ["status_code"],
+            "not": {
+              "anyOf": [
+                { "type": "object", "required": ["parameter_in"] },
+                { "type": "object", "required": ["media_type"] },
+                { "type": "object", "required": ["field_path"] }
+              ]
+            }
+          }
+        },
+        {
+          "if": { "type": "object", "properties": { "subject": { "const": "media_type" } }, "required": ["subject"] },
+          "then": {
+            "type": "object",
+            "required": ["media_type"],
+            "not": {
+              "anyOf": [
+                { "type": "object", "required": ["parameter_in"] },
+                { "type": "object", "required": ["field_path"] }
+              ]
+            }
+          }
+        },
+        {
+          "if": { "type": "object", "properties": { "subject": { "const": "field" } }, "required": ["subject"] },
+          "then": { "type": "object", "required": ["field_path"] }
+        },
+        {
+          "if": {
+            "type": "object",
+            "properties": { "kind": { "const": "MISSING_IN_ACTUAL" } },
+            "required": ["kind"]
+          },
+          "then": {
+            "type": "object",
+            "properties": {
+              "expected": { "type": "object" },
+              "actual": { "const": null }
+            }
+          }
+        },
+        {
+          "if": {
+            "type": "object",
+            "properties": { "kind": { "const": "MISSING_IN_EXPECTED" } },
+            "required": ["kind"]
+          },
+          "then": {
+            "type": "object",
+            "properties": {
+              "expected": { "const": null },
+              "actual": { "type": "object" }
+            }
+          }
+        },
+        {
+          "if": {
+            "type": "object",
+            "properties": {
+              "kind": {
+                "enum": [
+                  "TYPE_MISMATCH",
+                  "FORMAT_MISMATCH",
+                  "REQUIREDNESS_MISMATCH",
+                  "NULLABILITY_MISMATCH",
+                  "ENUM_MISMATCH",
+                  "ADDITIONAL_PROPERTIES_MISMATCH",
+                  "ACCESS_MISMATCH",
+                  "STYLE_MISMATCH",
+                  "EXPLODE_MISMATCH",
+                  "ALLOW_RESERVED_MISMATCH"
+                ]
+              }
+            },
+            "required": ["kind"]
+          },
+          "then": {
+            "type": "object",
+            "properties": {
+              "severity": { "const": "blocking" },
+              "expected": { "type": "object" },
+              "actual": { "type": "object" }
+            }
+          }
+        }
+      ]
+    }
+  }
+}

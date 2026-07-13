@@ -1,8 +1,8 @@
 {
   "name": "moluoxixi-ai-rules",
   "type": "module",
-  "version": "0.1.0",
-  "description": "Personal AI workflow distribution built on top of superpowers.",
+  "version": "0.2.0",
+  "description": "Remote AI role asset distribution for supported hosts.",
   "license": "MIT",
   "repository": "https://github.com/moluoxixi/AIRules",
   "bin": {
@@ -29,6 +29,7 @@
     "lint:check": "eslint .",
     "setup": "tsx scripts/cli.ts sync",
     "sync": "tsx scripts/cli.ts sync --host all",
+    "sync:moluoxixi": "tsx scripts/cli.ts sync --host all --role moluoxixi",
     "sync:update-lock": "tsx scripts/sync-vendors.ts --update-lock",
     "rules:install": "tsx scripts/cli.ts sync",
     "test": "vitest run",
@@ -37,7 +38,8 @@
   },
   "dependencies": {
     "kleur": "4.1.5",
-    "smol-toml": "^1.6.1"
+    "smol-toml": "^1.6.1",
+    "yaml": "2.8.3"
   },
   "devDependencies": {
     "@antfu/eslint-config": "8.2.0",
@@ -46,6 +48,7 @@
     "@mermaid-js/mermaid-cli": "^11.15.0",
     "@types/node": "25.9.1",
     "@vitest/coverage-v8": "4.1.4",
+    "ajv": "8.20.0",
     "eslint": "10.2.1",
     "eslint-plugin-format": "2.0.1",
     "husky": "9.1.7",
