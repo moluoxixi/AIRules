@@ -1,4 +1,5 @@
-import type { HookHostAdapter, HookProjection, McpProjection } from '../../constants/hosts.js'
+import type { AgentFormat, HookHostAdapter, HookProjection, McpProjection } from '../../constants/hosts.js'
+import type { AgentCardProjectionRenderer } from './role-runtime.js'
 import { createHash } from 'node:crypto'
 import { existsSync, lstatSync, readdirSync, readFileSync, realpathSync } from 'node:fs'
 import os from 'node:os'
@@ -7,6 +8,7 @@ import kleur from 'kleur'
 import * as smolToml from 'smol-toml'
 import { findHostConfig, resolveHostPaths } from '../../constants/hosts.js'
 import { managedHookCommand, resolveHookDispatches } from './hook-dispatch.js'
+import { renderCodexMarkdownAgentFile, renderNativeTomlAgentAsMarkdownFile } from './install.js'
 
 function isRecord(value: unknown): value is Record<string, unknown> {
   return typeof value === 'object' && value !== null && !Array.isArray(value)
@@ -462,20 +464,129 @@ function containsTomlHookCommand(value: unknown, event: string, expectedCommands
   })
 }
 
+function verifyAgentProjection(
+  userHome: string,
+  hostHome: string,
+  moluoHome: string,
+  agentFormat: AgentFormat,
+  includeNativeTomlAgentsAsMarkdown: boolean,
+  agentCardRenderer?: AgentCardProjectionRenderer,
+): boolean {
+  const vendorAgents = path.join(moluoHome, 'vendor', 'agents')
+  const targetAgents = agentFormat === 'agentsmd'
+    ? path.join(userHome, '.agents', 'subagents')
+    : path.join(hostHome, 'agents')
+  const sourceEntries = existsSync(vendorAgents)
+    ? readdirSync(vendorAgents, { withFileTypes: true }).filter(entry => entry.isFile())
+    : []
+  const expected = new Map<string, { content?: string, source?: string }>()
+  const add = (fileName: string, value: { content?: string, source?: string }) => {
+    const key = fileName.toLowerCase()
+    if (expected.has(key)) {
+      console.error(`[FAIL] agent 投影存在名称冲突: ${fileName}`)
+      return false
+    }
+    expected.set(key, value)
+    return true
+  }
+
+  if (agentFormat !== 'json') {
+    for (const entry of sourceEntries) {
+      const source = path.join(vendorAgents, entry.name)
+      if (entry.name.endsWith('.agent.yaml')) {
+        if (agentCardRenderer === undefined) {
+          throw new Error('Canonical .agent.yaml files require a selected AIRules role runtime renderer')
+        }
+        const rendered = agentCardRenderer(source, agentFormat === 'toml' ? 'toml' : 'markdown')
+        if (!add(rendered.fileName, { content: rendered.content })) {
+          return false
+        }
+      }
+      else if (entry.name.endsWith('.md')) {
+        const fileName = agentFormat === 'toml' ? entry.name.replace(/\.md$/u, '.toml') : entry.name
+        const expectation = agentFormat === 'toml'
+          ? { content: renderCodexMarkdownAgentFile(source) }
+          : { source }
+        if (!add(fileName, expectation)) {
+          return false
+        }
+      }
+      else if (entry.name.endsWith('.toml') && agentFormat === 'toml') {
+        if (!add(entry.name, { source })) {
+          return false
+        }
+      }
+      else if (
+        entry.name.endsWith('.toml')
+        && includeNativeTomlAgentsAsMarkdown
+        && (agentFormat === 'markdown' || agentFormat === 'agentsmd')
+      ) {
+        if (!add(entry.name.replace(/\.toml$/u, '.md'), {
+          content: renderNativeTomlAgentAsMarkdownFile(source),
+        })) {
+          return false
+        }
+      }
+    }
+  }
+
+  if (expected.size === 0) {
+    if (existsSync(targetAgents) && readdirSync(targetAgents).length > 0) {
+      console.error(`[FAIL] 宿主存在未预期 agent 文件: ${targetAgents}`)
+      return false
+    }
+    return true
+  }
+  if (!existsSync(targetAgents) || !lstatSync(targetAgents).isDirectory()) {
+    console.error(`[FAIL] agent 目录缺失: ${targetAgents}`)
+    return false
+  }
+  const actualEntries = readdirSync(targetAgents, { withFileTypes: true })
+  const actualNames = new Map(actualEntries.map(entry => [entry.name.toLowerCase(), entry]))
+  let success = true
+  for (const [key, expectation] of expected) {
+    const entry = actualNames.get(key)
+    const target = entry && path.join(targetAgents, entry.name)
+    if (!entry || (!entry.isFile() && !entry.isSymbolicLink()) || !target || !existsSync(target)) {
+      console.error(`[FAIL] agent 投影缺失或损坏: ${key}`)
+      success = false
+      continue
+    }
+    const expectedContent = expectation.content
+      ?? (expectation.source === undefined ? undefined : readFileSync(expectation.source, 'utf8'))
+    if (expectedContent !== undefined && readFileSync(target, 'utf8') !== expectedContent) {
+      console.error(`[FAIL] agent 投影内容漂移: ${target}`)
+      success = false
+    }
+  }
+  for (const entry of actualEntries) {
+    if (!expected.has(entry.name.toLowerCase())) {
+      console.error(`[FAIL] agent 目录包含未受管文件: ${entry.name}`)
+      success = false
+    }
+  }
+  return success
+}
+
 /**
  * 验证指定宿主的技能链接完整性
  * @param host 宿主名称
  * @param moluoHome AIRules 的本地安装目录
  * @returns 是否验证通过
  */
-export async function verifyHost(host: string, moluoHome: string, userHome = os.homedir()): Promise<boolean> {
+export async function verifyHost(
+  host: string,
+  moluoHome: string,
+  userHome = os.homedir(),
+  agentCardRenderer?: AgentCardProjectionRenderer,
+): Promise<boolean> {
   console.log(`\n--- 正在验证宿主: ${host} ---`)
 
   const config = findHostConfig(host)
   if (!config)
     return false
 
-  const { hostHome, skillsDirName, excludedSkills, projectSharedResources, mcpHome, mcp, hooksHome, hookAdapter } = resolveHostPaths(config, userHome)
+  const { hostHome, skillsDirName, excludedSkills, projectSharedResources, agentFormat, includeNativeTomlAgentsAsMarkdown, mcpHome, mcp, hooksHome, hookAdapter } = resolveHostPaths(config, userHome)
   const vendorHooksRoot = path.join(moluoHome, 'vendor', 'hooks')
   const resolvedHooks = resolveHookDispatches(vendorHooksRoot, host, hookAdapter)
 
@@ -506,6 +617,14 @@ export async function verifyHost(host: string, moluoHome: string, userHome = os.
   }
 
   const targetSkillsDir = path.join(resolvedHostHome, skillsDirName)
+  const agentSuccess = verifyAgentProjection(
+    userHome,
+    resolvedHostHome,
+    moluoHome,
+    agentFormat,
+    includeNativeTomlAgentsAsMarkdown,
+    agentCardRenderer,
+  )
 
   if (!existsSync(targetSkillsDir)) {
     console.error(`[FAIL] 技能目录缺失: ${targetSkillsDir}`)
@@ -573,7 +692,7 @@ export async function verifyHost(host: string, moluoHome: string, userHome = os.
 
   console.log(`[result] 有效=${validCount}, 缺失=${missingCount}, 损坏=${brokenCount}`)
 
-  const success = missingCount === 0 && brokenCount === 0 && mcpSuccess && hookSuccess
+  const success = missingCount === 0 && brokenCount === 0 && agentSuccess && mcpSuccess && hookSuccess
   if (success) {
     console.log(kleur.green(`✅ ${host} 验证通过`))
   }

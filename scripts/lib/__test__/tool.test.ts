@@ -3,7 +3,7 @@ import fs from 'node:fs'
 import os from 'node:os'
 import path from 'node:path'
 import { it } from 'vitest'
-import { resolveHostTargets, resolveToolPaths, syncToHosts } from '../tool.js'
+import { resolveHostTargets, resolveToolPaths, syncToHosts, verifyHosts } from '../tool.js'
 
 function withTempDir<T>(prefix: string, run: (tmpDir: string) => T): T {
   const tmpDir = fs.mkdtempSync(path.join(os.tmpdir(), prefix))
@@ -60,6 +60,17 @@ it('tool - source execution prefers the TypeScript role manifest', () => withTem
   assert.equal(paths.manifestPath, path.resolve(repoRoot, 'roles', 'demo', 'constants', 'skills.ts'))
 }))
 
+it('tool - an omitted role uses the empty manifest without requiring a roles tree', () => withTempDir('airules-tool-empty-role-', (tmpDir) => {
+  const repoRoot = path.join(tmpDir, 'repo')
+  const sourceManifest = path.join(repoRoot, 'scripts', 'lib', 'empty-role-manifest.ts')
+  writeFile(sourceManifest, 'export const vendors = []\n')
+
+  const paths = resolveToolPaths(repoRoot, path.join(tmpDir, 'home'), path.join(tmpDir, 'user'))
+
+  assert.equal(paths.role, '')
+  assert.equal(paths.manifestPath, sourceManifest)
+}))
+
 it('tool - sync ignores repository and user-local role assets', async () => {
   await withTempDirAsync('airules-tool-remote-only-', async (tmpDir) => {
     const repoRoot = path.join(tmpDir, 'repo')
@@ -91,5 +102,63 @@ it('tool - sync ignores repository and user-local role assets', async () => {
     assert.equal(fs.existsSync(path.join(codexHome, 'skills', 'repository-only')), false)
     assert.equal(fs.existsSync(path.join(codexHome, 'skills', 'user-local')), false)
     assert.equal(fs.existsSync(path.join(codexHome, 'agents', 'repository-only.toml')), false)
+  })
+})
+
+it('tool - roleless sync stages common vendor links and reports a missing host installation', async () => {
+  await withTempDirAsync('airules-tool-roleless-skip-', async (tmpDir) => {
+    const repoRoot = path.join(tmpDir, 'repo')
+    const userHome = path.join(tmpDir, 'user')
+    const moluoHome = path.join(userHome, '.moluoxixi')
+    writeFile(path.join(repoRoot, 'scripts', 'lib', 'empty-role-manifest.ts'), 'export const vendors = []\n')
+
+    const result = await syncToHosts({
+      repoRoot,
+      home: moluoHome,
+      userHome,
+      host: 'codex',
+      skipVendors: true,
+      verify: false,
+    })
+
+    assert.deepEqual(result.projectedHosts, [])
+    assert.deepEqual(result.skippedHosts, ['codex'])
+    assert.equal(fs.existsSync(path.join(moluoHome, 'vendor', 'skills')), true)
+  })
+})
+
+it('tool - roleless sync can project and verify a present host', async () => {
+  await withTempDirAsync('airules-tool-roleless-verify-', async (tmpDir) => {
+    const repoRoot = path.join(tmpDir, 'repo')
+    const userHome = path.join(tmpDir, 'user')
+    const moluoHome = path.join(userHome, '.moluoxixi')
+    writeFile(path.join(repoRoot, 'scripts', 'lib', 'empty-role-manifest.ts'), 'export const vendors = []\n')
+    fs.mkdirSync(path.join(userHome, '.codex'), { recursive: true })
+
+    const result = await syncToHosts({
+      repoRoot,
+      home: moluoHome,
+      userHome,
+      host: 'codex',
+      skipVendors: false,
+      verify: true,
+    })
+
+    assert.deepEqual(result.projectedHosts, ['codex'])
+    assert.deepEqual(await verifyHosts({ repoRoot, home: moluoHome, userHome, host: 'codex' }), ['codex'])
+  })
+})
+
+it('tool - verify fails closed for an unknown host', async () => {
+  await withTempDirAsync('airules-tool-verify-unknown-', async (tmpDir) => {
+    const repoRoot = path.join(tmpDir, 'repo')
+    const userHome = path.join(tmpDir, 'user')
+    const moluoHome = path.join(userHome, '.moluoxixi')
+    writeFile(path.join(repoRoot, 'scripts', 'lib', 'empty-role-manifest.ts'), 'export const vendors = []\n')
+
+    await assert.rejects(
+      verifyHosts({ repoRoot, home: moluoHome, userHome, host: 'unknown' }),
+      /Host verification failed: unknown/,
+    )
   })
 })

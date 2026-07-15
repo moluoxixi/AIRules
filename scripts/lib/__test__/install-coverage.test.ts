@@ -259,13 +259,13 @@ it('roles - 未声明继承的角色不隐式叠加 common', async () => {
     writeFile(path.join(repoRoot, 'roles', 'common', 'constants', 'skills.ts'), `
 export const vendors = []
 `)
-    writeFile(path.join(repoRoot, 'roles', 'trellis-development', 'constants', 'skills.ts'), `
+    writeFile(path.join(repoRoot, 'roles', 'standalone-development', 'constants', 'skills.ts'), `
 export const vendors = []
 `)
 
     assert.deepEqual(
-      await roleOverlayOrder(repoRoot, 'trellis-development'),
-      ['trellis-development'],
+      await roleOverlayOrder(repoRoot, 'standalone-development'),
+      ['standalone-development'],
     )
   })
 })
@@ -277,14 +277,14 @@ it('roles - 声明 extendsRoles 的角色显式叠加 common', async () => {
     writeFile(path.join(repoRoot, 'roles', 'common', 'constants', 'skills.ts'), `
 export const vendors = []
 `)
-    writeFile(path.join(repoRoot, 'roles', 'openspec-development', 'constants', 'skills.ts'), `
+    writeFile(path.join(repoRoot, 'roles', 'extended-development', 'constants', 'skills.ts'), `
 export const extendsRoles = ['common']
 export const vendors = []
 `)
 
     assert.deepEqual(
-      await roleOverlayOrder(repoRoot, 'openspec-development'),
-      ['common', 'openspec-development'],
+      await roleOverlayOrder(repoRoot, 'extended-development'),
+      ['common', 'extended-development'],
     )
   })
 })
@@ -299,16 +299,16 @@ it('install - 同步第一方文件并按宿主投影 baseline 与 skills', asyn
   writeFile(path.join(repoRoot, 'roles', 'common', 'constants', 'skills.ts'), `
 export const vendors = []
 `)
-  writeFile(path.join(repoRoot, 'roles', 'openspec-development', 'constants', 'skills.ts'), `
+  writeFile(path.join(repoRoot, 'roles', 'extended-development', 'constants', 'skills.ts'), `
 export const extendsRoles = ['common']
 export const vendors = []
 `)
   writeFile(path.join(repoRoot, 'roles', 'common', 'hooks', 'session-log.mjs'), 'hook\n')
-  writeFile(path.join(repoRoot, 'roles', 'openspec-development', 'rules', 'AGENTS.md'), 'baseline\n')
-  writeFile(path.join(repoRoot, 'roles', 'openspec-development', 'agents', 'helper.md'), 'agent\n')
+  writeFile(path.join(repoRoot, 'roles', 'extended-development', 'rules', 'AGENTS.md'), 'baseline\n')
+  writeFile(path.join(repoRoot, 'roles', 'extended-development', 'agents', 'helper.md'), 'agent\n')
   fs.mkdirSync(path.join(moluoHome, 'vendor', 'skills', 'skill-one'), { recursive: true })
 
-  await syncFirstPartyToHome(repoRoot, moluoHome, 'openspec-development')
+  await syncFirstPartyToHome(repoRoot, moluoHome, 'extended-development')
   assert.equal(fs.readFileSync(path.join(moluoHome, 'vendor', 'AGENTS.md'), 'utf8'), 'baseline\n')
   assert.equal(fs.readFileSync(path.join(moluoHome, 'vendor', 'agents', 'helper.md'), 'utf8'), 'agent\n')
   assert.equal(fs.readFileSync(path.join(moluoHome, 'vendor', 'hooks', 'session-log.mjs'), 'utf8'), 'hook\n')
@@ -768,32 +768,32 @@ it('install - 第一方 skills 覆盖层按 manifest 继承关系选择 common',
     const repoRoot = path.join(tmpDir, 'repo')
     const moluoHome = path.join(tmpDir, 'home')
     const commonSkill = path.join(repoRoot, 'roles', 'common', 'skills', 'handoff')
-    const trellisSkill = path.join(repoRoot, 'roles', 'trellis-development', 'skills', 'init-project')
-    const openspecSkill = path.join(repoRoot, 'roles', 'openspec-development', 'skills', 'init-project')
+    const standaloneSkill = path.join(repoRoot, 'roles', 'standalone-development', 'skills', 'init-project')
+    const extendedSkill = path.join(repoRoot, 'roles', 'extended-development', 'skills', 'init-project')
     const vendorSkillsDir = path.join(moluoHome, 'vendor', 'skills')
 
     writeFile(path.join(repoRoot, 'roles', 'common', 'constants', 'skills.ts'), `
 export const vendors = []
 `)
-    writeFile(path.join(repoRoot, 'roles', 'trellis-development', 'constants', 'skills.ts'), `
+    writeFile(path.join(repoRoot, 'roles', 'standalone-development', 'constants', 'skills.ts'), `
 export const vendors = []
 `)
-    writeFile(path.join(repoRoot, 'roles', 'openspec-development', 'constants', 'skills.ts'), `
+    writeFile(path.join(repoRoot, 'roles', 'extended-development', 'constants', 'skills.ts'), `
 export const extendsRoles = ['common']
 export const vendors = []
 `)
     writeFile(path.join(commonSkill, 'SKILL.md'), 'common\n')
-    writeFile(path.join(trellisSkill, 'SKILL.md'), 'trellis\n')
-    writeFile(path.join(openspecSkill, 'SKILL.md'), 'openspec\n')
+    writeFile(path.join(standaloneSkill, 'SKILL.md'), 'standalone\n')
+    writeFile(path.join(extendedSkill, 'SKILL.md'), 'extended\n')
 
-    await syncFirstPartySkillsToVendor(repoRoot, moluoHome, 'trellis-development')
+    await syncFirstPartySkillsToVendor(repoRoot, moluoHome, 'standalone-development')
 
-    assert.equal(realLinkPath(path.join(vendorSkillsDir, 'init-project')), realLinkPath(trellisSkill))
+    assert.equal(realLinkPath(path.join(vendorSkillsDir, 'init-project')), realLinkPath(standaloneSkill))
     assert.equal(fs.existsSync(path.join(vendorSkillsDir, 'handoff')), false)
 
-    await syncFirstPartySkillsToVendor(repoRoot, moluoHome, 'openspec-development')
+    await syncFirstPartySkillsToVendor(repoRoot, moluoHome, 'extended-development')
 
-    assert.equal(realLinkPath(path.join(vendorSkillsDir, 'init-project')), realLinkPath(openspecSkill))
+    assert.equal(realLinkPath(path.join(vendorSkillsDir, 'init-project')), realLinkPath(extendedSkill))
     assert.equal(realLinkPath(path.join(vendorSkillsDir, 'handoff')), realLinkPath(commonSkill))
   })
 })
@@ -801,7 +801,7 @@ export const vendors = []
 it('install - 第一方 skills 覆盖层只管理本地源链接', async () => withTempDirAsync('airules-first-party-', async (tmpDir) => {
   const repoRoot = path.join(tmpDir, 'repo')
   const moluoHome = path.join(tmpDir, 'home')
-  const localSkill = path.join(repoRoot, 'roles', 'openspec-development', 'skills', 'workflow', 'local-review')
+  const localSkill = path.join(repoRoot, 'roles', 'extended-development', 'skills', 'workflow', 'local-review')
   const vendorSkillsDir = path.join(moluoHome, 'vendor', 'skills')
   const remoteSkill = path.join(moluoHome, 'vendor', 'repos', 'demo', 'skills', 'remote-review')
 
@@ -813,11 +813,11 @@ it('install - 第一方 skills 覆盖层只管理本地源链接', async () => w
     path.join(vendorSkillsDir, 'remote-review'),
     process.platform === 'win32' ? 'junction' : 'dir',
   )
-  writeFile(path.join(repoRoot, 'roles', 'openspec-development', 'constants', 'skills.ts'), `
+  writeFile(path.join(repoRoot, 'roles', 'extended-development', 'constants', 'skills.ts'), `
 export const vendors = []
 `)
 
-  await syncFirstPartySkillsToVendor(repoRoot, moluoHome, 'openspec-development')
+  await syncFirstPartySkillsToVendor(repoRoot, moluoHome, 'extended-development')
 
   assert.equal(
     realLinkPath(path.join(vendorSkillsDir, 'local-review')),
@@ -829,7 +829,7 @@ export const vendors = []
   )
 
   fs.rmSync(localSkill, { recursive: true, force: true })
-  await syncFirstPartySkillsToVendor(repoRoot, moluoHome, 'openspec-development')
+  await syncFirstPartySkillsToVendor(repoRoot, moluoHome, 'extended-development')
 
   assert.equal(fs.existsSync(path.join(vendorSkillsDir, 'local-review')), false)
   assert.equal(

@@ -4,9 +4,15 @@ import path from 'node:path'
 export interface RoleAssets {
   role: string
   roleRoot: string
+  manifestFile?: string
   skillsDir?: string
   agentsDir?: string
+  workflowDir?: string
+  rulesDir?: string
   rulesFile?: string
+  schemasDir?: string
+  templatesDir?: string
+  adaptersDir?: string
   hooksDir?: string
   mcpFile?: string
 }
@@ -34,9 +40,15 @@ export function resolveRoleAssets(home: string, roleValue: unknown): RoleAssets 
   return {
     role,
     roleRoot,
+    manifestFile: resolveOptionalAsset(roleRoot, 'role.yaml', 'file'),
     skillsDir: resolveOptionalAsset(roleRoot, 'skills', 'directory'),
     agentsDir: resolveOptionalAsset(roleRoot, 'agents', 'directory'),
+    workflowDir: resolveOptionalAsset(roleRoot, 'workflow', 'directory'),
+    rulesDir: resolveOptionalAsset(roleRoot, 'rules', 'directory'),
     rulesFile: resolveOptionalAsset(roleRoot, 'rules/AGENTS.md', 'file'),
+    schemasDir: resolveOptionalAsset(roleRoot, 'schemas', 'directory'),
+    templatesDir: resolveOptionalAsset(roleRoot, 'templates', 'directory'),
+    adaptersDir: resolveOptionalAsset(roleRoot, 'adapters', 'directory'),
     hooksDir: resolveOptionalAsset(roleRoot, 'hooks', 'directory'),
     mcpFile: resolveOptionalAsset(roleRoot, 'mcp/mcp.json', 'file'),
   }

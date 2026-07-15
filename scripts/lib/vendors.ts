@@ -118,7 +118,7 @@ export type VendorProjection
   }
   | {
     kind: 'role-assets'
-    /** 远程仓库内所选角色根目录，如 roles/openspec-development。 */
+    /** 远程仓库内所选角色根目录，如 roles/example-development。 */
     sourceDir: string
   }
 

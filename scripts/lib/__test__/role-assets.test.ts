@@ -25,6 +25,10 @@ function createRole(home: string, role: string, assets: string[] = []) {
   fs.mkdirSync(roleRoot, { recursive: true })
 
   for (const asset of assets) {
+    if (asset === 'manifest') {
+      fs.writeFileSync(path.join(roleRoot, 'role.yaml'), 'role_id: test\n')
+      continue
+    }
     if (asset === 'rules') {
       fs.mkdirSync(path.join(roleRoot, 'rules'))
       fs.writeFileSync(path.join(roleRoot, 'rules', 'AGENTS.md'), '# role rules\n')
@@ -61,15 +65,20 @@ describe('resolveRoleAssets', () => {
 
   it('returns only the selected role assets', () => {
     const { home } = createHome()
-    createRole(home, 'alpha', ['skills', 'agents', 'rules', 'hooks', 'mcp'])
+    createRole(home, 'alpha', ['manifest', 'skills', 'agents', 'workflow', 'rules', 'schemas', 'templates', 'adapters', 'hooks', 'mcp'])
     createRole(home, 'beta', ['skills'])
 
     const assets = resolveRoleAssets(home, 'alpha')
 
     expect(assets).toMatchObject({ role: 'alpha' })
     expect(assets.skillsDir).toContain('alpha')
+    expect(assets.manifestFile).toContain(path.join('alpha', 'role.yaml'))
     expect(assets.skillsDir).not.toContain('beta')
     expect(assets.agentsDir).toContain(path.join('alpha', 'agents'))
+    expect(assets.workflowDir).toContain(path.join('alpha', 'workflow'))
+    expect(assets.schemasDir).toContain(path.join('alpha', 'schemas'))
+    expect(assets.templatesDir).toContain(path.join('alpha', 'templates'))
+    expect(assets.adaptersDir).toContain(path.join('alpha', 'adapters'))
     expect(assets.rulesFile).toContain(path.join('alpha', 'rules', 'AGENTS.md'))
     expect(assets.hooksDir).toContain(path.join('alpha', 'hooks'))
     expect(assets.mcpFile).toContain(path.join('alpha', 'mcp', 'mcp.json'))

@@ -224,6 +224,46 @@ it('verifyHost - Codex TOML MCP 配置带 BOM 仍可解析', async () => {
   })
 })
 
+it('verifyHost - Codex Markdown agent 转译内容漂移时失败', async () => {
+  await withTempHome(async (userHome, moluoHome) => {
+    const codexHome = path.join(userHome, '.codex')
+    const vendorAgents = path.join(moluoHome, 'vendor', 'agents')
+    fs.mkdirSync(codexHome, { recursive: true })
+    fs.mkdirSync(path.join(moluoHome, 'vendor', 'skills'), { recursive: true })
+    fs.mkdirSync(vendorAgents, { recursive: true })
+    fs.writeFileSync(
+      path.join(vendorAgents, 'reviewer.md'),
+      '---\nname: reviewer\ndescription: Review changes\nmodel: gpt-5\n---\nCheck behavior and evidence.\n',
+    )
+
+    assert.equal(projectHostById('codex', userHome, moluoHome).success, true)
+    assert.equal(await verifyHost('codex', moluoHome, userHome), true)
+
+    fs.writeFileSync(path.join(codexHome, 'agents', 'reviewer.toml'), 'name = "tampered"\n')
+    assert.equal(await verifyHost('codex', moluoHome, userHome), false)
+  })
+})
+
+it('verifyHost - 原生 TOML agent 转译为 Markdown 后内容漂移时失败', async () => {
+  await withTempHome(async (userHome, moluoHome) => {
+    const qoderHome = path.join(userHome, '.qoder')
+    const vendorAgents = path.join(moluoHome, 'vendor', 'agents')
+    fs.mkdirSync(qoderHome, { recursive: true })
+    fs.mkdirSync(path.join(moluoHome, 'vendor', 'skills'), { recursive: true })
+    fs.mkdirSync(vendorAgents, { recursive: true })
+    fs.writeFileSync(
+      path.join(vendorAgents, 'researcher.toml'),
+      'name = "researcher"\nmodel = "gpt-5"\ndeveloper_instructions = "Verify primary sources."\n',
+    )
+
+    assert.equal(projectHostById('qoder', userHome, moluoHome).success, true)
+    assert.equal(await verifyHost('qoder', moluoHome, userHome), true)
+
+    fs.writeFileSync(path.join(qoderHome, 'agents', 'researcher.md'), 'tampered\n')
+    assert.equal(await verifyHost('qoder', moluoHome, userHome), false)
+  })
+})
+
 it.each([
   { host: 'claude', homeDir: '.claude' },
   { host: 'codex', homeDir: '.codex' },

@@ -5,6 +5,16 @@
   "description": "Remote AI role asset distribution for supported hosts.",
   "license": "MIT",
   "repository": "https://github.com/moluoxixi/AIRules",
+  "exports": {
+    "./core": {
+      "types": "./dist/scripts/lib/core/index.d.ts",
+      "import": "./dist/scripts/lib/core/index.js"
+    },
+    "./role-runtime": {
+      "types": "./dist/scripts/lib/role-runtime.d.ts",
+      "import": "./dist/scripts/lib/role-runtime.js"
+    }
+  },
   "bin": {
     "airules": "./dist/scripts/cli.js"
   },

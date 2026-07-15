@@ -1,19 +1,17 @@
-import { execFileSync } from 'node:child_process'
-import { existsSync } from 'node:fs'
+import { existsSync, readdirSync } from 'node:fs'
 import os from 'node:os'
 import path from 'node:path'
 import { fileURLToPath } from 'node:url'
-import { ALL_HOST_IDS, findHostConfig, resolveHostPaths } from '../../constants/hosts.js'
+import { ALL_HOST_IDS } from '../../constants/hosts.js'
 import {
   ensureInstallRoot,
   getDefaultInstallPaths,
   linkHostBaseline,
   projectHostById,
   rebuildVendorSkillLinks,
-  resolveSetupCommandExecutable,
   runSkillSetupCommands,
-  shouldUseShellForSetupCommand,
 } from './install.js'
+import { loadRoleRuntime } from './role-runtime.js'
 import { DEFAULT_ROLE, resolveRoleManifestPath } from './roles.js'
 import { rebuildVendorAssets } from './vendor-staging.js'
 import { ensureVendorRepo, verifyVendorRepoRevision } from './vendor-sync.js'
@@ -36,30 +34,20 @@ export interface SyncOptions {
   role?: string
   skipVendors: boolean
   verify: boolean
-  runOfficialEccInstall?: OfficialEccInstallRunner
 }
 
 export interface SyncResult {
   moluoHome: string
   projectedHosts: string[]
-  officialInstalledHosts: string[]
   skippedHosts: string[]
 }
-
-export interface OfficialEccInstallInvocation {
-  host: string
-  target: string
-  profile: string
-  args: string[]
-  userHome: string
-}
-
-export type OfficialEccInstallRunner = (invocation: OfficialEccInstallInvocation) => void | Promise<void>
 
 export interface VerifyOptions {
   home: string
   userHome?: string
   host: string
+  repoRoot: string
+  role?: string
 }
 
 export function getDefaultMoluoHome(): string {
@@ -69,6 +57,25 @@ export function getDefaultMoluoHome(): string {
 function isRunningFromDist(): boolean {
   const currentFile = fileURLToPath(import.meta.url)
   return currentFile.split(path.sep).includes('dist')
+}
+
+function hasCanonicalAgentCards(home: string): boolean {
+  const agentsRoot = path.join(home, 'vendor', 'agents')
+  return existsSync(agentsRoot)
+    && readdirSync(agentsRoot, { withFileTypes: true })
+      .some(entry => entry.isFile() && entry.name.endsWith('.agent.yaml'))
+}
+
+async function loadProjectionRuntime(paths: ToolPaths) {
+  if (!paths.role || !hasCanonicalAgentCards(paths.moluoHome)) {
+    return undefined
+  }
+  return (await loadRoleRuntime({
+    repoRoot: paths.repoRoot,
+    home: paths.moluoHome,
+    role: paths.role,
+    preferDist: isRunningFromDist(),
+  })).runtime
 }
 
 function resolveManifestPath(repoRoot: string, role = DEFAULT_ROLE): string {
@@ -90,120 +97,6 @@ export function resolveToolPaths(repoRoot: string, home: string, userHome = os.h
 
 export function resolveHostTargets(host: string): string[] {
   return host === 'all' ? ALL_HOST_IDS : [host]
-}
-
-const ECC_DEVELOPMENT_ROLE = 'ecc-development'
-
-const ECC_OFFICIAL_HOSTS: Record<string, { target: string, profile: string }> = {
-  claude: { target: 'claude', profile: 'core' },
-  codex: { target: 'codex', profile: 'core' },
-  opencode: { target: 'opencode', profile: 'opencode' },
-}
-
-const ECC_FALLBACK_DISABLED_SURFACES = [
-  'rules-core',
-  'commands-core',
-  'hooks-runtime',
-] as const
-
-type EccFallbackDisabledSurface = typeof ECC_FALLBACK_DISABLED_SURFACES[number]
-
-export interface EccFallbackContract {
-  hostHomeRequired: boolean
-  markdownAgentsOnly: boolean
-  activeMcpSource: 'role-audited'
-  disabledSurfaces: readonly EccFallbackDisabledSurface[]
-}
-
-const ECC_FALLBACK_CONTRACTS: Record<string, EccFallbackContract> = {
-  'qoder': {
-    hostHomeRequired: false,
-    markdownAgentsOnly: true,
-    activeMcpSource: 'role-audited',
-    disabledSurfaces: ECC_FALLBACK_DISABLED_SURFACES,
-  },
-  'trae': {
-    hostHomeRequired: true,
-    markdownAgentsOnly: true,
-    activeMcpSource: 'role-audited',
-    disabledSurfaces: ECC_FALLBACK_DISABLED_SURFACES,
-  },
-  'trae-cn': {
-    hostHomeRequired: true,
-    markdownAgentsOnly: true,
-    activeMcpSource: 'role-audited',
-    disabledSurfaces: ECC_FALLBACK_DISABLED_SURFACES,
-  },
-}
-
-export function getEccFallbackContract(host: string): EccFallbackContract | undefined {
-  return ECC_FALLBACK_CONTRACTS[host]
-}
-
-function officialEccInstallInvocation(host: string, userHome: string): OfficialEccInstallInvocation | undefined {
-  const spec = ECC_OFFICIAL_HOSTS[host]
-  if (!spec) {
-    return undefined
-  }
-
-  return {
-    host,
-    target: spec.target,
-    profile: spec.profile,
-    args: [
-      '-y',
-      '--package',
-      'ecc-universal',
-      'ecc',
-      'install',
-      '--profile',
-      spec.profile,
-      '--target',
-      spec.target,
-    ],
-    userHome,
-  }
-}
-
-function hostHomeExists(host: string, userHome: string): boolean {
-  const config = findHostConfig(host)
-  if (!config) {
-    throw new Error(`Unknown host: ${host}`)
-  }
-
-  return existsSync(path.resolve(resolveHostPaths(config, userHome).hostHome))
-}
-
-function eccFallbackHostReady(host: string, userHome: string): boolean {
-  const contract = getEccFallbackContract(host)
-  if (!contract) {
-    return false
-  }
-
-  return !contract.hostHomeRequired || hostHomeExists(host, userHome)
-}
-
-function officialEccInstallEnv(userHome: string): NodeJS.ProcessEnv {
-  return {
-    ...process.env,
-    HOME: userHome,
-    USERPROFILE: userHome,
-  }
-}
-
-function runOfficialEccInstallCommand(invocation: OfficialEccInstallInvocation): void {
-  console.log(`[ecc] 官方安装: ${invocation.host} -> ${invocation.target} (${invocation.profile})`)
-  try {
-    execFileSync(resolveSetupCommandExecutable('npx'), invocation.args, {
-      env: officialEccInstallEnv(invocation.userHome),
-      shell: shouldUseShellForSetupCommand('npx'),
-      stdio: 'inherit',
-    })
-  }
-  catch (error) {
-    throw new Error(`[ecc] 官方安装失败: ${invocation.host} -> ${invocation.target}
-${String(error)}`)
-  }
 }
 
 async function syncVendorsIfNeeded(paths: ToolPaths, skipVendors: boolean) {
@@ -257,42 +150,19 @@ export async function syncToHosts(options: SyncOptions): Promise<SyncResult> {
   const paths = resolveToolPaths(options.repoRoot, options.home, options.userHome, options.role)
 
   await syncVendorStaging(paths, options.skipVendors)
+  const roleRuntime = await loadProjectionRuntime(paths)
 
   const projectedHosts: string[] = []
-  const officialInstalledHosts: string[] = []
   const skippedHosts: string[] = []
   const failedHosts: string[] = []
-  const officialEccRunner = options.runOfficialEccInstall ?? runOfficialEccInstallCommand
-  const isEccDevelopmentRole = options.role === ECC_DEVELOPMENT_ROLE
-  const useOfficialEccInstall = isEccDevelopmentRole && !options.skipVendors
 
   for (const host of resolveHostTargets(options.host)) {
-    const officialEccInvocation = useOfficialEccInstall
-      ? officialEccInstallInvocation(host, paths.userHome)
-      : undefined
-
-    if (officialEccInvocation) {
-      if (!hostHomeExists(host, paths.userHome)) {
-        skippedHosts.push(host)
-        continue
-      }
-
-      await officialEccRunner(officialEccInvocation)
-      officialInstalledHosts.push(host)
-      continue
-    }
-
-    if (isEccDevelopmentRole && !getEccFallbackContract(host)) {
-      skippedHosts.push(host)
-      continue
-    }
-
-    if (isEccDevelopmentRole && !eccFallbackHostReady(host, paths.userHome)) {
-      skippedHosts.push(host)
-      continue
-    }
-
-    const { success, baselineProjected } = projectHostById(host, paths.userHome, paths.moluoHome)
+    const { success, baselineProjected } = projectHostById(
+      host,
+      paths.userHome,
+      paths.moluoHome,
+      roleRuntime?.renderAgentCardProjection,
+    )
     if (!success) {
       skippedHosts.push(host)
       continue
@@ -308,7 +178,12 @@ export async function syncToHosts(options: SyncOptions): Promise<SyncResult> {
     }
 
     if (options.verify) {
-      const verified = await verifyHost(host, paths.moluoHome, paths.userHome)
+      const verified = await verifyHost(
+        host,
+        paths.moluoHome,
+        paths.userHome,
+        roleRuntime?.renderAgentCardProjection,
+      )
       if (!verified) {
         failedHosts.push(host)
       }
@@ -322,17 +197,22 @@ export async function syncToHosts(options: SyncOptions): Promise<SyncResult> {
   return {
     moluoHome: paths.moluoHome,
     projectedHosts,
-    officialInstalledHosts,
     skippedHosts,
   }
 }
 
 export async function verifyHosts(options: VerifyOptions): Promise<string[]> {
-  const paths = resolveToolPaths(process.cwd(), options.home, options.userHome)
+  const paths = resolveToolPaths(options.repoRoot, options.home, options.userHome, options.role)
+  const roleRuntime = await loadProjectionRuntime(paths)
   const failedHosts: string[] = []
 
   for (const host of resolveHostTargets(options.host)) {
-    const verified = await verifyHost(host, paths.moluoHome, paths.userHome)
+    const verified = await verifyHost(
+      host,
+      paths.moluoHome,
+      paths.userHome,
+      roleRuntime?.renderAgentCardProjection,
+    )
     if (!verified) {
       failedHosts.push(host)
     }

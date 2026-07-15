@@ -14,6 +14,7 @@ export default defineConfig({
       reporter: ['text', 'lcov'],
       include: [
         'constants/**/*.ts',
+        'roles/*/runtime/**/*.ts',
         'scripts/lib/**/*.ts',
       ],
       exclude: [

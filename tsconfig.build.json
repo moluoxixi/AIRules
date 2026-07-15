@@ -10,6 +10,7 @@
   "include": [
     "constants/**/*.ts",
     "roles/*/constants/**/*.ts",
+    "roles/*/runtime/**/*.ts",
     "scripts/**/*.ts"
   ],
   "exclude": [

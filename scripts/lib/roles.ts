@@ -9,11 +9,16 @@ export const COMMON_ROLE = ''
 export interface RolePaths {
   role: string
   roleRoot: string
+  manifestFile: string
   constantsDir: string
   constantsFile: string
   rulesDir: string
   agentsDir: string
   skillsDir: string
+  workflowDir: string
+  schemasDir: string
+  templatesDir: string
+  adaptersDir: string
   mcpDir: string
   hooksDir: string
 }
@@ -162,11 +167,16 @@ function buildRolePaths(role: string, roleRoot: string): RolePaths {
   return {
     role,
     roleRoot,
+    manifestFile: path.join(roleRoot, 'role.yaml'),
     constantsDir,
     constantsFile: path.join(constantsDir, 'skills.ts'),
     rulesDir: path.join(roleRoot, 'rules'),
     agentsDir: path.join(roleRoot, 'agents'),
     skillsDir: path.join(roleRoot, 'skills'),
+    workflowDir: path.join(roleRoot, 'workflow'),
+    schemasDir: path.join(roleRoot, 'schemas'),
+    templatesDir: path.join(roleRoot, 'templates'),
+    adaptersDir: path.join(roleRoot, 'adapters'),
     mcpDir: path.join(roleRoot, 'mcp'),
     hooksDir: path.join(roleRoot, 'hooks'),
   }

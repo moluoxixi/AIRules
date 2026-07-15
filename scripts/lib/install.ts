@@ -1,5 +1,6 @@
 import type { AgentFormat, HookHostAdapter, HookProjection, McpProjection } from '../../constants/hosts.js'
 import type { LinkEntry } from './links.js'
+import type { AgentCardProjection, AgentCardProjectionRenderer } from './role-runtime.js'
 import type { SetupCommand, VendorManifest } from './vendors.js'
 import { execFileSync } from 'node:child_process'
 import {
@@ -108,14 +109,17 @@ function agentsMdSubagentsPath(userHome: string): string {
 }
 
 interface MarkdownAgent {
+  sourceFile: string
   fileName: string
   name: string
   description?: string
   model?: string
+  sandboxMode?: 'read-only' | 'workspace-write'
   body: string
 }
 
 interface NativeTomlAgentAsMarkdown {
+  sourceFile: string
   fileName: string
   frontmatter: Array<[string, string]>
   body: string
@@ -713,6 +717,7 @@ function readMarkdownAgent(sourceFile: string): MarkdownAgent {
   }
 
   return {
+    sourceFile,
     fileName: path.basename(sourceFile),
     name,
     description: frontmatter.description?.trim(),
@@ -735,6 +740,32 @@ function readVendorMarkdownAgentFiles(moluoHome: string): string[] {
   return readdirSync(agentsDir, { withFileTypes: true })
     .filter(entry => entry.isFile() && entry.name.endsWith('.md'))
     .map(entry => path.join(agentsDir, entry.name))
+}
+
+function readVendorAgentCardFiles(moluoHome: string): string[] {
+  const agentsDir = vendorAgentsPath(moluoHome)
+  if (!existsSync(agentsDir)) {
+    return []
+  }
+
+  return readdirSync(agentsDir, { withFileTypes: true })
+    .filter(entry => entry.isFile() && entry.name.endsWith('.agent.yaml'))
+    .map(entry => path.join(agentsDir, entry.name))
+}
+
+function renderVendorAgentCards(
+  moluoHome: string,
+  format: 'markdown' | 'toml',
+  renderer?: AgentCardProjectionRenderer,
+): AgentCardProjection[] {
+  const sourceFiles = readVendorAgentCardFiles(moluoHome)
+  if (sourceFiles.length === 0) {
+    return []
+  }
+  if (renderer === undefined) {
+    throw new Error('Canonical .agent.yaml files require a selected AIRules role runtime renderer')
+  }
+  return sourceFiles.map(sourceFile => renderer(sourceFile, format))
 }
 
 function readVendorTomlAgentFiles(moluoHome: string): string[] {
@@ -786,10 +817,16 @@ function readNativeTomlAgentAsMarkdown(sourceFile: string): NativeTomlAgentAsMar
   }
 
   return {
+    sourceFile,
     fileName: `${path.basename(sourceFile, '.toml')}.md`,
     frontmatter,
     body: developerInstructions,
   }
+}
+
+export function renderNativeTomlAgentAsMarkdownFile(sourceFile: string): string {
+  const agent = readNativeTomlAgentAsMarkdown(sourceFile)
+  return stringifyMarkdownAgent(agent.frontmatter, agent.body)
 }
 
 function readNativeTomlAgentsAsMarkdown(moluoHome: string): NativeTomlAgentAsMarkdown[] {
@@ -797,10 +834,28 @@ function readNativeTomlAgentsAsMarkdown(moluoHome: string): NativeTomlAgentAsMar
     .map(sourceFile => readNativeTomlAgentAsMarkdown(sourceFile))
 }
 
-function projectMarkdownAgentsToDirectory(moluoHome: string, targetDir: string, includeNativeTomlAgentsAsMarkdown = false) {
+function projectMarkdownAgentsToDirectory(
+  moluoHome: string,
+  targetDir: string,
+  includeNativeTomlAgentsAsMarkdown = false,
+  agentCardRenderer?: AgentCardProjectionRenderer,
+) {
   const agentFiles = readVendorMarkdownAgentFiles(moluoHome)
+  const agentCards = renderVendorAgentCards(moluoHome, 'markdown', agentCardRenderer)
   const nativeTomlAgents = includeNativeTomlAgentsAsMarkdown ? readNativeTomlAgentsAsMarkdown(moluoHome) : []
-  if (agentFiles.length === 0 && nativeTomlAgents.length === 0) {
+  const projectedNames = new Set<string>()
+  for (const fileName of [
+    ...agentFiles.map(file => path.basename(file)),
+    ...agentCards.map(agent => agent.fileName),
+    ...nativeTomlAgents.map(agent => agent.fileName),
+  ]) {
+    const key = fileName.toLowerCase()
+    if (projectedNames.has(key)) {
+      throw new Error(`Markdown agent name collision: ${fileName}`)
+    }
+    projectedNames.add(key)
+  }
+  if (agentFiles.length === 0 && agentCards.length === 0 && nativeTomlAgents.length === 0) {
     removePath(targetDir)
     return
   }
@@ -809,13 +864,20 @@ function projectMarkdownAgentsToDirectory(moluoHome: string, targetDir: string, 
   for (const sourceFile of agentFiles) {
     replaceWithSymlink(sourceFile, path.join(targetDir, path.basename(sourceFile)), linkFileForCurrentPlatform())
   }
+  for (const projection of agentCards) {
+    writeFileSync(path.join(targetDir, projection.fileName), projection.content, 'utf8')
+  }
   for (const agent of nativeTomlAgents) {
-    writeFileSync(path.join(targetDir, agent.fileName), stringifyMarkdownAgent(agent.frontmatter, agent.body), 'utf8')
+    writeFileSync(path.join(targetDir, agent.fileName), renderNativeTomlAgentAsMarkdownFile(agent.sourceFile), 'utf8')
   }
 }
 
-function projectAgentsMdSubagents(userHome: string, moluoHome: string) {
-  projectMarkdownAgentsToDirectory(moluoHome, agentsMdSubagentsPath(userHome))
+function projectAgentsMdSubagents(
+  userHome: string,
+  moluoHome: string,
+  agentCardRenderer?: AgentCardProjectionRenderer,
+) {
+  projectMarkdownAgentsToDirectory(moluoHome, agentsMdSubagentsPath(userHome), false, agentCardRenderer)
 }
 
 function stringifyCodexAgentToml(agent: MarkdownAgent): string {
@@ -825,6 +887,9 @@ function stringifyCodexAgentToml(agent: MarkdownAgent): string {
   }
   if (agent.model) {
     tomlObj.model = agent.model
+  }
+  if (agent.sandboxMode) {
+    tomlObj.sandbox_mode = agent.sandboxMode
   }
 
   const restToml = smolToml.stringify(tomlObj).trimEnd()
@@ -839,20 +904,44 @@ function stringifyCodexAgentToml(agent: MarkdownAgent): string {
   return `${restToml}\n${developerInstructionsToml}`
 }
 
-function projectCodexAgents(moluoHome: string, hostHome: string) {
+export function renderCodexMarkdownAgentFile(sourceFile: string): string {
+  return `${stringifyCodexAgentToml(readMarkdownAgent(sourceFile))}\n`
+}
+
+function projectCodexAgents(
+  moluoHome: string,
+  hostHome: string,
+  agentCardRenderer?: AgentCardProjectionRenderer,
+) {
   const markdownAgents = readVendorMarkdownAgents(moluoHome)
+  const cardProjections = renderVendorAgentCards(moluoHome, 'toml', agentCardRenderer)
   const tomlAgentFiles = readVendorTomlAgentFiles(moluoHome)
   const targetDir = path.join(hostHome, 'agents')
-  if (markdownAgents.length === 0 && tomlAgentFiles.length === 0) {
+  if (markdownAgents.length === 0 && cardProjections.length === 0 && tomlAgentFiles.length === 0) {
     removePath(targetDir)
     return
   }
 
-  const nativeTomlNames = new Set(tomlAgentFiles.map(file => path.basename(file, '.toml')))
-  const markdownNames = new Set(markdownAgents.map(agent => path.basename(agent.fileName, '.md')))
-  for (const name of markdownNames) {
+  const nativeTomlNames = new Set(tomlAgentFiles.map(file => path.basename(file, '.toml').toLowerCase()))
+  const markdownNames = new Set<string>()
+  for (const agent of markdownAgents) {
+    const name = path.basename(agent.fileName, '.md').toLowerCase()
+    if (markdownNames.has(name)) {
+      throw new Error(`Codex agent name collision: duplicate generated ${name}.toml`)
+    }
+    markdownNames.add(name)
     if (nativeTomlNames.has(name)) {
       throw new Error(`Codex agent name collision: ${name}.md conflicts with native ${name}.toml`)
+    }
+  }
+  for (const projection of cardProjections) {
+    const name = path.basename(projection.fileName, '.toml').toLowerCase()
+    if (markdownNames.has(name)) {
+      throw new Error(`Codex agent name collision: duplicate generated ${name}.toml`)
+    }
+    markdownNames.add(name)
+    if (nativeTomlNames.has(name)) {
+      throw new Error(`Codex agent name collision: ${name}.agent.yaml conflicts with native ${name}.toml`)
     }
   }
 
@@ -862,7 +951,10 @@ function projectCodexAgents(moluoHome: string, hostHome: string) {
   }
   for (const agent of markdownAgents) {
     const targetFile = path.join(targetDir, agent.fileName.replace(/\.md$/u, '.toml'))
-    writeFileSync(targetFile, `${stringifyCodexAgentToml(agent)}\n`, 'utf8')
+    writeFileSync(targetFile, renderCodexMarkdownAgentFile(agent.sourceFile), 'utf8')
+  }
+  for (const projection of cardProjections) {
+    writeFileSync(path.join(targetDir, projection.fileName), projection.content, 'utf8')
   }
 }
 
@@ -874,6 +966,7 @@ function projectSharedSkillsHost(
   excludedSkills: string[] = [],
   agentFormat: AgentFormat = 'markdown',
   includeNativeTomlAgentsAsMarkdown = false,
+  agentCardRenderer?: AgentCardProjectionRenderer,
 ) {
   mkdirSync(hostHome, { recursive: true })
   removePath(path.join(hostHome, 'rules'))
@@ -882,17 +975,17 @@ function projectSharedSkillsHost(
   projectSkillsToHost(userHome, moluoHome, path.join(hostHome, customSkillsDirName), { excludedSkills })
 
   if (agentFormat === 'agentsmd') {
-    projectAgentsMdSubagents(userHome, moluoHome)
+    projectAgentsMdSubagents(userHome, moluoHome, agentCardRenderer)
     return
   }
 
   if (agentFormat === 'markdown') {
-    projectMarkdownAgentsToDirectory(moluoHome, path.join(hostHome, 'agents'), includeNativeTomlAgentsAsMarkdown)
+    projectMarkdownAgentsToDirectory(moluoHome, path.join(hostHome, 'agents'), includeNativeTomlAgentsAsMarkdown, agentCardRenderer)
     return
   }
 
   if (agentFormat === 'toml') {
-    projectCodexAgents(moluoHome, hostHome)
+    projectCodexAgents(moluoHome, hostHome, agentCardRenderer)
     return
   }
 
@@ -1393,6 +1486,7 @@ export function projectToHost({
   hookAdapter,
   reconcileHooks = false,
   includeNativeTomlAgentsAsMarkdown = false,
+  agentCardRenderer,
 }: {
   userHome: string
   moluoHome: string
@@ -1411,9 +1505,19 @@ export function projectToHost({
   hookAdapter?: HookHostAdapter
   reconcileHooks?: boolean
   includeNativeTomlAgentsAsMarkdown?: boolean
+  agentCardRenderer?: AgentCardProjectionRenderer
 }) {
   if (projectSharedResources) {
-    projectSharedSkillsHost(userHome, hostHome, moluoHome, customSkillsDirName, excludedSkills, agentFormat, includeNativeTomlAgentsAsMarkdown)
+    projectSharedSkillsHost(
+      userHome,
+      hostHome,
+      moluoHome,
+      customSkillsDirName,
+      excludedSkills,
+      agentFormat,
+      includeNativeTomlAgentsAsMarkdown,
+      agentCardRenderer,
+    )
   }
   if (mcp) {
     projectMcpToHost(moluoHome, mcpHome, mcp)
@@ -1466,6 +1570,7 @@ export function projectHostById(
   host: string,
   userHome: string,
   moluoHome: string,
+  agentCardRenderer?: AgentCardProjectionRenderer,
 ): { success: boolean, hostBaselineFile: string, baselineProjected: boolean } {
   const config = findHostConfig(host)
   if (!config) {
@@ -1497,6 +1602,7 @@ export function projectHostById(
     excludedSkills,
     agentFormat,
     includeNativeTomlAgentsAsMarkdown,
+    agentCardRenderer,
     projectSharedResources: projectSharedResources && shouldProjectHostHome,
     mcpHome,
     mcp,

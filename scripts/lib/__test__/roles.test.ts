@@ -2,7 +2,12 @@ import fs from 'node:fs'
 import os from 'node:os'
 import path from 'node:path'
 import { afterEach, expect, it } from 'vitest'
-import { DEFAULT_ROLE, requireRolePaths, resolveRoleManifestPath } from '../roles.js'
+import {
+  DEFAULT_ROLE,
+  requireRolePaths,
+  resolveRoleManifestPath,
+  roleOverlayOrder,
+} from '../roles.js'
 
 const temporaryRoots: string[] = []
 
@@ -15,7 +20,7 @@ afterEach(() => {
 function createRepo(): string {
   const repoRoot = fs.mkdtempSync(path.join(os.tmpdir(), 'airules-role-paths-'))
   temporaryRoots.push(repoRoot)
-  for (const role of ['alpha', 'openspec-development']) {
+  for (const role of ['alpha', 'example-development']) {
     const constantsDir = path.join(repoRoot, 'roles', role, 'constants')
     fs.mkdirSync(constantsDir, { recursive: true })
     fs.writeFileSync(path.join(constantsDir, 'skills.ts'), 'export const vendors = []\n', 'utf8')
@@ -34,6 +39,12 @@ function platformDirectoryLinkType(): 'dir' | 'junction' {
   return process.platform === 'win32' ? 'junction' : 'dir'
 }
 
+function writeRoleManifest(repoRoot: string, role: string, content = 'export const vendors = []\n'): void {
+  const manifestFile = path.join(repoRoot, 'roles', role, 'constants', 'skills.ts')
+  fs.mkdirSync(path.dirname(manifestFile), { recursive: true })
+  fs.writeFileSync(manifestFile, content, 'utf8')
+}
+
 it('uses an empty string as the default role', () => {
   expect(DEFAULT_ROLE).toBe('')
 })
@@ -42,6 +53,19 @@ it('requires a valid role when resolving explicit role paths', () => {
   const repoRoot = createRepo()
 
   expect(() => requireRolePaths(repoRoot, undefined)).toThrow(/role name/i)
+})
+
+it('fails closed when an explicit role is missing required directories or constants', () => {
+  const repoRoot = fs.mkdtempSync(path.join(os.tmpdir(), 'airules-role-structure-'))
+  temporaryRoots.push(repoRoot)
+
+  expect(() => requireRolePaths(repoRoot, 'alpha')).toThrow(/unknown AIRules role/i)
+
+  fs.mkdirSync(path.join(repoRoot, 'roles', 'alpha'), { recursive: true })
+  expect(() => requireRolePaths(repoRoot, 'alpha')).toThrow(/constants directory/i)
+
+  fs.mkdirSync(path.join(repoRoot, 'roles', 'alpha', 'constants'))
+  expect(() => requireRolePaths(repoRoot, 'alpha')).toThrow(/role constants/i)
 })
 
 it('resolves only the selected role path and constants file', () => {
@@ -98,4 +122,55 @@ it('rejects a dist constants symlink outside the repository', () => {
   )
 
   expect(() => resolveRoleManifestPath(repoRoot, 'alpha', { preferDist: true })).toThrow(/manifest.*outside|outside.*repo/i)
+})
+
+it('resolves the source or compiled empty-role manifest without requiring a roles tree', () => {
+  const repoRoot = fs.mkdtempSync(path.join(os.tmpdir(), 'airules-empty-role-manifest-'))
+  temporaryRoots.push(repoRoot)
+  const sourceManifest = path.join(repoRoot, 'scripts', 'lib', 'empty-role-manifest.ts')
+  const distManifest = path.join(repoRoot, 'dist', 'scripts', 'lib', 'empty-role-manifest.js')
+  fs.mkdirSync(path.dirname(sourceManifest), { recursive: true })
+  fs.writeFileSync(sourceManifest, 'export const vendors = []\n', 'utf8')
+
+  expect(resolveRoleManifestPath(repoRoot, '')).toBe(sourceManifest)
+  expect(resolveRoleManifestPath(repoRoot, '', { preferDist: true })).toBe(sourceManifest)
+
+  fs.mkdirSync(path.dirname(distManifest), { recursive: true })
+  fs.writeFileSync(distManifest, 'export const vendors = []\n', 'utf8')
+  expect(resolveRoleManifestPath(repoRoot, '', { preferDist: true })).toBe(distManifest)
+})
+
+it('rejects missing and non-file role manifest candidates', () => {
+  const missingRoot = fs.mkdtempSync(path.join(os.tmpdir(), 'airules-missing-role-manifest-'))
+  const directoryRoot = fs.mkdtempSync(path.join(os.tmpdir(), 'airules-directory-role-manifest-'))
+  temporaryRoots.push(missingRoot, directoryRoot)
+
+  expect(() => resolveRoleManifestPath(missingRoot, 'alpha')).toThrow(/missing AIRules role skill manifest/i)
+
+  fs.mkdirSync(path.join(directoryRoot, 'roles', 'alpha', 'constants', 'skills.ts'), { recursive: true })
+  expect(() => resolveRoleManifestPath(directoryRoot, 'alpha')).toThrow(/manifest is not a file/i)
+})
+
+it('returns no overlays for the empty role and deduplicates shared ancestors', async () => {
+  const repoRoot = fs.mkdtempSync(path.join(os.tmpdir(), 'airules-role-diamond-'))
+  temporaryRoots.push(repoRoot)
+  writeRoleManifest(repoRoot, 'base')
+  writeRoleManifest(repoRoot, 'left', `export const extendsRoles = ['base']\nexport const vendors = []\n`)
+  writeRoleManifest(repoRoot, 'right', `export const extendsRoles = ['base']\nexport const vendors = []\n`)
+  writeRoleManifest(repoRoot, 'root', `export const extendsRoles = ['left', 'right']\nexport const vendors = []\n`)
+
+  await expect(roleOverlayOrder(repoRoot, '')).resolves.toEqual([])
+  await expect(roleOverlayOrder(repoRoot, 'root')).resolves.toEqual(['base', 'left', 'right', 'root'])
+})
+
+it('rejects cyclic inheritance and malformed extendsRoles exports', async () => {
+  const cycleRoot = fs.mkdtempSync(path.join(os.tmpdir(), 'airules-role-cycle-'))
+  const malformedRoot = fs.mkdtempSync(path.join(os.tmpdir(), 'airules-role-extends-invalid-'))
+  temporaryRoots.push(cycleRoot, malformedRoot)
+  writeRoleManifest(cycleRoot, 'alpha', `export const extendsRoles = ['beta']\nexport const vendors = []\n`)
+  writeRoleManifest(cycleRoot, 'beta', `export const extendsRoles = ['alpha']\nexport const vendors = []\n`)
+  writeRoleManifest(malformedRoot, 'alpha', 'export const extendsRoles = [1]\nexport const vendors = []\n')
+
+  await expect(roleOverlayOrder(cycleRoot, 'alpha')).rejects.toThrow(/inheritance cycle/i)
+  await expect(roleOverlayOrder(malformedRoot, 'alpha')).rejects.toThrow(/must be a string array/i)
 })

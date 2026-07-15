@@ -52,6 +52,14 @@ function validAgent(name: string) {
   return `---\nname: ${name}\n---\n${name} body\n`
 }
 
+function writeRoleContract(homeDir: string, vendor: string, role: string): void {
+  const manifest = repoPath(homeDir, vendor, 'roles', role, 'role.yaml')
+  if (!fs.existsSync(manifest)) {
+    writeFile(manifest, `role_id: ${role}\ncanonical_root: roles/${role}\n`)
+  }
+  writeFile(repoPath(homeDir, vendor, 'roles', role, 'constants', 'skills.ts'), 'export const vendors = []\n')
+}
+
 describe('rebuildVendorAssets', () => {
   it('ignores legacy local skills and stages only configured remote skills', async () => {
     const { root, homeDir } = createFixture()
@@ -117,7 +125,16 @@ describe('rebuildVendorAssets', () => {
     writeFile(repoPath(homeDir, 'moluoxixi', 'roles', 'alpha', 'hooks', 'alpha-stop.mjs'), 'export default {}\n')
     writeFile(repoPath(homeDir, 'moluoxixi', 'roles', 'alpha', 'mcp', 'mcp.json'), validMcp('alpha'))
     writeFile(repoPath(homeDir, 'moluoxixi', 'roles', 'alpha', 'constants', 'skills.ts'), 'must not copy\n')
+    writeFile(repoPath(homeDir, 'moluoxixi', 'roles', 'alpha', 'role.yaml'), 'role_id: alpha\n')
+    writeFile(repoPath(homeDir, 'moluoxixi', 'roles', 'alpha', 'workflow', 'dag.yaml'), 'workflow_id: alpha\n')
+    writeFile(repoPath(homeDir, 'moluoxixi', 'roles', 'alpha', 'schemas', 'task.schema.json'), '{}\n')
+    writeFile(repoPath(homeDir, 'moluoxixi', 'roles', 'alpha', 'templates', 'project-root', '.airules', '.gitignore'), 'runtime/\n')
+    writeFile(repoPath(homeDir, 'moluoxixi', 'roles', 'alpha', 'adapters', 'codex', 'adapter.yaml'), 'adapter_id: codex\n')
+    writeFile(repoPath(homeDir, 'moluoxixi', 'roles', 'alpha', '__test__', 'role.test.ts'), 'export {}\n')
+    writeFile(repoPath(homeDir, 'moluoxixi', 'roles', 'alpha', 'future', 'asset.txt'), 'future\n')
     writeFile(repoPath(homeDir, 'moluoxixi', 'roles', 'beta', 'skills', 'beta-skill', 'SKILL.md'), '# beta\n')
+    writeFile(path.join(homeDir, 'roles', 'alpha', 'obsolete.txt'), 'obsolete\n')
+    writeFile(path.join(homeDir, 'roles', 'beta', 'sentinel.txt'), 'preserve\n')
 
     const manifestPath = writeManifest(root, 'moluoxixi-alpha', [
       vendorDefinition('moluoxixi', [
@@ -130,6 +147,7 @@ describe('rebuildVendorAssets', () => {
     expect(inventory.skills).toEqual(['alpha-skill'])
     expect(inventory.agents).toEqual(['alpha-agent.md'])
     expect(inventory.hooks).toEqual(['alpha-stop.mjs'])
+    expect(inventory.roleRoot).toBe(path.join(homeDir, 'roles', 'alpha'))
     expect(fs.existsSync(path.join(homeDir, 'vendor', 'skills', 'alpha-skill', 'SKILL.md'))).toBe(true)
     expect(fs.existsSync(path.join(homeDir, 'vendor', 'skills', 'alpha-skill', 'scripts', 'run.mjs'))).toBe(true)
     expect(fs.existsSync(path.join(homeDir, 'vendor', 'agents', 'alpha-agent.md'))).toBe(true)
@@ -138,6 +156,12 @@ describe('rebuildVendorAssets', () => {
     expect(fs.existsSync(path.join(homeDir, 'vendor', 'mcp', 'mcp.json'))).toBe(true)
     expect(fs.existsSync(path.join(homeDir, 'vendor', 'skills', 'beta-skill'))).toBe(false)
     expect(fs.existsSync(path.join(homeDir, 'vendor', 'constants'))).toBe(false)
+    expect(fs.readFileSync(path.join(homeDir, 'roles', 'alpha', 'constants', 'skills.ts'), 'utf8')).toBe('must not copy\n')
+    expect(fs.readFileSync(path.join(homeDir, 'roles', 'alpha', 'role.yaml'), 'utf8')).toBe('role_id: alpha\n')
+    expect(fs.readFileSync(path.join(homeDir, 'roles', 'alpha', 'workflow', 'dag.yaml'), 'utf8')).toBe('workflow_id: alpha\n')
+    expect(fs.readFileSync(path.join(homeDir, 'roles', 'alpha', 'future', 'asset.txt'), 'utf8')).toBe('future\n')
+    expect(fs.existsSync(path.join(homeDir, 'roles', 'alpha', 'obsolete.txt'))).toBe(false)
+    expect(fs.readFileSync(path.join(homeDir, 'roles', 'beta', 'sentinel.txt'), 'utf8')).toBe('preserve\n')
   })
 
   it('rejects an invalid role hook manifest before replacing vendor assets', async () => {
@@ -147,6 +171,7 @@ describe('rebuildVendorAssets', () => {
       version: 1,
       hooks: [{ event: 'Stop', script: '../escape.mjs' }],
     })}\n`)
+    writeRoleContract(homeDir, 'moluoxixi', 'alpha')
     const manifestPath = writeManifest(root, 'invalid-role-hooks', [
       vendorDefinition('moluoxixi', [{ kind: 'role-assets', sourceDir: 'roles/alpha' }]),
     ])
@@ -209,6 +234,7 @@ describe('rebuildVendorAssets', () => {
     writeFile(repoPath(homeDir, 'remote', 'rules', 'AGENTS.md'), '# remote rules\n')
     writeFile(repoPath(homeDir, 'moluoxixi', 'roles', 'alpha', 'skills', 'shared', 'SKILL.md'), '# alpha shared\n')
     writeFile(repoPath(homeDir, 'moluoxixi', 'roles', 'alpha', 'rules', 'AGENTS.md'), '# alpha rules\n')
+    writeRoleContract(homeDir, 'moluoxixi', 'alpha')
     const manifestPath = writeManifest(root, 'overlay', [
       vendorDefinition('remote', [
         { kind: 'skills', sourceBaseDir: 'skills', skills: ['shared', 'remote-only'] },
@@ -237,6 +263,8 @@ describe('rebuildVendorAssets', () => {
     writeFile(repoPath(homeDir, 'moluoxixi', 'roles', 'beta', 'rules', 'AGENTS.md'), '# beta rules\n')
     writeFile(repoPath(homeDir, 'moluoxixi', 'roles', 'beta', 'hooks', 'beta-only.mjs'), 'export const role = "beta"\n')
     writeFile(repoPath(homeDir, 'moluoxixi', 'roles', 'beta', 'mcp', 'mcp.json'), validMcp('beta'))
+    writeRoleContract(homeDir, 'moluoxixi', 'alpha')
+    writeRoleContract(homeDir, 'moluoxixi', 'beta')
     writeFile(repoPath(homeDir, 'moluoxixi', '.git', 'keep'), 'repository marker\n')
     const alphaManifest = writeManifest(root, 'switch-alpha', [
       vendorDefinition('moluoxixi', [{ kind: 'role-assets', sourceDir: 'roles/alpha' }]),
@@ -246,6 +274,7 @@ describe('rebuildVendorAssets', () => {
     ])
 
     await rebuildVendorAssets({ homeDir, role: 'alpha', manifestPath: alphaManifest })
+    writeFile(path.join(homeDir, 'roles', 'alpha', 'local-sentinel.txt'), 'alpha installed\n')
     const inventory = await rebuildVendorAssets({ homeDir, role: 'beta', manifestPath: betaManifest })
 
     expect(inventory).toMatchObject({
@@ -263,6 +292,8 @@ describe('rebuildVendorAssets', () => {
     expect(fs.readFileSync(path.join(homeDir, 'vendor', 'AGENTS.md'), 'utf8')).toBe('# beta rules\n')
     expect(JSON.parse(fs.readFileSync(path.join(homeDir, 'vendor', 'mcp', 'mcp.json'), 'utf8'))).toHaveProperty('mcpServers.demo.command', 'beta')
     expect(fs.readFileSync(repoPath(homeDir, 'moluoxixi', '.git', 'keep'), 'utf8')).toBe('repository marker\n')
+    expect(fs.readFileSync(path.join(homeDir, 'roles', 'alpha', 'local-sentinel.txt'), 'utf8')).toBe('alpha installed\n')
+    expect(fs.existsSync(path.join(homeDir, 'roles', 'beta', 'skills', 'beta-only', 'SKILL.md'))).toBe(true)
   })
 
   it('rejects a recursive source symlink that escapes its vendor checkout', async () => {
@@ -296,7 +327,7 @@ describe('rebuildVendorAssets', () => {
     expect(fs.existsSync(path.join(homeDir, 'outside', 'AGENTS.md'))).toBe(false)
   })
 
-  it('requires the unique moluoxixi role-assets source to match the selected role exactly', async () => {
+  it('requires the unique role-assets source to match the selected role exactly', async () => {
     const { root, homeDir } = createFixture()
     fs.mkdirSync(repoPath(homeDir, 'moluoxixi', 'roles', 'beta'), { recursive: true })
     const manifestPath = writeManifest(root, 'wrong-role', [
@@ -304,6 +335,170 @@ describe('rebuildVendorAssets', () => {
     ])
 
     await expect(rebuildVendorAssets({ homeDir, role: 'alpha', manifestPath })).rejects.toThrow(/moluoxixi.*roles\/alpha/i)
+  })
+
+  it('accepts one canonical role source from an arbitrary vendor', async () => {
+    const { root, homeDir } = createFixture()
+    writeFile(repoPath(homeDir, 'canonical-source', 'roles', 'alpha', 'role.yaml'), 'role_id: alpha\n')
+    writeFile(repoPath(homeDir, 'canonical-source', 'roles', 'alpha', 'rules', 'AGENTS.md'), '# alpha\n')
+    writeRoleContract(homeDir, 'canonical-source', 'alpha')
+    const manifestPath = writeManifest(root, 'generic-role-owner', [
+      vendorDefinition('canonical-source', [{ kind: 'role-assets', sourceDir: 'roles/alpha' }]),
+    ])
+
+    const inventory = await rebuildVendorAssets({ homeDir, role: 'alpha', manifestPath })
+
+    expect(inventory.roleRoot).toBe(path.join(homeDir, 'roles', 'alpha'))
+    expect(fs.readFileSync(path.join(homeDir, 'roles', 'alpha', 'role.yaml'), 'utf8')).toBe('role_id: alpha\n')
+    expect(fs.readFileSync(path.join(homeDir, 'vendor', 'AGENTS.md'), 'utf8')).toBe('# alpha\n')
+  })
+
+  it('requires the canonical role manifest and bootstrap constants', async () => {
+    const missingManifest = createFixture()
+    writeFile(
+      repoPath(missingManifest.homeDir, 'canonical-source', 'roles', 'alpha', 'constants', 'skills.ts'),
+      'export const vendors = []\n',
+    )
+    const missingManifestPath = writeManifest(missingManifest.root, 'missing-role-manifest', [
+      vendorDefinition('canonical-source', [{ kind: 'role-assets', sourceDir: 'roles/alpha' }]),
+    ])
+    await expect(rebuildVendorAssets({
+      homeDir: missingManifest.homeDir,
+      role: 'alpha',
+      manifestPath: missingManifestPath,
+    })).rejects.toThrow(/role manifest.*plain file/i)
+
+    const missingConstants = createFixture()
+    writeFile(
+      repoPath(missingConstants.homeDir, 'canonical-source', 'roles', 'alpha', 'role.yaml'),
+      'role_id: alpha\n',
+    )
+    const missingConstantsPath = writeManifest(missingConstants.root, 'missing-role-constants', [
+      vendorDefinition('canonical-source', [{ kind: 'role-assets', sourceDir: 'roles/alpha' }]),
+    ])
+    await expect(rebuildVendorAssets({
+      homeDir: missingConstants.homeDir,
+      role: 'alpha',
+      manifestPath: missingConstantsPath,
+    })).rejects.toThrow(/role constants.*plain file/i)
+  })
+
+  it.each([
+    ['a mismatched role id', 'role_id: beta\n', /role_id must equal selected role/i],
+    ['a mismatched canonical root', 'role_id: alpha\ncanonical_root: roles/beta\n', /canonical_root must equal roles\/alpha/i],
+    ['duplicate manifest keys', 'role_id: alpha\nrole_id: alpha\n', /role\.yaml is invalid/i],
+  ])('rejects %s', async (_name, manifestContents, expected) => {
+    const { root, homeDir } = createFixture()
+    writeFile(
+      repoPath(homeDir, 'canonical-source', 'roles', 'alpha', 'role.yaml'),
+      manifestContents as string,
+    )
+    writeFile(
+      repoPath(homeDir, 'canonical-source', 'roles', 'alpha', 'constants', 'skills.ts'),
+      'export const vendors = []\n',
+    )
+    const manifestPath = writeManifest(root, 'invalid-role-contract', [
+      vendorDefinition('canonical-source', [{ kind: 'role-assets', sourceDir: 'roles/alpha' }]),
+    ])
+
+    await expect(
+      rebuildVendorAssets({ homeDir, role: 'alpha', manifestPath }),
+    ).rejects.toThrow(expected as RegExp)
+  })
+
+  it('rejects a role constants directory in place of the bootstrap file', async () => {
+    const { root, homeDir } = createFixture()
+    writeFile(repoPath(homeDir, 'canonical-source', 'roles', 'alpha', 'role.yaml'), 'role_id: alpha\n')
+    fs.mkdirSync(repoPath(homeDir, 'canonical-source', 'roles', 'alpha', 'constants', 'skills.ts'), {
+      recursive: true,
+    })
+    const manifestPath = writeManifest(root, 'directory-role-constants', [
+      vendorDefinition('canonical-source', [{ kind: 'role-assets', sourceDir: 'roles/alpha' }]),
+    ])
+
+    await expect(
+      rebuildVendorAssets({ homeDir, role: 'alpha', manifestPath }),
+    ).rejects.toThrow(/role constants.*plain file/i)
+  })
+
+  it('rejects project instance state embedded in a canonical role or project template', async () => {
+    const { root, homeDir } = createFixture()
+    writeRoleContract(homeDir, 'canonical-source', 'alpha')
+    writeFile(
+      repoPath(
+        homeDir,
+        'canonical-source',
+        'roles',
+        'alpha',
+        'templates',
+        'project-root',
+        '.airules',
+        'state',
+        'snapshot.json',
+      ),
+      '{}\n',
+    )
+    const manifestPath = writeManifest(root, 'role-with-project-state', [
+      vendorDefinition('canonical-source', [{ kind: 'role-assets', sourceDir: 'roles/alpha' }]),
+    ])
+
+    await expect(
+      rebuildVendorAssets({ homeDir, role: 'alpha', manifestPath }),
+    ).rejects.toThrow(/forbidden project instance state.*\.airules\/state/i)
+    expect(fs.existsSync(path.join(homeDir, 'roles', 'alpha'))).toBe(false)
+  })
+
+  it('rejects multiple canonical role sources', async () => {
+    const { root, homeDir } = createFixture()
+    const manifestPath = writeManifest(root, 'duplicate-role-owners', [
+      vendorDefinition('one', [{ kind: 'role-assets', sourceDir: 'roles/alpha' }]),
+      vendorDefinition('two', [{ kind: 'role-assets', sourceDir: 'roles/alpha' }]),
+    ])
+
+    await expect(rebuildVendorAssets({ homeDir, role: 'alpha', manifestPath })).rejects.toThrow(/at most one canonical role-assets/i)
+  })
+
+  it('rejects links from the selected role into a sibling role', async () => {
+    const { root, homeDir } = createFixture()
+    const alphaRoot = repoPath(homeDir, 'canonical-source', 'roles', 'alpha')
+    const betaRoot = repoPath(homeDir, 'canonical-source', 'roles', 'beta')
+    writeFile(path.join(alphaRoot, 'role.yaml'), 'role_id: alpha\n')
+    writeFile(path.join(betaRoot, 'secret.txt'), 'beta-only\n')
+    fs.symlinkSync(betaRoot, path.join(alphaRoot, 'linked-beta'), process.platform === 'win32' ? 'junction' : 'dir')
+    const manifestPath = writeManifest(root, 'linked-sibling-role', [
+      vendorDefinition('canonical-source', [{ kind: 'role-assets', sourceDir: 'roles/alpha' }]),
+    ])
+
+    await expect(rebuildVendorAssets({ homeDir, role: 'alpha', manifestPath })).rejects.toThrow(/role source.*symbolic link/i)
+    expect(fs.existsSync(path.join(homeDir, 'roles', 'alpha'))).toBe(false)
+  })
+
+  it('rejects a linked ancestor in the selected role source path', async () => {
+    const { root, homeDir } = createFixture()
+    const checkoutRoot = repoPath(homeDir, 'canonical-source')
+    const actualRoles = path.join(checkoutRoot, 'actual-roles')
+    writeFile(path.join(actualRoles, 'alpha', 'role.yaml'), 'role_id: alpha\n')
+    fs.symlinkSync(actualRoles, path.join(checkoutRoot, 'roles'), process.platform === 'win32' ? 'junction' : 'dir')
+    const manifestPath = writeManifest(root, 'linked-role-source-ancestor', [
+      vendorDefinition('canonical-source', [{ kind: 'role-assets', sourceDir: 'roles/alpha' }]),
+    ])
+
+    await expect(rebuildVendorAssets({ homeDir, role: 'alpha', manifestPath })).rejects.toThrow(/selected role source path.*symbolic link/i)
+    expect(fs.existsSync(path.join(homeDir, 'roles', 'alpha'))).toBe(false)
+  })
+
+  it('rejects a linked selected role source root', async () => {
+    const { root, homeDir } = createFixture()
+    const rolesRoot = repoPath(homeDir, 'canonical-source', 'roles')
+    const betaRoot = path.join(rolesRoot, 'beta')
+    writeFile(path.join(betaRoot, 'role.yaml'), 'role_id: beta\n')
+    fs.symlinkSync(betaRoot, path.join(rolesRoot, 'alpha'), process.platform === 'win32' ? 'junction' : 'dir')
+    const manifestPath = writeManifest(root, 'linked-role-source-root', [
+      vendorDefinition('canonical-source', [{ kind: 'role-assets', sourceDir: 'roles/alpha' }]),
+    ])
+
+    await expect(rebuildVendorAssets({ homeDir, role: 'alpha', manifestPath })).rejects.toThrow(/selected role source path.*symbolic link/i)
+    expect(fs.existsSync(path.join(homeDir, 'roles', 'alpha'))).toBe(false)
   })
 
   it('rejects invalid staged assets and neutral MCP configuration', async () => {
@@ -385,6 +580,100 @@ describe('rebuildVendorAssets', () => {
     expect(JSON.parse(fs.readFileSync(path.join(homeDir, 'vendor', 'mcp', 'mcp.json'), 'utf8'))).toHaveProperty('mcpServers.demo.command', 'stable')
     expect(fs.existsSync(path.join(homeDir, 'vendor', 'skills', 'fresh'))).toBe(false)
     expect(fs.readFileSync(repoPath(homeDir, 'remote', '.git', 'keep'), 'utf8')).toBe('repository marker\n')
+  })
+
+  it('rolls back the selected full role and vendor assets as one controlled transaction', async () => {
+    const { root, homeDir } = createFixture()
+    writeFile(path.join(homeDir, 'roles', 'alpha', 'role.yaml'), 'version: old\n')
+    writeFile(path.join(homeDir, 'vendor', 'skills', 'stable', 'SKILL.md'), '# stable\n')
+    writeFile(path.join(homeDir, 'vendor', 'agents', 'stable.md'), validAgent('stable'))
+    writeFile(repoPath(homeDir, 'moluoxixi', 'roles', 'alpha', 'role.yaml'), 'role_id: alpha\nversion: new\n')
+    writeRoleContract(homeDir, 'moluoxixi', 'alpha')
+    writeFile(repoPath(homeDir, 'moluoxixi', 'roles', 'alpha', 'skills', 'fresh', 'SKILL.md'), '# fresh\n')
+    writeFile(repoPath(homeDir, 'moluoxixi', 'roles', 'alpha', 'agents', 'fresh.md'), validAgent('fresh'))
+    const manifestPath = writeManifest(root, 'role-commit-failure', [
+      vendorDefinition('moluoxixi', [{ kind: 'role-assets', sourceDir: 'roles/alpha' }]),
+    ])
+    const renameSync = fs.renameSync.bind(fs)
+    const renameSpy = vi.spyOn(fs, 'renameSync').mockImplementation((source, target) => {
+      if (
+        String(source).includes(`${path.sep}.airules-vendor-next-`)
+        && path.resolve(String(target)) === path.join(homeDir, 'vendor', 'agents')
+      ) {
+        throw new Error('simulated joint commit failure')
+      }
+      renameSync(source, target)
+    })
+
+    try {
+      await expect(rebuildVendorAssets({ homeDir, role: 'alpha', manifestPath })).rejects.toThrow(/joint commit failure/i)
+    }
+    finally {
+      renameSpy.mockRestore()
+    }
+
+    expect(fs.readFileSync(path.join(homeDir, 'roles', 'alpha', 'role.yaml'), 'utf8')).toBe('version: old\n')
+    expect(fs.readFileSync(path.join(homeDir, 'vendor', 'skills', 'stable', 'SKILL.md'), 'utf8')).toBe('# stable\n')
+    expect(fs.readFileSync(path.join(homeDir, 'vendor', 'agents', 'stable.md'), 'utf8')).toContain('name: stable')
+    expect(fs.existsSync(path.join(homeDir, 'vendor', 'skills', 'fresh'))).toBe(false)
+  })
+
+  it('rejects a linked roles root without writing through it', async () => {
+    const { root, homeDir } = createFixture()
+    const outside = path.join(root, 'outside-roles')
+    writeFile(path.join(outside, 'sentinel.txt'), 'outside\n')
+    fs.symlinkSync(outside, path.join(homeDir, 'roles'), process.platform === 'win32' ? 'junction' : 'dir')
+    writeFile(repoPath(homeDir, 'moluoxixi', 'roles', 'alpha', 'role.yaml'), 'role_id: alpha\n')
+    writeRoleContract(homeDir, 'moluoxixi', 'alpha')
+    const manifestPath = writeManifest(root, 'linked-roles-root', [
+      vendorDefinition('moluoxixi', [{ kind: 'role-assets', sourceDir: 'roles/alpha' }]),
+    ])
+
+    await expect(rebuildVendorAssets({ homeDir, role: 'alpha', manifestPath })).rejects.toThrow(/roles root.*invalid type/i)
+    expect(fs.readFileSync(path.join(outside, 'sentinel.txt'), 'utf8')).toBe('outside\n')
+    expect(fs.existsSync(path.join(outside, 'alpha'))).toBe(false)
+  })
+
+  it('rejects a linked installed role root without writing through it', async () => {
+    const { root, homeDir } = createFixture()
+    const outside = path.join(root, 'outside-role')
+    writeFile(path.join(outside, 'sentinel.txt'), 'outside\n')
+    fs.mkdirSync(path.join(homeDir, 'roles'), { recursive: true })
+    fs.symlinkSync(outside, path.join(homeDir, 'roles', 'alpha'), process.platform === 'win32' ? 'junction' : 'dir')
+    writeFile(repoPath(homeDir, 'moluoxixi', 'roles', 'alpha', 'role.yaml'), 'role_id: alpha\n')
+    writeRoleContract(homeDir, 'moluoxixi', 'alpha')
+    const manifestPath = writeManifest(root, 'linked-installed-role-root', [
+      vendorDefinition('moluoxixi', [{ kind: 'role-assets', sourceDir: 'roles/alpha' }]),
+    ])
+
+    await expect(rebuildVendorAssets({ homeDir, role: 'alpha', manifestPath })).rejects.toThrow(/installed AIRules role.*invalid type/i)
+    expect(fs.readFileSync(path.join(outside, 'sentinel.txt'), 'utf8')).toBe('outside\n')
+    expect(fs.existsSync(path.join(outside, 'role.yaml'))).toBe(false)
+  })
+
+  it('does not report failure when post-commit workspace cleanup fails', async () => {
+    const { root, homeDir } = createFixture()
+    writeFile(repoPath(homeDir, 'remote', 'skills', 'fresh', 'SKILL.md'), '# fresh\n')
+    const manifestPath = writeManifest(root, 'cleanup-failure', [
+      vendorDefinition('remote', [{ kind: 'skills', sourceBaseDir: 'skills', skills: ['fresh'] }]),
+    ])
+    const rmSync = fs.rmSync.bind(fs)
+    const rmSpy = vi.spyOn(fs, 'rmSync').mockImplementation((target, options) => {
+      if (String(target).includes(`${path.sep}.airules-vendor-next-`)) {
+        throw new Error('simulated post-commit cleanup failure')
+      }
+      rmSync(target, options)
+    })
+
+    try {
+      await expect(rebuildVendorAssets({ homeDir, role: 'alpha', manifestPath })).resolves.toMatchObject({
+        skills: ['fresh'],
+      })
+    }
+    finally {
+      rmSpy.mockRestore()
+    }
+    expect(fs.readFileSync(path.join(homeDir, 'vendor', 'skills', 'fresh', 'SKILL.md'), 'utf8')).toBe('# fresh\n')
   })
 
   it('preserves vendor repositories after a successful rebuild', async () => {
