@@ -1,0 +1,40 @@
+{
+  "schema_version": 1,
+  "name": "Trellis",
+  "source": "https://github.com/mindfold-ai/Trellis.git",
+  "ref": "v0.6.7",
+  "revision": "e7c5ead4d0dfd717d11a40b6bc0c80d8af94c49a",
+  "tree": "d2856ff1290cc297f7579f768a63c2bbaec42f92",
+  "license": "AGPL-3.0-only",
+  "selected_paths": [
+    ".agents",
+    ".claude",
+    ".codex",
+    ".cursor",
+    ".omp",
+    ".opencode",
+    ".pi",
+    "AGENTS.md",
+    "COPYRIGHT",
+    "LICENSE"
+  ],
+  "selected_regular_files": 369,
+  "selected_regular_file_bytes": 2397739,
+  "combined_hash": {
+    "algorithm": "sha256-posix-path-size-content-v1",
+    "value": "75017e2f405c39d2576bd43e9c2693b71d25ab2bbd694e690104e1c0853c0840"
+  },
+  "npm_cli": {
+    "package": "@mindfoldhq/trellis",
+    "version": "0.6.7",
+    "integrity": "sha512-W67K3DvKGk2W/cFGWM3ev2HvMY9DzWc2sWegv7l+iBiY//Vf9lplQT9dy7jD7j4+MwHDLFIYSM7nZjFcGqgrrg=="
+  },
+  "omissions": [
+    "Repository metadata and automation, including .git, .github, and .husky",
+    "Package workspaces, implementation source, tests, build configuration, and lockfiles",
+    "Project-local Trellis state, specifications, tasks, workspace journals, and generated manifests",
+    "Repository-only contribution, release, publishing, GitNexus, and backup assets",
+    "Repository documentation, demos, drafts, assets, and submodule contents",
+    "OpenCode's generated package lock"
+  ]
+}

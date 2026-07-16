@@ -164,6 +164,35 @@ describe('rebuildVendorAssets', () => {
     expect(fs.readFileSync(path.join(homeDir, 'roles', 'beta', 'sentinel.txt'), 'utf8')).toBe('preserve\n')
   })
 
+  it('maps repository-native asset roots declared by the canonical role manifest', async () => {
+    const { root, homeDir } = createFixture()
+    const roleRoot = repoPath(homeDir, 'canonical-source', 'roles', 'alpha')
+    writeFile(path.join(roleRoot, '.native', 'skills', 'native-skill', 'SKILL.md'), '# native skill\n')
+    writeFile(path.join(roleRoot, '.native', 'agents', 'native-agent.md'), validAgent('native-agent'))
+    writeFile(path.join(roleRoot, 'AGENTS.md'), '# native rules\n')
+    writeFile(path.join(roleRoot, 'constants', 'skills.ts'), 'export const vendors = []\n')
+    writeFile(path.join(roleRoot, 'role.yaml'), [
+      'role_id: alpha',
+      'assets:',
+      '  skills: .native/skills',
+      '  agents: .native/agents',
+      '  rules: .',
+      '',
+    ].join('\n'))
+    const manifestPath = writeManifest(root, 'native-role-assets', [
+      vendorDefinition('canonical-source', [{ kind: 'role-assets', sourceDir: 'roles/alpha' }]),
+    ])
+
+    const inventory = await rebuildVendorAssets({ homeDir, role: 'alpha', manifestPath })
+
+    expect(inventory.skills).toEqual(['native-skill'])
+    expect(inventory.agents).toEqual(['native-agent.md'])
+    expect(fs.readFileSync(path.join(homeDir, 'vendor', 'skills', 'native-skill', 'SKILL.md'), 'utf8')).toBe('# native skill\n')
+    expect(fs.readFileSync(path.join(homeDir, 'vendor', 'agents', 'native-agent.md'), 'utf8')).toContain('name: native-agent')
+    expect(fs.readFileSync(path.join(homeDir, 'vendor', 'AGENTS.md'), 'utf8')).toBe('# native rules\n')
+    expect(fs.existsSync(path.join(homeDir, 'roles', 'alpha', '.native', 'skills', 'native-skill'))).toBe(true)
+  })
+
   it('rejects an invalid role hook manifest before replacing vendor assets', async () => {
     const { root, homeDir } = createFixture()
     writeFile(path.join(homeDir, 'vendor', 'hooks', 'stable.mjs'), 'export const stable = true\n')
@@ -387,6 +416,9 @@ describe('rebuildVendorAssets', () => {
     ['a mismatched role id', 'role_id: beta\n', /role_id must equal selected role/i],
     ['a mismatched canonical root', 'role_id: alpha\ncanonical_root: roles/beta\n', /canonical_root must equal roles\/alpha/i],
     ['duplicate manifest keys', 'role_id: alpha\nrole_id: alpha\n', /role\.yaml is invalid/i],
+    ['a non-object assets field', 'role_id: alpha\nassets: []\n', /assets must be an object/i],
+    ['a null native asset root', 'role_id: alpha\nassets:\n  skills: null\n', /asset root "skills" must be a non-empty relative path/i],
+    ['an escaping native asset root', 'role_id: alpha\nassets:\n  skills: ..\\outside\n', /asset root "skills" must stay inside/i],
   ])('rejects %s', async (_name, manifestContents, expected) => {
     const { root, homeDir } = createFixture()
     writeFile(

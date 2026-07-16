@@ -45,6 +45,22 @@ interface MaterializedPlan {
 
 type SourceKind = 'file' | 'directory'
 
+interface CanonicalRoleAssetRoots {
+  agents: string
+  hooks: string
+  mcp: string
+  rules: string
+  skills: string
+}
+
+const defaultCanonicalRoleAssetRoots: CanonicalRoleAssetRoots = {
+  agents: 'agents',
+  hooks: 'hooks',
+  mcp: 'mcp',
+  rules: 'rules',
+  skills: 'skills',
+}
+
 function portablePath(value: string): string {
   return value.replace(/[\\/]+/gu, path.sep)
 }
@@ -160,7 +176,25 @@ function validateRoleSourceTree(source: string, roleRoot: string, vendorId: stri
   }
 }
 
-function requireCanonicalRoleContract(roleRoot: string, role: string, vendorId: string): void {
+function requireRoleAssetRoot(
+  assets: Record<string, unknown> | undefined,
+  key: keyof CanonicalRoleAssetRoots,
+  roleManifest: string,
+): string {
+  const declared = assets?.[key]
+  const configured = declared === undefined ? defaultCanonicalRoleAssetRoots[key] : declared
+  if (typeof configured !== 'string' || configured.length === 0) {
+    throw new Error(`AIRules role asset root "${key}" must be a non-empty relative path: ${roleManifest}`)
+  }
+
+  const normalized = path.posix.normalize(configured.replace(/\\/gu, '/'))
+  if (path.posix.isAbsolute(normalized) || normalized === '..' || normalized.startsWith('../')) {
+    throw new Error(`AIRules role asset root "${key}" must stay inside the role: ${roleManifest}`)
+  }
+  return normalized
+}
+
+function requireCanonicalRoleContract(roleRoot: string, role: string, vendorId: string): CanonicalRoleAssetRoots {
   const roleManifest = path.join(roleRoot, 'role.yaml')
   const constantsFile = path.join(roleRoot, 'constants', 'skills.ts')
   for (const [label, file] of [['role manifest', roleManifest], ['role constants', constantsFile]] as const) {
@@ -185,6 +219,18 @@ function requireCanonicalRoleContract(roleRoot: string, role: string, vendorId: 
   }
   if (manifest.canonical_root !== undefined && manifest.canonical_root !== `roles/${role}`) {
     throw new Error(`Vendor "${vendorId}" role.yaml canonical_root must equal roles/${role}`)
+  }
+
+  if (manifest.assets !== undefined && !isRecord(manifest.assets)) {
+    throw new Error(`Vendor "${vendorId}" role.yaml assets must be an object`)
+  }
+  const assets = manifest.assets as Record<string, unknown> | undefined
+  return {
+    agents: requireRoleAssetRoot(assets, 'agents', roleManifest),
+    hooks: requireRoleAssetRoot(assets, 'hooks', roleManifest),
+    mcp: requireRoleAssetRoot(assets, 'mcp', roleManifest),
+    rules: requireRoleAssetRoot(assets, 'rules', roleManifest),
+    skills: requireRoleAssetRoot(assets, 'skills', roleManifest),
   }
 }
 
@@ -355,7 +401,8 @@ function resolveRoleChild(
 
 function expandRoleDirectory(
   roleRoot: string,
-  relativePath: 'agents' | 'hooks',
+  relativePath: string,
+  targetRoot: 'agents' | 'hooks',
   vendorId: string,
 ): PlannedAsset[] {
   const sourceRoot = resolveRoleChild(roleRoot, relativePath, 'directory')
@@ -368,14 +415,14 @@ function expandRoleDirectory(
     .map((entry) => {
       const source = path.join(sourceRoot, entry.name)
       const stats = fs.statSync(fs.realpathSync(source))
-      const kind = relativePath === 'agents'
+      const kind = targetRoot === 'agents'
         ? stats.isDirectory() ? 'agents-dir' : 'agent-file'
         : stats.isDirectory() ? 'hooks-dir' : 'hook-file'
       return {
         vendorId,
         kind,
         source,
-        target: path.join(relativePath, entry.name),
+        target: path.join(targetRoot, entry.name),
       }
     })
 }
@@ -401,7 +448,8 @@ function resolveRoleSource(
 
 function expandRoleAssets(roleRoot: string, vendorId: string): PlannedAsset[] {
   const roleAssets: PlannedAsset[] = []
-  const skillsRoot = resolveRoleChild(roleRoot, 'skills', 'directory')
+  const assetRoots = requireCanonicalRoleContract(roleRoot, path.basename(roleRoot), vendorId)
+  const skillsRoot = resolveRoleChild(roleRoot, assetRoots.skills, 'directory')
   if (skillsRoot) {
     for (const { name, source } of collectFlattenedSkillSources(skillsRoot)) {
       requireSkill(source, roleRoot, vendorId)
@@ -414,9 +462,9 @@ function expandRoleAssets(roleRoot: string, vendorId: string): PlannedAsset[] {
     }
   }
 
-  roleAssets.push(...expandRoleDirectory(roleRoot, 'agents', vendorId))
+  roleAssets.push(...expandRoleDirectory(roleRoot, assetRoots.agents, 'agents', vendorId))
 
-  const rulesFile = resolveRoleChild(roleRoot, 'rules/AGENTS.md', 'file')
+  const rulesFile = resolveRoleChild(roleRoot, path.posix.join(assetRoots.rules, 'AGENTS.md'), 'file')
   if (rulesFile) {
     roleAssets.push({
       vendorId,
@@ -426,9 +474,9 @@ function expandRoleAssets(roleRoot: string, vendorId: string): PlannedAsset[] {
     })
   }
 
-  roleAssets.push(...expandRoleDirectory(roleRoot, 'hooks', vendorId))
+  roleAssets.push(...expandRoleDirectory(roleRoot, assetRoots.hooks, 'hooks', vendorId))
 
-  const mcpFile = resolveRoleChild(roleRoot, 'mcp/mcp.json', 'file')
+  const mcpFile = resolveRoleChild(roleRoot, path.posix.join(assetRoots.mcp, 'mcp.json'), 'file')
   if (mcpFile) {
     requireNeutralMcp(mcpFile)
     roleAssets.push({

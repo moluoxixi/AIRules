@@ -1,0 +1,34 @@
+schema_version: 1
+role_id: moluoxixi
+role_version: 0.2.0
+status: experimental
+canonical_root: roles/moluoxixi
+description: Curated Trellis role assets distributed directly as the Moluoxixi role.
+assets:
+  skills: .agents/skills
+  agents: .claude/agents
+  rules: .
+distribution:
+  bootstrap_manifest: constants/skills.ts
+  full_role_path_required: true
+  npm_embedded_source: false
+entrypoints:
+  cli: trellis
+  initialize_project: trellis init
+third_party:
+  trellis:
+    paths:
+      - .agents
+      - .claude
+      - .codex
+      - .cursor
+      - .omp
+      - .opencode
+      - .pi
+      - AGENTS.md
+      - COPYRIGHT
+      - LICENSE
+    source: https://github.com/mindfold-ai/Trellis.git
+    version: 0.6.7
+    revision: e7c5ead4d0dfd717d11a40b6bc0c80d8af94c49a
+    license: AGPL-3.0-only
