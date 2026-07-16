@@ -16,7 +16,8 @@ const RUNTIME_ROOT = path.join(ROLE_ROOT, 'runtime')
 const LOCAL_SKILLS_ROOT = fs.existsSync(path.join(ROLE_ROOT, 'skills', 'trellis-channel'))
   ? path.join(ROLE_ROOT, 'skills')
   : path.resolve(SCRIPT_DIR, '..', 'skills')
-const MANIFEST_PATH = '.trellis/airules-init-manifest.json'
+const PROJECT_ROOT_DIR = '.moluoxixi'
+const MANIFEST_PATH = projectPath('airules-init-manifest.json')
 const GENERATOR_VERSION = '1.0.0'
 const TRELLIS_REVISION = 'e7c5ead4d0dfd717d11a40b6bc0c80d8af94c49a'
 
@@ -127,7 +128,7 @@ const SKILL_DESCRIPTIONS = {
   'brainstorm': 'Clarifies requirements and explores implementation approaches before coding. Use when a request is ambiguous or needs design decisions.',
   'break-loop': 'Analyzes recurring failures, captures root causes, and records prevention guidance. Use after repeated fixes or regressions.',
   'check': 'Verifies spec compliance, lint, type checking, tests, data flow, reuse, and consistency. Use before considering work complete.',
-  'update-spec': 'Records executable contracts and conventions in .trellis/spec. Use when durable project knowledge is discovered.',
+  'update-spec': `Records executable contracts and conventions in ${projectPath('spec')}. Use when durable project knowledge is discovered.`,
   'start': 'Initializes a Trellis work session by loading workflow, task, and project context. Use at the start of project work.',
   'continue': 'Resumes the active Trellis task at the correct workflow phase. Use after interruption or context loss.',
   'finish-work': 'Runs the completion workflow, records the session, and prepares the task for handoff or archival.',
@@ -143,6 +144,10 @@ function sha256(content) {
 
 function toPosix(value) {
   return value.split(path.sep).join('/')
+}
+
+function projectPath(...segments) {
+  return path.posix.join(PROJECT_ROOT_DIR, ...segments)
 }
 
 function parseArgs(argv) {
@@ -307,10 +312,11 @@ function addTree(plan, sourceRoot, targetRoot, options = {}) {
 
 function localizeProjectRuntime(relativePath, content) {
   let localized = content
-    .replaceAll('trellis channel', 'node .trellis/runtime/trellis.mjs channel')
-    .replaceAll('trellis mem', 'node .trellis/runtime/trellis.mjs mem')
-    .replaceAll('trellis workflow', 'node .trellis/runtime/trellis.mjs workflow')
-    .replaceAll('trellis update', 'node .trellis/runtime/trellis.mjs update')
+    .replaceAll('trellis channel', `node ${projectPath('runtime', 'trellis.mjs')} channel`)
+    .replaceAll('trellis mem', `node ${projectPath('runtime', 'trellis.mjs')} mem`)
+    .replaceAll('trellis workflow', `node ${projectPath('runtime', 'trellis.mjs')} workflow`)
+    .replaceAll('trellis update', `node ${projectPath('runtime', 'trellis.mjs')} update`)
+    .replaceAll('.trellis', PROJECT_ROOT_DIR)
   if (relativePath === 'common/session_context.py') {
     localized = localized.replace(
       /def _fetch_trellis_version_output\(\) -> str \| None:\n[\s\S]*?\n\ndef _extract_available_update_version/u,
@@ -321,27 +327,27 @@ function localizeProjectRuntime(relativePath, content) {
 }
 
 function addSharedRuntime(plan, pythonCommand, developer) {
-  addTree(plan, path.join(TEMPLATE_ROOT, 'trellis', 'scripts'), '.trellis/scripts', { python: pythonCommand, transform: localizeProjectRuntime })
-  addTree(plan, path.join(TEMPLATE_ROOT, 'trellis', 'agents'), '.trellis/agents', { python: pythonCommand, transform: localizeProjectRuntime })
-  addTree(plan, RUNTIME_ROOT, '.trellis/runtime', { merge: 'replace' })
-  addPlan(plan, '.trellis/runtime/update/scripts/init-project.mjs', fs.readFileSync(path.join(SCRIPT_DIR, 'init-project.mjs')), { executable: true })
-  addTree(plan, ASSET_ROOT, '.trellis/runtime/update/assets/trellis-v0.6.7', { merge: 'replace' })
+  addTree(plan, path.join(TEMPLATE_ROOT, 'trellis', 'scripts'), projectPath('scripts'), { python: pythonCommand, transform: localizeProjectRuntime })
+  addTree(plan, path.join(TEMPLATE_ROOT, 'trellis', 'agents'), projectPath('agents'), { python: pythonCommand, transform: localizeProjectRuntime })
+  addTree(plan, RUNTIME_ROOT, projectPath('runtime'), { merge: 'replace' })
+  addPlan(plan, projectPath('runtime', 'update', 'scripts', 'init-project.mjs'), fs.readFileSync(path.join(SCRIPT_DIR, 'init-project.mjs')), { executable: true })
+  addTree(plan, ASSET_ROOT, projectPath('runtime', 'update', 'assets', 'trellis-v0.6.7'), { merge: 'replace' })
   for (const skill of ['trellis-channel', 'trellis-meta', 'trellis-session-insight']) {
-    addTree(plan, path.join(LOCAL_SKILLS_ROOT, skill), `.trellis/runtime/update/skills/${skill}`, { merge: 'replace' })
+    addTree(plan, path.join(LOCAL_SKILLS_ROOT, skill), projectPath('runtime', 'update', 'skills', skill), { merge: 'replace', transform: localizeProjectRuntime })
   }
-  addPlan(plan, '.trellis/workflow.md', resolveTemplate(localizeProjectRuntime('workflow.md', readText('trellis', 'workflow.md')), undefined, pythonCommand))
-  addPlan(plan, '.trellis/config.yaml', localizeProjectRuntime('config.yaml', readText('trellis', 'config.yaml')))
-  addPlan(plan, '.trellis/.version', '0.6.7-airules.1\n')
-  addPlan(plan, '.trellis/.gitignore', readText('trellis', 'gitignore.txt'))
-  addPlan(plan, '.trellis/workspace/index.md', resolveTemplate(readText('markdown', 'workspace-index.md'), undefined, pythonCommand))
-  addPlan(plan, '.trellis/tasks/.gitkeep', '')
+  addPlan(plan, projectPath('workflow.md'), resolveTemplate(localizeProjectRuntime('workflow.md', readText('trellis', 'workflow.md')), undefined, pythonCommand))
+  addPlan(plan, projectPath('config.yaml'), localizeProjectRuntime('config.yaml', readText('trellis', 'config.yaml')))
+  addPlan(plan, projectPath('.version'), '0.6.7-airules.1\n')
+  addPlan(plan, projectPath('.gitignore'), readText('trellis', 'gitignore.txt'))
+  addPlan(plan, projectPath('workspace', 'index.md'), resolveTemplate(localizeProjectRuntime('workspace-index.md', readText('markdown', 'workspace-index.md')), undefined, pythonCommand))
+  addPlan(plan, projectPath('tasks', '.gitkeep'), '')
   for (const section of ['backend', 'frontend', 'guides']) {
     const root = path.join(TEMPLATE_ROOT, 'markdown', 'spec', section)
-    addTree(plan, root, `.trellis/spec/${section}`, { rename: relative => relative.replace(/\.txt$/u, '') })
+    addTree(plan, root, projectPath('spec', section), { rename: relative => relative.replace(/\.txt$/u, ''), transform: localizeProjectRuntime })
   }
-  addPlan(plan, '.trellis/LICENSE', fs.readFileSync(path.join(ASSET_ROOT, 'legal', 'LICENSE')))
-  addPlan(plan, '.trellis/COPYRIGHT', fs.readFileSync(path.join(ASSET_ROOT, 'legal', 'COPYRIGHT')))
-  addPlan(plan, '.trellis/THIRD_PARTY_NOTICES.md', `# Third-Party Notices\n\nProject runtime templates are derived from Trellis v0.6.7, revision ${TRELLIS_REVISION}, and remain licensed under AGPL-3.0-only. AIRules replaced the upstream initializer with an independent project writer on 2026-07-16. See LICENSE and COPYRIGHT in this directory.\n`)
+  addPlan(plan, projectPath('LICENSE'), fs.readFileSync(path.join(ASSET_ROOT, 'legal', 'LICENSE')))
+  addPlan(plan, projectPath('COPYRIGHT'), fs.readFileSync(path.join(ASSET_ROOT, 'legal', 'COPYRIGHT')))
+  addPlan(plan, projectPath('THIRD_PARTY_NOTICES.md'), `# Third-Party Notices\n\nProject runtime templates are derived from Trellis v0.6.7, revision ${TRELLIS_REVISION}, and remain licensed under AGPL-3.0-only. AIRules replaced the upstream initializer with an independent project writer on 2026-07-16. See LICENSE and COPYRIGHT in this directory.\n`)
   addPlan(plan, 'AGENTS.md', localizeProjectRuntime('AGENTS.md', readText('markdown', 'agents.md')), { merge: 'block-trellis' })
   if (developer)
     addDeveloperFiles(plan, developer)
@@ -350,16 +356,16 @@ function addSharedRuntime(plan, pythonCommand, developer) {
 function addDeveloperFiles(plan, developer) {
   if (!/^[A-Za-z0-9][\w.-]{0,63}$/u.test(developer))
     throw new Error('Developer name must use 1-64 letters, digits, dots, underscores, or hyphens')
-  addPlan(plan, '.trellis/.developer', `${developer}\n`)
-  addPlan(plan, `.trellis/workspace/${developer}/index.md`, `# ${developer} Workspace\n\n## Sessions\n\n- [journal-1.md](journal-1.md)\n`)
-  addPlan(plan, `.trellis/workspace/${developer}/journal-1.md`, `# ${developer} Journal\n\n`)
+  addPlan(plan, projectPath('.developer'), `${developer}\n`)
+  addPlan(plan, projectPath('workspace', developer, 'index.md'), `# ${developer} Workspace\n\n## Sessions\n\n- [journal-1.md](journal-1.md)\n`)
+  addPlan(plan, projectPath('workspace', developer, 'journal-1.md'), `# ${developer} Journal\n\n`)
 }
 
 function commonTemplates(platform, pythonCommand) {
   const ctx = PLATFORM_CONTEXT[platform]
-  const commands = walkFiles(path.join(TEMPLATE_ROOT, 'common', 'commands')).map(file => ({ name: path.basename(file, '.md'), content: resolveTemplate(fs.readFileSync(file, 'utf8'), ctx, pythonCommand) }))
+  const commands = walkFiles(path.join(TEMPLATE_ROOT, 'common', 'commands')).map(file => ({ name: path.basename(file, '.md'), content: localizeProjectRuntime(path.basename(file), resolveTemplate(fs.readFileSync(file, 'utf8'), ctx, pythonCommand)) }))
   const filtered = ctx.agentCapable && ctx.hasHooks && platform !== 'pi' ? commands.filter(command => command.name !== 'start') : commands
-  const skills = walkFiles(path.join(TEMPLATE_ROOT, 'common', 'skills')).map(file => ({ name: path.basename(file, '.md'), content: resolveTemplate(fs.readFileSync(file, 'utf8'), ctx, pythonCommand, platform === 'gemini' || platform === 'codex') }))
+  const skills = walkFiles(path.join(TEMPLATE_ROOT, 'common', 'skills')).map(file => ({ name: path.basename(file, '.md'), content: localizeProjectRuntime(path.basename(file), resolveTemplate(fs.readFileSync(file, 'utf8'), ctx, pythonCommand, platform === 'gemini' || platform === 'codex')) }))
   return { commands: filtered, skills }
 }
 
@@ -372,6 +378,7 @@ function addBundledSkills(plan, platform, root, pythonCommand) {
       context: PLATFORM_CONTEXT[platform],
       platform,
       python: pythonCommand,
+      transform: localizeProjectRuntime,
     })
   }
 }
@@ -410,19 +417,19 @@ function commandTarget(platform, name) {
 function addDirectPlatformAssets(plan, platform, pythonCommand) {
   if (platform === 'copilot') {
     const root = path.join(TEMPLATE_ROOT, 'copilot')
-    addPlan(plan, '.github/copilot-instructions.md', resolveTemplate(fs.readFileSync(path.join(root, 'copilot-instructions.md'), 'utf8'), PLATFORM_CONTEXT.copilot, pythonCommand), { merge: 'block-hash', platform })
-    addTree(plan, path.join(root, 'hooks'), '.github/copilot/hooks', { python: pythonCommand, context: PLATFORM_CONTEXT.copilot, platform })
-    const hookConfig = resolveTemplate(fs.readFileSync(path.join(root, 'hooks.json'), 'utf8'), PLATFORM_CONTEXT.copilot, pythonCommand)
+    addPlan(plan, '.github/copilot-instructions.md', localizeProjectRuntime('copilot-instructions.md', resolveTemplate(fs.readFileSync(path.join(root, 'copilot-instructions.md'), 'utf8'), PLATFORM_CONTEXT.copilot, pythonCommand)), { merge: 'block-hash', platform })
+    addTree(plan, path.join(root, 'hooks'), '.github/copilot/hooks', { python: pythonCommand, context: PLATFORM_CONTEXT.copilot, platform, transform: localizeProjectRuntime })
+    const hookConfig = localizeProjectRuntime('hooks.json', resolveTemplate(fs.readFileSync(path.join(root, 'hooks.json'), 'utf8'), PLATFORM_CONTEXT.copilot, pythonCommand))
     addPlan(plan, '.github/copilot/hooks.json', hookConfig, { merge: 'json', platform })
     addPlan(plan, '.github/hooks/trellis.json', hookConfig, { merge: 'json', platform })
-    addTree(plan, path.join(TEMPLATE_ROOT, 'cursor', 'agents'), '.github/agents', { python: pythonCommand, context: PLATFORM_CONTEXT.copilot, platform, rename: relative => relative.replace(/\.md$/u, '.agent.md') })
+    addTree(plan, path.join(TEMPLATE_ROOT, 'cursor', 'agents'), '.github/agents', { python: pythonCommand, context: PLATFORM_CONTEXT.copilot, platform, rename: relative => relative.replace(/\.md$/u, '.agent.md'), transform: localizeProjectRuntime })
     return
   }
   if (platform === 'reasonix') {
     const agents = path.join(TEMPLATE_ROOT, 'reasonix', 'agents')
     for (const source of walkFiles(agents)) {
       const name = path.basename(source, '.md')
-      addPlan(plan, `.reasonix/skills/${name}/SKILL.md`, resolveTemplate(fs.readFileSync(source, 'utf8'), PLATFORM_CONTEXT.reasonix, pythonCommand), { platform })
+      addPlan(plan, `.reasonix/skills/${name}/SKILL.md`, localizeProjectRuntime(path.basename(source), resolveTemplate(fs.readFileSync(source, 'utf8'), PLATFORM_CONTEXT.reasonix, pythonCommand)), { platform })
     }
     return
   }
@@ -433,6 +440,7 @@ function addDirectPlatformAssets(plan, platform, pythonCommand) {
     python: pythonCommand,
     context: PLATFORM_CONTEXT[platform],
     platform,
+    transform: localizeProjectRuntime,
     filter: relative => platform !== 'claude' || relative !== 'hooks/statusline.py',
     rename: relative => relative.endsWith('.ts.txt') ? relative.slice(0, -4) : relative,
   })
@@ -466,7 +474,7 @@ function addPlatform(plan, platform, pythonCommand, skipSharedSkills = false) {
   }
   const hookNames = SHARED_HOOKS[platform] ?? []
   for (const hookName of hookNames) {
-    addPlan(plan, `${HOOK_ROOTS[platform]}/${hookName}`, resolveTemplate(readText('shared-hooks', hookName), ctx, pythonCommand), { executable: true, platform })
+    addPlan(plan, `${HOOK_ROOTS[platform]}/${hookName}`, localizeProjectRuntime(hookName, resolveTemplate(readText('shared-hooks', hookName), ctx, pythonCommand)), { executable: true, platform })
   }
 }
 

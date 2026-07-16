@@ -247,8 +247,10 @@ describe('moluoxixi curated Trellis role assets', () => {
       '.pi',
       'AGENTS.md',
       '__test__',
+      'agents',
       'constants',
       'role.yaml',
+      'rules',
       'runtime',
       'skills',
       'trellis.upstream.json',
@@ -262,7 +264,7 @@ describe('moluoxixi curated Trellis role assets', () => {
     expect(distributedSkills.every(entry => entry.isDirectory())).toBe(true)
     expect(sortPaths(distributedSkills.map(entry => entry.name))).toEqual(sortPaths([...skillNames, 'init-project']))
 
-    const actualAgents = fs.readdirSync(resolveRolePath('.claude/agents'), { withFileTypes: true })
+    const actualAgents = fs.readdirSync(resolveRolePath('agents'), { withFileTypes: true })
     expect(actualAgents.every(entry => entry.isFile())).toBe(true)
     expect(sortPaths(actualAgents.map(entry => entry.name))).toEqual(sortPaths([...agentFiles]))
 
@@ -279,6 +281,7 @@ describe('moluoxixi curated Trellis role assets', () => {
     '.git',
     '.github',
     '.husky',
+    '.moluoxixi',
     '.trellis',
     '.agents/skills/contribute',
     '.claude/commands/trellis/create-manifest.md',
@@ -310,8 +313,8 @@ describe('moluoxixi curated Trellis role assets', () => {
     const manifest = readRoleManifest()
     expect(manifest).toMatchObject({
       assets: {
-        agents: '.claude/agents',
-        rules: '.',
+        agents: 'agents',
+        rules: 'rules',
         skills: 'skills',
       },
       canonical_root: 'roles/moluoxixi',
@@ -370,6 +373,21 @@ describe('moluoxixi curated Trellis role assets', () => {
       hash: lock.migrated_runtime.combined_hash.value,
     })
     expect(fs.statSync(resolveRolePath('runtime/trellis.mjs')).isFile()).toBe(true)
+  })
+
+  it('uses Moluoxixi project and channel state roots in the executable runtime', () => {
+    const runtimeFiles = [
+      'runtime/source/packages/cli/src/constants/paths.ts',
+      'runtime/source/packages/cli/src/commands/channel/agent-loader.ts',
+      'runtime/source/packages/cli/src/commands/channel/store/paths.ts',
+      'runtime/source/packages/core/src/channel/internal/store/paths.ts',
+      'runtime/vendor/channel-mem.mjs',
+    ]
+    for (const relativePath of runtimeFiles) {
+      const content = fs.readFileSync(resolveRolePath(relativePath), 'utf8')
+      expect(content).toContain('.moluoxixi')
+      expect(content).not.toContain('.trellis')
+    }
   })
 
   it('keeps legal texts with the migrated assets instead of the role root', () => {

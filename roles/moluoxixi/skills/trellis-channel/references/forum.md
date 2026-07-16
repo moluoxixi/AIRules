@@ -119,7 +119,7 @@ node "<skill-root>/scripts/trellis.mjs" channel context add design-feedback \
 node "<skill-root>/scripts/trellis.mjs" channel context add design-feedback \
   --scope global \
   --thread login-empty-state \
-  --file "$PWD/.trellis/tasks/05-13-login-redesign/design.md"
+  --file "$PWD/.moluoxixi/tasks/05-13-login-redesign/design.md"
 ```
 
 - `--thread <key>` switches between channel-level and thread-level context.

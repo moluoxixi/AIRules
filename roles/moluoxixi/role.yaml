@@ -6,8 +6,8 @@ canonical_root: roles/moluoxixi
 description: Self-contained Trellis role assets and AIRules-owned project initialization.
 assets:
   skills: skills
-  agents: .claude/agents
-  rules: .
+  agents: agents
+  rules: rules
 distribution:
   bootstrap_manifest: constants/skills.ts
   full_role_path_required: true

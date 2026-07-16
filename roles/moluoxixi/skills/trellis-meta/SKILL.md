@@ -1,29 +1,29 @@
 ---
 name: trellis-meta
-description: Understand and customize the AIRules-distributed Trellis architecture inside a user project. Use when modifying .trellis, platform hooks and settings, agents, skills, commands, prompts, workflows, the Moluoxixi channel or memory runtime, bundled runtime agents, project updates, or generated skill dispatch.
+description: Understand and customize the AIRules-distributed Trellis architecture inside a user project. Use when modifying .moluoxixi, platform hooks and settings, agents, skills, commands, prompts, workflows, the Moluoxixi channel or memory runtime, bundled runtime agents, project updates, or generated skill dispatch.
 ---
 
 # Trellis Meta
 
 This skill is for projects initialized with the Moluoxixi `init-project` skill. Resolve `<skill-root>` to this skill's directory and use `scripts/trellis.mjs` for channel, memory, workflow, and update commands. Never install or invoke the upstream Trellis CLI.
 
-The migrated v0.6 runtime adds two architectural surfaces on top of the workflow, persistence, and platform model. `node "<skill-root>/scripts/trellis.mjs" channel` coordinates worker processes through project-scoped JSONL event logs at `~/.trellis/channels/<project>/<channel>/events.jsonl`, with worker guards, forum/thread channels, durable idempotency keys, and `.trellis/agents/{check,implement}.md` role definitions. `node "<skill-root>/scripts/trellis.mjs" mem list | search | context | extract | projects` reads local Claude Code, Codex, and Pi JSONL, slices by task phase, and uploads nothing. The role carries the executable bundle and corresponding source; no Trellis npm package is required.
+The migrated v0.6 runtime adds two architectural surfaces on top of the workflow, persistence, and platform model. `node "<skill-root>/scripts/trellis.mjs" channel` coordinates worker processes through project-scoped JSONL event logs at `~/.moluoxixi/channels/<project>/<channel>/events.jsonl`, with worker guards, forum/thread channels, durable idempotency keys, and `.moluoxixi/agents/{check,implement}.md` role definitions. `node "<skill-root>/scripts/trellis.mjs" mem list | search | context | extract | projects` reads local Claude Code, Codex, and Pi JSONL, slices by task phase, and uploads nothing. The role carries the executable bundle and corresponding source; no Trellis npm package is required.
 
 The default operating scope is local files in the user project:
 
-- `.trellis/`: workflow, config, tasks, spec, workspace, scripts, bundled runtime agents, and runtime state.
+- `.moluoxixi/`: workflow, config, tasks, spec, workspace, scripts, bundled runtime agents, and runtime state.
 - Platform directories: `.claude/`, `.codex/`, `.cursor/`, `.opencode/`, `.kiro/`, `.gemini/`, `.qoder/`, `.codebuddy/`, `.github/`, `.factory/`, `.pi/`, `.reasonix/`, `.kilocode/`, `.agent/`, `.devin/`, and similar directories. Pi additionally exposes a native `trellis_subagent` tool with `single` / `parallel` / `chain` dispatch modes, throttled progress cards, and `isTrellisAgent()` validation on top of the file layout. Reasonix stores both workflow skills and subagent skills as `.reasonix/skills/<name>/SKILL.md`; subagent skills carry `runAs: subagent` frontmatter.
 - Shared skill layer: `.agents/skills/`.
-- User-owned channel store outside the project tree: `~/.trellis/channels/<project>/<channel>/events.jsonl`.
+- User-owned channel store outside the project tree: `~/.moluoxixi/channels/<project>/<channel>/events.jsonl`.
 - Raw platform conversation logs queryable via `node "<skill-root>/scripts/trellis.mjs" mem`: `~/.claude/projects/`, `~/.codex/sessions/`, and `~/.pi/agent/sessions/` (OpenCode adapter degraded for the v0.6 line).
 
-Do not assume the user has the upstream Trellis repository. The authoritative deployed runtime is `.trellis/runtime`, and its source/provenance comes from the synchronized Moluoxixi role. Do not modify global npm installs or `node_modules`.
+Do not assume the user has the upstream Trellis repository. The authoritative deployed runtime is `.moluoxixi/runtime`, and its source/provenance comes from the synchronized Moluoxixi role. Do not modify global npm installs or `node_modules`.
 
 ## How To Use
 
 1. Read `references/local-architecture/overview.md` first to establish the local Trellis system model.
 2. If the request involves a specific AI tool, read `references/platform-files/platform-map.md` and the relevant platform file notes.
-3. If the request involves multi-agent dispatch or channel workers, read `references/local-architecture/multi-agent-channel.md` and the bundled `.trellis/agents/` files.
+3. If the request involves multi-agent dispatch or channel workers, read `references/local-architecture/multi-agent-channel.md` and the bundled `.moluoxixi/agents/` files.
 4. If the user wants to change behavior, read `references/customize-local/overview.md`, then open the specific customization topic.
 5. Before editing, read the actual files in the user project and treat local content as authoritative.
 
@@ -32,21 +32,21 @@ Do not assume the user has the upstream Trellis repository. The authoritative de
 ### Local Architecture
 
 - `references/local-architecture/overview.md`: The layered local Trellis architecture (workflow / persistence / platform / channel runtime) and customization principles.
-- `references/local-architecture/generated-files.md`: Files generated by the `init-project` skill and their customization boundaries, including `.trellis/agents/`.
-- `references/local-architecture/workflow.md`: Phases, routing, workflow-state blocks, and selectable workflow templates (`native`, `tdd`, `channel-driven-subagent-dispatch`, marketplace) in `.trellis/workflow.md`.
+- `references/local-architecture/generated-files.md`: Files generated by the `init-project` skill and their customization boundaries, including `.moluoxixi/agents/`.
+- `references/local-architecture/workflow.md`: Phases, routing, workflow-state blocks, and selectable workflow templates (`native`, `tdd`, `channel-driven-subagent-dispatch`, marketplace) in `.moluoxixi/workflow.md`.
 - `references/local-architecture/task-system.md`: Task directories, active task, JSONL context, parent/child task trees, and task runtime.
-- `references/local-architecture/spec-system.md`: How `.trellis/spec/` is organized, injected, and refreshed from a `registry.spec` source.
-- `references/local-architecture/workspace-memory.md`: `.trellis/workspace/` journals plus `node "<skill-root>/scripts/trellis.mjs" mem` cross-session recall and the `the Moluoxixi memory runtime source` SDK.
+- `references/local-architecture/spec-system.md`: How `.moluoxixi/spec/` is organized, injected, and refreshed from a `registry.spec` source.
+- `references/local-architecture/workspace-memory.md`: `.moluoxixi/workspace/` journals plus `node "<skill-root>/scripts/trellis.mjs" mem` cross-session recall and the `the Moluoxixi memory runtime source` SDK.
 - `references/local-architecture/context-injection.md`: Hooks, sub-agent preludes, and channel-runtime worker inbox routing.
-- `references/local-architecture/multi-agent-channel.md`: `node "<skill-root>/scripts/trellis.mjs" channel` subcommands, project-scoped event store, forum/thread channels, worker OOM guard, durable idempotency, and bundled `.trellis/agents/` runtime agents.
+- `references/local-architecture/multi-agent-channel.md`: `node "<skill-root>/scripts/trellis.mjs" channel` subcommands, project-scoped event store, forum/thread channels, worker OOM guard, durable idempotency, and bundled `.moluoxixi/agents/` runtime agents.
 - `references/local-architecture/bundled-skills.md`: Auto-dispatched bundled skills (`trellis-meta`, `trellis-spec-bootstrap`, `trellis-session-insight`) and how `getBundledSkillTemplates()` ships them to every platform skill root.
 
 ### Platform Files
 
-- `references/platform-files/overview.md`: How shared `.trellis/` files relate to platform directories and the four platform integration modes (hook-driven, agent prelude, main-session workflow, channel runtime).
+- `references/platform-files/overview.md`: How shared `.moluoxixi/` files relate to platform directories and the four platform integration modes (hook-driven, agent prelude, main-session workflow, channel runtime).
 - `references/platform-files/platform-map.md`: Platform directories and paths for skills, agents, hooks, and extensions across all 15 supported platforms including Reasonix and Pi's native `trellis_subagent` extension.
 - `references/platform-files/hooks-and-settings.md`: How settings/config files, hooks, plugins, and extensions connect to Trellis; covers `channel.worker_guard.*` and `codex.dispatch_mode`.
-- `references/platform-files/agents.md`: Per-platform `trellis-research` / `trellis-implement` / `trellis-check` sub-agent files plus bundled `.trellis/agents/{check,implement}.md` for the channel runtime.
+- `references/platform-files/agents.md`: Per-platform `trellis-research` / `trellis-implement` / `trellis-check` sub-agent files plus bundled `.moluoxixi/agents/{check,implement}.md` for the channel runtime.
 - `references/platform-files/skills-and-commands.md`: Differences between skills, commands, prompts, and workflows, plus how to change them.
 
 ### Local Customization
@@ -58,28 +58,28 @@ Do not assume the user has the upstream Trellis repository. The authoritative de
 - `references/customize-local/change-hooks.md`: Change platform hooks, settings, task lifecycle hooks (`hooks.after_*`), and shell session bridges.
 - `references/customize-local/change-agents.md`: Change research, implement, and check agent behavior across platform sub-agents, bundled channel runtime agents, and the Codex `dispatch_mode` toggle.
 - `references/customize-local/change-skills-or-commands.md`: Add or modify local skills, commands, prompts, and workflows; covers upstream bundled-skill auto-dispatch.
-- `references/customize-local/change-spec-structure.md`: Adjust the project spec structure under `.trellis/spec/`, including registry-backed sources.
+- `references/customize-local/change-spec-structure.md`: Adjust the project spec structure under `.moluoxixi/spec/`, including registry-backed sources.
 - `references/customize-local/add-project-local-conventions.md`: Put team rules into project-local specs or local skills.
 
 ## Current Rules
 
-- `.trellis/workflow.md` is the local workflow source of truth; its initial content was selected from a workflow template (built-in `native`, `tdd`, `channel-driven-subagent-dispatch`, or a marketplace template) at the `init-project` skill time and can be re-selected via `node "<skill-root>/scripts/trellis.mjs" workflow --template <id>`. Missing `.trellis/agents/<name>.md` files referenced by the active template trigger a non-blocking stderr warning pointing at `node "<skill-root>/scripts/trellis.mjs" update`.
-- `.trellis/config.yaml` is the project-level Trellis configuration entry point. It hosts task lifecycle hooks (`hooks.after_create` / `after_start` / `after_finish` / `after_archive`), journal shape (`session_commit_message` / `max_journal_lines` / `session_auto_commit`), channel worker guard (`channel.worker_guard.idle_timeout` / `max_live_workers`), Codex dispatch mode (`codex.dispatch_mode: inline | sub-agent`), and the spec registry block (`registry.spec.source` + `registry.spec.template`).
-- `.trellis/spec/` stores the user's project-specific coding conventions and design constraints. When `registry.spec` is set, files are refreshed by `node "<skill-root>/scripts/trellis.mjs" update`; local edits surface as "modified by user" conflicts in `.trellis/airules-init-manifest.json`.
-- `.trellis/tasks/` stores task PRDs, design notes, implement plans, research files, and JSONL context. Tasks form parent/child trees: `task.py create --parent <slug>`, `task.py add-subtask <parent> <child>`, `task.py remove-subtask <parent> <child>`, and `task.py list-context <task>`. `task.py create` rejects a slug already present in `.trellis/tasks/archive/**`.
-- `.trellis/workspace/` stores **deliberately written** developer journals. Raw cross-session dialogue is **not** stored here — it lives on disk under `~/.claude/projects/`, `~/.codex/sessions/`, and `~/.pi/agent/sessions/` and is recovered via `node "<skill-root>/scripts/trellis.mjs" mem search|extract|context`. The bundled `trellis-session-insight` skill teaches when to reach for `mem`.
-- `.trellis/agents/{check,implement}.md` are bundled, platform-agnostic channel runtime agent definitions loaded by `node "<skill-root>/scripts/trellis.mjs" channel spawn --agent <name>`. Editable; `node "<skill-root>/scripts/trellis.mjs" update` backfills missing ones. Editing the per-platform `trellis-implement.md` / `trellis-check.md` does **not** change channel-runtime worker behavior.
-- `~/.trellis/channels/<project>/<channel>/events.jsonl` is the channel runtime event log per project per channel. User-owned, file-locked sequence numbering, durable `idempotencyKey` support; never under `.trellis/`.
+- `.moluoxixi/workflow.md` is the local workflow source of truth; its initial content was selected from a workflow template (built-in `native`, `tdd`, `channel-driven-subagent-dispatch`, or a marketplace template) at the `init-project` skill time and can be re-selected via `node "<skill-root>/scripts/trellis.mjs" workflow --template <id>`. Missing `.moluoxixi/agents/<name>.md` files referenced by the active template trigger a non-blocking stderr warning pointing at `node "<skill-root>/scripts/trellis.mjs" update`.
+- `.moluoxixi/config.yaml` is the project-level Trellis configuration entry point. It hosts task lifecycle hooks (`hooks.after_create` / `after_start` / `after_finish` / `after_archive`), journal shape (`session_commit_message` / `max_journal_lines` / `session_auto_commit`), channel worker guard (`channel.worker_guard.idle_timeout` / `max_live_workers`), Codex dispatch mode (`codex.dispatch_mode: inline | sub-agent`), and the spec registry block (`registry.spec.source` + `registry.spec.template`).
+- `.moluoxixi/spec/` stores the user's project-specific coding conventions and design constraints. When `registry.spec` is set, files are refreshed by `node "<skill-root>/scripts/trellis.mjs" update`; local edits surface as "modified by user" conflicts in `.moluoxixi/airules-init-manifest.json`.
+- `.moluoxixi/tasks/` stores task PRDs, design notes, implement plans, research files, and JSONL context. Tasks form parent/child trees: `task.py create --parent <slug>`, `task.py add-subtask <parent> <child>`, `task.py remove-subtask <parent> <child>`, and `task.py list-context <task>`. `task.py create` rejects a slug already present in `.moluoxixi/tasks/archive/**`.
+- `.moluoxixi/workspace/` stores **deliberately written** developer journals. Raw cross-session dialogue is **not** stored here — it lives on disk under `~/.claude/projects/`, `~/.codex/sessions/`, and `~/.pi/agent/sessions/` and is recovered via `node "<skill-root>/scripts/trellis.mjs" mem search|extract|context`. The bundled `trellis-session-insight` skill teaches when to reach for `mem`.
+- `.moluoxixi/agents/{check,implement}.md` are bundled, platform-agnostic channel runtime agent definitions loaded by `node "<skill-root>/scripts/trellis.mjs" channel spawn --agent <name>`. Editable; `node "<skill-root>/scripts/trellis.mjs" update` backfills missing ones. Editing the per-platform `trellis-implement.md` / `trellis-check.md` does **not** change channel-runtime worker behavior.
+- `~/.moluoxixi/channels/<project>/<channel>/events.jsonl` is the channel runtime event log per project per channel. User-owned, file-locked sequence numbering, durable `idempotencyKey` support; never under `.moluoxixi/`.
 - Bundled multi-file skills are sourced from `roles/moluoxixi/skills/` and copied to every selected platform by `init-project`. Project-local update assets keep the same trees available for later refreshes.
 - Platform settings/config files decide which hooks, agents, skills, commands, prompts, and workflows actually run. Reasonix has no settings file — behavior is encoded inside skill frontmatter.
-- `.trellis/airules-init-manifest.json` and `.trellis/.runtime/` are management/runtime state files. Confirm necessity before editing them.
+- `.moluoxixi/airules-init-manifest.json` and `.moluoxixi/.runtime/` are management/runtime state files. Confirm necessity before editing them.
 
 ## Do Not
 
 - Do not treat Trellis upstream source code as the default target for local customization.
 - Do not install or modify a global Trellis package. Customize the generated project files or the Moluoxixi role source, according to the user's scope.
-- Do not overwrite user-modified local files with default templates; check `.trellis/airules-init-manifest.json` first and prefer `.new` sidecar files over destructive overwrites.
-- Do not put team-private project rules into any public bundled skill (`trellis-meta`, `trellis-spec-bootstrap`, `trellis-session-insight`, `trellis-channel`); put project rules in `.trellis/spec/`, a project-local skill, the current task, or the workspace journal — `node "<skill-root>/scripts/trellis.mjs" update` will overwrite anything inside a bundled skill directory.
-- Do not hand-edit `~/.trellis/channels/<project>/<channel>/events.jsonl`; sequence numbers are assigned under a file lock and replay-safe writes go through the `node "<skill-root>/scripts/trellis.mjs" channel` CLI or the `the Moluoxixi runtime source/channel` SDK.
-- Do not edit `.claude/agents/trellis-implement.md` (or any other per-platform sub-agent file) when the goal is to change channel runtime worker behavior — edit `.trellis/agents/<name>.md` instead.
-- Do not describe removed or never-shipped mechanisms as current Trellis behavior; cross-check against the local `.trellis/config.yaml` and the installed CLI's `trellis --help` before claiming a knob exists.
+- Do not overwrite user-modified local files with default templates; check `.moluoxixi/airules-init-manifest.json` first and prefer `.new` sidecar files over destructive overwrites.
+- Do not put team-private project rules into any public bundled skill (`trellis-meta`, `trellis-spec-bootstrap`, `trellis-session-insight`, `trellis-channel`); put project rules in `.moluoxixi/spec/`, a project-local skill, the current task, or the workspace journal — `node "<skill-root>/scripts/trellis.mjs" update` will overwrite anything inside a bundled skill directory.
+- Do not hand-edit `~/.moluoxixi/channels/<project>/<channel>/events.jsonl`; sequence numbers are assigned under a file lock and replay-safe writes go through the `node "<skill-root>/scripts/trellis.mjs" channel` CLI or the `the Moluoxixi runtime source/channel` SDK.
+- Do not edit `.claude/agents/trellis-implement.md` (or any other per-platform sub-agent file) when the goal is to change channel runtime worker behavior — edit `.moluoxixi/agents/<name>.md` instead.
+- Do not describe removed or never-shipped mechanisms as current Trellis behavior; cross-check against the local `.moluoxixi/config.yaml` and the installed CLI's `trellis --help` before claiming a knob exists.

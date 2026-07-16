@@ -10,12 +10,12 @@ Use when the user says "和 codex/claude 讨论一下", "brainstorm", or "拉一
 
 ```bash
 node "<skill-root>/scripts/trellis.mjs" channel create brainstorm-storage-layer --by main \
-  --task .trellis/tasks/05-XX-storage-adapter
+  --task .moluoxixi/tasks/05-XX-storage-adapter
 
 node "<skill-root>/scripts/trellis.mjs" channel spawn brainstorm-storage-layer \
   --agent architect --provider codex \
-  --file .trellis/tasks/05-XX-storage-adapter/prd.md \
-  --file .trellis/tasks/05-XX-storage-adapter/design.md \
+  --file .moluoxixi/tasks/05-XX-storage-adapter/prd.md \
+  --file .moluoxixi/tasks/05-XX-storage-adapter/design.md \
   --as cx-arch --timeout 30m
 
 node "<skill-root>/scripts/trellis.mjs" channel send brainstorm-storage-layer \
@@ -51,7 +51,7 @@ needed.
 Use when the user asks to dispatch implementation or review work.
 
 ```bash
-TASK=.trellis/tasks/05-12-foo
+TASK=.moluoxixi/tasks/05-12-foo
 node "<skill-root>/scripts/trellis.mjs" channel create cr-foo --task "$TASK" --by main
 
 node "<skill-root>/scripts/trellis.mjs" channel spawn cr-foo \

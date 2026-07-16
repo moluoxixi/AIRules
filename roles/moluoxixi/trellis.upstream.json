@@ -57,10 +57,10 @@
       "AIRules supplies the bundle entrypoint and the local workflow/update dispatcher"
     ],
     "regular_files": 85,
-    "regular_file_bytes": 860602,
+    "regular_file_bytes": 860684,
     "combined_hash": {
       "algorithm": "sha256-posix-path-size-content-v1",
-      "value": "2b3b0874dc591a082896f7aef2fb84b36e516847448a45a24a45306d74ee9f18"
+      "value": "74f58adfcad4924841d5a1c9a2ba5a336adaa5454be3dd0c3d1d6f90b0222b0b"
     },
     "bundled_dependencies": [
       "Chalk 5.6.2 (MIT)",

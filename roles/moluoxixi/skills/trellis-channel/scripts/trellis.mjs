@@ -9,7 +9,7 @@ import { fileURLToPath } from 'node:url'
 function findRuntime() {
   let project = path.resolve(process.cwd())
   while (true) {
-    const candidate = path.join(project, '.trellis', 'runtime', 'trellis.mjs')
+    const candidate = path.join(project, '.moluoxixi', 'runtime', 'trellis.mjs')
     if (fs.statSync(candidate, { throwIfNoEntry: false })?.isFile())
       return candidate
     const parent = path.dirname(project)
@@ -20,7 +20,7 @@ function findRuntime() {
 
   let current = path.dirname(fs.realpathSync(fileURLToPath(import.meta.url)))
   while (true) {
-    const projectRuntime = path.join(current, '.trellis', 'runtime', 'trellis.mjs')
+    const projectRuntime = path.join(current, '.moluoxixi', 'runtime', 'trellis.mjs')
     if (fs.statSync(projectRuntime, { throwIfNoEntry: false })?.isFile())
       return projectRuntime
     if (path.basename(current) === 'moluoxixi') {

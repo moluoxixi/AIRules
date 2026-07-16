@@ -10,6 +10,7 @@ import { rebuildVendorAssets } from '../../../scripts/lib/vendor-staging.js'
 interface InitSummary {
   conflicts: string[]
   created: string[]
+  manifest: string
   platforms: string[]
   preserved: string[]
   unchanged: string[]
@@ -114,10 +115,11 @@ describe('moluoxixi init-project skill', () => {
     expect(result).toMatchObject({ status: 0, stderr: '' })
     expect(result.summary?.platforms).toHaveLength(18)
     expect(result.summary?.conflicts).toEqual([])
+    expect(result.summary?.manifest).toBe('.moluoxixi/airules-init-manifest.json')
     expect(result.summary?.created).toEqual(expect.arrayContaining([
-      '.trellis/scripts/task.py',
-      '.trellis/runtime/trellis.mjs',
-      '.trellis/runtime/update/scripts/init-project.mjs',
+      '.moluoxixi/scripts/task.py',
+      '.moluoxixi/runtime/trellis.mjs',
+      '.moluoxixi/runtime/update/scripts/init-project.mjs',
       '.claude/settings.json',
       '.claude/skills/trellis-channel/scripts/trellis.mjs',
       '.codex/config.toml',
@@ -134,14 +136,30 @@ describe('moluoxixi init-project skill', () => {
     const first = runInitializer(projectRoot, args)
     expect(first).toMatchObject({ status: 0, stderr: '' })
     expect(first.summary?.conflicts).toEqual([])
-    expect(fs.existsSync(path.join(projectRoot, '.trellis', 'scripts', 'task.py'))).toBe(true)
-    expect(fs.existsSync(path.join(projectRoot, '.trellis', 'runtime', 'source', 'packages', 'core', 'src', 'channel', 'index.ts'))).toBe(true)
-    expect(fs.existsSync(path.join(projectRoot, '.trellis', 'runtime', 'update', 'assets', 'trellis-v0.6.7', 'templates', 'trellis', 'workflow.md'))).toBe(true)
+    expect(fs.existsSync(path.join(projectRoot, '.moluoxixi', 'scripts', 'task.py'))).toBe(true)
+    expect(fs.existsSync(path.join(projectRoot, '.moluoxixi', 'runtime', 'source', 'packages', 'core', 'src', 'channel', 'index.ts'))).toBe(true)
+    expect(fs.existsSync(path.join(projectRoot, '.moluoxixi', 'runtime', 'update', 'assets', 'trellis-v0.6.7', 'templates', 'trellis', 'workflow.md'))).toBe(true)
+    expect(fs.existsSync(path.join(projectRoot, '.moluoxixi', 'airules-init-manifest.json'))).toBe(true)
+    expect(fs.existsSync(path.join(projectRoot, '.trellis'))).toBe(false)
     expect(fs.existsSync(path.join(projectRoot, '.claude', 'settings.json'))).toBe(true)
     expect(fs.existsSync(path.join(projectRoot, '.codex', 'config.toml'))).toBe(true)
-    expect(fs.readFileSync(path.join(projectRoot, '.trellis', '.developer'), 'utf8')).toBe('tester\n')
-    expect(fs.readFileSync(path.join(projectRoot, '.trellis', 'THIRD_PARTY_NOTICES.md'), 'utf8')).toContain('AIRules replaced the upstream initializer')
-    expect(fs.readFileSync(path.join(projectRoot, '.trellis', 'scripts', 'common', 'session_context.py'), 'utf8')).not.toContain('["trellis", "--version"]')
+    expect(fs.readFileSync(path.join(projectRoot, '.moluoxixi', '.developer'), 'utf8')).toBe('tester\n')
+    expect(fs.readFileSync(path.join(projectRoot, '.moluoxixi', 'THIRD_PARTY_NOTICES.md'), 'utf8')).toContain('AIRules replaced the upstream initializer')
+    expect(fs.readFileSync(path.join(projectRoot, '.moluoxixi', 'scripts', 'common', 'session_context.py'), 'utf8')).not.toContain('["trellis", "--version"]')
+    const projectedRoots = [
+      path.join(projectRoot, '.moluoxixi', 'scripts'),
+      path.join(projectRoot, '.moluoxixi', 'agents'),
+      path.join(projectRoot, '.moluoxixi', 'spec'),
+      path.join(projectRoot, '.moluoxixi', 'workspace'),
+      path.join(projectRoot, '.agents'),
+      path.join(projectRoot, '.claude'),
+      path.join(projectRoot, '.codex'),
+    ]
+    const projectedFiles = projectedRoots.flatMap(root => walkFiles(root))
+    projectedFiles.push(path.join(projectRoot, '.moluoxixi', 'workflow.md'))
+    projectedFiles.push(path.join(projectRoot, '.moluoxixi', 'config.yaml'))
+    projectedFiles.push(path.join(projectRoot, 'AGENTS.md'))
+    expect(projectedFiles.filter(file => fs.readFileSync(file, 'utf8').includes('.trellis'))).toEqual([])
     const launcher = path.join(projectRoot, '.agents', 'skills', 'trellis-channel', 'scripts', 'trellis.mjs')
     expect(runRuntime(launcher, ['--version'], projectRoot)).toMatchObject({ status: 0, stderr: '', stdout: '0.6.7-airules.1\n' })
     const initialSnapshot = snapshot(projectRoot)
@@ -152,10 +170,13 @@ describe('moluoxixi init-project skill', () => {
     expect(second.summary?.updated).toEqual([])
     expect(snapshot(projectRoot)).toEqual(initialSnapshot)
 
-    const projectRuntime = path.join(projectRoot, '.trellis', 'runtime', 'trellis.mjs')
+    const projectRuntime = path.join(projectRoot, '.moluoxixi', 'runtime', 'trellis.mjs')
     const update = runRuntime(projectRuntime, ['update', '--dry-run'], projectRoot)
     expect(update).toMatchObject({ status: 0, stderr: '' })
     expect(JSON.parse(update.stdout)).toMatchObject({ conflicts: [], created: [], updated: [] })
+    const workflow = runRuntime(projectRuntime, ['workflow', '--force'], projectRoot)
+    expect(workflow).toMatchObject({ status: 0, stderr: '' })
+    expect(fs.readFileSync(path.join(projectRoot, '.moluoxixi', 'workflow.md'), 'utf8')).not.toContain('.trellis')
   })
 
   it('provides local channel and memory command surfaces without a Trellis package', () => {
@@ -175,15 +196,15 @@ describe('moluoxixi init-project skill', () => {
   it('merges managed configuration and preserves conflicting user files by default', () => {
     const projectRoot = temporaryProject()
     fs.mkdirSync(path.join(projectRoot, '.claude'), { recursive: true })
-    fs.mkdirSync(path.join(projectRoot, '.trellis'), { recursive: true })
+    fs.mkdirSync(path.join(projectRoot, '.moluoxixi'), { recursive: true })
     fs.writeFileSync(path.join(projectRoot, 'AGENTS.md'), '# User rules\n')
     fs.writeFileSync(path.join(projectRoot, '.claude', 'settings.json'), '{"custom":true}\n')
-    fs.writeFileSync(path.join(projectRoot, '.trellis', 'workflow.md'), '# User workflow\n')
+    fs.writeFileSync(path.join(projectRoot, '.moluoxixi', 'workflow.md'), '# User workflow\n')
 
     const preserved = runInitializer(projectRoot, ['--platform', 'claude'])
     expect(preserved.status).toBe(2)
-    expect(preserved.summary?.conflicts).toContain('.trellis/workflow.md')
-    expect(fs.readFileSync(path.join(projectRoot, '.trellis', 'workflow.md'), 'utf8')).toBe('# User workflow\n')
+    expect(preserved.summary?.conflicts).toContain('.moluoxixi/workflow.md')
+    expect(fs.readFileSync(path.join(projectRoot, '.moluoxixi', 'workflow.md'), 'utf8')).toBe('# User workflow\n')
     expect(fs.readFileSync(path.join(projectRoot, 'AGENTS.md'), 'utf8')).toContain('# User rules')
     expect(fs.readFileSync(path.join(projectRoot, 'AGENTS.md'), 'utf8')).toContain('<!-- TRELLIS:START -->')
     const settings = JSON.parse(fs.readFileSync(path.join(projectRoot, '.claude', 'settings.json'), 'utf8')) as Record<string, unknown>
@@ -192,10 +213,10 @@ describe('moluoxixi init-project skill', () => {
 
     const forced = runInitializer(projectRoot, ['--platform', 'claude', '--force'])
     expect(forced.status).toBe(0)
-    expect(fs.readFileSync(path.join(projectRoot, '.trellis', 'workflow.md'), 'utf8')).not.toBe('# User workflow\n')
+    expect(fs.readFileSync(path.join(projectRoot, '.moluoxixi', 'workflow.md'), 'utf8')).not.toBe('# User workflow\n')
   })
 
-  it('stages all local skills and the complete role runtime', async () => {
+  it('projects all local skills, agents, rules, and the complete role runtime', async () => {
     const root = temporaryProject('airules-init-project-staging-')
     const homeDir = path.join(root, 'home')
     const repository = path.join(homeDir, 'vendor', 'repos', 'moluoxixi')
@@ -215,6 +236,7 @@ describe('moluoxixi init-project skill', () => {
     expect(inventory.skills).toContain('init-project')
     expect(inventory.skills).toContain('trellis-channel')
     expect(inventory.skills).toContain('trellis-session-insight')
+    expect(inventory.agents).toEqual(expect.arrayContaining(['trellis-check.md', 'trellis-implement.md', 'trellis-research.md']))
     const staged = path.join(homeDir, 'vendor', 'skills', 'init-project')
     expect(fs.existsSync(path.join(staged, 'scripts', 'init-project.mjs'))).toBe(true)
     expect(fs.existsSync(path.join(staged, 'references', 'platforms.md'))).toBe(true)
@@ -222,6 +244,8 @@ describe('moluoxixi init-project skill', () => {
     const channelLauncher = path.join(homeDir, 'vendor', 'skills', 'trellis-channel', 'scripts', 'trellis.mjs')
     expect(fs.existsSync(channelLauncher)).toBe(true)
     expect(fs.existsSync(path.join(homeDir, 'roles', 'moluoxixi', 'runtime', 'trellis.mjs'))).toBe(true)
+    expect(fs.readFileSync(path.join(homeDir, 'vendor', 'agents', 'trellis-implement.md'), 'utf8')).toContain('.moluoxixi/spec/')
+    expect(fs.readFileSync(path.join(homeDir, 'vendor', 'AGENTS.md'), 'utf8')).toContain('.moluoxixi/workflow.md')
     expect(runRuntime(channelLauncher, ['--version'], root)).toMatchObject({ status: 0, stderr: '', stdout: '0.6.7-airules.1\n' })
   })
 })

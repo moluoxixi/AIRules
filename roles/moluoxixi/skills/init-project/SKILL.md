@@ -27,8 +27,8 @@ Use the bundled AIRules initializer. Do not run `trellis init`, `npx trellis`, o
 - Keep every output inside the canonical project root and reject symlinked path segments.
 - Preserve unknown files by default.
 - Merge JSON configuration and managed instruction blocks without deleting unrelated user content.
-- Track only files or blocks actually owned by this initializer in `.trellis/airules-init-manifest.json`.
+- Track only files or blocks actually owned by this initializer in `.moluoxixi/airules-init-manifest.json`.
 - Roll back writes when any transactional write fails.
-- Require Python 3.9+ because the migrated project runtime under `.trellis/scripts` is Python.
+- Require Python 3.9+ because the migrated project runtime under `.moluoxixi/scripts` is Python.
 
 Use `--platform all` only when the user explicitly wants every supported integration. Use `--python <command>` when the project environment requires a non-default Python executable.

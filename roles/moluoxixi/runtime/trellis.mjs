@@ -10,6 +10,8 @@ import { fileURLToPath } from 'node:url'
 
 const RUNTIME_DIR = path.dirname(fileURLToPath(import.meta.url))
 const VERSION = '0.6.7-airules.1'
+const PROJECT_ROOT_DIR = '.moluoxixi'
+const WORKFLOW_MANIFEST_PATH = `${PROJECT_ROOT_DIR}/workflow.md`
 
 function sha256(content) {
   return createHash('sha256').update(content).digest('hex')
@@ -18,16 +20,16 @@ function sha256(content) {
 function findProjectRoot(start = process.cwd()) {
   let current = path.resolve(start)
   while (true) {
-    if (fs.existsSync(path.join(current, '.trellis')))
+    if (fs.existsSync(path.join(current, PROJECT_ROOT_DIR)))
       return current
     const parent = path.dirname(current)
     if (parent === current)
       break
     current = parent
   }
-  if (path.basename(path.dirname(RUNTIME_DIR)) === '.trellis')
+  if (path.basename(path.dirname(RUNTIME_DIR)) === PROJECT_ROOT_DIR)
     return path.resolve(RUNTIME_DIR, '..', '..')
-  throw new Error(`No .trellis directory found from ${start}`)
+  throw new Error(`No ${PROJECT_ROOT_DIR} directory found from ${start}`)
 }
 
 function runNode(entry, args) {
@@ -51,7 +53,7 @@ function parseValue(args, index, flag) {
 
 function update(args) {
   const projectRoot = findProjectRoot()
-  const manifestPath = path.join(projectRoot, '.trellis', 'airules-init-manifest.json')
+  const manifestPath = path.join(projectRoot, PROJECT_ROOT_DIR, 'airules-init-manifest.json')
   const manifest = JSON.parse(fs.readFileSync(manifestPath, 'utf8'))
   const forwarded = ['--project', projectRoot]
   const platforms = []
@@ -84,7 +86,7 @@ function update(args) {
     throw new Error('Cannot infer initialized platforms; pass --platform')
   forwarded.push('--platform', selected.join(','))
 
-  const projectUpdater = path.join(projectRoot, '.trellis', 'runtime', 'update', 'scripts', 'init-project.mjs')
+  const projectUpdater = path.join(projectRoot, PROJECT_ROOT_DIR, 'runtime', 'update', 'scripts', 'init-project.mjs')
   const roleUpdater = path.resolve(RUNTIME_DIR, '..', 'skills', 'init-project', 'scripts', 'init-project.mjs')
   const entry = fs.existsSync(projectUpdater) ? projectUpdater : roleUpdater
   if (!fs.existsSync(entry))
@@ -131,6 +133,15 @@ function writeAtomic(target, content) {
   }
 }
 
+function localizeNativeWorkflow(content) {
+  return content
+    .replaceAll('trellis channel', `node ${PROJECT_ROOT_DIR}/runtime/trellis.mjs channel`)
+    .replaceAll('trellis mem', `node ${PROJECT_ROOT_DIR}/runtime/trellis.mjs mem`)
+    .replaceAll('trellis workflow', `node ${PROJECT_ROOT_DIR}/runtime/trellis.mjs workflow`)
+    .replaceAll('trellis update', `node ${PROJECT_ROOT_DIR}/runtime/trellis.mjs update`)
+    .replaceAll('.trellis', PROJECT_ROOT_DIR)
+}
+
 function workflow(args) {
   const options = parseWorkflowArgs(args)
   if (options.help) {
@@ -143,24 +154,26 @@ function workflow(args) {
   }
 
   const projectRoot = findProjectRoot()
-  const manifestPath = path.join(projectRoot, '.trellis', 'airules-init-manifest.json')
+  const manifestPath = path.join(projectRoot, PROJECT_ROOT_DIR, 'airules-init-manifest.json')
   const manifest = JSON.parse(fs.readFileSync(manifestPath, 'utf8'))
-  const target = path.join(projectRoot, '.trellis', 'workflow.md')
+  const target = path.join(projectRoot, PROJECT_ROOT_DIR, 'workflow.md')
   const templateId = options.template ?? 'native'
-  const nativeTemplate = path.join(projectRoot, '.trellis', 'runtime', 'update', 'assets', 'trellis-v0.6.7', 'templates', 'trellis', 'workflow.md')
+  const nativeTemplate = path.join(projectRoot, PROJECT_ROOT_DIR, 'runtime', 'update', 'assets', 'trellis-v0.6.7', 'templates', 'trellis', 'workflow.md')
   const source = templateId === 'native' ? nativeTemplate : path.resolve(projectRoot, templateId)
   if (!fs.statSync(source, { throwIfNoEntry: false })?.isFile())
     throw new Error(`Workflow template is unavailable: ${source}`)
-  const desired = fs.readFileSync(source)
+  const desired = templateId === 'native'
+    ? Buffer.from(localizeNativeWorkflow(fs.readFileSync(source, 'utf8')))
+    : fs.readFileSync(source)
   const current = fs.readFileSync(target)
-  const owned = manifest.entries?.['.trellis/workflow.md']
+  const owned = manifest.entries?.[WORKFLOW_MANIFEST_PATH]
   const pristine = owned?.baselineHash === sha256(current)
 
   if (!current.equals(desired) && !pristine && !options.force && !options.createNew) {
-    throw new Error('.trellis/workflow.md has local edits; use --force or --create-new')
+    throw new Error(`${WORKFLOW_MANIFEST_PATH} has local edits; use --force or --create-new`)
   }
   if (current.equals(desired) && !options.createNew) {
-    process.stdout.write('.trellis/workflow.md already matches the selected template\n')
+    process.stdout.write(`${WORKFLOW_MANIFEST_PATH} already matches the selected template\n`)
     return
   }
 
@@ -168,7 +181,7 @@ function workflow(args) {
   writeAtomic(destination, desired)
   if (!options.createNew) {
     if (templateId === 'native') {
-      manifest.entries['.trellis/workflow.md'] = {
+      manifest.entries[WORKFLOW_MANIFEST_PATH] = {
         baselineHash: sha256(desired),
         mode: 'replace',
         platform: 'shared',
@@ -176,7 +189,7 @@ function workflow(args) {
       }
     }
     else {
-      delete manifest.entries['.trellis/workflow.md']
+      delete manifest.entries[WORKFLOW_MANIFEST_PATH]
     }
     writeAtomic(manifestPath, Buffer.from(`${JSON.stringify(manifest, null, 2)}\n`))
   }

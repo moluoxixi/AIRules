@@ -5,7 +5,7 @@ description: Use Trellis channel for live multi-agent collaboration, spawned wor
 
 # trellis-channel
 
-Resolve `<skill-root>` to this skill's directory before running commands. Always use `scripts/trellis.mjs`; do not install or invoke a global Trellis CLI. The launcher selects the initialized project's `.trellis/runtime` first and falls back to the runtime distributed with the Moluoxixi role.
+Resolve `<skill-root>` to this skill's directory before running commands. Always use `scripts/trellis.mjs`; do not install or invoke a global Trellis CLI. The launcher selects the initialized project's `.moluoxixi/runtime` first and falls back to the runtime distributed with the Moluoxixi role.
 
 `node "<skill-root>/scripts/trellis.mjs" channel` is the local multi-agent collaboration runtime. Reach for it when agents need to talk through a durable event log, when a worker should be spawned as a peer process, when an in-flight worker needs interrupt / debugging, or when feedback should be recorded on a durable `--type forum` channel.
 

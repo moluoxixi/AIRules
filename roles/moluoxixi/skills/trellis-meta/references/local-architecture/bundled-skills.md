@@ -12,7 +12,7 @@ The `init-project` writer also places project-facing Trellis skills into each se
 | `trellis-channel` | Durable multi-agent channels, worker lifecycle, forum/thread boards, and debugging. |
 | `trellis-session-insight` | Read-only search and extraction over local Claude, Codex, and Pi sessions. |
 | `trellis-meta` | Explain and customize the generated architecture. |
-| `trellis-spec-bootstrap` | Build or refresh `.trellis/spec/` from the project codebase. |
+| `trellis-spec-bootstrap` | Build or refresh `.moluoxixi/spec/` from the project codebase. |
 
 Other workflow skills such as `trellis-start`, `trellis-before-dev`, and `trellis-finish-work` are also projected from the canonical role skill root.
 
@@ -29,7 +29,7 @@ The initializer selects the native skill directory for each platform. Important 
 | GitHub Copilot | `.github/skills/` |
 | Pi | `.pi/skills/` |
 
-All files written by AIRules are recorded in `.trellis/airules-init-manifest.json`. A later `node "<skill-root>/scripts/trellis.mjs" update` reruns the project-local initializer and preserves modified or unknown files unless `--force` is explicit.
+All files written by AIRules are recorded in `.moluoxixi/airules-init-manifest.json`. A later `node "<skill-root>/scripts/trellis.mjs" update` reruns the project-local initializer and preserves modified or unknown files unless `--force` is explicit.
 
 ## Add Or Change A Role Skill
 
@@ -46,4 +46,4 @@ Do not edit the raw `.agents` copy to customize Moluoxixi behavior. That tree is
 
 Project teams may add a differently named skill directly under a platform skill root. AIRules does not claim ownership of unknown files. Editing an AIRules-managed bundled skill is also allowed, but the next update reports it as a conflict and preserves it by default.
 
-Use `.trellis/spec/` for durable project conventions. Use a project-local skill for project-specific procedures. Keep public role skills free of private project content.
+Use `.moluoxixi/spec/` for durable project conventions. Use a project-local skill for project-specific procedures. Keep public role skills free of private project content.

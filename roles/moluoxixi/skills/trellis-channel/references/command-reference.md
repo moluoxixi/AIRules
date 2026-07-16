@@ -213,7 +213,7 @@ Behavior:
 ```bash
 node "<skill-root>/scripts/trellis.mjs" channel spawn <name>
   [--scope project|global]
-  [--agent <agent-name>]                  # loads .trellis/agents/<name>.md
+  [--agent <agent-name>]                  # loads .moluoxixi/agents/<name>.md
   [--provider claude|codex]               # overrides agent file
   [--as <worker-name>]                    # default: agent name
   [--cwd <path>]
@@ -244,7 +244,7 @@ Behavior:
 - OOM-guard precedence: CLI flag → env var
   (`TRELLIS_CHANNEL_WORKER_IDLE_TIMEOUT`,
   `TRELLIS_CHANNEL_MAX_LIVE_WORKERS`) →
-  `.trellis/config.yaml#channel.worker_guard` → built-in defaults.
+  `.moluoxixi/config.yaml#channel.worker_guard` → built-in defaults.
 
 ### `run [name]`
 
@@ -477,4 +477,3 @@ Forum channels are event-sourced; use the CLI reducers
   pipe); diagnostic notes go to stderr.
 - **Errors** go through `chalk.red("Error:")` to stderr and `exit 1`.
 - **`wait` timeout** specifically exits **124**.
-

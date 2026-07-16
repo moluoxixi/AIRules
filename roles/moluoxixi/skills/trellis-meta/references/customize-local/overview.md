@@ -1,6 +1,6 @@
 # Local Customization Overview
 
-This directory is for an AI working in a project initialized by the Moluoxixi `init-project` skill. Modify generated `.trellis/` and platform directories inside the project; do not install or edit an upstream Trellis package.
+This directory is for an AI working in a project initialized by the Moluoxixi `init-project` skill. Modify generated `.moluoxixi/` and platform directories inside the project; do not install or edit an upstream Trellis package.
 
 ## First Determine What The User Actually Wants To Change
 
@@ -18,29 +18,29 @@ This directory is for an AI working in a project initialized by the Moluoxixi `i
 ## General Operation Order
 
 1. **Confirm platform and directories**: inspect which directories exist, such as `.claude/`, `.codex/`, `.cursor/`, `.zcode/`.
-2. **Confirm the current active task**: run `python3 ./.trellis/scripts/task.py current --source`.
-3. **Read the local source of truth**: prefer `.trellis/workflow.md`, `.trellis/config.yaml`, and relevant platform files.
+2. **Confirm the current active task**: run `python3 ./.moluoxixi/scripts/task.py current --source`.
+3. **Read the local source of truth**: prefer `.moluoxixi/workflow.md`, `.moluoxixi/config.yaml`, and relevant platform files.
 4. **Modify narrowly**: edit only files related to the user's request.
-5. **Synchronize semantics**: if a shared flow changes, check whether platform entry points also need changes; if a platform entry changes, check whether `.trellis/workflow.md` still agrees.
+5. **Synchronize semantics**: if a shared flow changes, check whether platform entry points also need changes; if a platform entry changes, check whether `.moluoxixi/workflow.md` still agrees.
 
 ## Local File Priority
 
 | Layer | Files |
 | --- | --- |
-| Workflow | `.trellis/workflow.md` |
-| Project configuration | `.trellis/config.yaml` |
-| Task material | `.trellis/tasks/<task>/` |
-| Project specs | `.trellis/spec/` |
-| Runtime scripts | `.trellis/scripts/` |
+| Workflow | `.moluoxixi/workflow.md` |
+| Project configuration | `.moluoxixi/config.yaml` |
+| Task material | `.moluoxixi/tasks/<task>/` |
+| Project specs | `.moluoxixi/spec/` |
+| Runtime scripts | `.moluoxixi/scripts/` |
 | Platform integration | `.claude/`, `.codex/`, `.cursor/`, `.opencode/`, `.zcode/`, and similar directories |
 | Shared skill | `.agents/skills/` |
 
 ## Things Not To Do By Default
 
-- Do not edit `.trellis/runtime/` unless the request is specifically about runtime implementation.
+- Do not edit `.moluoxixi/runtime/` unless the request is specifically about runtime implementation.
 - Do not assume the user has the Trellis GitHub repository.
 - Do not overwrite local files already modified by the user with default templates.
-- Do not put team project rules into public `trellis-meta`; project rules belong in `.trellis/spec/` or a local skill.
+- Do not put team project rules into public `trellis-meta`; project rules belong in `.moluoxixi/spec/` or a local skill.
 
 ## When To Inspect Role Source
 
