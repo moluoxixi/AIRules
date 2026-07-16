@@ -19,6 +19,8 @@ export default defineConfig({
       ],
       exclude: [
         '**/__test__/**',
+        // This entrypoint executes in a supervised child process, outside the parent V8 coverage isolate.
+        '**/host-process-worker.ts',
         'vitest.config.ts',
         'eslint.config.ts',
       ],
