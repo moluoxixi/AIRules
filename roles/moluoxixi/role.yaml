@@ -1,11 +1,11 @@
 schema_version: 1
 role_id: moluoxixi
-role_version: 0.2.0
+role_version: 0.3.0
 status: experimental
 canonical_root: roles/moluoxixi
-description: Curated Trellis role assets distributed directly as the Moluoxixi role.
+description: Self-contained Trellis role assets and AIRules-owned project initialization.
 assets:
-  skills: .agents/skills
+  skills: skills
   agents: .claude/agents
   rules: .
 distribution:
@@ -13,8 +13,9 @@ distribution:
   full_role_path_required: true
   npm_embedded_source: false
 entrypoints:
-  cli: trellis
-  initialize_project: trellis init
+  initialize_project_skill: init-project
+  initialize_project_script: skills/init-project/scripts/init-project.mjs
+  trellis_runtime: runtime/trellis.mjs
 third_party:
   trellis:
     paths:
@@ -26,8 +27,9 @@ third_party:
       - .opencode
       - .pi
       - AGENTS.md
-      - COPYRIGHT
-      - LICENSE
+      - runtime/source
+      - runtime/vendor/channel-mem.mjs
+      - skills/init-project/assets/trellis-v0.6.7
     source: https://github.com/mindfold-ai/Trellis.git
     version: 0.6.7
     revision: e7c5ead4d0dfd717d11a40b6bc0c80d8af94c49a

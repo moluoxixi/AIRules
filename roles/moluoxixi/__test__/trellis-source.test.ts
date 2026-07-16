@@ -12,10 +12,30 @@ interface UpstreamLock {
     value: string
   }
   license: string
-  npm_cli: {
-    integrity: string
-    package: string
-    version: string
+  local_initializer: {
+    license: string
+    path: string
+    uses_upstream_cli: boolean
+  }
+  migrated_project_templates: {
+    combined_hash: {
+      algorithm: string
+      value: string
+    }
+    local_path: string
+    regular_file_bytes: number
+    regular_files: number
+    upstream_path: string
+  }
+  migrated_runtime: {
+    combined_hash: {
+      algorithm: string
+      value: string
+    }
+    local_paths: string[]
+    regular_file_bytes: number
+    regular_files: number
+    upstream_paths: string[]
   }
   ref: string
   revision: string
@@ -39,8 +59,9 @@ interface RoleManifest {
     npm_embedded_source: boolean
   }
   entrypoints: {
-    cli: string
-    initialize_project: string
+    initialize_project_script: string
+    initialize_project_skill: string
+    trellis_runtime: string
   }
   role_id: string
   third_party: {
@@ -68,8 +89,6 @@ const selectedPaths = [
   '.opencode',
   '.pi',
   'AGENTS.md',
-  'COPYRIGHT',
-  'LICENSE',
 ]
 
 const skillNames = [
@@ -223,23 +242,25 @@ describe('moluoxixi curated Trellis role assets', () => {
       '.claude',
       '.codex',
       '.cursor',
-      '.npmignore',
       '.omp',
       '.opencode',
       '.pi',
       'AGENTS.md',
-      'COPYRIGHT',
-      'LICENSE',
-      'THIRD_PARTY_NOTICES.md',
       '__test__',
       'constants',
       'role.yaml',
+      'runtime',
+      'skills',
       'trellis.upstream.json',
     ]))
 
     const actualSkills = fs.readdirSync(resolveRolePath('.agents/skills'), { withFileTypes: true })
     expect(actualSkills.every(entry => entry.isDirectory())).toBe(true)
     expect(sortPaths(actualSkills.map(entry => entry.name))).toEqual(sortPaths([...skillNames]))
+
+    const distributedSkills = fs.readdirSync(resolveRolePath('skills'), { withFileTypes: true })
+    expect(distributedSkills.every(entry => entry.isDirectory())).toBe(true)
+    expect(sortPaths(distributedSkills.map(entry => entry.name))).toEqual(sortPaths([...skillNames, 'init-project']))
 
     const actualAgents = fs.readdirSync(resolveRolePath('.claude/agents'), { withFileTypes: true })
     expect(actualAgents.every(entry => entry.isFile())).toBe(true)
@@ -285,13 +306,13 @@ describe('moluoxixi curated Trellis role assets', () => {
     expect(fs.existsSync(resolveRolePath(relativePath))).toBe(false)
   })
 
-  it('maps the selected native assets and installs the pinned CLI separately', () => {
+  it('maps native assets and distributes the self-contained initializer', () => {
     const manifest = readRoleManifest()
     expect(manifest).toMatchObject({
       assets: {
         agents: '.claude/agents',
         rules: '.',
-        skills: '.agents/skills',
+        skills: 'skills',
       },
       canonical_root: 'roles/moluoxixi',
       distribution: {
@@ -300,17 +321,23 @@ describe('moluoxixi curated Trellis role assets', () => {
         npm_embedded_source: false,
       },
       entrypoints: {
-        cli: 'trellis',
-        initialize_project: 'trellis init',
+        initialize_project_script: 'skills/init-project/scripts/init-project.mjs',
+        initialize_project_skill: 'init-project',
+        trellis_runtime: 'runtime/trellis.mjs',
       },
       role_id: 'moluoxixi',
     })
     expect(manifest.third_party.trellis).toEqual({
       license: lock.license,
-      paths: lock.selected_paths,
+      paths: [
+        ...lock.selected_paths,
+        'runtime/source',
+        'runtime/vendor/channel-mem.mjs',
+        'skills/init-project/assets/trellis-v0.6.7',
+      ],
       revision: lock.revision,
       source: lock.source,
-      version: lock.npm_cli.version,
+      version: lock.ref.slice(1),
     })
     expect(fs.statSync(resolveRolePath(manifest.assets.skills)).isDirectory()).toBe(true)
     expect(fs.statSync(resolveRolePath(manifest.assets.agents)).isDirectory()).toBe(true)
@@ -320,28 +347,39 @@ describe('moluoxixi curated Trellis role assets', () => {
     expect(vendors).toHaveLength(1)
     expect(vendors[0]).toMatchObject({
       name: 'moluoxixi',
-      projections: [{ kind: 'role-assets', sourceDir: 'roles/moluoxixi' }],
-      setup: [{
-        args: ['install', '--global', `@mindfoldhq/trellis@${lock.npm_cli.version}`],
-        command: 'npm',
-      }],
+      projections: [
+        { kind: 'role-assets', sourceDir: 'roles/moluoxixi' },
+      ],
     })
-    expect(lock.ref).toBe(`v${lock.npm_cli.version}`)
-    expect(lock.npm_cli).toMatchObject({
-      integrity: expect.stringMatching(/^sha512-/u),
-      package: '@mindfoldhq/trellis',
+    expect(vendors[0]?.setup).toBeUndefined()
+    expect(lock.local_initializer).toEqual({
+      license: 'MIT',
+      path: 'skills/init-project/scripts/init-project.mjs',
+      uses_upstream_cli: false,
     })
+    expect(lock.migrated_project_templates).toMatchObject({
+      local_path: 'skills/init-project/assets/trellis-v0.6.7',
+      regular_file_bytes: 1158179,
+      regular_files: 201,
+      upstream_path: 'packages/cli/src/templates',
+    })
+    const runtimeFiles = lock.migrated_runtime.local_paths.flatMap(collectFiles)
+    expect(runtimeFiles).toHaveLength(lock.migrated_runtime.regular_files)
+    expect(selectedStats(sortPaths(runtimeFiles))).toEqual({
+      bytes: lock.migrated_runtime.regular_file_bytes,
+      hash: lock.migrated_runtime.combined_hash.value,
+    })
+    expect(fs.statSync(resolveRolePath('runtime/trellis.mjs')).isFile()).toBe(true)
   })
 
-  it('retains the upstream license and documents the curated boundary', () => {
-    expect(fs.readFileSync(resolveRolePath('LICENSE'), 'utf8')).toContain('GNU AFFERO GENERAL PUBLIC LICENSE')
-    expect(fs.readFileSync(resolveRolePath('COPYRIGHT'), 'utf8')).toContain('Copyright (C) 2026 Mindfold LLC')
-
-    const notice = fs.readFileSync(resolveRolePath('THIRD_PARTY_NOTICES.md'), 'utf8')
-    expect(notice).toContain('curated source-form subset')
+  it('keeps legal texts with the migrated assets instead of the role root', () => {
+    expect(fs.existsSync(resolveRolePath('LICENSE'))).toBe(false)
+    expect(fs.existsSync(resolveRolePath('COPYRIGHT'))).toBe(false)
+    expect(fs.existsSync(resolveRolePath('THIRD_PARTY_NOTICES.md'))).toBe(false)
+    expect(fs.readFileSync(resolveRolePath('skills/init-project/assets/trellis-v0.6.7/legal/LICENSE'), 'utf8')).toContain('GNU AFFERO GENERAL PUBLIC LICENSE')
+    expect(fs.readFileSync(resolveRolePath('skills/init-project/assets/trellis-v0.6.7/legal/COPYRIGHT'), 'utf8')).toContain('Copyright (C) 2026 Mindfold LLC')
+    const notice = fs.readFileSync(resolveRolePath('runtime/NOTICE.md'), 'utf8')
     expect(notice).toContain(lock.revision)
-    expect(notice).toContain(lock.tree)
-    expect(notice).toContain('@mindfoldhq/trellis@0.6.7')
-    expect(notice).toContain('369 selected files total 2,397,739 bytes')
+    expect(notice).toContain('vendor/channel-mem.mjs')
   })
 })

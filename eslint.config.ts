@@ -16,8 +16,10 @@ export default eslintConfig({
     'roles/moluoxixi/.opencode/**',
     'roles/moluoxixi/.pi/**',
     'roles/moluoxixi/AGENTS.md',
-    'roles/moluoxixi/COPYRIGHT',
-    'roles/moluoxixi/LICENSE',
+    'roles/moluoxixi/runtime/source/**',
+    'roles/moluoxixi/runtime/vendor/**',
+    'roles/moluoxixi/skills/**/*.md',
+    'roles/moluoxixi/skills/init-project/assets/trellis-v0.6.7/**',
     'vendor',
   ],
   rules: {

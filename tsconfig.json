@@ -18,6 +18,8 @@
     "coverage",
     "dist",
     "node_modules",
+    "roles/*/runtime/source/**",
+    "roles/*/skills/*/assets/**",
     "vendor"
   ]
 }

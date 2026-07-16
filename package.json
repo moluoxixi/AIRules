@@ -27,7 +27,8 @@
     "README.md",
     "dist",
     "docs",
-    "roles",
+    "roles/*/constants/**",
+    "roles/*/role.yaml",
     "scripts"
   ],
   "scripts": {

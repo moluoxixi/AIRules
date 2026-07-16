@@ -18,6 +18,7 @@
     "coverage",
     "dist",
     "node_modules",
+    "roles/*/runtime/source/**",
     "**/__test__/**",
     "vendor"
   ]

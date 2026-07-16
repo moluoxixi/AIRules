@@ -14,24 +14,62 @@
     ".omp",
     ".opencode",
     ".pi",
-    "AGENTS.md",
-    "COPYRIGHT",
-    "LICENSE"
+    "AGENTS.md"
   ],
-  "selected_regular_files": 369,
-  "selected_regular_file_bytes": 2397739,
+  "selected_regular_files": 367,
+  "selected_regular_file_bytes": 2362985,
   "combined_hash": {
     "algorithm": "sha256-posix-path-size-content-v1",
-    "value": "75017e2f405c39d2576bd43e9c2693b71d25ab2bbd694e690104e1c0853c0840"
+    "value": "4faf9bcd142d2ee8773ca4d5a251429aaf4f1d1541fcd88cb7bc4ef81792de5f"
   },
-  "npm_cli": {
-    "package": "@mindfoldhq/trellis",
-    "version": "0.6.7",
-    "integrity": "sha512-W67K3DvKGk2W/cFGWM3ev2HvMY9DzWc2sWegv7l+iBiY//Vf9lplQT9dy7jD7j4+MwHDLFIYSM7nZjFcGqgrrg=="
+  "migrated_project_templates": {
+    "upstream_path": "packages/cli/src/templates",
+    "local_path": "skills/init-project/assets/trellis-v0.6.7",
+    "omissions": [
+      "TypeScript index.ts build-time template loaders"
+    ],
+    "regular_files": 201,
+    "regular_file_bytes": 1158179,
+    "combined_hash": {
+      "algorithm": "sha256-posix-path-size-content-v1",
+      "value": "73304babc368d4283823954607b0926160377d42151402bbc8e62efca42d82cc"
+    }
+  },
+  "local_initializer": {
+    "path": "skills/init-project/scripts/init-project.mjs",
+    "license": "MIT",
+    "uses_upstream_cli": false
+  },
+  "migrated_runtime": {
+    "upstream_paths": [
+      "packages/core/src/channel",
+      "packages/core/src/mem",
+      "packages/cli/src/commands/channel",
+      "packages/cli/src/commands/mem.ts",
+      "packages/cli/src/constants/paths.ts"
+    ],
+    "local_paths": [
+      "runtime/source",
+      "runtime/vendor/channel-mem.mjs"
+    ],
+    "modifications": [
+      "Channel supervisors re-enter the AIRules self-contained bundle instead of resolving an npm package CLI entry",
+      "AIRules supplies the bundle entrypoint and the local workflow/update dispatcher"
+    ],
+    "regular_files": 85,
+    "regular_file_bytes": 860602,
+    "combined_hash": {
+      "algorithm": "sha256-posix-path-size-content-v1",
+      "value": "2b3b0874dc591a082896f7aef2fb84b36e516847448a45a24a45306d74ee9f18"
+    },
+    "bundled_dependencies": [
+      "Chalk 5.6.2 (MIT)",
+      "Commander 12.1.0 (MIT)"
+    ]
   },
   "omissions": [
     "Repository metadata and automation, including .git, .github, and .husky",
-    "Package workspaces, implementation source, tests, build configuration, and lockfiles",
+    "Package workspaces, non-runtime CLI implementation source, tests, build configuration, and lockfiles",
     "Project-local Trellis state, specifications, tasks, workspace journals, and generated manifests",
     "Repository-only contribution, release, publishing, GitNexus, and backup assets",
     "Repository documentation, demos, drafts, assets, and submodule contents",
