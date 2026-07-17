@@ -1,4 +1,4 @@
-# Preserve the selected Trellis files byte-for-byte on every platform.
+# Preserve the selected Moluoxixi role files byte-for-byte on every platform.
 roles/moluoxixi/.agents/** -text whitespace=-trailing-space
 roles/moluoxixi/.claude/** -text whitespace=-trailing-space
 roles/moluoxixi/.codex/** -text whitespace=-trailing-space
@@ -6,15 +6,12 @@ roles/moluoxixi/.cursor/** -text whitespace=-trailing-space
 roles/moluoxixi/.omp/** -text whitespace=-trailing-space
 roles/moluoxixi/.opencode/** -text whitespace=-trailing-space
 roles/moluoxixi/.pi/** -text whitespace=-trailing-space
-roles/moluoxixi/AGENTS.md -text whitespace=-trailing-space
 roles/moluoxixi/skills/** text eol=lf
-roles/moluoxixi/skills/init-project/assets/trellis-v0.6.7/** -text whitespace=-trailing-space
-roles/moluoxixi/skills/init-project/assets/runtime/NOTICE.md text eol=lf
+roles/moluoxixi/skills/init-project/assets/moluoxixi-v0.6.7/** -text whitespace=-trailing-space
 roles/moluoxixi/skills/init-project/assets/runtime/VERSION text eol=lf
-roles/moluoxixi/skills/init-project/assets/runtime/trellis.mjs text eol=lf
+roles/moluoxixi/skills/init-project/assets/runtime/moluoxixi.mjs text eol=lf
 roles/moluoxixi/skills/init-project/assets/runtime/source/** -text whitespace=-trailing-space
 roles/moluoxixi/skills/init-project/assets/runtime/vendor/** -text whitespace=-trailing-space
 roles/moluoxixi/__test__/** text eol=lf
 roles/moluoxixi/constants/** text eol=lf
 roles/moluoxixi/role.yaml text eol=lf
-roles/moluoxixi/trellis.upstream.json text eol=lf

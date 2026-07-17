@@ -1,6 +1,6 @@
 # Local Multi-Agent Channel Runtime
 
-`node "<skill-root>/scripts/trellis.mjs" channel` is the local multi-agent collaboration runtime shipped with the Trellis CLI. It lets the main AI session spawn peer workers (Claude Code, Codex, or any agent definition under `.moluoxixi/agents/`), exchange durable messages through an event log, and coordinate review or brainstorm loops without hand-stitching shell pipelines.
+`node "<skill-root>/scripts/moluoxixi.mjs" channel` is the local multi-agent collaboration runtime shipped with the Moluoxixi CLI. It lets the main AI session spawn peer workers (Claude Code, Codex, or any agent definition under `.moluoxixi/agents/`), exchange durable messages through an event log, and coordinate review or brainstorm loops without hand-stitching shell pipelines.
 
 This reference covers how channels are wired into the user project so an AI customizing the project knows what to edit. For runtime usage (commands, forum/thread patterns, worker spawn flags), defer to the bundled `channel` capability skill.
 
@@ -9,7 +9,7 @@ This reference covers how channels are wired into the user project so an AI cust
 The channel runtime spans three local surfaces:
 
 1. **Storage layer** in the user's home directory: durable event logs and worker state files.
-2. **Agent definitions** inside the project at `.moluoxixi/agents/`: platform-agnostic role cards consumed by `node "<skill-root>/scripts/trellis.mjs" channel spawn --agent <name>`.
+2. **Agent definitions** inside the project at `.moluoxixi/agents/`: platform-agnostic role cards consumed by `node "<skill-root>/scripts/moluoxixi.mjs" channel spawn --agent <name>`.
 3. **Project configuration** in `.moluoxixi/config.yaml`: worker guard thresholds and other channel knobs.
 
 ## Core Paths
@@ -25,7 +25,7 @@ The channel runtime spans three local surfaces:
 | `.moluoxixi/agents/implement.md` | Default Implement Agent role definition consumed by `--agent implement`. |
 | `.moluoxixi/config.yaml` (`channel.*` block) | Worker guard thresholds and channel defaults. |
 
-The project bucket name is derived from the absolute project path (slashes flattened, non-alphanumerics replaced with `-`), matching Claude Code's `~/.claude/projects/<sanitized-cwd>/` convention. Override with `TRELLIS_CHANNEL_ROOT` (root directory) or `TRELLIS_CHANNEL_PROJECT` (bucket name) for testing or sandboxing.
+The project bucket name is derived from the absolute project path (slashes flattened, non-alphanumerics replaced with `-`), matching Claude Code's `~/.claude/projects/<sanitized-cwd>/` convention. Override with `MOLUOXIXI_CHANNEL_ROOT` (root directory) or `MOLUOXIXI_CHANNEL_PROJECT` (bucket name) for testing or sandboxing.
 
 ## When To Reach For The Channel Runtime
 
@@ -40,7 +40,7 @@ Prefer cheaper primitives when:
 
 - A single-shot Bash command or single Agent tool call is enough -> do that directly.
 - The user just needs a static review against a file -> read the file and reply inline.
-- The need is "remember what we discussed last week" -> use `node "<skill-root>/scripts/trellis.mjs" mem` instead of a channel.
+- The need is "remember what we discussed last week" -> use `node "<skill-root>/scripts/moluoxixi.mjs" mem` instead of a channel.
 
 ## Customization Points
 
@@ -48,22 +48,22 @@ Prefer cheaper primitives when:
 | --- | --- |
 | Change default channel worker idle timeout | `channel.worker_guard.idle_timeout` in `.moluoxixi/config.yaml`. Accepts `5m`, `30s`, etc. Set `0` to disable idle cleanup. |
 | Change live worker budget | `channel.worker_guard.max_live_workers` in `.moluoxixi/config.yaml`. Set `0` to disable the spawn-time budget check. |
-| Override worker guard per spawn | Pass `--idle-timeout` / `--max-live-workers` on `node "<skill-root>/scripts/trellis.mjs" channel spawn`, or set `TRELLIS_CHANNEL_WORKER_IDLE_TIMEOUT` / `TRELLIS_CHANNEL_MAX_LIVE_WORKERS` in the environment. |
+| Override worker guard per spawn | Pass `--idle-timeout` / `--max-live-workers` on `node "<skill-root>/scripts/moluoxixi.mjs" channel spawn`, or set `MOLUOXIXI_CHANNEL_WORKER_IDLE_TIMEOUT` / `MOLUOXIXI_CHANNEL_MAX_LIVE_WORKERS` in the environment. |
 | Change what the default Check or Implement worker does | Edit `.moluoxixi/agents/check.md` or `.moluoxixi/agents/implement.md`. These are platform-agnostic role cards; the channel runtime injects them when `--agent check|implement` is passed. |
-| Add a new role card | Drop `<name>.md` into `.moluoxixi/agents/`. `node "<skill-root>/scripts/trellis.mjs" channel spawn --agent <name>` will pick it up. |
-| Relocate channel storage (CI sandbox, ephemeral runs) | Set `TRELLIS_CHANNEL_ROOT=/path/to/dir`. Channel events move with it; existing channels stay at the old root. |
+| Add a new role card | Drop `<name>.md` into `.moluoxixi/agents/`. `node "<skill-root>/scripts/moluoxixi.mjs" channel spawn --agent <name>` will pick it up. |
+| Relocate channel storage (CI sandbox, ephemeral runs) | Set `MOLUOXIXI_CHANNEL_ROOT=/path/to/dir`. Channel events move with it; existing channels stay at the old root. |
 | Switch storage scope | Pass `--scope project` (default) or `--scope global` on every channel subcommand. The bucket directory changes; nothing else does. |
 
 Precedence for the worker guard is: CLI flag > environment variable > `.moluoxixi/config.yaml` > built-in default. Built-in defaults are `idle_timeout: 5m` and `max_live_workers: 6`.
 
 ## Relationship To Other Local Layers
 
-- **Workflow layer**: workflows that use channel dispatch (such as `channel-driven-subagent-dispatch`) instruct the main agent to call `node "<skill-root>/scripts/trellis.mjs" channel spawn --agent check` or `--agent implement` instead of a platform sub-agent. If `.moluoxixi/agents/check.md` or `implement.md` is missing, `node "<skill-root>/scripts/trellis.mjs" workflow --template <id>` prints a non-blocking warning at install time. Restore them with `node "<skill-root>/scripts/trellis.mjs" update` if they are deleted by accident.
+- **Workflow layer**: workflows that use channel dispatch (such as `channel-driven-subagent-dispatch`) instruct the main agent to call `node "<skill-root>/scripts/moluoxixi.mjs" channel spawn --agent check` or `--agent implement` instead of a platform sub-agent. If `.moluoxixi/agents/check.md` or `implement.md` is missing, `node "<skill-root>/scripts/moluoxixi.mjs" workflow --template <id>` prints a non-blocking warning at install time. Restore them with `node "<skill-root>/scripts/moluoxixi.mjs" update` if they are deleted by accident.
 - **Task layer**: channel workers do not own task state. The supervising main session passes the active task path through the worker inbox; the worker resolves task artifacts from disk.
 - **Spec layer**: workers read `.moluoxixi/spec/` the same way the main session does. Channel runtime does not bypass spec context loading.
-- **Platform integration layer**: channel runtime is platform-neutral. It does not depend on `.claude/`, `.codex/`, or any other platform directory. The adapters that normalize provider output (Claude `stream-json`, Codex `app-server`) live inside the Trellis CLI binary, not in the project.
-- **Platform sub-agent files vs. channel workers**: editing `.claude/agents/trellis-implement.md` (and its peers in other platform `.X/agents/` directories) does NOT change channel-runtime worker behavior — channel workers load `.moluoxixi/agents/<name>.md`. The platform-specific agent files are for direct sub-agent dispatch from the main AI session, not for channel-spawned workers. See `platform-files/agents.md` for the per-platform agent surface, and the `meta/SKILL.md` rule that codifies this split.
+- **Platform integration layer**: channel runtime is platform-neutral. It does not depend on `.claude/`, `.codex/`, or any other platform directory. The adapters that normalize provider output (Claude `stream-json`, Codex `app-server`) live inside the Moluoxixi CLI binary, not in the project.
+- **Platform sub-agent files vs. channel workers**: editing `.claude/agents/moluoxixi-implement.md` (and its peers in other platform `.X/agents/` directories) does NOT change channel-runtime worker behavior — channel workers load `.moluoxixi/agents/<name>.md`. The platform-specific agent files are for direct sub-agent dispatch from the main AI session, not for channel-spawned workers. See `platform-files/agents.md` for the per-platform agent surface, and the `meta/SKILL.md` rule that codifies this split.
 
 ## Runtime Usage
 
-For command syntax, forum/thread patterns, worker handles, progress inspection, and the `--kind done` / `--kind turn_finished` dispatcher wait pattern, load the bundled `channel` skill (auto-installed under each platform's skills directory after the `init-project` skill / `node "<skill-root>/scripts/trellis.mjs" update`). This reference only covers the local file layout and customization knobs; it does not duplicate command syntax that may change between releases.
+For command syntax, forum/thread patterns, worker handles, progress inspection, and the `--kind done` / `--kind turn_finished` dispatcher wait pattern, load the bundled `channel` skill (auto-installed under each platform's skills directory after the `init-project` skill / `node "<skill-root>/scripts/moluoxixi.mjs" update`). This reference only covers the local file layout and customization knobs; it does not duplicate command syntax that may change between releases.

@@ -13,7 +13,6 @@ description: >
   config, tsup vs tsdown, publint, attw, changesets prerelease, npm
   dist-tag, beta to rc, canary release, pnpm workspace SDK, isomorphic SDK,
   tsconfig library, npm provenance, shipping a TypeScript library.
-license: MIT
 metadata:
   author: oh-my-openclaw
   version: "1.0"

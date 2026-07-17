@@ -2,7 +2,7 @@
 
 Moluoxixi keeps role skills under `roles/moluoxixi/skills/<name>/`. AIRules discovers that canonical root through `role.yaml`, copies complete skill directories to the role vendor, and projects them to each supported host. A skill directory may contain `SKILL.md`, `scripts/`, `references/`, and `assets/`.
 
-The `init-project` writer also places project-facing Trellis skills into each selected platform root. It uses the same local `channel`, `meta`, and `session-insight` trees that AIRules distributes at role level, so their runtime commands and references stay aligned.
+The `init-project` writer also places project-facing Moluoxixi skills into each selected platform root. It uses the same local `channel`, `meta`, and `session-insight` trees that AIRules distributes at role level, so their runtime commands and references stay aligned.
 
 ## Current Runtime Skills
 
@@ -29,7 +29,7 @@ The initializer selects the native skill directory for each platform. Important 
 | GitHub Copilot | `.github/skills/` |
 | Pi | `.pi/skills/` |
 
-All files written by AIRules are recorded in `.moluoxixi/airules-init-manifest.json`. A later `node "<skill-root>/scripts/trellis.mjs" update` reruns the project-local initializer and preserves modified or unknown files unless `--force` is explicit.
+All files written by AIRules are recorded in `.moluoxixi/airules-init-manifest.json`. A later `node "<skill-root>/scripts/moluoxixi.mjs" update` reruns the project-local initializer and preserves modified or unknown files unless `--force` is explicit.
 
 ## Add Or Change A Role Skill
 

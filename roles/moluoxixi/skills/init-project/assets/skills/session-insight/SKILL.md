@@ -3,17 +3,17 @@ name: session-insight
 description: Reach into local Claude, Codex, and Pi conversation history with the Moluoxixi memory runtime. Use when a user asks how something was solved before, whether a decision was discussed, to continue an earlier task, to debug a familiar issue, or to review past work. Returns raw local dialogue for contextual use or selective write-back.
 ---
 
-# Trellis Session Insight
+# Moluoxixi Session Insight
 
-Resolve `<skill-root>` to this skill's directory before running commands. Always use `scripts/trellis.mjs`; do not install or invoke a global Trellis CLI.
+Resolve `<skill-root>` to this skill's directory before running commands. Always use `scripts/moluoxixi.mjs`; do not install or invoke a global Moluoxixi CLI.
 
-This skill teaches an AI **how to call `node "<skill-root>/scripts/trellis.mjs" mem`** — the project's cross-session memory feedstock — and **when reaching for it is the right move**.
+This skill teaches an AI **how to call `node "<skill-root>/scripts/moluoxixi.mjs" mem`** — the project's cross-session memory feedstock — and **when reaching for it is the right move**.
 
 It is intentionally a **capability skill, not a workflow**. There is no fixed output file, no required write-back step, no "always run after finish-work" rule. What to do with what `mem` returns is a judgement call made in the moment of the conversation. The skill exists so the AI knows the capability is there and can decide.
 
-## What `node "<skill-root>/scripts/trellis.mjs" mem` is
+## What `node "<skill-root>/scripts/moluoxixi.mjs" mem` is
 
-A local CLI that indexes the user's past Claude Code, Codex, and Pi Agent conversation logs (the JSONL files each platform stores under `~/.claude/projects/`, `~/.codex/sessions/`, and `~/.pi/agent/sessions/`) and lets you list, search, slice by Trellis task boundaries, and dump cleaned dialogue from them. OpenCode logs are not yet indexable (provider adapter pending) — when an OpenCode session is the obvious target, surface that limitation rather than guessing.
+A local CLI that indexes the user's past Claude Code, Codex, and Pi Agent conversation logs (the JSONL files each platform stores under `~/.claude/projects/`, `~/.codex/sessions/`, and `~/.pi/agent/sessions/`) and lets you list, search, slice by Moluoxixi task boundaries, and dump cleaned dialogue from them. OpenCode logs are not yet indexable (provider adapter pending) — when an OpenCode session is the obvious target, surface that limitation rather than guessing.
 
 Nothing in `mem` is uploaded. All reads are local.
 
@@ -34,7 +34,7 @@ If none of these apply, don't call `mem`. It is a tool, not a ceremony.
 
 - The relevant context is already in the current turn, `prd.md`, `design.md`, recent `git log`, or the open files. `mem` is for stuff that has fallen out of immediate reach.
 - The user is asking about a fact in the code, not a fact from a past conversation. `git log -p` / `grep` / reading the file directly is faster and more authoritative.
-- You are in a sub-agent (`trellis-implement` / `trellis-check`) whose dispatch prompt already includes the curated `implement.jsonl` / `check.jsonl` context. Adding `mem` on top usually just clutters.
+- You are in a sub-agent (`moluoxixi-implement` / `moluoxixi-check`) whose dispatch prompt already includes the curated `implement.jsonl` / `check.jsonl` context. Adding `mem` on top usually just clutters.
 - The user has explicitly said "don't dig through history, just answer what I asked".
 
 ## What to do with what `mem` returns
@@ -47,7 +47,7 @@ Treat the output as **raw material**, not a deliverable. Once you have it, decid
 - **Update `.moluoxixi/spec/`** if the finding is a project-wide convention or gotcha that would help future tasks. Run the `update-spec` skill for that — `session-insight` ends at the discovery.
 - **Just absorb it** for the next few turns and answer better, without writing anything. This is often the right move for one-off recall.
 
-Trellis does not prescribe a single destination. Forcing every recall into a fixed file makes the file grow into noise. Let the situation decide.
+Moluoxixi does not prescribe a single destination. Forcing every recall into a fixed file makes the file grow into noise. Let the situation decide.
 
 ## How to call it
 
@@ -56,18 +56,18 @@ Full CLI reference is in `references/cli-quick-reference.md`. The 80% case is on
 ```bash
 # Find sessions whose contents mention a keyword (project-scope is default;
 # add --global to search every project on this machine).
-node "<skill-root>/scripts/trellis.mjs" mem search "<keyword>"
+node "<skill-root>/scripts/moluoxixi.mjs" mem search "<keyword>"
 
 # Dump dialogue from one session, optionally filtered by phase or keyword.
-node "<skill-root>/scripts/trellis.mjs" mem extract <session-id> --phase brainstorm
-node "<skill-root>/scripts/trellis.mjs" mem extract <session-id> --grep "<keyword>"
+node "<skill-root>/scripts/moluoxixi.mjs" mem extract <session-id> --phase brainstorm
+node "<skill-root>/scripts/moluoxixi.mjs" mem extract <session-id> --grep "<keyword>"
 
 # Drill into a session: top-N hit turns + surrounding context.
-node "<skill-root>/scripts/trellis.mjs" mem context <session-id> --turns 3 --around 2
+node "<skill-root>/scripts/moluoxixi.mjs" mem context <session-id> --turns 3 --around 2
 
 # When you do not know the session id yet, start with list + filter.
-node "<skill-root>/scripts/trellis.mjs" mem list --cwd <project-path>
-node "<skill-root>/scripts/trellis.mjs" mem projects   # → list active project cwds, then narrow
+node "<skill-root>/scripts/moluoxixi.mjs" mem list --cwd <project-path>
+node "<skill-root>/scripts/moluoxixi.mjs" mem projects   # → list active project cwds, then narrow
 ```
 
 Phase slicing (`--phase brainstorm|implement|all`) cuts the session at `task.py create` and `task.py start` boundaries. For a finish-work review of the current task, `--phase brainstorm` recovers the planning discussion and `--phase implement` recovers the execution loop. Default is `all`.

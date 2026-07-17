@@ -8,7 +8,7 @@ import { runMem } from "./commands/mem.js";
 const program = new Command();
 program
   .name("moluoxixi-runtime")
-  .description("AIRules-owned local runtime for migrated Trellis capabilities")
+  .description("AIRules-owned local runtime for migrated Moluoxixi capabilities")
   .version("0.6.7-airules.1");
 
 registerChannelCommand(program);

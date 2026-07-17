@@ -18,7 +18,7 @@ export default eslintConfig({
     'roles/moluoxixi/skills/init-project/assets/runtime/source/**',
     'roles/moluoxixi/skills/init-project/assets/runtime/vendor/**',
     'roles/moluoxixi/skills/**/*.md',
-    'roles/moluoxixi/skills/init-project/assets/trellis-v0.6.7/**',
+    'roles/moluoxixi/skills/init-project/assets/moluoxixi-v0.6.7/**',
     'vendor',
   ],
   rules: {

@@ -8,13 +8,13 @@ and translates its output back into channel events.
 ## Spawn
 
 ```bash
-node "<skill-root>/scripts/trellis.mjs" channel create impl-task --by dispatcher --cwd /path/to/repo
-node "<skill-root>/scripts/trellis.mjs" channel spawn impl-task --provider codex --as codex-impl --timeout 30m
+node "<skill-root>/scripts/moluoxixi.mjs" channel create impl-task --by dispatcher --cwd /path/to/repo
+node "<skill-root>/scripts/moluoxixi.mjs" channel spawn impl-task --provider codex --as codex-impl --timeout 30m
 
 echo "Implement the schema for table X per .moluoxixi/.../prd.md" \
-  | node "<skill-root>/scripts/trellis.mjs" channel send impl-task --as dispatcher --to codex-impl --stdin
+  | node "<skill-root>/scripts/moluoxixi.mjs" channel send impl-task --as dispatcher --to codex-impl --stdin
 
-node "<skill-root>/scripts/trellis.mjs" channel wait impl-task --as dispatcher --from codex-impl --kind done --timeout 30m
+node "<skill-root>/scripts/moluoxixi.mjs" channel wait impl-task --as dispatcher --from codex-impl --kind done --timeout 30m
 ```
 
 `spawn` forks a `channel __supervisor` worker that emits `spawned`, streams
@@ -33,8 +33,8 @@ Key `spawn` flags:
 - `--timeout <duration>` — auto-kill after `30s` / `2m` / `1h`.
 - `--warn-before <duration>` — supervisor_warning lead time (default `5m`; `0ms` disables).
 - `--file <path>` (repeatable, glob-supported) — inject file content into the system prompt.
-- `--jsonl <path>` (repeatable) — Trellis jsonl manifest (`{file, reason}` per line).
-- `--by <agent>` — author of the `spawned` event (defaults to `$TRELLIS_CHANNEL_AS` or `main`).
+- `--jsonl <path>` (repeatable) — Moluoxixi jsonl manifest (`{file, reason}` per line).
+- `--by <agent>` — author of the `spawned` event (defaults to `$MOLUOXIXI_CHANNEL_AS` or `main`).
 - `--inbox-policy <explicitOnly|broadcastAndExplicit>` — default `explicitOnly`.
 - `--idle-timeout <duration>` — OOM guard idle TTL (default `5m`; `0` disables).
 - `--max-live-workers <n>` — spawn-time live-worker budget (default `6`; `0` disables).
@@ -45,7 +45,7 @@ The success event `spawned` records `pid`, `provider`, `agent`, the injected
 ## Agent Cards
 
 `--agent <name>` resolves to `.moluoxixi/agents/<name>.md`. The card name must
-match `[A-Za-z0-9._-]+`. The default Trellis install ships two cards:
+match `[A-Za-z0-9._-]+`. The default Moluoxixi install ships two cards:
 
 - `.moluoxixi/agents/check.md` — code-quality reviewer.
 - `.moluoxixi/agents/implement.md` — coding worker for implementation runs.
@@ -77,7 +77,7 @@ Two flags inject content into the worker's system prompt under a
 
 - `--file <path>` — repeatable, glob-supported (`*`, `**`). Each match is
   read and concatenated.
-- `--jsonl <path>` — repeatable Trellis manifest where every line is
+- `--jsonl <path>` — repeatable Moluoxixi manifest where every line is
   `{"file":"<path>","reason":"<why>"}`. The reason is preserved as a header
   comment above each file's content.
 
@@ -92,7 +92,7 @@ Example spawning a check agent against a task directory:
 
 ```bash
 TASK=.moluoxixi/tasks/05-13-example
-node "<skill-root>/scripts/trellis.mjs" channel spawn cr-example --agent check --provider codex --as check-cx \
+node "<skill-root>/scripts/moluoxixi.mjs" channel spawn cr-example --agent check --provider codex --as check-cx \
   --file "$TASK/prd.md" \
   --file "$TASK/design.md" \
   --file "$TASK/implement.md" \
@@ -115,10 +115,10 @@ Use explicit names when multiple workers or providers participate in one
 channel:
 
 ```bash
-node "<skill-root>/scripts/trellis.mjs" channel spawn cr-feature --agent check --as check-claude
-node "<skill-root>/scripts/trellis.mjs" channel spawn cr-feature --agent check --provider codex --as check-cx
+node "<skill-root>/scripts/moluoxixi.mjs" channel spawn cr-feature --agent check --as check-claude
+node "<skill-root>/scripts/moluoxixi.mjs" channel spawn cr-feature --agent check --provider codex --as check-cx
 
-node "<skill-root>/scripts/trellis.mjs" channel wait cr-feature --as main \
+node "<skill-root>/scripts/moluoxixi.mjs" channel wait cr-feature --as main \
   --from check-claude,check-cx --kind done --all --timeout 15m
 ```
 
@@ -136,7 +136,7 @@ losing its session.
 
 ```bash
 echo "Stop refactoring the parser — switch to fixing the failing test in src/foo.ts" \
-  | node "<skill-root>/scripts/trellis.mjs" channel interrupt impl-task --as dispatcher --to codex-impl --stdin
+  | node "<skill-root>/scripts/moluoxixi.mjs" channel interrupt impl-task --as dispatcher --to codex-impl --stdin
 ```
 
 Flags:
@@ -156,7 +156,7 @@ plain tagged message instead:
 
 ```bash
 echo "Check this when you reach the next turn." \
-  | node "<skill-root>/scripts/trellis.mjs" channel send impl-task --as dispatcher --to codex-impl \
+  | node "<skill-root>/scripts/moluoxixi.mjs" channel send impl-task --as dispatcher --to codex-impl \
       --stdin --tag question
 ```
 
@@ -169,12 +169,12 @@ writes a `killed` event when SIGKILL is needed so the event log stays
 truthful.
 
 ```bash
-node "<skill-root>/scripts/trellis.mjs" channel kill impl-task --as codex-impl
-node "<skill-root>/scripts/trellis.mjs" channel spawn impl-task --as codex-impl --provider codex \
+node "<skill-root>/scripts/moluoxixi.mjs" channel kill impl-task --as codex-impl
+node "<skill-root>/scripts/moluoxixi.mjs" channel spawn impl-task --as codex-impl --provider codex \
   --resume "$(cat ~/.moluoxixi/channels/<bucket>/impl-task/worker.session-id)"
 
 echo "STOP — new instructions: ..." \
-  | node "<skill-root>/scripts/trellis.mjs" channel send impl-task --as dispatcher --to codex-impl --stdin
+  | node "<skill-root>/scripts/moluoxixi.mjs" channel send impl-task --as dispatcher --to codex-impl --stdin
 ```
 
 `kill` flags:
@@ -203,8 +203,8 @@ project bucket:
 Precedence (highest first):
 
 1. CLI flags: `--idle-timeout`, `--max-live-workers` on `spawn`.
-2. Environment variables: `TRELLIS_CHANNEL_WORKER_IDLE_TIMEOUT`,
-   `TRELLIS_CHANNEL_MAX_LIVE_WORKERS`.
+2. Environment variables: `MOLUOXIXI_CHANNEL_WORKER_IDLE_TIMEOUT`,
+   `MOLUOXIXI_CHANNEL_MAX_LIVE_WORKERS`.
 3. `.moluoxixi/config.yaml` under `channel.worker_guard`.
 4. Built-in defaults (`5m`, `6`).
 
@@ -260,15 +260,15 @@ A typical dispatcher loop:
 ```bash
 # 1. Wake the worker.
 echo "Run the failing test and report." \
-  | node "<skill-root>/scripts/trellis.mjs" channel send impl-task --as dispatcher --to codex-impl --stdin \
+  | node "<skill-root>/scripts/moluoxixi.mjs" channel send impl-task --as dispatcher --to codex-impl --stdin \
       --delivery-mode requireRunningWorker
 
 # 2. Block until it finishes.
-node "<skill-root>/scripts/trellis.mjs" channel wait impl-task --as dispatcher \
+node "<skill-root>/scripts/moluoxixi.mjs" channel wait impl-task --as dispatcher \
   --from codex-impl --kind done,error --timeout 30m
 
 # 3. Read the final answer.
-node "<skill-root>/scripts/trellis.mjs" channel messages impl-task --from codex-impl --last 1 --raw
+node "<skill-root>/scripts/moluoxixi.mjs" channel messages impl-task --from codex-impl --last 1 --raw
 ```
 
 All event-emitting subcommands (`send`, `interrupt`, `post`, `context add` /

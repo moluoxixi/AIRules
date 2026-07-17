@@ -9,7 +9,6 @@ description: >
   without relying on analogies, conventions, or "best practices". Also triggers on
   "这个设计合理吗", "从本质上看", "回到基本面", "what's really true here",
   "what are we assuming", or any request to decompose a problem to its fundamentals.
-license: MIT
 metadata:
   author: oh-my-openclaw
   version: "1.0"
@@ -226,9 +225,9 @@ Maintain a running checklist throughout the analysis. After each phase completio
 
 ---
 
-## Trellis Integration
+## Moluoxixi Integration
 
-When used within a Trellis-managed project, the analysis artifacts integrate with the task system.
+When used within a Moluoxixi-managed project, the analysis artifacts integrate with the task system.
 
 ### File Placement
 
@@ -245,7 +244,7 @@ When used within a Trellis-managed project, the analysis artifacts integrate wit
 
 ### Brainstorm Integration
 
-During `/trellis:brainstorm`, when the task is classified as "Complex":
+During `/moluoxixi:brainstorm`, when the task is classified as "Complex":
 
 1. **Trigger**: User says "从第一性原理分析" or AI detects the problem has ≥3 unvalidated assumptions
 2. **Execute**: Run Phases 0-3, saving output to `fp-analysis.md` in task directory

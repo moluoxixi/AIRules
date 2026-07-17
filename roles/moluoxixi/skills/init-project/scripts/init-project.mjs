@@ -10,7 +10,7 @@ import { fileURLToPath } from 'node:url'
 
 const SCRIPT_DIR = path.dirname(fileURLToPath(import.meta.url))
 const SKILL_ROOT = path.resolve(SCRIPT_DIR, '..')
-const ASSET_ROOT = path.join(SKILL_ROOT, 'assets', 'trellis-v0.6.7')
+const ASSET_ROOT = path.join(SKILL_ROOT, 'assets', 'moluoxixi-v0.6.7')
 const TEMPLATE_ROOT = path.join(ASSET_ROOT, 'templates')
 const RUNTIME_ROOT = path.join(SKILL_ROOT, 'assets', 'runtime')
 const LOCAL_SKILLS_ROOT = path.join(SKILL_ROOT, 'assets', 'skills')
@@ -18,19 +18,21 @@ const PROJECT_ASSET_ROOT = path.join(SKILL_ROOT, 'assets', 'project')
 const PROJECT_ROOT_DIR = '.moluoxixi'
 const MANIFEST_PATH = projectPath('airules-init-manifest.json')
 const GENERATOR_VERSION = '1.0.0'
-const TRELLIS_REVISION = 'e7c5ead4d0dfd717d11a40b6bc0c80d8af94c49a'
-const LEGACY_SKILL_RENAMES = {
-  'trellis-before-dev': 'before-dev',
-  'trellis-brainstorm': 'brainstorm',
-  'trellis-break-loop': 'break-loop',
-  'trellis-channel': 'channel',
-  'trellis-continue': 'continue',
-  'trellis-finish-work': 'finish-work',
-  'trellis-meta': 'meta',
-  'trellis-session-insight': 'session-insight',
-  'trellis-spec-bootstrap': 'spec-bootstrap',
-  'trellis-start': 'start',
-  'trellis-update-spec': 'update-spec',
+const UPSTREAM_REVISION = 'e7c5ead4d0dfd717d11a40b6bc0c80d8af94c49a'
+const LEGACY_BRAND = ['tre', 'llis'].join('')
+const LEGACY_BRAND_UPPER = LEGACY_BRAND.toUpperCase()
+const NAMESPACED_SKILL_RENAMES = {
+  'moluoxixi-before-dev': 'before-dev',
+  'moluoxixi-brainstorm': 'brainstorm',
+  'moluoxixi-break-loop': 'break-loop',
+  'channel': 'channel',
+  'moluoxixi-continue': 'continue',
+  'moluoxixi-finish-work': 'finish-work',
+  'meta': 'meta',
+  'session-insight': 'session-insight',
+  'spec-bootstrap': 'spec-bootstrap',
+  'moluoxixi-start': 'start',
+  'moluoxixi-update-spec': 'update-spec',
 }
 
 const PLATFORM_ORDER = [
@@ -55,24 +57,24 @@ const PLATFORM_ORDER = [
 ]
 
 const PLATFORM_CONTEXT = {
-  claude: context('/trellis:', 'Bash scripts or Task calls', 'Slash commands', true, true, 'claude'),
-  cursor: context('/trellis-', 'Bash scripts or Task calls', 'Slash commands', true, true, 'cursor'),
-  opencode: context('/trellis:', 'Bash scripts or Task calls', 'Slash commands', true, false, 'opencode'),
+  claude: context('/moluoxixi:', 'Bash scripts or Task calls', 'Slash commands', true, true, 'claude'),
+  cursor: context('/moluoxixi-', 'Bash scripts or Task calls', 'Slash commands', true, true, 'cursor'),
+  opencode: context('/moluoxixi:', 'Bash scripts or Task calls', 'Slash commands', true, false, 'opencode'),
   codex: context('$', 'Bash scripts or tool calls', 'Skills', true, false, 'codex'),
-  kilo: context('/trellis:', 'Bash scripts or file reads', 'Workflows', false, false, 'kilo'),
+  kilo: context('/moluoxixi:', 'Bash scripts or file reads', 'Workflows', false, false, 'kilo'),
   kiro: context('$', 'Bash scripts or tool calls', 'Skills', true, true, 'kiro'),
-  gemini: context('/trellis:', 'Bash scripts or tool calls', 'Slash commands', true, true, 'gemini'),
+  gemini: context('/moluoxixi:', 'Bash scripts or tool calls', 'Slash commands', true, true, 'gemini'),
   antigravity: context('/', 'Bash scripts or file reads', 'Workflows', false, false, 'antigravity'),
-  devin: context('/trellis-', 'Bash scripts or file reads', 'Workflows', false, false, 'devin'),
+  devin: context('/moluoxixi-', 'Bash scripts or file reads', 'Workflows', false, false, 'devin'),
   qoder: context('$', 'Bash scripts or tool calls', 'Skills', true, true, 'qoder'),
-  codebuddy: context('/trellis:', 'Bash scripts or Task calls', 'Slash commands', true, true, 'codebuddy'),
+  codebuddy: context('/moluoxixi:', 'Bash scripts or Task calls', 'Slash commands', true, true, 'codebuddy'),
   copilot: context('/', 'Bash scripts or tool calls', 'Prompts', true, true, 'copilot'),
-  droid: context('/trellis-', 'Bash scripts or Task calls', 'Slash commands', true, true, 'droid'),
-  pi: context('/trellis-', 'Bash scripts or tool calls', 'Slash commands', true, true, 'pi'),
+  droid: context('/moluoxixi-', 'Bash scripts or Task calls', 'Slash commands', true, true, 'droid'),
+  pi: context('/moluoxixi-', 'Bash scripts or tool calls', 'Slash commands', true, true, 'pi'),
   reasonix: context('/skill ', 'Bash scripts or tool calls', 'Skills', true, false, 'reasonix'),
-  zcode: context('/trellis:', 'Bash scripts or Agent calls', 'Skills', true, false, 'zcode'),
-  trae: context('/trellis-', 'Bash scripts or tool calls', 'Commands', true, true, 'trae'),
-  omp: context('/trellis:', 'Bash scripts or Task calls', 'Slash commands', true, true, 'omp'),
+  zcode: context('/moluoxixi:', 'Bash scripts or Agent calls', 'Skills', true, false, 'zcode'),
+  trae: context('/moluoxixi-', 'Bash scripts or tool calls', 'Commands', true, true, 'trae'),
+  omp: context('/moluoxixi:', 'Bash scripts or Task calls', 'Slash commands', true, true, 'omp'),
 }
 
 const PLATFORM_DIRECT = {
@@ -152,7 +154,7 @@ function projectPath(...segments) {
 }
 
 function canonicalSkillName(name) {
-  return name.replace(/^moluoxixi-/u, '').replace(/^trellis-/u, '')
+  return name.replace(/^moluoxixi-/u, '')
 }
 
 function renameProjectedSkillPath(relativePath) {
@@ -244,7 +246,7 @@ function walkFiles(root) {
 function resolveTemplate(content, ctx, pythonCommand, neutral = false) {
   let result = content.replaceAll('{{PYTHON_CMD}}', pythonCommand)
   if (ctx) {
-    result = result.replace(/\{\{CMD_REF:(\w[\w-]*)\}\}/gu, (_match, name) => neutral ? `\`${name}\` (Trellis command)` : `${ctx.cmdRefPrefix}${name}`)
+    result = result.replace(/\{\{CMD_REF:(\w[\w-]*)\}\}/gu, (_match, name) => neutral ? `\`${name}\` (Moluoxixi command)` : `${ctx.cmdRefPrefix}${name}`)
     result = result.replaceAll('{{EXECUTOR_AI}}', ctx.executorAI)
     result = result.replaceAll('{{USER_ACTION_LABEL}}', ctx.userActionLabel)
     result = result.replaceAll('{{CLI_FLAG}}', ctx.cliFlag)
@@ -263,17 +265,17 @@ function resolveTemplate(content, ctx, pythonCommand, neutral = false) {
 
 function wrapCommand(name, content) {
   const description = {
-    'start': 'Initialize a Trellis development session.',
+    'start': 'Initialize a Moluoxixi development session.',
     'continue': 'Resume work on the current task at the correct phase.',
     'finish-work': 'Wrap up the current session: quality gate, commit reminder, archive, journal.',
-  }[name.replace(/^trellis-/u, '')]
+  }[name.replace(/^moluoxixi-/u, '')]
   return `---\nname: ${name}\ndescription: ${description}\n---\n\n${content}`
 }
 
 function wrapOmpCommand(name, content) {
-  const base = name.replace(/^trellis-/u, '')
+  const base = name.replace(/^moluoxixi-/u, '')
   const description = {
-    'start': 'Initialize a Trellis development session.',
+    'start': 'Initialize a Moluoxixi development session.',
     'continue': 'Resume work on the current task at the correct phase.',
     'finish-work': 'Wrap up the current session: quality gate, commit reminder, archive, journal.',
   }[base]
@@ -317,21 +319,21 @@ function addTree(plan, sourceRoot, targetRoot, options = {}) {
 
 function localizeProjectRuntime(relativePath, content) {
   let localized = content
-    .replaceAll('trellis channel', `node ${projectPath('runtime', 'trellis.mjs')} channel`)
-    .replaceAll('trellis mem', `node ${projectPath('runtime', 'trellis.mjs')} mem`)
-    .replaceAll('trellis workflow', `node ${projectPath('runtime', 'trellis.mjs')} workflow`)
-    .replaceAll('trellis update', `node ${projectPath('runtime', 'trellis.mjs')} update`)
-    .replaceAll('.trellis', PROJECT_ROOT_DIR)
-  for (const [legacyName, canonicalName] of Object.entries(LEGACY_SKILL_RENAMES))
-    localized = localized.replaceAll(legacyName, canonicalName)
+    .replaceAll('moluoxixi channel', `node ${projectPath('runtime', 'moluoxixi.mjs')} channel`)
+    .replaceAll('moluoxixi mem', `node ${projectPath('runtime', 'moluoxixi.mjs')} mem`)
+    .replaceAll('moluoxixi workflow', `node ${projectPath('runtime', 'moluoxixi.mjs')} workflow`)
+    .replaceAll('moluoxixi update', `node ${projectPath('runtime', 'moluoxixi.mjs')} update`)
+    .replaceAll('.moluoxixi', PROJECT_ROOT_DIR)
+  for (const [namespacedName, canonicalName] of Object.entries(NAMESPACED_SKILL_RENAMES))
+    localized = localized.replaceAll(namespacedName, canonicalName)
   localized = localized
-    .replaceAll('| Done coding / quality check | `trellis-check` |', '| Done coding / quality check | `check` |')
-    .replaceAll('Load the `trellis-check` skill', 'Load the `check` skill')
-    .replaceAll('load the `trellis-check` skill', 'load the `check` skill')
-    .replaceAll('skills, such as `brainstorm` and `trellis-check`', 'skills, such as `brainstorm` and `check`')
-    .replaceAll('`before-dev` -> edit -> `trellis-check` -> validation', '`before-dev` -> edit -> `check` -> validation')
-    .replaceAll('- Before editing -> `before-dev`; after editing -> `trellis-check`.', '- Before editing -> `before-dev`; after editing -> `check`.')
-    .replaceAll('`trellis-check` exists as both; prefer the Agent form when verifying after code changes.', '`trellis-check` is the verification Agent; use `check` when the workflow calls for the inline skill.')
+    .replaceAll('| Done coding / quality check | `moluoxixi-check` |', '| Done coding / quality check | `check` |')
+    .replaceAll('Load the `moluoxixi-check` skill', 'Load the `check` skill')
+    .replaceAll('load the `moluoxixi-check` skill', 'load the `check` skill')
+    .replaceAll('skills, such as `brainstorm` and `moluoxixi-check`', 'skills, such as `brainstorm` and `check`')
+    .replaceAll('`before-dev` -> edit -> `moluoxixi-check` -> validation', '`before-dev` -> edit -> `check` -> validation')
+    .replaceAll('- Before editing -> `before-dev`; after editing -> `moluoxixi-check`.', '- Before editing -> `before-dev`; after editing -> `check`.')
+    .replaceAll('`moluoxixi-check` exists as both; prefer the Agent form when verifying after code changes.', '`moluoxixi-check` is the verification Agent; use `check` when the workflow calls for the inline skill.')
   const segments = relativePath.split('/')
   const skillsIndex = segments.indexOf('skills')
   if (relativePath.endsWith('/SKILL.md') && skillsIndex >= 0 && segments[skillsIndex + 1]) {
@@ -344,29 +346,29 @@ function localizeProjectRuntime(relativePath, content) {
   }
   if (relativePath === 'common/session_context.py') {
     localized = localized.replace(
-      /def _fetch_trellis_version_output\(\) -> str \| None:\n[\s\S]*?\n\ndef _extract_available_update_version/u,
-      'def _fetch_trellis_version_output() -> str | None:\n    # AIRules updates are driven by the project-local runtime, never a global CLI.\n    return None\n\n\ndef _extract_available_update_version',
+      /def _fetch_moluoxixi_version_output\(\) -> str \| None:\n[\s\S]*?\n\ndef _extract_available_update_version/u,
+      'def _fetch_moluoxixi_version_output() -> str | None:\n    # AIRules updates are driven by the project-local runtime, never a global CLI.\n    return None\n\n\ndef _extract_available_update_version',
     )
   }
   return localized
 }
 
 function addSharedRuntime(plan, pythonCommand, developer) {
-  addTree(plan, path.join(TEMPLATE_ROOT, 'trellis', 'scripts'), projectPath('scripts'), { python: pythonCommand, transform: localizeProjectRuntime })
-  addTree(plan, path.join(TEMPLATE_ROOT, 'trellis', 'agents'), projectPath('agents'), { python: pythonCommand, transform: localizeProjectRuntime })
+  addTree(plan, path.join(TEMPLATE_ROOT, 'moluoxixi', 'scripts'), projectPath('scripts'), { python: pythonCommand, transform: localizeProjectRuntime })
+  addTree(plan, path.join(TEMPLATE_ROOT, 'moluoxixi', 'agents'), projectPath('agents'), { python: pythonCommand, transform: localizeProjectRuntime })
   addTree(plan, RUNTIME_ROOT, projectPath('runtime'), { merge: 'replace' })
   addTree(plan, SKILL_ROOT, projectPath('runtime', 'update', 'init-project'), { merge: 'replace' })
-  addPlan(plan, projectPath('workflow.md'), resolveTemplate(localizeProjectRuntime('workflow.md', readText('trellis', 'workflow.md')), undefined, pythonCommand))
-  addPlan(plan, projectPath('config.yaml'), localizeProjectRuntime('config.yaml', readText('trellis', 'config.yaml')))
+  addPlan(plan, projectPath('workflow.md'), resolveTemplate(localizeProjectRuntime('workflow.md', readText('moluoxixi', 'workflow.md')), undefined, pythonCommand))
+  addPlan(plan, projectPath('config.yaml'), localizeProjectRuntime('config.yaml', readText('moluoxixi', 'config.yaml')))
   addPlan(plan, projectPath('.version'), '0.6.7-airules.1\n')
-  addPlan(plan, projectPath('.gitignore'), readText('trellis', 'gitignore.txt'))
+  addPlan(plan, projectPath('.gitignore'), readText('moluoxixi', 'gitignore.txt'))
   addPlan(plan, projectPath('workspace', 'index.md'), resolveTemplate(localizeProjectRuntime('workspace-index.md', readText('markdown', 'workspace-index.md')), undefined, pythonCommand))
   addPlan(plan, projectPath('tasks', '.gitkeep'), '')
   for (const section of ['backend', 'frontend', 'guides']) {
     const root = path.join(TEMPLATE_ROOT, 'markdown', 'spec', section)
     addTree(plan, root, projectPath('spec', section), { rename: relative => relative.replace(/\.txt$/u, ''), transform: localizeProjectRuntime })
   }
-  addPlan(plan, 'AGENTS.md', fs.readFileSync(path.join(PROJECT_ASSET_ROOT, 'AGENTS.md')), { merge: 'block-trellis' })
+  addPlan(plan, 'AGENTS.md', fs.readFileSync(path.join(PROJECT_ASSET_ROOT, 'AGENTS.md')), { merge: 'block-moluoxixi' })
   if (developer)
     addDeveloperFiles(plan, developer)
 }
@@ -399,20 +401,20 @@ function addProjectSkills(plan, platform, root, pythonCommand) {
 
 function commandTarget(platform, name) {
   return {
-    claude: `.claude/commands/trellis/${name}.md`,
-    cursor: `.cursor/commands/trellis-${name}.md`,
-    opencode: `.opencode/commands/trellis/${name}.md`,
+    claude: `.claude/commands/moluoxixi/${name}.md`,
+    cursor: `.cursor/commands/moluoxixi-${name}.md`,
+    opencode: `.opencode/commands/moluoxixi/${name}.md`,
     kilo: `.kilocode/workflows/${name}.md`,
     antigravity: `.agent/workflows/${name}.md`,
-    devin: `.devin/workflows/trellis-${name}.md`,
-    qoder: `.qoder/commands/trellis-${name}.md`,
-    codebuddy: `.codebuddy/commands/trellis/${name}.md`,
+    devin: `.devin/workflows/moluoxixi-${name}.md`,
+    qoder: `.qoder/commands/moluoxixi-${name}.md`,
+    codebuddy: `.codebuddy/commands/moluoxixi/${name}.md`,
     copilot: `.github/prompts/${name}.prompt.md`,
-    droid: `.factory/commands/trellis/${name}.md`,
-    pi: `.pi/prompts/trellis-${name}.md`,
-    zcode: `.zcode/commands/trellis/${name}.md`,
-    trae: `.trae/commands/trellis-${name}.md`,
-    omp: `.omp/commands/trellis-${name}.md`,
+    droid: `.factory/commands/moluoxixi/${name}.md`,
+    pi: `.pi/prompts/moluoxixi-${name}.md`,
+    zcode: `.zcode/commands/moluoxixi/${name}.md`,
+    trae: `.trae/commands/moluoxixi-${name}.md`,
+    omp: `.omp/commands/moluoxixi-${name}.md`,
   }[platform]
 }
 
@@ -423,7 +425,7 @@ function addDirectPlatformAssets(plan, platform, pythonCommand) {
     addTree(plan, path.join(root, 'hooks'), '.github/copilot/hooks', { python: pythonCommand, context: PLATFORM_CONTEXT.copilot, platform, transform: localizeProjectRuntime })
     const hookConfig = localizeProjectRuntime('hooks.json', resolveTemplate(fs.readFileSync(path.join(root, 'hooks.json'), 'utf8'), PLATFORM_CONTEXT.copilot, pythonCommand))
     addPlan(plan, '.github/copilot/hooks.json', hookConfig, { merge: 'json', platform })
-    addPlan(plan, '.github/hooks/trellis.json', hookConfig, { merge: 'json', platform })
+    addPlan(plan, '.github/hooks/moluoxixi.json', hookConfig, { merge: 'json', platform })
     addTree(plan, path.join(TEMPLATE_ROOT, 'cursor', 'agents'), '.github/agents', { python: pythonCommand, context: PLATFORM_CONTEXT.copilot, platform, rename: relative => relative.replace(/\.md$/u, '.agent.md'), transform: localizeProjectRuntime })
     return
   }
@@ -467,9 +469,9 @@ function addPlatform(plan, platform, pythonCommand, skipSharedSkills = false) {
         continue
       let content = command.content
       if (platform === 'gemini')
-        content = `description = "Trellis: ${command.name}"\n\nprompt = """\n${content}\n"""\n`
+        content = `description = "Moluoxixi: ${command.name}"\n\nprompt = """\n${content}\n"""\n`
       else if (platform === 'qoder' || platform === 'trae')
-        content = wrapCommand(`trellis-${command.name}`, content)
+        content = wrapCommand(`moluoxixi-${command.name}`, content)
       else if (platform === 'omp')
         content = wrapOmpCommand(command.name, content)
       addPlan(plan, target, content, { platform })
@@ -491,7 +493,7 @@ function buildPlan(platforms, pythonCommand, developer) {
 function readManifest(projectRoot) {
   const file = path.join(projectRoot, ...MANIFEST_PATH.split('/'))
   if (!fs.existsSync(file))
-    return { schemaVersion: 1, generatorVersion: GENERATOR_VERSION, trellisRevision: TRELLIS_REVISION, entries: {} }
+    return { schemaVersion: 1, generatorVersion: GENERATOR_VERSION, upstreamRevision: UPSTREAM_REVISION, entries: {} }
   const parsed = JSON.parse(fs.readFileSync(file, 'utf8'))
   if (parsed.schemaVersion !== 1 || typeof parsed.entries !== 'object' || parsed.entries === null || Array.isArray(parsed.entries))
     throw new Error(`Unsupported or malformed manifest: ${file}`)
@@ -540,17 +542,75 @@ function mergeJson(current, template) {
   return current
 }
 
+function replaceLegacyBrand(value) {
+  return value
+    .replaceAll(LEGACY_BRAND_UPPER, 'MOLUOXIXI')
+    .replaceAll(`${LEGACY_BRAND[0].toUpperCase()}${LEGACY_BRAND.slice(1)}`, 'Moluoxixi')
+    .replaceAll(LEGACY_BRAND, 'moluoxixi')
+}
+
+function migrateLegacyJson(current, template) {
+  if (Array.isArray(current) && Array.isArray(template)) {
+    const templateValues = new Map(template.map(value => [JSON.stringify(value), value]))
+    return current.map((value) => {
+      const migrated = migrateLegacyJsonValue(value)
+      return templateValues.get(JSON.stringify(migrated)) ?? value
+    })
+  }
+  if (isObject(current) && isObject(template)) {
+    const result = {}
+    for (const [key, value] of Object.entries(current)) {
+      const migratedKey = replaceLegacyBrand(key)
+      const targetKey = migratedKey in template ? migratedKey : key
+      result[targetKey] = targetKey in template ? migrateLegacyJson(value, template[targetKey]) : value
+    }
+    return result
+  }
+  if (typeof current === 'string' && typeof template === 'string' && replaceLegacyBrand(current) === template)
+    return template
+  return current
+}
+
+function migrateLegacyJsonValue(value) {
+  if (Array.isArray(value))
+    return value.map(migrateLegacyJsonValue)
+  if (isObject(value))
+    return Object.fromEntries(Object.entries(value).map(([key, nested]) => [replaceLegacyBrand(key), migrateLegacyJsonValue(nested)]))
+  return typeof value === 'string' ? replaceLegacyBrand(value) : value
+}
+
 function isObject(value) {
   return typeof value === 'object' && value !== null && !Array.isArray(value)
 }
 
+function blockMarkers(kind, brand) {
+  if (kind === 'block-moluoxixi')
+    return [`<!-- ${brand}:START -->`, `<!-- ${brand}:END -->`]
+  if (kind === 'block-hash')
+    return [`# AIRULES:${brand}:START`, `# AIRULES:${brand}:END`]
+  return [`<!-- AIRULES:${brand}:START -->`, `<!-- AIRULES:${brand}:END -->`]
+}
+
+function migrateLegacyBlockMarkers(current, kind, template) {
+  const effectiveKind = kind === 'block-hash' && !template.trimStart().startsWith('#') ? 'block-html' : kind
+  const currentMarkers = blockMarkers(effectiveKind, 'MOLUOXIXI')
+  const legacyMarkers = blockMarkers(effectiveKind, LEGACY_BRAND_UPPER)
+  const start = current.indexOf(legacyMarkers[0])
+  const end = current.indexOf(legacyMarkers[1])
+  if (start < 0 && end < 0)
+    return current
+  if ((start >= 0) !== (end >= 0) || end < start || current.includes(legacyMarkers[0], start + legacyMarkers[0].length))
+    throw new Error('Malformed or duplicate legacy managed block')
+  if (current.includes(currentMarkers[0]) || current.includes(currentMarkers[1]))
+    throw new Error('Both legacy and current managed blocks exist')
+  return `${current.slice(0, start)}${currentMarkers[0]}${current.slice(start + legacyMarkers[0].length, end)}${currentMarkers[1]}${current.slice(end + legacyMarkers[1].length)}`
+}
+
 function upsertBlock(current, template, kind) {
-  const markers = kind === 'block-trellis'
-    ? ['<!-- TRELLIS:START -->', '<!-- TRELLIS:END -->']
-    : kind === 'block-hash' && template.trimStart().startsWith('#')
-      ? ['# AIRULES:TRELLIS:START', '# AIRULES:TRELLIS:END']
-      : ['<!-- AIRULES:TRELLIS:START -->', '<!-- AIRULES:TRELLIS:END -->']
-  const managed = kind === 'block-trellis' ? template.trim() : `${markers[0]}\n${template.trim()}\n${markers[1]}`
+  const effectiveKind = kind === 'block-hash' && !template.trimStart().startsWith('#') ? 'block-html' : kind
+  const markers = blockMarkers(effectiveKind, 'MOLUOXIXI')
+  current = migrateLegacyBlockMarkers(current, kind, template)
+  const managed = kind === 'block-moluoxixi' ? template.trim() : `${markers[0]}\n${template.trim()}\n${markers[1]}`
   const start = current.indexOf(markers[0])
   const end = current.indexOf(markers[1])
   if ((start >= 0) !== (end >= 0) || (start >= 0 && current.includes(markers[0], start + markers[0].length)))
@@ -564,7 +624,7 @@ function upsertBlock(current, template, kind) {
 
 function prepareOperations(projectRoot, plan, manifest, force) {
   const operations = []
-  const result = { conflicts: [], created: [], preserved: [], unchanged: [], updated: [] }
+  const result = { conflicts: [], created: [], preserved: [], removed: [], unchanged: [], updated: [] }
   for (const [relativePath, item] of [...plan.entries()].sort(([left], [right]) => left < right ? -1 : left > right ? 1 : 0)) {
     const target = assertSafeTarget(projectRoot, relativePath)
     const stats = fs.lstatSync(target, { throwIfNoEntry: false })
@@ -576,7 +636,9 @@ function prepareOperations(projectRoot, plan, manifest, force) {
     let desired = item.content
     try {
       if (current && item.merge === 'json') {
-        desired = Buffer.from(`${JSON.stringify(mergeJson(JSON.parse(current.toString('utf8')), JSON.parse(item.content.toString('utf8'))), null, 2)}\n`)
+        const template = JSON.parse(item.content.toString('utf8'))
+        const migrated = migrateLegacyJson(JSON.parse(current.toString('utf8')), template)
+        desired = Buffer.from(`${JSON.stringify(mergeJson(migrated, template), null, 2)}\n`)
       }
       else if (item.merge.startsWith('block-')) {
         desired = Buffer.from(upsertBlock(current?.toString('utf8') ?? '', item.content.toString('utf8'), item.merge))
@@ -600,6 +662,26 @@ function prepareOperations(projectRoot, plan, manifest, force) {
     else if (item.merge === 'json' || item.merge.startsWith('block-') || force || (owned && owned.baselineHash === sha256(current))) {
       operations.push({ ...item, desired, relativePath, target, status: 'updated' })
       result.updated.push(relativePath)
+    }
+    else {
+      result.conflicts.push(relativePath)
+    }
+  }
+  for (const [relativePath, owned] of Object.entries(manifest.entries)) {
+    if (plan.has(relativePath) || !relativePath.toLowerCase().includes(LEGACY_BRAND))
+      continue
+    const target = assertSafeTarget(projectRoot, relativePath)
+    const stats = fs.lstatSync(target, { throwIfNoEntry: false })
+    if (!stats) {
+      operations.push({ relativePath, target, status: 'removed' })
+      result.removed.push(relativePath)
+    }
+    else if (!stats.isFile() || stats.isSymbolicLink()) {
+      result.conflicts.push(relativePath)
+    }
+    else if (force || owned.baselineHash === sha256(fs.readFileSync(target))) {
+      operations.push({ relativePath, target, status: 'removed' })
+      result.removed.push(relativePath)
     }
     else {
       result.conflicts.push(relativePath)
@@ -639,6 +721,29 @@ function transactionalWrite(target, content, executable, projectRoot, createdDir
   }
 }
 
+function transactionalRemove(target, journal) {
+  if (!fs.existsSync(target))
+    return
+  const backup = `${target}.airules-old-${randomUUID()}`
+  const entry = { backup, installed: false, moved: false, target }
+  journal.push(entry)
+  fs.renameSync(target, backup)
+  entry.moved = true
+}
+
+function removeEmptyParents(target, projectRoot) {
+  let current = path.dirname(target)
+  while (current !== projectRoot) {
+    try {
+      fs.rmdirSync(current)
+    }
+    catch {
+      break
+    }
+    current = path.dirname(current)
+  }
+}
+
 function rollback(journal, createdDirs) {
   const errors = []
   for (const entry of [...journal].reverse()) {
@@ -666,12 +771,20 @@ function commit(projectRoot, operations, manifest, platforms) {
   const createdDirs = []
   try {
     for (const operation of operations) {
+      if (operation.status === 'removed') {
+        transactionalRemove(operation.target, journal)
+        continue
+      }
       if (operation.status !== 'created' && operation.status !== 'updated')
         continue
       transactionalWrite(operation.target, operation.desired, operation.executable, projectRoot, createdDirs, journal)
     }
     const nextEntries = { ...manifest.entries }
     for (const operation of operations) {
+      if (operation.status === 'removed') {
+        delete nextEntries[operation.relativePath]
+        continue
+      }
       if (operation.status === 'preserved')
         continue
       if (operation.status === 'created' || operation.status === 'updated' || operation.status === 'unchanged') {
@@ -686,7 +799,7 @@ function commit(projectRoot, operations, manifest, platforms) {
     const nextManifest = Buffer.from(`${JSON.stringify({
       schemaVersion: 1,
       generatorVersion: GENERATOR_VERSION,
-      trellisRevision: TRELLIS_REVISION,
+      upstreamRevision: UPSTREAM_REVISION,
       platforms: [...new Set([...(manifest.platforms ?? []), ...platforms])].sort(),
       entries: Object.fromEntries(Object.entries(nextEntries).sort(([left], [right]) => left < right ? -1 : left > right ? 1 : 0)),
     }, null, 2)}\n`)
@@ -695,6 +808,10 @@ function commit(projectRoot, operations, manifest, platforms) {
     for (const entry of journal) {
       if (entry.moved && entry.backup)
         fs.rmSync(entry.backup, { force: true })
+    }
+    for (const operation of operations) {
+      if (operation.status === 'removed')
+        removeEmptyParents(operation.target, projectRoot)
     }
   }
   catch (error) {

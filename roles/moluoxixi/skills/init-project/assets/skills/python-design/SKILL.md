@@ -221,13 +221,13 @@ def iter_active_tasks(tasks_dir: Path) -> Iterator[TaskInfo]:
 **File format details leaking through layers:**
 ```python
 # BAD — caller knows it's JSON, knows the path convention
-registry_path = trellis_dir / "registry.json"
+registry_path = moluoxixi_dir / "registry.json"
 data = json.loads(registry_path.read_text())
 data["agents"][agent_id] = {...}
 registry_path.write_text(json.dumps(data, indent=2))
 
 # GOOD — module hides storage format
-registry = AgentRegistry(trellis_dir)
+registry = AgentRegistry(moluoxixi_dir)
 registry.add(agent_id, task=task_name, platform="Codex")
 ```
 

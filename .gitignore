@@ -15,7 +15,7 @@ vendor
 !roles/**/skills/**/assets/tool/package-lock.json
 !roles/**/skills/**/references/upstream-lock.md
 
-# 精选 Trellis 角色资产必须保留原生多宿主能力。
+# 精选 Moluoxixi 角色资产必须保留原生多宿主能力。
 !roles/moluoxixi/.claude/
 !roles/moluoxixi/.claude/**
 !roles/moluoxixi/.codex/

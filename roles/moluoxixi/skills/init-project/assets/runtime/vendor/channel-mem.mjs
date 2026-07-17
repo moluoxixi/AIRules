@@ -3679,7 +3679,7 @@ function encodeClaudeInterruptMessage(text) {
   const lines = [
     JSON.stringify({
       type: "control_request",
-      request_id: `trellis-int-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`,
+      request_id: `moluoxixi-int-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`,
       request: { subtype: "interrupt" }
     }),
     encodeClaudeUserMessage(text).trimEnd()
@@ -4219,7 +4219,7 @@ var codexAdapter = {
       ctx,
       "initialize",
       {
-        clientInfo: { name: "trellis-channel", version: "0.1" },
+        clientInfo: { name: "channel", version: "0.1" },
         capabilities: {}
       },
       "initialize"
@@ -4480,7 +4480,7 @@ import fs2 from "node:fs";
 import os2 from "node:os";
 import path3 from "node:path";
 function channelRoot() {
-  const env2 = process.env.TRELLIS_CHANNEL_ROOT;
+  const env2 = process.env.MOLUOXIXI_CHANNEL_ROOT;
   if (env2 && env2.length > 0)
     return path3.resolve(env2);
   return path3.join(os2.homedir(), ".moluoxixi", "channels");
@@ -4491,7 +4491,7 @@ function projectKey(cwd) {
   return slashes.replace(/[^A-Za-z0-9.-]/g, "-");
 }
 function currentProjectKey() {
-  const env2 = process.env.TRELLIS_CHANNEL_PROJECT;
+  const env2 = process.env.MOLUOXIXI_CHANNEL_PROJECT;
   if (env2 && env2.length > 0)
     return env2;
   return projectKey(process.cwd());
@@ -4611,7 +4611,7 @@ function resolveExistingChannelRef(name, opts = {}) {
     if (!fs2.existsSync(eventsPath(name, project))) {
       throw new Error(`Channel '${name}' not found in ${opts.scope} scope (${project})`);
     }
-    process.env.TRELLIS_CHANNEL_PROJECT = project;
+    process.env.MOLUOXIXI_CHANNEL_PROJECT = project;
     return { name, scope: opts.scope, project, dir: channelDir(name, project) };
   }
   const current = currentProjectKey();
@@ -4621,7 +4621,7 @@ function resolveExistingChannelRef(name, opts = {}) {
     throw new Error(`Channel '${name}' exists in global and project scopes. Use --scope global or --scope project.`);
   }
   if (globalExists) {
-    process.env.TRELLIS_CHANNEL_PROJECT = GLOBAL_PROJECT_KEY;
+    process.env.MOLUOXIXI_CHANNEL_PROJECT = GLOBAL_PROJECT_KEY;
     return {
       name,
       scope: "global",
@@ -4630,7 +4630,7 @@ function resolveExistingChannelRef(name, opts = {}) {
     };
   }
   if (fs2.existsSync(eventsPath(name, current))) {
-    process.env.TRELLIS_CHANNEL_PROJECT = current;
+    process.env.MOLUOXIXI_CHANNEL_PROJECT = current;
     return {
       name,
       scope: "project",
@@ -4639,7 +4639,7 @@ function resolveExistingChannelRef(name, opts = {}) {
     };
   }
   if (projectMatches.length === 1) {
-    process.env.TRELLIS_CHANNEL_PROJECT = projectMatches[0];
+    process.env.MOLUOXIXI_CHANNEL_PROJECT = projectMatches[0];
     return {
       name,
       scope: "project",
@@ -6013,7 +6013,7 @@ async function createChannel2(name, opts) {
     ...opts.ephemeral ? { ephemeral: true } : {},
     ...opts.force ? { force: true } : {},
     origin: "cli",
-    ...createMode ? { meta: { trellis: { createMode } } } : {}
+    ...createMode ? { meta: { moluoxixi: { createMode } } } : {}
   });
   console.log(
     `Created channel '${name}' (${channelType}) at ${channelDirFromEvent(name, event.scope, opts.cwd)}`
@@ -6182,7 +6182,7 @@ import fs8 from "node:fs";
 import os3 from "node:os";
 import path7 from "node:path";
 function channelRoot2() {
-  const env2 = process.env.TRELLIS_CHANNEL_ROOT;
+  const env2 = process.env.MOLUOXIXI_CHANNEL_ROOT;
   if (env2 && env2.length > 0) return path7.resolve(env2);
   return path7.join(os3.homedir(), ".moluoxixi", "channels");
 }
@@ -6192,7 +6192,7 @@ function projectKey2(cwd) {
   return slashes.replace(/[^A-Za-z0-9.-]/g, "-");
 }
 function currentProjectKey2() {
-  const env2 = process.env.TRELLIS_CHANNEL_PROJECT;
+  const env2 = process.env.MOLUOXIXI_CHANNEL_PROJECT;
   if (env2 && env2.length > 0) return env2;
   return projectKey2(process.cwd());
 }
@@ -6299,7 +6299,7 @@ function resolveExistingChannelRef2(name, opts = {}) {
         `Channel '${name}' not found in ${opts.scope} scope (${project})`
       );
     }
-    process.env.TRELLIS_CHANNEL_PROJECT = project;
+    process.env.MOLUOXIXI_CHANNEL_PROJECT = project;
     return { name, scope: opts.scope, project, dir: channelDir2(name, project) };
   }
   const current = currentProjectKey2();
@@ -6311,7 +6311,7 @@ function resolveExistingChannelRef2(name, opts = {}) {
     );
   }
   if (globalExists) {
-    process.env.TRELLIS_CHANNEL_PROJECT = GLOBAL_PROJECT_KEY;
+    process.env.MOLUOXIXI_CHANNEL_PROJECT = GLOBAL_PROJECT_KEY;
     return {
       name,
       scope: "global",
@@ -6320,7 +6320,7 @@ function resolveExistingChannelRef2(name, opts = {}) {
     };
   }
   if (fs8.existsSync(eventsPath2(name, current))) {
-    process.env.TRELLIS_CHANNEL_PROJECT = current;
+    process.env.MOLUOXIXI_CHANNEL_PROJECT = current;
     return {
       name,
       scope: "project",
@@ -6329,7 +6329,7 @@ function resolveExistingChannelRef2(name, opts = {}) {
     };
   }
   if (projectMatches.length === 1) {
-    process.env.TRELLIS_CHANNEL_PROJECT = projectMatches[0];
+    process.env.MOLUOXIXI_CHANNEL_PROJECT = projectMatches[0];
     return {
       name,
       scope: "project",
@@ -7808,8 +7808,8 @@ function parseDuration(s) {
 // packages/cli/src/commands/channel/guard.ts
 var DEFAULT_IDLE_TTL_MS = 5 * 60 * 1e3;
 var DEFAULT_MAX_LIVE_WORKERS = 6;
-var ENV_IDLE_TIMEOUT = "TRELLIS_CHANNEL_WORKER_IDLE_TIMEOUT";
-var ENV_MAX_LIVE_WORKERS = "TRELLIS_CHANNEL_MAX_LIVE_WORKERS";
+var ENV_IDLE_TIMEOUT = "MOLUOXIXI_CHANNEL_WORKER_IDLE_TIMEOUT";
+var ENV_MAX_LIVE_WORKERS = "MOLUOXIXI_CHANNEL_MAX_LIVE_WORKERS";
 function resolveWorkerGuardConfig(opts = {}) {
   const cwd = opts.cwd ?? process.cwd();
   const env2 = opts.env ?? process.env;
@@ -8184,9 +8184,9 @@ function formatBudgetOverflowError(args) {
   }).join("\n");
   const hint = [
     "Free a slot before spawning, e.g.:",
-    `  trellis channel kill <channel> --as <worker>`,
+    `  moluoxixi channel kill <channel> --as <worker>`,
     "Or override per spawn:",
-    `  trellis channel spawn ... --max-live-workers ${live.length + 1}`,
+    `  moluoxixi channel spawn ... --max-live-workers ${live.length + 1}`,
     "Or raise the default in .moluoxixi/config.yaml under channel.worker_guard.max_live_workers."
   ].join("\n");
   return [header, rows, hint].join("\n");
@@ -8738,7 +8738,7 @@ function resolveProviderPath(provider, cwd) {
 }
 async function runSupervisor(channelName, workerName, configPath) {
   const config = readConfig(configPath);
-  const project = process.env.TRELLIS_CHANNEL_PROJECT;
+  const project = process.env.MOLUOXIXI_CHANNEL_PROJECT;
   fs21.writeFileSync(
     workerFile(channelName, workerName, "pid", project),
     String(process.pid)
@@ -8755,9 +8755,9 @@ async function runSupervisor(channelName, workerName, configPath) {
   const env2 = {
     ...process.env,
     ...config.env,
-    TRELLIS_HOOKS: "0",
-    TRELLIS_CHANNEL: channelName,
-    TRELLIS_CHANNEL_AS: workerName
+    MOLUOXIXI_HOOKS: "0",
+    MOLUOXIXI_CHANNEL: channelName,
+    MOLUOXIXI_CHANNEL_AS: workerName
   };
   const logPath = workerFile(channelName, workerName, "log", project);
   const log = fs21.createWriteStream(logPath);
@@ -8975,7 +8975,7 @@ async function cleanup(channelName, workerName) {
           channelName,
           workerName,
           suffix,
-          process.env.TRELLIS_CHANNEL_PROJECT
+          process.env.MOLUOXIXI_CHANNEL_PROJECT
         )
       );
     } catch {
@@ -9042,7 +9042,7 @@ function resolveSpawn(channelName, opts) {
 }
 function buildSystemPrompt(channelName, workerName, agentBody, context) {
   const protocol = [
-    "[TRELLIS CHANNEL PROTOCOL \u2014 placeholder]",
+    "[MOLUOXIXI CHANNEL PROTOCOL \u2014 placeholder]",
     `You are agent "${safeIdentifier(workerName)}" participating in the channel "${safeIdentifier(channelName)}".`,
     "Other agents (humans and AIs) may also be in this channel.",
     "Messages addressed to you arrive as ordinary user turns.",
@@ -9129,7 +9129,7 @@ async function spawnLocked(channelName, resolved, opts, project, idleTimeoutMs) 
       );
     }
   }
-  const spawnedBy = opts.by ?? (typeof process.env.TRELLIS_CHANNEL_AS === "string" && process.env.TRELLIS_CHANNEL_AS.length > 0 ? process.env.TRELLIS_CHANNEL_AS : "main");
+  const spawnedBy = opts.by ?? (typeof process.env.MOLUOXIXI_CHANNEL_AS === "string" && process.env.MOLUOXIXI_CHANNEL_AS.length > 0 ? process.env.MOLUOXIXI_CHANNEL_AS : "main");
   const configPath = writeSupervisorConfig(
     channelName,
     resolved.as,
@@ -9184,7 +9184,7 @@ async function spawnLocked(channelName, resolved, opts, project, idleTimeoutMs) 
       // regardless of where the supervisor's process.cwd() ends up.
       env: {
         ...process.env,
-        TRELLIS_CHANNEL_PROJECT: project
+        MOLUOXIXI_CHANNEL_PROJECT: project
       }
     }
   );
@@ -9335,7 +9335,7 @@ async function channelThreadPost(channelName, opts) {
   const parsed = parseThreadAction(opts.action);
   if (parsed === "rename") {
     throw new Error(
-      "Use `trellis channel thread rename <channel> <old> <new>` instead of `post rename`."
+      "Use `moluoxixi channel thread rename <channel> <old> <new>` instead of `post rename`."
     );
   }
   const action = parsed;
@@ -9469,7 +9469,7 @@ function registerChannelCommand(program3) {
   const channel = program3.command("channel").description(
     "Multi-agent collaboration runtime \u2014 spawn / coordinate / interrupt worker agents through a shared event log"
   );
-  channel.command("create <name>").description("Create a new channel (collaboration session)").option("--scope <scope>", "channel scope: project | global").option("--type <type>", "channel type: chat | forum", "chat").option("--task <path>", "associated Trellis task directory").option("--project <slug>", "project slug").option("--labels <csv>", "comma-separated labels").option("--description <text>", "stable channel description").option(
+  channel.command("create <name>").description("Create a new channel (collaboration session)").option("--scope <scope>", "channel scope: project | global").option("--type <type>", "channel type: chat | forum", "chat").option("--task <path>", "associated Moluoxixi task directory").option("--project <slug>", "project slug").option("--labels <csv>", "comma-separated labels").option("--description <text>", "stable channel description").option(
     "--context-file <absolute-path>",
     "absolute file path attached as channel context (repeatable)",
     (val, prev) => [...prev ?? [], val],
@@ -9616,12 +9616,12 @@ function registerChannelCommand(program3) {
     []
   ).option(
     "--jsonl <path>",
-    "parse a Trellis jsonl manifest ({file, reason} per line) and include each referenced file (repeatable)",
+    "parse a Moluoxixi jsonl manifest ({file, reason} per line) and include each referenced file (repeatable)",
     (val, prev) => [...prev ?? [], val],
     []
   ).option(
     "--by <agent>",
-    "identity recorded as the spawn author (defaults to TRELLIS_CHANNEL_AS env or 'main')"
+    "identity recorded as the spawn author (defaults to MOLUOXIXI_CHANNEL_AS env or 'main')"
   ).option(
     "--inbox-policy <policy>",
     "worker inbox delivery policy: explicitOnly | broadcastAndExplicit (default explicitOnly)"
@@ -9682,7 +9682,7 @@ function registerChannelCommand(program3) {
     []
   ).option(
     "--jsonl <path>",
-    "parse a Trellis jsonl manifest and include each referenced file (repeatable)",
+    "parse a Moluoxixi jsonl manifest and include each referenced file (repeatable)",
     (val, prev) => [...prev ?? [], val],
     []
   ).option("--message <text>", "inline prompt text").option("--message-file <path>", "read prompt body from file").option("--stdin", "read prompt body from stdin").option(
@@ -11893,7 +11893,7 @@ function cmdExtract(argv) {
   }
 }
 function cmdHelp() {
-  console.log(`trellis mem \u2014 list/search Claude/Codex/OpenCode/Pi sessions
+  console.log(`moluoxixi mem \u2014 list/search Claude/Codex/OpenCode/Pi sessions
 
 commands:
   list                          list sessions (default if no command)
@@ -11912,7 +11912,7 @@ flags:
   --cwd <path>                           override the project cwd
   --limit N                              cap output (default 50)
   --grep KW                              extract / context: filter turns by keyword (multi-token AND)
-  --phase brainstorm|implement|all       extract: slice by Trellis brainstorm windows
+  --phase brainstorm|implement|all       extract: slice by Moluoxixi brainstorm windows
                                          (default all; brainstorm = [task.py create, task.py start);
                                          Claude/Codex/Pi supported; OpenCode warns + returns all)
   --turns N                              context: number of hit turns to return (default 3)
@@ -11923,11 +11923,11 @@ flags:
   --help, -h                             show this help
 
 examples:
-  trellis mem list
-  trellis mem list --global --platform claude --since 2026-04-01
-  trellis mem search "session insight" --global
-  trellis mem extract 5842592d --grep memory
-  trellis mem extract 5842592d --phase brainstorm
+  moluoxixi mem list
+  moluoxixi mem list --global --platform claude --since 2026-04-01
+  moluoxixi mem search "session insight" --global
+  moluoxixi mem extract 5842592d --grep memory
+  moluoxixi mem extract 5842592d --phase brainstorm
 `);
 }
 function runMem(args) {
@@ -11953,8 +11953,8 @@ function runMem(args) {
 
 // packages/cli/src/airules-runtime-entry.ts
 var program2 = new Command();
-program2.name("moluoxixi-runtime").description("AIRules-owned local runtime for migrated Trellis capabilities").version("0.6.7-airules.1");
+program2.name("moluoxixi-runtime").description("AIRules-owned local runtime for migrated Moluoxixi capabilities").version("0.6.7-airules.1");
 registerChannelCommand(program2);
 program2.command("mem").allowUnknownOption(true).helpOption(false).argument("[args...]").action((args = []) => runMem(args));
 await program2.parseAsync(process.argv);
-//# sourceMappingURL=airules-trellis-runtime.mjs.map
+//# sourceMappingURL=airules-moluoxixi-runtime.mjs.map

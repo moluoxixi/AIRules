@@ -1,6 +1,6 @@
 # Local Files Generated After Init
 
-The `init-project` skill writes the Trellis runtime into the user project. Later, `node "<skill-root>/scripts/trellis.mjs" update` tries to update Trellis-managed template files, but it uses `.moluoxixi/airules-init-manifest.json` to determine which files have already been modified by the user.
+The `init-project` skill writes the Moluoxixi runtime into the user project. Later, `node "<skill-root>/scripts/moluoxixi.mjs" update` tries to update Moluoxixi-managed template files, but it uses `.moluoxixi/airules-init-manifest.json` to determine which files have already been modified by the user.
 
 This page only describes files that are visible and editable inside the user project.
 
@@ -32,7 +32,7 @@ This page only describes files that are visible and editable inside the user pro
 | `.moluoxixi/runtime/` | No | AIRules-owned channel, memory, workflow, and updater runtime plus corresponding source. |
 | `.moluoxixi/.runtime/` | No | Runtime state, usually written automatically by hooks/scripts. |
 | `.moluoxixi/.developer` | Carefully | Current developer identity. |
-| `.moluoxixi/.version` | No | Trellis version record used by update/migration logic. |
+| `.moluoxixi/.version` | No | Moluoxixi version record used by update/migration logic. |
 | `.moluoxixi/airules-init-manifest.json` | No | Template hash record. Do not hand-write business rules here. |
 
 ## Platform Directories
@@ -43,7 +43,7 @@ Different platforms generate different directories. Common categories:
 | --- | --- | --- |
 | hooks | `.claude/hooks/`, `.codex/hooks/`, `.cursor/hooks/` | Inject session context, workflow-state, and sub-agent context. |
 | settings | `.claude/settings.json`, `.codex/hooks.json`, `.qoder/settings.json` | Tell the platform when to run hooks or plugins. |
-| agents | `.claude/agents/`, `.codex/agents/`, `.kiro/agents/`, `.zcode/cli/agents/` | Define agents such as `trellis-research`, `trellis-implement`, and `trellis-check`. |
+| agents | `.claude/agents/`, `.codex/agents/`, `.kiro/agents/`, `.zcode/cli/agents/` | Define agents such as `moluoxixi-research`, `moluoxixi-implement`, and `moluoxixi-check`. |
 | skills | `.claude/skills/`, `.agents/skills/`, `.qoder/skills/` | Skills that auto-trigger or can be read by AI. |
 | commands/prompts/workflows | `.cursor/commands/`, `.github/prompts/`, `.devin/workflows/`, `.zcode/commands/` | Explicit user-invoked command or workflow entry points. |
 
@@ -51,7 +51,7 @@ When modifying a platform directory, also confirm whether `.moluoxixi/workflow.m
 
 ## Meaning Of Template Hashes
 
-`.moluoxixi/airules-init-manifest.json` records the content hash from the last time Trellis wrote a template file. `node "<skill-root>/scripts/trellis.mjs" update` uses it to distinguish three cases:
+`.moluoxixi/airules-init-manifest.json` records the content hash from the last time Moluoxixi wrote a template file. `node "<skill-root>/scripts/moluoxixi.mjs" update` uses it to distinguish three cases:
 
 | Case | Update behavior |
 | --- | --- |
@@ -59,7 +59,7 @@ When modifying a platform directory, also confirm whether `.moluoxixi/workflow.m
 | File was modified by the user | Preserve it and report a conflict unless `--force` is explicit. |
 | Unknown file | Preserve it and do not claim ownership. |
 
-When an AI customizes local Trellis files, it does not need to maintain hashes manually. It is normal for Trellis update to recognize the result as "modified by the user."
+When an AI customizes local Moluoxixi files, it does not need to maintain hashes manually. It is normal for Moluoxixi update to recognize the result as "modified by the user."
 
 ## Local Customization Boundaries
 

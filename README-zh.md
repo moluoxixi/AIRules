@@ -30,11 +30,9 @@ airules sync --host all --role moluoxixi
 ```
 
 - 同步会以可回滚替换方式安装完整角色到 `~/.moluoxixi/roles/moluoxixi`，再只把 AIRules 管理的 canonical skills 投影到对应宿主。当前角色全局只暴露一个 `init-project` skill。
-- 其余角色资产全部由 `init-project` 管理。它会在项目内安装 `start`、`check`、`channel` 等 15 个无前缀 skills，以及 runtime 和 Claude、Codex、Cursor、OMP、OpenCode、Pi 的原生 agents、commands、hooks、plugins、extensions 与 settings。
+- 其余角色资产全部由 `init-project` 管理。它会在项目内安装 `start`、`check`、`channel` 等 15 个无前缀 skills，以及 runtime 和 Claude、Codex、Cursor、OMP、OpenCode、Pi 的原生 agents、commands、hooks、plugins、extensions 与 settings。各宿主原生 skill 目录使用相同的无前缀命名；Agent 身份和 commands 统一使用 `moluoxixi-*` 命名空间。
 - `roles/moluoxixi` 包含 `mindfold-ai/Trellis` `v0.6.7` 提交 `e7c5ead4d0dfd717d11a40b6bc0c80d8af94c49a` 的精选角色资产。仓库自动化、package workspace、测试、demo、发布专用资产、备份与项目本地 `.trellis` 历史均有意省略。初始化器只使用迁移到角色内的资产，不安装或调用 Trellis npm CLI。
 - 角色运行时从 AIRules 远程仓库的 `roles/moluoxixi` 完整路径同步；精选 Trellis 角色资产不随 AIRules npm 包重复发布。当前分支合入远端默认分支后，该同步入口才可用。
-- Trellis 保留上游 AGPL-3.0-only 许可证，不受本仓库 MIT 许可证覆盖。
-
 - `sync` 更新所选远程资产，并把其中的 canonical skills 投影到支持的宿主。
 - `verify` 只检查 AIRules 管理的 skill 投影。宿主原生资产归项目初始化器所有，公共层不会修改。
 - `contract-diff` 确定性比对固定版本的 OpenAPI 3.x JSON/YAML 快照。退出码 `0` 表示无阻断差异，`2` 会保留有效的阻断差异报告；输入无效或语义不受支持时返回 `1`，并在输出路径安全时写入结构化 error audit。无法完整比对的 OpenAPI 线协议语义必须失败关闭。文件输出采用锚定目录的 create-only 直接写入协议：既有 target 只有在仍是基线记录的同一 inode 且内容完全相同时才可幂等复用；基线中不存在的 target 以排他方式创建，任何并发出现（即使内容相同）都会失败。该协议不承诺 rename 式原子可见性。语义提交前，新文件以 `!` 开头并刻意保持为无效 JSON；进程崩溃可能留下该不完整文件，并发读取者也可能观察到它。只有在无效标记的完整 payload 写入并同步、受保护输入和 target inode 复核、首字节替换为 `{` 并再次同步、且路径仍指向所创建 inode 后才报告成功。消费者必须对 JSON 解析或 schema 校验失败关闭；遗留的无效 partial 文件必须由证据 owner 显式清理后再重试。
@@ -55,4 +53,4 @@ npm test
 
 ## 许可证
 
-AIRules 公共代码采用 MIT 许可证。`roles/moluoxixi` 中包含的第三方 Trellis 资产仍采用上游 AGPL-3.0-only 许可证，其来源、revision 与许可证记录在 `role.yaml` 中；AIRules 新增的角色适配文件仍采用本仓库许可证。
+AIRules 公共代码采用 MIT 许可证。

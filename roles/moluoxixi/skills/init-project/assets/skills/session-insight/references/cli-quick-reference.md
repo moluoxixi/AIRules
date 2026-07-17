@@ -1,6 +1,6 @@
-# `node "<skill-root>/scripts/trellis.mjs" mem` CLI Reference
+# `node "<skill-root>/scripts/moluoxixi.mjs" mem` CLI Reference
 
-Full flag reference for the five subcommands. Pin this as the authoritative source — `node "<skill-root>/scripts/trellis.mjs" mem help` prints the same content at runtime, so anything here that drifts is a bug.
+Full flag reference for the five subcommands. Pin this as the authoritative source — `node "<skill-root>/scripts/moluoxixi.mjs" mem help` prints the same content at runtime, so anything here that drifts is a bug.
 
 ## Subcommands
 
@@ -23,7 +23,7 @@ Full flag reference for the five subcommands. Pin this as the authoritative sour
 | `--cwd <path>`                                | list / search     | Force a specific project cwd instead of inferring from where you are.                                                                                      |
 | `--limit N`                                   | list / search     | Cap output rows. Default `50`.                                                                                                                             |
 | `--grep KW`                                   | extract / context | Filter turns by keyword. Multi-token AND when whitespace-separated.                                                                                        |
-| `--phase brainstorm\|implement\|all`          | extract           | Slice session by Trellis task boundaries. `brainstorm` = `[task.py create, task.py start)`. `implement` = turns outside brainstorm windows. Default `all`. |
+| `--phase brainstorm\|implement\|all`          | extract           | Slice session by Moluoxixi task boundaries. `brainstorm` = `[task.py create, task.py start)`. `implement` = turns outside brainstorm windows. Default `all`. |
 | `--turns N`                                   | context           | Number of hit turns to return. Default `3`.                                                                                                                |
 | `--around N`                                  | context           | Surrounding turns to include per hit. Default `1`.                                                                                                         |
 | `--max-chars N`                               | context           | Total character budget. Default `6000` (~1500 tokens).                                                                                                     |
@@ -34,18 +34,18 @@ Full flag reference for the five subcommands. Pin this as the authoritative sour
 
 ```bash
 # What past sessions discussed "deadlock" anywhere on this machine?
-node "<skill-root>/scripts/trellis.mjs" mem search "deadlock" --global --limit 20
+node "<skill-root>/scripts/moluoxixi.mjs" mem search "deadlock" --global --limit 20
 
 # Inside a specific session, surface the top 5 turns that mention "lock contention"
 # plus 2 turns of surrounding context.
-node "<skill-root>/scripts/trellis.mjs" mem context 5842592d --grep "lock contention" --turns 5 --around 2
+node "<skill-root>/scripts/moluoxixi.mjs" mem context 5842592d --grep "lock contention" --turns 5 --around 2
 
 # Recover the brainstorm window for a session — useful when continuing a task
 # the user started a week ago.
-node "<skill-root>/scripts/trellis.mjs" mem extract 5842592d --phase brainstorm
+node "<skill-root>/scripts/moluoxixi.mjs" mem extract 5842592d --phase brainstorm
 
-# List every project this machine has Trellis sessions for, with counts.
-node "<skill-root>/scripts/trellis.mjs" mem projects
+# List every project this machine has Moluoxixi sessions for, with counts.
+node "<skill-root>/scripts/moluoxixi.mjs" mem projects
 ```
 
 ## Output shapes
@@ -62,4 +62,4 @@ node "<skill-root>/scripts/trellis.mjs" mem projects
 
 ## When you need more than this reference
 
-Run `node "<skill-root>/scripts/trellis.mjs" mem help` in the user's shell. The runtime help is authoritative and will be ahead of this reference during fast-moving beta releases.
+Run `node "<skill-root>/scripts/moluoxixi.mjs" mem help` in the user's shell. The runtime help is authoritative and will be ahead of this reference during fast-moving beta releases.

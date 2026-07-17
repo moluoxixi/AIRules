@@ -1,6 +1,6 @@
 # Platform File Map
 
-This page lists common Trellis file locations in a user project by platform. Whether a platform directory exists in an actual project depends on which `init-project --platform <id>` selections the user ran.
+This page lists common Moluoxixi file locations in a user project by platform. Whether a platform directory exists in an actual project depends on which `init-project --platform <id>` selections the user ran.
 
 ## Matrix
 
@@ -19,15 +19,15 @@ This page lists common Trellis file locations in a user project by platform. Whe
 | CodeBuddy | `--codebuddy` | `.codebuddy/` | `.codebuddy/skills/` | `.codebuddy/agents/` | `.codebuddy/hooks/` + `.codebuddy/settings.json` |
 | GitHub Copilot | `--copilot` | `.github/` | `.github/skills/` | `.github/agents/` | `.github/copilot/hooks/` + prompts |
 | Factory Droid | `--droid` | `.factory/` | `.factory/skills/` | `.factory/droids/` | `.factory/hooks/` + settings |
-| Pi Agent | `--pi` | `.pi/` | `.pi/skills/` | `.pi/agents/` | `.pi/extensions/trellis/` (native `trellis_subagent` tool) + `.pi/settings.json` |
+| Pi Agent | `--pi` | `.pi/` | `.pi/skills/` | `.pi/agents/` | `.pi/extensions/moluoxixi/` (native `moluoxixi_subagent` tool) + `.pi/settings.json` |
 | Reasonix | `--reasonix` | `.reasonix/` | `.reasonix/skills/` | None — sub-agents are skills with `runAs: subagent` frontmatter | None |
 | ZCode | `--zcode` | `.zcode/` | `.agents/skills/` | `.zcode/cli/agents/` | pull-based prelude (no hooks) |
 
 ## Capability Groups
 
-### Trellis Sub-Agent Support
+### Moluoxixi Sub-Agent Support
 
-These platforms usually have `trellis-research`, `trellis-implement`, and `trellis-check` files:
+These platforms usually have `moluoxixi-research`, `moluoxixi-implement`, and `moluoxixi-check` files:
 
 - Claude Code
 - Cursor
@@ -45,11 +45,11 @@ These platforms usually have `trellis-research`, `trellis-implement`, and `trell
 
 When changing implementation/check/research behavior, look for the corresponding platform agent files first.
 
-### Native Trellis Sub-Agent Tool
+### Native Moluoxixi Sub-Agent Tool
 
 Some platforms expose a first-class tool that the host runtime understands. The model calls it like any other tool and the host renders progress cards, validates the agent name against `.<platform>/agents/`, and enforces dispatch modes.
 
-- Pi Agent — `trellis_subagent` tool, defined in `.pi/extensions/trellis/index.ts`. Supports `single` / `parallel` / `chain` dispatch modes and emits live `trellis-subagent-progress` events.
+- Pi Agent — `moluoxixi_subagent` tool, defined in `.pi/extensions/moluoxixi/index.ts`. Supports `single` / `parallel` / `chain` dispatch modes and emits live `moluoxixi-subagent-progress` events.
 
 When changing sub-agent dispatch behavior on these platforms, edit the extension file, **not** the agent markdown — the agent markdown defines responsibilities, but the host extension owns dispatch, validation, and progress rendering.
 
@@ -61,7 +61,7 @@ These platforms rely more on workflows/skills to guide the main session:
 - Antigravity
 - Devin
 
-When changing behavior, inspect workflows and skills first. Do not assume Trellis sub-agents exist.
+When changing behavior, inspect workflows and skills first. Do not assume Moluoxixi sub-agents exist.
 
 ### Shared `.agents/skills/`
 
@@ -73,7 +73,7 @@ Codex writes the shared `.agents/skills/` layer. Some tools that support agentsk
 2. User says "all platforms should do this": synchronize equivalent entry points platform by platform; do not modify only one directory.
 3. User only says "my AI": inspect the configuration directories that actually exist in the project and infer the current AI platform.
 4. User wants project rules: prefer `.moluoxixi/spec/` or a project-local skill.
-5. User wants Trellis behavior: edit `.moluoxixi/workflow.md` plus platform hooks/agents/skills/commands.
+5. User wants Moluoxixi behavior: edit `.moluoxixi/workflow.md` plus platform hooks/agents/skills/commands.
 
 ## When Paths Differ
 

@@ -1,5 +1,5 @@
 /**
- * Path constants for Trellis workflow structure
+ * Path constants for Moluoxixi workflow structure
  *
  * Change these values to rename directories across the entire project.
  * All paths should be relative to the project root.

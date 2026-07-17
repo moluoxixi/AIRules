@@ -1,15 +1,15 @@
 # Hooks And Settings
 
-Hooks/settings are the entry layer that connects a platform to Trellis. They decide which scripts, plugins, or extensions a platform runs for which events.
+Hooks/settings are the entry layer that connects a platform to Moluoxixi. They decide which scripts, plugins, or extensions a platform runs for which events.
 
 ## Settings Responsibilities
 
 settings/config files usually register:
 
-- session-start hook: injects a Trellis overview when a new session starts or context resets.
+- session-start hook: injects a Moluoxixi overview when a new session starts or context resets.
 - workflow-state hook: parses `[workflow-state:STATUS]` blocks from `.moluoxixi/workflow.md` and emits the body matching the current task `status` on each user input. Parser-only; the script does not embed fallback content.
 - sub-agent context hook: injects task context when implementation/check/research agents start.
-- shell/session bridge: lets shell commands see the same Trellis session identity.
+- shell/session bridge: lets shell commands see the same Moluoxixi session identity.
 - platform plugin or extension entry points.
 
 Common files:
@@ -26,7 +26,7 @@ Common files:
 | CodeBuddy | `.codebuddy/settings.json` |
 | GitHub Copilot | `.github/copilot/hooks.json` |
 | Factory Droid | `.factory/settings.json` |
-| Pi Agent | `.pi/settings.json`, `.pi/extensions/trellis/` |
+| Pi Agent | `.pi/settings.json`, `.pi/extensions/moluoxixi/` |
 
 Reasonix and ZCode are pull-based platforms that do not use hooks or settings files; their agent files contain prelude instructions to read context after startup.
 
@@ -39,7 +39,7 @@ Whether these files exist in a project depends on which `init-project --platform
 | `session-start.py` | Generates session-start context. |
 | `inject-workflow-state.py` | Parses `[workflow-state:STATUS]` blocks in `.moluoxixi/workflow.md` and emits the body matching the current task status. Falls back to `Refer to workflow.md for current step.` when no matching block exists. |
 | `inject-subagent-context.py` | Injects PRD, JSONL context, and related spec/research into sub-agents. |
-| `inject-shell-session-context.py` | Lets shell commands inherit Trellis session identity. |
+| `inject-shell-session-context.py` | Lets shell commands inherit Moluoxixi session identity. |
 
 Not every platform has every hook. Do not copy files from another platform just because a platform lacks a hook; first confirm whether that platform supports the corresponding event.
 
@@ -62,7 +62,7 @@ Not every platform has every hook. Do not copy files from another platform just 
 
 ## Troubleshooting Path
 
-If the user says "AI did not read Trellis state":
+If the user says "AI did not read Moluoxixi state":
 
 1. Check whether the platform settings register the hook.
 2. Check whether the hook file exists.

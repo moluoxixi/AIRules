@@ -9,7 +9,6 @@ description: >
   without relying on analogies, conventions, or "best practices". Also triggers on
   "这个设计合理吗", "从本质上看", "回到基本面", "what's really true here",
   "what are we assuming", or any request to decompose a problem to its fundamentals.
-license: MIT
 metadata:
   author: oh-my-openclaw
   version: "1.0"
@@ -226,14 +225,14 @@ Maintain a running checklist throughout the analysis. After each phase completio
 
 ---
 
-## Trellis Integration
+## Moluoxixi Integration
 
-When used within a Trellis-managed project, the analysis artifacts integrate with the task system.
+When used within a Moluoxixi-managed project, the analysis artifacts integrate with the task system.
 
 ### File Placement
 
 ```
-.trellis/tasks/{MM-DD-slug}/
+.moluoxixi/tasks/{MM-DD-slug}/
 ├── task.json              # Existing
 ├── prd.md                 # Existing — FP feeds into this
 ├── fp-analysis.md         # ← FP analysis output (Phases 0-5)
@@ -245,7 +244,7 @@ When used within a Trellis-managed project, the analysis artifacts integrate wit
 
 ### Brainstorm Integration
 
-During `/trellis:brainstorm`, when the task is classified as "Complex":
+During `/moluoxixi:brainstorm`, when the task is classified as "Complex":
 
 1. **Trigger**: User says "从第一性原理分析" or AI detects the problem has ≥3 unvalidated assumptions
 2. **Execute**: Run Phases 0-3, saving output to `fp-analysis.md` in task directory
@@ -260,8 +259,8 @@ During `/trellis:brainstorm`, when the task is classified as "Complex":
 After FP analysis completes, add to context files:
 
 ```bash
-python3 ./.trellis/scripts/task.py add-context "$TASK_DIR" implement "fp-analysis.md" "Ground truths and reasoning chain"
-python3 ./.trellis/scripts/task.py add-context "$TASK_DIR" check "fp-analysis.md" "Verify implementation traces to ground truths"
+python3 ./.moluoxixi/scripts/task.py add-context "$TASK_DIR" implement "fp-analysis.md" "Ground truths and reasoning chain"
+python3 ./.moluoxixi/scripts/task.py add-context "$TASK_DIR" check "fp-analysis.md" "Verify implementation traces to ground truths"
 ```
 
 ### Completion Recording

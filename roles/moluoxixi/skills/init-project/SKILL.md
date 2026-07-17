@@ -1,11 +1,11 @@
 ---
 name: init-project
-description: Initialize or extend a project with the self-contained Trellis workflow runtime and platform integrations distributed by the Moluoxixi AIRules role. Use when a user asks to initialize Trellis, add Trellis to a repository, configure Trellis for one or more AI coding platforms, or replace `trellis init`. Never install or invoke the upstream Trellis CLI.
+description: Initialize or extend a project with the self-contained Moluoxixi workflow runtime and platform integrations distributed by the Moluoxixi AIRules role. Use when a user asks to initialize Moluoxixi, add Moluoxixi to a repository, configure Moluoxixi for one or more AI coding platforms, or replace `moluoxixi init`. Never install or invoke an upstream CLI.
 ---
 
 # Initialize Project
 
-Use the bundled AIRules initializer. Do not run `trellis init`, `npx trellis`, or install `@mindfoldhq/trellis`.
+Use the bundled AIRules initializer. Do not run `moluoxixi init`, `npx moluoxixi`, or install an upstream npm CLI.
 
 ## Workflow
 
@@ -20,13 +20,14 @@ Use the bundled AIRules initializer. Do not run `trellis init`, `npx trellis`, o
 
 5. Review `conflicts`. Do not use `--force` unless the user explicitly authorizes replacement of conflicting managed files.
 6. Run the same command without `--dry-run`. Add `--developer <name>` when identity initialization was requested.
-7. Report created, updated, preserved, and conflicting paths. A process exit code of `2` means initialization completed for safe paths but conflicts were preserved.
+7. Report created, updated, removed, preserved, and conflicting paths. A process exit code of `2` means initialization completed for safe paths but conflicts were preserved.
 
 ## Guarantees
 
 - Keep every output inside the canonical project root and reject symlinked path segments.
 - Preserve unknown files by default.
 - Merge JSON configuration and managed instruction blocks without deleting unrelated user content.
+- Migrate legacy-named files, JSON entries, and managed blocks only when the manifest proves ownership; preserve user-modified legacy files as conflicts unless `--force` is explicit.
 - Track only files or blocks actually owned by this initializer in `.moluoxixi/airules-init-manifest.json`.
 - Roll back writes when any transactional write fails.
 - Require Python 3.9+ because the migrated project runtime under `.moluoxixi/scripts` is Python.

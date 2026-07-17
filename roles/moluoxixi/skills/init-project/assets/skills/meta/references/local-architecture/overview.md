@@ -1,6 +1,6 @@
-# Local Trellis Architecture Overview
+# Local Moluoxixi Architecture Overview
 
-`meta` is for user projects initialized by the `init-project` skill. The project contains the generated Trellis files and `.moluoxixi/runtime`; no npm-installed Trellis command is required.
+`meta` is for user projects initialized by the `init-project` skill. The project contains the generated Moluoxixi files and `.moluoxixi/runtime`; no npm-installed Moluoxixi command is required.
 
 Therefore, when an AI uses this skill, the default customization target is local files inside the user project:
 
@@ -8,15 +8,15 @@ Therefore, when an AI uses this skill, the default customization target is local
 - Platform directories: `.claude/`, `.codex/`, `.cursor/`, `.opencode/`, `.kiro/`, `.gemini/`, `.qoder/`, `.codebuddy/`, `.github/`, `.factory/`, `.pi/`, `.kilocode/`, `.agent/`, `.devin/`, `.reasonix/`, `.zcode/`, and similar directories.
 - Shared skill layer: `.agents/skills/`.
 
-Do not default to guiding the user to fork Trellis. Treat `roles/moluoxixi/` as the distribution source only when the user explicitly wants to change the AIRules role; otherwise work in the initialized project.
+Do not default to guiding the user to fork Moluoxixi. Treat `roles/moluoxixi/` as the distribution source only when the user explicitly wants to change the AIRules role; otherwise work in the initialized project.
 
 ## Local System Model
 
-Trellis provides three layers inside a user project:
+Moluoxixi provides three layers inside a user project:
 
 1. **Workflow layer**: `.moluoxixi/workflow.md` defines phases, routing, next actions, and prompt blocks.
 2. **Persistence layer**: `.moluoxixi/tasks/`, `.moluoxixi/spec/`, and `.moluoxixi/workspace/` store tasks, specs, and session memory.
-3. **Platform integration layer**: hooks, settings, agents, skills, commands, prompts, and workflows in platform directories connect the Trellis workflow to different AI tools.
+3. **Platform integration layer**: hooks, settings, agents, skills, commands, prompts, and workflows in platform directories connect the Moluoxixi workflow to different AI tools.
 
 All three layers live inside the user project, so an AI can read and modify them directly.
 
@@ -31,7 +31,7 @@ All three layers live inside the user project, so an AI can read and modify them
 | `.moluoxixi/workspace/` | Per-developer journals and cross-session memory. |
 | `.moluoxixi/scripts/` | Local Python runtime used by commands, hooks, and context injection. |
 | `.moluoxixi/.runtime/` | Session-level runtime state, such as the current task pointer. |
-| `.moluoxixi/airules-init-manifest.json` | Template hashes for Trellis-managed files, used by update to determine whether local files were modified by the user. |
+| `.moluoxixi/airules-init-manifest.json` | Template hashes for Moluoxixi-managed files, used by update to determine whether local files were modified by the user. |
 
 ## AI Customization Principles
 

@@ -42,10 +42,10 @@ export const DEFAULT_IDLE_TTL_MS = 5 * 60 * 1000;
 export const DEFAULT_MAX_LIVE_WORKERS = 6;
 
 /** Env var override for the idle-cleanup TTL. */
-export const ENV_IDLE_TIMEOUT = "TRELLIS_CHANNEL_WORKER_IDLE_TIMEOUT";
+export const ENV_IDLE_TIMEOUT = "MOLUOXIXI_CHANNEL_WORKER_IDLE_TIMEOUT";
 
 /** Env var override for the live-worker budget. */
-export const ENV_MAX_LIVE_WORKERS = "TRELLIS_CHANNEL_MAX_LIVE_WORKERS";
+export const ENV_MAX_LIVE_WORKERS = "MOLUOXIXI_CHANNEL_MAX_LIVE_WORKERS";
 
 export interface WorkerGuardConfig {
   /** Idle-cleanup TTL in ms. `0` disables idle cleanup for new spawns. */
@@ -640,9 +640,9 @@ export function formatBudgetOverflowError(args: {
     .join("\n");
   const hint = [
     "Free a slot before spawning, e.g.:",
-    `  trellis channel kill <channel> --as <worker>`,
+    `  moluoxixi channel kill <channel> --as <worker>`,
     "Or override per spawn:",
-    `  trellis channel spawn ... --max-live-workers ${live.length + 1}`,
+    `  moluoxixi channel spawn ... --max-live-workers ${live.length + 1}`,
     "Or raise the default in .moluoxixi/config.yaml under channel.worker_guard.max_live_workers.",
   ].join("\n");
   return [header, rows, hint].join("\n");
