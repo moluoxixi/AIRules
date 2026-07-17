@@ -3,7 +3,6 @@ import fs from 'node:fs'
 import os from 'node:os'
 import path from 'node:path'
 import { parseDocument } from 'yaml'
-import { readNeutralHookManifest } from './hook-dispatch.js'
 import { requireRoleName } from './role-assets.js'
 import { collectFlattenedSkillSources } from './skill-projection.js'
 import { loadVendorManifest } from './vendors.js'
@@ -12,10 +11,6 @@ export interface VendorAssetInventory {
   role: string
   roleRoot?: string
   skills: string[]
-  agents: string[]
-  rules?: string
-  hooks: string[]
-  mcp?: string
 }
 
 export interface RebuildVendorAssetsOptions {
@@ -46,18 +41,10 @@ interface MaterializedPlan {
 type SourceKind = 'file' | 'directory'
 
 interface CanonicalRoleAssetRoots {
-  agents: string
-  hooks: string
-  mcp: string
-  rules: string
   skills: string
 }
 
 const defaultCanonicalRoleAssetRoots: CanonicalRoleAssetRoots = {
-  agents: 'agents',
-  hooks: 'hooks',
-  mcp: 'mcp',
-  rules: 'rules',
   skills: 'skills',
 }
 
@@ -226,10 +213,6 @@ function requireCanonicalRoleContract(roleRoot: string, role: string, vendorId: 
   }
   const assets = manifest.assets as Record<string, unknown> | undefined
   return {
-    agents: requireRoleAssetRoot(assets, 'agents', roleManifest),
-    hooks: requireRoleAssetRoot(assets, 'hooks', roleManifest),
-    mcp: requireRoleAssetRoot(assets, 'mcp', roleManifest),
-    rules: requireRoleAssetRoot(assets, 'rules', roleManifest),
     skills: requireRoleAssetRoot(assets, 'skills', roleManifest),
   }
 }
@@ -253,25 +236,9 @@ function requireManagedTarget(homeDir: string, kind: VendorLink['kind'], configu
   const vendorRoot = path.resolve(homeDir, 'vendor')
   const target = path.resolve(homeDir, portablePath(configuredTarget))
   const skillsRoot = path.join(vendorRoot, 'skills')
-  const agentsRoot = path.join(vendorRoot, 'agents')
-  const hooksRoot = path.join(vendorRoot, 'hooks')
-  const mcpRoot = path.join(vendorRoot, 'mcp')
-
-  const valid = kind === 'skill' || kind === 'namespace-dir'
-    ? isInsideRoot(skillsRoot, target) && target !== skillsRoot
-    : kind === 'agent-file'
-      ? isInsideRoot(agentsRoot, target) && target !== agentsRoot
-      : kind === 'agents-dir'
-        ? isInsideRoot(agentsRoot, target)
-        : kind === 'hook-file'
-          ? isInsideRoot(hooksRoot, target) && target !== hooksRoot
-          : kind === 'hooks-dir'
-            ? isInsideRoot(hooksRoot, target)
-            : kind === 'rules-file'
-              ? target === path.join(vendorRoot, 'AGENTS.md')
-              : kind === 'mcp-file'
-                ? isInsideRoot(mcpRoot, target) && target !== mcpRoot
-                : false
+  const valid = (kind === 'skill' || kind === 'namespace-dir')
+    && isInsideRoot(skillsRoot, target)
+    && target !== skillsRoot
 
   if (!valid) {
     throw new Error(`Vendor target resolves outside its managed staging root: ${configuredTarget}`)
@@ -291,20 +258,6 @@ function requireSkill(source: string, checkoutRoot: string, vendorId: string): v
 
 function isRecord(value: unknown): value is Record<string, unknown> {
   return value !== null && typeof value === 'object' && !Array.isArray(value)
-}
-
-function requireNeutralMcp(source: string): void {
-  let parsed: unknown
-  try {
-    parsed = JSON.parse(fs.readFileSync(source, 'utf8').replace(/^\uFEFF/u, ''))
-  }
-  catch (error) {
-    throw new Error(`Invalid neutral MCP JSON: ${source}`, { cause: error })
-  }
-
-  if (!isRecord(parsed) || !isRecord(parsed.mcpServers)) {
-    throw new Error(`Neutral MCP configuration mcpServers must be an object: ${source}`)
-  }
 }
 
 function compareStable(left: string, right: string): number {
@@ -340,16 +293,8 @@ function expandOrdinaryLink(
     throw new Error('role-assets must be expanded through the canonical role staging path')
   }
 
-  const sourceKind: SourceKind = link.kind.endsWith('-dir') || link.kind === 'skill'
-    ? 'directory'
-    : 'file'
-  const source = requireSource(checkoutRoot, link.source, sourceKind, vendorId)
-  if (link.kind === 'skill') {
-    requireSkill(source, checkoutRoot, vendorId)
-  }
-  if (link.kind === 'mcp-file') {
-    requireNeutralMcp(source)
-  }
+  const source = requireSource(checkoutRoot, link.source, 'directory', vendorId)
+  requireSkill(source, checkoutRoot, vendorId)
 
   return [{
     vendorId,
@@ -399,34 +344,6 @@ function resolveRoleChild(
   return resolved
 }
 
-function expandRoleDirectory(
-  roleRoot: string,
-  relativePath: string,
-  targetRoot: 'agents' | 'hooks',
-  vendorId: string,
-): PlannedAsset[] {
-  const sourceRoot = resolveRoleChild(roleRoot, relativePath, 'directory')
-  if (!sourceRoot) {
-    return []
-  }
-
-  return fs.readdirSync(sourceRoot, { withFileTypes: true })
-    .sort((left, right) => compareStable(left.name, right.name))
-    .map((entry) => {
-      const source = path.join(sourceRoot, entry.name)
-      const stats = fs.statSync(fs.realpathSync(source))
-      const kind = targetRoot === 'agents'
-        ? stats.isDirectory() ? 'agents-dir' : 'agent-file'
-        : stats.isDirectory() ? 'hooks-dir' : 'hook-file'
-      return {
-        vendorId,
-        kind,
-        source,
-        target: path.join(targetRoot, entry.name),
-      }
-    })
-}
-
 function resolveRoleSource(
   homeDir: string,
   role: string,
@@ -460,31 +377,6 @@ function expandRoleAssets(roleRoot: string, vendorId: string): PlannedAsset[] {
         target: path.join('skills', name),
       })
     }
-  }
-
-  roleAssets.push(...expandRoleDirectory(roleRoot, assetRoots.agents, 'agents', vendorId))
-
-  const rulesFile = resolveRoleChild(roleRoot, path.posix.join(assetRoots.rules, 'AGENTS.md'), 'file')
-  if (rulesFile) {
-    roleAssets.push({
-      vendorId,
-      kind: 'rules-file',
-      source: rulesFile,
-      target: 'AGENTS.md',
-    })
-  }
-
-  roleAssets.push(...expandRoleDirectory(roleRoot, assetRoots.hooks, 'hooks', vendorId))
-
-  const mcpFile = resolveRoleChild(roleRoot, path.posix.join(assetRoots.mcp, 'mcp.json'), 'file')
-  if (mcpFile) {
-    requireNeutralMcp(mcpFile)
-    roleAssets.push({
-      vendorId,
-      kind: 'mcp-file',
-      source: mcpFile,
-      target: path.join('mcp', 'mcp.json'),
-    })
   }
 
   requireNoTargetConflicts(roleAssets, 'Canonical role-assets target conflict')
@@ -605,28 +497,16 @@ function validateInventory(
         })
     : []
 
-  const rulesFile = path.join(stagingRoot, 'AGENTS.md')
-  const mcpFile = path.join(stagingRoot, 'mcp', 'mcp.json')
-  const hooksRoot = path.join(stagingRoot, 'hooks')
-  if (fs.existsSync(mcpFile)) {
-    requireNeutralMcp(mcpFile)
-  }
-  readNeutralHookManifest(hooksRoot)
-
   return {
     role,
     ...(roleStagingRoot === undefined
       ? {}
       : { roleRoot: path.join(path.dirname(finalVendorRoot), 'roles', role) }),
     skills,
-    agents: listRelativeFiles(path.join(stagingRoot, 'agents')),
-    rules: fs.existsSync(rulesFile) ? path.join(finalVendorRoot, 'AGENTS.md') : undefined,
-    hooks: listRelativeFiles(path.join(stagingRoot, 'hooks')),
-    mcp: fs.existsSync(mcpFile) ? path.join(finalVendorRoot, 'mcp', 'mcp.json') : undefined,
   }
 }
 
-const managedEntryNames = ['skills', 'agents', 'AGENTS.md', 'hooks', 'mcp'] as const
+const managedEntryNames = ['skills'] as const
 
 interface ManagedEntryCommit {
   current: string

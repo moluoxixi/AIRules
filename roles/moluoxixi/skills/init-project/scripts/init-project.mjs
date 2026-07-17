@@ -9,17 +9,29 @@ import process from 'node:process'
 import { fileURLToPath } from 'node:url'
 
 const SCRIPT_DIR = path.dirname(fileURLToPath(import.meta.url))
-const ROLE_ROOT = path.resolve(SCRIPT_DIR, '..', '..', '..')
-const ASSET_ROOT = path.resolve(SCRIPT_DIR, '..', 'assets', 'trellis-v0.6.7')
+const SKILL_ROOT = path.resolve(SCRIPT_DIR, '..')
+const ASSET_ROOT = path.join(SKILL_ROOT, 'assets', 'trellis-v0.6.7')
 const TEMPLATE_ROOT = path.join(ASSET_ROOT, 'templates')
-const RUNTIME_ROOT = path.join(ROLE_ROOT, 'runtime')
-const LOCAL_SKILLS_ROOT = fs.existsSync(path.join(ROLE_ROOT, 'skills', 'trellis-channel'))
-  ? path.join(ROLE_ROOT, 'skills')
-  : path.resolve(SCRIPT_DIR, '..', 'skills')
+const RUNTIME_ROOT = path.join(SKILL_ROOT, 'assets', 'runtime')
+const LOCAL_SKILLS_ROOT = path.join(SKILL_ROOT, 'assets', 'skills')
+const PROJECT_ASSET_ROOT = path.join(SKILL_ROOT, 'assets', 'project')
 const PROJECT_ROOT_DIR = '.moluoxixi'
 const MANIFEST_PATH = projectPath('airules-init-manifest.json')
 const GENERATOR_VERSION = '1.0.0'
 const TRELLIS_REVISION = 'e7c5ead4d0dfd717d11a40b6bc0c80d8af94c49a'
+const LEGACY_SKILL_RENAMES = {
+  'trellis-before-dev': 'before-dev',
+  'trellis-brainstorm': 'brainstorm',
+  'trellis-break-loop': 'break-loop',
+  'trellis-channel': 'channel',
+  'trellis-continue': 'continue',
+  'trellis-finish-work': 'finish-work',
+  'trellis-meta': 'meta',
+  'trellis-session-insight': 'session-insight',
+  'trellis-spec-bootstrap': 'spec-bootstrap',
+  'trellis-start': 'start',
+  'trellis-update-spec': 'update-spec',
+}
 
 const PLATFORM_ORDER = [
   'claude',
@@ -57,7 +69,7 @@ const PLATFORM_CONTEXT = {
   copilot: context('/', 'Bash scripts or tool calls', 'Prompts', true, true, 'copilot'),
   droid: context('/trellis-', 'Bash scripts or Task calls', 'Slash commands', true, true, 'droid'),
   pi: context('/trellis-', 'Bash scripts or tool calls', 'Slash commands', true, true, 'pi'),
-  reasonix: context('/skill trellis-', 'Bash scripts or tool calls', 'Skills', true, false, 'reasonix'),
+  reasonix: context('/skill ', 'Bash scripts or tool calls', 'Skills', true, false, 'reasonix'),
   zcode: context('/trellis:', 'Bash scripts or Agent calls', 'Skills', true, false, 'zcode'),
   trae: context('/trellis-', 'Bash scripts or tool calls', 'Commands', true, true, 'trae'),
   omp: context('/trellis:', 'Bash scripts or Task calls', 'Slash commands', true, true, 'omp'),
@@ -123,17 +135,6 @@ const HOOK_ROOTS = {
   trae: '.trae/hooks',
 }
 
-const SKILL_DESCRIPTIONS = {
-  'before-dev': 'Loads the relevant Trellis specs and constraints before implementation. Use before editing code or starting a development task.',
-  'brainstorm': 'Clarifies requirements and explores implementation approaches before coding. Use when a request is ambiguous or needs design decisions.',
-  'break-loop': 'Analyzes recurring failures, captures root causes, and records prevention guidance. Use after repeated fixes or regressions.',
-  'check': 'Verifies spec compliance, lint, type checking, tests, data flow, reuse, and consistency. Use before considering work complete.',
-  'update-spec': `Records executable contracts and conventions in ${projectPath('spec')}. Use when durable project knowledge is discovered.`,
-  'start': 'Initializes a Trellis work session by loading workflow, task, and project context. Use at the start of project work.',
-  'continue': 'Resumes the active Trellis task at the correct workflow phase. Use after interruption or context loss.',
-  'finish-work': 'Runs the completion workflow, records the session, and prepares the task for handoff or archival.',
-}
-
 function context(cmdRefPrefix, executorAI, userActionLabel, agentCapable, hasHooks, cliFlag) {
   return { cmdRefPrefix, executorAI, userActionLabel, agentCapable, hasHooks, cliFlag }
 }
@@ -148,6 +149,18 @@ function toPosix(value) {
 
 function projectPath(...segments) {
   return path.posix.join(PROJECT_ROOT_DIR, ...segments)
+}
+
+function canonicalSkillName(name) {
+  return name.replace(/^moluoxixi-/u, '').replace(/^trellis-/u, '')
+}
+
+function renameProjectedSkillPath(relativePath) {
+  const segments = relativePath.split('/')
+  const skillsIndex = segments.indexOf('skills')
+  if (skillsIndex >= 0 && segments[skillsIndex + 1])
+    segments[skillsIndex + 1] = canonicalSkillName(segments[skillsIndex + 1])
+  return segments.join('/')
 }
 
 function parseArgs(argv) {
@@ -248,14 +261,6 @@ function resolveTemplate(content, ctx, pythonCommand, neutral = false) {
   return result
 }
 
-function wrapSkill(name, content) {
-  const base = name.replace(/^trellis-/u, '')
-  const description = SKILL_DESCRIPTIONS[base]
-  if (!description)
-    throw new Error(`Missing description for skill: ${name}`)
-  return `---\nname: ${name}\ndescription: "${description}"\n---\n\n${content}`
-}
-
 function wrapCommand(name, content) {
   const description = {
     'start': 'Initialize a Trellis development session.',
@@ -317,6 +322,26 @@ function localizeProjectRuntime(relativePath, content) {
     .replaceAll('trellis workflow', `node ${projectPath('runtime', 'trellis.mjs')} workflow`)
     .replaceAll('trellis update', `node ${projectPath('runtime', 'trellis.mjs')} update`)
     .replaceAll('.trellis', PROJECT_ROOT_DIR)
+  for (const [legacyName, canonicalName] of Object.entries(LEGACY_SKILL_RENAMES))
+    localized = localized.replaceAll(legacyName, canonicalName)
+  localized = localized
+    .replaceAll('| Done coding / quality check | `trellis-check` |', '| Done coding / quality check | `check` |')
+    .replaceAll('Load the `trellis-check` skill', 'Load the `check` skill')
+    .replaceAll('load the `trellis-check` skill', 'load the `check` skill')
+    .replaceAll('skills, such as `brainstorm` and `trellis-check`', 'skills, such as `brainstorm` and `check`')
+    .replaceAll('`before-dev` -> edit -> `trellis-check` -> validation', '`before-dev` -> edit -> `check` -> validation')
+    .replaceAll('- Before editing -> `before-dev`; after editing -> `trellis-check`.', '- Before editing -> `before-dev`; after editing -> `check`.')
+    .replaceAll('`trellis-check` exists as both; prefer the Agent form when verifying after code changes.', '`trellis-check` is the verification Agent; use `check` when the workflow calls for the inline skill.')
+  const segments = relativePath.split('/')
+  const skillsIndex = segments.indexOf('skills')
+  if (relativePath.endsWith('/SKILL.md') && skillsIndex >= 0 && segments[skillsIndex + 1]) {
+    const lines = localized.split('\n')
+    const nameLine = lines.findIndex(line => line.startsWith('name:'))
+    if (nameLine >= 0) {
+      lines[nameLine] = `name: ${segments[skillsIndex + 1]}`
+      localized = lines.join('\n')
+    }
+  }
   if (relativePath === 'common/session_context.py') {
     localized = localized.replace(
       /def _fetch_trellis_version_output\(\) -> str \| None:\n[\s\S]*?\n\ndef _extract_available_update_version/u,
@@ -330,11 +355,7 @@ function addSharedRuntime(plan, pythonCommand, developer) {
   addTree(plan, path.join(TEMPLATE_ROOT, 'trellis', 'scripts'), projectPath('scripts'), { python: pythonCommand, transform: localizeProjectRuntime })
   addTree(plan, path.join(TEMPLATE_ROOT, 'trellis', 'agents'), projectPath('agents'), { python: pythonCommand, transform: localizeProjectRuntime })
   addTree(plan, RUNTIME_ROOT, projectPath('runtime'), { merge: 'replace' })
-  addPlan(plan, projectPath('runtime', 'update', 'scripts', 'init-project.mjs'), fs.readFileSync(path.join(SCRIPT_DIR, 'init-project.mjs')), { executable: true })
-  addTree(plan, ASSET_ROOT, projectPath('runtime', 'update', 'assets', 'trellis-v0.6.7'), { merge: 'replace' })
-  for (const skill of ['trellis-channel', 'trellis-meta', 'trellis-session-insight']) {
-    addTree(plan, path.join(LOCAL_SKILLS_ROOT, skill), projectPath('runtime', 'update', 'skills', skill), { merge: 'replace', transform: localizeProjectRuntime })
-  }
+  addTree(plan, SKILL_ROOT, projectPath('runtime', 'update', 'init-project'), { merge: 'replace' })
   addPlan(plan, projectPath('workflow.md'), resolveTemplate(localizeProjectRuntime('workflow.md', readText('trellis', 'workflow.md')), undefined, pythonCommand))
   addPlan(plan, projectPath('config.yaml'), localizeProjectRuntime('config.yaml', readText('trellis', 'config.yaml')))
   addPlan(plan, projectPath('.version'), '0.6.7-airules.1\n')
@@ -345,10 +366,7 @@ function addSharedRuntime(plan, pythonCommand, developer) {
     const root = path.join(TEMPLATE_ROOT, 'markdown', 'spec', section)
     addTree(plan, root, projectPath('spec', section), { rename: relative => relative.replace(/\.txt$/u, ''), transform: localizeProjectRuntime })
   }
-  addPlan(plan, projectPath('LICENSE'), fs.readFileSync(path.join(ASSET_ROOT, 'legal', 'LICENSE')))
-  addPlan(plan, projectPath('COPYRIGHT'), fs.readFileSync(path.join(ASSET_ROOT, 'legal', 'COPYRIGHT')))
-  addPlan(plan, projectPath('THIRD_PARTY_NOTICES.md'), `# Third-Party Notices\n\nProject runtime templates are derived from Trellis v0.6.7, revision ${TRELLIS_REVISION}, and remain licensed under AGPL-3.0-only. AIRules replaced the upstream initializer with an independent project writer on 2026-07-16. See LICENSE and COPYRIGHT in this directory.\n`)
-  addPlan(plan, 'AGENTS.md', localizeProjectRuntime('AGENTS.md', readText('markdown', 'agents.md')), { merge: 'block-trellis' })
+  addPlan(plan, 'AGENTS.md', fs.readFileSync(path.join(PROJECT_ASSET_ROOT, 'AGENTS.md')), { merge: 'block-trellis' })
   if (developer)
     addDeveloperFiles(plan, developer)
 }
@@ -364,35 +382,19 @@ function addDeveloperFiles(plan, developer) {
 function commonTemplates(platform, pythonCommand) {
   const ctx = PLATFORM_CONTEXT[platform]
   const commands = walkFiles(path.join(TEMPLATE_ROOT, 'common', 'commands')).map(file => ({ name: path.basename(file, '.md'), content: localizeProjectRuntime(path.basename(file), resolveTemplate(fs.readFileSync(file, 'utf8'), ctx, pythonCommand)) }))
-  const filtered = ctx.agentCapable && ctx.hasHooks && platform !== 'pi' ? commands.filter(command => command.name !== 'start') : commands
-  const skills = walkFiles(path.join(TEMPLATE_ROOT, 'common', 'skills')).map(file => ({ name: path.basename(file, '.md'), content: localizeProjectRuntime(path.basename(file), resolveTemplate(fs.readFileSync(file, 'utf8'), ctx, pythonCommand, platform === 'gemini' || platform === 'codex')) }))
-  return { commands: filtered, skills }
+  return ctx.agentCapable && ctx.hasHooks && platform !== 'pi' ? commands.filter(command => command.name !== 'start') : commands
 }
 
-function addBundledSkills(plan, platform, root, pythonCommand) {
-  const sourceRoot = path.join(TEMPLATE_ROOT, 'common', 'bundled-skills')
-  for (const entry of fs.readdirSync(sourceRoot, { withFileTypes: true }).filter(entry => entry.isDirectory())) {
-    const localRoot = path.join(LOCAL_SKILLS_ROOT, entry.name)
-    const selectedRoot = fs.existsSync(localRoot) ? localRoot : path.join(sourceRoot, entry.name)
-    addTree(plan, selectedRoot, path.posix.join(root, entry.name), {
+function addProjectSkills(plan, platform, root, pythonCommand) {
+  for (const entry of fs.readdirSync(LOCAL_SKILLS_ROOT, { withFileTypes: true }).filter(entry => entry.isDirectory())) {
+    const skillName = canonicalSkillName(entry.name)
+    addTree(plan, path.join(LOCAL_SKILLS_ROOT, entry.name), path.posix.join(root, skillName), {
       context: PLATFORM_CONTEXT[platform],
       platform,
       python: pythonCommand,
-      transform: localizeProjectRuntime,
+      transform: (relativePath, content) => localizeProjectRuntime(`skills/${skillName}/${relativePath}`, content),
     })
   }
-}
-
-function addWorkflowSkills(plan, platform, root, pythonCommand, includeCommands = false, excluded = new Set()) {
-  const templates = commonTemplates(platform, pythonCommand)
-  const selected = includeCommands ? [...templates.commands, ...templates.skills] : templates.skills
-  for (const template of selected) {
-    const name = `trellis-${template.name}`
-    if (excluded.has(name))
-      continue
-    addPlan(plan, `${root}/${name}/SKILL.md`, wrapSkill(name, template.content), { platform })
-  }
-  addBundledSkills(plan, platform, root, pythonCommand)
 }
 
 function commandTarget(platform, name) {
@@ -429,7 +431,8 @@ function addDirectPlatformAssets(plan, platform, pythonCommand) {
     const agents = path.join(TEMPLATE_ROOT, 'reasonix', 'agents')
     for (const source of walkFiles(agents)) {
       const name = path.basename(source, '.md')
-      addPlan(plan, `.reasonix/skills/${name}/SKILL.md`, localizeProjectRuntime(path.basename(source), resolveTemplate(fs.readFileSync(source, 'utf8'), PLATFORM_CONTEXT.reasonix, pythonCommand)), { platform })
+      const content = localizeProjectRuntime(`agents/${name}/SKILL.md`, resolveTemplate(fs.readFileSync(source, 'utf8'), PLATFORM_CONTEXT.reasonix, pythonCommand))
+      addPlan(plan, `.reasonix/skills/${name}/SKILL.md`, content, { platform })
     }
     return
   }
@@ -442,23 +445,23 @@ function addDirectPlatformAssets(plan, platform, pythonCommand) {
     platform,
     transform: localizeProjectRuntime,
     filter: relative => platform !== 'claude' || relative !== 'hooks/statusline.py',
-    rename: relative => relative.endsWith('.ts.txt') ? relative.slice(0, -4) : relative,
+    rename: relative => renameProjectedSkillPath(relative.endsWith('.ts.txt') ? relative.slice(0, -4) : relative),
   })
 }
 
 function addPlatform(plan, platform, pythonCommand, skipSharedSkills = false) {
   addDirectPlatformAssets(plan, platform, pythonCommand)
   const ctx = PLATFORM_CONTEXT[platform]
-  const templates = commonTemplates(platform, pythonCommand)
+  const commands = commonTemplates(platform, pythonCommand)
   if (platform === 'codex' || platform === 'kiro' || platform === 'reasonix') {
     const root = platform === 'codex' ? '.agents/skills' : platform === 'kiro' ? '.kiro/skills' : '.reasonix/skills'
-    addWorkflowSkills(plan, platform, root, pythonCommand, true, platform === 'reasonix' ? new Set(['trellis-check', 'trellis-implement']) : new Set())
+    addProjectSkills(plan, platform, root, pythonCommand)
   }
   else {
     const skillsRoot = PLATFORM_SKILLS_ROOT[platform]
     if (skillsRoot && !skipSharedSkills)
-      addWorkflowSkills(plan, platform, skillsRoot, pythonCommand)
-    for (const command of templates.commands) {
+      addProjectSkills(plan, platform, skillsRoot, pythonCommand)
+    for (const command of commands) {
       const target = commandTarget(platform, command.name)
       if (!target)
         continue

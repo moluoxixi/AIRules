@@ -6,18 +6,6 @@ import { requireRoleName } from './role-assets.js'
 
 export const ROLE_RUNTIME_API_VERSION = 1 as const
 
-export type AgentCardProjectionFormat = 'markdown' | 'toml'
-
-export interface AgentCardProjection {
-  content: string
-  fileName: string
-}
-
-export type AgentCardProjectionRenderer = (
-  sourceFile: string,
-  format: AgentCardProjectionFormat,
-) => AgentCardProjection
-
 export interface RoleCliResult {
   exitCode: number
   stderr: string
@@ -34,7 +22,6 @@ export interface AirulesRoleRuntime {
   apiVersion: typeof ROLE_RUNTIME_API_VERSION
   roleId: string
   roleVersion: string
-  renderAgentCardProjection: AgentCardProjectionRenderer
   runWorkflowCli: (args: string[], environment: RoleWorkflowEnvironment) => RoleCliResult
 }
 
@@ -133,7 +120,6 @@ function requireRoleRuntime(value: unknown, source: string): AirulesRoleRuntime 
     || value.apiVersion !== ROLE_RUNTIME_API_VERSION
     || typeof value.roleId !== 'string'
     || typeof value.roleVersion !== 'string'
-    || typeof value.renderAgentCardProjection !== 'function'
     || typeof value.runWorkflowCli !== 'function') {
     throw new Error(`Invalid AIRules role runtime export: ${source}`)
   }

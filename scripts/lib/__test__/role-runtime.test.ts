@@ -50,9 +50,6 @@ export const roleRuntime = {
   apiVersion: 1,
   roleId: ${JSON.stringify(role)},
   roleVersion: ${JSON.stringify(options.runtimeVersion ?? '1.2.3')},
-  renderAgentCardProjection(sourceFile, format) {
-    return { fileName: format === 'toml' ? 'agent.toml' : 'agent.md', content: sourceFile }
-  },
   runWorkflowCli(args, environment) {
     return { exitCode: 0, stdout: JSON.stringify({ args, roleRoot: environment.roleRoot }), stderr: '' }
   },
@@ -75,10 +72,6 @@ describe('generic role runtime loading', () => {
     expect(resolveRoleRoot({ repoRoot, home: path.join(repoRoot, 'home'), role: 'alpha' })).toBe(fs.realpathSync(roleRoot))
     const loaded = await loadRoleRuntime({ repoRoot, home: path.join(repoRoot, 'home'), role: 'alpha' })
     expect(loaded.runtime.roleId).toBe('alpha')
-    expect(loaded.runtime.renderAgentCardProjection('opaque-card', 'markdown')).toEqual({
-      fileName: 'agent.md',
-      content: 'opaque-card',
-    })
     expect(JSON.parse(loaded.runtime.runWorkflowCli(['custom-stage'], {
       cwd: repoRoot,
       env: {},

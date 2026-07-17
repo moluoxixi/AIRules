@@ -10,7 +10,6 @@ import {
   ensureInstallRoot,
   getDefaultInstallPaths,
   isSamePath,
-  linkHostBaseline,
   projectHostById,
   projectSkillsToHost,
   projectToHost,
@@ -20,7 +19,6 @@ import {
   runSkillSetupCommands,
   shouldUseShellForSetupCommand,
   syncFirstPartySkillsToVendor,
-  syncFirstPartyToHome,
 } from '../install.js'
 import { buildLinkPlan } from '../links.js'
 import { roleOverlayOrder } from '../roles.js'
@@ -75,8 +73,6 @@ it('hosts - 解析默认和自定义宿主路径', () => {
   const cursor = findHostConfig('cursor')
   const claude = findHostConfig('claude')
   const hermes = findHostConfig('hermes')
-  const trae = findHostConfig('trae')
-  const traeCn = findHostConfig('trae-cn')
   const traeSolo = findHostConfig('trae-solo')
   const traeSoloCn = findHostConfig('trae-solo-cn')
   const qoder = findHostConfig('qoder')
@@ -86,8 +82,6 @@ it('hosts - 解析默认和自定义宿主路径', () => {
   assert.ok(cursor)
   assert.ok(claude)
   assert.ok(hermes)
-  assert.ok(trae)
-  assert.ok(traeCn)
   assert.ok(traeSolo)
   assert.ok(traeSoloCn)
   assert.ok(qoder)
@@ -101,55 +95,29 @@ it('hosts - 解析默认和自定义宿主路径', () => {
   assert.equal(cursorPaths.skillsDirName, 'skills-cursor')
 
   const claudePaths = resolveHostPaths(claude, 'C:/Users/example')
-  assert.equal(normalizePath(claudePaths.hostBaselineFile), 'C:/Users/example/.claude/CLAUDE.md')
+  assert.equal(normalizePath(claudePaths.hostHome), 'C:/Users/example/.claude')
   assert.equal(claudePaths.skillsDirName, 'skills')
 
   const hermesPaths = resolveHostPaths(hermes, 'C:/Users/example')
   assert.equal(normalizePath(hermesPaths.hostHome), 'C:/Users/example/AppData/Local/hermes')
-  assert.equal(normalizePath(hermesPaths.hostBaselineFile), 'C:/Users/example/AppData/Local/hermes/SOUL.md')
   assert.equal(hermesPaths.skillsDirName, 'skills')
-  assert.equal(hermesPaths.projectBaseline, true)
-  assert.equal(hermesPaths.baselineMode, 'append')
+  assert.equal(hermesPaths.projectSkills, true)
   assert.deepEqual(hermesPaths.excludedSkills, [])
 
-  const traePaths = resolveHostPaths(trae, 'C:/Users/example')
-  assert.equal(normalizePath(traePaths.mcpHome), 'C:/Users/example/AppData/Roaming/Trae/User')
-  assert.deepEqual(traePaths.mcp?.defaultTopLevel, { inputs: [] })
-  assert.equal(traePaths.includeNativeTomlAgentsAsMarkdown, true)
-
-  const traeCnPaths = resolveHostPaths(traeCn, 'C:/Users/example')
-  assert.equal(normalizePath(traeCnPaths.mcpHome), 'C:/Users/example/AppData/Roaming/Trae CN/User')
-  assert.equal(traeCnPaths.includeNativeTomlAgentsAsMarkdown, true)
-
   const traeSoloPaths = resolveHostPaths(traeSolo, 'C:/Users/example')
-  assert.equal(normalizePath(traeSoloPaths.mcpHome), 'C:/Users/example/AppData/Roaming/TRAE SOLO/User')
-  assert.equal(traeSoloPaths.projectSharedResources, false)
-  assert.equal(traeSoloPaths.projectBaseline, false)
+  assert.equal(normalizePath(traeSoloPaths.hostHome), 'C:/Users/example/.trae-solo')
+  assert.equal(traeSoloPaths.projectSkills, false)
 
   const traeSoloCnPaths = resolveHostPaths(traeSoloCn, 'C:/Users/example')
-  assert.equal(normalizePath(traeSoloCnPaths.mcpHome), 'C:/Users/example/AppData/Roaming/TRAE SOLO CN/User')
-  assert.equal(traeSoloCnPaths.projectSharedResources, false)
-  assert.equal(traeSoloCnPaths.projectBaseline, false)
+  assert.equal(normalizePath(traeSoloCnPaths.hostHome), 'C:/Users/example/.trae-solo-cn')
+  assert.equal(traeSoloCnPaths.projectSkills, false)
 
   const qoderPaths = resolveHostPaths(qoder, 'C:/Users/example')
   assert.equal(normalizePath(qoderPaths.hostHome), 'C:/Users/example/.qoder')
-  assert.equal(normalizePath(qoderPaths.mcpHome), 'C:/Users/example/AppData/Roaming/Qoder/SharedClientCache')
-  assert.equal(normalizePath(qoderPaths.hostBaselineFile), 'C:/Users/example/.qoder/AGENTS.md')
-  assert.equal(qoderPaths.projectSharedResources, true)
-  assert.equal(qoderPaths.projectBaseline, true)
-  assert.equal(qoderPaths.includeNativeTomlAgentsAsMarkdown, true)
-  assert.equal(qoder.mcpHomeImpliesHostHome, true)
-  assert.deepEqual(qoderPaths.mcp?.serverOverrides?.codegraph, { type: 'stdio' })
-  assert.deepEqual(qoderPaths.hookAdapter, {
-    relDir: '.',
-    fileName: 'settings.json',
-    format: 'json',
-    nesting: 'group',
-    includeType: true,
-  })
+  assert.equal(qoderPaths.projectSkills, true)
 
   const qoderworkPaths = resolveHostPaths(qoderwork, 'C:/Users/example')
-  assert.equal(qoderworkPaths.mcp, undefined)
+  assert.equal(qoderworkPaths.projectSkills, true)
 })
 
 it('links - 构建按目标路径排序的绝对链接计划', () => {
@@ -289,53 +257,10 @@ export const vendors = []
   })
 })
 
-it('install - 同步第一方文件并按宿主投影 baseline 与 skills', async () => withTempDirAsync('airules-project-', async (tmpDir) => {
-  const userHome = path.join(tmpDir, 'user')
-  const repoRoot = path.join(tmpDir, 'repo')
-  const moluoHome = path.join(userHome, '.moluoxixi')
-  const hostHome = path.join(userHome, '.codex')
-  const hostBaselineFile = path.join(hostHome, 'AGENTS.md')
-
-  writeFile(path.join(repoRoot, 'roles', 'common', 'constants', 'skills.ts'), `
-export const vendors = []
-`)
-  writeFile(path.join(repoRoot, 'roles', 'extended-development', 'constants', 'skills.ts'), `
-export const extendsRoles = ['common']
-export const vendors = []
-`)
-  writeFile(path.join(repoRoot, 'roles', 'common', 'hooks', 'session-log.mjs'), 'hook\n')
-  writeFile(path.join(repoRoot, 'roles', 'extended-development', 'rules', 'AGENTS.md'), 'baseline\n')
-  writeFile(path.join(repoRoot, 'roles', 'extended-development', 'agents', 'helper.md'), 'agent\n')
-  fs.mkdirSync(path.join(moluoHome, 'vendor', 'skills', 'skill-one'), { recursive: true })
-
-  await syncFirstPartyToHome(repoRoot, moluoHome, 'extended-development')
-  assert.equal(fs.readFileSync(path.join(moluoHome, 'vendor', 'AGENTS.md'), 'utf8'), 'baseline\n')
-  assert.equal(fs.readFileSync(path.join(moluoHome, 'vendor', 'agents', 'helper.md'), 'utf8'), 'agent\n')
-  assert.equal(fs.readFileSync(path.join(moluoHome, 'vendor', 'hooks', 'session-log.mjs'), 'utf8'), 'hook\n')
-  assert.equal(fs.existsSync(path.join(moluoHome, 'agents')), false)
-  assert.equal(fs.existsSync(path.join(moluoHome, 'skills')), false)
-
-  projectToHost({ userHome, moluoHome, hostHome, hostBaselineFile })
-  assert.equal(fs.readFileSync(hostBaselineFile, 'utf8'), 'baseline\n')
-  assert.ok(fs.lstatSync(path.join(hostHome, 'skills', 'skill-one')).isSymbolicLink())
-  assert.equal(fs.readFileSync(path.join(hostHome, 'agents', 'helper.md'), 'utf8'), 'agent\n')
-  assert.equal(fs.existsSync(path.join(hostHome, 'agents', 'helper.md')), true)
-
-  const codexBaseline = linkHostBaseline({ moluoHome, host: 'codex', userHome })
-  assert.equal(codexBaseline, hostBaselineFile)
-  assert.equal(linkHostBaseline({ moluoHome, host: 'agentsmd', userHome }), undefined)
-  assert.equal(fs.existsSync(path.join(userHome, '.agents', 'AGENTS.md')), false)
-  assert.throws(
-    () => linkHostBaseline({ moluoHome, host: 'unknown', userHome }),
-    /Unknown host: unknown/,
-  )
-}))
-
 it('install - 宿主级配置可通用排除不安装的技能', () => withTempDir('airules-host-exclude-', (tmpDir) => {
   const userHome = path.join(tmpDir, 'user')
   const moluoHome = path.join(userHome, '.moluoxixi')
   const hostHome = path.join(userHome, '.custom-agent')
-  const hostBaselineFile = path.join(hostHome, 'AGENTS.md')
   const vendorSkillsDir = path.join(moluoHome, 'vendor', 'skills')
 
   writeFile(path.join(moluoHome, 'vendor', 'AGENTS.md'), 'baseline\n')
@@ -346,7 +271,6 @@ it('install - 宿主级配置可通用排除不安装的技能', () => withTempD
     userHome,
     moluoHome,
     hostHome,
-    hostBaselineFile,
     excludedSkills: ['disabled-skill'],
   })
 
@@ -363,7 +287,6 @@ it('install - projectHostById 跳过缺失宿主并处理未知宿主错误', ()
 
   const skipped = projectHostById('codex', userHome, moluoHome)
   assert.equal(skipped.success, false)
-  assert.equal(normalizePath(skipped.hostBaselineFile), normalizePath(path.join(userHome, '.codex', 'AGENTS.md')))
 
   fs.mkdirSync(path.join(userHome, '.codex'), { recursive: true })
   const projected = projectHostById('codex', userHome, moluoHome)
@@ -376,262 +299,7 @@ it('install - projectHostById 跳过缺失宿主并处理未知宿主错误', ()
   )
 }))
 
-it('install - Trae 宿主 home 缺失但真实 MCP 目录存在时仍投影 codegraph MCP', () => withTempDir('airules-trae-mcp-', (tmpDir) => {
-  const userHome = path.join(tmpDir, 'user')
-  const moluoHome = path.join(userHome, '.moluoxixi')
-  const traeMcpHome = path.join(userHome, 'AppData', 'Roaming', 'Trae', 'User')
-
-  writeFile(path.join(moluoHome, 'vendor', 'mcp', 'mcp.json'), `${JSON.stringify({
-    mcpServers: {
-      codegraph: {
-        command: 'codegraph',
-        args: ['serve', '--mcp', '--path', workspaceFolderPlaceholder],
-      },
-    },
-  }, null, 2)}\n`)
-  fs.mkdirSync(traeMcpHome, { recursive: true })
-
-  const projected = projectHostById('trae', userHome, moluoHome)
-
-  assert.equal(projected.success, true)
-  assert.equal(projected.baselineProjected, false)
-  assert.equal(fs.existsSync(path.join(userHome, '.trae')), false)
-
-  const written = JSON.parse(fs.readFileSync(path.join(traeMcpHome, 'mcp.json'), 'utf8'))
-  assert.deepEqual(written.inputs, [])
-  assert.deepEqual(written.mcpServers.codegraph, {
-    command: 'codegraph',
-    args: ['serve', '--mcp', '--path', workspaceFolderPlaceholder],
-  })
-}))
-
-it('install - Trae Solo 只投影 MCP，不写 baseline、skills 或 agents', () => withTempDir('airules-trae-solo-mcp-', (tmpDir) => {
-  const userHome = path.join(tmpDir, 'user')
-  const moluoHome = path.join(userHome, '.moluoxixi')
-  const soloHostHome = path.join(userHome, '.trae-solo')
-  const soloMcpHome = path.join(userHome, 'AppData', 'Roaming', 'TRAE SOLO', 'User')
-
-  writeFile(path.join(moluoHome, 'vendor', 'mcp', 'mcp.json'), `${JSON.stringify({
-    mcpServers: {
-      codegraph: {
-        command: 'codegraph',
-        args: ['serve', '--mcp', '--path', workspaceFolderPlaceholder],
-      },
-    },
-  }, null, 2)}\n`)
-  fs.mkdirSync(soloMcpHome, { recursive: true })
-
-  const projected = projectHostById('trae-solo', userHome, moluoHome)
-
-  assert.equal(projected.success, true)
-  assert.equal(projected.baselineProjected, false)
-  assert.equal(fs.existsSync(soloHostHome), false)
-  assert.equal(fs.existsSync(path.join(soloMcpHome, 'skills')), false)
-  assert.equal(fs.existsSync(path.join(soloMcpHome, 'agents')), false)
-  assert.equal(fs.existsSync(path.join(soloMcpHome, 'AGENTS.md')), false)
-
-  const written = JSON.parse(fs.readFileSync(path.join(soloMcpHome, 'mcp.json'), 'utf8'))
-  assert.deepEqual(written.inputs, [])
-  assert.deepEqual(written.mcpServers.codegraph, {
-    command: 'codegraph',
-    args: ['serve', '--mcp', '--path', workspaceFolderPlaceholder],
-  })
-}))
-
-it('install - Qoder 投影全局 AGENTS、skills、agents、Stop hook 与 SharedClientCache MCP', () => withTempDir('airules-qoder-mcp-', (tmpDir) => {
-  const userHome = path.join(tmpDir, 'user')
-  const moluoHome = path.join(userHome, '.moluoxixi')
-  const qoderHome = path.join(userHome, '.qoder')
-  const qoderMcpHome = path.join(userHome, 'AppData', 'Roaming', 'Qoder', 'SharedClientCache')
-  const vendorSkillsDir = path.join(moluoHome, 'vendor', 'skills')
-
-  writeFile(path.join(moluoHome, 'vendor', 'AGENTS.md'), '# AIRules\n\n## Core\n\n- Keep rules linked.\n')
-  fs.mkdirSync(path.join(vendorSkillsDir, 'api-docs'), { recursive: true })
-  writeFile(path.join(moluoHome, 'vendor', 'agents', 'demo-agent.md'), '---\nname: demo-agent\ndescription: demo\n---\nbody\n')
-  writeFile(path.join(moluoHome, 'vendor', 'hooks', 'session-log.mjs'), 'process.stdout.write("{}")\n')
-  writeFile(path.join(moluoHome, 'vendor', 'hooks', 'hooks.json'), `${JSON.stringify({
-    version: 1,
-    hooks: [{ event: 'Stop', script: 'session-log.mjs', hosts: ['qoder'] }],
-  })}\n`)
-  writeFile(path.join(moluoHome, 'vendor', 'mcp', 'mcp.json'), `${JSON.stringify({
-    mcpServers: {
-      codegraph: {
-        command: 'codegraph',
-        args: ['serve', '--mcp', '--path', workspaceFolderPlaceholder],
-      },
-    },
-  }, null, 2)}\n`)
-  fs.mkdirSync(qoderHome, { recursive: true })
-  fs.mkdirSync(qoderMcpHome, { recursive: true })
-  writeFile(path.join(qoderHome, 'settings.json'), `${JSON.stringify({
-    hooks: {
-      Stop: [
-        { hooks: [{ type: 'command', command: 'echo user-stop' }] },
-      ],
-    },
-  }, null, 2)}\n`)
-
-  const projected = projectHostById('qoder', userHome, moluoHome)
-
-  assert.equal(projected.success, true)
-  assert.equal(projected.baselineProjected, true)
-  assert.equal(fs.existsSync(path.join(qoderHome, 'AGENTS.md')), true)
-  assert.equal(realLinkPath(path.join(qoderHome, 'skills', 'api-docs')), normalizePath(path.join(vendorSkillsDir, 'api-docs')))
-  assert.equal(fs.existsSync(path.join(qoderHome, 'agents', 'demo-agent.md')), true)
-  assert.equal(fs.existsSync(path.join(qoderMcpHome, 'AGENTS.md')), false)
-  assert.equal(fs.existsSync(path.join(qoderMcpHome, 'skills')), false)
-  assert.equal(fs.existsSync(path.join(qoderMcpHome, 'agents')), false)
-  const settings = JSON.parse(fs.readFileSync(path.join(qoderHome, 'settings.json'), 'utf8'))
-  assert.deepEqual(Object.keys(settings.hooks).sort(), ['Stop'])
-  const stopCommands = settings.hooks.Stop.flatMap((group: { hooks: Array<{ command: string }> }) => group.hooks.map(h => h.command))
-  assert.equal(stopCommands.includes('echo user-stop'), true)
-  assert.equal(stopCommands.filter((command: string) => command.includes('session-log.mjs')).length, 1)
-  assert.equal(stopCommands.some((command: string) => command.includes('--airules-host=')), false)
-
-  const written = JSON.parse(fs.readFileSync(path.join(qoderMcpHome, 'mcp.json'), 'utf8'))
-  assert.deepEqual(written.mcpServers.codegraph, {
-    type: 'stdio',
-    command: 'codegraph',
-    args: ['serve', '--mcp', '--path', workspaceFolderPlaceholder],
-  })
-}))
-
-it('install - 本地角色 hook 清单无效时保留上一版 vendor hooks', async () => withTempDirAsync('airules-invalid-local-hooks-', async (tmpDir) => {
-  const repoRoot = path.join(tmpDir, 'repo')
-  const moluoHome = path.join(tmpDir, 'home')
-
-  writeFile(path.join(repoRoot, 'roles', 'alpha', 'constants', 'skills.ts'), 'export const vendors = []\n')
-  writeFile(path.join(repoRoot, 'roles', 'alpha', 'hooks', 'hooks.json'), `${JSON.stringify({
-    version: 1,
-    hooks: [{ event: 'Stop', script: 'missing.mjs' }],
-  })}\n`)
-  writeFile(path.join(moluoHome, 'vendor', 'hooks', 'stable.mjs'), 'export const stable = true\n')
-
-  await assert.rejects(
-    syncFirstPartyToHome(repoRoot, moluoHome, 'alpha'),
-    /script does not exist/i,
-  )
-  assert.equal(fs.readFileSync(path.join(moluoHome, 'vendor', 'hooks', 'stable.mjs'), 'utf8'), 'export const stable = true\n')
-}))
-
-it('install - 角色 hook 清单按事件分发并保留用户 hook', () => withTempDir('airules-role-hook-dispatch-', (tmpDir) => {
-  const userHome = path.join(tmpDir, 'user')
-  const moluoHome = path.join(userHome, '.moluoxixi')
-  const claudeHome = path.join(userHome, '.claude')
-
-  writeFile(path.join(moluoHome, 'vendor', 'hooks', 'workflow-dispatcher.mjs'), 'process.stdout.write("{}")\n')
-  writeFile(path.join(moluoHome, 'vendor', 'hooks', 'hooks.json'), `${JSON.stringify({
-    version: 1,
-    hooks: [
-      { event: 'PreToolUse', script: 'workflow-dispatcher.mjs', hosts: ['claude'] },
-      { event: 'Stop', script: 'workflow-dispatcher.mjs' },
-    ],
-  }, null, 2)}\n`)
-  writeFile(path.join(claudeHome, 'settings.json'), `${JSON.stringify({
-    hooks: { Stop: [{ hooks: [{ type: 'command', command: 'echo user-stop' }] }] },
-  }, null, 2)}\n`)
-
-  const projected = projectHostById('claude', userHome, moluoHome)
-
-  assert.equal(projected.success, true)
-  const settings = JSON.parse(fs.readFileSync(path.join(claudeHome, 'settings.json'), 'utf8'))
-  assert.deepEqual(Object.keys(settings.hooks).sort(), ['PreToolUse', 'Stop'])
-  assert.match(settings.hooks.PreToolUse[0].hooks[0].command, /workflow-dispatcher\.mjs/)
-  assert.equal(JSON.stringify(settings.hooks.Stop).includes('echo user-stop'), true)
-  assert.equal(JSON.stringify(settings.hooks.Stop).includes('workflow-dispatcher.mjs'), true)
-  assert.equal(fs.existsSync(path.join(claudeHome, 'hooks', 'workflow-dispatcher.mjs')), true)
-}))
-
-it('install - 角色 hook 清单收敛删除旧受管事件但保留用户同目录脚本', () => withTempDir('airules-role-hook-reconcile-', (tmpDir) => {
-  const userHome = path.join(tmpDir, 'user')
-  const moluoHome = path.join(userHome, '.moluoxixi')
-  const claudeHome = path.join(userHome, '.claude')
-  const vendorHooks = path.join(moluoHome, 'vendor', 'hooks')
-  const manifestFile = path.join(vendorHooks, 'hooks.json')
-
-  writeFile(path.join(vendorHooks, 'dispatcher.mjs'), 'process.stdout.write("{}")\n')
-  writeFile(manifestFile, `${JSON.stringify({ version: 1, hooks: [{ event: 'PreToolUse', script: 'dispatcher.mjs' }] })}\n`)
-  fs.mkdirSync(claudeHome, { recursive: true })
-  projectHostById('claude', userHome, moluoHome)
-
-  const customScript = path.join(claudeHome, 'hooks', 'custom.mjs')
-  writeFile(customScript, 'export const user = true\n')
-  const first = JSON.parse(fs.readFileSync(path.join(claudeHome, 'settings.json'), 'utf8'))
-  first.hooks.Stop = [{ hooks: [{ type: 'command', command: `node "${customScript}"` }] }]
-  first.hooks.EmptyUserEvent = [{ matcher: 'never', hooks: [] }]
-  fs.writeFileSync(path.join(claudeHome, 'settings.json'), `${JSON.stringify(first, null, 2)}\n`)
-
-  writeFile(manifestFile, `${JSON.stringify({ version: 1, hooks: [{ event: 'Stop', script: 'dispatcher.mjs' }] })}\n`)
-  projectHostById('claude', userHome, moluoHome)
-
-  const settings = JSON.parse(fs.readFileSync(path.join(claudeHome, 'settings.json'), 'utf8'))
-  assert.equal(settings.hooks.PreToolUse, undefined)
-  assert.equal(JSON.stringify(settings.hooks.Stop).includes('--airules-managed-hook'), true)
-  assert.equal(JSON.stringify(settings.hooks.Stop).includes('custom.mjs'), true)
-  assert.deepEqual(settings.hooks.EmptyUserEvent, [{ matcher: 'never', hooks: [] }])
-  assert.equal(fs.existsSync(customScript), true)
-}))
-
-it('install - JSON 同事件相似脚本名不会互相误删', () => withTempDir('airules-role-hook-similar-names-', (tmpDir) => {
-  const userHome = path.join(tmpDir, 'user')
-  const moluoHome = path.join(userHome, '.moluoxixi')
-  const claudeHome = path.join(userHome, '.claude')
-  const vendorHooks = path.join(moluoHome, 'vendor', 'hooks')
-
-  writeFile(path.join(vendorHooks, 'a.mjs'), 'export {}\n')
-  writeFile(path.join(vendorHooks, 'ba.mjs'), 'export {}\n')
-  writeFile(path.join(vendorHooks, 'hooks.json'), `${JSON.stringify({
-    version: 1,
-    hooks: [{ event: 'Stop', script: 'ba.mjs' }, { event: 'Stop', script: 'a.mjs' }],
-  })}\n`)
-  fs.mkdirSync(claudeHome, { recursive: true })
-
-  projectHostById('claude', userHome, moluoHome)
-
-  const settings = JSON.parse(fs.readFileSync(path.join(claudeHome, 'settings.json'), 'utf8'))
-  const commands = settings.hooks.Stop.flatMap((group: { hooks: Array<{ command: string }> }) => group.hooks.map(hook => hook.command))
-  assert.equal(commands.filter((command: string) => command.includes('a.mjs')).length, 2)
-  assert.equal(commands.some((command: string) => command.includes('ba.mjs')), true)
-  assert.equal(commands.some((command: string) => /[\\/]a\.mjs"/u.test(command)), true)
-}))
-
-it('install - Qoder 只有 SharedClientCache 存在时仍创建 .qoder 完整投影', () => withTempDir('airules-qoder-mcp-only-', (tmpDir) => {
-  const userHome = path.join(tmpDir, 'user')
-  const moluoHome = path.join(userHome, '.moluoxixi')
-  const qoderHome = path.join(userHome, '.qoder')
-  const qoderMcpHome = path.join(userHome, 'AppData', 'Roaming', 'Qoder', 'SharedClientCache')
-  const vendorSkillsDir = path.join(moluoHome, 'vendor', 'skills')
-
-  writeFile(path.join(moluoHome, 'vendor', 'AGENTS.md'), '# AIRules\n')
-  fs.mkdirSync(path.join(vendorSkillsDir, 'api-docs'), { recursive: true })
-  writeFile(path.join(moluoHome, 'vendor', 'agents', 'demo-agent.md'), '---\nname: demo-agent\ndescription: demo\n---\nbody\n')
-  writeFile(path.join(moluoHome, 'vendor', 'hooks', 'session-log.mjs'), 'process.stdout.write("{}")\n')
-  writeFile(path.join(moluoHome, 'vendor', 'hooks', 'hooks.json'), `${JSON.stringify({
-    version: 1,
-    hooks: [{ event: 'Stop', script: 'session-log.mjs', hosts: ['qoder'] }],
-  })}\n`)
-  writeFile(path.join(moluoHome, 'vendor', 'mcp', 'mcp.json'), `${JSON.stringify({
-    mcpServers: {
-      codegraph: {
-        command: 'codegraph',
-        args: ['serve', '--mcp', '--path', workspaceFolderPlaceholder],
-      },
-    },
-  }, null, 2)}\n`)
-  fs.mkdirSync(qoderMcpHome, { recursive: true })
-
-  const projected = projectHostById('qoder', userHome, moluoHome)
-
-  assert.equal(projected.success, true)
-  assert.equal(projected.baselineProjected, true)
-  assert.equal(fs.existsSync(path.join(qoderHome, 'AGENTS.md')), true)
-  assert.equal(fs.existsSync(path.join(qoderHome, 'skills', 'api-docs')), true)
-  assert.equal(fs.existsSync(path.join(qoderHome, 'agents', 'demo-agent.md')), true)
-  const settings = JSON.parse(fs.readFileSync(path.join(qoderHome, 'settings.json'), 'utf8'))
-  assert.deepEqual(Object.keys(settings.hooks).sort(), ['Stop'])
-}))
-
-it('install - Hermes 宿主投影使用统一技能集合', () => withTempDir('airules-hermes-host-', (tmpDir) => {
+it('install - Hermes 宿主只投影统一技能集合并保留 SOUL', () => withTempDir('airules-hermes-host-', (tmpDir) => {
   const userHome = path.join(tmpDir, 'user')
   const moluoHome = path.join(userHome, '.moluoxixi')
   const hermesHome = path.join(userHome, 'AppData', 'Local', 'hermes')
@@ -639,7 +307,7 @@ it('install - Hermes 宿主投影使用统一技能集合', () => withTempDir('a
   const linkType = process.platform === 'win32' ? 'junction' : 'dir'
 
   writeFile(path.join(moluoHome, 'vendor', 'AGENTS.md'), '# AIRules\n\n## 核心规则\n\n- 禁止错误绕行。\n')
-  // 预置真实 SOUL.md 身份内容，验证 append 模式不覆盖
+  // 预置真实 SOUL.md 身份内容，skills-only 投影不得修改。
   writeFile(path.join(hermesHome, 'SOUL.md'), '# Soul\n\n身份与人格描述。\n')
   fs.mkdirSync(path.join(vendorSkillsDir, 'api-docs'), { recursive: true })
   fs.mkdirSync(path.join(hermesHome, 'skills'), { recursive: true })
@@ -648,42 +316,17 @@ it('install - Hermes 宿主投影使用统一技能集合', () => withTempDir('a
   const projected = projectHostById('hermes', userHome, moluoHome)
 
   assert.equal(projected.success, true)
-  assert.equal(normalizePath(projected.hostBaselineFile), normalizePath(path.join(hermesHome, 'SOUL.md')))
 
-  // SOUL.md 仍是真实文件而非软链接，原有身份内容保留，红线托管块被追加
+  // SOUL.md 仍是真实文件，且内容逐字节保持不变。
   const soulPath = path.join(hermesHome, 'SOUL.md')
   assert.equal(fs.lstatSync(soulPath).isSymbolicLink(), false)
   const soul = fs.readFileSync(soulPath, 'utf8')
   assert.match(soul, /身份与人格描述。/)
-  assert.match(soul, /<!-- AIRULES:BASELINE:START -->/)
-  assert.match(soul, /<!-- AIRULES:BASELINE:END -->/)
-  assert.match(soul, /禁止错误绕行。/)
+  assert.equal(soul, '# Soul\n\n身份与人格描述。\n')
 
   assert.ok(fs.lstatSync(path.join(hermesHome, 'skills', 'api-docs')).isSymbolicLink())
   assert.equal(fs.existsSync(path.join(hermesHome, 'skills', 'stale-skill')), false)
   assert.ok(fs.lstatSync(path.join(userHome, '.agents', 'skills', 'api-docs')).isSymbolicLink())
-}))
-
-it('install - Hermes append 基线幂等：重复投影只保留一份托管块', () => withTempDir('airules-hermes-idem-', (tmpDir) => {
-  const userHome = path.join(tmpDir, 'user')
-  const moluoHome = path.join(userHome, '.moluoxixi')
-  const hermesHome = path.join(userHome, 'AppData', 'Local', 'hermes')
-
-  writeFile(path.join(moluoHome, 'vendor', 'AGENTS.md'), '# AIRules\n\n- 禁止错误绕行。\n')
-  writeFile(path.join(hermesHome, 'SOUL.md'), '# Soul\n\n身份内容。\n')
-
-  const target = linkHostBaseline({ moluoHome, host: 'hermes', userHome })
-  assert.ok(target)
-  const first = fs.readFileSync(target, 'utf8')
-  linkHostBaseline({ moluoHome, host: 'hermes', userHome })
-  linkHostBaseline({ moluoHome, host: 'hermes', userHome })
-  const third = fs.readFileSync(target, 'utf8')
-
-  // 多次注入内容稳定，托管块只出现一次
-  assert.equal(first, third)
-  assert.equal((third.match(/<!-- AIRULES:BASELINE:START -->/g) ?? []).length, 1)
-  assert.equal((third.match(/<!-- AIRULES:BASELINE:END -->/g) ?? []).length, 1)
-  assert.match(third, /身份内容。/)
 }))
 
 it('install - rebuildVendorSkillLinks 链接存在的源并生成 gitignore', async () => {

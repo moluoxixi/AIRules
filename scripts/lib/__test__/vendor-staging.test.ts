@@ -77,45 +77,6 @@ describe('rebuildVendorAssets', () => {
     expect(fs.existsSync(path.join(homeDir, 'vendor', 'skills', 'local-only'))).toBe(false)
   })
 
-  it('forwards remote skills, namespace skills, agents, rules, hooks, and mcp as copies', async () => {
-    const { root, homeDir } = createFixture()
-    writeFile(repoPath(homeDir, 'platform', 'skills', 'core-skill', 'SKILL.md'), '# core\n')
-    writeFile(repoPath(homeDir, 'platform', 'skills', 'core-skill', 'assets', 'fixture.txt'), 'complete\n')
-    writeFile(repoPath(homeDir, 'platform', 'catalog', 'quality', 'remote-review', 'SKILL.md'), '# review\n')
-    writeFile(repoPath(homeDir, 'platform', 'agents', 'reviewer.md'), validAgent('reviewer'))
-    writeFile(repoPath(homeDir, 'platform', 'rules', 'AGENTS.md'), '# remote rules\n')
-    writeFile(repoPath(homeDir, 'platform', 'hooks', 'stop.mjs'), 'export default {}\n')
-    writeFile(repoPath(homeDir, 'platform', 'mcp', 'mcp.json'), validMcp())
-
-    const manifestPath = writeManifest(root, 'all-assets', [
-      vendorDefinition('platform', [
-        { kind: 'skills', sourceBaseDir: 'skills', skills: ['core-skill'] },
-        { kind: 'namespace', sourceDir: 'catalog', output: 'unused-namespace' },
-        { kind: 'agents', sourceDir: 'agents' },
-        { kind: 'rules', sourceFile: 'rules/AGENTS.md' },
-        { kind: 'hooks', sourceDir: 'hooks' },
-        { kind: 'mcp', sourceFile: 'mcp/mcp.json' },
-      ]),
-    ])
-
-    const inventory = await rebuildVendorAssets({ homeDir, role: 'alpha', manifestPath })
-
-    expect(inventory).toEqual({
-      role: 'alpha',
-      skills: ['core-skill', 'remote-review'],
-      agents: ['reviewer.md'],
-      rules: path.join(homeDir, 'vendor', 'AGENTS.md'),
-      hooks: ['stop.mjs'],
-      mcp: path.join(homeDir, 'vendor', 'mcp', 'mcp.json'),
-    })
-    expect(fs.readFileSync(path.join(homeDir, 'vendor', 'skills', 'core-skill', 'assets', 'fixture.txt'), 'utf8')).toBe('complete\n')
-    expect(fs.lstatSync(path.join(homeDir, 'vendor', 'skills', 'core-skill')).isSymbolicLink()).toBe(false)
-    expect(fs.readFileSync(path.join(homeDir, 'vendor', 'agents', 'reviewer.md'), 'utf8')).toContain('name: reviewer')
-    expect(fs.readFileSync(path.join(homeDir, 'vendor', 'AGENTS.md'), 'utf8')).toBe('# remote rules\n')
-    expect(fs.readFileSync(path.join(homeDir, 'vendor', 'hooks', 'stop.mjs'), 'utf8')).toBe('export default {}\n')
-    expect(JSON.parse(fs.readFileSync(path.join(homeDir, 'vendor', 'mcp', 'mcp.json'), 'utf8'))).toHaveProperty('mcpServers.demo')
-  })
-
   it('copies every distributable asset from only the selected moluoxixi role', async () => {
     const { root, homeDir } = createFixture()
     writeFile(repoPath(homeDir, 'moluoxixi', 'roles', 'alpha', 'skills', 'workflow', 'alpha-skill', 'SKILL.md'), '# alpha\n')
@@ -145,15 +106,14 @@ describe('rebuildVendorAssets', () => {
     const inventory = await rebuildVendorAssets({ homeDir, role: 'alpha', manifestPath })
 
     expect(inventory.skills).toEqual(['alpha-skill'])
-    expect(inventory.agents).toEqual(['alpha-agent.md'])
-    expect(inventory.hooks).toEqual(['alpha-stop.mjs'])
     expect(inventory.roleRoot).toBe(path.join(homeDir, 'roles', 'alpha'))
     expect(fs.existsSync(path.join(homeDir, 'vendor', 'skills', 'alpha-skill', 'SKILL.md'))).toBe(true)
     expect(fs.existsSync(path.join(homeDir, 'vendor', 'skills', 'alpha-skill', 'scripts', 'run.mjs'))).toBe(true)
-    expect(fs.existsSync(path.join(homeDir, 'vendor', 'agents', 'alpha-agent.md'))).toBe(true)
-    expect(fs.readFileSync(path.join(homeDir, 'vendor', 'AGENTS.md'), 'utf8')).toContain('alpha rules')
-    expect(fs.existsSync(path.join(homeDir, 'vendor', 'hooks', 'alpha-stop.mjs'))).toBe(true)
-    expect(fs.existsSync(path.join(homeDir, 'vendor', 'mcp', 'mcp.json'))).toBe(true)
+    expect(fs.existsSync(path.join(homeDir, 'vendor', 'agents', 'alpha-agent.md'))).toBe(false)
+    expect(fs.existsSync(path.join(homeDir, 'vendor', 'AGENTS.md'))).toBe(false)
+    expect(fs.existsSync(path.join(homeDir, 'vendor', 'hooks', 'alpha-stop.mjs'))).toBe(false)
+    expect(fs.existsSync(path.join(homeDir, 'vendor', 'mcp', 'mcp.json'))).toBe(false)
+    expect(fs.existsSync(path.join(homeDir, 'roles', 'alpha', 'agents', 'alpha-agent.md'))).toBe(true)
     expect(fs.existsSync(path.join(homeDir, 'vendor', 'skills', 'beta-skill'))).toBe(false)
     expect(fs.existsSync(path.join(homeDir, 'vendor', 'constants'))).toBe(false)
     expect(fs.readFileSync(path.join(homeDir, 'roles', 'alpha', 'constants', 'skills.ts'), 'utf8')).toBe('must not copy\n')
@@ -186,62 +146,10 @@ describe('rebuildVendorAssets', () => {
     const inventory = await rebuildVendorAssets({ homeDir, role: 'alpha', manifestPath })
 
     expect(inventory.skills).toEqual(['native-skill'])
-    expect(inventory.agents).toEqual(['native-agent.md'])
     expect(fs.readFileSync(path.join(homeDir, 'vendor', 'skills', 'native-skill', 'SKILL.md'), 'utf8')).toBe('# native skill\n')
-    expect(fs.readFileSync(path.join(homeDir, 'vendor', 'agents', 'native-agent.md'), 'utf8')).toContain('name: native-agent')
-    expect(fs.readFileSync(path.join(homeDir, 'vendor', 'AGENTS.md'), 'utf8')).toBe('# native rules\n')
-    expect(fs.existsSync(path.join(homeDir, 'roles', 'alpha', '.native', 'skills', 'native-skill'))).toBe(true)
-  })
-
-  it('rejects an invalid role hook manifest before replacing vendor assets', async () => {
-    const { root, homeDir } = createFixture()
-    writeFile(path.join(homeDir, 'vendor', 'hooks', 'stable.mjs'), 'export const stable = true\n')
-    writeFile(repoPath(homeDir, 'moluoxixi', 'roles', 'alpha', 'hooks', 'hooks.json'), `${JSON.stringify({
-      version: 1,
-      hooks: [{ event: 'Stop', script: '../escape.mjs' }],
-    })}\n`)
-    writeRoleContract(homeDir, 'moluoxixi', 'alpha')
-    const manifestPath = writeManifest(root, 'invalid-role-hooks', [
-      vendorDefinition('moluoxixi', [{ kind: 'role-assets', sourceDir: 'roles/alpha' }]),
-    ])
-
-    await expect(rebuildVendorAssets({ homeDir, role: 'alpha', manifestPath })).rejects.toThrow(/safe \.mjs file name/i)
-    expect(fs.readFileSync(path.join(homeDir, 'vendor', 'hooks', 'stable.mjs'), 'utf8')).toBe('export const stable = true\n')
-  })
-
-  it.each([
-    {
-      name: 'the same target',
-      vendors: [
-        vendorDefinition('one', [{ kind: 'rules', sourceFile: 'rules/AGENTS.md' }]),
-        vendorDefinition('two', [{ kind: 'rules', sourceFile: 'rules/AGENTS.md' }]),
-      ],
-      sources: [
-        ['one', 'rules', 'AGENTS.md'],
-        ['two', 'rules', 'AGENTS.md'],
-      ],
-    },
-    {
-      name: 'ancestor and child targets',
-      vendors: [
-        vendorDefinition('one', [{ kind: 'agents', sourceDir: 'agents', targetDir: 'vendor/agents/review' }]),
-        vendorDefinition('two', [{ kind: 'agents', sourceDir: 'agents', targetDir: 'vendor/agents/review', agents: ['reviewer'] }]),
-      ],
-      sources: [
-        ['one', 'agents', 'one.md'],
-        ['two', 'agents', 'reviewer.md'],
-      ],
-    },
-  ])('rejects ordinary vendor conflicts for $name before copying', async ({ vendors, sources }) => {
-    const { root, homeDir } = createFixture()
-    for (const [vendor, directory, file] of sources) {
-      writeFile(repoPath(homeDir, vendor, directory, file), directory === 'rules' ? '# rules\n' : validAgent(path.parse(file).name))
-    }
-    const manifestPath = writeManifest(root, `conflict-${sources[0][0]}`, vendors)
-
-    await expect(rebuildVendorAssets({ homeDir, role: 'alpha', manifestPath })).rejects.toThrow(/ordinary vendor target conflict/i)
+    expect(fs.existsSync(path.join(homeDir, 'vendor', 'agents', 'native-agent.md'))).toBe(false)
     expect(fs.existsSync(path.join(homeDir, 'vendor', 'AGENTS.md'))).toBe(false)
-    expect(fs.existsSync(path.join(homeDir, 'vendor', 'agents', 'review'))).toBe(false)
+    expect(fs.existsSync(path.join(homeDir, 'roles', 'alpha', '.native', 'skills', 'native-skill'))).toBe(true)
   })
 
   it('treats managed target names as case-insensitive', async () => {
@@ -254,75 +162,6 @@ describe('rebuildVendorAssets', () => {
     ])
 
     await expect(rebuildVendorAssets({ homeDir, role: 'alpha', manifestPath })).rejects.toThrow(/target conflict.*review/i)
-  })
-
-  it('applies moluoxixi last while preserving unrelated ordinary vendor assets', async () => {
-    const { root, homeDir } = createFixture()
-    writeFile(repoPath(homeDir, 'remote', 'skills', 'shared', 'SKILL.md'), '# remote shared\n')
-    writeFile(repoPath(homeDir, 'remote', 'skills', 'remote-only', 'SKILL.md'), '# remote only\n')
-    writeFile(repoPath(homeDir, 'remote', 'rules', 'AGENTS.md'), '# remote rules\n')
-    writeFile(repoPath(homeDir, 'moluoxixi', 'roles', 'alpha', 'skills', 'shared', 'SKILL.md'), '# alpha shared\n')
-    writeFile(repoPath(homeDir, 'moluoxixi', 'roles', 'alpha', 'rules', 'AGENTS.md'), '# alpha rules\n')
-    writeRoleContract(homeDir, 'moluoxixi', 'alpha')
-    const manifestPath = writeManifest(root, 'overlay', [
-      vendorDefinition('remote', [
-        { kind: 'skills', sourceBaseDir: 'skills', skills: ['shared', 'remote-only'] },
-        { kind: 'rules', sourceFile: 'rules/AGENTS.md' },
-      ]),
-      vendorDefinition('moluoxixi', [{ kind: 'role-assets', sourceDir: 'roles/alpha' }]),
-    ])
-
-    const inventory = await rebuildVendorAssets({ homeDir, role: 'alpha', manifestPath })
-
-    expect(inventory.skills).toEqual(['remote-only', 'shared'])
-    expect(fs.readFileSync(path.join(homeDir, 'vendor', 'skills', 'shared', 'SKILL.md'), 'utf8')).toBe('# alpha shared\n')
-    expect(fs.readFileSync(path.join(homeDir, 'vendor', 'skills', 'remote-only', 'SKILL.md'), 'utf8')).toBe('# remote only\n')
-    expect(fs.readFileSync(path.join(homeDir, 'vendor', 'AGENTS.md'), 'utf8')).toBe('# alpha rules\n')
-  })
-
-  it('fully replaces all five managed asset classes when switching roles', async () => {
-    const { root, homeDir } = createFixture()
-    writeFile(repoPath(homeDir, 'moluoxixi', 'roles', 'alpha', 'skills', 'alpha-only', 'SKILL.md'), '# alpha\n')
-    writeFile(repoPath(homeDir, 'moluoxixi', 'roles', 'alpha', 'agents', 'alpha-only.md'), validAgent('alpha-only'))
-    writeFile(repoPath(homeDir, 'moluoxixi', 'roles', 'alpha', 'rules', 'AGENTS.md'), '# alpha rules\n')
-    writeFile(repoPath(homeDir, 'moluoxixi', 'roles', 'alpha', 'hooks', 'alpha-only.mjs'), 'export const role = "alpha"\n')
-    writeFile(repoPath(homeDir, 'moluoxixi', 'roles', 'alpha', 'mcp', 'mcp.json'), validMcp('alpha'))
-    writeFile(repoPath(homeDir, 'moluoxixi', 'roles', 'beta', 'skills', 'beta-only', 'SKILL.md'), '# beta\n')
-    writeFile(repoPath(homeDir, 'moluoxixi', 'roles', 'beta', 'agents', 'beta-only.md'), validAgent('beta-only'))
-    writeFile(repoPath(homeDir, 'moluoxixi', 'roles', 'beta', 'rules', 'AGENTS.md'), '# beta rules\n')
-    writeFile(repoPath(homeDir, 'moluoxixi', 'roles', 'beta', 'hooks', 'beta-only.mjs'), 'export const role = "beta"\n')
-    writeFile(repoPath(homeDir, 'moluoxixi', 'roles', 'beta', 'mcp', 'mcp.json'), validMcp('beta'))
-    writeRoleContract(homeDir, 'moluoxixi', 'alpha')
-    writeRoleContract(homeDir, 'moluoxixi', 'beta')
-    writeFile(repoPath(homeDir, 'moluoxixi', '.git', 'keep'), 'repository marker\n')
-    const alphaManifest = writeManifest(root, 'switch-alpha', [
-      vendorDefinition('moluoxixi', [{ kind: 'role-assets', sourceDir: 'roles/alpha' }]),
-    ])
-    const betaManifest = writeManifest(root, 'switch-beta', [
-      vendorDefinition('moluoxixi', [{ kind: 'role-assets', sourceDir: 'roles/beta' }]),
-    ])
-
-    await rebuildVendorAssets({ homeDir, role: 'alpha', manifestPath: alphaManifest })
-    writeFile(path.join(homeDir, 'roles', 'alpha', 'local-sentinel.txt'), 'alpha installed\n')
-    const inventory = await rebuildVendorAssets({ homeDir, role: 'beta', manifestPath: betaManifest })
-
-    expect(inventory).toMatchObject({
-      role: 'beta',
-      skills: ['beta-only'],
-      agents: ['beta-only.md'],
-      hooks: ['beta-only.mjs'],
-    })
-    expect(fs.existsSync(path.join(homeDir, 'vendor', 'skills', 'alpha-only'))).toBe(false)
-    expect(fs.existsSync(path.join(homeDir, 'vendor', 'agents', 'alpha-only.md'))).toBe(false)
-    expect(fs.existsSync(path.join(homeDir, 'vendor', 'hooks', 'alpha-only.mjs'))).toBe(false)
-    expect(fs.existsSync(path.join(homeDir, 'vendor', 'skills', 'beta-only', 'SKILL.md'))).toBe(true)
-    expect(fs.existsSync(path.join(homeDir, 'vendor', 'agents', 'beta-only.md'))).toBe(true)
-    expect(fs.existsSync(path.join(homeDir, 'vendor', 'hooks', 'beta-only.mjs'))).toBe(true)
-    expect(fs.readFileSync(path.join(homeDir, 'vendor', 'AGENTS.md'), 'utf8')).toBe('# beta rules\n')
-    expect(JSON.parse(fs.readFileSync(path.join(homeDir, 'vendor', 'mcp', 'mcp.json'), 'utf8'))).toHaveProperty('mcpServers.demo.command', 'beta')
-    expect(fs.readFileSync(repoPath(homeDir, 'moluoxixi', '.git', 'keep'), 'utf8')).toBe('repository marker\n')
-    expect(fs.readFileSync(path.join(homeDir, 'roles', 'alpha', 'local-sentinel.txt'), 'utf8')).toBe('alpha installed\n')
-    expect(fs.existsSync(path.join(homeDir, 'roles', 'beta', 'skills', 'beta-only', 'SKILL.md'))).toBe(true)
   })
 
   it('rejects a recursive source symlink that escapes its vendor checkout', async () => {
@@ -340,20 +179,13 @@ describe('rebuildVendorAssets', () => {
     expect(fs.existsSync(path.join(homeDir, 'vendor', 'skills', 'escaped'))).toBe(false)
   })
 
-  it('rejects source and target paths outside their checkout and managed staging roots', async () => {
+  it('rejects skill source paths outside their checkout', async () => {
     const { root, homeDir } = createFixture()
     writeFile(repoPath(homeDir, 'outside-skill', 'SKILL.md'), '# outside\n')
-    writeFile(repoPath(homeDir, 'remote', 'rules', 'AGENTS.md'), '# rules\n')
     const sourceEscapeManifest = writeManifest(root, 'source-escape', [
       vendorDefinition('remote', [{ kind: 'skills', sourceBaseDir: '..', skills: ['outside-skill'] }]),
     ])
-    const targetEscapeManifest = writeManifest(root, 'target-escape', [
-      vendorDefinition('remote', [{ kind: 'rules', sourceFile: 'rules/AGENTS.md', targetFile: '../outside/AGENTS.md' }]),
-    ])
-
     await expect(rebuildVendorAssets({ homeDir, role: 'alpha', manifestPath: sourceEscapeManifest })).rejects.toThrow(/source.*outside.*checkout/i)
-    await expect(rebuildVendorAssets({ homeDir, role: 'alpha', manifestPath: targetEscapeManifest })).rejects.toThrow(/target.*outside.*managed/i)
-    expect(fs.existsSync(path.join(homeDir, 'outside', 'AGENTS.md'))).toBe(false)
   })
 
   it('requires the unique role-assets source to match the selected role exactly', async () => {
@@ -379,7 +211,8 @@ describe('rebuildVendorAssets', () => {
 
     expect(inventory.roleRoot).toBe(path.join(homeDir, 'roles', 'alpha'))
     expect(fs.readFileSync(path.join(homeDir, 'roles', 'alpha', 'role.yaml'), 'utf8')).toBe('role_id: alpha\n')
-    expect(fs.readFileSync(path.join(homeDir, 'vendor', 'AGENTS.md'), 'utf8')).toBe('# alpha\n')
+    expect(fs.existsSync(path.join(homeDir, 'vendor', 'AGENTS.md'))).toBe(false)
+    expect(fs.readFileSync(path.join(homeDir, 'roles', 'alpha', 'rules', 'AGENTS.md'), 'utf8')).toBe('# alpha\n')
   })
 
   it('requires the canonical role manifest and bootstrap constants', async () => {
@@ -533,22 +366,7 @@ describe('rebuildVendorAssets', () => {
     expect(fs.existsSync(path.join(homeDir, 'roles', 'alpha'))).toBe(false)
   })
 
-  it('rejects invalid staged assets and neutral MCP configuration', async () => {
-    const { root, homeDir } = createFixture()
-    writeFile(repoPath(homeDir, 'remote', 'skills', 'broken', 'README.md'), 'not a skill\n')
-    writeFile(repoPath(homeDir, 'remote', 'mcp', 'mcp.json'), '{"mcpServers":[]}\n')
-    const invalidSkillManifest = writeManifest(root, 'invalid-skill', [
-      vendorDefinition('remote', [{ kind: 'skills', sourceBaseDir: 'skills', skills: ['broken'] }]),
-    ])
-    const invalidMcpManifest = writeManifest(root, 'invalid-mcp', [
-      vendorDefinition('remote', [{ kind: 'mcp', sourceFile: 'mcp/mcp.json' }]),
-    ])
-
-    await expect(rebuildVendorAssets({ homeDir, role: 'alpha', manifestPath: invalidSkillManifest })).rejects.toThrow(/SKILL\.md/i)
-    await expect(rebuildVendorAssets({ homeDir, role: 'alpha', manifestPath: invalidMcpManifest })).rejects.toThrow(/mcpServers.*object/i)
-  })
-
-  it('keeps the previous five staging assets and repositories when validation fails', async () => {
+  it('keeps previous managed entries and repositories when skill validation fails', async () => {
     const { root, homeDir } = createFixture()
     writeFile(path.join(homeDir, 'vendor', 'skills', 'stable', 'SKILL.md'), '# stable\n')
     writeFile(path.join(homeDir, 'vendor', 'agents', 'stable.md'), validAgent('stable'))
@@ -568,86 +386,6 @@ describe('rebuildVendorAssets', () => {
     expect(fs.readFileSync(path.join(homeDir, 'vendor', 'hooks', 'stable.mjs'), 'utf8')).toBe('export default {}\n')
     expect(JSON.parse(fs.readFileSync(path.join(homeDir, 'vendor', 'mcp', 'mcp.json'), 'utf8'))).toHaveProperty('mcpServers.demo.command', 'stable')
     expect(fs.readFileSync(repoPath(homeDir, 'broken', '.git', 'keep'), 'utf8')).toBe('repository marker\n')
-  })
-
-  it('restores every previous managed asset when a commit rename fails', async () => {
-    const { root, homeDir } = createFixture()
-    writeFile(path.join(homeDir, 'vendor', 'skills', 'stable', 'SKILL.md'), '# stable\n')
-    writeFile(path.join(homeDir, 'vendor', 'agents', 'stable.md'), validAgent('stable'))
-    writeFile(path.join(homeDir, 'vendor', 'AGENTS.md'), '# stable rules\n')
-    writeFile(path.join(homeDir, 'vendor', 'hooks', 'stable.mjs'), 'export default {}\n')
-    writeFile(path.join(homeDir, 'vendor', 'mcp', 'mcp.json'), validMcp('stable'))
-    writeFile(repoPath(homeDir, 'remote', 'skills', 'fresh', 'SKILL.md'), '# fresh\n')
-    writeFile(repoPath(homeDir, 'remote', 'agents', 'fresh.md'), validAgent('fresh'))
-    writeFile(repoPath(homeDir, 'remote', '.git', 'keep'), 'repository marker\n')
-    const manifestPath = writeManifest(root, 'commit-failure', [
-      vendorDefinition('remote', [
-        { kind: 'skills', sourceBaseDir: 'skills', skills: ['fresh'] },
-        { kind: 'agents', sourceDir: 'agents' },
-      ]),
-    ])
-
-    const renameSync = fs.renameSync.bind(fs)
-    const renameSpy = vi.spyOn(fs, 'renameSync').mockImplementation((source, target) => {
-      if (
-        String(source).includes(`${path.sep}.airules-vendor-next-`)
-        && path.resolve(String(target)) === path.join(homeDir, 'vendor', 'agents')
-      ) {
-        throw new Error('simulated commit rename failure')
-      }
-      renameSync(source, target)
-    })
-
-    try {
-      await expect(rebuildVendorAssets({ homeDir, role: 'alpha', manifestPath })).rejects.toThrow(/commit rename failure/i)
-    }
-    finally {
-      renameSpy.mockRestore()
-    }
-
-    expect(fs.readFileSync(path.join(homeDir, 'vendor', 'skills', 'stable', 'SKILL.md'), 'utf8')).toBe('# stable\n')
-    expect(fs.readFileSync(path.join(homeDir, 'vendor', 'agents', 'stable.md'), 'utf8')).toContain('name: stable')
-    expect(fs.readFileSync(path.join(homeDir, 'vendor', 'AGENTS.md'), 'utf8')).toBe('# stable rules\n')
-    expect(fs.readFileSync(path.join(homeDir, 'vendor', 'hooks', 'stable.mjs'), 'utf8')).toBe('export default {}\n')
-    expect(JSON.parse(fs.readFileSync(path.join(homeDir, 'vendor', 'mcp', 'mcp.json'), 'utf8'))).toHaveProperty('mcpServers.demo.command', 'stable')
-    expect(fs.existsSync(path.join(homeDir, 'vendor', 'skills', 'fresh'))).toBe(false)
-    expect(fs.readFileSync(repoPath(homeDir, 'remote', '.git', 'keep'), 'utf8')).toBe('repository marker\n')
-  })
-
-  it('rolls back the selected full role and vendor assets as one controlled transaction', async () => {
-    const { root, homeDir } = createFixture()
-    writeFile(path.join(homeDir, 'roles', 'alpha', 'role.yaml'), 'version: old\n')
-    writeFile(path.join(homeDir, 'vendor', 'skills', 'stable', 'SKILL.md'), '# stable\n')
-    writeFile(path.join(homeDir, 'vendor', 'agents', 'stable.md'), validAgent('stable'))
-    writeFile(repoPath(homeDir, 'moluoxixi', 'roles', 'alpha', 'role.yaml'), 'role_id: alpha\nversion: new\n')
-    writeRoleContract(homeDir, 'moluoxixi', 'alpha')
-    writeFile(repoPath(homeDir, 'moluoxixi', 'roles', 'alpha', 'skills', 'fresh', 'SKILL.md'), '# fresh\n')
-    writeFile(repoPath(homeDir, 'moluoxixi', 'roles', 'alpha', 'agents', 'fresh.md'), validAgent('fresh'))
-    const manifestPath = writeManifest(root, 'role-commit-failure', [
-      vendorDefinition('moluoxixi', [{ kind: 'role-assets', sourceDir: 'roles/alpha' }]),
-    ])
-    const renameSync = fs.renameSync.bind(fs)
-    const renameSpy = vi.spyOn(fs, 'renameSync').mockImplementation((source, target) => {
-      if (
-        String(source).includes(`${path.sep}.airules-vendor-next-`)
-        && path.resolve(String(target)) === path.join(homeDir, 'vendor', 'agents')
-      ) {
-        throw new Error('simulated joint commit failure')
-      }
-      renameSync(source, target)
-    })
-
-    try {
-      await expect(rebuildVendorAssets({ homeDir, role: 'alpha', manifestPath })).rejects.toThrow(/joint commit failure/i)
-    }
-    finally {
-      renameSpy.mockRestore()
-    }
-
-    expect(fs.readFileSync(path.join(homeDir, 'roles', 'alpha', 'role.yaml'), 'utf8')).toBe('version: old\n')
-    expect(fs.readFileSync(path.join(homeDir, 'vendor', 'skills', 'stable', 'SKILL.md'), 'utf8')).toBe('# stable\n')
-    expect(fs.readFileSync(path.join(homeDir, 'vendor', 'agents', 'stable.md'), 'utf8')).toContain('name: stable')
-    expect(fs.existsSync(path.join(homeDir, 'vendor', 'skills', 'fresh'))).toBe(false)
   })
 
   it('rejects a linked roles root without writing through it', async () => {

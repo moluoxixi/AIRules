@@ -1,7 +1,7 @@
 # 本项目
 vendor
-!roles/moluoxixi/runtime/vendor/
-!roles/moluoxixi/runtime/vendor/channel-mem.mjs
+!roles/moluoxixi/skills/init-project/assets/runtime/vendor/
+!roles/moluoxixi/skills/init-project/assets/runtime/vendor/channel-mem.mjs
 
 # ai相关
 .qoder

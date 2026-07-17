@@ -41,30 +41,6 @@ export interface SkillConfig {
 export type SkillDef = string | SkillConfig
 
 /**
- * 单个 agent 的详细配置（适用于从上游 agents 目录精选文件或重命名的场景）。
- */
-export interface AgentConfig {
-  /** 仓库内 agent 文件名；可省略 .md 后缀。 */
-  name: string
-  /** 安装后文件名，默认与 name 相同；可省略 .md 后缀。 */
-  output?: string
-}
-
-/**
- * Agent 定义：字符串简写或对象配置。
- */
-export type AgentDef = string | AgentConfig
-
-export interface HookConfig {
-  /** 仓库内 hook 文件名。 */
-  name: string
-  /** 安装后的 hook 文件名，默认与 name 相同。 */
-  output?: string
-}
-
-export type HookDef = string | HookConfig
-
-/**
  * 单个供应商仓库内的一条安装投影规则。
  */
 export type VendorProjection
@@ -83,38 +59,6 @@ export type VendorProjection
     sourceBaseDir: string
     /** 需要精确安装的技能列表。 */
     skills: SkillDef[]
-  }
-  | {
-    kind: 'agents'
-    /** 仓库内 agent 源目录。 */
-    sourceDir: string
-    /** vendor 侧目标目录，默认 vendor/agents。 */
-    targetDir?: string
-    /** 需要精确安装的 agent 文件列表；省略时投影整个 sourceDir。 */
-    agents?: AgentDef[]
-  }
-  | {
-    kind: 'mcp'
-    /** 仓库内 MCP 配置源文件。 */
-    sourceFile: string
-    /** vendor 侧目标文件，默认 vendor/mcp/mcp.json。 */
-    targetFile?: string
-  }
-  | {
-    kind: 'rules'
-    /** 仓库内中性规则文件。 */
-    sourceFile: string
-    /** vendor 侧目标文件，默认 vendor/AGENTS.md。 */
-    targetFile?: string
-  }
-  | {
-    kind: 'hooks'
-    /** 仓库内 hook 源目录。 */
-    sourceDir: string
-    /** vendor 侧目标目录，默认 vendor/hooks。 */
-    targetDir?: string
-    /** 需要精确转发的 hook 文件；省略时转发整个目录。 */
-    hooks?: HookDef[]
   }
   | {
     kind: 'role-assets'
@@ -160,12 +104,6 @@ export interface VendorLink {
   kind:
     | 'namespace-dir'
     | 'skill'
-    | 'agents-dir'
-    | 'agent-file'
-    | 'rules-file'
-    | 'hooks-dir'
-    | 'hook-file'
-    | 'mcp-file'
     | 'role-assets-dir'
   source: string
   target: string
@@ -269,45 +207,6 @@ function buildSkillLink(sourceBaseDir: string, skillDef: any): VendorLink {
   }
 }
 
-function agentFileName(value: string): string {
-  return value.endsWith('.md') ? value : `${value}.md`
-}
-
-function buildAgentLink(sourceDir: string, targetDir: string, agentDef: any): VendorLink {
-  if (typeof agentDef === 'string') {
-    const fileName = agentFileName(agentDef)
-    return {
-      kind: 'agent-file',
-      source: path.posix.join(sourceDir, fileName),
-      target: path.posix.join(targetDir, fileName),
-    }
-  }
-
-  const sourceFileName = agentFileName(agentDef.name as string)
-  const outputFileName = agentFileName((agentDef.output ?? sourceFileName) as string)
-  return {
-    kind: 'agent-file',
-    source: path.posix.join(sourceDir, sourceFileName),
-    target: path.posix.join(targetDir, outputFileName),
-  }
-}
-
-function buildHookLink(sourceDir: string, targetDir: string, hookDef: any): VendorLink {
-  if (typeof hookDef === 'string') {
-    return {
-      kind: 'hook-file',
-      source: path.posix.join(sourceDir, hookDef),
-      target: path.posix.join(targetDir, hookDef),
-    }
-  }
-
-  return {
-    kind: 'hook-file',
-    source: path.posix.join(sourceDir, hookDef.name as string),
-    target: path.posix.join(targetDir, (hookDef.output ?? hookDef.name) as string),
-  }
-}
-
 /**
  * 构建单个供应商实体的链接计划
  * @param entry 供应商定义实体
@@ -343,51 +242,6 @@ function buildLinksForEntry(entry: any): VendorLink[] {
       return projection.skills.map((skillDef: any) =>
         buildSkillLink(projection.sourceBaseDir, skillDef),
       )
-    }
-
-    if (projection.kind === 'agents') {
-      const targetDir = projection.targetDir ?? 'vendor/agents'
-      if (Array.isArray(projection.agents)) {
-        return projection.agents.map((agentDef: any) =>
-          buildAgentLink(projection.sourceDir, targetDir, agentDef),
-        )
-      }
-
-      return [{
-        kind: 'agents-dir',
-        source: projection.sourceDir,
-        target: targetDir,
-      }]
-    }
-
-    if (projection.kind === 'mcp') {
-      return [{
-        kind: 'mcp-file',
-        source: projection.sourceFile,
-        target: projection.targetFile ?? 'vendor/mcp/mcp.json',
-      }]
-    }
-
-    if (projection.kind === 'rules') {
-      return [{
-        kind: 'rules-file',
-        source: projection.sourceFile,
-        target: projection.targetFile ?? 'vendor/AGENTS.md',
-      }]
-    }
-
-    if (projection.kind === 'hooks') {
-      const targetDir = projection.targetDir ?? 'vendor/hooks'
-      if (Array.isArray(projection.hooks)) {
-        return projection.hooks.map((hookDef: any) =>
-          buildHookLink(projection.sourceDir, targetDir, hookDef),
-        )
-      }
-      return [{
-        kind: 'hooks-dir',
-        source: projection.sourceDir,
-        target: targetDir,
-      }]
     }
 
     if (projection.kind === 'role-assets') {

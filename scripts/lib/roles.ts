@@ -9,24 +9,8 @@ export const COMMON_ROLE = ''
 export interface RolePaths {
   role: string
   roleRoot: string
-  manifestFile: string
   constantsDir: string
   constantsFile: string
-  rulesDir: string
-  agentsDir: string
-  skillsDir: string
-  workflowDir: string
-  schemasDir: string
-  templatesDir: string
-  adaptersDir: string
-  mcpDir: string
-  hooksDir: string
-}
-
-export function resolveRolePaths(repoRoot: string, roleValue: unknown): RolePaths {
-  const role = requireRoleName(roleValue)
-  const roleRoot = path.join(path.resolve(repoRoot), 'roles', role)
-  return buildRolePaths(role, roleRoot)
 }
 
 export function requireRolePaths(repoRoot: string, roleValue: unknown): RolePaths {
@@ -85,14 +69,6 @@ export async function roleOverlayOrder(repoRoot: string, roleValue: unknown = DE
 
   await visit(role)
   return orderedRoles
-}
-
-export async function existingRoleOverlayPaths(
-  repoRoot: string,
-  roleValue: unknown = DEFAULT_ROLE,
-): Promise<RolePaths[]> {
-  const roles = await roleOverlayOrder(repoRoot, roleValue)
-  return roles.map(role => requireRolePaths(repoRoot, role))
 }
 
 export function resolveRoleManifestPath(
@@ -167,18 +143,8 @@ function buildRolePaths(role: string, roleRoot: string): RolePaths {
   return {
     role,
     roleRoot,
-    manifestFile: path.join(roleRoot, 'role.yaml'),
     constantsDir,
     constantsFile: path.join(constantsDir, 'skills.ts'),
-    rulesDir: path.join(roleRoot, 'rules'),
-    agentsDir: path.join(roleRoot, 'agents'),
-    skillsDir: path.join(roleRoot, 'skills'),
-    workflowDir: path.join(roleRoot, 'workflow'),
-    schemasDir: path.join(roleRoot, 'schemas'),
-    templatesDir: path.join(roleRoot, 'templates'),
-    adaptersDir: path.join(roleRoot, 'adapters'),
-    mcpDir: path.join(roleRoot, 'mcp'),
-    hooksDir: path.join(roleRoot, 'hooks'),
   }
 }
 

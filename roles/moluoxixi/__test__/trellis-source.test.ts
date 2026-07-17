@@ -48,8 +48,6 @@ interface UpstreamLock {
 
 interface RoleManifest {
   assets: {
-    agents: string
-    rules: string
     skills: string
   }
   canonical_root: string
@@ -88,10 +86,9 @@ const selectedPaths = [
   '.omp',
   '.opencode',
   '.pi',
-  'AGENTS.md',
 ]
 
-const skillNames = [
+const upstreamSkillNames = [
   'first-principles-thinking',
   'python-design',
   'trellis-before-dev',
@@ -109,10 +106,22 @@ const skillNames = [
   'ts-sdk-author',
 ]
 
-const agentFiles = [
-  'trellis-check.md',
-  'trellis-implement.md',
-  'trellis-research.md',
+const projectSkillNames = [
+  'before-dev',
+  'brainstorm',
+  'break-loop',
+  'channel',
+  'check',
+  'continue',
+  'finish-work',
+  'first-principles-thinking',
+  'meta',
+  'python-design',
+  'session-insight',
+  'spec-bootstrap',
+  'start',
+  'ts-sdk-author',
+  'update-spec',
 ]
 
 const nativeCapabilityCounts = [
@@ -245,28 +254,27 @@ describe('moluoxixi curated Trellis role assets', () => {
       '.omp',
       '.opencode',
       '.pi',
-      'AGENTS.md',
       '__test__',
-      'agents',
       'constants',
       'role.yaml',
-      'rules',
-      'runtime',
       'skills',
       'trellis.upstream.json',
     ]))
 
     const actualSkills = fs.readdirSync(resolveRolePath('.agents/skills'), { withFileTypes: true })
     expect(actualSkills.every(entry => entry.isDirectory())).toBe(true)
-    expect(sortPaths(actualSkills.map(entry => entry.name))).toEqual(sortPaths([...skillNames]))
+    expect(sortPaths(actualSkills.map(entry => entry.name))).toEqual(sortPaths([...upstreamSkillNames]))
 
     const distributedSkills = fs.readdirSync(resolveRolePath('skills'), { withFileTypes: true })
     expect(distributedSkills.every(entry => entry.isDirectory())).toBe(true)
-    expect(sortPaths(distributedSkills.map(entry => entry.name))).toEqual(sortPaths([...skillNames, 'init-project']))
+    expect(distributedSkills.map(entry => entry.name)).toEqual(['init-project'])
 
-    const actualAgents = fs.readdirSync(resolveRolePath('agents'), { withFileTypes: true })
-    expect(actualAgents.every(entry => entry.isFile())).toBe(true)
-    expect(sortPaths(actualAgents.map(entry => entry.name))).toEqual(sortPaths([...agentFiles]))
+    const projectSkills = fs.readdirSync(resolveRolePath('skills/init-project/assets/skills'), { withFileTypes: true })
+    expect(projectSkills.every(entry => entry.isDirectory())).toBe(true)
+    expect(sortPaths(projectSkills.map(entry => entry.name))).toEqual(sortPaths([...projectSkillNames]))
+    for (const skillName of projectSkillNames) {
+      expect(fs.readFileSync(resolveRolePath(`skills/init-project/assets/skills/${skillName}/SKILL.md`), 'utf8')).toMatch(new RegExp(`^name: ${skillName}$`, 'mu'))
+    }
 
     for (const [nativeRoot, expectedFiles] of nativeCapabilityCounts) {
       expect(collectFiles(nativeRoot)).toHaveLength(expectedFiles)
@@ -313,8 +321,6 @@ describe('moluoxixi curated Trellis role assets', () => {
     const manifest = readRoleManifest()
     expect(manifest).toMatchObject({
       assets: {
-        agents: 'agents',
-        rules: 'rules',
         skills: 'skills',
       },
       canonical_root: 'roles/moluoxixi',
@@ -326,7 +332,7 @@ describe('moluoxixi curated Trellis role assets', () => {
       entrypoints: {
         initialize_project_script: 'skills/init-project/scripts/init-project.mjs',
         initialize_project_skill: 'init-project',
-        trellis_runtime: 'runtime/trellis.mjs',
+        trellis_runtime: 'skills/init-project/assets/runtime/trellis.mjs',
       },
       role_id: 'moluoxixi',
     })
@@ -334,8 +340,9 @@ describe('moluoxixi curated Trellis role assets', () => {
       license: lock.license,
       paths: [
         ...lock.selected_paths,
-        'runtime/source',
-        'runtime/vendor/channel-mem.mjs',
+        'skills/init-project/assets/runtime/source',
+        'skills/init-project/assets/runtime/vendor/channel-mem.mjs',
+        'skills/init-project/assets/skills',
         'skills/init-project/assets/trellis-v0.6.7',
       ],
       revision: lock.revision,
@@ -343,8 +350,6 @@ describe('moluoxixi curated Trellis role assets', () => {
       version: lock.ref.slice(1),
     })
     expect(fs.statSync(resolveRolePath(manifest.assets.skills)).isDirectory()).toBe(true)
-    expect(fs.statSync(resolveRolePath(manifest.assets.agents)).isDirectory()).toBe(true)
-    expect(fs.statSync(resolveRolePath(path.posix.join(manifest.assets.rules, 'AGENTS.md'))).isFile()).toBe(true)
 
     expect(extendsRoles).toEqual([])
     expect(vendors).toHaveLength(1)
@@ -362,8 +367,8 @@ describe('moluoxixi curated Trellis role assets', () => {
     })
     expect(lock.migrated_project_templates).toMatchObject({
       local_path: 'skills/init-project/assets/trellis-v0.6.7',
-      regular_file_bytes: 1158179,
-      regular_files: 201,
+      regular_file_bytes: 1123425,
+      regular_files: 199,
       upstream_path: 'packages/cli/src/templates',
     })
     const runtimeFiles = lock.migrated_runtime.local_paths.flatMap(collectFiles)
@@ -372,16 +377,16 @@ describe('moluoxixi curated Trellis role assets', () => {
       bytes: lock.migrated_runtime.regular_file_bytes,
       hash: lock.migrated_runtime.combined_hash.value,
     })
-    expect(fs.statSync(resolveRolePath('runtime/trellis.mjs')).isFile()).toBe(true)
+    expect(fs.statSync(resolveRolePath('skills/init-project/assets/runtime/trellis.mjs')).isFile()).toBe(true)
   })
 
   it('uses Moluoxixi project and channel state roots in the executable runtime', () => {
     const runtimeFiles = [
-      'runtime/source/packages/cli/src/constants/paths.ts',
-      'runtime/source/packages/cli/src/commands/channel/agent-loader.ts',
-      'runtime/source/packages/cli/src/commands/channel/store/paths.ts',
-      'runtime/source/packages/core/src/channel/internal/store/paths.ts',
-      'runtime/vendor/channel-mem.mjs',
+      'skills/init-project/assets/runtime/source/packages/cli/src/constants/paths.ts',
+      'skills/init-project/assets/runtime/source/packages/cli/src/commands/channel/agent-loader.ts',
+      'skills/init-project/assets/runtime/source/packages/cli/src/commands/channel/store/paths.ts',
+      'skills/init-project/assets/runtime/source/packages/core/src/channel/internal/store/paths.ts',
+      'skills/init-project/assets/runtime/vendor/channel-mem.mjs',
     ]
     for (const relativePath of runtimeFiles) {
       const content = fs.readFileSync(resolveRolePath(relativePath), 'utf8')
@@ -390,13 +395,13 @@ describe('moluoxixi curated Trellis role assets', () => {
     }
   })
 
-  it('keeps legal texts with the migrated assets instead of the role root', () => {
+  it('omits standalone legal and notice files from the role assets', () => {
     expect(fs.existsSync(resolveRolePath('LICENSE'))).toBe(false)
     expect(fs.existsSync(resolveRolePath('COPYRIGHT'))).toBe(false)
     expect(fs.existsSync(resolveRolePath('THIRD_PARTY_NOTICES.md'))).toBe(false)
-    expect(fs.readFileSync(resolveRolePath('skills/init-project/assets/trellis-v0.6.7/legal/LICENSE'), 'utf8')).toContain('GNU AFFERO GENERAL PUBLIC LICENSE')
-    expect(fs.readFileSync(resolveRolePath('skills/init-project/assets/trellis-v0.6.7/legal/COPYRIGHT'), 'utf8')).toContain('Copyright (C) 2026 Mindfold LLC')
-    const notice = fs.readFileSync(resolveRolePath('runtime/NOTICE.md'), 'utf8')
+    expect(fs.existsSync(resolveRolePath('skills/init-project/assets/trellis-v0.6.7/legal/LICENSE'))).toBe(false)
+    expect(fs.existsSync(resolveRolePath('skills/init-project/assets/trellis-v0.6.7/legal/COPYRIGHT'))).toBe(false)
+    const notice = fs.readFileSync(resolveRolePath('skills/init-project/assets/runtime/NOTICE.md'), 'utf8')
     expect(notice).toContain(lock.revision)
     expect(notice).toContain('vendor/channel-mem.mjs')
   })

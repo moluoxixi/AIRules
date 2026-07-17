@@ -1,4 +1,3 @@
-import { existsSync, readdirSync } from 'node:fs'
 import os from 'node:os'
 import path from 'node:path'
 import { fileURLToPath } from 'node:url'
@@ -6,12 +5,10 @@ import { ALL_HOST_IDS } from '../../constants/hosts.js'
 import {
   ensureInstallRoot,
   getDefaultInstallPaths,
-  linkHostBaseline,
   projectHostById,
   rebuildVendorSkillLinks,
   runSkillSetupCommands,
 } from './install.js'
-import { loadRoleRuntime } from './role-runtime.js'
 import { DEFAULT_ROLE, resolveRoleManifestPath } from './roles.js'
 import { rebuildVendorAssets } from './vendor-staging.js'
 import { ensureVendorRepo, verifyVendorRepoRevision } from './vendor-sync.js'
@@ -57,25 +54,6 @@ export function getDefaultMoluoHome(): string {
 function isRunningFromDist(): boolean {
   const currentFile = fileURLToPath(import.meta.url)
   return currentFile.split(path.sep).includes('dist')
-}
-
-function hasCanonicalAgentCards(home: string): boolean {
-  const agentsRoot = path.join(home, 'vendor', 'agents')
-  return existsSync(agentsRoot)
-    && readdirSync(agentsRoot, { withFileTypes: true })
-      .some(entry => entry.isFile() && entry.name.endsWith('.agent.yaml'))
-}
-
-async function loadProjectionRuntime(paths: ToolPaths) {
-  if (!paths.role || !hasCanonicalAgentCards(paths.moluoHome)) {
-    return undefined
-  }
-  return (await loadRoleRuntime({
-    repoRoot: paths.repoRoot,
-    home: paths.moluoHome,
-    role: paths.role,
-    preferDist: isRunningFromDist(),
-  })).runtime
 }
 
 function resolveManifestPath(repoRoot: string, role = DEFAULT_ROLE): string {
@@ -150,18 +128,16 @@ export async function syncToHosts(options: SyncOptions): Promise<SyncResult> {
   const paths = resolveToolPaths(options.repoRoot, options.home, options.userHome, options.role)
 
   await syncVendorStaging(paths, options.skipVendors)
-  const roleRuntime = await loadProjectionRuntime(paths)
 
   const projectedHosts: string[] = []
   const skippedHosts: string[] = []
   const failedHosts: string[] = []
 
   for (const host of resolveHostTargets(options.host)) {
-    const { success, baselineProjected } = projectHostById(
+    const { success } = projectHostById(
       host,
       paths.userHome,
       paths.moluoHome,
-      roleRuntime?.renderAgentCardProjection,
     )
     if (!success) {
       skippedHosts.push(host)
@@ -169,20 +145,11 @@ export async function syncToHosts(options: SyncOptions): Promise<SyncResult> {
     }
 
     projectedHosts.push(host)
-    if (baselineProjected) {
-      linkHostBaseline({
-        moluoHome: paths.moluoHome,
-        host,
-        userHome: paths.userHome,
-      })
-    }
-
     if (options.verify) {
       const verified = await verifyHost(
         host,
         paths.moluoHome,
         paths.userHome,
-        roleRuntime?.renderAgentCardProjection,
       )
       if (!verified) {
         failedHosts.push(host)
@@ -203,7 +170,6 @@ export async function syncToHosts(options: SyncOptions): Promise<SyncResult> {
 
 export async function verifyHosts(options: VerifyOptions): Promise<string[]> {
   const paths = resolveToolPaths(options.repoRoot, options.home, options.userHome, options.role)
-  const roleRuntime = await loadProjectionRuntime(paths)
   const failedHosts: string[] = []
 
   for (const host of resolveHostTargets(options.host)) {
@@ -211,7 +177,6 @@ export async function verifyHosts(options: VerifyOptions): Promise<string[]> {
       host,
       paths.moluoHome,
       paths.userHome,
-      roleRuntime?.renderAgentCardProjection,
     )
     if (!verified) {
       failedHosts.push(host)

@@ -6,8 +6,6 @@ canonical_root: roles/moluoxixi
 description: Self-contained Trellis role assets and AIRules-owned project initialization.
 assets:
   skills: skills
-  agents: agents
-  rules: rules
 distribution:
   bootstrap_manifest: constants/skills.ts
   full_role_path_required: true
@@ -15,7 +13,7 @@ distribution:
 entrypoints:
   initialize_project_skill: init-project
   initialize_project_script: skills/init-project/scripts/init-project.mjs
-  trellis_runtime: runtime/trellis.mjs
+  trellis_runtime: skills/init-project/assets/runtime/trellis.mjs
 third_party:
   trellis:
     paths:
@@ -26,9 +24,9 @@ third_party:
       - .omp
       - .opencode
       - .pi
-      - AGENTS.md
-      - runtime/source
-      - runtime/vendor/channel-mem.mjs
+      - skills/init-project/assets/runtime/source
+      - skills/init-project/assets/runtime/vendor/channel-mem.mjs
+      - skills/init-project/assets/skills
       - skills/init-project/assets/trellis-v0.6.7
     source: https://github.com/mindfold-ai/Trellis.git
     version: 0.6.7

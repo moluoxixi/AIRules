@@ -6,7 +6,6 @@ import { it } from 'vitest'
 import {
   projectSkillsToHost,
   rebuildVendorSkillLinks,
-  syncFirstPartyToHome,
 } from '../install.js'
 
 function setupMockEnvironment() {
@@ -33,35 +32,6 @@ function cleanup(tmpDir: string) {
   fs.rmSync(tmpDir, { recursive: true, force: true })
 }
 
-it('first-party sync - agents and mcp are stored under vendor', async () => {
-  const tmpDir = fs.mkdtempSync(path.join(os.tmpdir(), 'moluoxixi-firstparty-'))
-
-  try {
-    const repoRoot = path.join(tmpDir, 'repo')
-    const moluoHome = path.join(tmpDir, 'user', '.moluoxixi')
-    fs.mkdirSync(path.join(repoRoot, 'roles', 'example-development', 'rules'), { recursive: true })
-    fs.mkdirSync(path.join(repoRoot, 'roles', 'example-development', 'agents'), { recursive: true })
-    fs.mkdirSync(path.join(repoRoot, 'roles', 'example-development', 'mcp'), { recursive: true })
-    fs.mkdirSync(path.join(repoRoot, 'roles', 'example-development', 'constants'), { recursive: true })
-    fs.writeFileSync(path.join(repoRoot, 'roles', 'example-development', 'constants', 'skills.ts'), 'export const vendors = []\n')
-    fs.writeFileSync(path.join(repoRoot, 'roles', 'example-development', 'rules', 'AGENTS.md'), '# AIRules\n')
-    fs.writeFileSync(path.join(repoRoot, 'roles', 'example-development', 'agents', 'demo.md'), 'agent\n')
-    fs.writeFileSync(path.join(repoRoot, 'roles', 'example-development', 'mcp', 'mcp.json'), '{"mcpServers":{}}\n')
-
-    await syncFirstPartyToHome(repoRoot, moluoHome, 'example-development')
-
-    assert.ok(fs.existsSync(path.join(moluoHome, 'vendor', 'AGENTS.md')), 'rules/AGENTS.md should sync to vendor/AGENTS.md')
-    assert.ok(fs.existsSync(path.join(moluoHome, 'vendor', 'agents', 'demo.md')), 'agents should sync to vendor/agents')
-    assert.ok(fs.existsSync(path.join(moluoHome, 'vendor', 'mcp', 'mcp.json')), 'mcp should sync to vendor/mcp')
-    assert.ok(!fs.existsSync(path.join(moluoHome, 'agents')), 'agents must not sync to top-level moluoxixi agents')
-    assert.ok(!fs.existsSync(path.join(moluoHome, 'mcp')), 'mcp must not sync to top-level moluoxixi mcp')
-    assert.ok(!fs.existsSync(path.join(moluoHome, 'skills')), 'skills must not sync to top-level moluoxixi skills')
-  }
-  finally {
-    cleanup(tmpDir)
-  }
-})
-
 it('vendor skill rebuild - missing configured source directory fails with context', async () => {
   const tmpDir = fs.mkdtempSync(path.join(os.tmpdir(), 'moluoxixi-missing-vendor-'))
 
@@ -86,88 +56,6 @@ export const vendors = [{
       () => rebuildVendorSkillLinks({ homeDir: moluoHome, manifestPath }),
       /brokenVendor.*skills[\\/]missing-skill/,
     )
-  }
-  finally {
-    cleanup(tmpDir)
-  }
-})
-
-it('vendor rebuild - agents 与 mcp projection 写入 vendor 通用分发面', async () => {
-  const tmpDir = fs.mkdtempSync(path.join(os.tmpdir(), 'moluoxixi-vendor-platform-'))
-
-  try {
-    const moluoHome = path.join(tmpDir, 'home')
-    const manifestPath = path.join(tmpDir, 'vendors.mjs')
-    fs.mkdirSync(path.dirname(manifestPath), { recursive: true })
-    fs.writeFileSync(manifestPath, `
-export const vendors = [{
-  name: 'platform',
-  official: true,
-  source: 'https://example.test/platform.git',
-  projections: [
-    { kind: 'skills', sourceBaseDir: 'skills', skills: ['core-skill'] },
-    { kind: 'agents', sourceDir: 'agents' },
-    { kind: 'mcp', sourceFile: 'mcp-configs/mcp-servers.json' },
-  ],
-}]
-`)
-    fs.mkdirSync(path.join(moluoHome, 'vendor', 'repos', 'platform', 'skills', 'core-skill'), { recursive: true })
-    fs.mkdirSync(path.join(moluoHome, 'vendor', 'repos', 'platform', 'agents'), { recursive: true })
-    fs.mkdirSync(path.join(moluoHome, 'vendor', 'repos', 'platform', 'mcp-configs'), { recursive: true })
-    fs.writeFileSync(path.join(moluoHome, 'vendor', 'repos', 'platform', 'agents', 'reviewer.md'), '---\nname: reviewer\n---\nbody\n')
-    fs.writeFileSync(path.join(moluoHome, 'vendor', 'repos', 'platform', 'mcp-configs', 'mcp-servers.json'), '{"mcpServers":{"demo":{"command":"demo"}}}\n')
-
-    const plan = await rebuildVendorSkillLinks({ homeDir: moluoHome, manifestPath })
-
-    assert.deepStrictEqual(plan.map(entry => entry.kind).sort(), ['agents-dir', 'mcp-file', 'skill'])
-    assert.ok(fs.lstatSync(path.join(moluoHome, 'vendor', 'skills', 'core-skill')).isSymbolicLink())
-    assert.ok(fs.lstatSync(path.join(moluoHome, 'vendor', 'agents')).isSymbolicLink())
-    assert.equal(
-      fs.readFileSync(path.join(moluoHome, 'vendor', 'mcp', 'mcp.json'), 'utf8'),
-      '{"mcpServers":{"demo":{"command":"demo"}}}\n',
-    )
-  }
-  finally {
-    cleanup(tmpDir)
-  }
-})
-
-it('vendor rebuild - selected agent files link into vendor agents', async () => {
-  const tmpDir = fs.mkdtempSync(path.join(os.tmpdir(), 'moluoxixi-vendor-agent-files-'))
-
-  try {
-    const moluoHome = path.join(tmpDir, 'home')
-    const manifestPath = path.join(tmpDir, 'vendors.mjs')
-    fs.mkdirSync(path.dirname(manifestPath), { recursive: true })
-    fs.writeFileSync(manifestPath, `
-export const vendors = [{
-  name: 'ecc',
-  official: true,
-  source: 'https://example.test/ecc.git',
-  projections: [{
-    kind: 'agents',
-    sourceDir: 'agents',
-    agents: [
-      'tdd-guide',
-      { name: 'review/code-reviewer', output: 'code-reviewer' },
-    ],
-  }],
-}]
-`)
-    fs.mkdirSync(path.join(moluoHome, 'vendor', 'repos', 'ecc', 'agents', 'review'), { recursive: true })
-    fs.writeFileSync(path.join(moluoHome, 'vendor', 'repos', 'ecc', 'agents', 'tdd-guide.md'), 'tdd\n')
-    fs.writeFileSync(path.join(moluoHome, 'vendor', 'repos', 'ecc', 'agents', 'review', 'code-reviewer.md'), 'review\n')
-
-    const plan = await rebuildVendorSkillLinks({ homeDir: moluoHome, manifestPath })
-
-    assert.deepStrictEqual(plan.map(entry => entry.kind), ['agent-file', 'agent-file'])
-    const tddAgent = path.join(moluoHome, 'vendor', 'agents', 'tdd-guide.md')
-    const codeReviewAgent = path.join(moluoHome, 'vendor', 'agents', 'code-reviewer.md')
-    assert.ok(fs.existsSync(tddAgent), 'selected string agent should be projected as a vendor agent file')
-    assert.ok(fs.existsSync(codeReviewAgent), 'selected renamed agent should be projected as a vendor agent file')
-    assert.equal(fs.readFileSync(tddAgent, 'utf8'), 'tdd\n')
-    assert.equal(fs.readFileSync(codeReviewAgent, 'utf8'), 'review\n')
-    assert.ok(!fs.existsSync(path.join(moluoHome, 'vendor', 'agents', 'review')), 'selected nested source dirs must not be projected wholesale')
   }
   finally {
     cleanup(tmpDir)

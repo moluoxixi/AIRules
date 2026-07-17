@@ -13,14 +13,13 @@
     ".cursor",
     ".omp",
     ".opencode",
-    ".pi",
-    "AGENTS.md"
+    ".pi"
   ],
-  "selected_regular_files": 367,
-  "selected_regular_file_bytes": 2362985,
+  "selected_regular_files": 366,
+  "selected_regular_file_bytes": 2361912,
   "combined_hash": {
     "algorithm": "sha256-posix-path-size-content-v1",
-    "value": "4faf9bcd142d2ee8773ca4d5a251429aaf4f1d1541fcd88cb7bc4ef81792de5f"
+    "value": "64109b37161f7bef73211771f4ee93fbc22012103e0876102d55c0db6a180205"
   },
   "migrated_project_templates": {
     "upstream_path": "packages/cli/src/templates",
@@ -28,11 +27,11 @@
     "omissions": [
       "TypeScript index.ts build-time template loaders"
     ],
-    "regular_files": 201,
-    "regular_file_bytes": 1158179,
+    "regular_files": 199,
+    "regular_file_bytes": 1123425,
     "combined_hash": {
       "algorithm": "sha256-posix-path-size-content-v1",
-      "value": "73304babc368d4283823954607b0926160377d42151402bbc8e62efca42d82cc"
+      "value": "68461ff17e69d484355527cb573afa994137601cc37cd749f434815c4d9a5bd1"
     }
   },
   "local_initializer": {
@@ -49,8 +48,8 @@
       "packages/cli/src/constants/paths.ts"
     ],
     "local_paths": [
-      "runtime/source",
-      "runtime/vendor/channel-mem.mjs"
+      "skills/init-project/assets/runtime/source",
+      "skills/init-project/assets/runtime/vendor/channel-mem.mjs"
     ],
     "modifications": [
       "Channel supervisors re-enter the AIRules self-contained bundle instead of resolving an npm package CLI entry",
@@ -60,7 +59,7 @@
     "regular_file_bytes": 860684,
     "combined_hash": {
       "algorithm": "sha256-posix-path-size-content-v1",
-      "value": "74f58adfcad4924841d5a1c9a2ba5a336adaa5454be3dd0c3d1d6f90b0222b0b"
+      "value": "b171f755e6975daf7db3e52e1ae63fc857d5dea456b4ba13bdb6ac0ed537de5a"
     },
     "bundled_dependencies": [
       "Chalk 5.6.2 (MIT)",
@@ -73,6 +72,7 @@
     "Project-local Trellis state, specifications, tasks, workspace journals, and generated manifests",
     "Repository-only contribution, release, publishing, GitNexus, and backup assets",
     "Repository documentation, demos, drafts, assets, and submodule contents",
-    "OpenCode's generated package lock"
+    "OpenCode's generated package lock",
+    "Standalone upstream license and copyright text files"
   ]
 }

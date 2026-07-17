@@ -50,7 +50,6 @@
   },
   "dependencies": {
     "kleur": "4.1.5",
-    "smol-toml": "^1.6.1",
     "yaml": "2.8.3"
   },
   "devDependencies": {
