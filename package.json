@@ -9,10 +9,6 @@
     "./core": {
       "types": "./dist/scripts/lib/core/index.d.ts",
       "import": "./dist/scripts/lib/core/index.js"
-    },
-    "./role-runtime": {
-      "types": "./dist/scripts/lib/role-runtime.d.ts",
-      "import": "./dist/scripts/lib/role-runtime.js"
     }
   },
   "bin": {
@@ -28,8 +24,7 @@
     "dist",
     "docs",
     "roles/*/constants/**",
-    "roles/*/role.yaml",
-    "scripts"
+    "roles/*/role.yaml"
   ],
   "scripts": {
     "airules": "tsx scripts/cli.ts",
@@ -39,11 +34,8 @@
     "prepack": "npm run build",
     "lint": "eslint --fix",
     "lint:check": "eslint .",
-    "setup": "tsx scripts/cli.ts sync",
     "sync": "tsx scripts/cli.ts sync --host all",
     "sync:moluoxixi": "tsx scripts/cli.ts sync --host all --role moluoxixi",
-    "sync:update-lock": "tsx scripts/sync-vendors.ts --update-lock",
-    "rules:install": "tsx scripts/cli.ts sync",
     "test": "vitest run",
     "typecheck": "tsc --noEmit",
     "coverage": "vitest run --coverage"

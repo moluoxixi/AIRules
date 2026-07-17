@@ -38,13 +38,9 @@ const legacyBrand = ['tre', 'llis'].join('')
 const legacyProjectRoot = `.${legacyBrand}`
 
 const selectedPaths = [
-  '.agents',
-  '.claude',
-  '.codex',
-  '.cursor',
-  '.omp',
-  '.opencode',
-  '.pi',
+  'skills/init-project/assets/hosts',
+  'skills/init-project/assets/project',
+  'skills/init-project/assets/shared',
 ]
 
 const upstream = {
@@ -55,9 +51,9 @@ const upstream = {
 }
 
 const selectedIntegrity = {
-  bytes: 2369681,
-  files: 366,
-  hash: '05f4453e15eba8bba1d61863535ebd9363cc208ee1be0143e07346c7dd0bb4dd',
+  bytes: 1617785,
+  files: 242,
+  hash: '5e462b63d1a804dc8c2909e2b2ef34db2a8085d0b65ee3b44fb99a8df235f3fb',
 }
 
 const migratedRuntimePaths = [
@@ -89,95 +85,40 @@ const projectSkillNames = [
   'update-spec',
 ]
 
-const nativeSkillNamesByRoot = {
-  '.agents/skills': projectSkillNames,
-  '.claude/skills': [
-    'before-dev',
-    'brainstorm',
-    'break-loop',
-    'channel',
-    'check',
-    'first-principles-thinking',
-    'meta',
-    'python-design',
-    'session-insight',
-    'spec-bootstrap',
-    'update-spec',
-  ],
-  '.cursor/skills': [
-    'before-dev',
-    'brainstorm',
-    'break-loop',
-    'channel',
-    'check',
-    'meta',
-    'session-insight',
-    'spec-bootstrap',
-    'update-spec',
-  ],
-  '.omp/skills': [
-    'before-dev',
-    'brainstorm',
-    'break-loop',
-    'check',
-    'meta',
-    'spec-bootstrap',
-    'update-spec',
-  ],
-  '.opencode/skills': [
-    'before-dev',
-    'brainstorm',
-    'break-loop',
-    'channel',
-    'check',
-    'meta',
-    'session-insight',
-    'spec-bootstrap',
-    'update-spec',
-  ],
-  '.pi/skills': [
-    'before-dev',
-    'brainstorm',
-    'break-loop',
-    'channel',
-    'check',
-    'meta',
-    'session-insight',
-    'spec-bootstrap',
-    'update-spec',
-  ],
-} as const
-
 const nativeCapabilityCounts = [
-  ['.agents', 84],
-  ['.claude', 82],
-  ['.codex', 7],
-  ['.cursor', 52],
-  ['.omp', 38],
-  ['.opencode', 53],
-  ['.pi', 50],
+  ['skills/init-project/assets/hosts/claude', 5],
+  ['skills/init-project/assets/hosts/codebuddy', 4],
+  ['skills/init-project/assets/hosts/codex', 19],
+  ['skills/init-project/assets/hosts/copilot', 16],
+  ['skills/init-project/assets/hosts/cursor', 4],
+  ['skills/init-project/assets/hosts/droid', 4],
+  ['skills/init-project/assets/hosts/gemini', 4],
+  ['skills/init-project/assets/hosts/kiro', 5],
+  ['skills/init-project/assets/hosts/omp', 4],
+  ['skills/init-project/assets/hosts/opencode', 9],
+  ['skills/init-project/assets/hosts/pi', 5],
+  ['skills/init-project/assets/hosts/qoder', 4],
+  ['skills/init-project/assets/hosts/reasonix', 2],
+  ['skills/init-project/assets/hosts/trae', 4],
+  ['skills/init-project/assets/hosts/zcode', 3],
 ] as const
 
 const nativeCapabilityEntrypoints = [
-  '.claude/agents/moluoxixi-check.md',
-  '.claude/commands/moluoxixi/continue.md',
-  '.claude/settings.json',
-  '.claude/hooks/session-start.py',
-  '.codex/agents/moluoxixi-check.toml',
-  '.codex/config.toml',
-  '.codex/hooks.json',
-  '.cursor/agents/moluoxixi-check.md',
-  '.cursor/commands/moluoxixi-continue.md',
-  '.cursor/hooks.json',
-  '.omp/agents/moluoxixi-check.md',
-  '.omp/commands/moluoxixi-continue.md',
-  '.omp/extensions/moluoxixi/index.ts',
-  '.opencode/agents/moluoxixi-check.md',
-  '.opencode/commands/moluoxixi/continue.md',
-  '.opencode/plugins/inject-workflow-state.js',
-  '.pi/agents/moluoxixi-check.md',
-  '.pi/extensions/moluoxixi/index.ts',
-  '.pi/prompts/moluoxixi-continue.md',
+  'skills/init-project/assets/hosts/claude/agents/moluoxixi-check.md',
+  'skills/init-project/assets/hosts/claude/settings.json',
+  'skills/init-project/assets/hosts/codex/agents/moluoxixi-check.toml',
+  'skills/init-project/assets/hosts/codex/config.toml',
+  'skills/init-project/assets/hosts/codex/hooks.json',
+  'skills/init-project/assets/hosts/cursor/agents/moluoxixi-check.md',
+  'skills/init-project/assets/hosts/cursor/hooks.json',
+  'skills/init-project/assets/hosts/omp/agents/moluoxixi-check.md',
+  'skills/init-project/assets/hosts/omp/extensions/moluoxixi/index.ts.txt',
+  'skills/init-project/assets/hosts/opencode/agents/moluoxixi-check.md',
+  'skills/init-project/assets/hosts/opencode/plugins/inject-workflow-state.js',
+  'skills/init-project/assets/hosts/pi/agents/moluoxixi-check.md',
+  'skills/init-project/assets/hosts/pi/extensions/moluoxixi/index.ts.txt',
+  'skills/init-project/assets/shared/commands/continue.md',
+  'skills/init-project/assets/shared/hooks/inject-workflow-state.py',
 ]
 
 function sortPaths(paths: string[]): string[] {
@@ -269,40 +210,23 @@ describe('moluoxixi curated upstream role assets', () => {
     })
   })
 
-  it('allows only the role adapter and selected native roots', () => {
+  it('keeps the role root limited to distribution metadata and the initializer', () => {
     expect(sortPaths(fs.readdirSync(roleRoot))).toEqual(sortPaths([
-      '.agents',
-      '.claude',
-      '.codex',
-      '.cursor',
-      '.omp',
-      '.opencode',
-      '.pi',
       '__test__',
       'constants',
       'role.yaml',
       'skills',
     ]))
 
-    for (const [skillsRoot, expectedSkills] of Object.entries(nativeSkillNamesByRoot)) {
-      const actualSkills = fs.readdirSync(resolveRolePath(skillsRoot), { withFileTypes: true })
-      expect(actualSkills.every(entry => entry.isDirectory())).toBe(true)
-      expect(sortPaths(actualSkills.map(entry => entry.name))).toEqual(sortPaths([...expectedSkills]))
-      for (const skillName of expectedSkills) {
-        const skillFile = resolveRolePath(`${skillsRoot}/${skillName}/SKILL.md`)
-        expect(fs.readFileSync(skillFile, 'utf8')).toMatch(new RegExp(`^name: ${skillName}$`, 'mu'))
-      }
-    }
-
     const distributedSkills = fs.readdirSync(resolveRolePath('skills'), { withFileTypes: true })
     expect(distributedSkills.every(entry => entry.isDirectory())).toBe(true)
     expect(distributedSkills.map(entry => entry.name)).toEqual(['init-project'])
 
-    const projectSkills = fs.readdirSync(resolveRolePath('skills/init-project/assets/skills'), { withFileTypes: true })
+    const projectSkills = fs.readdirSync(resolveRolePath('skills/init-project/assets/shared/skills'), { withFileTypes: true })
     expect(projectSkills.every(entry => entry.isDirectory())).toBe(true)
     expect(sortPaths(projectSkills.map(entry => entry.name))).toEqual(sortPaths([...projectSkillNames]))
     for (const skillName of projectSkillNames) {
-      expect(fs.readFileSync(resolveRolePath(`skills/init-project/assets/skills/${skillName}/SKILL.md`), 'utf8')).toMatch(new RegExp(`^name: ${skillName}$`, 'mu'))
+      expect(fs.readFileSync(resolveRolePath(`skills/init-project/assets/shared/skills/${skillName}/SKILL.md`), 'utf8')).toMatch(new RegExp(`^name: ${skillName}$`, 'mu'))
     }
 
     for (const [nativeRoot, expectedFiles] of nativeCapabilityCounts) {
@@ -312,14 +236,6 @@ describe('moluoxixi curated upstream role assets', () => {
       expect(fs.statSync(resolveRolePath(entrypoint)).isFile()).toBe(true)
     }
     expect(selectedFiles().filter(file => file.endsWith('.backup'))).toEqual([])
-
-    const bundledSkillsRoot = resolveRolePath('skills/init-project/assets/moluoxixi-v0.6.7/templates/common/bundled-skills')
-    const bundledSkillNames = sortPaths(fs.readdirSync(bundledSkillsRoot))
-    expect(bundledSkillNames).toEqual(['channel', 'meta', 'session-insight', 'spec-bootstrap'])
-    for (const skillName of bundledSkillNames) {
-      const skillFile = path.join(bundledSkillsRoot, skillName, 'SKILL.md')
-      expect(fs.readFileSync(skillFile, 'utf8')).toMatch(new RegExp(`^name: ${skillName}$`, 'mu'))
-    }
   })
 
   it('keeps the legacy brand only in immutable provenance and published source specifiers', () => {
@@ -329,6 +245,7 @@ describe('moluoxixi curated upstream role assets', () => {
     const provenanceFiles = new Set([
       '__test__/moluoxixi-source.test.ts',
       'role.yaml',
+      'skills/init-project/references/upstream-capability-map.md',
     ])
     for (const relativePath of allFiles) {
       const content = fs.readFileSync(resolveRolePath(relativePath), 'utf8')
@@ -397,11 +314,11 @@ describe('moluoxixi curated upstream role assets', () => {
     expect(manifest.third_party.upstream).toEqual({
       name: upstream.name,
       paths: [
-        ...selectedPaths,
+        'skills/init-project/assets/hosts',
+        'skills/init-project/assets/project',
         'skills/init-project/assets/runtime/source',
         'skills/init-project/assets/runtime/vendor/channel-mem.mjs',
-        'skills/init-project/assets/skills',
-        'skills/init-project/assets/moluoxixi-v0.6.7',
+        'skills/init-project/assets/shared',
       ],
       revision: upstream.revision,
       source: upstream.source,
@@ -418,8 +335,7 @@ describe('moluoxixi curated upstream role assets', () => {
       ],
     })
     expect(vendors[0]?.setup).toBeUndefined()
-    const templateFiles = collectFiles('skills/init-project/assets/moluoxixi-v0.6.7/templates')
-    expect(templateFiles).toHaveLength(199)
+    expect(selectedFiles()).toHaveLength(selectedIntegrity.files)
     const runtimeFiles = migratedRuntimePaths.flatMap(collectFiles)
     expect(runtimeFiles).toHaveLength(runtimeIntegrity.files)
     expect(selectedStats(sortPaths(runtimeFiles))).toEqual({
@@ -448,7 +364,7 @@ describe('moluoxixi curated upstream role assets', () => {
     expect(fs.existsSync(resolveRolePath('LICENSE'))).toBe(false)
     expect(fs.existsSync(resolveRolePath('COPYRIGHT'))).toBe(false)
     expect(fs.existsSync(resolveRolePath('THIRD_PARTY_NOTICES.md'))).toBe(false)
-    expect(fs.existsSync(resolveRolePath('skills/init-project/assets/moluoxixi-v0.6.7/NOTICE.md'))).toBe(false)
+    expect(fs.existsSync(resolveRolePath('skills/init-project/assets/moluoxixi-v0.6.7'))).toBe(false)
     expect(fs.existsSync(resolveRolePath('skills/init-project/assets/runtime/NOTICE.md'))).toBe(false)
     expect(fs.existsSync(resolveRolePath('skills/init-project/assets/runtime/legal'))).toBe(false)
     expect(fs.readFileSync(resolveRolePath('role.yaml'), 'utf8')).not.toMatch(/^\s*license:/mu)

@@ -10,7 +10,6 @@ import {
   serializeContractAudit,
   writeContractAudit,
 } from './lib/contract-diff.js'
-import { loadRoleRuntime } from './lib/role-runtime.js'
 import {
   getDefaultMoluoHome,
   syncToHosts,
@@ -42,20 +41,16 @@ const PACKAGE_VERSION = (() => {
   }
   return PACKAGE_MANIFEST.version
 })()
-const IS_DIST_CLI = fileURLToPath(import.meta.url).split(path.sep).includes('dist')
-
 function printHelp() {
   console.log(`Usage:
   airules sync [--role <name>] [--host <name|all>] [--home <dir>] [--user-home <dir>] [--skip-vendors] [--no-verify]
   airules verify [--role <name>] [--host <name|all>] [--home <dir>] [--user-home <dir>]
-  airules workflow <role-command> [options]
   airules contract-diff --expected <openapi.json|yaml> --actual <openapi.json|yaml> [--output <audit.json>]
   airules --version
 
 Commands:
   sync           同步远程 skills 到宿主
   verify         校验宿主 skills 链接完整性
-  workflow       委派命令给显式选择的 role runtime
   contract-diff  确定性比对两个 OpenAPI 3.x 契约
 `)
 }
@@ -331,32 +326,6 @@ async function main() {
 
   if (command === 'contract-diff') {
     runContractDiff(commandArgs)
-    return
-  }
-
-  if (command === 'workflow') {
-    const role = process.env.AIRULES_ROLE?.trim()
-    if (!role) {
-      throw new Error('The workflow command requires AIRULES_ROLE and a packaged role runtime')
-    }
-    const configuredRoleRoot = process.env.AIRULES_ROLE_ROOT?.trim()
-    const loaded = await loadRoleRuntime({
-      configuredRoleRoot: configuredRoleRoot || undefined,
-      home: getDefaultMoluoHome(),
-      preferDist: IS_DIST_CLI,
-      repoRoot: PACKAGE_ROOT,
-      role,
-    })
-    const result = loaded.runtime.runWorkflowCli(commandArgs, {
-      cwd: process.cwd(),
-      env: process.env,
-      roleRoot: loaded.roleRoot,
-    })
-    process.stdout.write(result.stdout)
-    if (result.stderr !== '') {
-      process.stderr.write(result.stderr)
-    }
-    process.exitCode = result.exitCode
     return
   }
 

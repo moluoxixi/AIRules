@@ -30,7 +30,7 @@ airules sync --host all --role moluoxixi
 ```
 
 - 同步会以可回滚替换方式安装完整角色到 `~/.moluoxixi/roles/moluoxixi`，再只把 AIRules 管理的 canonical skills 投影到对应宿主。当前角色全局只暴露一个 `init-project` skill。
-- 其余角色资产全部由 `init-project` 管理。它会在项目内安装 `start`、`check`、`channel` 等 15 个无前缀 skills，以及 runtime 和 Claude、Codex、Cursor、OMP、OpenCode、Pi 的原生 agents、commands、hooks、plugins、extensions 与 settings。各宿主原生 skill 目录使用相同的无前缀命名；Agent 身份和 commands 统一使用 `moluoxixi-*` 命名空间。
+- 其余角色资产全部由 `init-project` 管理。它会在项目内安装 `start`、`check`、`channel` 等 15 个无前缀 skills、项目 runtime，以及 18 个宿主的原生 agents、commands、hooks、plugins、extensions 与 settings。宿主专属源分别维护在 `assets/hosts/<host>`；只有真正宿主无关的 skills、commands、hooks 才进入 `assets/shared`。Agent 身份和 commands 统一使用 `moluoxixi-*` 命名空间。
 - `roles/moluoxixi` 包含 `mindfold-ai/Trellis` `v0.6.7` 提交 `e7c5ead4d0dfd717d11a40b6bc0c80d8af94c49a` 的精选角色资产。仓库自动化、package workspace、测试、demo、发布专用资产、备份与项目本地 `.trellis` 历史均有意省略。初始化器只使用迁移到角色内的资产，不安装或调用 Trellis npm CLI。
 - 角色运行时从 AIRules 远程仓库的 `roles/moluoxixi` 完整路径同步；精选 Trellis 角色资产不随 AIRules npm 包重复发布。当前分支合入远端默认分支后，该同步入口才可用。
 - `sync` 更新所选远程资产，并把其中的 canonical skills 投影到支持的宿主。
@@ -49,7 +49,7 @@ npm run lint:check
 npm test
 ```
 
-保留 `scripts/sync-vendors.ts` 与 `vendor-lock.json` 用于 vendor 锁维护。测试前不再自动执行 vendor 同步。
+远程 revision 由各角色 manifest 声明并在同步时校验，不再维护第二套仓库级 vendor lock 路径。
 
 ## 许可证
 

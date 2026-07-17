@@ -678,7 +678,7 @@ export default {
 
     const manifest = await loadVendorManifest(validManifest)
     assert.equal(manifest.version, 1)
-    assert.equal(manifest.vendors.demo.official, false)
+    assert.equal(Object.hasOwn(manifest.vendors.demo, 'official'), false)
     assert.equal(manifest.vendors.demo.links[0].kind, 'namespace-dir')
 
     await assert.rejects(
@@ -709,7 +709,7 @@ it('vendors - 合并重复供应商、拒绝本地供应商和未知 projection'
     },
   ], [], merged)
 
-  assert.equal(merged.demo.official, true)
+  assert.equal(Object.hasOwn(merged.demo, 'official'), false)
   assert.deepEqual(merged.demo.links.map((link: any) => link.target), [
     'vendor/skills/a',
     'vendor/skills/b',

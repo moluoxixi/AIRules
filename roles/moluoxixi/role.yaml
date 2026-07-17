@@ -18,17 +18,11 @@ third_party:
   upstream:
     name: Trellis
     paths:
-      - .agents
-      - .claude
-      - .codex
-      - .cursor
-      - .omp
-      - .opencode
-      - .pi
+      - skills/init-project/assets/hosts
+      - skills/init-project/assets/project
       - skills/init-project/assets/runtime/source
       - skills/init-project/assets/runtime/vendor/channel-mem.mjs
-      - skills/init-project/assets/skills
-      - skills/init-project/assets/moluoxixi-v0.6.7
+      - skills/init-project/assets/shared
     source: https://github.com/mindfold-ai/Trellis.git
     version: 0.6.7
     revision: e7c5ead4d0dfd717d11a40b6bc0c80d8af94c49a

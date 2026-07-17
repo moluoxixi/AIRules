@@ -30,7 +30,7 @@ airules sync --host all --role moluoxixi
 ```
 
 - Sync installs the complete role at `~/.moluoxixi/roles/moluoxixi` with rollback-safe replacement, then projects only AIRules-managed canonical skills to supported hosts. The role currently exposes one global skill: `init-project`.
-- `init-project` owns the remaining role assets. It installs 15 project skills with unprefixed names such as `start`, `check`, and `channel`, together with the runtime and native Claude, Codex, Cursor, OMP, OpenCode, and Pi agents, commands, hooks, plugins, extensions, and settings. Host-native skill directories use the same unprefixed names; Agent identities and commands use the `moluoxixi-*` namespace.
+- `init-project` owns the remaining role assets. It installs 15 project skills with unprefixed names such as `start`, `check`, and `channel`, the project runtime, and native agents, commands, hooks, plugins, extensions, and settings for 18 hosts. Host-specific sources remain independent under `assets/hosts/<host>`; only genuinely host-neutral skills, commands, and hooks live under `assets/shared`. Agent identities and commands use the `moluoxixi-*` namespace.
 - `roles/moluoxixi` contains a curated role subset from `mindfold-ai/Trellis` `v0.6.7` commit `e7c5ead4d0dfd717d11a40b6bc0c80d8af94c49a`. Repository automation, package workspaces, tests, demos, release-only assets, backups, and project-local `.trellis` history are intentionally omitted. The initializer uses migrated role assets and does not install or invoke the Trellis npm CLI.
 - Runtime transport comes from the complete `roles/moluoxixi` path in the AIRules remote repository; the curated Trellis assets are excluded from the AIRules npm package. This sync entry becomes available after the branch is merged into the remote default branch.
 - `sync` refreshes selected remote assets and projects their canonical skills to supported hosts.
@@ -49,7 +49,7 @@ npm run lint:check
 npm test
 ```
 
-`scripts/sync-vendors.ts` and `vendor-lock.json` are retained for vendor lock maintenance. Vendor synchronization is not run automatically before tests.
+Remote revisions are declared by each role manifest and validated during sync; there is no second repository-level vendor lock path.
 
 ## License
 

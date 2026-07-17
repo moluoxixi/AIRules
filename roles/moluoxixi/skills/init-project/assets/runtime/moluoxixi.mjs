@@ -73,11 +73,8 @@ function update(args) {
 
   for (let index = 0; index < args.length; index += 1) {
     const arg = args[index]
-    if (arg === '--dry-run' || arg === '--force') {
+    if (arg === '--dry-run' || arg === '--force' || arg === '--with-statusline' || arg === '--create-new' || arg === '--skip-all') {
       forwarded.push(arg)
-    }
-    else if (arg === '--skip-all') {
-      continue
     }
     else if (arg === '--platform') {
       platforms.push(...parseValue(args, index++, arg).split(','))
@@ -86,7 +83,7 @@ function update(args) {
       forwarded.push(arg, parseValue(args, index++, arg))
     }
     else if (arg === '--help' || arg === '-h') {
-      process.stdout.write('Usage: moluoxixi.mjs update [--platform <ids>] [--dry-run] [--force] [--python <command>]\n')
+      process.stdout.write('Usage: moluoxixi.mjs update [--platform <ids>] [--dry-run] [--force] [--create-new] [--skip-all] [--with-statusline] [--python <command>]\n')
       return
     }
     else {
@@ -122,6 +119,20 @@ function parseWorkflowArgs(args) {
     else if (arg === '--help' || arg === '-h')
       result.help = true
     else throw new Error(`Unknown workflow option: ${arg}`)
+  }
+  return result
+}
+
+function parseUninstallArgs(args) {
+  const result = { dryRun: false, force: false }
+  for (const arg of args) {
+    if (arg === '--dry-run')
+      result.dryRun = true
+    else if (arg === '--force' || arg === '--yes' || arg === '-y')
+      result.force = true
+    else if (arg === '--help' || arg === '-h')
+      result.help = true
+    else throw new Error(`Unknown uninstall option: ${arg}`)
   }
   return result
 }
@@ -173,7 +184,7 @@ function workflow(args) {
   const manifest = JSON.parse(fs.readFileSync(manifestPath, 'utf8'))
   const target = path.join(projectRoot, PROJECT_ROOT_DIR, 'workflow.md')
   const templateId = options.template ?? 'native'
-  const nativeTemplate = path.join(projectRoot, PROJECT_ROOT_DIR, 'runtime', 'update', 'init-project', 'assets', 'moluoxixi-v0.6.7', 'templates', 'moluoxixi', 'workflow.md')
+  const nativeTemplate = path.join(projectRoot, PROJECT_ROOT_DIR, 'runtime', 'update', 'init-project', 'assets', 'project', 'workflow.md')
   const source = templateId === 'native' ? nativeTemplate : path.resolve(projectRoot, templateId)
   if (!fs.statSync(source, { throwIfNoEntry: false })?.isFile())
     throw new Error(`Workflow template is unavailable: ${source}`)
@@ -188,6 +199,7 @@ function workflow(args) {
     throw new Error(`${WORKFLOW_MANIFEST_PATH} has local edits; use --force or --create-new`)
   }
   if (current.equals(desired) && !options.createNew) {
+    warnMissingWorkflowAgents(desired.toString('utf8'), projectRoot)
     process.stdout.write(`${WORKFLOW_MANIFEST_PATH} already matches the selected template\n`)
     return
   }
@@ -208,11 +220,118 @@ function workflow(args) {
     }
     writeAtomic(manifestPath, Buffer.from(`${JSON.stringify(manifest, null, 2)}\n`))
   }
+  warnMissingWorkflowAgents(desired.toString('utf8'), projectRoot)
   process.stdout.write(`${path.relative(projectRoot, destination)} written\n`)
 }
 
+function warnMissingWorkflowAgents(content, projectRoot) {
+  const names = new Set()
+  for (const match of content.matchAll(/(?:--agent\s+|\.moluoxixi\/agents\/)([A-Za-z0-9][\w-]*)(?:\.md)?/gu))
+    names.add(match[1])
+  const missing = [...names].filter(name => !fs.existsSync(path.join(projectRoot, PROJECT_ROOT_DIR, 'agents', `${name}.md`)))
+  if (missing.length > 0)
+    process.stderr.write(`Warning: workflow references missing Moluoxixi agents: ${missing.join(', ')}. Run the project-local update after reviewing the workflow.\n`)
+}
+
+function uninstall(args) {
+  const options = parseUninstallArgs(args)
+  if (options.help) {
+    process.stdout.write('Usage: moluoxixi.mjs uninstall [--dry-run] [--force]\n')
+    return
+  }
+  const projectRoot = findProjectRoot()
+  const manifestPath = path.join(projectRoot, PROJECT_ROOT_DIR, 'airules-init-manifest.json')
+  const manifest = JSON.parse(fs.readFileSync(manifestPath, 'utf8'))
+  const conflicts = []
+  const removed = []
+  const removable = []
+
+  for (const [relativePath, owned] of Object.entries(manifest.entries ?? {}).sort(([left], [right]) => left.localeCompare(right))) {
+    let target
+    try {
+      target = assertManagedTarget(projectRoot, relativePath)
+    }
+    catch {
+      conflicts.push(relativePath)
+      continue
+    }
+    const stats = fs.lstatSync(target, { throwIfNoEntry: false })
+    if (!stats) {
+      removed.push(relativePath)
+      continue
+    }
+    if (!stats.isFile() || stats.isSymbolicLink()) {
+      conflicts.push(relativePath)
+      continue
+    }
+    const pristine = typeof owned?.baselineHash === 'string' && owned.baselineHash === sha256(fs.readFileSync(target))
+    if (pristine || options.force) {
+      removable.push({ relativePath, target })
+      removed.push(relativePath)
+    }
+    else {
+      conflicts.push(relativePath)
+    }
+  }
+
+  const summary = { projectRoot, dryRun: options.dryRun, force: options.force, removed, conflicts }
+  if (options.dryRun) {
+    process.stdout.write(`${JSON.stringify(summary, null, 2)}\n`)
+    if (conflicts.length > 0)
+      process.exitCode = 2
+    return
+  }
+
+  for (const item of removable) {
+    fs.rmSync(item.target)
+    removeEmptyParents(item.target, projectRoot)
+  }
+  const nextEntries = { ...(manifest.entries ?? {}) }
+  for (const relativePath of removed)
+    delete nextEntries[relativePath]
+  if (conflicts.length > 0) {
+    manifest.entries = nextEntries
+    writeAtomic(manifestPath, Buffer.from(`${JSON.stringify(manifest, null, 2)}\n`))
+    process.exitCode = 2
+  }
+  else {
+    fs.rmSync(manifestPath)
+    removeEmptyParents(manifestPath, projectRoot)
+  }
+  process.stdout.write(`${JSON.stringify(summary, null, 2)}\n`)
+}
+
+function assertManagedTarget(projectRoot, relativePath) {
+  if (typeof relativePath !== 'string' || relativePath.includes('\0'))
+    throw new Error('Invalid managed path')
+  const target = path.resolve(projectRoot, ...relativePath.split('/'))
+  const relation = path.relative(projectRoot, target)
+  if (!relation || relation === '..' || relation.startsWith(`..${path.sep}`) || path.isAbsolute(relation))
+    throw new Error('Managed path escapes project root')
+  let current = projectRoot
+  for (const segment of relativePath.split('/')) {
+    current = path.join(current, segment)
+    if (fs.lstatSync(current, { throwIfNoEntry: false })?.isSymbolicLink())
+      throw new Error('Managed path contains a symbolic link')
+  }
+  return target
+}
+
+function removeEmptyParents(target, projectRoot) {
+  let current = path.dirname(target)
+  while (current !== projectRoot) {
+    try {
+      fs.rmdirSync(current)
+    }
+    catch {
+      break
+    }
+    current = path.dirname(current)
+  }
+}
+
 function printHelp() {
-  process.stdout.write(`Moluoxixi runtime ${VERSION}\n\nUsage: node moluoxixi.mjs <command> [options]\n\nCommands:\n  channel   Durable local multi-agent channels and workers\n  mem       Search local Claude, Codex, and Pi conversation history\n  workflow  List or replace the active project workflow\n  update    Refresh AIRules-owned project assets\n`)
+  process.stdout.write(`Moluoxixi runtime ${VERSION}\n\nUsage: node moluoxixi.mjs <command> [options]\n\nCommands:\n  channel    Durable local multi-agent channels and workers\n  mem        Search local Claude, Codex, and Pi conversation history\n  workflow   List or replace the active project workflow\n  update     Refresh AIRules-owned project assets\n  uninstall  Remove manifest-owned project assets safely\n`)
 }
 
 try {
@@ -227,6 +346,8 @@ try {
     update(args)
   else if (command === 'workflow')
     workflow(args)
+  else if (command === 'uninstall')
+    uninstall(args)
   else throw new Error(`Unknown command: ${command}`)
 }
 catch (error) {

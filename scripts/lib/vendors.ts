@@ -72,8 +72,6 @@ export type VendorProjection
 export interface VendorRepo {
   /** 供应商名称，也是克隆到本地后的目录名。 */
   name: string
-  /** 是否为官方仓库。 */
-  official: boolean
   /** Git 仓库地址。 */
   source: string
   /** 固定 checkout 的完整 Git commit SHA；省略时跟随远端默认分支。 */
@@ -112,11 +110,9 @@ export interface VendorLink {
 }
 
 export interface Vendor {
-  official?: boolean
   repo: string
   revision?: string
   cloneDir: string
-  sourceMode?: 'workspace'
   setup?: SetupCommand[]
   links: VendorLink[]
 }
@@ -272,7 +268,6 @@ function mergeVendor(vendors: Record<string, Vendor>, vendorName: string, entry:
 
   if (!vendors[safeVendorName]) {
     vendors[safeVendorName] = {
-      official: entry.official,
       repo: remoteSource,
       revision,
       cloneDir,
@@ -291,7 +286,6 @@ function mergeVendor(vendors: Record<string, Vendor>, vendorName: string, entry:
     throw new Error(`供应商 "${safeVendorName}" 在不同模块中的定义不一致`)
   }
 
-  existing.official = existing.official || entry.official
   existing.setup = [...(existing.setup ?? []), ...(entry.setup ?? [])]
   existing.links.push(...links)
 }
