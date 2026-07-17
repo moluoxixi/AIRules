@@ -33,6 +33,9 @@ function writeFile(filePath: string, content: string) {
 it('tool - resolveHostTargets all does not include the agentsmd shared layer', () => {
   assert.equal(resolveHostTargets('all').includes('agentsmd'), false)
   assert.deepEqual(resolveHostTargets('agentsmd'), ['agentsmd'])
+  assert.deepEqual(resolveHostTargets('all', ['codex', 'agentsmd', 'claude']), ['claude', 'codex'])
+  assert.throws(() => resolveHostTargets('cursor', ['codex']), /role does not support host "cursor"/i)
+  assert.throws(() => resolveHostTargets('unknown'), /unknown AIRules host/i)
 })
 
 it('tool - resolveToolPaths separates the AIRules home from the user home', () => withTempDir('airules-tool-paths-', (tmpDir) => {
@@ -80,7 +83,9 @@ it('tool - sync ignores repository and user-local role assets', async () => {
     const role = 'demo'
 
     writeFile(path.join(repoRoot, 'package.json'), '{"type":"module"}\n')
-    writeFile(path.join(repoRoot, 'roles', role, 'constants', 'skills.ts'), 'export const vendors = []\n')
+    writeFile(path.join(repoRoot, 'roles', role, 'constants', 'skills.ts'), `export const hosts = ['codex']
+export const vendors = []
+`)
     writeFile(path.join(repoRoot, 'roles', role, 'skills', 'repository-only', 'SKILL.md'), 'must not project\n')
     writeFile(path.join(repoRoot, 'roles', role, 'agents', 'repository-only.md'), 'must not project\n')
     writeFile(path.join(moluoHome, 'local', 'skills', 'user-local', 'SKILL.md'), 'must not project\n')
@@ -158,7 +163,60 @@ it('tool - verify fails closed for an unknown host', async () => {
 
     await assert.rejects(
       verifyHosts({ repoRoot, home: moluoHome, userHome, host: 'unknown' }),
-      /Host verification failed: unknown/,
+      /unknown AIRules host/i,
     )
+  })
+})
+
+it('tool - rejects a role-unsupported host before staging', async () => {
+  await withTempDirAsync('airules-tool-role-hosts-', async (tmpDir) => {
+    const repoRoot = path.join(tmpDir, 'repo')
+    const userHome = path.join(tmpDir, 'user')
+    const moluoHome = path.join(userHome, '.moluoxixi')
+    const role = 'demo'
+    writeFile(path.join(repoRoot, 'package.json'), '{"type":"module"}\n')
+    writeFile(path.join(repoRoot, 'roles', role, 'constants', 'skills.ts'), `export const hosts = ['claude']
+export const vendors = []
+`)
+
+    await assert.rejects(
+      syncToHosts({ repoRoot, home: moluoHome, userHome, host: 'codex', role, skipVendors: true, verify: false }),
+      /role does not support host "codex"/i,
+    )
+    assert.equal(fs.existsSync(moluoHome), false)
+    await assert.rejects(
+      verifyHosts({ repoRoot, home: moluoHome, userHome, host: 'codex', role }),
+      /role does not support host "codex"/i,
+    )
+  })
+})
+
+it('tool - requires named roles to declare hosts and scopes all end to end', async () => {
+  await withTempDirAsync('airules-tool-role-all-', async (tmpDir) => {
+    const repoRoot = path.join(tmpDir, 'repo')
+    const userHome = path.join(tmpDir, 'user')
+    const moluoHome = path.join(userHome, '.moluoxixi')
+    const role = 'demo'
+    const manifestPath = path.join(repoRoot, 'roles', role, 'constants', 'skills.ts')
+    writeFile(path.join(repoRoot, 'package.json'), '{"type":"module"}\n')
+    writeFile(manifestPath, 'export const vendors = []\n')
+
+    await assert.rejects(
+      syncToHosts({ repoRoot, home: moluoHome, userHome, host: 'all', role, skipVendors: true, verify: false }),
+      /must export a "hosts" allowlist/i,
+    )
+    assert.equal(fs.existsSync(moluoHome), false)
+
+    const supportedRole = 'supported'
+    writeFile(path.join(repoRoot, 'roles', supportedRole, 'constants', 'skills.ts'), `export const hosts = ['claude', 'codex']
+export const vendors = []
+`)
+    fs.mkdirSync(path.join(userHome, '.claude'), { recursive: true })
+    fs.mkdirSync(path.join(userHome, '.codex'), { recursive: true })
+    fs.mkdirSync(path.join(userHome, '.cursor'), { recursive: true })
+
+    const result = await syncToHosts({ repoRoot, home: moluoHome, userHome, host: 'all', role: supportedRole, skipVendors: true, verify: false })
+    assert.deepEqual(result.projectedHosts, ['claude', 'codex'])
+    assert.equal(result.skippedHosts.includes('cursor'), false)
   })
 })

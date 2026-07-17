@@ -2,7 +2,7 @@ import { Buffer } from 'node:buffer'
 import { randomUUID } from 'node:crypto'
 import fs from 'node:fs'
 import path from 'node:path'
-import { GENERATOR_VERSION, MANIFEST_PATH, UPSTREAM_REVISION } from '../constants.mjs'
+import { GENERATOR_VERSION, MANIFEST_PATH, MOLUOXIXI_VERSION } from '../constants.mjs'
 import { createManifestEntry } from './ownership.mjs'
 import { assertSafeTarget } from './safety.mjs'
 
@@ -38,7 +38,7 @@ export function commit(projectRoot, operations, manifest, platforms, options = {
     const nextManifest = Buffer.from(`${JSON.stringify({
       schemaVersion: 2,
       generatorVersion: GENERATOR_VERSION,
-      upstreamRevision: UPSTREAM_REVISION,
+      moluoxixiVersion: MOLUOXIXI_VERSION,
       platforms: [...new Set([...(manifest.platforms ?? []), ...platforms])].sort(),
       features: {
         ...(manifest.features ?? {}),

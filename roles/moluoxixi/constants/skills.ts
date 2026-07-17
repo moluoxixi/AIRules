@@ -2,6 +2,23 @@ import type { VendorRepo } from '../../../scripts/lib/vendors.js'
 
 export const extendsRoles: string[] = []
 
+export const hosts: string[] = [
+  'claude',
+  'codex',
+  'hermes',
+  'hermes desktop',
+  'cursor',
+  'agentsmd',
+  'qoderwork',
+  'trae',
+  'trae-cn',
+  'trae-solo',
+  'trae-solo-cn',
+  'qoder',
+  'opencode',
+  'cc-switch',
+]
+
 export const vendors: VendorRepo[] = [
   {
     name: 'moluoxixi',

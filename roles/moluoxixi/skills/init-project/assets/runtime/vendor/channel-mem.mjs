@@ -11953,7 +11953,7 @@ function runMem(args) {
 
 // packages/cli/src/airules-runtime-entry.ts
 var program2 = new Command();
-program2.name("moluoxixi-runtime").description("AIRules-owned local runtime for migrated Moluoxixi capabilities").version("0.6.7-airules.1");
+program2.name("moluoxixi-runtime").description("AIRules-owned local runtime for bundled Moluoxixi capabilities").version("0.1.0");
 registerChannelCommand(program2);
 program2.command("mem").allowUnknownOption(true).helpOption(false).argument("[args...]").action((args = []) => runMem(args));
 await program2.parseAsync(process.argv);

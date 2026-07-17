@@ -4,9 +4,8 @@ import fs from 'node:fs'
 import path from 'node:path'
 import process from 'node:process'
 import { parseArgs, printHelp } from './cli.mjs'
-import { LEGACY_BRAND, MANIFEST_PATH, PROJECT_ASSET_ROOT } from './constants.mjs'
+import { MANIFEST_PATH, MOLUOXIXI_VERSION, PROJECT_ASSET_ROOT } from './constants.mjs'
 import { createPersistentBackup } from './core/backup.mjs'
-import { migrateLegacyRoot } from './core/legacy.mjs'
 import { applyLifecycle, captureLifecycleState, detectGitDeveloper, readDeveloper } from './core/lifecycle.mjs'
 import { prepareOperations, readManifest } from './core/operations.mjs'
 import { detectMonorepo, detectProjectType } from './core/project-detector.mjs'
@@ -15,7 +14,7 @@ import { resolveSpecTemplate, resolveWorkflowTemplate } from './core/registry.mj
 import { assertProjectIsNotHome, assertSafeProject } from './core/safety.mjs'
 import { commit } from './core/transaction.mjs'
 import { normalizePlatforms } from './hosts/catalog.mjs'
-import { runVersionMigrations } from './migrations/runner.mjs'
+import { compareVersions, runVersionMigrations } from './migrations/runner.mjs'
 import { buildPlan, requirePython } from './plan.mjs'
 
 async function main() {
@@ -27,19 +26,18 @@ async function main() {
   const projectRoot = assertSafeProject(options.project)
   assertProjectIsNotHome(projectRoot)
   const pythonCommand = requirePython(options.python)
-  const legacyRootMigrated = options.dryRun ? fs.existsSync(path.join(projectRoot, `.${LEGACY_BRAND}`)) : migrateLegacyRoot(projectRoot)
   const lifecycleBefore = captureLifecycleState(projectRoot)
   const manifest = readManifest(projectRoot)
   const currentVersion = readVersion(projectRoot)
-  if (!options.allowDowngrade && currentVersion && compareVersion(currentVersion, '0.6.7') > 0)
+  if (!options.allowDowngrade && currentVersion && compareVersions(currentVersion, MOLUOXIXI_VERSION) > 0)
     throw new Error(`Project version ${currentVersion} is newer than this updater; use --allow-downgrade to continue`)
   const migrationPreview = currentVersion
-    ? runVersionMigrations(projectRoot, manifest, currentVersion, '0.6.7', { dryRun: true, force: options.force, migrate: options.migrate, skipAll: options.skipAll })
+    ? runVersionMigrations(projectRoot, manifest, currentVersion, MOLUOXIXI_VERSION, { dryRun: true, force: options.force, migrate: options.migrate, skipAll: options.skipAll })
     : { applied: [], conflicts: [], pending: [], proposed: [] }
   let backup = !options.dryRun && currentVersion && migrationPreview.pending?.length > 0 ? createPersistentBackup(projectRoot, manifest) : undefined
   const migrations = options.dryRun || !currentVersion
     ? migrationPreview
-    : runVersionMigrations(projectRoot, manifest, currentVersion, '0.6.7', { dryRun: false, force: options.force, migrate: options.migrate, skipAll: options.skipAll })
+    : runVersionMigrations(projectRoot, manifest, currentVersion, MOLUOXIXI_VERSION, { dryRun: false, force: options.force, migrate: options.migrate, skipAll: options.skipAll })
   const platforms = normalizePlatforms([...(manifest.platforms ?? []), ...options.platforms])
   const withStatusline = options.withStatusline || manifest.features?.claudeStatusline === true
   const detectedMonorepo = detectMonorepo(projectRoot)
@@ -97,7 +95,6 @@ async function main() {
     workflow: workflow?.id ?? manifest.project?.workflow?.id,
     registry: effectiveRegistry,
     migrations,
-    legacyRootMigrated,
     ...(backup ? { backup } : {}),
     manifest: MANIFEST_PATH,
     warnings: platforms.includes('codex')
@@ -132,17 +129,6 @@ function readVersion(projectRoot) {
   catch {
     return undefined
   }
-}
-
-function compareVersion(left, right) {
-  const parse = value => (String(value).match(/^(\d+)\.(\d+)\.(\d+)/u) ?? []).slice(1).map(Number)
-  const a = parse(left)
-  const b = parse(right)
-  for (let index = 0; index < 3; index += 1) {
-    if ((a[index] ?? 0) !== (b[index] ?? 0))
-      return (a[index] ?? 0) - (b[index] ?? 0)
-  }
-  return 0
 }
 
 function mergePackages(stored, requested) {

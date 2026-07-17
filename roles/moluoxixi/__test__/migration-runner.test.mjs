@@ -4,6 +4,8 @@ import os from 'node:os'
 import path from 'node:path'
 import { afterEach, describe, expect, it } from 'vitest'
 import { createPersistentBackup, shouldExcludeFromBackup } from '../skills/init-project/scripts/core/backup.mjs'
+import { mergeConfig } from '../skills/init-project/scripts/core/migration.mjs'
+import { normalizeManifest } from '../skills/init-project/scripts/core/ownership.mjs'
 import { compareVersions, isSafeDelete, runVersionMigrations } from '../skills/init-project/scripts/migrations/runner.mjs'
 
 const temporaryRoots = []
@@ -34,19 +36,76 @@ function manifest(entries = {}) {
   return { entries, platforms: [], project: {}, schemaVersion: 2 }
 }
 
-describe('moluoxixi version migrations', () => {
-  it('loads bundled manifests and selects config additions by version', () => {
-    const projectRoot = temporaryProject()
-    const result = runVersionMigrations(projectRoot, manifest(), '0.5.6', '0.5.7', { dryRun: true })
+const futureReleases = [
+  {
+    version: '0.2.0',
+    configSectionsAdded: [
+      {
+        file: '.moluoxixi/config.yaml',
+        sectionHeading: 'Codex (dispatch behavior)',
+        sentinel: 'codex:',
+      },
+    ],
+    migrations: [
+      {
+        type: 'rename',
+        from: '.claude/commands/onboard-developer.md',
+        to: '.claude/commands/onboard.md',
+      },
+    ],
+  },
+  {
+    version: '0.3.0',
+    migrations: [
+      {
+        type: 'rename-dir',
+        from: '.moluoxixi/agent-traces',
+        to: '.moluoxixi/workspace',
+      },
+    ],
+  },
+  {
+    version: '0.4.0',
+    migrations: [
+      { type: 'delete', path: '.claude/commands/retired.md' },
+      { type: 'safe-file-delete', path: '.claude/commands/safe-retired.md', allowed_hashes: [hash('known template\n')] },
+      { type: 'safe-file-delete', path: '.claude/commands/user-owned.md', allowed_hashes: [hash('known template\n')] },
+    ],
+  },
+  {
+    version: '0.5.0',
+    breaking: true,
+    recommendMigrate: true,
+    migrations: [
+      { type: 'rename', from: '.moluoxixi/old-layout.md', to: '.moluoxixi/new-layout.md' },
+    ],
+  },
+]
 
+describe('moluoxixi version migrations', () => {
+  it('starts with no historical releases and supports future Moluoxixi fixtures', () => {
+    const projectRoot = temporaryProject()
+    const baseline = runVersionMigrations(projectRoot, manifest(), '0.1.0', '0.2.0', { dryRun: true })
+    const result = runVersionMigrations(projectRoot, manifest(), '0.1.0', '0.2.0', { dryRun: true, manifests: futureReleases })
+
+    expect(baseline).toMatchObject({ applied: [], configSections: [], conflicts: [], pending: [], proposed: [], skipped: [] })
     expect(result.configSections).toContainEqual(expect.objectContaining({
       file: '.moluoxixi/config.yaml',
-      release: '0.5.7',
+      release: '0.2.0',
       sectionHeading: 'Codex (dispatch behavior)',
       sentinel: 'codex:',
     }))
-    expect(compareVersions('0.6.0-beta.18', '0.6.0-beta.6')).toBeGreaterThan(0)
-    expect(compareVersions('0.6.7-airules.1', '0.6.7')).toBe(0)
+    expect(compareVersions('0.2.0-beta.18', '0.2.0-beta.6')).toBeGreaterThan(0)
+    expect(compareVersions('0.2.0-airules.1', '0.2.0')).toBeLessThan(0)
+
+    const merged = mergeConfig(
+      '# User config\ncustom: true\n',
+      '# Base\n\n#-------------------------\n# Codex (dispatch behavior)\ncodex:\n  enabled: true\n',
+      undefined,
+      result.configSections,
+    )
+    expect(merged).toContain('# User config\ncustom: true')
+    expect(merged.match(/# Codex \(dispatch behavior\)/gu)).toHaveLength(1)
   })
 
   it('keeps the default inline backup when migrating a modified file', () => {
@@ -56,7 +115,7 @@ describe('moluoxixi version migrations', () => {
     writeProjectFile(projectRoot, source, 'user edit\n')
     const state = manifest({ [source]: { baselineHash: hash('template\n') } })
 
-    const result = runVersionMigrations(projectRoot, state, '0.1.8', '0.1.9', { migrate: true })
+    const result = runVersionMigrations(projectRoot, state, '0.1.0', '0.2.0', { manifests: futureReleases, migrate: true })
 
     expect(result.applied).toContain(source)
     expect(fs.existsSync(path.join(projectRoot, ...source.split('/')))).toBe(false)
@@ -74,7 +133,7 @@ describe('moluoxixi version migrations', () => {
     writeProjectFile(projectRoot, `${source}/user.md`, 'user\n')
     const state = manifest({ [ownedPath]: { baselineHash: hash('owned\n') } })
 
-    const result = runVersionMigrations(projectRoot, state, '0.1.9', '0.2.0', { migrate: true })
+    const result = runVersionMigrations(projectRoot, state, '0.2.0', '0.3.0', { manifests: futureReleases, migrate: true })
 
     expect(result.applied).toContain(source)
     expect(fs.readFileSync(path.join(projectRoot, ...`${target}/user.md`.split('/')), 'utf8')).toBe('user\n')
@@ -87,7 +146,7 @@ describe('moluoxixi version migrations', () => {
     const source = '.moluoxixi/agent-traces'
     writeProjectFile(projectRoot, `${source}/user.md`, 'user\n')
 
-    const result = runVersionMigrations(projectRoot, manifest(), '0.1.9', '0.2.0', { force: true, migrate: true })
+    const result = runVersionMigrations(projectRoot, manifest(), '0.2.0', '0.3.0', { force: true, manifests: futureReleases, migrate: true })
 
     expect(result.skipped).toContain(source)
     expect(fs.existsSync(path.join(projectRoot, ...source.split('/')))).toBe(true)
@@ -99,8 +158,40 @@ describe('moluoxixi version migrations', () => {
     const relativePath = '.claude/commands/retired.md'
     writeProjectFile(projectRoot, relativePath, 'known template\n')
 
-    expect(isSafeDelete(projectRoot, manifest(), {}, relativePath, [hash('known template\n')])).toBe(true)
-    expect(isSafeDelete(projectRoot, manifest(), {}, relativePath, [hash('different\n')])).toBe(false)
+    expect(isSafeDelete(projectRoot, manifest(), relativePath, [hash('known template\n')])).toBe(true)
+    expect(isSafeDelete(projectRoot, manifest(), relativePath, [hash('different\n')])).toBe(false)
+  })
+
+  it('executes delete and safe-delete manifests without removing unknown content', () => {
+    const projectRoot = temporaryProject()
+    const retired = '.claude/commands/retired.md'
+    const safeRetired = '.claude/commands/safe-retired.md'
+    const userOwned = '.claude/commands/user-owned.md'
+    writeProjectFile(projectRoot, retired, 'owned template\n')
+    writeProjectFile(projectRoot, safeRetired, 'known template\n')
+    writeProjectFile(projectRoot, userOwned, 'user edit\n')
+    const state = manifest({ [retired]: { baselineHash: hash('owned template\n') } })
+
+    const result = runVersionMigrations(projectRoot, state, '0.3.0', '0.4.0', { manifests: futureReleases, migrate: true })
+
+    expect(result.applied).toEqual(expect.arrayContaining([retired, safeRetired]))
+    expect(fs.existsSync(path.join(projectRoot, ...retired.split('/')))).toBe(false)
+    expect(fs.existsSync(path.join(projectRoot, ...safeRetired.split('/')))).toBe(false)
+    expect(fs.readFileSync(path.join(projectRoot, ...userOwned.split('/')), 'utf8')).toBe('user edit\n')
+  })
+
+  it('requires migrate for a breaking release and rejects schema v1 manifests', () => {
+    const projectRoot = temporaryProject()
+    const source = '.moluoxixi/old-layout.md'
+    writeProjectFile(projectRoot, source, 'owned\n')
+    const state = manifest({ [source]: { baselineHash: hash('owned\n') } })
+
+    expect(() => runVersionMigrations(projectRoot, state, '0.4.0', '0.5.0', { manifests: futureReleases })).toThrow(/requires --migrate/i)
+    const migrated = runVersionMigrations(projectRoot, state, '0.4.0', '0.5.0', { manifests: futureReleases, migrate: true })
+    expect(migrated.applied).toContain(source)
+    expect(fs.existsSync(path.join(projectRoot, '.moluoxixi', 'new-layout.md'))).toBe(true)
+
+    expect(() => normalizeManifest({ entries: {}, schemaVersion: 1 }, 'legacy-manifest.json')).toThrow(/unsupported or malformed manifest/i)
   })
 })
 

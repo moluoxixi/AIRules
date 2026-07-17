@@ -7,7 +7,7 @@ import process from 'node:process'
 import { fileURLToPath } from 'node:url'
 
 const RUNTIME_DIR = path.dirname(fileURLToPath(import.meta.url))
-const VERSION = '0.6.7-airules.1'
+const VERSION = '0.1.0'
 const PROJECT_ROOT_DIR = '.moluoxixi'
 
 function findProjectRoot(start = process.cwd()) {

@@ -658,6 +658,7 @@ it('vendors - loadVendorManifest 支持默认导出并显式拒绝无效清单',
 
     writeFile(validManifest, `
 export default {
+  hosts: ['claude', 'codex'],
   vendors: [
     {
       name: 'demo',
@@ -678,12 +679,20 @@ export default {
 
     const manifest = await loadVendorManifest(validManifest)
     assert.equal(manifest.version, 1)
+    assert.deepEqual(manifest.hosts, ['claude', 'codex'])
     assert.equal(Object.hasOwn(manifest.vendors.demo, 'official'), false)
     assert.equal(manifest.vendors.demo.links[0].kind, 'namespace-dir')
 
     await assert.rejects(
       () => loadVendorManifest(invalidManifest),
       /must export a "vendors" object/,
+    )
+
+    const invalidHostsManifest = path.join(tmpDir, 'invalid-hosts.mjs')
+    writeFile(invalidHostsManifest, `export const hosts = ['unknown']\nexport const vendors = []\n`)
+    await assert.rejects(
+      () => loadVendorManifest(invalidHostsManifest),
+      /unknown host "unknown"/i,
     )
   })
 })

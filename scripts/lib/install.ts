@@ -32,7 +32,11 @@ function vendorSkillsPath(homeDir: string): string {
 
 /** 获取全局 .agents/skills 目录的绝对路径 */
 function agentsSkillsPath(userHome: string): string {
-  return path.join(userHome, '.agents', 'skills')
+  const config = findHostConfig('agentsmd')
+  if (!config)
+    throw new Error('Missing public agentsmd host configuration')
+  const { hostHome, skillsDirName } = resolveHostPaths(config, userHome)
+  return path.join(hostHome, skillsDirName)
 }
 
 function resetDir(targetDir: string) {
@@ -467,7 +471,7 @@ export function projectSkillsToHost(
   const agentsSkillsDir = agentsSkillsPath(userHome)
 
   // 1. vendor/skills → ~/.agents/skills
-  mkdirSync(path.join(userHome, '.agents'), { recursive: true })
+  mkdirSync(path.dirname(agentsSkillsDir), { recursive: true })
   syncFlattenedSkills(vendorSourceSkillsDir, agentsSkillsDir, moluoHome)
 
   // 2. ~/.agents/skills → 宿主 skills 目录

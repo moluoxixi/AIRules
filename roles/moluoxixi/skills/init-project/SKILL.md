@@ -24,7 +24,7 @@ Use the bundled AIRules initializer. Do not run `moluoxixi init`, `npx moluoxixi
 
 For an explicitly requested workflow or spec template, preserve the upstream command semantics: use `--workflow <id> --workflow-source <source>` or `--template <id> --registry <source>`, with `--overwrite` or `--append` when requested. In a monorepo, the global template applies to every package; use repeated `--package-template <package=id>` and `--package-registry <package=source>` for reviewed package-specific choices. Registry strategies operate on each complete spec destination: `skip` leaves an existing directory untouched, `append` adds only missing files, and `overwrite` replaces files outside the downloaded template. The project runtime supports `workflow --list`, `workflow --template <id>`, `workflow --marketplace <source>`, `--force`, and `--create-new`.
 
-When a project already contains an older Moluoxixi installation, review the dry-run migration list and pass `--migrate` for versioned renames/deletes. Modified migration sources receive an inline `.backup` by default; `--skip-all` preserves them and explicit `--force` migrates without the inline copy. Use `--allow-downgrade` only when intentionally applying an older template revision. Do not invoke an upstream CLI.
+For future Moluoxixi releases, review the dry-run migration list and pass `--migrate` for versioned renames/deletes. Modified migration sources receive an inline `.backup` by default; `--skip-all` preserves them and explicit `--force` migrates without the inline copy. Moluoxixi 0.1.0 is the initial baseline and contains no inherited upstream migration history. Use `--allow-downgrade` only when intentionally applying an older Moluoxixi template revision. Do not invoke an upstream CLI.
 
 ## Guarantees
 
@@ -33,7 +33,6 @@ When a project already contains an older Moluoxixi installation, review the dry-
 - Preserve unknown files by default.
 - Merge JSON configuration and managed instruction blocks without deleting unrelated user content.
 - Preserve existing user JSON, YAML, TOML, instruction blocks, workspace journals, tasks, and specs when updating or uninstalling.
-- Migrate legacy-named files, JSON entries, and managed blocks only when the manifest proves ownership; preserve user-modified legacy files as conflicts unless `--force` is explicit.
 - Track only files or blocks actually owned by this initializer in `.moluoxixi/airules-init-manifest.json`.
 - Keep uninstall confirmation (`-y` / `--yes`) separate from conflict replacement (`--force`).
 - Roll back writes when any transactional write fails.

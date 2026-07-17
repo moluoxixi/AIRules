@@ -1,5 +1,6 @@
 import path from 'node:path'
 import { fileURLToPath, pathToFileURL, URL } from 'node:url'
+import { HOST_IDS } from '../../constants/hosts.js'
 import { flattenedSkillName, flattenedVendorSkillTarget } from './skill-projection.js'
 
 const vendorNamePattern = /^[A-Za-z0-9][\w-]*$/u
@@ -118,6 +119,7 @@ export interface Vendor {
 }
 
 export interface VendorManifest {
+  hosts?: string[]
   version: number
   vendors: Record<string, Vendor>
 }
@@ -334,11 +336,27 @@ export async function loadVendorManifest(manifestPath: string): Promise<VendorMa
 
   const vendors: Record<string, Vendor> = {}
   walkVendorTree(vendorTree, [], vendors)
+  const hosts = normalizeRoleHosts(module.hosts ?? module.default?.hosts, manifestPath)
 
   return {
+    ...(hosts === undefined ? {} : { hosts }),
     version: 1,
     vendors,
   }
+}
+
+function normalizeRoleHosts(value: unknown, manifestPath: string): string[] | undefined {
+  if (value === undefined)
+    return undefined
+  if (!Array.isArray(value) || !value.every(host => typeof host === 'string'))
+    throw new TypeError(`Vendor manifest "${manifestPath}" export "hosts" must be a string array`)
+  const unique = new Set(value)
+  if (unique.size !== value.length)
+    throw new Error(`Vendor manifest "${manifestPath}" export "hosts" must not contain duplicates`)
+  const unknown = value.find(host => !HOST_IDS.includes(host))
+  if (unknown)
+    throw new Error(`Vendor manifest "${manifestPath}" references unknown host "${unknown}"`)
+  return [...value]
 }
 
 export function getRepoRoot(fromFileUrl: string): string {

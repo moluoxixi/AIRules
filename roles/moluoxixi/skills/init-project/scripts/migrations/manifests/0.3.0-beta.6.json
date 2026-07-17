@@ -1,9 +1,0 @@
-{
-  "version": "0.3.0-beta.6",
-  "description": "Init conflict handling & moluoxixi-meta skill",
-  "breaking": false,
-  "recommendMigrate": false,
-  "changelog": "**Features:**\n- feat(skill): add moluoxixi-meta skill documenting Moluoxixi system\n\n**Bug Fixes:**\n- fix(init): use writeFile for all file copies to allow user choice on conflicts",
-  "migrations": [],
-  "notes": "No migration required."
-}

@@ -130,9 +130,9 @@ function migratedAssetStats(): { bytes: number, files: number, hash: string } {
 describe('init-project skill', () => {
   it('pins the migrated Moluoxixi project templates', () => {
     expect(migratedAssetStats()).toEqual({
-      bytes: 1618041,
+      bytes: 1618062,
       files: 242,
-      hash: '93b43ceea56837f1a08cd15ee499de307de9de8028f725c18e5b1ab92f80e17e',
+      hash: '0fe1e0f647fe527ddb547db15f7b6a4ea2c6c947c574a2d17ec67a463e7aac5b',
     })
     expect(fs.existsSync(path.join(assetRoot, 'moluoxixi-v0.6.7'))).toBe(false)
     expect(fs.existsSync(path.join(assetRoot, 'legal', 'LICENSE'))).toBe(false)
@@ -201,7 +201,15 @@ describe('init-project skill', () => {
     expect(fs.existsSync(path.join(projectRoot, '.moluoxixi', 'scripts', 'task.py'))).toBe(true)
     expect(fs.existsSync(path.join(projectRoot, '.moluoxixi', 'runtime', 'source', 'packages', 'core', 'src', 'channel', 'index.ts'))).toBe(true)
     expect(fs.existsSync(path.join(projectRoot, '.moluoxixi', 'runtime', 'update', 'init-project', 'assets', 'project', 'workflow.md'))).toBe(true)
+    expect(fs.existsSync(path.join(projectRoot, '.moluoxixi', 'runtime', 'update', 'init-project', 'scripts', 'migrations', 'manifests'))).toBe(false)
     expect(fs.existsSync(path.join(projectRoot, '.moluoxixi', 'airules-init-manifest.json'))).toBe(true)
+    const initialManifest = JSON.parse(fs.readFileSync(path.join(projectRoot, '.moluoxixi', 'airules-init-manifest.json'), 'utf8'))
+    expect(initialManifest).toMatchObject({
+      generatorVersion: '0.1.0',
+      moluoxixiVersion: '0.1.0',
+      schemaVersion: 2,
+    })
+    expect(initialManifest).not.toHaveProperty('upstreamRevision')
     expect(fs.existsSync(path.join(projectRoot, legacyProjectRoot))).toBe(false)
     expect(fs.existsSync(path.join(projectRoot, '.claude', 'settings.json'))).toBe(true)
     expect(JSON.parse(fs.readFileSync(path.join(projectRoot, '.claude', 'settings.json'), 'utf8'))).not.toHaveProperty('statusLine')
@@ -250,7 +258,7 @@ describe('init-project skill', () => {
     }
     expect([...new Set(projectedSkillFiles.map(file => path.basename(path.dirname(file))))]).toEqual(expect.arrayContaining(projectSkillNames))
     const launcher = path.join(projectRoot, '.agents', 'skills', 'channel', 'scripts', 'moluoxixi.mjs')
-    expect(runRuntime(launcher, ['--version'], projectRoot)).toMatchObject({ status: 0, stderr: '', stdout: '0.6.7-airules.1\n' })
+    expect(runRuntime(launcher, ['--version'], projectRoot)).toMatchObject({ status: 0, stderr: '', stdout: '0.1.0\n' })
     const initialSnapshot = snapshot(projectRoot)
 
     const second = runInitializer(projectRoot, args)
@@ -386,124 +394,23 @@ describe('init-project skill', () => {
     expect(fs.readFileSync(path.join(projectRoot, '.moluoxixi', '.developer'), 'utf8')).toContain('name=tester')
   })
 
-  it('migrates pristine legacy managed paths, JSON entries, and managed blocks', () => {
-    const projectRoot = temporaryProject()
-    const args = ['--platform', 'claude,opencode,pi']
-    expect(runInitializer(projectRoot, args)).toMatchObject({ status: 0, stderr: '' })
-
-    const manifestPath = path.join(projectRoot, '.moluoxixi', 'airules-init-manifest.json')
-    const manifest = JSON.parse(fs.readFileSync(manifestPath, 'utf8')) as {
-      entries: Record<string, { baselineHash: string, mode: string, platform: string, templateHash: string }>
-      schemaVersion: number
-      [key: string]: unknown
-    }
-    const legacyTitle = `${legacyBrand[0].toUpperCase()}${legacyBrand.slice(1)}`
-    const legacyUpper = legacyBrand.toUpperCase()
-    const legacyize = (content: string): string => content
-      .replaceAll('MOLUOXIXI', legacyUpper)
-      .replaceAll('Moluoxixi', legacyTitle)
-      .replaceAll('moluoxixi', legacyBrand)
-    const renames = [
-      ['.claude/commands/moluoxixi/continue.md', `.claude/commands/${legacyBrand}/continue.md`],
-      ['.opencode/lib/moluoxixi-context.js', `.opencode/lib/${legacyBrand}-context.js`],
-      ['.pi/extensions/moluoxixi/index.ts', `.pi/extensions/${legacyBrand}/index.ts`],
-      ['.moluoxixi/runtime/moluoxixi.mjs', `.moluoxixi/runtime/${legacyBrand}.mjs`],
-    ] as const
-
-    for (const [currentPath, legacyPath] of renames) {
-      const currentTarget = path.join(projectRoot, ...currentPath.split('/'))
-      const legacyTarget = path.join(projectRoot, ...legacyPath.split('/'))
-      const legacyContent = legacyize(fs.readFileSync(currentTarget, 'utf8'))
-      fs.mkdirSync(path.dirname(legacyTarget), { recursive: true })
-      fs.writeFileSync(legacyTarget, legacyContent)
-      fs.rmSync(currentTarget)
-      manifest.entries[legacyPath] = {
-        ...manifest.entries[currentPath],
-        baselineHash: contentHash(legacyContent),
-      }
-      delete manifest.entries[currentPath]
-    }
-
-    for (const relativePath of ['.pi/settings.json', 'AGENTS.md']) {
-      const target = path.join(projectRoot, ...relativePath.split('/'))
-      const legacyContent = legacyize(fs.readFileSync(target, 'utf8'))
-      fs.writeFileSync(target, legacyContent)
-      manifest.entries[relativePath].baselineHash = contentHash(legacyContent)
-    }
-    manifest[`${legacyBrand}Revision`] = manifest.upstreamRevision
-    delete manifest.upstreamRevision
-    fs.writeFileSync(manifestPath, `${JSON.stringify(manifest, null, 2)}\n`)
-
-    const migrated = runInitializer(projectRoot, args)
-    expect(migrated).toMatchObject({ status: 0, stderr: '' })
-    expect(migrated.summary?.conflicts).toEqual([])
-    expect(migrated.summary?.removed).toEqual(expect.arrayContaining(renames.map(([, legacyPath]) => legacyPath)))
-    for (const [currentPath, legacyPath] of renames) {
-      expect(fs.existsSync(path.join(projectRoot, ...currentPath.split('/')))).toBe(true)
-      expect(fs.existsSync(path.join(projectRoot, ...legacyPath.split('/')))).toBe(false)
-    }
-    expect(fs.readFileSync(path.join(projectRoot, '.pi', 'settings.json'), 'utf8')).not.toContain(legacyBrand)
-    expect(fs.readFileSync(path.join(projectRoot, 'AGENTS.md'), 'utf8')).not.toContain(legacyUpper)
-    const nextManifest = JSON.parse(fs.readFileSync(manifestPath, 'utf8')) as { entries: Record<string, unknown>, upstreamRevision?: string, [key: string]: unknown }
-    expect(nextManifest.upstreamRevision).toBe('e7c5ead4d0dfd717d11a40b6bc0c80d8af94c49a')
-    expect(nextManifest[`${legacyBrand}Revision`]).toBeUndefined()
-    expect(Object.keys(nextManifest.entries).filter(relativePath => relativePath.toLowerCase().includes(legacyBrand))).toEqual([])
-  })
-
-  it('preserves user-modified legacy managed files until force is explicit', () => {
-    const projectRoot = temporaryProject()
-    const args = ['--platform', 'pi']
-    expect(runInitializer(projectRoot, args)).toMatchObject({ status: 0, stderr: '' })
-
-    const manifestPath = path.join(projectRoot, '.moluoxixi', 'airules-init-manifest.json')
-    const manifest = JSON.parse(fs.readFileSync(manifestPath, 'utf8')) as {
-      entries: Record<string, { baselineHash: string, mode: string, platform: string, templateHash: string }>
-      schemaVersion: number
-    }
-    const currentPath = '.pi/extensions/moluoxixi/index.ts'
-    const legacyPath = `.pi/extensions/${legacyBrand}/index.ts`
-    const currentTarget = path.join(projectRoot, ...currentPath.split('/'))
-    const legacyTarget = path.join(projectRoot, ...legacyPath.split('/'))
-    const legacyContent = fs.readFileSync(currentTarget, 'utf8').replaceAll('moluoxixi', legacyBrand)
-    fs.mkdirSync(path.dirname(legacyTarget), { recursive: true })
-    fs.writeFileSync(legacyTarget, `${legacyContent}\n// user edit\n`)
-    fs.rmSync(currentTarget)
-    manifest.entries[legacyPath] = {
-      ...manifest.entries[currentPath],
-      baselineHash: contentHash(legacyContent),
-    }
-    delete manifest.entries[currentPath]
-    fs.writeFileSync(manifestPath, `${JSON.stringify(manifest, null, 2)}\n`)
-
-    const preserved = runInitializer(projectRoot, args)
-    expect(preserved.status).toBe(2)
-    expect(preserved.summary?.conflicts).toContain(legacyPath)
-    expect(fs.existsSync(legacyTarget)).toBe(true)
-    expect(fs.existsSync(currentTarget)).toBe(true)
-
-    const forced = runInitializer(projectRoot, [...args, '--force'])
-    expect(forced).toMatchObject({ status: 0, stderr: '' })
-    expect(fs.existsSync(legacyTarget)).toBe(false)
-    expect(fs.existsSync(currentTarget)).toBe(true)
-  })
-
   it('retires obsolete owned files while preserving installed hosts and modified retired files', () => {
     const projectRoot = temporaryProject()
     expect(runInitializer(projectRoot, ['--platform', 'codex'])).toMatchObject({ status: 0, stderr: '' })
     const manifestPath = path.join(projectRoot, '.moluoxixi', 'airules-init-manifest.json')
     const manifest = JSON.parse(fs.readFileSync(manifestPath, 'utf8')) as {
-      entries: Record<string, { baselineHash: string, mode: string, platform: string, templateHash: string }>
+      entries: Record<string, { baselineHash: string, mode: string, ownership: { type: string }, platform: string, templateHash: string }>
       schemaVersion: number
     }
     const pristinePath = '.codex/retired-pristine.txt'
     const modifiedPath = '.codex/retired-modified.txt'
     const baseline = 'retired baseline\n'
-    manifest.schemaVersion = 1
     for (const relativePath of [pristinePath, modifiedPath]) {
       fs.writeFileSync(path.join(projectRoot, ...relativePath.split('/')), baseline)
       manifest.entries[relativePath] = {
         baselineHash: contentHash(baseline),
         mode: 'replace',
+        ownership: { type: 'created' },
         platform: 'codex',
         templateHash: contentHash(baseline),
       }
@@ -591,8 +498,8 @@ describe('init-project skill', () => {
   })
 
   it('provides local channel and memory command surfaces without an upstream package install', () => {
-    expect(runRuntime(roleRuntime, ['--version'], roleRoot)).toMatchObject({ status: 0, stderr: '', stdout: '0.6.7-airules.1\n' })
-    expect(runRuntime(roleRuntime, ['-v'], roleRoot)).toMatchObject({ status: 0, stderr: '', stdout: '0.6.7-airules.1\n' })
+    expect(runRuntime(roleRuntime, ['--version'], roleRoot)).toMatchObject({ status: 0, stderr: '', stdout: '0.1.0\n' })
+    expect(runRuntime(roleRuntime, ['-v'], roleRoot)).toMatchObject({ status: 0, stderr: '', stdout: '0.1.0\n' })
     expect(runRuntime(roleRuntime, ['update', '--help'], roleRoot)).toMatchObject({ status: 0, stderr: '' })
     expect(runRuntime(roleRuntime, ['workflow', '--help'], roleRoot)).toMatchObject({ status: 0, stderr: '' })
     expect(runRuntime(roleRuntime, ['mem', 'help'], roleRoot)).toMatchObject({ status: 0, stderr: '' })
@@ -636,6 +543,30 @@ describe('init-project skill', () => {
     expect(fs.readFileSync(path.join(projectRoot, '.moluoxixi', 'workflow.md'), 'utf8')).not.toBe('# User workflow\n')
   })
 
+  it('does not import upstream project roots, hashes, JSON keys, or managed blocks', () => {
+    const projectRoot = temporaryProject()
+    const upstreamUpper = legacyBrand.toUpperCase()
+    const upstreamRoot = path.join(projectRoot, legacyProjectRoot)
+    fs.mkdirSync(upstreamRoot, { recursive: true })
+    fs.writeFileSync(path.join(upstreamRoot, 'sentinel.txt'), 'keep upstream state\n')
+    fs.mkdirSync(path.join(projectRoot, '.moluoxixi'), { recursive: true })
+    fs.writeFileSync(path.join(projectRoot, '.moluoxixi', '.template-hashes.json'), '{"files":{"old":"hash"}}\n')
+    fs.mkdirSync(path.join(projectRoot, '.pi'), { recursive: true })
+    fs.writeFileSync(path.join(projectRoot, '.pi', 'settings.json'), `${JSON.stringify({ [`${legacyBrand}Setting`]: true }, null, 2)}\n`)
+    fs.writeFileSync(path.join(projectRoot, 'AGENTS.md'), `<!-- ${upstreamUpper}:START -->\nupstream block\n<!-- ${upstreamUpper}:END -->\n`)
+
+    const initialized = runInitializer(projectRoot, ['--platform', 'pi'])
+
+    expect(initialized).toMatchObject({ status: 0, stderr: '' })
+    expect(initialized.summary).not.toHaveProperty('legacyRootMigrated')
+    expect(fs.readFileSync(path.join(upstreamRoot, 'sentinel.txt'), 'utf8')).toBe('keep upstream state\n')
+    expect(fs.readFileSync(path.join(projectRoot, '.moluoxixi', '.template-hashes.json'), 'utf8')).toContain('"old"')
+    expect(JSON.parse(fs.readFileSync(path.join(projectRoot, '.pi', 'settings.json'), 'utf8'))).toHaveProperty(`${legacyBrand}Setting`, true)
+    const agents = fs.readFileSync(path.join(projectRoot, 'AGENTS.md'), 'utf8')
+    expect(agents).toContain(`<!-- ${upstreamUpper}:START -->`)
+    expect(agents).toContain('<!-- MOLUOXIXI:START -->')
+  })
+
   it('upgrades pristine owned JSON exactly and keeps user JSON overrides outside the baseline', () => {
     const projectRoot = temporaryProject()
     const args = ['--platform', 'pi']
@@ -668,41 +599,6 @@ describe('init-project skill', () => {
     expect(JSON.parse(fs.readFileSync(settingsPath, 'utf8'))).toMatchObject({ enableSkillCommands: false })
     const finalManifest = JSON.parse(fs.readFileSync(manifestPath, 'utf8')) as { entries: Record<string, { baselineHash: string }> }
     expect(finalManifest.entries['.pi/settings.json'].baselineHash).not.toBe(contentHash(fs.readFileSync(settingsPath)))
-  })
-
-  it('appends versioned config sections without replacing user edits', () => {
-    const projectRoot = temporaryProject()
-    const args = ['--platform', 'codex']
-    expect(runInitializer(projectRoot, args)).toMatchObject({ status: 0, stderr: '' })
-
-    const configPath = path.join(projectRoot, '.moluoxixi', 'config.yaml')
-    const manifestPath = path.join(projectRoot, '.moluoxixi', 'airules-init-manifest.json')
-    const versionPath = path.join(projectRoot, '.moluoxixi', '.version')
-    const current = fs.readFileSync(configPath, 'utf8')
-    const oldTemplate = current.replace(/#-+\n# Codex \(dispatch behavior\)[\s\S]*$/u, '').replace(/\s*$/u, '\n')
-    const userConfig = `${oldTemplate}\n# user setting\ncustom_value: true\n`
-    fs.writeFileSync(configPath, userConfig)
-    fs.writeFileSync(versionPath, '0.5.6\n')
-    const manifest = JSON.parse(fs.readFileSync(manifestPath, 'utf8')) as {
-      entries: Record<string, { baselineContent?: string, baselineHash: string, templateContent?: string }>
-    }
-    manifest.entries['.moluoxixi/config.yaml'].baselineHash = contentHash(oldTemplate)
-    manifest.entries['.moluoxixi/config.yaml'].baselineContent = Buffer.from(oldTemplate).toString('base64')
-    manifest.entries['.moluoxixi/config.yaml'].templateContent = Buffer.from(oldTemplate).toString('base64')
-    manifest.entries['.moluoxixi/.version'].baselineHash = contentHash('0.5.6\n')
-    manifest.entries['.moluoxixi/.version'].baselineContent = Buffer.from('0.5.6\n').toString('base64')
-    manifest.entries['.moluoxixi/.version'].templateContent = Buffer.from('0.5.6\n').toString('base64')
-    fs.writeFileSync(manifestPath, `${JSON.stringify(manifest, null, 2)}\n`)
-
-    const upgraded = runInitializer(projectRoot, args)
-
-    expect(upgraded.summary?.conflicts).toEqual([])
-    expect(upgraded).toMatchObject({ status: 0, stderr: '' })
-    expect(upgraded.summary?.updated).toContain('.moluoxixi/config.yaml')
-    const next = fs.readFileSync(configPath, 'utf8')
-    expect(next).toContain('# user setting\ncustom_value: true')
-    expect(next).toContain('# Codex (dispatch behavior)')
-    expect(next.match(/# Codex \(dispatch behavior\)/gu)).toHaveLength(1)
   })
 
   it('distributes only the self-contained initializer and runs it without the installed role', async () => {
@@ -743,7 +639,7 @@ describe('init-project skill', () => {
     const installed = runInitializer(projectRoot, ['--platform', 'claude,codex'], path.join(standalone, 'scripts', 'init-project.mjs'))
     expect(installed).toMatchObject({ status: 0, stderr: '' })
     const channelLauncher = path.join(projectRoot, '.agents', 'skills', 'channel', 'scripts', 'moluoxixi.mjs')
-    expect(runRuntime(channelLauncher, ['--version'], projectRoot)).toMatchObject({ status: 0, stderr: '', stdout: '0.6.7-airules.1\n' })
+    expect(runRuntime(channelLauncher, ['--version'], projectRoot)).toMatchObject({ status: 0, stderr: '', stdout: '0.1.0\n' })
     const projectRuntime = path.join(projectRoot, '.moluoxixi', 'runtime', 'moluoxixi.mjs')
     expect(runRuntime(projectRuntime, ['update', '--dry-run'], projectRoot)).toMatchObject({ status: 0, stderr: '' })
   }, 30_000)

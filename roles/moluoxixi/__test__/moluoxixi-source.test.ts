@@ -4,7 +4,8 @@ import path from 'node:path'
 import { fileURLToPath } from 'node:url'
 import { describe, expect, it } from 'vitest'
 import { parseDocument } from 'yaml'
-import { extendsRoles, vendors } from '../constants/skills.js'
+import { HOST_IDS } from '../../../constants/hosts.js'
+import { extendsRoles, hosts, vendors } from '../constants/skills.js'
 
 interface RoleManifest {
   assets: {
@@ -23,6 +24,7 @@ interface RoleManifest {
     moluoxixi_runtime: string
   }
   role_id: string
+  role_version: string
   third_party: {
     upstream: {
       name: string
@@ -53,9 +55,9 @@ const upstream = {
 }
 
 const selectedIntegrity = {
-  bytes: 1618041,
+  bytes: 1618062,
   files: 242,
-  hash: 'da794faff1247b907b23599a38af25233e80592d0f8a1033406a87bcb4a76656',
+  hash: 'a3787116b181bb41a1dee8fccfac581d16b7fead254f4b27a8a6b06e7b82c53f',
 }
 
 const migratedRuntimePaths = [
@@ -64,9 +66,9 @@ const migratedRuntimePaths = [
 ]
 
 const runtimeIntegrity = {
-  bytes: 860894,
+  bytes: 860872,
   files: 85,
-  hash: 'f521071fe0c7924e3950b5826a55a049b8d3daf787de187af1f84cd6f3d7735f',
+  hash: '3977e70e7a22795bc3fa33a2b06f6a752f8037aac1ff246d5b3512cb15b24e0e',
 }
 
 const projectSkillNames = [
@@ -314,6 +316,7 @@ describe('moluoxixi curated upstream role assets', () => {
         moluoxixi_runtime: 'skills/init-project/assets/runtime/moluoxixi.mjs',
       },
       role_id: 'moluoxixi',
+      role_version: '0.1.0',
     })
     expect(manifest.third_party.upstream).toEqual({
       name: upstream.name,
@@ -330,8 +333,10 @@ describe('moluoxixi curated upstream role assets', () => {
     })
     expect(fs.statSync(resolveRolePath(manifest.assets.skills)).isDirectory()).toBe(true)
     expect(fs.statSync(resolveRolePath(manifest.assets.mcp)).isDirectory()).toBe(true)
+    expect(fs.existsSync(resolveRolePath('skills/init-project/scripts/migrations/manifests'))).toBe(false)
 
     expect(extendsRoles).toEqual([])
+    expect(hosts).toEqual(HOST_IDS)
     expect(vendors).toHaveLength(1)
     expect(vendors[0]).toMatchObject({
       name: 'moluoxixi',

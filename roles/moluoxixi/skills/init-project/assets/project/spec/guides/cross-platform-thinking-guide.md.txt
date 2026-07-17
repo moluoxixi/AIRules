@@ -574,25 +574,17 @@ subprocess.run(cmd, capture_output=True, text=True)  # Garbled Chinese/Unicode
 
 ## Release Checklist: Versioned Files
 
-When releasing a new version, ensure **all versioned files** are created/updated:
+Moluoxixi `0.1.0` is the initial baseline and has no migration manifest. For a
+later release that changes managed paths or adds versioned configuration:
 
-- [ ] `src/migrations/manifests/{version}.json` - Migration manifest exists
-- [ ] Manifest has correct version, description, changelog
-- [ ] `pnpm build` copies manifests to `dist/`
-- [ ] Test upgrade path from older versions (not just adjacent)
+- [ ] Add `scripts/migrations/manifests/{version}.json` to the initializer source.
+- [ ] Keep the manifest limited to Moluoxixi-owned paths and explicit safe hashes.
+- [ ] Record the correct version, description, and configuration sentinels.
+- [ ] Test the upgrade path from every supported Moluoxixi baseline, not only the adjacent release.
+- [ ] Verify the standalone `init-project` bundle contains the new manifest.
 
-**Why this matters**: Missing manifests cause "path undefined" errors when users upgrade from older versions.
-
-```bash
-# Verify all expected manifests exist
-ls src/migrations/manifests/
-
-# Test upgrade path
-node -e "
-const { getMigrationsForVersion } = require('./dist/migrations/index.js');
-console.log('From 0.2.12:', getMigrationsForVersion('0.2.12', 'CURRENT').length);
-"
-```
+**Why this matters**: the migration engine is reusable, but release history must
+describe actual Moluoxixi versions rather than inherited upstream versions.
 
 ## Release Checklist: Bundled Assets
 

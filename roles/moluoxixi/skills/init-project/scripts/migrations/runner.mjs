@@ -2,19 +2,17 @@ import fs from 'node:fs'
 import path from 'node:path'
 import { fileURLToPath } from 'node:url'
 import { sha256 } from '../constants.mjs'
-import { readLegacyHashes } from '../core/legacy.mjs'
 import { assertSafeTarget } from '../core/safety.mjs'
 
 const MIGRATIONS_ROOT = path.join(path.dirname(fileURLToPath(import.meta.url)), 'manifests')
 
 export function runVersionMigrations(projectRoot, manifest, currentVersion, targetVersion, options = {}) {
-  const manifests = loadManifests()
+  const manifests = [...(options.manifests ?? loadManifests())].sort((left, right) => compareVersions(left.version, right.version))
   const selected = manifests.filter(item => compareVersions(item.version, currentVersion) > 0 && compareVersions(item.version, targetVersion) <= 0)
-  const legacyHashes = readLegacyHashes(projectRoot)
   const candidates = selected.flatMap(release => (release.migrations ?? []).map(migration => normalizeMigration(migration, release.version)))
   candidates.push(...findOrphanMigrations(projectRoot, manifests, candidates))
 
-  const classified = classifyMigrations(projectRoot, manifest, legacyHashes, candidates)
+  const classified = classifyMigrations(projectRoot, manifest, candidates)
   const configSections = selected.flatMap(release => (release.configSectionsAdded ?? []).map(section => ({
     file: normalizePath(section.file),
     release: release.version,
@@ -103,14 +101,14 @@ function findOrphanMigrations(projectRoot, manifests, selected) {
   return orphaned
 }
 
-function classifyMigrations(projectRoot, manifest, legacyHashes, migrations) {
+function classifyMigrations(projectRoot, manifest, migrations) {
   const result = { auto: [], confirm: [], conflict: [], safeDeletes: [], skip: [] }
   for (const migration of migrations) {
     if (!migration.from)
       continue
     const source = assertSafeTarget(projectRoot, migration.from)
     if (migration.type === 'safe-file-delete') {
-      if (fs.existsSync(source) && isSafeDelete(projectRoot, manifest, legacyHashes, migration.from, migration.allowedHashes))
+      if (fs.existsSync(source) && isSafeDelete(projectRoot, manifest, migration.from, migration.allowedHashes))
         result.safeDeletes.push(migration)
       continue
     }
@@ -119,24 +117,24 @@ function classifyMigrations(projectRoot, manifest, legacyHashes, migrations) {
       continue
     }
     if (migration.type === 'rename-dir') {
-      if (!migration.to || !dirHasManifestEntries(migration.from, manifest, legacyHashes)) {
+      if (!migration.to || !dirHasManifestEntries(migration.from, manifest)) {
         result.skip.push(migration)
         continue
       }
       const target = assertSafeTarget(projectRoot, migration.to)
-      if (fs.existsSync(target) && !isDirectorySafeToReplace(projectRoot, migration.to, manifest, legacyHashes))
+      if (fs.existsSync(target) && !isDirectorySafeToReplace(projectRoot, migration.to, manifest))
         result.conflict.push(migration)
       else result.auto.push(migration)
       continue
     }
     if (migration.type === 'rename' && migration.to) {
       const target = assertSafeTarget(projectRoot, migration.to)
-      if (fs.existsSync(target) && !isPristine(projectRoot, manifest, legacyHashes, migration.to)) {
+      if (fs.existsSync(target) && !isPristine(projectRoot, manifest, migration.to)) {
         result.conflict.push(migration)
         continue
       }
     }
-    if (isPristine(projectRoot, manifest, legacyHashes, migration.from))
+    if (isPristine(projectRoot, manifest, migration.from))
       result.auto.push(migration)
     else result.confirm.push(migration)
   }
@@ -182,8 +180,7 @@ function executeSafeDelete(projectRoot, manifest, migration, result) {
   const source = assertSafeTarget(projectRoot, migration.from)
   if (!fs.existsSync(source))
     return
-  const legacyHashes = readLegacyHashes(projectRoot)
-  if (!isSafeDelete(projectRoot, manifest, legacyHashes, migration.from, migration.allowedHashes))
+  if (!isSafeDelete(projectRoot, manifest, migration.from, migration.allowedHashes))
     return
   fs.rmSync(source, { force: true })
   delete manifest.entries[migration.from]
@@ -191,34 +188,34 @@ function executeSafeDelete(projectRoot, manifest, migration, result) {
   result.applied.push(migration.from)
 }
 
-export function isSafeDelete(projectRoot, manifest, legacyHashes, relativePath, allowedHashes) {
+export function isSafeDelete(projectRoot, manifest, relativePath, allowedHashes) {
   const target = assertSafeTarget(projectRoot, relativePath)
   if (!fs.statSync(target, { throwIfNoEntry: false })?.isFile())
     return false
-  if (isPristine(projectRoot, manifest, legacyHashes, relativePath))
+  if (isPristine(projectRoot, manifest, relativePath))
     return true
   return allowedHashes.includes(sha256(fs.readFileSync(target)))
 }
 
-function isPristine(projectRoot, manifest, legacyHashes, relativePath) {
+function isPristine(projectRoot, manifest, relativePath) {
   const target = assertSafeTarget(projectRoot, relativePath)
   const stats = fs.lstatSync(target, { throwIfNoEntry: false })
   if (!stats?.isFile() || stats.isSymbolicLink())
     return false
   const hash = sha256(fs.readFileSync(target))
   const entry = manifest.entries?.[relativePath]
-  return Boolean((entry?.baselineHash && entry.baselineHash === hash) || legacyHashes[relativePath] === hash)
+  return Boolean(entry?.baselineHash && entry.baselineHash === hash)
 }
 
-function dirHasManifestEntries(relativePath, manifest, legacyHashes) {
+function dirHasManifestEntries(relativePath, manifest) {
   const prefix = `${relativePath.replace(/\/$/u, '')}/`
-  return [...Object.keys(manifest.entries ?? {}), ...Object.keys(legacyHashes)].some(key => key === relativePath || key.startsWith(prefix))
+  return Object.keys(manifest.entries ?? {}).some(key => key === relativePath || key.startsWith(prefix))
 }
 
-function isDirectorySafeToReplace(projectRoot, relativePath, manifest, legacyHashes) {
+function isDirectorySafeToReplace(projectRoot, relativePath, manifest) {
   const target = assertSafeTarget(projectRoot, relativePath)
   const entries = collectDirectoryFiles(target)
-  return entries !== undefined && entries.every(file => isPristine(projectRoot, manifest, legacyHashes, normalizeRelative(projectRoot, file)))
+  return entries !== undefined && entries.every(file => isPristine(projectRoot, manifest, normalizeRelative(projectRoot, file)))
 }
 
 function collectDirectoryFiles(root) {
@@ -299,10 +296,7 @@ function normalizeRelative(projectRoot, target) {
 }
 
 function normalizePath(value) {
-  let normalized = String(value ?? '').replace(/\\/gu, '/').replace(/^\.\//u, '')
-  for (const name of ['before-dev', 'brainstorm', 'break-loop', 'check', 'continue', 'finish-work', 'first-principles-thinking', 'meta', 'session-insight', 'spec-bootstrap', 'start', 'update-spec', 'python-design', 'ts-sdk-author', 'channel'])
-    normalized = normalized.replace(new RegExp(`(/skills/)moluoxixi-${name}(?=/|$)`, 'gu'), `$1${name}`)
-  return normalized
+  return String(value ?? '').replace(/\\/gu, '/').replace(/^\.\//u, '')
 }
 
 export function compareVersions(left, right) {
@@ -323,5 +317,5 @@ export function compareVersions(left, right) {
 
 function parseVersion(value) {
   const match = /^v?(\d+)\.(\d+)\.(\d+)(?:-([0-9A-Za-z.-]+))?/u.exec(String(value))
-  return match ? { numbers: [Number(match[1]), Number(match[2]), Number(match[3])], pre: match[4]?.startsWith('airules') ? '' : match[4] ?? '' } : { numbers: [0, 0, 0], pre: '' }
+  return match ? { numbers: [Number(match[1]), Number(match[2]), Number(match[3])], pre: match[4] ?? '' } : { numbers: [0, 0, 0], pre: '' }
 }

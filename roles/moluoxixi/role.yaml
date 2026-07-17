@@ -1,6 +1,6 @@
 schema_version: 1
 role_id: moluoxixi
-role_version: 0.3.0
+role_version: 0.1.0
 status: experimental
 canonical_root: roles/moluoxixi
 description: Self-contained Moluoxixi role assets and AIRules-owned project initialization.

@@ -1,7 +1,7 @@
 import os from 'node:os'
 import path from 'node:path'
 import { fileURLToPath } from 'node:url'
-import { ALL_HOST_IDS } from '../../constants/hosts.js'
+import { ALL_HOST_IDS, HOST_IDS } from '../../constants/hosts.js'
 import {
   ensureInstallRoot,
   getDefaultInstallPaths,
@@ -73,12 +73,29 @@ export function resolveToolPaths(repoRoot: string, home: string, userHome = os.h
   }
 }
 
-export function resolveHostTargets(host: string): string[] {
-  return host === 'all' ? ALL_HOST_IDS : [host]
+export function resolveHostTargets(host: string, supportedHosts?: string[]): string[] {
+  if (host === 'all') {
+    if (supportedHosts === undefined)
+      return ALL_HOST_IDS
+    const supported = new Set(supportedHosts)
+    return ALL_HOST_IDS.filter(hostId => supported.has(hostId))
+  }
+  if (!HOST_IDS.includes(host))
+    throw new Error(`Unknown AIRules host "${host}"`)
+  if (supportedHosts !== undefined && !supportedHosts.includes(host))
+    throw new Error(`AIRules role does not support host "${host}"`)
+  return [host]
 }
 
-async function syncVendorsIfNeeded(paths: ToolPaths, skipVendors: boolean) {
-  const manifest = await loadVendorManifest(paths.manifestPath)
+function roleSupportedHosts(paths: ToolPaths, manifest: Awaited<ReturnType<typeof loadVendorManifest>>): string[] | undefined {
+  if (!paths.role)
+    return undefined
+  if (manifest.hosts === undefined)
+    throw new Error(`AIRules role "${paths.role}" must export a "hosts" allowlist`)
+  return manifest.hosts
+}
+
+async function syncVendorsIfNeeded(paths: ToolPaths, skipVendors: boolean, manifest: Awaited<ReturnType<typeof loadVendorManifest>>) {
   if (!skipVendors) {
     for (const vendor of Object.values(manifest.vendors)) {
       ensureVendorRepo(paths.moluoHome, vendor)
@@ -98,13 +115,13 @@ async function syncVendorsIfNeeded(paths: ToolPaths, skipVendors: boolean) {
  * 先把所有可安装内容汇入 vendor，再从 vendor 分发到各宿主。
  * 这一步只负责 staging，不做宿主投影。
  */
-async function syncVendorStaging(paths: ToolPaths, skipVendors: boolean) {
+async function syncVendorStaging(paths: ToolPaths, skipVendors: boolean, manifest: Awaited<ReturnType<typeof loadVendorManifest>>) {
   ensureInstallRoot({
     ...getDefaultInstallPaths(paths.userHome),
     moluoHome: paths.moluoHome,
     repoRoot: paths.repoRoot,
   })
-  await syncVendorsIfNeeded(paths, skipVendors)
+  await syncVendorsIfNeeded(paths, skipVendors, manifest)
   if (paths.role) {
     await rebuildVendorAssets({
       homeDir: paths.moluoHome,
@@ -122,14 +139,16 @@ async function syncVendorStaging(paths: ToolPaths, skipVendors: boolean) {
 
 export async function syncToHosts(options: SyncOptions): Promise<SyncResult> {
   const paths = resolveToolPaths(options.repoRoot, options.home, options.userHome, options.role)
+  const manifest = await loadVendorManifest(paths.manifestPath)
+  const targets = resolveHostTargets(options.host, roleSupportedHosts(paths, manifest))
 
-  await syncVendorStaging(paths, options.skipVendors)
+  await syncVendorStaging(paths, options.skipVendors, manifest)
 
   const projectedHosts: string[] = []
   const skippedHosts: string[] = []
   const failedHosts: string[] = []
 
-  for (const host of resolveHostTargets(options.host)) {
+  for (const host of targets) {
     const { success } = projectHostById(
       host,
       paths.userHome,
@@ -167,9 +186,11 @@ export async function syncToHosts(options: SyncOptions): Promise<SyncResult> {
 
 export async function verifyHosts(options: VerifyOptions): Promise<string[]> {
   const paths = resolveToolPaths(options.repoRoot, options.home, options.userHome, options.role)
+  const manifest = await loadVendorManifest(paths.manifestPath)
+  const targets = resolveHostTargets(options.host, roleSupportedHosts(paths, manifest))
   const failedHosts: string[] = []
 
-  for (const host of resolveHostTargets(options.host)) {
+  for (const host of targets) {
     const verified = await verifyHost(
       host,
       paths.moluoHome,
@@ -184,5 +205,5 @@ export async function verifyHosts(options: VerifyOptions): Promise<string[]> {
     throw new Error(`Host verification failed: ${failedHosts.join(', ')}`)
   }
 
-  return resolveHostTargets(options.host)
+  return targets
 }

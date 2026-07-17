@@ -6,8 +6,8 @@ import process from 'node:process'
 import {
   canonicalSkillName,
   HOST_ASSET_ROOT,
-  LEGACY_BRAND,
   LOCAL_SKILLS_ROOT,
+  MOLUOXIXI_VERSION,
   NAMESPACED_SKILL_RENAMES,
   PROJECT_ASSET_ROOT,
   projectPath,
@@ -15,6 +15,7 @@ import {
   SHARED_ASSET_ROOT,
   SKILL_ROOT,
   toPosix,
+  UPSTREAM_BRAND,
 } from './constants.mjs'
 import { sanitizePackageName } from './core/project-detector.mjs'
 import {
@@ -198,9 +199,9 @@ function localizeProjectRuntime(relativePath, content) {
     .replaceAll('moluoxixi workflow', `node ${projectPath('runtime', 'moluoxixi.mjs')} workflow`)
     .replaceAll('moluoxixi update', `node ${projectPath('runtime', 'moluoxixi.mjs')} update`)
     .replaceAll('.moluoxixi', '.moluoxixi')
-    .replaceAll(LEGACY_BRAND, 'moluoxixi')
-    .replaceAll(`${LEGACY_BRAND[0].toUpperCase()}${LEGACY_BRAND.slice(1)}`, 'Moluoxixi')
-    .replaceAll(LEGACY_BRAND.toUpperCase(), 'MOLUOXIXI')
+    .replaceAll(UPSTREAM_BRAND, 'moluoxixi')
+    .replaceAll(`${UPSTREAM_BRAND[0].toUpperCase()}${UPSTREAM_BRAND.slice(1)}`, 'Moluoxixi')
+    .replaceAll(UPSTREAM_BRAND.toUpperCase(), 'MOLUOXIXI')
   for (const [namespacedName, canonicalName] of Object.entries(NAMESPACED_SKILL_RENAMES))
     localized = localized.replaceAll(namespacedName, canonicalName)
   localized = localized
@@ -331,7 +332,7 @@ function addSharedRuntime(plan, pythonCommand, packages, defaultPackage, project
     force: workflow?.force === true,
   })
   addPlan(plan, projectPath('config.yaml'), buildProjectConfig(packages, defaultPackage), { configSections, merge: 'config' })
-  addPlan(plan, projectPath('.version'), '0.6.7-airules.1\n')
+  addPlan(plan, projectPath('.version'), `${MOLUOXIXI_VERSION}\n`)
   addPlan(plan, projectPath('.gitignore'), readProjectText('gitignore.txt'))
   addPlan(plan, projectPath('workspace', 'index.md'), resolveTemplate(localizeProjectRuntime('workspace-index.md', readProjectText('workspace-index.md')), undefined, pythonCommand), { managed: false, preserveExisting: true })
   addPlan(plan, projectPath('tasks', '.gitkeep'), '', { managed: false, preserveExisting: true })
@@ -375,7 +376,7 @@ function addExternalSpec(plan, files, strategy, packageName, projectRoot) {
     plan.specReplacements.add(targetRoot)
   }
   for (const [relativePath, content] of files) {
-    const normalized = relativePath.replace(/\\/gu, '/').replace(new RegExp(`^\\.?(?:moluoxixi|${LEGACY_BRAND})/spec/`, 'u'), '').replace(/^spec\//u, '')
+    const normalized = relativePath.replace(/\\/gu, '/').replace(new RegExp(`^\\.?(?:moluoxixi|${UPSTREAM_BRAND})/spec/`, 'u'), '').replace(/^spec\//u, '')
     if (!normalized || normalized.startsWith('../') || normalized.includes('\0'))
       throw new Error(`Unsafe registry spec path: ${relativePath}`)
     const source = Buffer.isBuffer(content) ? content : Buffer.from(String(content), 'utf8')

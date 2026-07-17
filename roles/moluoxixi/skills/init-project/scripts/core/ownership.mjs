@@ -11,14 +11,14 @@ export function emptyManifest() {
 }
 
 export function normalizeManifest(parsed, file) {
-  if (!parsed || typeof parsed !== 'object' || Array.isArray(parsed) || ![1, 2].includes(parsed.schemaVersion))
+  if (!parsed || typeof parsed !== 'object' || Array.isArray(parsed) || parsed.schemaVersion !== 2)
     throw new Error(`Unsupported or malformed manifest: ${file}`)
   if (!parsed.entries || typeof parsed.entries !== 'object' || Array.isArray(parsed.entries))
     throw new Error(`Unsupported or malformed manifest: ${file}`)
   const entries = {}
   for (const [relativePath, candidate] of Object.entries(parsed.entries)) {
     assertManifestPath(relativePath, file)
-    entries[relativePath] = normalizeEntry(candidate, parsed.schemaVersion, file)
+    entries[relativePath] = normalizeEntry(candidate, file)
   }
   return { ...parsed, schemaVersion: 2, entries }
 }
@@ -27,7 +27,7 @@ export function ownershipFor(existing, current) {
   if (existing?.ownership)
     return existing.ownership
   if (existing)
-    return { type: 'legacy' }
+    throw new Error('Manifest entry is missing ownership metadata')
   if (current === undefined)
     return { type: 'created' }
   return {
@@ -102,14 +102,14 @@ export function planOwnedRemoval(current, entry, force = false) {
   return pristine || force ? { action: 'delete' } : { action: 'conflict' }
 }
 
-function normalizeEntry(candidate, schemaVersion, file) {
+function normalizeEntry(candidate, file) {
   if (!candidate || typeof candidate !== 'object' || Array.isArray(candidate))
     throw new Error(`Unsupported or malformed manifest entry: ${file}`)
   if (!HASH.test(candidate.baselineHash) || !HASH.test(candidate.templateHash))
     throw new Error(`Unsupported or malformed manifest entry: ${file}`)
   if (!MODES.has(candidate.mode) || typeof candidate.platform !== 'string' || !candidate.platform)
     throw new Error(`Unsupported or malformed manifest entry: ${file}`)
-  const ownership = schemaVersion === 1 ? { type: 'legacy' } : normalizeOwnership(candidate.ownership, file)
+  const ownership = normalizeOwnership(candidate.ownership, file)
   for (const field of ['baselineContent', 'templateContent']) {
     if (candidate[field] !== undefined && typeof candidate[field] !== 'string')
       throw new Error(`Unsupported or malformed manifest entry: ${file}`)
@@ -128,8 +128,8 @@ function normalizeEntry(candidate, schemaVersion, file) {
 function normalizeOwnership(candidate, file) {
   if (!candidate || typeof candidate !== 'object' || Array.isArray(candidate))
     throw new Error(`Unsupported or malformed manifest ownership: ${file}`)
-  if (candidate.type === 'created' || candidate.type === 'legacy')
-    return { type: candidate.type }
+  if (candidate.type === 'created')
+    return { type: 'created' }
   if (candidate.type !== 'modified' || typeof candidate.originalContent !== 'string' || !HASH.test(candidate.originalHash))
     throw new Error(`Unsupported or malformed manifest ownership: ${file}`)
   const original = Buffer.from(candidate.originalContent, 'base64')

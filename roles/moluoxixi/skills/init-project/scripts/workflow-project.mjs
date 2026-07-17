@@ -4,15 +4,14 @@ import { Buffer } from 'node:buffer'
 import fs from 'node:fs'
 import path from 'node:path'
 import process from 'node:process'
-import { MANIFEST_PATH, PROJECT_ROOT_DIR, sha256 } from './constants.mjs'
+import { MANIFEST_PATH, PROJECT_ROOT_DIR, sha256, UPSTREAM_BRAND } from './constants.mjs'
 import { readManifest } from './core/operations.mjs'
 import { runWithEnvProxy } from './core/proxy.mjs'
 import { listWorkflowTemplates, resolveWorkflowTemplate } from './core/registry.mjs'
 import { assertProjectIsNotHome, assertSafeProject, assertSafeTarget } from './core/safety.mjs'
 
-const LEGACY_BRAND = ['tre', 'llis'].join('')
-const LEGACY_TITLE = `${LEGACY_BRAND[0].toUpperCase()}${LEGACY_BRAND.slice(1)}`
-const LEGACY_UPPER = LEGACY_BRAND.toUpperCase()
+const UPSTREAM_TITLE = `${UPSTREAM_BRAND[0].toUpperCase()}${UPSTREAM_BRAND.slice(1)}`
+const UPSTREAM_UPPER = UPSTREAM_BRAND.toUpperCase()
 
 async function main() {
   const options = parseArgs(process.argv.slice(2))
@@ -68,14 +67,14 @@ async function main() {
 
 function localize(content) {
   return content
-    .replaceAll(`${LEGACY_BRAND} channel`, `node ${PROJECT_ROOT_DIR}/runtime/moluoxixi.mjs channel`)
-    .replaceAll(`${LEGACY_BRAND} mem`, `node ${PROJECT_ROOT_DIR}/runtime/moluoxixi.mjs mem`)
-    .replaceAll(`${LEGACY_BRAND} workflow`, `node ${PROJECT_ROOT_DIR}/runtime/moluoxixi.mjs workflow`)
-    .replaceAll(`${LEGACY_BRAND} update`, `node ${PROJECT_ROOT_DIR}/runtime/moluoxixi.mjs update`)
-    .replaceAll(`${LEGACY_BRAND}-`, 'moluoxixi-')
-    .replaceAll(`.${LEGACY_BRAND}`, '.moluoxixi')
-    .replaceAll(LEGACY_TITLE, 'Moluoxixi')
-    .replaceAll(LEGACY_UPPER, 'MOLUOXIXI')
+    .replaceAll(`${UPSTREAM_BRAND} channel`, `node ${PROJECT_ROOT_DIR}/runtime/moluoxixi.mjs channel`)
+    .replaceAll(`${UPSTREAM_BRAND} mem`, `node ${PROJECT_ROOT_DIR}/runtime/moluoxixi.mjs mem`)
+    .replaceAll(`${UPSTREAM_BRAND} workflow`, `node ${PROJECT_ROOT_DIR}/runtime/moluoxixi.mjs workflow`)
+    .replaceAll(`${UPSTREAM_BRAND} update`, `node ${PROJECT_ROOT_DIR}/runtime/moluoxixi.mjs update`)
+    .replaceAll(`${UPSTREAM_BRAND}-`, 'moluoxixi-')
+    .replaceAll(`.${UPSTREAM_BRAND}`, '.moluoxixi')
+    .replaceAll(UPSTREAM_TITLE, 'Moluoxixi')
+    .replaceAll(UPSTREAM_UPPER, 'MOLUOXIXI')
 }
 
 function warnMissingAgents(content, projectRoot) {

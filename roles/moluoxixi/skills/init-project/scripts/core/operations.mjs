@@ -1,15 +1,15 @@
 import { Buffer } from 'node:buffer'
 import fs from 'node:fs'
 import path from 'node:path'
-import { GENERATOR_VERSION, MANIFEST_PATH, sha256, UPSTREAM_REVISION } from '../constants.mjs'
-import { mergeConfig, mergeJson, migrateLegacyJson, upgradeJson, upsertBlock } from './migration.mjs'
+import { GENERATOR_VERSION, MANIFEST_PATH, MOLUOXIXI_VERSION, sha256 } from '../constants.mjs'
+import { mergeConfig, mergeJson, upgradeJson, upsertBlock } from './migration.mjs'
 import { decodeEntryContent, emptyManifest, normalizeManifest, ownershipFor, planOwnedRemoval } from './ownership.mjs'
 import { assertSafeTarget } from './safety.mjs'
 
 export function readManifest(projectRoot) {
   const file = path.join(projectRoot, ...MANIFEST_PATH.split('/'))
   if (!fs.existsSync(file))
-    return { ...emptyManifest(), generatorVersion: GENERATOR_VERSION, upstreamRevision: UPSTREAM_REVISION }
+    return { ...emptyManifest(), generatorVersion: GENERATOR_VERSION, moluoxixiVersion: MOLUOXIXI_VERSION }
   return normalizeManifest(JSON.parse(fs.readFileSync(file, 'utf8')), file)
 }
 
@@ -54,11 +54,11 @@ export function prepareOperations(projectRoot, plan, manifest, force, createNew 
     try {
       if (current && item.merge === 'json') {
         const template = JSON.parse(item.content.toString('utf8'))
-        const migrated = migrateLegacyJson(JSON.parse(current.toString('utf8')), template)
+        const currentJson = JSON.parse(current.toString('utf8'))
         const previousTemplate = decodeEntryContent(owned, 'templateContent')
         const merged = previousTemplate
-          ? upgradeJson(migrated, JSON.parse(previousTemplate.toString('utf8')), template)
-          : mergeJson(migrated, template)
+          ? upgradeJson(currentJson, JSON.parse(previousTemplate.toString('utf8')), template)
+          : mergeJson(currentJson, template)
         desired = Buffer.from(`${JSON.stringify(merged, null, 2)}\n`)
       }
       else if (current && item.merge === 'config') {
