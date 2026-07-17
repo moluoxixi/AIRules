@@ -14,7 +14,7 @@ export const LOCAL_SKILLS_ROOT = path.join(SHARED_ASSET_ROOT, 'skills')
 
 export const PROJECT_ROOT_DIR = '.moluoxixi'
 export const MANIFEST_PATH = projectPath('airules-init-manifest.json')
-export const GENERATOR_VERSION = '1.1.0'
+export const GENERATOR_VERSION = '1.2.0'
 export const UPSTREAM_REVISION = 'e7c5ead4d0dfd717d11a40b6bc0c80d8af94c49a'
 export const LEGACY_BRAND = ['tre', 'llis'].join('')
 export const LEGACY_BRAND_UPPER = LEGACY_BRAND.toUpperCase()

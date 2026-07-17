@@ -134,6 +134,7 @@ export async function syncToHosts(options: SyncOptions): Promise<SyncResult> {
       host,
       paths.userHome,
       paths.moluoHome,
+      paths.role,
     )
     if (!success) {
       skippedHosts.push(host)

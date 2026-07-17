@@ -1,5 +1,15 @@
 import path from 'node:path'
 
+export interface McpProjection {
+  homeRelPath?: string
+  relDir: string
+  fileName: string
+  serversKey: string
+  format: 'json' | 'toml'
+  defaultTopLevel?: Record<string, unknown>
+  serverOverrides?: Record<string, Record<string, unknown>>
+}
+
 /** 单个 AI 宿主的 skills 投影配置。 */
 export interface HostConfig {
   /** 宿主标识符，也是 --host 参数的值。 */
@@ -14,26 +24,28 @@ export interface HostConfig {
   projectSkills?: boolean
   /** 是否参与 `--host all`，默认参与。 */
   includeInAll?: boolean
+  /** 角色可选 MCP 中性源到该宿主配置的投影规则。 */
+  mcp?: McpProjection
 }
 
 /**
- * 公共分发层只登记 skills 目录。Agents、commands、hooks、settings 等宿主原生资产
- * 由角色的项目初始化器安装，不在这里转译或合并。
+ * 公共分发层登记 canonical skills 与角色可选 MCP 的宿主投影规则。
+ * Agents、commands、hooks、settings 等宿主原生资产由角色的项目初始化器安装。
  */
 export const HOST_CONFIGS: HostConfig[] = [
-  { id: 'claude', homeRelPath: '.claude' },
-  { id: 'codex', homeRelPath: '.codex' },
+  { id: 'claude', homeRelPath: '.claude', mcp: { relDir: '.', fileName: '.mcp.json', serversKey: 'mcpServers', format: 'json' } },
+  { id: 'codex', homeRelPath: '.codex', mcp: { relDir: '.', fileName: 'config.toml', serversKey: 'mcp_servers', format: 'toml' } },
   { id: 'hermes', homeRelPath: path.join('AppData', 'Local', 'hermes') },
   { id: 'hermes desktop', homeRelPath: path.join('AppData', 'Local', 'hermes') },
-  { id: 'cursor', homeRelPath: '.cursor', skillsDirName: 'skills-cursor' },
+  { id: 'cursor', homeRelPath: '.cursor', skillsDirName: 'skills-cursor', mcp: { relDir: '.', fileName: 'mcp.json', serversKey: 'mcpServers', format: 'json' } },
   { id: 'agentsmd', homeRelPath: '.agents', includeInAll: false },
   { id: 'qoderwork', homeRelPath: '.qoderwork' },
-  { id: 'trae', homeRelPath: '.trae' },
-  { id: 'trae-cn', homeRelPath: '.trae-cn' },
-  { id: 'trae-solo', homeRelPath: '.trae-solo', projectSkills: false },
-  { id: 'trae-solo-cn', homeRelPath: '.trae-solo-cn', projectSkills: false },
-  { id: 'qoder', homeRelPath: '.qoder' },
-  { id: 'opencode', homeRelPath: path.join('.config', 'opencode') },
+  { id: 'trae', homeRelPath: '.trae', mcp: { homeRelPath: path.join('AppData', 'Roaming', 'Trae', 'User'), relDir: '.', fileName: 'mcp.json', serversKey: 'mcpServers', format: 'json', defaultTopLevel: { inputs: [] } } },
+  { id: 'trae-cn', homeRelPath: '.trae-cn', mcp: { homeRelPath: path.join('AppData', 'Roaming', 'Trae CN', 'User'), relDir: '.', fileName: 'mcp.json', serversKey: 'mcpServers', format: 'json', defaultTopLevel: { inputs: [] } } },
+  { id: 'trae-solo', homeRelPath: '.trae-solo', projectSkills: false, mcp: { homeRelPath: path.join('AppData', 'Roaming', 'TRAE SOLO', 'User'), relDir: '.', fileName: 'mcp.json', serversKey: 'mcpServers', format: 'json', defaultTopLevel: { inputs: [] } } },
+  { id: 'trae-solo-cn', homeRelPath: '.trae-solo-cn', projectSkills: false, mcp: { homeRelPath: path.join('AppData', 'Roaming', 'TRAE SOLO CN', 'User'), relDir: '.', fileName: 'mcp.json', serversKey: 'mcpServers', format: 'json', defaultTopLevel: { inputs: [] } } },
+  { id: 'qoder', homeRelPath: '.qoder', mcp: { homeRelPath: path.join('AppData', 'Roaming', 'Qoder', 'SharedClientCache'), relDir: '.', fileName: 'mcp.json', serversKey: 'mcpServers', format: 'json', serverOverrides: { codegraph: { type: 'stdio' } } } },
+  { id: 'opencode', homeRelPath: path.join('.config', 'opencode'), mcp: { relDir: '.', fileName: 'opencode.json', serversKey: 'mcp', format: 'json' } },
   { id: 'cc-switch', homeRelPath: '.cc-switch' },
 ]
 
@@ -54,6 +66,8 @@ export interface ResolvedHostPaths {
   skillsDirName: string
   excludedSkills: string[]
   projectSkills: boolean
+  mcpHome: string
+  mcp?: McpProjection
 }
 
 function resolveUserRelativePath(userHome: string, relPath: string): string {
@@ -61,10 +75,13 @@ function resolveUserRelativePath(userHome: string, relPath: string): string {
 }
 
 export function resolveHostPaths(config: HostConfig, userHome: string): ResolvedHostPaths {
+  const hostHome = resolveUserRelativePath(userHome, config.homeRelPath)
   return {
-    hostHome: resolveUserRelativePath(userHome, config.homeRelPath),
+    hostHome,
     skillsDirName: config.skillsDirName ?? 'skills',
     excludedSkills: config.excludedSkills ?? [],
     projectSkills: config.projectSkills ?? true,
+    mcpHome: config.mcp?.homeRelPath ? resolveUserRelativePath(userHome, config.mcp.homeRelPath) : hostHome,
+    mcp: config.mcp,
   }
 }

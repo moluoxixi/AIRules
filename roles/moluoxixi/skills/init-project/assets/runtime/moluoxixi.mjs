@@ -1,8 +1,6 @@
 #!/usr/bin/env node
 
-import { Buffer } from 'node:buffer'
 import { spawnSync } from 'node:child_process'
-import { createHash, randomUUID } from 'node:crypto'
 import fs from 'node:fs'
 import path from 'node:path'
 import process from 'node:process'
@@ -11,24 +9,6 @@ import { fileURLToPath } from 'node:url'
 const RUNTIME_DIR = path.dirname(fileURLToPath(import.meta.url))
 const VERSION = '0.6.7-airules.1'
 const PROJECT_ROOT_DIR = '.moluoxixi'
-const WORKFLOW_MANIFEST_PATH = `${PROJECT_ROOT_DIR}/workflow.md`
-const NAMESPACED_SKILL_RENAMES = {
-  'moluoxixi-before-dev': 'before-dev',
-  'moluoxixi-brainstorm': 'brainstorm',
-  'moluoxixi-break-loop': 'break-loop',
-  'channel': 'channel',
-  'moluoxixi-continue': 'continue',
-  'moluoxixi-finish-work': 'finish-work',
-  'meta': 'meta',
-  'session-insight': 'session-insight',
-  'spec-bootstrap': 'spec-bootstrap',
-  'moluoxixi-start': 'start',
-  'moluoxixi-update-spec': 'update-spec',
-}
-
-function sha256(content) {
-  return createHash('sha256').update(content).digest('hex')
-}
 
 function findProjectRoot(start = process.cwd()) {
   let current = path.resolve(start)
@@ -65,6 +45,10 @@ function parseValue(args, index, flag) {
 }
 
 function update(args) {
+  if (args.includes('--help') || args.includes('-h')) {
+    process.stdout.write('Usage: moluoxixi.mjs update [--platform <ids>] [--dry-run] [-f|--force] [-n|--create-new] [-s|--skip-all] [--migrate] [--allow-downgrade] [--with-statusline] [--python <command>]\n')
+    return
+  }
   const projectRoot = findProjectRoot()
   const manifestPath = path.join(projectRoot, PROJECT_ROOT_DIR, 'airules-init-manifest.json')
   const manifest = JSON.parse(fs.readFileSync(manifestPath, 'utf8'))
@@ -72,19 +56,15 @@ function update(args) {
   const platforms = []
 
   for (let index = 0; index < args.length; index += 1) {
-    const arg = args[index]
-    if (arg === '--dry-run' || arg === '--force' || arg === '--with-statusline' || arg === '--create-new' || arg === '--skip-all') {
+    const arg = { '-f': '--force', '-n': '--create-new', '-s': '--skip-all' }[args[index]] ?? args[index]
+    if (arg === '--dry-run' || arg === '--force' || arg === '--with-statusline' || arg === '--create-new' || arg === '--skip-all' || arg === '--migrate' || arg === '--allow-downgrade' || arg === '--monorepo' || arg === '--no-monorepo' || arg === '--overwrite' || arg === '--append') {
       forwarded.push(arg)
     }
     else if (arg === '--platform') {
       platforms.push(...parseValue(args, index++, arg).split(','))
     }
-    else if (arg === '--python' || arg === '--developer') {
+    else if (arg === '--python' || arg === '--developer' || arg === '--default-package' || arg === '--package' || arg === '--package-template' || arg === '--package-registry' || arg === '--project-type' || arg === '--workflow' || arg === '--workflow-source' || arg === '--template' || arg === '--registry' || arg === '--marketplace') {
       forwarded.push(arg, parseValue(args, index++, arg))
-    }
-    else if (arg === '--help' || arg === '-h') {
-      process.stdout.write('Usage: moluoxixi.mjs update [--platform <ids>] [--dry-run] [--force] [--create-new] [--skip-all] [--with-statusline] [--python <command>]\n')
-      return
     }
     else {
       throw new Error(`Unsupported AIRules update option: ${arg}`)
@@ -104,241 +84,53 @@ function update(args) {
   runNode(entry, forwarded)
 }
 
-function parseWorkflowArgs(args) {
-  const result = { createNew: false, force: false, list: false, template: undefined }
-  for (let index = 0; index < args.length; index += 1) {
-    const arg = args[index]
-    if (arg === '--list')
-      result.list = true
-    else if (arg === '--force' || arg === '-f')
-      result.force = true
-    else if (arg === '--create-new' || arg === '-n')
-      result.createNew = true
-    else if (arg === '--template' || arg === '-t')
-      result.template = parseValue(args, index++, arg)
-    else if (arg === '--help' || arg === '-h')
-      result.help = true
-    else throw new Error(`Unknown workflow option: ${arg}`)
-  }
-  return result
-}
-
-function parseUninstallArgs(args) {
-  const result = { dryRun: false, force: false }
-  for (const arg of args) {
-    if (arg === '--dry-run')
-      result.dryRun = true
-    else if (arg === '--force' || arg === '--yes' || arg === '-y')
-      result.force = true
-    else if (arg === '--help' || arg === '-h')
-      result.help = true
-    else throw new Error(`Unknown uninstall option: ${arg}`)
-  }
-  return result
-}
-
-function writeAtomic(target, content) {
-  const temporary = `${target}.airules-new-${randomUUID()}`
-  const backup = `${target}.airules-old-${randomUUID()}`
-  const existed = fs.existsSync(target)
-  fs.writeFileSync(temporary, content, { flag: 'wx' })
-  try {
-    if (existed)
-      fs.renameSync(target, backup)
-    fs.renameSync(temporary, target)
-    if (existed)
-      fs.rmSync(backup, { force: true })
-  }
-  catch (error) {
-    fs.rmSync(temporary, { force: true })
-    if (existed && fs.existsSync(backup) && !fs.existsSync(target))
-      fs.renameSync(backup, target)
-    throw error
-  }
-}
-
-function localizeNativeWorkflow(content) {
-  let localized = content
-    .replaceAll('moluoxixi channel', `node ${PROJECT_ROOT_DIR}/runtime/moluoxixi.mjs channel`)
-    .replaceAll('moluoxixi mem', `node ${PROJECT_ROOT_DIR}/runtime/moluoxixi.mjs mem`)
-    .replaceAll('moluoxixi workflow', `node ${PROJECT_ROOT_DIR}/runtime/moluoxixi.mjs workflow`)
-    .replaceAll('moluoxixi update', `node ${PROJECT_ROOT_DIR}/runtime/moluoxixi.mjs update`)
-  for (const [namespacedName, canonicalName] of Object.entries(NAMESPACED_SKILL_RENAMES))
-    localized = localized.replaceAll(namespacedName, canonicalName)
-  return localized
-}
-
 function workflow(args) {
-  const options = parseWorkflowArgs(args)
-  if (options.help) {
-    process.stdout.write('Usage: moluoxixi.mjs workflow [--list] [--template native|<local.md>] [--force] [--create-new]\n')
+  if (args.includes('--help') || args.includes('-h')) {
+    const bundledWorkflow = path.resolve(RUNTIME_DIR, '..', '..', 'scripts', 'workflow-project.mjs')
+    if (!fs.existsSync(bundledWorkflow)) {
+      process.stdout.write('Usage: moluoxixi.mjs workflow [-t|--template <id>] [-m|--marketplace <source>] [-f|--force] [-n|--create-new] [--list]\n')
+      return
+    }
+    runNode(bundledWorkflow, args)
     return
   }
-  if (options.list) {
-    process.stdout.write('native\tAIRules-migrated Moluoxixi workflow\nlocal-file\tPass a local Markdown path to --template\n')
-    return
-  }
-
   const projectRoot = findProjectRoot()
-  const manifestPath = path.join(projectRoot, PROJECT_ROOT_DIR, 'airules-init-manifest.json')
-  const manifest = JSON.parse(fs.readFileSync(manifestPath, 'utf8'))
-  const target = path.join(projectRoot, PROJECT_ROOT_DIR, 'workflow.md')
-  const templateId = options.template ?? 'native'
-  const nativeTemplate = path.join(projectRoot, PROJECT_ROOT_DIR, 'runtime', 'update', 'init-project', 'assets', 'project', 'workflow.md')
-  const source = templateId === 'native' ? nativeTemplate : path.resolve(projectRoot, templateId)
-  if (!fs.statSync(source, { throwIfNoEntry: false })?.isFile())
-    throw new Error(`Workflow template is unavailable: ${source}`)
-  const desired = templateId === 'native'
-    ? Buffer.from(localizeNativeWorkflow(fs.readFileSync(source, 'utf8')))
-    : fs.readFileSync(source)
-  const current = fs.readFileSync(target)
-  const owned = manifest.entries?.[WORKFLOW_MANIFEST_PATH]
-  const pristine = owned?.baselineHash === sha256(current)
-
-  if (!current.equals(desired) && !pristine && !options.force && !options.createNew) {
-    throw new Error(`${WORKFLOW_MANIFEST_PATH} has local edits; use --force or --create-new`)
-  }
-  if (current.equals(desired) && !options.createNew) {
-    warnMissingWorkflowAgents(desired.toString('utf8'), projectRoot)
-    process.stdout.write(`${WORKFLOW_MANIFEST_PATH} already matches the selected template\n`)
-    return
-  }
-
-  const destination = options.createNew ? `${target}.new` : target
-  writeAtomic(destination, desired)
-  if (!options.createNew) {
-    if (templateId === 'native') {
-      manifest.entries[WORKFLOW_MANIFEST_PATH] = {
-        baselineHash: sha256(desired),
-        mode: 'replace',
-        platform: 'shared',
-        templateHash: sha256(desired),
-      }
-    }
-    else {
-      delete manifest.entries[WORKFLOW_MANIFEST_PATH]
-    }
-    writeAtomic(manifestPath, Buffer.from(`${JSON.stringify(manifest, null, 2)}\n`))
-  }
-  warnMissingWorkflowAgents(desired.toString('utf8'), projectRoot)
-  process.stdout.write(`${path.relative(projectRoot, destination)} written\n`)
-}
-
-function warnMissingWorkflowAgents(content, projectRoot) {
-  const names = new Set()
-  for (const match of content.matchAll(/(?:--agent\s+|\.moluoxixi\/agents\/)([A-Za-z0-9][\w-]*)(?:\.md)?/gu))
-    names.add(match[1])
-  const missing = [...names].filter(name => !fs.existsSync(path.join(projectRoot, PROJECT_ROOT_DIR, 'agents', `${name}.md`)))
-  if (missing.length > 0)
-    process.stderr.write(`Warning: workflow references missing Moluoxixi agents: ${missing.join(', ')}. Run the project-local update after reviewing the workflow.\n`)
+  const projectWorkflow = path.join(projectRoot, PROJECT_ROOT_DIR, 'runtime', 'update', 'init-project', 'scripts', 'workflow-project.mjs')
+  const bundledWorkflow = path.resolve(RUNTIME_DIR, '..', '..', 'scripts', 'workflow-project.mjs')
+  const entry = fs.existsSync(projectWorkflow) ? projectWorkflow : bundledWorkflow
+  if (!fs.existsSync(entry))
+    throw new Error('AIRules workflow assets are missing; re-run the init-project skill')
+  runNode(entry, ['--project', projectRoot, ...args])
 }
 
 function uninstall(args) {
-  const options = parseUninstallArgs(args)
-  if (options.help) {
-    process.stdout.write('Usage: moluoxixi.mjs uninstall [--dry-run] [--force]\n')
+  if (args.includes('--help') || args.includes('-h')) {
+    const bundledUninstaller = path.resolve(RUNTIME_DIR, '..', '..', 'scripts', 'uninstall-project.mjs')
+    if (!fs.existsSync(bundledUninstaller)) {
+      process.stdout.write('Usage: moluoxixi.mjs uninstall [-y|--yes] [--dry-run] [--force]\n')
+      return
+    }
+    runNode(bundledUninstaller, args)
     return
   }
   const projectRoot = findProjectRoot()
-  const manifestPath = path.join(projectRoot, PROJECT_ROOT_DIR, 'airules-init-manifest.json')
-  const manifest = JSON.parse(fs.readFileSync(manifestPath, 'utf8'))
-  const conflicts = []
-  const removed = []
-  const removable = []
-
-  for (const [relativePath, owned] of Object.entries(manifest.entries ?? {}).sort(([left], [right]) => left.localeCompare(right))) {
-    let target
-    try {
-      target = assertManagedTarget(projectRoot, relativePath)
-    }
-    catch {
-      conflicts.push(relativePath)
-      continue
-    }
-    const stats = fs.lstatSync(target, { throwIfNoEntry: false })
-    if (!stats) {
-      removed.push(relativePath)
-      continue
-    }
-    if (!stats.isFile() || stats.isSymbolicLink()) {
-      conflicts.push(relativePath)
-      continue
-    }
-    const pristine = typeof owned?.baselineHash === 'string' && owned.baselineHash === sha256(fs.readFileSync(target))
-    if (pristine || options.force) {
-      removable.push({ relativePath, target })
-      removed.push(relativePath)
-    }
-    else {
-      conflicts.push(relativePath)
-    }
-  }
-
-  const summary = { projectRoot, dryRun: options.dryRun, force: options.force, removed, conflicts }
-  if (options.dryRun) {
-    process.stdout.write(`${JSON.stringify(summary, null, 2)}\n`)
-    if (conflicts.length > 0)
-      process.exitCode = 2
-    return
-  }
-
-  for (const item of removable) {
-    fs.rmSync(item.target)
-    removeEmptyParents(item.target, projectRoot)
-  }
-  const nextEntries = { ...(manifest.entries ?? {}) }
-  for (const relativePath of removed)
-    delete nextEntries[relativePath]
-  if (conflicts.length > 0) {
-    manifest.entries = nextEntries
-    writeAtomic(manifestPath, Buffer.from(`${JSON.stringify(manifest, null, 2)}\n`))
-    process.exitCode = 2
-  }
-  else {
-    fs.rmSync(manifestPath)
-    removeEmptyParents(manifestPath, projectRoot)
-  }
-  process.stdout.write(`${JSON.stringify(summary, null, 2)}\n`)
-}
-
-function assertManagedTarget(projectRoot, relativePath) {
-  if (typeof relativePath !== 'string' || relativePath.includes('\0'))
-    throw new Error('Invalid managed path')
-  const target = path.resolve(projectRoot, ...relativePath.split('/'))
-  const relation = path.relative(projectRoot, target)
-  if (!relation || relation === '..' || relation.startsWith(`..${path.sep}`) || path.isAbsolute(relation))
-    throw new Error('Managed path escapes project root')
-  let current = projectRoot
-  for (const segment of relativePath.split('/')) {
-    current = path.join(current, segment)
-    if (fs.lstatSync(current, { throwIfNoEntry: false })?.isSymbolicLink())
-      throw new Error('Managed path contains a symbolic link')
-  }
-  return target
-}
-
-function removeEmptyParents(target, projectRoot) {
-  let current = path.dirname(target)
-  while (current !== projectRoot) {
-    try {
-      fs.rmdirSync(current)
-    }
-    catch {
-      break
-    }
-    current = path.dirname(current)
-  }
+  const projectUninstaller = path.join(projectRoot, PROJECT_ROOT_DIR, 'runtime', 'update', 'init-project', 'scripts', 'uninstall-project.mjs')
+  const bundledUninstaller = path.resolve(RUNTIME_DIR, '..', '..', 'scripts', 'uninstall-project.mjs')
+  const entry = fs.existsSync(projectUninstaller) ? projectUninstaller : bundledUninstaller
+  if (!fs.existsSync(entry))
+    throw new Error('AIRules uninstaller assets are missing; re-run the init-project skill')
+  runNode(entry, ['--project', projectRoot, ...args])
 }
 
 function printHelp() {
-  process.stdout.write(`Moluoxixi runtime ${VERSION}\n\nUsage: node moluoxixi.mjs <command> [options]\n\nCommands:\n  channel    Durable local multi-agent channels and workers\n  mem        Search local Claude, Codex, and Pi conversation history\n  workflow   List or replace the active project workflow\n  update     Refresh AIRules-owned project assets\n  uninstall  Remove manifest-owned project assets safely\n`)
+  process.stdout.write(`Moluoxixi runtime ${VERSION}\n\nUsage: node moluoxixi.mjs <command> [options]\n       node moluoxixi.mjs -v|--version\n\nCommands:\n  channel    Durable local multi-agent channels and workers\n  mem        Search local Claude, Codex, and Pi conversation history\n  workflow   List or replace the active project workflow\n  update     Refresh AIRules-owned project assets\n  uninstall  Remove manifest-owned project assets safely\n  version    Print the runtime version\n`)
 }
 
 try {
   const [command, ...args] = process.argv.slice(2)
   if (!command || command === '--help' || command === '-h' || command === 'help')
     printHelp()
-  else if (command === '--version' || command === '-V' || command === 'version')
+  else if (command === '--version' || command === '-v' || command === '-V' || command === 'version')
     process.stdout.write(`${VERSION}\n`)
   else if (command === 'channel' || command === 'mem')
     runNode(path.join(RUNTIME_DIR, 'vendor', 'channel-mem.mjs'), [command, ...args])

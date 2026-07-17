@@ -1,3 +1,4 @@
+import type { McpProjection } from '../../constants/hosts.js'
 import type { LinkEntry } from './links.js'
 import type { SetupCommand, VendorManifest } from './vendors.js'
 import { execFileSync } from 'node:child_process'
@@ -7,6 +8,7 @@ import {
   lstatSync,
   mkdirSync,
   readdirSync,
+  readFileSync,
   realpathSync,
   rmSync,
   symlinkSync,
@@ -18,6 +20,7 @@ import os from 'node:os'
 import path from 'node:path'
 import { findHostConfig, resolveHostPaths } from '../../constants/hosts.js'
 import { buildLinkPlan } from './links.js'
+import { requireRoleName } from './role-assets.js'
 import { DEFAULT_ROLE, roleOverlayOrder } from './roles.js'
 import { collectFlattenedSkillSources, discoverSkillDirectories, flattenedSkillName } from './skill-projection.js'
 import { loadVendorManifest } from './vendors.js'
@@ -471,6 +474,127 @@ export function projectSkillsToHost(
   syncFlattenedSkills(agentsSkillsDir, hostSkillsHome, moluoHome, options)
 }
 
+function escapeTomlString(value: string): string {
+  return value
+    .replace(/\\/gu, '\\\\')
+    .replace(/"/gu, '\\"')
+    .replace(/\n/gu, '\\n')
+    .replace(/\r/gu, '\\r')
+    .replace(/\t/gu, '\\t')
+    // eslint-disable-next-line no-control-regex -- TOML basic strings cannot contain raw C0 controls.
+    .replace(/[\u0000-\u0008\v\f\u000E-\u001F]/gu, character => `\\u${character.charCodeAt(0).toString(16).padStart(4, '0')}`)
+}
+
+function tomlKey(key: string): string {
+  return /^[\w-]+$/u.test(key) ? key : `"${escapeTomlString(key)}"`
+}
+
+function readRoleMcpServers(moluoHome: string, role: string): Record<string, unknown> | undefined {
+  if (!role)
+    return undefined
+  const sourceFile = path.join(moluoHome, 'roles', requireRoleName(role), 'mcp', 'mcp.json')
+  if (!existsSync(sourceFile))
+    return undefined
+  const stats = lstatSync(sourceFile)
+  if (!stats.isFile() || stats.isSymbolicLink())
+    throw new Error(`Role MCP source must be a plain file: ${sourceFile}`)
+  const raw = readFileSync(sourceFile, 'utf8').trim()
+  if (!raw)
+    return undefined
+  let parsed: { mcpServers?: Record<string, unknown> }
+  try {
+    parsed = JSON.parse(raw) as { mcpServers?: Record<string, unknown> }
+  }
+  catch (error) {
+    throw new Error(`Role MCP source is invalid JSON: ${sourceFile}`, { cause: error })
+  }
+  return parsed.mcpServers && Object.keys(parsed.mcpServers).length > 0 ? parsed.mcpServers : undefined
+}
+
+function readHostConfigForMerge(targetFile: string): string {
+  if (existsSync(targetFile) && lstatSync(targetFile).isSymbolicLink()) {
+    removePath(targetFile)
+    return ''
+  }
+  return existsSync(targetFile) ? readFileSync(targetFile, 'utf8').replace(/^\uFEFF/u, '') : ''
+}
+
+function applyMcpServerOverrides(servers: Record<string, unknown>, overrides: McpProjection['serverOverrides']): Record<string, unknown> {
+  if (!overrides)
+    return servers
+  return Object.fromEntries(Object.entries(servers).map(([name, value]) => {
+    const override = overrides[name]
+    if (!override)
+      return [name, value]
+    const base = typeof value === 'object' && value !== null && !Array.isArray(value) ? value as Record<string, unknown> : {}
+    return [name, { ...base, ...override }]
+  }))
+}
+
+function projectMcpToHost(moluoHome: string, role: string, mcpHome: string, mcp: McpProjection): void {
+  const servers = readRoleMcpServers(moluoHome, role)
+  if (!servers)
+    return
+  const projectedServers = applyMcpServerOverrides(servers, mcp.serverOverrides)
+  const targetDir = mcp.relDir === '.' ? mcpHome : path.join(mcpHome, mcp.relDir)
+  const targetFile = path.join(targetDir, mcp.fileName)
+  mkdirSync(targetDir, { recursive: true })
+
+  if (mcp.format === 'json') {
+    const previous = readHostConfigForMerge(targetFile)
+    let existing: Record<string, unknown> = {}
+    if (previous.trim()) {
+      try {
+        existing = JSON.parse(previous) as Record<string, unknown>
+      }
+      catch (error) {
+        throw new Error(`Host MCP configuration is invalid JSON: ${targetFile}`, { cause: error })
+      }
+    }
+    existing = { ...(mcp.defaultTopLevel ?? {}), ...existing }
+    const existingServers = typeof existing[mcp.serversKey] === 'object' && existing[mcp.serversKey] !== null && !Array.isArray(existing[mcp.serversKey])
+      ? existing[mcp.serversKey] as Record<string, unknown>
+      : {}
+    existing[mcp.serversKey] = { ...projectedServers, ...existingServers }
+    writeFileSync(targetFile, `${JSON.stringify(existing, null, 2)}\n`, 'utf8')
+    return
+  }
+
+  const previous = readHostConfigForMerge(targetFile)
+  const cleaned = previous.replace(/\n*# >>> AIRULES MCP >>>[\s\S]*?(?:# <<< AIRULES MCP <<<|$)\n*/gu, '\n').trimEnd()
+  const serversKeyPattern = mcp.serversKey.replace(/[.*+?^${}()|[\]\\]/gu, '\\$&')
+  const userDeclared = new Set<string>()
+  const tablePattern = new RegExp(`^\\s*\\[${serversKeyPattern}\\.(?:"([^"]+)"|([\\w-]+))\\]`, 'gmu')
+  for (const match of cleaned.matchAll(tablePattern))
+    userDeclared.add(match[1] ?? match[2])
+
+  const lines: string[] = []
+  for (const [name, value] of Object.entries(projectedServers)) {
+    if (userDeclared.has(name))
+      continue
+    const server = value as { command?: string, args?: string[], env?: Record<string, string> }
+    lines.push(`[${mcp.serversKey}.${tomlKey(name)}]`)
+    if (server.command)
+      lines.push(`command = "${escapeTomlString(server.command)}"`)
+    if (Array.isArray(server.args))
+      lines.push(`args = [${server.args.map(argument => `"${escapeTomlString(String(argument))}"`).join(', ')}]`)
+    if (server.env && Object.keys(server.env).length > 0) {
+      const environment = Object.entries(server.env)
+        .map(([key, value]) => `${tomlKey(key)} = "${escapeTomlString(String(value))}"`)
+        .join(', ')
+      lines.push(`env = { ${environment} }`)
+    }
+    lines.push('')
+  }
+  if (lines.length === 0) {
+    if (cleaned !== previous.trimEnd())
+      writeFileSync(targetFile, cleaned ? `${cleaned}\n` : '', 'utf8')
+    return
+  }
+  const block = `# >>> AIRULES MCP >>>\n${lines.join('\n')}# <<< AIRULES MCP <<<\n`
+  writeFileSync(targetFile, cleaned ? `${cleaned}\n\n${block}` : block, 'utf8')
+}
+
 export function projectToHost({
   userHome,
   moluoHome,
@@ -478,6 +602,9 @@ export function projectToHost({
   customSkillsDirName = 'skills',
   excludedSkills = [],
   projectSkills = true,
+  role = DEFAULT_ROLE,
+  mcpHome = hostHome,
+  mcp,
 }: {
   userHome: string
   moluoHome: string
@@ -485,6 +612,9 @@ export function projectToHost({
   customSkillsDirName?: string
   excludedSkills?: string[]
   projectSkills?: boolean
+  role?: string
+  mcpHome?: string
+  mcp?: McpProjection
 }) {
   if (projectSkills) {
     projectSkillsToHost(
@@ -494,6 +624,8 @@ export function projectToHost({
       { excludedSkills },
     )
   }
+  if (mcp)
+    projectMcpToHost(moluoHome, role, mcpHome, mcp)
 }
 
 /**
@@ -503,17 +635,19 @@ export function projectHostById(
   host: string,
   userHome: string,
   moluoHome: string,
+  role = DEFAULT_ROLE,
 ): { success: boolean } {
   const config = findHostConfig(host)
   if (!config) {
     throw new Error(`Unknown host: ${host}`)
   }
 
-  const { hostHome, projectSkills, skillsDirName, excludedSkills } = resolveHostPaths(config, userHome)
+  const { hostHome, projectSkills, skillsDirName, excludedSkills, mcpHome, mcp } = resolveHostPaths(config, userHome)
   const hostHomePath = path.resolve(hostHome)
   const hasHostHome = existsSync(hostHomePath)
+  const hasMcpHome = Boolean(role && mcp && existsSync(path.resolve(mcpHome)))
 
-  if (!hasHostHome) {
+  if (!hasHostHome && !hasMcpHome) {
     console.warn(`[skip] 宿主目录不存在，跳过投影: ${host} (${hostHomePath})`)
     return { success: false }
   }
@@ -525,6 +659,9 @@ export function projectHostById(
     customSkillsDirName: skillsDirName,
     excludedSkills,
     projectSkills,
+    role,
+    mcpHome,
+    mcp: hasMcpHome ? mcp : undefined,
   })
 
   return { success: true }

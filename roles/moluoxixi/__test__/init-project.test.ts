@@ -1,4 +1,4 @@
-import type { Buffer } from 'node:buffer'
+import { Buffer } from 'node:buffer'
 import { spawnSync } from 'node:child_process'
 import { createHash } from 'node:crypto'
 import fs from 'node:fs'
@@ -17,6 +17,7 @@ interface InitSummary {
   preserved: string[]
   proposed: string[]
   removed: string[]
+  restored: string[]
   unchanged: string[]
   updated: string[]
   warnings: string[]
@@ -129,9 +130,9 @@ function migratedAssetStats(): { bytes: number, files: number, hash: string } {
 describe('init-project skill', () => {
   it('pins the migrated Moluoxixi project templates', () => {
     expect(migratedAssetStats()).toEqual({
-      bytes: 1617785,
+      bytes: 1618041,
       files: 242,
-      hash: '0f4d3b8aed2addf6c31e9d0919204c4ef7b4836b019d5f6a4e2d0602a6942b76',
+      hash: '93b43ceea56837f1a08cd15ee499de307de9de8028f725c18e5b1ab92f80e17e',
     })
     expect(fs.existsSync(path.join(assetRoot, 'moluoxixi-v0.6.7'))).toBe(false)
     expect(fs.existsSync(path.join(assetRoot, 'legal', 'LICENSE'))).toBe(false)
@@ -153,6 +154,8 @@ describe('init-project skill', () => {
       '.claude/settings.json',
       '.claude/skills/channel/scripts/moluoxixi.mjs',
       '.codex/config.toml',
+      '.gemini/commands/moluoxixi/continue.toml',
+      '.gemini/commands/moluoxixi/finish-work.toml',
       '.github/copilot/hooks.json',
       '.omp/extensions/moluoxixi/index.ts',
       '.pi/extensions/moluoxixi/index.ts',
@@ -173,9 +176,20 @@ describe('init-project skill', () => {
     expect(updaterBundledSkillNames).toEqual(projectSkillNames)
     expect(fs.readdirSync(projectRoot)).toEqual([])
 
-    const statusline = runInitializer(projectRoot, ['--platform', 'claude', '--with-statusline', '--dry-run'])
+    const statusline = runInitializer(projectRoot, ['--platform', 'claude', '--with-statusline'])
     expect(statusline).toMatchObject({ status: 0, stderr: '' })
     expect(statusline.summary?.created).toContain('.claude/hooks/statusline.py')
+    expect(JSON.parse(fs.readFileSync(path.join(projectRoot, '.claude', 'settings.json'), 'utf8'))).toMatchObject({
+      statusLine: {
+        type: 'command',
+        command: `${pythonCommand} .claude/hooks/statusline.py`,
+      },
+    })
+
+    const aliasRoot = temporaryProject()
+    const alias = runInitializer(aliasRoot, ['--platform', 'windsurf', '--dry-run'])
+    expect(alias).toMatchObject({ status: 0, stderr: '' })
+    expect(alias.summary?.platforms).toEqual(['devin'])
   })
 
   it('initializes shared runtime and selected platforms idempotently', () => {
@@ -190,8 +204,13 @@ describe('init-project skill', () => {
     expect(fs.existsSync(path.join(projectRoot, '.moluoxixi', 'airules-init-manifest.json'))).toBe(true)
     expect(fs.existsSync(path.join(projectRoot, legacyProjectRoot))).toBe(false)
     expect(fs.existsSync(path.join(projectRoot, '.claude', 'settings.json'))).toBe(true)
+    expect(JSON.parse(fs.readFileSync(path.join(projectRoot, '.claude', 'settings.json'), 'utf8'))).not.toHaveProperty('statusLine')
     expect(fs.existsSync(path.join(projectRoot, '.codex', 'config.toml'))).toBe(true)
-    expect(fs.readFileSync(path.join(projectRoot, '.moluoxixi', '.developer'), 'utf8')).toBe('tester\n')
+    expect(fs.readFileSync(path.join(projectRoot, '.moluoxixi', '.developer'), 'utf8')).toMatch(/^name=tester\ninitialized_at=/u)
+    expect(fs.existsSync(path.join(projectRoot, '.moluoxixi', 'tasks', '00-bootstrap-guidelines', 'task.json'))).toBe(true)
+    const developerProbe = spawnSync(pythonCommand, [path.join(projectRoot, '.moluoxixi', 'scripts', 'get_developer.py')], { cwd: projectRoot, encoding: 'utf8' })
+    expect(developerProbe).toMatchObject({ status: 0, stderr: '' })
+    expect(developerProbe.stdout).toContain('tester')
     expect(fs.existsSync(path.join(projectRoot, '.moluoxixi', 'LICENSE'))).toBe(false)
     expect(fs.existsSync(path.join(projectRoot, '.moluoxixi', 'COPYRIGHT'))).toBe(false)
     expect(fs.existsSync(path.join(projectRoot, '.moluoxixi', 'THIRD_PARTY_NOTICES.md'))).toBe(false)
@@ -311,6 +330,62 @@ describe('init-project skill', () => {
     expect(JSON.parse(updated.stdout)).toMatchObject({ conflicts: [], created: [], updated: [] })
   })
 
+  it('treats explicit monorepo mode switches as authoritative', () => {
+    const projectRoot = temporaryProject()
+    const missing = runInitializer(projectRoot, ['--platform', 'codex', '--monorepo'])
+    expect(missing.status).toBe(1)
+    expect(missing.stderr).toContain('no workspace packages were detected')
+
+    const emptyWorkspaceRoot = temporaryProject()
+    fs.writeFileSync(path.join(emptyWorkspaceRoot, 'package.json'), '{"workspaces":["packages/*"]}\n')
+    const emptyWorkspace = runInitializer(emptyWorkspaceRoot, ['--platform', 'codex', '--monorepo'])
+    expect(emptyWorkspace.status).toBe(1)
+    expect(emptyWorkspace.stderr).toContain('no workspace packages were detected')
+
+    expect(runInitializer(projectRoot, [
+      '--platform',
+      'codex',
+      '--package',
+      'web=packages/web:frontend',
+    ])).toMatchObject({ status: 0, stderr: '' })
+    const single = runInitializer(projectRoot, ['--platform', 'codex', '--no-monorepo'])
+    expect(single).toMatchObject({ status: 0, stderr: '' })
+    expect(single.summary?.packages).toEqual([])
+    const manifest = JSON.parse(fs.readFileSync(path.join(projectRoot, '.moluoxixi', 'airules-init-manifest.json'), 'utf8')) as {
+      project: { defaultPackage?: string, packages: unknown[] }
+    }
+    expect(manifest.project.packages).toEqual([])
+    expect(manifest.project.defaultPackage).toBeUndefined()
+  })
+
+  it('re-detects project type and permits an explicit override', () => {
+    const projectRoot = temporaryProject()
+    expect(runInitializer(projectRoot, ['--platform', 'codex'])).toMatchObject({ status: 0, stderr: '' })
+    fs.writeFileSync(path.join(projectRoot, 'package.json'), '{"dependencies":{"react":"latest"}}\n')
+
+    const detected = runInitializer(projectRoot, ['--platform', 'codex'])
+    expect(detected).toMatchObject({ status: 0, stderr: '' })
+    expect(detected.summary).toMatchObject({ projectType: 'frontend' })
+    const overridden = runInitializer(projectRoot, ['--platform', 'codex', '--project-type', 'backend'])
+    expect(overridden).toMatchObject({ status: 0, stderr: '' })
+    expect(overridden.summary).toMatchObject({ projectType: 'backend' })
+  })
+
+  it('reuses an existing developer workspace without overwriting journals', () => {
+    const projectRoot = temporaryProject()
+    const workspace = path.join(projectRoot, '.moluoxixi', 'workspace', 'tester')
+    fs.mkdirSync(workspace, { recursive: true })
+    fs.writeFileSync(path.join(workspace, 'journal-1.md'), '# Existing journal\n')
+    fs.writeFileSync(path.join(workspace, 'index.md'), '# Existing index\n')
+
+    const initialized = runInitializer(projectRoot, ['--platform', 'codex', '--developer', 'tester'])
+
+    expect(initialized).toMatchObject({ status: 0, stderr: '' })
+    expect(fs.readFileSync(path.join(workspace, 'journal-1.md'), 'utf8')).toBe('# Existing journal\n')
+    expect(fs.readFileSync(path.join(workspace, 'index.md'), 'utf8')).toBe('# Existing index\n')
+    expect(fs.readFileSync(path.join(projectRoot, '.moluoxixi', '.developer'), 'utf8')).toContain('name=tester')
+  })
+
   it('migrates pristine legacy managed paths, JSON entries, and managed blocks', () => {
     const projectRoot = temporaryProject()
     const args = ['--platform', 'claude,opencode,pi']
@@ -319,6 +394,7 @@ describe('init-project skill', () => {
     const manifestPath = path.join(projectRoot, '.moluoxixi', 'airules-init-manifest.json')
     const manifest = JSON.parse(fs.readFileSync(manifestPath, 'utf8')) as {
       entries: Record<string, { baselineHash: string, mode: string, platform: string, templateHash: string }>
+      schemaVersion: number
       [key: string]: unknown
     }
     const legacyTitle = `${legacyBrand[0].toUpperCase()}${legacyBrand.slice(1)}`
@@ -382,6 +458,7 @@ describe('init-project skill', () => {
     const manifestPath = path.join(projectRoot, '.moluoxixi', 'airules-init-manifest.json')
     const manifest = JSON.parse(fs.readFileSync(manifestPath, 'utf8')) as {
       entries: Record<string, { baselineHash: string, mode: string, platform: string, templateHash: string }>
+      schemaVersion: number
     }
     const currentPath = '.pi/extensions/moluoxixi/index.ts'
     const legacyPath = `.pi/extensions/${legacyBrand}/index.ts`
@@ -416,10 +493,12 @@ describe('init-project skill', () => {
     const manifestPath = path.join(projectRoot, '.moluoxixi', 'airules-init-manifest.json')
     const manifest = JSON.parse(fs.readFileSync(manifestPath, 'utf8')) as {
       entries: Record<string, { baselineHash: string, mode: string, platform: string, templateHash: string }>
+      schemaVersion: number
     }
     const pristinePath = '.codex/retired-pristine.txt'
     const modifiedPath = '.codex/retired-modified.txt'
     const baseline = 'retired baseline\n'
+    manifest.schemaVersion = 1
     for (const relativePath of [pristinePath, modifiedPath]) {
       fs.writeFileSync(path.join(projectRoot, ...relativePath.split('/')), baseline)
       manifest.entries[relativePath] = {
@@ -454,11 +533,31 @@ describe('init-project skill', () => {
     expect(JSON.parse(preview.stdout)).toMatchObject({ conflicts: [], dryRun: true })
     expect(fs.existsSync(projectRuntime)).toBe(true)
 
-    const removed = runRuntime(projectRuntime, ['uninstall'], projectRoot)
+    const removed = runRuntime(projectRuntime, ['uninstall', '--yes'], projectRoot)
     expect(removed).toMatchObject({ status: 0, stderr: '' })
     expect(fs.existsSync(path.join(projectRoot, '.moluoxixi', 'airules-init-manifest.json'))).toBe(false)
     expect(fs.readFileSync(unknown, 'utf8')).toBe('# Keep me\n')
     expect(fs.existsSync(path.join(projectRoot, '.claude', 'settings.json'))).toBe(false)
+  })
+
+  it('restores pre-existing JSON and managed-block files during uninstall', () => {
+    const projectRoot = temporaryProject()
+    const agents = '# User rules\n'
+    const settings = '{"custom":true}\n'
+    const codex = 'model = "gpt-test"\n'
+    fs.mkdirSync(path.join(projectRoot, '.claude'), { recursive: true })
+    fs.mkdirSync(path.join(projectRoot, '.codex'), { recursive: true })
+    fs.writeFileSync(path.join(projectRoot, 'AGENTS.md'), agents)
+    fs.writeFileSync(path.join(projectRoot, '.claude', 'settings.json'), settings)
+    fs.writeFileSync(path.join(projectRoot, '.codex', 'config.toml'), codex)
+
+    expect(runInitializer(projectRoot, ['--platform', 'claude,codex'])).toMatchObject({ status: 0, stderr: '' })
+    const projectRuntime = path.join(projectRoot, '.moluoxixi', 'runtime', 'moluoxixi.mjs')
+    const removed = runRuntime(projectRuntime, ['uninstall', '--yes'], projectRoot)
+    expect(removed).toMatchObject({ status: 0, stderr: '' })
+    expect(fs.readFileSync(path.join(projectRoot, 'AGENTS.md'), 'utf8')).toBe(agents)
+    expect(fs.readFileSync(path.join(projectRoot, '.claude', 'settings.json'), 'utf8')).toBe(settings)
+    expect(fs.readFileSync(path.join(projectRoot, '.codex', 'config.toml'), 'utf8')).toBe(codex)
   })
 
   it('reports modified owned files as uninstall conflicts without deleting during review', () => {
@@ -475,8 +574,27 @@ describe('init-project skill', () => {
     expect(fs.existsSync(path.join(projectRoot, '.claude', 'settings.json'))).toBe(true)
   })
 
+  it('keeps uninstall confirmation separate from force replacement', () => {
+    const projectRoot = temporaryProject()
+    expect(runInitializer(projectRoot, ['--platform', 'claude'])).toMatchObject({ status: 0, stderr: '' })
+    const projectRuntime = path.join(projectRoot, '.moluoxixi', 'runtime', 'moluoxixi.mjs')
+    const workflow = path.join(projectRoot, '.moluoxixi', 'workflow.md')
+    fs.appendFileSync(workflow, '\n# User edit\n')
+
+    const refused = runRuntime(projectRuntime, ['uninstall'], projectRoot)
+    expect(refused.status).toBe(1)
+    expect(refused.stderr).toContain('requires --yes')
+    const confirmed = runRuntime(projectRuntime, ['uninstall', '-y'], projectRoot)
+    expect(confirmed.status).toBe(2)
+    expect(JSON.parse(confirmed.stdout).conflicts).toContain('.moluoxixi/workflow.md')
+    expect(fs.readFileSync(workflow, 'utf8')).toContain('# User edit')
+  })
+
   it('provides local channel and memory command surfaces without an upstream package install', () => {
     expect(runRuntime(roleRuntime, ['--version'], roleRoot)).toMatchObject({ status: 0, stderr: '', stdout: '0.6.7-airules.1\n' })
+    expect(runRuntime(roleRuntime, ['-v'], roleRoot)).toMatchObject({ status: 0, stderr: '', stdout: '0.6.7-airules.1\n' })
+    expect(runRuntime(roleRuntime, ['update', '--help'], roleRoot)).toMatchObject({ status: 0, stderr: '' })
+    expect(runRuntime(roleRuntime, ['workflow', '--help'], roleRoot)).toMatchObject({ status: 0, stderr: '' })
     expect(runRuntime(roleRuntime, ['mem', 'help'], roleRoot)).toMatchObject({ status: 0, stderr: '' })
     expect(runRuntime(roleRuntime, ['channel', '--help'], roleRoot)).toMatchObject({ status: 0, stderr: '' })
     const localSkillFiles = ['channel', 'meta', 'session-insight']
@@ -526,13 +644,15 @@ describe('init-project skill', () => {
     const settingsPath = path.join(projectRoot, '.pi', 'settings.json')
     const manifestPath = path.join(projectRoot, '.moluoxixi', 'airules-init-manifest.json')
     const manifest = JSON.parse(fs.readFileSync(manifestPath, 'utf8')) as {
-      entries: Record<string, { baselineHash: string }>
+      entries: Record<string, { baselineContent?: string, baselineHash: string, templateContent?: string }>
     }
     const oldSettings = JSON.parse(fs.readFileSync(settingsPath, 'utf8')) as Record<string, unknown>
     oldSettings.enableSkillCommands = false
     const oldContent = `${JSON.stringify(oldSettings, null, 2)}\n`
     fs.writeFileSync(settingsPath, oldContent)
     manifest.entries['.pi/settings.json'].baselineHash = contentHash(oldContent)
+    manifest.entries['.pi/settings.json'].baselineContent = Buffer.from(oldContent).toString('base64')
+    manifest.entries['.pi/settings.json'].templateContent = Buffer.from(oldContent).toString('base64')
     fs.writeFileSync(manifestPath, `${JSON.stringify(manifest, null, 2)}\n`)
 
     const upgraded = runInitializer(projectRoot, args)
@@ -548,6 +668,41 @@ describe('init-project skill', () => {
     expect(JSON.parse(fs.readFileSync(settingsPath, 'utf8'))).toMatchObject({ enableSkillCommands: false })
     const finalManifest = JSON.parse(fs.readFileSync(manifestPath, 'utf8')) as { entries: Record<string, { baselineHash: string }> }
     expect(finalManifest.entries['.pi/settings.json'].baselineHash).not.toBe(contentHash(fs.readFileSync(settingsPath)))
+  })
+
+  it('appends versioned config sections without replacing user edits', () => {
+    const projectRoot = temporaryProject()
+    const args = ['--platform', 'codex']
+    expect(runInitializer(projectRoot, args)).toMatchObject({ status: 0, stderr: '' })
+
+    const configPath = path.join(projectRoot, '.moluoxixi', 'config.yaml')
+    const manifestPath = path.join(projectRoot, '.moluoxixi', 'airules-init-manifest.json')
+    const versionPath = path.join(projectRoot, '.moluoxixi', '.version')
+    const current = fs.readFileSync(configPath, 'utf8')
+    const oldTemplate = current.replace(/#-+\n# Codex \(dispatch behavior\)[\s\S]*$/u, '').replace(/\s*$/u, '\n')
+    const userConfig = `${oldTemplate}\n# user setting\ncustom_value: true\n`
+    fs.writeFileSync(configPath, userConfig)
+    fs.writeFileSync(versionPath, '0.5.6\n')
+    const manifest = JSON.parse(fs.readFileSync(manifestPath, 'utf8')) as {
+      entries: Record<string, { baselineContent?: string, baselineHash: string, templateContent?: string }>
+    }
+    manifest.entries['.moluoxixi/config.yaml'].baselineHash = contentHash(oldTemplate)
+    manifest.entries['.moluoxixi/config.yaml'].baselineContent = Buffer.from(oldTemplate).toString('base64')
+    manifest.entries['.moluoxixi/config.yaml'].templateContent = Buffer.from(oldTemplate).toString('base64')
+    manifest.entries['.moluoxixi/.version'].baselineHash = contentHash('0.5.6\n')
+    manifest.entries['.moluoxixi/.version'].baselineContent = Buffer.from('0.5.6\n').toString('base64')
+    manifest.entries['.moluoxixi/.version'].templateContent = Buffer.from('0.5.6\n').toString('base64')
+    fs.writeFileSync(manifestPath, `${JSON.stringify(manifest, null, 2)}\n`)
+
+    const upgraded = runInitializer(projectRoot, args)
+
+    expect(upgraded.summary?.conflicts).toEqual([])
+    expect(upgraded).toMatchObject({ status: 0, stderr: '' })
+    expect(upgraded.summary?.updated).toContain('.moluoxixi/config.yaml')
+    const next = fs.readFileSync(configPath, 'utf8')
+    expect(next).toContain('# user setting\ncustom_value: true')
+    expect(next).toContain('# Codex (dispatch behavior)')
+    expect(next.match(/# Codex \(dispatch behavior\)/gu)).toHaveLength(1)
   })
 
   it('distributes only the self-contained initializer and runs it without the installed role', async () => {

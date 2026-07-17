@@ -2,9 +2,11 @@ import { Buffer } from 'node:buffer'
 import { spawnSync } from 'node:child_process'
 import fs from 'node:fs'
 import path from 'node:path'
+import process from 'node:process'
 import {
   canonicalSkillName,
   HOST_ASSET_ROOT,
+  LEGACY_BRAND,
   LOCAL_SKILLS_ROOT,
   NAMESPACED_SKILL_RENAMES,
   PROJECT_ASSET_ROOT,
@@ -14,6 +16,7 @@ import {
   SKILL_ROOT,
   toPosix,
 } from './constants.mjs'
+import { sanitizePackageName } from './core/project-detector.mjs'
 import {
   commandTarget,
   HOOK_ROOTS,
@@ -24,20 +27,60 @@ import {
 } from './hosts/catalog.mjs'
 
 export function requirePython(command) {
-  const probe = spawnSync(command, ['--version'], { encoding: 'utf8', windowsHide: true })
-  const output = `${probe.stdout ?? ''}\n${probe.stderr ?? ''}`
-  const match = output.match(/Python\s+(\d+)\.(\d+)/u)
-  if (probe.error || probe.status !== 0 || !match)
-    throw new Error(`Python command is unavailable: ${command}`)
-  const major = Number(match[1])
-  const minor = Number(match[2])
-  if (major < 3 || (major === 3 && minor < 9))
-    throw new Error(`Python 3.9+ is required; found ${match[0]}`)
+  const candidates = command
+    ? [command]
+    : process.platform === 'win32'
+      ? ['python', 'python3', 'py -3']
+      : ['python3', 'python']
+  if (process.env.MOLUOXIXI_SKIP_PYTHON_CHECK === '1')
+    return candidates[0]
+  const failures = []
+  for (const candidate of candidates) {
+    const [executable, ...prefixArgs] = parseCommand(candidate)
+    const probe = spawnSync(executable, [...prefixArgs, '--version'], { encoding: 'utf8', windowsHide: true })
+    const output = `${probe.stdout ?? ''}\n${probe.stderr ?? ''}`
+    const match = output.match(/Python\s+(\d+)\.(\d+)/u)
+    if (!probe.error && probe.status === 0 && match) {
+      const major = Number(match[1])
+      const minor = Number(match[2])
+      if (major > 3 || (major === 3 && minor >= 9))
+        return candidate
+      failures.push(`${candidate}: ${match[0]} is older than 3.9`)
+      continue
+    }
+    if (command && ['EACCES', 'EPERM'].includes(probe.error?.code))
+      return candidate
+    failures.push(`${candidate}: unavailable`)
+  }
+  throw new Error(`Python 3.9+ is required; tried ${failures.join(', ')}`)
 }
 
-export function buildPlan(platforms, pythonCommand, developer, withStatusline = false, packages = [], defaultPackage) {
+function parseCommand(value) {
+  const tokens = []
+  const expression = /"([^"]*)"|'([^']*)'|(\S+)/gu
+  for (const match of String(value).matchAll(expression))
+    tokens.push(match[1] ?? match[2] ?? match[3])
+  if (tokens.length === 0 || /["']/u.test(String(value).replace(expression, '')))
+    throw new Error(`Invalid Python command: ${value}`)
+  return tokens
+}
+
+export function buildPlan(platforms, pythonCommand, withStatusline = false, packages = [], defaultPackage, projectType = 'fullstack', extras = {}) {
   const plan = new Map()
-  addSharedRuntime(plan, pythonCommand, developer, packages, defaultPackage)
+  const specs = Array.isArray(extras.specs)
+    ? extras.specs
+    : extras.spec?.files
+      ? packages.length === 0
+        ? [{ ...extras.spec }]
+        : packages.map(pkg => ({ ...extras.spec, packageName: pkg.name }))
+      : []
+  const externalPackages = new Set(specs.map(spec => spec.packageName).filter(Boolean))
+  const hasSingleProjectSpec = packages.length === 0 && specs.length > 0
+  addSharedRuntime(plan, pythonCommand, packages, defaultPackage, projectType, extras.workflow, extras.configSections, { externalPackages, hasSingleProjectSpec })
+  for (const spec of specs) {
+    const packageName = spec.packageName ? sanitizePackageName(spec.packageName) : ''
+    addExternalSpec(plan, spec.files, spec.strategy ?? 'skip', packageName, extras.projectRoot)
+  }
   for (const platform of platforms)
     addPlatform(plan, platform, pythonCommand, platform === 'gemini' && platforms.includes('codex'), withStatusline)
   return plan
@@ -104,9 +147,22 @@ function addPlan(plan, relativePath, content, options = {}) {
     throw new Error(`Unsafe output path: ${relativePath}`)
   const buffer = Buffer.isBuffer(content) ? content : Buffer.from(content, 'utf8')
   const existing = plan.get(normalized)
-  if (existing && !existing.content.equals(buffer))
-    throw new Error(`Conflicting templates target ${normalized}`)
-  plan.set(normalized, { content: buffer, executable: options.executable === true, merge: options.merge ?? 'replace', platform: options.platform ?? 'shared' })
+  if (existing && !existing.content.equals(buffer)) {
+    if (!options.override)
+      throw new Error(`Conflicting templates target ${normalized}`)
+  }
+  plan.set(normalized, {
+    content: buffer,
+    configSections: options.configSections,
+    executable: options.executable === true,
+    force: options.force === true,
+    managed: options.managed !== false,
+    merge: options.merge ?? 'replace',
+    platform: options.platform ?? 'shared',
+    preserveExisting: options.preserveExisting === true,
+    override: options.override === true,
+    skipExisting: options.skipExisting === true,
+  })
 }
 
 function addTree(plan, sourceRoot, targetRoot, options = {}) {
@@ -125,8 +181,12 @@ function addTree(plan, sourceRoot, targetRoot, options = {}) {
     const resolved = options.context || options.python ? resolveTemplate(transformed, options.context, options.python) : transformed
     addPlan(plan, target, resolved, {
       executable: target.endsWith('.py') || target.endsWith('.mjs'),
+      force: options.force,
+      managed: options.managed,
       merge,
       platform: options.platform,
+      preserveExisting: options.preserveExisting,
+      skipExisting: options.skipExisting,
     })
   }
 }
@@ -138,6 +198,9 @@ function localizeProjectRuntime(relativePath, content) {
     .replaceAll('moluoxixi workflow', `node ${projectPath('runtime', 'moluoxixi.mjs')} workflow`)
     .replaceAll('moluoxixi update', `node ${projectPath('runtime', 'moluoxixi.mjs')} update`)
     .replaceAll('.moluoxixi', '.moluoxixi')
+    .replaceAll(LEGACY_BRAND, 'moluoxixi')
+    .replaceAll(`${LEGACY_BRAND[0].toUpperCase()}${LEGACY_BRAND.slice(1)}`, 'Moluoxixi')
+    .replaceAll(LEGACY_BRAND.toUpperCase(), 'MOLUOXIXI')
   for (const [namespacedName, canonicalName] of Object.entries(NAMESPACED_SKILL_RENAMES))
     localized = localized.replaceAll(namespacedName, canonicalName)
   localized = localized
@@ -167,8 +230,16 @@ function localizeProjectRuntime(relativePath, content) {
   return localized
 }
 
-function transformHostAsset(platform, relativePath, content, pythonCommand) {
+function transformHostAsset(platform, relativePath, content, pythonCommand, withStatusline = false) {
   let transformed = localizeProjectRuntime(relativePath, content)
+  if (platform === 'claude' && relativePath === 'settings.json' && withStatusline) {
+    const settings = JSON.parse(transformed)
+    settings.statusLine = {
+      type: 'command',
+      command: '{{PYTHON_CMD}} .claude/hooks/statusline.py',
+    }
+    transformed = `${JSON.stringify(settings, null, 2)}\n`
+  }
   const agentType = detectPullAgentType(relativePath)
   if (!agentType || !['codex', 'gemini', 'qoder', 'copilot', 'pi', 'zcode', 'trae'].includes(platform))
     return transformed
@@ -249,33 +320,74 @@ function mapCopilotTool(tool) {
   }[tool] ?? []
 }
 
-function addSharedRuntime(plan, pythonCommand, developer, packages, defaultPackage) {
+function addSharedRuntime(plan, pythonCommand, packages, defaultPackage, projectType, workflow, configSections, specSelection) {
   addTree(plan, path.join(PROJECT_ASSET_ROOT, 'scripts'), projectPath('scripts'), { python: pythonCommand, transform: localizeProjectRuntime })
   addTree(plan, path.join(PROJECT_ASSET_ROOT, 'agents'), projectPath('agents'), { python: pythonCommand, transform: localizeProjectRuntime })
   addTree(plan, RUNTIME_ROOT, projectPath('runtime'), { merge: 'replace' })
   addTree(plan, SKILL_ROOT, projectPath('runtime', 'update', 'init-project'), { merge: 'replace' })
-  addPlan(plan, projectPath('workflow.md'), resolveTemplate(localizeProjectRuntime('workflow.md', readProjectText('workflow.md')), undefined, pythonCommand))
-  addPlan(plan, projectPath('config.yaml'), buildProjectConfig(packages, defaultPackage))
+  const workflowContent = workflow?.content ?? readProjectText('workflow.md')
+  addPlan(plan, projectPath('workflow.md'), resolveTemplate(localizeProjectRuntime('workflow.md', workflowContent), undefined, pythonCommand), {
+    managed: workflow?.id === undefined || workflow.id === 'native',
+    force: workflow?.force === true,
+  })
+  addPlan(plan, projectPath('config.yaml'), buildProjectConfig(packages, defaultPackage), { configSections, merge: 'config' })
   addPlan(plan, projectPath('.version'), '0.6.7-airules.1\n')
   addPlan(plan, projectPath('.gitignore'), readProjectText('gitignore.txt'))
-  addPlan(plan, projectPath('workspace', 'index.md'), resolveTemplate(localizeProjectRuntime('workspace-index.md', readProjectText('workspace-index.md')), undefined, pythonCommand))
-  addPlan(plan, projectPath('tasks', '.gitkeep'), '')
-  for (const section of ['backend', 'frontend', 'guides']) {
-    const root = path.join(PROJECT_ASSET_ROOT, 'spec', section)
-    addTree(plan, root, projectPath('spec', section), { rename: relative => relative.replace(/\.txt$/u, ''), transform: localizeProjectRuntime })
+  addPlan(plan, projectPath('workspace', 'index.md'), resolveTemplate(localizeProjectRuntime('workspace-index.md', readProjectText('workspace-index.md')), undefined, pythonCommand), { managed: false, preserveExisting: true })
+  addPlan(plan, projectPath('tasks', '.gitkeep'), '', { managed: false, preserveExisting: true })
+  if (!specSelection.hasSingleProjectSpec)
+    addTree(plan, path.join(PROJECT_ASSET_ROOT, 'spec', 'guides'), projectPath('spec', 'guides'), { managed: false, preserveExisting: true, rename: relative => relative.replace(/\.txt$/u, ''), transform: localizeProjectRuntime })
+  if (packages.length === 0 && !specSelection.hasSingleProjectSpec) {
+    const sections = projectType === 'frontend' ? ['frontend'] : projectType === 'backend' ? ['backend'] : ['backend', 'frontend']
+    for (const section of sections) {
+      addTree(plan, path.join(PROJECT_ASSET_ROOT, 'spec', section), projectPath('spec', section), {
+        rename: relative => relative.replace(/\.txt$/u, ''),
+        managed: false,
+        preserveExisting: true,
+        transform: localizeProjectRuntime,
+      })
+    }
   }
   for (const pkg of packages) {
+    if (specSelection.externalPackages.has(pkg.name))
+      continue
     const sections = pkg.type === 'frontend' ? ['frontend'] : pkg.type === 'backend' ? ['backend'] : ['backend', 'frontend']
     for (const section of sections) {
-      addTree(plan, path.join(PROJECT_ASSET_ROOT, 'spec', section), projectPath('spec', pkg.name, section), {
+      addTree(plan, path.join(PROJECT_ASSET_ROOT, 'spec', section), projectPath('spec', sanitizePackageName(pkg.name), section), {
         rename: relative => relative.replace(/\.txt$/u, ''),
+        managed: false,
+        preserveExisting: true,
         transform: localizeProjectRuntime,
       })
     }
   }
   addPlan(plan, 'AGENTS.md', fs.readFileSync(path.join(PROJECT_ASSET_ROOT, 'AGENTS.md')), { merge: 'block-moluoxixi' })
-  if (developer)
-    addDeveloperFiles(plan, developer)
+}
+
+function addExternalSpec(plan, files, strategy, packageName, projectRoot) {
+  const targetRoot = projectPath('spec', ...(packageName ? [packageName] : []))
+  plan.externalSpecRoots ??= new Set()
+  plan.externalSpecRoots.add(targetRoot)
+  if (strategy === 'skip' && projectRoot && fs.existsSync(path.join(projectRoot, ...targetRoot.split('/'))))
+    return
+  if (strategy === 'overwrite') {
+    plan.specReplacements ??= new Set()
+    plan.specReplacements.add(targetRoot)
+  }
+  for (const [relativePath, content] of files) {
+    const normalized = relativePath.replace(/\\/gu, '/').replace(new RegExp(`^\\.?(?:moluoxixi|${LEGACY_BRAND})/spec/`, 'u'), '').replace(/^spec\//u, '')
+    if (!normalized || normalized.startsWith('../') || normalized.includes('\0'))
+      throw new Error(`Unsafe registry spec path: ${relativePath}`)
+    const source = Buffer.isBuffer(content) ? content : Buffer.from(String(content), 'utf8')
+    const decoded = source.toString('utf8')
+    const projected = Buffer.from(decoded, 'utf8').equals(source) ? localizeProjectRuntime(normalized, decoded) : source
+    addPlan(plan, path.posix.join(targetRoot, normalized), projected, {
+      managed: false,
+      force: strategy === 'overwrite',
+      preserveExisting: strategy === 'append',
+      override: true,
+    })
+  }
 }
 
 function buildProjectConfig(packages, defaultPackage) {
@@ -283,19 +395,16 @@ function buildProjectConfig(packages, defaultPackage) {
   if (packages.length === 0)
     return content
   content = `${content.replace(/\s*$/u, '')}\n\n# Reviewed package map generated by AIRules init-project.\npackages:\n`
-  for (const pkg of packages)
-    content += `  ${JSON.stringify(pkg.name)}:\n    path: ${JSON.stringify(pkg.path)}\n`
+  for (const pkg of packages) {
+    content += `  ${JSON.stringify(sanitizePackageName(pkg.name))}:\n    path: ${JSON.stringify(pkg.path)}\n`
+    if (pkg.isSubmodule)
+      content += '    type: submodule\n'
+    else if (pkg.isGitRepo)
+      content += '    git: true\n'
+  }
   if (defaultPackage)
     content += `default_package: ${JSON.stringify(defaultPackage)}\n`
   return content
-}
-
-function addDeveloperFiles(plan, developer) {
-  if (!/^[A-Za-z0-9][\w.-]{0,63}$/u.test(developer))
-    throw new Error('Developer name must use 1-64 letters, digits, dots, underscores, or hyphens')
-  addPlan(plan, projectPath('.developer'), `${developer}\n`)
-  addPlan(plan, projectPath('workspace', developer, 'index.md'), `# ${developer} Workspace\n\n## Sessions\n\n- [journal-1.md](journal-1.md)\n`)
-  addPlan(plan, projectPath('workspace', developer, 'journal-1.md'), `# ${developer} Journal\n\n`)
 }
 
 function commonTemplates(platform, pythonCommand) {
@@ -343,7 +452,7 @@ function addDirectPlatformAssets(plan, platform, pythonCommand, withStatusline) 
     python: pythonCommand,
     context: PLATFORM_CONTEXT[platform],
     platform,
-    transform: (relativePath, content) => transformHostAsset(platform, relativePath, content, pythonCommand),
+    transform: (relativePath, content) => transformHostAsset(platform, relativePath, content, pythonCommand, withStatusline),
     filter: relative => platform !== 'claude' || relative !== 'hooks/statusline.py' || withStatusline,
     rename: relative => renameProjectedSkillPath(relative.endsWith('.ts.txt') ? relative.slice(0, -4) : relative),
   })

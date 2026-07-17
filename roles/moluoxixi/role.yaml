@@ -6,6 +6,7 @@ canonical_root: roles/moluoxixi
 description: Self-contained Moluoxixi role assets and AIRules-owned project initialization.
 assets:
   skills: skills
+  mcp: mcp
 distribution:
   bootstrap_manifest: constants/skills.ts
   full_role_path_required: true

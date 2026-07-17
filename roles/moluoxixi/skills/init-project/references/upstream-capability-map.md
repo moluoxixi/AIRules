@@ -7,11 +7,14 @@ Parity baseline: upstream revision `e7c5ead4d0dfd717d11a40b6bc0c80d8af94c49a`.
 | `init` and re-init | `init-project` skill plus `scripts/init-project.mjs`; supports 18 hosts, developer identity, reviewed monorepo package maps, dry-run, conflict preservation, force, and optional Claude statusline |
 | `update` | `.moluoxixi/runtime/moluoxixi.mjs update`; uses the embedded initializer, exact baseline hashes, safe brand migration, JSON/block merging, and transactional rollback |
 | `upgrade` | Global `airules sync --role moluoxixi`; project runtime never installs an npm CLI |
-| `uninstall` | `.moluoxixi/runtime/moluoxixi.mjs uninstall`; manifest-owned files only, with dry-run and modified-file conflicts |
-| `workflow` | Project runtime `workflow`; bundled native template or a human-reviewed local Markdown file, with missing-Agent warnings |
+| `uninstall` | `.moluoxixi/runtime/moluoxixi.mjs uninstall`; manifest-owned files only, with dry-run, interactive confirmation or `--yes`, force kept separate, and modified-file conflicts |
+| `workflow` | Project runtime `workflow`; bundled native, local Markdown, or marketplace templates, with modified-file protection and missing-Agent warnings |
 | `channel` | Project runtime `channel`; bundled local dispatcher and channel store |
-| `mem` | Project runtime `mem`; bundled Claude, Codex, OpenCode, and Pi history adapters |
-| Remote workflow/spec registries | Skill-mediated fetch to a temporary local path, human review, then local workflow install or user-owned spec merge |
+| `mem` | Project runtime `mem`; bundled Claude, Codex, and Pi history adapters, including environment/global/project-local Pi `sessionDir` discovery |
+| Remote workflow/spec registries | Project initializer `--workflow/--workflow-source` and `--template/--registry`; anonymous public HTTP archives, credential-aware self-hosted/SSH Git, backend-stable workflow reads, typed errors, direct registries, per-package monorepo templates, persisted metadata, and directory-level skip/overwrite/append |
+| Versioned migrations | Embedded release manifests from 0.1.9 through 0.6.7; orphan detection, rename, owned rename-dir, delete, safe-file-delete, versioned config sections, complete managed-root snapshots, modified-file sidecar backups, breaking migration gate, and `--migrate` / `--allow-downgrade` |
+| Bootstrap/onboarding | First-init `00-bootstrap-guidelines` and new-developer `00-join-<slug>` task creation after developer initialization |
+| Global setup and MCP | Role-owned CodeGraph install/setup plus JSON/TOML MCP projection for supported hosts; absent during roleless sync |
 
 ## Host Contract
 
@@ -23,4 +26,4 @@ The supported host set is Claude, Cursor, OpenCode, Codex, Kilo, Kiro, Gemini, A
 
 ## Project Runtime Contract
 
-The project receives workflow scripts, task lifecycle commands, workspace journals, package-aware specs, channel runtime Agents, managed host assets, and an embedded updater. Unknown files are never adopted. Modified owned files require explicit force, and knowledge-bearing external templates require human review before application.
+The project receives workflow scripts, task lifecycle commands, workspace journals, package-aware specs, channel runtime Agents, managed host assets, and an embedded updater. Unknown files are never adopted except when an explicit registry `--overwrite` replaces its selected spec directory. Modified owned files require explicit force, and project-local update/uninstall preserve user-owned data and managed merge boundaries.

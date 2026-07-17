@@ -2,7 +2,8 @@ import { Buffer } from 'node:buffer'
 import { randomUUID } from 'node:crypto'
 import fs from 'node:fs'
 import path from 'node:path'
-import { GENERATOR_VERSION, MANIFEST_PATH, sha256, UPSTREAM_REVISION } from '../constants.mjs'
+import { GENERATOR_VERSION, MANIFEST_PATH, UPSTREAM_REVISION } from '../constants.mjs'
+import { createManifestEntry } from './ownership.mjs'
 import { assertSafeTarget } from './safety.mjs'
 
 export function commit(projectRoot, operations, manifest, platforms, options = {}) {
@@ -14,31 +15,28 @@ export function commit(projectRoot, operations, manifest, platforms, options = {
         transactionalRemove(operation.target, journal)
         continue
       }
-      if (operation.status !== 'created' && operation.status !== 'updated' && operation.status !== 'proposed')
+      if (operation.status !== 'created' && operation.status !== 'updated' && operation.status !== 'proposed' && operation.status !== 'restored')
         continue
       transactionalWrite(operation.target, operation.desired, operation.executable, projectRoot, createdDirs, journal)
     }
     const nextEntries = { ...manifest.entries }
     for (const operation of operations) {
-      if (operation.status === 'removed') {
+      if (operation.status === 'removed' || operation.status === 'restored' || operation.status === 'released') {
         delete nextEntries[operation.relativePath]
         continue
       }
       if (operation.status === 'preserved')
         continue
-      if (operation.managed === false)
+      if (operation.managed === false) {
+        delete nextEntries[operation.relativePath]
         continue
+      }
       if (operation.status === 'created' || operation.status === 'updated' || operation.status === 'unchanged') {
-        nextEntries[operation.relativePath] = {
-          baselineHash: sha256(operation.desired),
-          mode: operation.merge,
-          platform: operation.platform,
-          templateHash: sha256(operation.content),
-        }
+        nextEntries[operation.relativePath] = createManifestEntry(operation, manifest.entries[operation.relativePath])
       }
     }
     const nextManifest = Buffer.from(`${JSON.stringify({
-      schemaVersion: 1,
+      schemaVersion: 2,
       generatorVersion: GENERATOR_VERSION,
       upstreamRevision: UPSTREAM_REVISION,
       platforms: [...new Set([...(manifest.platforms ?? []), ...platforms])].sort(),
@@ -49,15 +47,14 @@ export function commit(projectRoot, operations, manifest, platforms, options = {
       project: {
         packages: options.packages ?? manifest.project?.packages ?? [],
         ...(options.defaultPackage ? { defaultPackage: options.defaultPackage } : {}),
+        type: options.projectType ?? manifest.project?.type ?? 'unknown',
+        ...(Object.hasOwn(options, 'workflow') ? options.workflow ? { workflow: options.workflow } : {} : manifest.project?.workflow ? { workflow: manifest.project.workflow } : {}),
+        ...(Object.hasOwn(options, 'registry') ? options.registry ? { registry: options.registry } : {} : manifest.project?.registry ? { registry: manifest.project.registry } : {}),
       },
       entries: Object.fromEntries(Object.entries(nextEntries).sort(([left], [right]) => left < right ? -1 : left > right ? 1 : 0)),
     }, null, 2)}\n`)
     const manifestTarget = assertSafeTarget(projectRoot, MANIFEST_PATH)
     transactionalWrite(manifestTarget, nextManifest, false, projectRoot, createdDirs, journal)
-    for (const entry of journal) {
-      if (entry.moved && entry.backup)
-        fs.rmSync(entry.backup, { force: true })
-    }
     for (const operation of operations) {
       if (operation.status === 'removed')
         removeEmptyParents(operation.target, projectRoot)
@@ -67,6 +64,19 @@ export function commit(projectRoot, operations, manifest, platforms, options = {
     const rollbackErrors = rollback(journal, createdDirs)
     const suffix = rollbackErrors.length > 0 ? `; rollback errors: ${rollbackErrors.join('; ')}` : ''
     throw new Error(`Initialization failed and was rolled back: ${String(error)}${suffix}`)
+  }
+  for (const entry of journal) {
+    if (entry.moved && entry.backup)
+      removeBestEffort(entry.backup)
+  }
+}
+
+function removeBestEffort(target) {
+  try {
+    fs.rmSync(target, { force: true })
+  }
+  catch {
+    // The new state is committed; a stale private backup is safer than rollback after commit.
   }
 }
 

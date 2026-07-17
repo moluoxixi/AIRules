@@ -8,6 +8,7 @@ import { extendsRoles, vendors } from '../constants/skills.js'
 
 interface RoleManifest {
   assets: {
+    mcp: string
     skills: string
   }
   canonical_root: string
@@ -36,6 +37,7 @@ interface RoleManifest {
 const roleRoot = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..')
 const legacyBrand = ['tre', 'llis'].join('')
 const legacyProjectRoot = `.${legacyBrand}`
+const workspaceFolderPlaceholder = '$' + '{workspaceFolder}'
 
 const selectedPaths = [
   'skills/init-project/assets/hosts',
@@ -51,9 +53,9 @@ const upstream = {
 }
 
 const selectedIntegrity = {
-  bytes: 1617785,
+  bytes: 1618041,
   files: 242,
-  hash: '5e462b63d1a804dc8c2909e2b2ef34db2a8085d0b65ee3b44fb99a8df235f3fb',
+  hash: 'da794faff1247b907b23599a38af25233e80592d0f8a1033406a87bcb4a76656',
 }
 
 const migratedRuntimePaths = [
@@ -214,6 +216,7 @@ describe('moluoxixi curated upstream role assets', () => {
     expect(sortPaths(fs.readdirSync(roleRoot))).toEqual(sortPaths([
       '__test__',
       'constants',
+      'mcp',
       'role.yaml',
       'skills',
     ]))
@@ -296,6 +299,7 @@ describe('moluoxixi curated upstream role assets', () => {
     const manifest = readRoleManifest()
     expect(manifest).toMatchObject({
       assets: {
+        mcp: 'mcp',
         skills: 'skills',
       },
       canonical_root: 'roles/moluoxixi',
@@ -325,6 +329,7 @@ describe('moluoxixi curated upstream role assets', () => {
       version: upstream.version,
     })
     expect(fs.statSync(resolveRolePath(manifest.assets.skills)).isDirectory()).toBe(true)
+    expect(fs.statSync(resolveRolePath(manifest.assets.mcp)).isDirectory()).toBe(true)
 
     expect(extendsRoles).toEqual([])
     expect(vendors).toHaveLength(1)
@@ -334,7 +339,25 @@ describe('moluoxixi curated upstream role assets', () => {
         { kind: 'role-assets', sourceDir: 'roles/moluoxixi' },
       ],
     })
-    expect(vendors[0]?.setup).toBeUndefined()
+    expect(vendors[0]?.setup).toEqual([
+      {
+        args: ['install', '--global', '@colbymchenry/codegraph'],
+        command: 'npm',
+        skipIfCommandAvailable: 'codegraph',
+      },
+      {
+        args: ['install', '--yes'],
+        command: 'codegraph',
+      },
+    ])
+    expect(JSON.parse(fs.readFileSync(resolveRolePath('mcp/mcp.json'), 'utf8'))).toEqual({
+      mcpServers: {
+        codegraph: {
+          args: ['serve', '--mcp', '--path', workspaceFolderPlaceholder],
+          command: 'codegraph',
+        },
+      },
+    })
     expect(selectedFiles()).toHaveLength(selectedIntegrity.files)
     const runtimeFiles = migratedRuntimePaths.flatMap(collectFiles)
     expect(runtimeFiles).toHaveLength(runtimeIntegrity.files)

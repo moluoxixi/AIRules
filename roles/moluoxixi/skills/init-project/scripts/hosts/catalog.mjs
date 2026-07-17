@@ -112,6 +112,7 @@ export function commandTarget(platform, name) {
     kilo: `.kilocode/workflows/${name}.md`,
     antigravity: `.agent/workflows/${name}.md`,
     devin: `.devin/workflows/moluoxixi-${name}.md`,
+    gemini: `.gemini/commands/moluoxixi/${name}.toml`,
     qoder: `.qoder/commands/moluoxixi-${name}.md`,
     codebuddy: `.codebuddy/commands/moluoxixi/${name}.md`,
     copilot: `.github/prompts/${name}.prompt.md`,
@@ -124,7 +125,8 @@ export function commandTarget(platform, name) {
 }
 
 export function normalizePlatforms(values) {
-  const expanded = values.flatMap(value => value === 'all' ? PLATFORM_ORDER : [value === 'claude-code' ? 'claude' : value])
+  const aliases = { 'claude-code': 'claude', 'windsurf': 'devin' }
+  const expanded = values.flatMap(value => value === 'all' ? PLATFORM_ORDER : [aliases[value] ?? value])
   const unique = [...new Set(expanded.filter(Boolean))]
   if (unique.length === 0)
     throw new Error('At least one --platform value is required')

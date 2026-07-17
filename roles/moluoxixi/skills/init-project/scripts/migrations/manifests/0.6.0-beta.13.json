@@ -1,0 +1,9 @@
+{
+  "version": "0.6.0-beta.13",
+  "description": "Beta patch: add the moluoxixi-core SDK package, finalize thread channel naming/context commands, and publish core with the CLI.",
+  "breaking": true,
+  "recommendMigrate": false,
+  "changelog": "**Enhancements:**\n- feat(core): add `@mindfoldhq/moluoxixi-core` with public `channel`, `task`, and `testing` exports for Node consumers.\n- feat(channel): use `moluoxixi channel create --type threads` for thread channels and add `moluoxixi channel context`, `moluoxixi channel title`, and `moluoxixi channel thread rename`.\n- feat(channel): add `--context-file` and `--context-raw` as canonical context flags while accepting `--linked-context-*` aliases.\n\n**Internal:**\n- chore(release): publish `@mindfoldhq/moluoxixi-core` before `@mindfoldhq/moluoxixi` with one version, one dist-tag, provenance, and packed CLI dependency checks.",
+  "migrations": [],
+  "notes": "Beta users should replace `moluoxixi channel create --type thread` with `moluoxixi channel create --type threads`. Run `moluoxixi update` to pull in the core SDK-backed channel commands. No file migration is required."
+}

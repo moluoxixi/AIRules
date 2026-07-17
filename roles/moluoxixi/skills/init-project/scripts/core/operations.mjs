@@ -2,22 +2,20 @@ import { Buffer } from 'node:buffer'
 import fs from 'node:fs'
 import path from 'node:path'
 import { GENERATOR_VERSION, MANIFEST_PATH, sha256, UPSTREAM_REVISION } from '../constants.mjs'
-import { mergeJson, migrateLegacyJson, upsertBlock } from './migration.mjs'
+import { mergeConfig, mergeJson, migrateLegacyJson, upgradeJson, upsertBlock } from './migration.mjs'
+import { decodeEntryContent, emptyManifest, normalizeManifest, ownershipFor, planOwnedRemoval } from './ownership.mjs'
 import { assertSafeTarget } from './safety.mjs'
 
 export function readManifest(projectRoot) {
   const file = path.join(projectRoot, ...MANIFEST_PATH.split('/'))
   if (!fs.existsSync(file))
-    return { schemaVersion: 1, generatorVersion: GENERATOR_VERSION, upstreamRevision: UPSTREAM_REVISION, entries: {} }
-  const parsed = JSON.parse(fs.readFileSync(file, 'utf8'))
-  if (parsed.schemaVersion !== 1 || typeof parsed.entries !== 'object' || parsed.entries === null || Array.isArray(parsed.entries))
-    throw new Error(`Unsupported or malformed manifest: ${file}`)
-  return parsed
+    return { ...emptyManifest(), generatorVersion: GENERATOR_VERSION, upstreamRevision: UPSTREAM_REVISION }
+  return normalizeManifest(JSON.parse(fs.readFileSync(file, 'utf8')), file)
 }
 
 export function prepareOperations(projectRoot, plan, manifest, force, createNew = false) {
   const operations = []
-  const result = { conflicts: [], created: [], preserved: [], proposed: [], removed: [], unchanged: [], updated: [] }
+  const result = { conflicts: [], created: [], preserved: [], proposed: [], removed: [], restored: [], unchanged: [], updated: [] }
   const recordConflict = (relativePath, item, desired = item.content) => {
     result.conflicts.push(relativePath)
     if (!createNew)
@@ -42,47 +40,77 @@ export function prepareOperations(projectRoot, plan, manifest, force, createNew 
     }
     const current = stats ? fs.readFileSync(target) : undefined
     const owned = manifest.entries[relativePath]
+    if (item.preserveExisting && current) {
+      operations.push({ ...item, current, desired: current, relativePath, target, status: owned ? 'released' : 'preserved' })
+      result.preserved.push(relativePath)
+      continue
+    }
+    if (item.skipExisting && current && !owned) {
+      operations.push({ ...item, current, desired: current, relativePath, target, status: 'preserved' })
+      result.preserved.push(relativePath)
+      continue
+    }
     let desired = item.content
     try {
       if (current && item.merge === 'json') {
         const template = JSON.parse(item.content.toString('utf8'))
-        if (!owned || owned.baselineHash !== sha256(current)) {
-          const migrated = migrateLegacyJson(JSON.parse(current.toString('utf8')), template)
-          desired = Buffer.from(`${JSON.stringify(mergeJson(migrated, template), null, 2)}\n`)
-        }
+        const migrated = migrateLegacyJson(JSON.parse(current.toString('utf8')), template)
+        const previousTemplate = decodeEntryContent(owned, 'templateContent')
+        const merged = previousTemplate
+          ? upgradeJson(migrated, JSON.parse(previousTemplate.toString('utf8')), template)
+          : mergeJson(migrated, template)
+        desired = Buffer.from(`${JSON.stringify(merged, null, 2)}\n`)
+      }
+      else if (current && item.merge === 'config') {
+        desired = Buffer.from(mergeConfig(current.toString('utf8'), item.content.toString('utf8'), owned, item.configSections))
       }
       else if (item.merge.startsWith('block-')) {
         desired = Buffer.from(upsertBlock(current?.toString('utf8') ?? '', item.content.toString('utf8'), item.merge))
       }
     }
     catch (error) {
-      if (!force) {
+      if (!force && !item.force) {
         recordConflict(relativePath, item, desired)
         continue
       }
     }
-    if (!current) {
-      operations.push({ ...item, desired, relativePath, target, status: 'created' })
+    if (!current && owned) {
+      operations.push({ ...item, current, desired, ownership: ownershipFor(owned, current), relativePath, target, status: 'preserved' })
+      result.preserved.push(relativePath)
+    }
+    else if (!current) {
+      operations.push({ ...item, current, desired, ownership: ownershipFor(owned, current), relativePath, target, status: 'created' })
       result.created.push(relativePath)
     }
     else if (current.equals(desired)) {
       const remainsOwned = owned && (owned.baselineHash === sha256(current) || current.equals(item.content))
       const status = remainsOwned ? 'unchanged' : 'preserved'
       result[status].push(relativePath)
-      operations.push({ ...item, desired, relativePath, target, status })
+      operations.push({ ...item, current, desired, ownership: ownershipFor(owned, current), relativePath, target, status })
     }
-    else if (item.merge === 'json' || item.merge.startsWith('block-') || force || (owned && owned.baselineHash === sha256(current))) {
-      operations.push({ ...item, desired, relativePath, target, status: 'updated' })
+    else if (item.merge === 'json' || item.merge === 'config' || item.merge.startsWith('block-') || force || item.force || (owned && owned.baselineHash === sha256(current))) {
+      operations.push({ ...item, current, desired, ownership: ownershipFor(owned, current), relativePath, target, status: 'updated' })
       result.updated.push(relativePath)
     }
     else {
       recordConflict(relativePath, item, desired)
     }
   }
+  const replacementRemovals = collectSpecReplacementRemovals(projectRoot, plan.specReplacements, plan, result)
+  for (const relativePath of replacementRemovals) {
+    const target = assertSafeTarget(projectRoot, relativePath)
+    operations.push({ relativePath, target, status: 'removed' })
+    result.removed.push(relativePath)
+  }
   for (const [relativePath, owned] of Object.entries(manifest.entries)) {
-    if (plan.has(relativePath))
+    if (plan.has(relativePath) || replacementRemovals.has(relativePath))
       continue
     const target = assertSafeTarget(projectRoot, relativePath)
+    if (isUserDataPath(relativePath)) {
+      operations.push({ relativePath, target, status: 'released' })
+      result.preserved.push(relativePath)
+      continue
+    }
     const stats = fs.lstatSync(target, { throwIfNoEntry: false })
     if (!stats) {
       operations.push({ relativePath, target, status: 'removed' })
@@ -91,13 +119,60 @@ export function prepareOperations(projectRoot, plan, manifest, force, createNew 
     else if (!stats.isFile() || stats.isSymbolicLink()) {
       result.conflicts.push(relativePath)
     }
-    else if (force || owned.baselineHash === sha256(fs.readFileSync(target))) {
-      operations.push({ relativePath, target, status: 'removed' })
-      result.removed.push(relativePath)
-    }
     else {
-      result.conflicts.push(relativePath)
+      const current = fs.readFileSync(target)
+      const removal = planOwnedRemoval(current, owned, force)
+      if (removal.action === 'delete') {
+        operations.push({ relativePath, target, status: 'removed' })
+        result.removed.push(relativePath)
+      }
+      else if (removal.action === 'write') {
+        operations.push({ desired: removal.content, relativePath, target, status: 'restored' })
+        result.restored.push(relativePath)
+      }
+      else {
+        result.conflicts.push(relativePath)
+      }
     }
   }
   return { operations, result }
+}
+
+function collectSpecReplacementRemovals(projectRoot, roots, plan, result) {
+  const removals = new Set()
+  for (const relativeRoot of roots ?? []) {
+    const root = assertSafeTarget(projectRoot, relativeRoot)
+    const stats = fs.lstatSync(root, { throwIfNoEntry: false })
+    if (!stats)
+      continue
+    if (!stats.isDirectory() || stats.isSymbolicLink()) {
+      result.conflicts.push(relativeRoot)
+      continue
+    }
+    visit(root)
+  }
+  return removals
+
+  function visit(directory) {
+    for (const entry of fs.readdirSync(directory, { withFileTypes: true })) {
+      const target = path.join(directory, entry.name)
+      const relativePath = path.relative(projectRoot, target).split(path.sep).join('/')
+      const stats = fs.lstatSync(target)
+      if (stats.isSymbolicLink() || (!stats.isDirectory() && !stats.isFile())) {
+        result.conflicts.push(relativePath)
+        continue
+      }
+      if (stats.isDirectory())
+        visit(target)
+      else if (!plan.has(relativePath))
+        removals.add(relativePath)
+    }
+  }
+}
+
+function isUserDataPath(relativePath) {
+  return relativePath === '.moluoxixi/.developer'
+    || relativePath.startsWith('.moluoxixi/workspace/')
+    || relativePath.startsWith('.moluoxixi/tasks/')
+    || relativePath.startsWith('.moluoxixi/spec/')
 }
