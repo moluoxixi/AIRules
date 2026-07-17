@@ -7,6 +7,8 @@ export interface McpProjection {
   serversKey: string
   format: 'json' | 'toml'
   defaultTopLevel?: Record<string, unknown>
+  /** 应用于每个 MCP server、但不覆盖角色显式字段的宿主默认值。 */
+  serverDefaults?: Record<string, unknown>
   serverOverrides?: Record<string, Record<string, unknown>>
 }
 
@@ -14,6 +16,8 @@ export interface McpProjection {
 export interface HostConfig {
   /** 宿主标识符，也是 --host 参数的值。 */
   id: string
+  /** 仅用于 CLI 输入的兼容别名；角色清单必须使用 canonical id。 */
+  aliases?: string[]
   /** 宿主主目录，相对于用户 home。 */
   homeRelPath: string
   /** 宿主内 skills 目录名，默认 `skills`。 */
@@ -22,11 +26,15 @@ export interface HostConfig {
   excludedSkills?: string[]
   /** 是否启用 skills 投影，默认启用。 */
   projectSkills?: boolean
-  /** 是否参与 `--host all`，默认参与。 */
-  includeInAll?: boolean
   /** 角色可选 MCP 中性源到该宿主配置的投影规则。 */
   mcp?: McpProjection
 }
+
+/** 所有角色都必须获得的 canonical skills 公共层，不是可选宿主。 */
+export const GLOBAL_AGENT_SKILLS = {
+  homeRelPath: '.agents',
+  skillsDirName: 'skills',
+} as const
 
 /**
  * 公共分发层登记 canonical skills 与角色可选 MCP 的宿主投影规则。
@@ -35,30 +43,27 @@ export interface HostConfig {
 export const HOST_CONFIGS: HostConfig[] = [
   { id: 'claude', homeRelPath: '.claude', mcp: { relDir: '.', fileName: '.mcp.json', serversKey: 'mcpServers', format: 'json' } },
   { id: 'codex', homeRelPath: '.codex', mcp: { relDir: '.', fileName: 'config.toml', serversKey: 'mcp_servers', format: 'toml' } },
-  { id: 'hermes', homeRelPath: path.join('AppData', 'Local', 'hermes') },
-  { id: 'hermes desktop', homeRelPath: path.join('AppData', 'Local', 'hermes') },
+  { id: 'hermes', aliases: ['hermes desktop'], homeRelPath: path.join('AppData', 'Local', 'hermes') },
   { id: 'cursor', homeRelPath: '.cursor', skillsDirName: 'skills-cursor', mcp: { relDir: '.', fileName: 'mcp.json', serversKey: 'mcpServers', format: 'json' } },
-  { id: 'agentsmd', homeRelPath: '.agents', includeInAll: false },
   { id: 'qoderwork', homeRelPath: '.qoderwork' },
   { id: 'trae', homeRelPath: '.trae', mcp: { homeRelPath: path.join('AppData', 'Roaming', 'Trae', 'User'), relDir: '.', fileName: 'mcp.json', serversKey: 'mcpServers', format: 'json', defaultTopLevel: { inputs: [] } } },
   { id: 'trae-cn', homeRelPath: '.trae-cn', mcp: { homeRelPath: path.join('AppData', 'Roaming', 'Trae CN', 'User'), relDir: '.', fileName: 'mcp.json', serversKey: 'mcpServers', format: 'json', defaultTopLevel: { inputs: [] } } },
   { id: 'trae-solo', homeRelPath: '.trae-solo', projectSkills: false, mcp: { homeRelPath: path.join('AppData', 'Roaming', 'TRAE SOLO', 'User'), relDir: '.', fileName: 'mcp.json', serversKey: 'mcpServers', format: 'json', defaultTopLevel: { inputs: [] } } },
   { id: 'trae-solo-cn', homeRelPath: '.trae-solo-cn', projectSkills: false, mcp: { homeRelPath: path.join('AppData', 'Roaming', 'TRAE SOLO CN', 'User'), relDir: '.', fileName: 'mcp.json', serversKey: 'mcpServers', format: 'json', defaultTopLevel: { inputs: [] } } },
-  { id: 'qoder', homeRelPath: '.qoder', mcp: { homeRelPath: path.join('AppData', 'Roaming', 'Qoder', 'SharedClientCache'), relDir: '.', fileName: 'mcp.json', serversKey: 'mcpServers', format: 'json', serverOverrides: { codegraph: { type: 'stdio' } } } },
+  { id: 'qoder', homeRelPath: '.qoder', mcp: { homeRelPath: path.join('AppData', 'Roaming', 'Qoder', 'SharedClientCache'), relDir: '.', fileName: 'mcp.json', serversKey: 'mcpServers', format: 'json', serverDefaults: { type: 'stdio' } } },
   { id: 'opencode', homeRelPath: path.join('.config', 'opencode'), mcp: { relDir: '.', fileName: 'opencode.json', serversKey: 'mcp', format: 'json' } },
-  { id: 'cc-switch', homeRelPath: '.cc-switch' },
 ]
 
 /** 所有已登记宿主 ID，供显式 `--host` 校验与帮助输出使用。 */
 export const HOST_IDS: string[] = HOST_CONFIGS.map(host => host.id)
 
-/** 默认 `--host all` 目标；共享目录等目标可通过 `includeInAll: false` 排除。 */
-export const ALL_HOST_IDS: string[] = HOST_CONFIGS
-  .filter(host => host.includeInAll ?? true)
-  .map(host => host.id)
-
 export function findHostConfig(id: string): HostConfig | undefined {
-  return HOST_CONFIGS.find(host => host.id === id)
+  const canonical = resolveHostId(id)
+  return canonical ? HOST_CONFIGS.find(host => host.id === canonical) : undefined
+}
+
+export function resolveHostId(id: string): string | undefined {
+  return HOST_CONFIGS.find(host => host.id === id || host.aliases?.includes(id))?.id
 }
 
 export interface ResolvedHostPaths {
@@ -72,6 +77,10 @@ export interface ResolvedHostPaths {
 
 function resolveUserRelativePath(userHome: string, relPath: string): string {
   return path.join(userHome, ...relPath.split(/[\\/]+/u).filter(Boolean))
+}
+
+export function resolveGlobalAgentSkillsPath(userHome: string): string {
+  return path.join(resolveUserRelativePath(userHome, GLOBAL_AGENT_SKILLS.homeRelPath), GLOBAL_AGENT_SKILLS.skillsDirName)
 }
 
 export function resolveHostPaths(config: HostConfig, userHome: string): ResolvedHostPaths {

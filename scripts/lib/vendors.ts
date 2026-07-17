@@ -14,6 +14,8 @@ const scpStyleRemotePattern = /^[^@\s/:]+@[^@\s/:]+:\S+$/u
 export interface SetupCommand {
   command: string
   args?: string[]
+  /** Windows 下该命令由 `.cmd` shim 提供；宿主执行器据此安全解析可执行文件。 */
+  windowsCommandShim?: boolean
   /**
    * 当指定命令已存在于 PATH 时跳过当前 setup 命令。
    * 适用于全局工具已安装后不应重复覆盖正在运行二进制的场景。
@@ -348,8 +350,10 @@ export async function loadVendorManifest(manifestPath: string): Promise<VendorMa
 function normalizeRoleHosts(value: unknown, manifestPath: string): string[] | undefined {
   if (value === undefined)
     return undefined
+  if (value === 'all')
+    return [...HOST_IDS]
   if (!Array.isArray(value) || !value.every(host => typeof host === 'string'))
-    throw new TypeError(`Vendor manifest "${manifestPath}" export "hosts" must be a string array`)
+    throw new TypeError(`Vendor manifest "${manifestPath}" export "hosts" must be "all" or a string array`)
   const unique = new Set(value)
   if (unique.size !== value.length)
     throw new Error(`Vendor manifest "${manifestPath}" export "hosts" must not contain duplicates`)

@@ -1,8 +1,9 @@
 import os from 'node:os'
 import path from 'node:path'
 import { fileURLToPath } from 'node:url'
-import { ALL_HOST_IDS, HOST_IDS } from '../../constants/hosts.js'
+import { HOST_IDS, resolveHostId } from '../../constants/hosts.js'
 import {
+  ensureGlobalSkillLink,
   ensureInstallRoot,
   getDefaultInstallPaths,
   projectHostById,
@@ -13,7 +14,7 @@ import { DEFAULT_ROLE, resolveRoleManifestPath } from './roles.js'
 import { rebuildVendorAssets } from './vendor-staging.js'
 import { ensureVendorRepo, verifyVendorRepoRevision } from './vendor-sync.js'
 import { loadVendorManifest } from './vendors.js'
-import { verifyHost } from './verify.js'
+import { verifyGlobalAgentSkills, verifyHost } from './verify.js'
 
 export interface ToolPaths {
   repoRoot: string
@@ -76,15 +77,16 @@ export function resolveToolPaths(repoRoot: string, home: string, userHome = os.h
 export function resolveHostTargets(host: string, supportedHosts?: string[]): string[] {
   if (host === 'all') {
     if (supportedHosts === undefined)
-      return ALL_HOST_IDS
+      return HOST_IDS
     const supported = new Set(supportedHosts)
-    return ALL_HOST_IDS.filter(hostId => supported.has(hostId))
+    return HOST_IDS.filter(hostId => supported.has(hostId))
   }
-  if (!HOST_IDS.includes(host))
+  const canonicalHost = resolveHostId(host)
+  if (!canonicalHost)
     throw new Error(`Unknown AIRules host "${host}"`)
-  if (supportedHosts !== undefined && !supportedHosts.includes(host))
+  if (supportedHosts !== undefined && !supportedHosts.includes(canonicalHost))
     throw new Error(`AIRules role does not support host "${host}"`)
-  return [host]
+  return [canonicalHost]
 }
 
 function roleSupportedHosts(paths: ToolPaths, manifest: Awaited<ReturnType<typeof loadVendorManifest>>): string[] | undefined {
@@ -116,11 +118,12 @@ async function syncVendorsIfNeeded(paths: ToolPaths, skipVendors: boolean, manif
  * 这一步只负责 staging，不做宿主投影。
  */
 async function syncVendorStaging(paths: ToolPaths, skipVendors: boolean, manifest: Awaited<ReturnType<typeof loadVendorManifest>>) {
-  ensureInstallRoot({
+  const installPaths = {
     ...getDefaultInstallPaths(paths.userHome),
     moluoHome: paths.moluoHome,
     repoRoot: paths.repoRoot,
-  })
+  }
+  ensureInstallRoot(installPaths)
   await syncVendorsIfNeeded(paths, skipVendors, manifest)
   if (paths.role) {
     await rebuildVendorAssets({
@@ -135,6 +138,7 @@ async function syncVendorStaging(paths: ToolPaths, skipVendors: boolean, manifes
       manifestPath: paths.manifestPath,
     })
   }
+  ensureGlobalSkillLink(installPaths)
 }
 
 export async function syncToHosts(options: SyncOptions): Promise<SyncResult> {
@@ -143,6 +147,9 @@ export async function syncToHosts(options: SyncOptions): Promise<SyncResult> {
   const targets = resolveHostTargets(options.host, roleSupportedHosts(paths, manifest))
 
   await syncVendorStaging(paths, options.skipVendors, manifest)
+
+  if (options.verify && !await verifyGlobalAgentSkills(paths.moluoHome, paths.userHome))
+    throw new Error('Mandatory global Agent skills verification failed')
 
   const projectedHosts: string[] = []
   const skippedHosts: string[] = []
@@ -189,6 +196,9 @@ export async function verifyHosts(options: VerifyOptions): Promise<string[]> {
   const manifest = await loadVendorManifest(paths.manifestPath)
   const targets = resolveHostTargets(options.host, roleSupportedHosts(paths, manifest))
   const failedHosts: string[] = []
+
+  if (!await verifyGlobalAgentSkills(paths.moluoHome, paths.userHome))
+    throw new Error('Mandatory global Agent skills verification failed')
 
   for (const host of targets) {
     const verified = await verifyHost(

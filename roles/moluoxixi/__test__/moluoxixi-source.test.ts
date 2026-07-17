@@ -4,7 +4,6 @@ import path from 'node:path'
 import { fileURLToPath } from 'node:url'
 import { describe, expect, it } from 'vitest'
 import { parseDocument } from 'yaml'
-import { HOST_IDS } from '../../../constants/hosts.js'
 import { extendsRoles, hosts, vendors } from '../constants/skills.js'
 
 interface RoleManifest {
@@ -336,7 +335,7 @@ describe('moluoxixi curated upstream role assets', () => {
     expect(fs.existsSync(resolveRolePath('skills/init-project/scripts/migrations/manifests'))).toBe(false)
 
     expect(extendsRoles).toEqual([])
-    expect(hosts).toEqual(HOST_IDS)
+    expect(hosts).toBe('all')
     expect(vendors).toHaveLength(1)
     expect(vendors[0]).toMatchObject({
       name: 'moluoxixi',
@@ -353,6 +352,7 @@ describe('moluoxixi curated upstream role assets', () => {
       {
         args: ['install', '--yes'],
         command: 'codegraph',
+        windowsCommandShim: true,
       },
     ])
     expect(JSON.parse(fs.readFileSync(resolveRolePath('mcp/mcp.json'), 'utf8'))).toEqual({

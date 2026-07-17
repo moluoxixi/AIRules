@@ -3,8 +3,8 @@ import fs from 'node:fs'
 import os from 'node:os'
 import path from 'node:path'
 import { afterEach, it } from 'vitest'
-import { projectHostById } from '../install.js'
-import { verifyHost } from '../verify.js'
+import { ensureGlobalSkillLink, getDefaultInstallPaths, projectHostById } from '../install.js'
+import { verifyGlobalAgentSkills, verifyHost } from '../verify.js'
 
 const temporaryRoots: string[] = []
 
@@ -38,6 +38,21 @@ it('verifyHost validates only the projected skill set', async () => {
 
   fs.rmSync(path.join(userHome, '.codex', 'skills', 'demo'), { recursive: true, force: true })
   assert.equal(await verifyHost('codex', moluoHome, userHome), false)
+})
+
+it('verifyGlobalAgentSkills requires and validates the mandatory shared layer', async () => {
+  const { moluoHome, userHome } = fixture()
+  assert.equal(await verifyGlobalAgentSkills(moluoHome, userHome), false)
+
+  ensureGlobalSkillLink({
+    ...getDefaultInstallPaths(userHome),
+    moluoHome,
+    repoRoot: moluoHome,
+  })
+  assert.equal(await verifyGlobalAgentSkills(moluoHome, userHome), true)
+
+  fs.rmSync(path.join(userHome, '.agents', 'skills', 'demo'), { recursive: true, force: true })
+  assert.equal(await verifyGlobalAgentSkills(moluoHome, userHome), false)
 })
 
 it('skills-only projection preserves host-native assets byte-for-byte', async () => {

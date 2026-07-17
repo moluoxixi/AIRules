@@ -18,7 +18,7 @@ import {
 
 import os from 'node:os'
 import path from 'node:path'
-import { findHostConfig, resolveHostPaths } from '../../constants/hosts.js'
+import { findHostConfig, resolveGlobalAgentSkillsPath, resolveHostPaths } from '../../constants/hosts.js'
 import { buildLinkPlan } from './links.js'
 import { requireRoleName } from './role-assets.js'
 import { DEFAULT_ROLE, roleOverlayOrder } from './roles.js'
@@ -32,11 +32,7 @@ function vendorSkillsPath(homeDir: string): string {
 
 /** 获取全局 .agents/skills 目录的绝对路径 */
 function agentsSkillsPath(userHome: string): string {
-  const config = findHostConfig('agentsmd')
-  if (!config)
-    throw new Error('Missing public agentsmd host configuration')
-  const { hostHome, skillsDirName } = resolveHostPaths(config, userHome)
-  return path.join(hostHome, skillsDirName)
+  return resolveGlobalAgentSkillsPath(userHome)
 }
 
 function resetDir(targetDir: string) {
@@ -81,25 +77,25 @@ function ensureManagedDirectory(targetDir: string) {
   mkdirSync(targetDir, { recursive: true })
 }
 
-const windowsCommandShims = new Set(['codegraph', 'npm', 'npx', 'pnpm', 'yarn'])
+const windowsCommandShims = new Set(['npm', 'npx', 'pnpm', 'yarn'])
 
-export function resolveSetupCommandExecutable(command: string): string {
-  if (process.platform === 'win32' && windowsCommandShims.has(command)) {
+export function resolveSetupCommandExecutable(command: string, windowsCommandShim = false): string {
+  if (process.platform === 'win32' && (windowsCommandShim || windowsCommandShims.has(command))) {
     return `${command}.cmd`
   }
 
   return command
 }
 
-export function shouldUseShellForSetupCommand(command: string): boolean {
-  return process.platform === 'win32' && windowsCommandShims.has(command)
+export function shouldUseShellForSetupCommand(command: string, windowsCommandShim = false): boolean {
+  return process.platform === 'win32' && (windowsCommandShim || windowsCommandShims.has(command))
 }
 
 function isSetupCommandAvailable(command: string): boolean {
   const lookupCommand = process.platform === 'win32' ? 'where.exe' : 'which'
 
   try {
-    execFileSync(lookupCommand, [resolveSetupCommandExecutable(command)], {
+    execFileSync(lookupCommand, [command], {
       stdio: 'ignore',
     })
     return true
@@ -127,8 +123,8 @@ export function runSkillSetupCommands(manifest: VendorManifest): void {
 
         console.log(`[setup] > ${commandText}`)
         try {
-          execFileSync(resolveSetupCommandExecutable(command.command), command.args ?? [], {
-            shell: shouldUseShellForSetupCommand(command.command),
+          execFileSync(resolveSetupCommandExecutable(command.command, command.windowsCommandShim), command.args ?? [], {
+            shell: shouldUseShellForSetupCommand(command.command, command.windowsCommandShim),
             stdio: 'inherit',
           })
         }
@@ -153,8 +149,8 @@ export function runSkillSetupCommands(manifest: VendorManifest): void {
 
         console.log(`[setup] > ${commandText}`)
         try {
-          execFileSync(resolveSetupCommandExecutable(command.command), command.args ?? [], {
-            shell: shouldUseShellForSetupCommand(command.command),
+          execFileSync(resolveSetupCommandExecutable(command.command, command.windowsCommandShim), command.args ?? [], {
+            shell: shouldUseShellForSetupCommand(command.command, command.windowsCommandShim),
             stdio: 'inherit',
           })
         }
@@ -523,15 +519,16 @@ function readHostConfigForMerge(targetFile: string): string {
   return existsSync(targetFile) ? readFileSync(targetFile, 'utf8').replace(/^\uFEFF/u, '') : ''
 }
 
-function applyMcpServerOverrides(servers: Record<string, unknown>, overrides: McpProjection['serverOverrides']): Record<string, unknown> {
-  if (!overrides)
+function applyMcpServerProjection(
+  servers: Record<string, unknown>,
+  defaults: McpProjection['serverDefaults'],
+  overrides: McpProjection['serverOverrides'],
+): Record<string, unknown> {
+  if (!defaults && !overrides)
     return servers
   return Object.fromEntries(Object.entries(servers).map(([name, value]) => {
-    const override = overrides[name]
-    if (!override)
-      return [name, value]
     const base = typeof value === 'object' && value !== null && !Array.isArray(value) ? value as Record<string, unknown> : {}
-    return [name, { ...base, ...override }]
+    return [name, { ...defaults, ...base, ...overrides?.[name] }]
   }))
 }
 
@@ -539,7 +536,7 @@ function projectMcpToHost(moluoHome: string, role: string, mcpHome: string, mcp:
   const servers = readRoleMcpServers(moluoHome, role)
   if (!servers)
     return
-  const projectedServers = applyMcpServerOverrides(servers, mcp.serverOverrides)
+  const projectedServers = applyMcpServerProjection(servers, mcp.serverDefaults, mcp.serverOverrides)
   const targetDir = mcp.relDir === '.' ? mcpHome : path.join(mcpHome, mcp.relDir)
   const targetFile = path.join(targetDir, mcp.fileName)
   mkdirSync(targetDir, { recursive: true })

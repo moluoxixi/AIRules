@@ -30,11 +30,13 @@ function writeFile(filePath: string, content: string) {
   fs.writeFileSync(filePath, content)
 }
 
-it('tool - resolveHostTargets all does not include the agentsmd shared layer', () => {
+it('tool - resolves only selectable hosts and canonicalizes aliases', () => {
   assert.equal(resolveHostTargets('all').includes('agentsmd'), false)
-  assert.deepEqual(resolveHostTargets('agentsmd'), ['agentsmd'])
-  assert.deepEqual(resolveHostTargets('all', ['codex', 'agentsmd', 'claude']), ['claude', 'codex'])
+  assert.deepEqual(resolveHostTargets('hermes desktop'), ['hermes'])
+  assert.deepEqual(resolveHostTargets('all', ['codex', 'claude']), ['claude', 'codex'])
   assert.throws(() => resolveHostTargets('cursor', ['codex']), /role does not support host "cursor"/i)
+  assert.throws(() => resolveHostTargets('agentsmd'), /unknown AIRules host/i)
+  assert.throws(() => resolveHostTargets('cc-switch'), /unknown AIRules host/i)
   assert.throws(() => resolveHostTargets('unknown'), /unknown AIRules host/i)
 })
 
@@ -129,6 +131,7 @@ it('tool - roleless sync stages common vendor links and reports a missing host i
     assert.deepEqual(result.projectedHosts, [])
     assert.deepEqual(result.skippedHosts, ['codex'])
     assert.equal(fs.existsSync(path.join(moluoHome, 'vendor', 'skills')), true)
+    assert.equal(fs.existsSync(path.join(userHome, '.agents', 'skills')), true)
   })
 })
 
@@ -218,5 +221,15 @@ export const vendors = []
     const result = await syncToHosts({ repoRoot, home: moluoHome, userHome, host: 'all', role: supportedRole, skipVendors: true, verify: false })
     assert.deepEqual(result.projectedHosts, ['claude', 'codex'])
     assert.equal(result.skippedHosts.includes('cursor'), false)
+    assert.equal(fs.existsSync(path.join(userHome, '.agents', 'skills')), true)
+
+    const emptyRole = 'empty'
+    writeFile(path.join(repoRoot, 'roles', emptyRole, 'constants', 'skills.ts'), `export const hosts = []
+export const vendors = []
+`)
+    const emptyResult = await syncToHosts({ repoRoot, home: moluoHome, userHome, host: 'all', role: emptyRole, skipVendors: true, verify: true })
+    assert.deepEqual(emptyResult.projectedHosts, [])
+    assert.deepEqual(emptyResult.skippedHosts, [])
+    assert.deepEqual(await verifyHosts({ repoRoot, home: moluoHome, userHome, host: 'all', role: emptyRole }), [])
   })
 })

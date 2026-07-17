@@ -4,7 +4,7 @@ import fs from 'node:fs'
 import os from 'node:os'
 import path from 'node:path'
 import { it } from 'vitest'
-import { ALL_HOST_IDS, findHostConfig, HOST_IDS, resolveHostPaths } from '../../../constants/hosts.js'
+import { findHostConfig, HOST_IDS, resolveGlobalAgentSkillsPath, resolveHostId, resolveHostPaths } from '../../../constants/hosts.js'
 import {
   ensureGlobalSkillLink,
   ensureInstallRoot,
@@ -88,7 +88,11 @@ it('hosts - 解析默认和自定义宿主路径', () => {
   assert.ok(qoderwork)
   assert.equal(missing, undefined)
   assert.equal(HOST_IDS.includes('qoder-cli'), false)
-  assert.equal(ALL_HOST_IDS.includes('qoder-cli'), false)
+  assert.equal(HOST_IDS.includes('agentsmd'), false)
+  assert.equal(HOST_IDS.includes('cc-switch'), false)
+  assert.equal(HOST_IDS.includes('hermes desktop'), false)
+  assert.equal(resolveHostId('hermes desktop'), 'hermes')
+  assert.equal(normalizePath(resolveGlobalAgentSkillsPath('C:/Users/example')), 'C:/Users/example/.agents/skills')
 
   const cursorPaths = resolveHostPaths(cursor, 'C:/Users/example')
   assert.equal(normalizePath(cursorPaths.hostHome), 'C:/Users/example/.cursor')
@@ -589,14 +593,16 @@ it('install - runSkillSetupCommands 支持已存在命令时跳过 setup', () =>
 
 it('install - setup 命令在 Windows 下使用 cmd shim', () => {
   const expectedNpmCommand = process.platform === 'win32' ? 'npm.cmd' : 'npm'
-  const expectedCodegraphCommand = process.platform === 'win32' ? 'codegraph.cmd' : 'codegraph'
+  const expectedDeclaredShimCommand = process.platform === 'win32' ? 'demo-cli.cmd' : 'demo-cli'
   const expectedShimShell = process.platform === 'win32'
 
   assert.equal(resolveSetupCommandExecutable('npm'), expectedNpmCommand)
-  assert.equal(resolveSetupCommandExecutable('codegraph'), expectedCodegraphCommand)
+  assert.equal(resolveSetupCommandExecutable('demo-cli', true), expectedDeclaredShimCommand)
+  assert.equal(resolveSetupCommandExecutable('demo-cli'), 'demo-cli')
   assert.equal(resolveSetupCommandExecutable('node'), 'node')
   assert.equal(shouldUseShellForSetupCommand('npm'), expectedShimShell)
-  assert.equal(shouldUseShellForSetupCommand('codegraph'), expectedShimShell)
+  assert.equal(shouldUseShellForSetupCommand('demo-cli', true), expectedShimShell)
+  assert.equal(shouldUseShellForSetupCommand('demo-cli'), false)
   assert.equal(shouldUseShellForSetupCommand('node'), false)
 })
 
@@ -694,6 +700,16 @@ export default {
       () => loadVendorManifest(invalidHostsManifest),
       /unknown host "unknown"/i,
     )
+
+    const allHostsManifest = path.join(tmpDir, 'all-hosts.mjs')
+    writeFile(allHostsManifest, `export const hosts = 'all'\nexport const vendors = []\n`)
+    assert.deepEqual((await loadVendorManifest(allHostsManifest)).hosts, HOST_IDS)
+
+    for (const reservedHost of ['agentsmd', 'cc-switch', 'hermes desktop']) {
+      const reservedManifest = path.join(tmpDir, `${reservedHost.replaceAll(' ', '-')}.mjs`)
+      writeFile(reservedManifest, `export const hosts = [${JSON.stringify(reservedHost)}]\nexport const vendors = []\n`)
+      await assert.rejects(() => loadVendorManifest(reservedManifest), /unknown host/i)
+    }
   })
 })
 

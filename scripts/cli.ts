@@ -4,6 +4,7 @@ import path from 'node:path'
 import { fileURLToPath } from 'node:url'
 import { parseArgs } from 'node:util'
 import kleur from 'kleur'
+import { HOST_IDS } from '../constants/hosts.js'
 import {
   compareContractFiles,
   createContractErrorAudit,
@@ -52,6 +53,11 @@ Commands:
   sync           同步远程 skills 到宿主
   verify         校验宿主 skills 链接完整性
   contract-diff  确定性比对两个 OpenAPI 3.x 契约
+
+Selectable hosts:
+  ${HOST_IDS.join(', ')}
+
+The mandatory ~/.agents/skills shared layer is always synchronized and verified.
 `)
 }
 

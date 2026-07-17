@@ -87,6 +87,12 @@ describe('moluoxixi CodeGraph MCP projection', () => {
 
   it('adds the Qoder stdio discriminator without changing the role source', () => {
     const { moluoHome, userHome } = createFixture()
+    const sourceFile = path.join(moluoHome, 'roles', 'moluoxixi', 'mcp', 'mcp.json')
+    const sourceConfig = JSON.parse(fs.readFileSync(sourceFile, 'utf8')) as {
+      mcpServers: Record<string, Record<string, unknown>>
+    }
+    sourceConfig.mcpServers.localDocs = { command: 'docs-mcp' }
+    fs.writeFileSync(sourceFile, `${JSON.stringify(sourceConfig, null, 2)}\n`)
     fs.mkdirSync(path.join(userHome, '.qoder'), { recursive: true })
     const mcpHome = path.join(userHome, 'AppData', 'Roaming', 'Qoder', 'SharedClientCache')
     fs.mkdirSync(mcpHome, { recursive: true })
@@ -97,9 +103,11 @@ describe('moluoxixi CodeGraph MCP projection', () => {
       mcpServers: Record<string, Record<string, unknown>>
     }
     expect(projected.mcpServers.codegraph).toMatchObject({ command: 'codegraph', type: 'stdio' })
-    const source = JSON.parse(fs.readFileSync(path.join(moluoHome, 'roles', 'moluoxixi', 'mcp', 'mcp.json'), 'utf8')) as {
+    expect(projected.mcpServers.localDocs).toEqual({ command: 'docs-mcp', type: 'stdio' })
+    const source = JSON.parse(fs.readFileSync(sourceFile, 'utf8')) as {
       mcpServers: Record<string, Record<string, unknown>>
     }
     expect(source.mcpServers.codegraph.type).toBeUndefined()
+    expect(source.mcpServers.localDocs.type).toBeUndefined()
   })
 })

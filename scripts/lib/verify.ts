@@ -2,7 +2,21 @@ import { existsSync, lstatSync, readdirSync } from 'node:fs'
 import os from 'node:os'
 import path from 'node:path'
 import kleur from 'kleur'
-import { findHostConfig, resolveHostPaths } from '../../constants/hosts.js'
+import { findHostConfig, resolveGlobalAgentSkillsPath, resolveHostPaths } from '../../constants/hosts.js'
+
+/** Verify the mandatory canonical skills layer shared by every role and host. */
+export async function verifyGlobalAgentSkills(
+  moluoHome: string,
+  userHome = os.homedir(),
+): Promise<boolean> {
+  console.log('\n--- 正在验证公共 Agent skills 层 ---')
+  const targetSkillsDir = resolveGlobalAgentSkillsPath(userHome)
+  if (!existsSync(targetSkillsDir)) {
+    console.error(`[FAIL] 公共技能目录缺失: ${targetSkillsDir}`)
+    return false
+  }
+  return verifyProjectedSkills('公共 Agent skills 层', moluoHome, targetSkillsDir, [])
+}
 
 /** Verify only the skills managed by AIRules. Host-native assets belong to project initializers. */
 export async function verifyHost(
@@ -33,6 +47,10 @@ export async function verifyHost(
     return false
   }
 
+  return verifyProjectedSkills(host, moluoHome, targetSkillsDir, excludedSkills)
+}
+
+function verifyProjectedSkills(label: string, moluoHome: string, targetSkillsDir: string, excludedSkills: string[]): boolean {
   const vendorSkillsDir = path.join(moluoHome, 'vendor', 'skills')
   const expectedSkills = new Set<string>()
   if (existsSync(vendorSkillsDir)) {
@@ -69,6 +87,6 @@ export async function verifyHost(
   console.log(`[info] 预期技能总数: ${expectedSkills.size}`)
   console.log(`[result] 有效=${validCount}, 缺失=${missingCount}, 损坏=${brokenCount}`)
   const success = missingCount === 0 && brokenCount === 0
-  console.log(success ? kleur.green(`✅ ${host} 验证通过`) : kleur.red(`❌ ${host} 验证失败`))
+  console.log(success ? kleur.green(`✅ ${label} 验证通过`) : kleur.red(`❌ ${label} 验证失败`))
   return success
 }
