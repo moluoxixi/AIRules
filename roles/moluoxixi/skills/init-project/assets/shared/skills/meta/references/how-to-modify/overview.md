@@ -29,7 +29,7 @@ Common Moluoxixi customization scenarios and what files need to be modified.
 
 **Scenario**: Add a new `/moluoxixi:my-command` command.
 
-**Files to modify**:
+**Formal targets to propose**:
 
 ```
 .claude/commands/moluoxixi/my-command.md    # Create: Command prompt
@@ -92,10 +92,10 @@ task.json template                                  # Modify: Add to next_action
 **Files to modify**:
 
 ```
-.moluoxixi/spec/mobile/index.md             # Create: Category index
-.moluoxixi/spec/mobile/*.md                 # Create: Spec files
-.moluoxixi/tasks/{template}/*.jsonl         # Update: Reference new specs
-.project-local/SKILL.md                   # Update: Document the change
+.moluoxixi/spec/mobile/index.md             # Propose: Category index
+.moluoxixi/spec/mobile/*.md                 # Propose: Spec files
+.moluoxixi/tasks/<task>/*.jsonl             # Update after reviewed promotion
+.project-local/SKILL.md                     # Optional: Document the promoted change
 ```
 
 → See `add-spec.md` for details.

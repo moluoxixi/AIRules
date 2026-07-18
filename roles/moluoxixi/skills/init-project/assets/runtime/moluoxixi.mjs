@@ -122,8 +122,16 @@ function uninstall(args) {
   runNode(entry, ['--project', projectRoot, ...args])
 }
 
+function spec(args) {
+  const projectRoot = findProjectRoot()
+  const entry = path.join(projectRoot, PROJECT_ROOT_DIR, 'scripts', 'spec-proposals.mjs')
+  if (!fs.existsSync(entry))
+    throw new Error('Spec proposal tooling is missing; re-run the init-project skill')
+  runNode(entry, args)
+}
+
 function printHelp() {
-  process.stdout.write(`Moluoxixi runtime ${VERSION}\n\nUsage: node moluoxixi.mjs <command> [options]\n       node moluoxixi.mjs -v|--version\n\nCommands:\n  channel    Durable local multi-agent channels and workers\n  mem        Search local Claude, Codex, and Pi conversation history\n  workflow   List or replace the active project workflow\n  update     Refresh AIRules-owned project assets\n  uninstall  Remove manifest-owned project assets safely\n  version    Print the runtime version\n`)
+  process.stdout.write(`Moluoxixi runtime ${VERSION}\n\nUsage: node moluoxixi.mjs <command> [options]\n       node moluoxixi.mjs -v|--version\n\nCommands:\n  channel    Durable local multi-agent channels and workers\n  mem        Search local Claude, Codex, and Pi conversation history\n  spec       Propose, review, audit, and promote project knowledge\n  workflow   List or replace the active project workflow\n  update     Refresh AIRules-owned project assets\n  uninstall  Remove manifest-owned project assets safely\n  version    Print the runtime version\n`)
 }
 
 try {
@@ -138,6 +146,8 @@ try {
     update(args)
   else if (command === 'workflow')
     workflow(args)
+  else if (command === 'spec')
+    spec(args)
   else if (command === 'uninstall')
     uninstall(args)
   else throw new Error(`Unknown command: ${command}`)

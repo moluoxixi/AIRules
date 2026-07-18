@@ -50,9 +50,10 @@ This skill documents this repository's Moluoxixi customizations only.
 
 For multi-platform projects, place equivalent versions in other platform skill directories, or use `.agents/skills/` for platforms that support the shared layer.
 
-## Write To `.moluoxixi/spec/`
+## Propose Knowledge For `.moluoxixi/spec/`
 
-If the content is a coding convention, write it to spec. Examples:
+If the content is a coding convention, prepare its complete desired target and
+submit it through `update-spec`. Examples:
 
 ```text
 .moluoxixi/spec/backend/error-handling.md
@@ -60,11 +61,13 @@ If the content is a coding convention, write it to spec. Examples:
 .moluoxixi/spec/guides/cross-platform-thinking-guide.md
 ```
 
-After writing it, update the corresponding `index.md` so AI can find the new rule from the entry point.
+Submit a separate complete candidate for the corresponding `index.md`. Do not
+modify the formal targets until the user explicitly approves them through
+`spec-review`.
 
 ## Make The Current Task Use New Conventions
 
-After writing a spec, add it to the current task context:
+After the user approves and promotes a spec, add it to the current task context:
 
 ```bash
 python3 ./.moluoxixi/scripts/task.py add-context <task> implement ".moluoxixi/spec/backend/error-handling.md" "Error handling conventions"

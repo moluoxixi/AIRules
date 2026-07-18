@@ -355,6 +355,10 @@ def _get_task_status(moluoxixi_dir: Path, input_data: dict) -> str:
 
     task_title = task_data.get("title", task_ref)
     task_status = task_data.get("status", "unknown")
+    complexity_data = task_data.get("complexity")
+    complexity = complexity_data.get("level", "unclassified") if isinstance(complexity_data, dict) else "legacy"
+    approval_data = task_data.get("executionApproval")
+    execution_mode = approval_data.get("mode", "manual") if isinstance(approval_data, dict) else "legacy"
     artifact_names = ("prd.md", "design.md", "implement.md", "implement.jsonl", "check.jsonl")
     present = [name for name in artifact_names if (task_dir / name).is_file()]
     if (task_dir / "research").is_dir():
@@ -380,12 +384,18 @@ def _get_task_status(moluoxixi_dir: Path, input_data: dict) -> str:
 
     if task_status == "planning" and not has_prd:
         return (
-            f"Status: PLANNING\nTask: {task_title}\n"
+            f"Status: PLANNING\nTask: {task_title}\nComplexity: {complexity}\nExecution: {execution_mode}\n"
             f"Present: {present_line}\n"
             "Next-Action: Load `moluoxixi-brainstorm` and write `prd.md`. Stay in planning."
         )
 
     if task_status == "planning":
+        if complexity not in ("lightweight", "complex"):
+            return (
+                f"Status: PLANNING\nTask: {task_title}\nComplexity: {complexity}\nExecution: {execution_mode}\n"
+                f"Present: {present_line}\n"
+                "Next-Action: Classify with `task.py set-complexity <task> lightweight|complex` before start."
+            )
         missing_complex = [
             name for name, exists in (
                 ("design.md", has_design),
@@ -394,23 +404,23 @@ def _get_task_status(moluoxixi_dir: Path, input_data: dict) -> str:
             if not exists
         ]
         next_bits: list[str] = []
-        if missing_complex:
+        if complexity == "complex" and missing_complex:
             next_bits.append(
-                "Lightweight task can request start review with PRD-only; "
                 f"complex task must add {', '.join(missing_complex)} before start"
             )
         else:
-            next_bits.append("Planning artifacts are present; ask for review before `task.py start`")
-        if not jsonl_ready:
-            next_bits.append("curate `implement.jsonl` and `check.jsonl` before sub-agent mode start")
+            next_bits.append("Planning artifacts are present; manual mode asks for review before `task.py start --user-approved`")
+        if complexity == "complex" and not jsonl_ready:
+            next_bits.append("curate `implement.jsonl` and `check.jsonl` before complex sub-agent mode start")
         return (
-            f"Status: PLANNING\nTask: {task_title}\n"
+            f"Status: PLANNING\nTask: {task_title}\nComplexity: {complexity}\nExecution: {execution_mode}\n"
             f"Present: {present_line}\n"
             f"Next-Action: {'; '.join(next_bits)}. Do not enter implementation until the user confirms start."
         )
 
     return (
         f"Status: {str(task_status).upper()}\nTask: {task_title}\n"
+        f"Complexity: {complexity}\nExecution: {execution_mode}\n"
         f"Present: {present_line}\n"
         "Next-Action: Follow the matching per-turn workflow-state. "
         "Implementation/check context order is jsonl entries -> `prd.md` -> `design.md if present` -> `implement.md if present`."

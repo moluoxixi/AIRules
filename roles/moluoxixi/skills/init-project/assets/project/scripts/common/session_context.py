@@ -561,6 +561,10 @@ def get_context_text(repo_root: Path | None = None) -> str:
         if ct:
             lines.append(f"Name: {ct.name}")
             lines.append(f"Status: {ct.status}")
+            complexity = ct.raw.get("complexity")
+            approval = ct.raw.get("executionApproval")
+            lines.append(f"Complexity: {complexity.get('level', 'legacy') if isinstance(complexity, dict) else 'legacy'}")
+            lines.append(f"Execution: {approval.get('mode', 'legacy') if isinstance(approval, dict) else 'legacy'}")
             lines.append(f"Created: {ct.raw.get('createdAt', 'unknown')}")
             if ct.description:
                 lines.append(f"Description: {ct.description}")
@@ -701,6 +705,8 @@ def get_context_record_json(repo_root: Path | None = None) -> dict:
                 "status": ct.status,
                 "source": source_type,
                 "contextKey": context_key,
+                "complexity": ct.raw.get("complexity", {"level": "legacy"}),
+                "executionApproval": ct.raw.get("executionApproval", {"mode": "legacy"}),
             }
 
     # Package git repos

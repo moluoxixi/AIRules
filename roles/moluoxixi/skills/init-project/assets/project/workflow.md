@@ -8,7 +8,7 @@
 2. **Specs injected, not remembered** — guidelines are injected via hook/skill, not recalled from memory
 3. **Persist everything** — research, decisions, and lessons all go to files; conversations get compacted, files don't
 4. **Incremental development** — one task at a time
-5. **Capture learnings** — after each task, review and write new knowledge back to spec
+5. **Capture learnings** — after each task, submit knowledge proposals and let a human decide what enters formal specs
 
 ---
 
@@ -35,7 +35,7 @@ Creates `.moluoxixi/.developer` (gitignored) + `.moluoxixi/workspace/<your-name>
 python3 ./.moluoxixi/scripts/get_context.py --mode packages   # list packages / layers
 ```
 
-**When to update spec**: new pattern/convention found · bug-fix prevention to codify · new technical decision.
+**When to propose spec knowledge**: new pattern/convention found · bug-fix prevention to codify · new technical decision. Formal specs change only after `spec-review` records explicit human approval.
 
 ### Task System
 
@@ -43,8 +43,10 @@ Every task has its own directory under `.moluoxixi/tasks/{MM-DD-name}/` holding 
 
 ```bash
 # Task lifecycle
-python3 ./.moluoxixi/scripts/task.py create "<title>" [--slug <name>] [--parent <dir>]
-python3 ./.moluoxixi/scripts/task.py start <name>          # set active task (session-scoped when available)
+python3 ./.moluoxixi/scripts/task.py create "<title>" [--slug <name>] [--complexity lightweight|complex] [--parent <dir>]
+python3 ./.moluoxixi/scripts/task.py set-complexity <name> lightweight|complex [--signal <name>] [--reason <text>]
+python3 ./.moluoxixi/scripts/task.py set-execution-mode <name> manual|auto [--user-authorized]
+python3 ./.moluoxixi/scripts/task.py start <name> --user-approved  # manual mode after final plan review
 python3 ./.moluoxixi/scripts/task.py current --source      # show active task and source
 python3 ./.moluoxixi/scripts/task.py finish                # clear active task (triggers after_finish hooks)
 python3 ./.moluoxixi/scripts/task.py archive <name>        # move to archive/{year-month}/
@@ -73,7 +75,7 @@ python3 ./.moluoxixi/scripts/task.py create-pr [name] [--dry-run]
 
 > Run `python3 ./.moluoxixi/scripts/task.py --help` to see the authoritative, up-to-date list.
 
-**Current-task mechanism**: `task.py create` creates the task directory and (when session identity is available) auto-sets the per-session active-task pointer so the planning breadcrumb fires immediately. `task.py start` writes the same pointer (idempotent if already set) and flips `task.json.status` from `planning` to `in_progress`. State is stored under `.moluoxixi/.runtime/sessions/`. If no context key is available from hook input, `MOLUOXIXI_CONTEXT_ID`, or a platform-native session environment variable, there is no active task and `task.py start` fails with a session identity hint. `task.py finish` deletes the current session file (status unchanged). `task.py archive <task>` writes `status=completed`, moves the directory to `archive/`, and deletes any runtime session files that still point at the archived task.
+**Current-task mechanism**: `task.py create` creates the task directory and (when session identity is available) auto-sets the per-session active-task pointer so the planning breadcrumb fires immediately. New tasks persist `complexity.level=unclassified` unless classified at creation and default to manual execution approval. `task.py start` enforces the planning artifacts and approval before flipping `planning` to `in_progress`; an already-started task can be reattached idempotently. State is stored under `.moluoxixi/.runtime/sessions/`. Without session identity, a reviewed task may enter degraded `in_progress` mode but no active pointer is persisted. `task.py finish` deletes the current session file (status unchanged). `task.py archive <task>` writes `status=completed`, moves the directory to `archive/`, and deletes any runtime session files that still point at the archived task.
 
 ### Workspace System
 
@@ -146,7 +148,7 @@ python3 ./.moluoxixi/scripts/get_context.py --mode phase --step <X.Y>  # detaile
 ```
 Phase 1: Plan    → classify, get task-creation consent, then write planning artifacts
 Phase 2: Execute → implement only after task status is in_progress
-Phase 3: Finish  → verify, update spec, commit, and wrap up
+Phase 3: Finish  → verify, propose/review knowledge, commit code, and wrap up
 ```
 
 ### Request Triage
@@ -154,13 +156,15 @@ Phase 3: Finish  → verify, update spec, commit, and wrap up
 - Simple conversation or small task: ask only whether this turn should create a Moluoxixi task. If the user says no, skip Moluoxixi for this session.
 - Complex task: ask whether you may create a Moluoxixi task and enter planning. If the user says no, do not do broad inline implementation; explain, clarify scope, or suggest a smaller split.
 - User approval to create a task is not approval to start implementation. Planning still happens first.
+- Persist the result as `complexity.level=lightweight|complex`; do not leave a real implementation task `unclassified`.
+- Treat cross-module work, public contracts, migrations, security-sensitive changes, high uncertainty, or multiple independently verifiable deliverables as complex signals unless repository evidence shows otherwise.
 
 ### Planning Artifacts
 
 - `prd.md` — requirements, constraints, and acceptance criteria. Do not put technical design or execution checklists here.
 - `design.md` — technical design for complex tasks: boundaries, contracts, data flow, tradeoffs, compatibility, rollout / rollback shape.
 - `implement.md` — execution plan for complex tasks: ordered checklist, validation commands, review gates, and rollback points.
-- `implement.jsonl` / `check.jsonl` — spec and research manifests for sub-agent context. They do not replace `implement.md`.
+- `implement.jsonl` / `check.jsonl` — spec and research manifests for complex sub-agent work. They do not replace `implement.md`.
 - Lightweight tasks may be PRD-only. Complex tasks must have `prd.md`, `design.md`, and `implement.md` before `task.py start`.
 
 ### Parent / Child Task Trees
@@ -191,9 +195,10 @@ Complex task: ask the user if you can create a Moluoxixi task and enter the plan
 
 [workflow-state:planning]
 Load `moluoxixi-brainstorm`; stay in planning.
-Lightweight: `prd.md` can be enough. Complex: finish `prd.md`, `design.md`, and `implement.md`; ask for review before `task.py start`.
+Persist complexity with `task.py set-complexity`. Lightweight: `prd.md` can be enough. Complex: finish `prd.md`, `design.md`, and `implement.md`; ask for review before `task.py start --user-approved`.
 Multi-deliverable scope: consider a parent task plus independently verifiable child tasks; dependencies must be written in child artifacts, not implied by tree position.
-Sub-agent mode: curate `implement.jsonl` and `check.jsonl` as spec/research manifests before start.
+Complex sub-agent mode: curate `implement.jsonl` and `check.jsonl` as spec/research manifests before start.
+Auto mode is task-local and valid only after an explicit user request recorded by `task.py set-execution-mode <task> auto --user-authorized`; it never approves commit, push, archive, or knowledge promotion.
 [/workflow-state:planning]
 
 <!-- Per-turn breadcrumb: shown throughout Phase 1 when codex.dispatch_mode=inline.
@@ -204,7 +209,7 @@ Sub-agent mode: curate `implement.jsonl` and `check.jsonl` as spec/research mani
 
 [workflow-state:planning-inline]
 Load `moluoxixi-brainstorm`; stay in planning.
-Lightweight: `prd.md` can be enough. Complex: finish `prd.md`, `design.md`, and `implement.md`; ask for review before `task.py start`.
+Persist complexity with `task.py set-complexity`. Lightweight: `prd.md` can be enough. Complex: finish `prd.md`, `design.md`, and `implement.md`; ask for review before `task.py start --user-approved`.
 Multi-deliverable scope: consider a parent task plus independently verifiable child tasks; dependencies must be written in child artifacts, not implied by tree position.
 Inline mode: skip jsonl curation; Phase 2 reads artifacts/specs via `moluoxixi-before-dev`.
 [/workflow-state:planning-inline]
@@ -223,9 +228,10 @@ Inline mode: skip jsonl curation; Phase 2 reads artifacts/specs via `moluoxixi-b
 Sub-agent dispatch protocol applies to all platforms and all sub-agents, including class-2 Codex/Gemini/Qoder/Copilot/ZCode/Reasonix/Trae and `moluoxixi-research`: every dispatch prompt starts with `Active task: <task path from task.py current>` before role-specific instructions.
 
 [workflow-state:in_progress]
-Tools: `moluoxixi-implement` / `moluoxixi-research` are sub-agent types only (Task/Agent tool, NOT Skill; there is no skill by these names). `moluoxixi-update-spec` is a skill. `moluoxixi-check` exists as both; prefer the Agent form when verifying after code changes.
-Flow: `moluoxixi-implement` -> `moluoxixi-check` -> `moluoxixi-update-spec` -> commit (Phase 3.4) -> `/moluoxixi:finish-work`.
+Tools: `moluoxixi-research`, `moluoxixi-implement`, and the optional `moluoxixi-frontend|backend|database|test|security` specialists are sub-agent types, not skills. `moluoxixi-check` exists as both; prefer the Agent form for independent verification.
+Flow: implement or selected specialist(s) -> `moluoxixi-check` -> `moluoxixi-update-spec` proposal -> commit (Phase 3.4) -> `/moluoxixi:finish-work`.
 Main-session default: dispatch implement/check sub-agents. Sub-agent self-exemption: if already running as `moluoxixi-implement`, do NOT spawn another `moluoxixi-implement` or `moluoxixi-check`; if already running as `moluoxixi-check`, do NOT spawn another `moluoxixi-check` or `moluoxixi-implement`. Dispatch is main session only.
+Use specialists only when task scope warrants them: frontend/backend/database for owned implementation slices; test/security for independent review. Language expertise remains a skill loaded by the selected agent.
 Dispatch prompt starts with `Active task: <task path from task.py current>`. Read context: jsonl entries -> `prd.md` -> `design.md if present` -> `implement.md if present`.
 [/workflow-state:in_progress]
 
@@ -293,6 +299,8 @@ When a user request matches one of these intents inside an active task, route fi
 - Task creation approval is not implementation approval; implementation waits for `task.py start` after artifact review.
 - PRD-only is valid for lightweight tasks; complex tasks need `design.md` + `implement.md`.
 - Planning must be persisted to task artifacts; checks must run before reporting completion.
+- `executionApproval.mode=auto` is scoped to one task and does not propagate to children or future tasks.
+- Formal knowledge lives only in `.moluoxixi/spec/`; task learnings first enter `.moluoxixi/spec-proposals/` and require human review before promotion.
 
 ### Loading Step Detail
 
@@ -314,7 +322,7 @@ Goal: classify the request, get task-creation consent when a task is needed, and
 Create the task directory only after task-creation consent. The command sets status to `planning`, writes `task.json`, creates a default `prd.md`, and auto-targets the new task when session identity is available:
 
 ```bash
-python3 ./.moluoxixi/scripts/task.py create "<task title>" --slug <name>
+python3 ./.moluoxixi/scripts/task.py create "<task title>" --slug <name> --complexity lightweight|complex
 ```
 
 `--slug` is the human-readable name only. Do **not** include the `MM-DD-` date prefix; `task.py create` adds that prefix automatically.
@@ -412,16 +420,20 @@ Lists every package + its spec layers with paths. Pick the entries that match th
 
 **How to append entries**:
 
-Either edit the jsonl file directly in your editor, or use:
+Use the validated task command. Do not edit these manifests directly:
 
 ```bash
 python3 ./.moluoxixi/scripts/task.py add-context "$TASK_DIR" implement "<path>" "<reason>"
 python3 ./.moluoxixi/scripts/task.py add-context "$TASK_DIR" check "<path>" "<reason>"
 ```
 
-Delete the seed `_example` line once real entries exist (optional — it's skipped automatically by consumers).
+Only existing paths under `.moluoxixi/spec/` or the current task's
+`research/` directory are accepted. Pending `.moluoxixi/spec-proposals/`,
+source files, and another task's research are not approved execution context.
 
-Ready gate: both `implement.jsonl` and `check.jsonl` must contain at least one real `{"file": "...", "reason": "..."}` entry before `task.py start`. The seed `_example` row alone is not ready.
+The seed `_example` line may remain; consumers skip it automatically.
+
+For complex tasks, both `implement.jsonl` and `check.jsonl` must contain at least one real `{"file": "...", "reason": "..."}` entry before `task.py start`. The seed `_example` row alone is not ready. Lightweight tasks stay lightweight and do not need curated JSONL to pass the hard gate.
 
 Skip this step only when both files already have real curated entries.
 
@@ -435,13 +447,20 @@ Skip this step. Context is loaded directly by the `moluoxixi-before-dev` skill i
 
 #### 1.4 Activate task `[required · once]`
 
-After artifact review, flip the task status to `in_progress`:
+After artifact review in manual mode, record approval and flip the task status to `in_progress`:
 
 ```bash
+python3 ./.moluoxixi/scripts/task.py start <task-dir> --user-approved
+```
+
+When the user explicitly asks this task to proceed automatically, first record task-local authorization, then start without the manual approval flag:
+
+```bash
+python3 ./.moluoxixi/scripts/task.py set-execution-mode <task-dir> auto --user-authorized --reason "<user request>"
 python3 ./.moluoxixi/scripts/task.py start <task-dir>
 ```
 
-For lightweight tasks, `prd.md` can be enough. For complex tasks, `prd.md`, `design.md`, and `implement.md` must exist and be reviewed before start. On sub-agent-dispatch platforms, `implement.jsonl` and `check.jsonl` must both have real curated entries before start. Runtime consumers tolerate missing or seed-only manifests for compatibility, but that tolerance is not a planning-ready state.
+For lightweight tasks, `prd.md` can be enough. For complex tasks, `prd.md`, `design.md`, and `implement.md` must exist and be reviewed or covered by explicit task-local auto authorization before start. On sub-agent-dispatch platforms, complex tasks must also have real curated entries in `implement.jsonl` and `check.jsonl`.
 
 After this command succeeds, the breadcrumb auto-switches to `[workflow-state:in_progress]`, and the rest of Phase 2 / 3 follows.
 
@@ -452,7 +471,8 @@ If `task.py start` errors with a session-identity message (no context key from h
 | Condition | Required |
 |------|:---:|
 | `prd.md` exists | ✅ |
-| User confirms task should enter implementation | ✅ |
+| `complexity.level` is `lightweight` or `complex` | ✅ |
+| Manual mode: user confirms the final plan; auto mode: current task contains explicit user authorization | ✅ |
 | `task.py start` has been run (status = in_progress) | ✅ |
 | `research/` has artifacts (complex tasks) | recommended |
 | `design.md` exists (complex tasks) | ✅ |
@@ -460,7 +480,7 @@ If `task.py start` errors with a session-identity message (no context key from h
 
 [Claude Code, Cursor, OpenCode, codex-sub-agent, Kiro, Gemini, Qoder, CodeBuddy, Copilot, Droid, Pi, Oh My Pi, ZCode, Reasonix, Trae]
 
-| `implement.jsonl` and `check.jsonl` each contain at least one real curated entry (seed row does not count) | ✅ |
+| Complex task: `implement.jsonl` and `check.jsonl` each contain at least one real curated entry (seed row does not count) | ✅ |
 
 [/Claude Code, Cursor, OpenCode, codex-sub-agent, Kiro, Gemini, Qoder, CodeBuddy, Copilot, Droid, Pi, Oh My Pi, ZCode, Reasonix, Trae]
 
@@ -583,11 +603,17 @@ Load the `moluoxixi-update-spec` skill and review whether this task produced new
 - Pitfalls you hit
 - New technical decisions
 
-Update the docs under `.moluoxixi/spec/` accordingly. Even if the conclusion is "nothing to update", walk through the judgment.
+Create complete desired-state proposals under `.moluoxixi/spec-proposals/`; do not directly update `.moluoxixi/spec/`. Even if the conclusion is "nothing to propose", walk through the judgment. Run the read-only periodic audit:
+
+```bash
+node ./.moluoxixi/scripts/spec-proposals.mjs audit
+```
+
+If review is due, report the pending count and offer `moluoxixi-spec-review`. Promotion, merge, rejection, and deletion require separate explicit human approval and do not block finishing the current code task.
 
 #### 3.4 Commit changes `[required · once]`
 
-**Spec-sync preamble**: before drafting commits, ask: did this task fix a bug or surface non-obvious knowledge that should land in `.moluoxixi/spec/` so future-you (or future-AI) doesn't repeat the mistake? If yes, return to Phase 3.3 first — spec writes belong in the same task's commit batch, not as a forgotten follow-up.
+**Spec-proposal preamble**: before drafting commits, ask whether this task produced reusable knowledge. If yes, return to Phase 3.3 and create proposals. Pending proposals may be committed as task evidence, but they are not formal guidance until separately reviewed and promoted.
 
 The AI drives a batched commit of this task's code changes so `/finish-work` can run cleanly afterwards. Goal: produce work commits FIRST, then bookkeeping (archive + journal) commits land after — never interleaved.
 

@@ -7,6 +7,7 @@ This project is managed by the Moluoxixi-distributed Moluoxixi workflow. The wor
 
 - `.moluoxixi/workflow.md` — development phases, when to create tasks, skill routing
 - `.moluoxixi/spec/` — package- and layer-scoped coding guidelines (read before writing code in a given layer)
+- `.moluoxixi/spec-proposals/` — pending knowledge proposals; never treat them as approved guidance until promoted
 - `.moluoxixi/workspace/` — per-developer journals and session traces
 - `.moluoxixi/tasks/` — active and archived tasks (PRDs, research, jsonl context)
 

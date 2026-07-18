@@ -23,8 +23,8 @@ The remainder of this file uses "skill" for the local file; the override and con
 | --- | --- |
 | AI should automatically know a capability | Add or modify a skill. |
 | User wants to trigger manually with a command | Add or modify a command/prompt/workflow. |
-| Team project conventions | Prefer `.moluoxixi/spec/` or a project-local skill — never a bundled skill directory. |
-| Tweak a bundled skill (`meta` et al.) for the user's own project | Create a project-local sibling skill (different name) that overrides intent, or edit `.moluoxixi/spec/`. Edits inside the bundled skill directory survive only until the next `node "<skill-root>/scripts/moluoxixi.mjs" update` and will need a "keep" choice each time. |
+| Team project conventions | Prefer a reviewed `.moluoxixi/spec/` proposal or a project-local skill — never a bundled skill directory. |
+| Tweak a bundled skill (`meta` et al.) for the user's own project | Create a project-local sibling skill (different name) that overrides intent, or submit an `update-spec` proposal. Edits inside the bundled skill directory survive only until the next `node "<skill-root>/scripts/moluoxixi.mjs" update` and will need a "keep" choice each time. |
 | Change role-wide behavior | Edit `roles/moluoxixi/skills/<name>/` and add role-specific tests. |
 | Change Moluoxixi flow semantics | Synchronize `.moluoxixi/workflow.md`. |
 
@@ -118,6 +118,6 @@ A reused name collides with a managed skill on the next update. Prefix project-l
 
 - Do not mix every platform's syntax into one file.
 - Do not change only one platform entry point while claiming all platforms are supported.
-- Do not hide long-term engineering conventions inside a command; write them to `.moluoxixi/spec/`.
+- Do not hide long-term engineering conventions inside a command; submit them through `update-spec` for human review.
 - Do not hand-edit files inside `meta/`, `spec-bootstrap/`, `session-insight/`, or `channel/` under any `.{platform}/skills/` directory expecting the change to persist — they are bundled and refreshed by `node "<skill-root>/scripts/moluoxixi.mjs" update`. Either contribute upstream or add a project-local skill that complements them.
 - After `node "<skill-root>/scripts/moluoxixi.mjs" update` reports a "modified by you" conflict on a bundled skill file, choose **keep** only if you accept maintaining the divergence by hand; otherwise accept the overwrite and re-apply the intent as a project-local skill.

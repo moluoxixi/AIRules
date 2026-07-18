@@ -59,7 +59,7 @@ Run the project's lint, type-check, and test commands. Fix any failures before p
 
 - [ ] Does `.moluoxixi/spec/` need updates? (new patterns, conventions, lessons learned)
 
-> "If I fixed a bug or discovered something non-obvious, should I document it so future me won't hit the same issue?" → If YES, update the relevant spec doc.
+> "If I fixed a bug or discovered something non-obvious, should I preserve it for review so future me won't hit the same issue?" -> If YES, return it for `update-spec`. Do not edit formal specs directly.
 
 ## Step 5: Cross-Layer Dimensions (if applicable)
 

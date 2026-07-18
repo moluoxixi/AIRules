@@ -144,7 +144,7 @@ _SEED_EXAMPLE = (
 )
 
 
-def _has_subagent_platform(repo_root: Path) -> bool:
+def has_subagent_platform(repo_root: Path) -> bool:
     """Return True if any sub-agent-capable platform is configured.
 
     Detected by probing well-known config directories at the repo root. Codex
@@ -307,12 +307,25 @@ def cmd_create(args: argparse.Namespace) -> int:
             file=sys.stderr,
         )
 
+    complexity = getattr(args, "complexity", None)
     task_data = {
         "id": slug,
         "name": slug,
         "title": args.title,
         "description": description,
         "status": "planning",
+        "complexity": {
+            "level": complexity or "unclassified",
+            "signals": [],
+            "reason": "",
+        },
+        "executionApproval": {
+            "mode": "manual",
+            "granted": False,
+            "source": None,
+            "grantedAt": None,
+            "reason": "",
+        },
         "dev_type": None,
         "scope": None,
         "package": package,
@@ -348,7 +361,7 @@ def cmd_create(args: argparse.Namespace) -> int:
     # Agent-less platforms (Kilo / Antigravity / Devin) skip this — they
     # load specs via the moluoxixi-before-dev skill instead of JSONL.
     seeded_jsonl = False
-    if _has_subagent_platform(repo_root):
+    if has_subagent_platform(repo_root):
         for jsonl_name in ("implement.jsonl", "check.jsonl"):
             jsonl_path = task_dir / jsonl_name
             if not jsonl_path.exists():
@@ -412,6 +425,10 @@ def cmd_create(args: argparse.Namespace) -> int:
     print("", file=sys.stderr)
     print(colored("Next steps:", Colors.BLUE), file=sys.stderr)
     print("  - Fill prd.md with requirements and acceptance criteria", file=sys.stderr)
+    if complexity:
+        print(f"  - Recorded complexity: {complexity}", file=sys.stderr)
+    else:
+        print("  - Classify with task.py set-complexity before task.py start", file=sys.stderr)
     print("  - Lightweight task: PRD-only is valid", file=sys.stderr)
     print("  - Complex task: add design.md and implement.md before task.py start", file=sys.stderr)
     if seeded_jsonl:

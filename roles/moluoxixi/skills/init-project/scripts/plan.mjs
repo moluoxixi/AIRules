@@ -242,11 +242,23 @@ function transformHostAsset(platform, relativePath, content, pythonCommand, with
     transformed = `${JSON.stringify(settings, null, 2)}\n`
   }
   const agentType = detectPullAgentType(relativePath)
-  if (!agentType || !['codex', 'gemini', 'qoder', 'copilot', 'pi', 'zcode', 'trae'].includes(platform))
+  if (!agentType)
     return transformed
+  const knowledgeBoundary = `## Formal Knowledge Boundary
+
+You may self-fix production code within the assigned scope. Do not edit \`.moluoxixi/spec/\`, approve or apply knowledge proposals, or commit changes. Return reusable findings to the main session so it can create an \`update-spec\` proposal for human review.
+
+---
+
+`
+  if (!['codex', 'gemini', 'qoder', 'copilot', 'pi', 'reasonix', 'zcode', 'trae'].includes(platform)) {
+    return platform === 'kiro'
+      ? injectJsonAgentPrelude(transformed, knowledgeBoundary)
+      : injectPullBasedPreludeMarkdown(transformed, knowledgeBoundary)
+  }
   if (platform === 'copilot')
     transformed = normalizeCopilotAgentFrontmatter(transformed)
-  const prelude = buildPullBasedPrelude(agentType, pythonCommand)
+  const prelude = `${knowledgeBoundary}${buildPullBasedPrelude(agentType, pythonCommand)}`
   return platform === 'codex'
     ? injectPullBasedPreludeToml(transformed, prelude)
     : injectPullBasedPreludeMarkdown(transformed, prelude)
@@ -259,9 +271,10 @@ function buildPullBasedPrelude(agentType, pythonCommand) {
 This host does not auto-inject task context into sub-agents. Before doing anything else, load it yourself.
 
 1. Resolve the active task path. Prefer the first dispatch line \`Active task: <path>\`. Otherwise run \`${pythonCommand} ./.moluoxixi/scripts/task.py current --source\`. If neither yields a task, ask the user; do not guess.
-2. Read \`<task-path>/${jsonl}\`. For each JSONL row containing a \`file\` field, read that file. Ignore seed rows without \`file\`.
-3. Read \`<task-path>/prd.md\`, then \`design.md\` and \`implement.md\` when present.
-4. If ${jsonl} has no curated files, read the task artifacts, run \`${pythonCommand} ./.moluoxixi/scripts/get_context.py --mode packages\`, and select relevant specs yourself. Do not block merely because a lightweight task has no curated JSONL rows.
+2. Run \`${pythonCommand} ./.moluoxixi/scripts/task.py validate <task-path>\`. Stop and report the invalid manifest if validation fails.
+3. Read \`<task-path>/${jsonl}\`. Read only validated entries under \`.moluoxixi/spec/\` or \`<task-path>/research/\`; never load \`.moluoxixi/spec-proposals/\` as active guidance. Ignore seed rows without \`file\`.
+4. Read \`<task-path>/prd.md\`, then \`design.md\` and \`implement.md\` when present.
+5. If ${jsonl} has no curated files, read the task artifacts, run \`${pythonCommand} ./.moluoxixi/scripts/get_context.py --mode packages\`, and select relevant formal specs yourself. Do not block merely because a lightweight task has no curated JSONL rows.
 
 Do not proceed without a task PRD or equivalent user-confirmed requirements.
 
@@ -271,10 +284,18 @@ Do not proceed without a task PRD or equivalent user-confirmed requirements.
 }
 
 function detectPullAgentType(relativePath) {
-  const name = path.basename(relativePath).replace(/(?:\.agent)?\.(?:md|toml)$/u, '')
-  if (name === 'moluoxixi-implement' || name === 'moluoxixi-check')
-    return name.endsWith('implement') ? 'implement' : 'check'
+  const name = path.basename(relativePath).replace(/(?:\.agent)?\.(?:md|toml|json)$/u, '')
+  if (['moluoxixi-implement', 'moluoxixi-frontend', 'moluoxixi-backend', 'moluoxixi-database'].includes(name))
+    return 'implement'
+  if (['moluoxixi-check', 'moluoxixi-test', 'moluoxixi-security'].includes(name))
+    return 'check'
   return undefined
+}
+
+function injectJsonAgentPrelude(content, prelude) {
+  const agent = JSON.parse(content)
+  agent.prompt = `${prelude}${agent.prompt ?? ''}`
+  return `${JSON.stringify(agent, null, 2)}\n`
 }
 
 function injectPullBasedPreludeMarkdown(content, prelude) {
@@ -441,7 +462,8 @@ function addDirectPlatformAssets(plan, platform, pythonCommand, withStatusline) 
     const agents = path.join(HOST_ASSET_ROOT, 'reasonix', 'agents')
     for (const source of walkFiles(agents)) {
       const name = path.basename(source, '.md')
-      const content = localizeProjectRuntime(`agents/${name}/SKILL.md`, resolveTemplate(fs.readFileSync(source, 'utf8'), PLATFORM_CONTEXT.reasonix, pythonCommand))
+      const sourceContent = resolveTemplate(fs.readFileSync(source, 'utf8'), PLATFORM_CONTEXT.reasonix, pythonCommand)
+      const content = transformHostAsset('reasonix', `agents/${name}.md`, sourceContent, pythonCommand)
       addPlan(plan, `.reasonix/skills/${name}/SKILL.md`, content, { platform })
     }
     return

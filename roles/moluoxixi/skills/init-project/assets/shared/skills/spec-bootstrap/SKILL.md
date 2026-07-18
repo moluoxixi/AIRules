@@ -1,19 +1,20 @@
 ---
 name: spec-bootstrap
-description: "Bootstrap project-specific Moluoxixi coding specs with a platform-neutral single-agent workflow. Use when creating or refreshing .moluoxixi/spec guidelines, analyzing a codebase with GitNexus, ABCoder, or source inspection, decomposing package/layer spec work, and writing real codebase-backed spec docs without placeholder text."
+description: "Bootstrap human-reviewable proposals for project-specific Moluoxixi coding specs with a platform-neutral workflow. Use when creating or refreshing .moluoxixi/spec guidelines from GitNexus, ABCoder, or source inspection without bypassing knowledge approval."
 ---
 
 # Moluoxixi Spec Bootstrap
 
-Use this skill to create or refresh `.moluoxixi/spec/` guidelines from the real codebase. One capable agent owns the full loop: analyze the repository, choose the spec boundaries, write the docs, and verify the result. The workflow does not depend on a specific host, CLI, or agent brand.
+Use this skill to prepare complete `.moluoxixi/spec/` candidates from the real codebase and submit them to `.moluoxixi/spec-proposals/`. One capable agent owns analysis and candidate preparation; a human owns promotion through `moluoxixi-spec-review`.
 
 ## Workflow
 
 1. Confirm Moluoxixi is initialized and inspect the current `.moluoxixi/spec/` tree.
 2. Analyze the repository architecture with the best available tools: GitNexus, ABCoder, language tooling, and direct source reads.
 3. Decompose the spec work by package and layer only when that reflects the actual codebase.
-4. Fill or reshape the spec files with concrete patterns, file paths, examples, and anti-patterns from the project.
-5. Verify that the final specs are internally consistent and contain no template placeholders.
+4. Prepare complete desired-state candidate files with concrete patterns, file paths, examples, and anti-patterns from the project.
+5. Submit one proposal per target with `spec-proposals.mjs propose`; submit index changes separately.
+6. Verify that the proposal set is internally consistent and contains no template placeholders. Do not promote it without explicit human review.
 
 ## Reference Routing
 
@@ -30,12 +31,13 @@ Use this skill to create or refresh `.moluoxixi/spec/` guidelines from the real 
 - Prefer source-backed rules over generic advice. Every important recommendation should point at a real file or repeated local pattern.
 - Keep execution single-owner by default. Optional helper agents are an implementation detail, not a requirement or user-visible dependency.
 - Do not write platform-specific instructions unless the target project already standardizes on that platform.
-- Do not leave placeholder text, empty headings, or copied boilerplate in `.moluoxixi/spec/`.
+- Do not directly overwrite `.moluoxixi/spec/`; formal files remain unchanged until reviewed promotion.
+- Do not leave placeholder text, empty headings, or copied boilerplate in proposed content.
 
 ## Done Criteria
 
-- `.moluoxixi/spec/` describes the project as it exists now.
+- `.moluoxixi/spec-proposals/` contains complete candidates that describe the project as it exists now.
 - Each relevant package or layer has practical coding guidance with real examples.
 - Non-applicable template sections are removed.
-- `index.md` files match the final spec file set.
+- Proposed `index.md` files match the proposed spec file set.
 - Any required setup or analysis assumptions are documented in the relevant spec or task notes.

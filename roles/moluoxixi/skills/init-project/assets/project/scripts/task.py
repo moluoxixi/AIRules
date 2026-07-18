@@ -25,6 +25,7 @@ from __future__ import annotations
 
 import argparse
 import sys
+from datetime import datetime, timezone
 
 from common.log import Colors, colored
 from common.paths import (
@@ -43,7 +44,7 @@ from common.active_task import (
     set_active_task,
 )
 from common.io import read_json, write_json
-from common.task_utils import resolve_task_dir, run_task_hooks
+from common.task_utils import is_within_tasks_dir, resolve_task_dir, run_task_hooks
 from common.tasks import iter_active_tasks, children_progress
 
 # Import command handlers from split modules (also re-exports for plan.py compatibility)
@@ -55,17 +56,150 @@ from common.task_store import (
     cmd_set_scope,
     cmd_add_subtask,
     cmd_remove_subtask,
+    has_subagent_platform,
 )
 from common.task_context import (
     cmd_add_context,
     cmd_validate,
     cmd_list_context,
+    planning_readiness_errors,
 )
 
 
 # =============================================================================
 # Command: start / finish
 # =============================================================================
+
+def _utc_now() -> str:
+    return datetime.now(timezone.utc).isoformat().replace("+00:00", "Z")
+
+
+def _load_task_for_update(task_input: str):
+    repo_root = get_repo_root()
+    task_dir = resolve_task_dir(task_input, repo_root)
+    task_json_path = task_dir / FILE_TASK_JSON
+    task_data = read_json(task_json_path) if task_json_path.is_file() else None
+    if not task_dir.is_dir() or not isinstance(task_data, dict):
+        print(colored(f"Error: Task not found or invalid: {task_input}", Colors.RED))
+        return repo_root, task_dir, task_json_path, None
+    return repo_root, task_dir, task_json_path, task_data
+
+
+def cmd_set_complexity(args: argparse.Namespace) -> int:
+    """Persist the planning complexity classification for one task."""
+    _, _, task_json_path, task_data = _load_task_for_update(args.dir)
+    if task_data is None:
+        return 1
+    if task_data.get("status") != "planning":
+        print(colored("Error: complexity can only be changed while planning", Colors.RED))
+        return 1
+    task_data["complexity"] = {
+        "level": args.level,
+        "signals": list(dict.fromkeys(args.signal or [])),
+        "reason": args.reason or "",
+    }
+    if not write_json(task_json_path, task_data):
+        print(colored("Error: failed to update task complexity", Colors.RED))
+        return 1
+    print(colored(f"✓ Complexity: {args.level}", Colors.GREEN))
+    return 0
+
+
+def cmd_set_execution_mode(args: argparse.Namespace) -> int:
+    """Set task-local manual/auto execution after explicit user authorization."""
+    _, _, task_json_path, task_data = _load_task_for_update(args.dir)
+    if task_data is None:
+        return 1
+    if task_data.get("status") == "completed":
+        print(colored("Error: completed tasks cannot change execution mode", Colors.RED))
+        return 1
+    if args.mode == "auto" and not args.user_authorized:
+        print(colored(
+            "Error: auto mode requires --user-authorized after an explicit user request",
+            Colors.RED,
+        ))
+        return 1
+    task_data["executionApproval"] = {
+        "mode": args.mode,
+        "granted": args.mode == "auto",
+        "source": "explicit_user" if args.mode == "auto" else None,
+        "grantedAt": _utc_now() if args.mode == "auto" else None,
+        "reason": args.reason or "",
+    }
+    if not write_json(task_json_path, task_data):
+        print(colored("Error: failed to update execution mode", Colors.RED))
+        return 1
+    print(colored(f"✓ Execution mode: {args.mode}", Colors.GREEN))
+    return 0
+
+
+def _prepare_planning_transition(
+    args: argparse.Namespace,
+    task_dir,
+    task_json_path,
+    task_data: dict,
+    repo_root,
+) -> bool:
+    status = task_data.get("status")
+    if status != "planning":
+        approval = task_data.get("executionApproval")
+        if status != "in_progress":
+            print(colored(f"Error: task status cannot be started: {status}", Colors.RED))
+            return False
+        if not (
+            isinstance(approval, dict)
+            and approval.get("granted") is True
+            and approval.get("source") == "explicit_user"
+            and approval.get("mode") in ("manual", "auto")
+        ):
+            print(colored(
+                "Error: in-progress task is missing its explicit execution approval record",
+                Colors.RED,
+            ))
+            return False
+        return True
+
+    errors = planning_readiness_errors(
+        task_dir,
+        repo_root,
+        task_data,
+        require_context=has_subagent_platform(repo_root),
+    )
+    if errors:
+        print(colored("Error: planning review gate failed", Colors.RED))
+        for error in errors:
+            print(f"  - {error}")
+        return False
+
+    approval = task_data.get("executionApproval")
+    if not isinstance(approval, dict):
+        approval = {}
+    auto_granted = (
+        approval.get("mode") == "auto"
+        and approval.get("granted") is True
+        and approval.get("source") == "explicit_user"
+    )
+    if not auto_granted and not args.user_approved:
+        print(colored(
+            "Error: manual review required; rerun with --user-approved only after the user approves the final plan",
+            Colors.RED,
+        ))
+        return False
+
+    if not auto_granted:
+        task_data["executionApproval"] = {
+            "mode": "manual",
+            "granted": True,
+            "source": "explicit_user",
+            "grantedAt": _utc_now(),
+            "reason": "Final planning artifacts approved before start",
+        }
+    task_data["status"] = "in_progress"
+    if not write_json(task_json_path, task_data):
+        print(colored("Error: failed to persist planning approval", Colors.RED))
+        return False
+    print(colored("✓ Planning review gate passed", Colors.GREEN))
+    return True
 
 def cmd_start(args: argparse.Namespace) -> int:
     """Set active task."""
@@ -76,12 +210,28 @@ def cmd_start(args: argparse.Namespace) -> int:
         print(colored("Error: task directory or name required", Colors.RED))
         return 1
 
-    # Resolve task directory (supports task name, relative path, or absolute path)
+    # Resolve task directory, then enforce the project task ownership boundary.
     full_path = resolve_task_dir(task_input, repo_root)
 
     if not full_path.is_dir():
         print(colored(f"Error: Task not found: {task_input}", Colors.RED))
         print("Hint: Use task name (e.g., 'my-task') or full path (e.g., '.moluoxixi/tasks/01-31-my-task')")
+        return 1
+    if not is_within_tasks_dir(full_path, repo_root):
+        print(colored(
+            "Error: Task must be a direct child of .moluoxixi/tasks/",
+            Colors.RED,
+        ))
+        return 1
+
+    task_json_path = full_path / FILE_TASK_JSON
+    task_data = read_json(task_json_path) if task_json_path.is_file() else None
+    if not isinstance(task_data, dict):
+        print(colored(f"Error: Missing or invalid task.json: {task_input}", Colors.RED))
+        return 1
+    if not _prepare_planning_transition(
+        args, full_path, task_json_path, task_data, repo_root
+    ):
         return 1
 
     # Convert to relative path for storage
@@ -89,8 +239,6 @@ def cmd_start(args: argparse.Namespace) -> int:
         task_dir = full_path.relative_to(repo_root).as_posix()
     except ValueError:
         task_dir = str(full_path)
-
-    task_json_path = full_path / FILE_TASK_JSON
 
     if not resolve_context_key():
         # Degraded mode: no session identity available.
@@ -108,13 +256,8 @@ def cmd_start(args: argparse.Namespace) -> int:
             Colors.YELLOW,
         ))
 
-        # Still flip task.json status: planning → in_progress so downstream phases proceed.
+        # The review gate above has already persisted planning → in_progress.
         if task_json_path.is_file():
-            data = read_json(task_json_path)
-            if data and data.get("status") == "planning":
-                data["status"] = "in_progress"
-                if write_json(task_json_path, data):
-                    print(colored("✓ Status: planning → in_progress (degraded)", Colors.GREEN))
             run_task_hooks("after_start", task_json_path, repo_root)
         return 0
 
@@ -122,13 +265,6 @@ def cmd_start(args: argparse.Namespace) -> int:
     if active:
         print(colored(f"✓ Current task set to: {task_dir}", Colors.GREEN))
         print(f"Source: {active.source}")
-
-        if task_json_path.is_file():
-            data = read_json(task_json_path)
-            if data and data.get("status") == "planning":
-                data["status"] = "in_progress"
-                if write_json(task_json_path, data):
-                    print(colored("✓ Status: planning → in_progress", Colors.GREEN))
 
         print()
         print(colored("The hook will now inject context from this task's jsonl files.", Colors.BLUE))
@@ -400,6 +536,11 @@ def main() -> int:
     p_create.add_argument("--parent", help="Parent task directory (establishes subtask link)")
     p_create.add_argument("--package", help="Package name for monorepo projects")
     p_create.add_argument(
+        "--complexity",
+        choices=("lightweight", "complex"),
+        help="Persist the initial task complexity classification",
+    )
+    p_create.add_argument(
         "--no-start",
         action="store_true",
         help="Create the task without making it active in this session",
@@ -423,6 +564,27 @@ def main() -> int:
     # start
     p_start = subparsers.add_parser("start", help="Set active task")
     p_start.add_argument("dir", help="Task directory")
+    p_start.add_argument(
+        "--user-approved",
+        action="store_true",
+        help="Record explicit user approval of the final planning artifacts",
+    )
+
+    p_complexity = subparsers.add_parser("set-complexity", help="Classify a planning task")
+    p_complexity.add_argument("dir", help="Task directory")
+    p_complexity.add_argument("level", choices=("lightweight", "complex"))
+    p_complexity.add_argument("--signal", action="append", default=[], help="Complexity signal (repeatable)")
+    p_complexity.add_argument("--reason", help="Short classification rationale")
+
+    p_execution = subparsers.add_parser("set-execution-mode", help="Set task-local manual or auto execution")
+    p_execution.add_argument("dir", help="Task directory")
+    p_execution.add_argument("mode", choices=("manual", "auto"))
+    p_execution.add_argument(
+        "--user-authorized",
+        action="store_true",
+        help="Confirm the user explicitly requested auto execution for this task",
+    )
+    p_execution.add_argument("--reason", help="Short authorization rationale")
 
     # current
     p_current = subparsers.add_parser("current", help="Show active task")
@@ -483,6 +645,8 @@ def main() -> int:
         "validate": cmd_validate,
         "list-context": cmd_list_context,
         "start": cmd_start,
+        "set-complexity": cmd_set_complexity,
+        "set-execution-mode": cmd_set_execution_mode,
         "current": cmd_current,
         "finish": cmd_finish,
         "set-branch": cmd_set_branch,

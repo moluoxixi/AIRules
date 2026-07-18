@@ -57,11 +57,19 @@ FILE_TASK_JSON = "task.json"
 AGENT_IMPLEMENT = "moluoxixi-implement"
 AGENT_CHECK = "moluoxixi-check"
 AGENT_RESEARCH = "moluoxixi-research"
+AGENT_FRONTEND = "moluoxixi-frontend"
+AGENT_BACKEND = "moluoxixi-backend"
+AGENT_TEST = "moluoxixi-test"
+AGENT_SECURITY = "moluoxixi-security"
+AGENT_DATABASE = "moluoxixi-database"
+
+IMPLEMENT_CONTEXT_AGENTS = (AGENT_IMPLEMENT, AGENT_FRONTEND, AGENT_BACKEND, AGENT_DATABASE)
+CHECK_CONTEXT_AGENTS = (AGENT_CHECK, AGENT_TEST, AGENT_SECURITY)
 
 # Agents that require a task directory
-AGENTS_REQUIRE_TASK = (AGENT_IMPLEMENT, AGENT_CHECK)
+AGENTS_REQUIRE_TASK = IMPLEMENT_CONTEXT_AGENTS + CHECK_CONTEXT_AGENTS
 # All supported agents
-AGENTS_ALL = (AGENT_IMPLEMENT, AGENT_CHECK, AGENT_RESEARCH)
+AGENTS_ALL = AGENTS_REQUIRE_TASK + (AGENT_RESEARCH,)
 
 
 def find_repo_root(start_path: str) -> str | None:
@@ -215,6 +223,41 @@ def read_jsonl_entries(base_path: str, jsonl_path: str) -> list[tuple[str, str]]
 
     results = []
     saw_real_entry = False
+    repo_root = os.path.realpath(base_path)
+    task_dir = os.path.dirname(jsonl_path.replace("\\", "/"))
+    allowed_roots = (
+        os.path.realpath(os.path.join(repo_root, ".moluoxixi", "spec")),
+        os.path.realpath(os.path.join(repo_root, task_dir, "research")),
+    )
+
+    def safe_context_path(value: object) -> tuple[str, str] | None:
+        if not isinstance(value, str) or not value.strip() or "\0" in value:
+            return None
+        normalized = value.strip().replace("\\", "/").rstrip("/")
+        if (
+            not normalized
+            or normalized.startswith("/")
+            or any(part in ("", ".", "..") for part in normalized.split("/"))
+            or normalized.split("/", 1)[0].endswith(":")
+        ):
+            return None
+        unresolved = os.path.join(repo_root, *normalized.split("/"))
+        current = repo_root
+        for part in normalized.split("/"):
+            current = os.path.join(current, part)
+            if os.path.lexists(current) and os.path.islink(current):
+                return None
+        resolved = os.path.realpath(unresolved)
+        try:
+            allowed = any(
+                os.path.commonpath((resolved, root)) == root for root in allowed_roots
+            )
+        except ValueError:
+            return None
+        if not allowed:
+            return None
+        return resolved, os.path.relpath(resolved, repo_root).replace("\\", "/")
+
     try:
         with open(full_path, "r", encoding="utf-8") as f:
             for line in f:
@@ -231,15 +274,28 @@ def read_jsonl_entries(base_path: str, jsonl_path: str) -> list[tuple[str, str]]
                         continue
 
                     saw_real_entry = True
+                    safe_path = safe_context_path(file_path)
+                    if safe_path is None:
+                        print(
+                            f"[inject-subagent-context] WARN: rejected unreviewed "
+                            f"context path: {file_path}",
+                            file=sys.stderr,
+                        )
+                        continue
+                    full_context_path, canonical_path = safe_path
                     if entry_type == "directory":
                         # Read all .md files in directory
-                        dir_contents = read_directory_contents(base_path, file_path)
+                        if not os.path.isdir(full_context_path):
+                            continue
+                        dir_contents = read_directory_contents(base_path, canonical_path)
                         results.extend(dir_contents)
                     else:
                         # Read single file
-                        content = read_file_content(base_path, file_path)
+                        if not os.path.isfile(full_context_path):
+                            continue
+                        content = read_file_content(base_path, canonical_path)
                         if content:
-                            results.append((file_path, content))
+                            results.append((canonical_path, content))
                 except json.JSONDecodeError:
                     continue
     except Exception:
@@ -444,17 +500,17 @@ Finish checklist and requirements:
 1. **Review changes** - Run `git diff --name-only` to see all changed files
 	2. **Verify task artifacts** - Check requirements in prd.md and, when present, design.md / implement.md
 3. **Spec sync** - Analyze whether changes introduce new patterns, contracts, or conventions
-   - If new pattern/convention found: read target spec file → update it → update index.md if needed
-   - If infra/cross-layer change: follow the 7-section mandatory template from update-spec.md
+   - If new pattern/convention found: read the target spec, then recommend a complete candidate for `update-spec` to submit under `.moluoxixi/spec-proposals/`
+   - If infra/cross-layer change: the proposal follows the 7-section mandatory template from update-spec.md
    - If pure code fix with no new patterns: skip this step
 4. **Run final checks** - Execute lint and typecheck
 5. **Confirm ready** - Ensure code is ready for PR
 
 ## Important Constraints
 
-- You MAY update spec files when gaps are detected (use update-spec.md as guide)
-- MUST read the target spec file BEFORE editing (avoid duplicating existing content)
-- Do NOT update specs for trivial changes (typos, formatting, obvious fixes)
+- You MUST NOT edit `.moluoxixi/spec/` directly; return proposal-ready knowledge to the main session
+- MUST read the target spec file before recommending a candidate (avoid duplicate content)
+- Do NOT propose spec knowledge for trivial changes (typos, formatting, obvious fixes)
 - If critical CODE issues found, report them clearly (fix specs, not code)
 - Verify all acceptance criteria in prd.md are met
 - Verify design.md and implement.md constraints when those files are present"""
@@ -721,13 +777,13 @@ def main():
     is_finish_phase = "[finish]" in original_prompt.lower()
 
     # Get context and build prompt based on subagent type
-    if subagent_type == AGENT_IMPLEMENT:
+    if subagent_type in IMPLEMENT_CONTEXT_AGENTS:
         assert task_dir is not None  # validated above
         context = get_implement_context(repo_root, task_dir)
         new_prompt = build_implement_prompt(original_prompt, context)
-    elif subagent_type == AGENT_CHECK:
+    elif subagent_type in CHECK_CONTEXT_AGENTS:
         assert task_dir is not None  # validated above
-        if is_finish_phase:
+        if is_finish_phase and subagent_type == AGENT_CHECK:
             # Finish phase: use finish context (lighter, focused on final verification)
             context = get_finish_context(repo_root, task_dir)
             new_prompt = build_finish_prompt(original_prompt, context)

@@ -5,8 +5,8 @@
  * JSONL parsing, and context building capabilities.
  */
 
-import { existsSync, readFileSync, appendFileSync, readdirSync } from "fs"
-import { isAbsolute, join } from "path"
+import { existsSync, readFileSync, appendFileSync, lstatSync, readdirSync, realpathSync } from "fs"
+import { basename, dirname, isAbsolute, join, relative, resolve } from "path"
 import { platform } from "os"
 import { execSync } from "child_process"
 import { createHash } from "crypto"
@@ -15,6 +15,11 @@ import process from "process"
 const PYTHON_CMD = platform() === "win32" ? "python" : "python3"
 // Debug logging
 const DEBUG_LOG = "/tmp/moluoxixi-plugin-debug.log"
+
+function isInsideRoot(root, candidate) {
+  const rel = relative(root, candidate)
+  return rel === "" || (rel !== ".." && !rel.startsWith(`..${process.platform === "win32" ? "\\" : "/"}`) && !isAbsolute(rel))
+}
 
 function debugLog(prefix, ...args) {
   const timestamp = new Date().toISOString()
@@ -63,9 +68,9 @@ function buildContextKey(platformName, kind, value) {
   return safeValue ? `${platformName}_${safeValue}` : `${platformName}_${hashValue(value)}`
 }
 
-// Matches `moluoxixi-implement`, `moluoxixi-check`, `moluoxixi-research` exactly.
+// Matches every Moluoxixi specialist sub-agent exactly.
 // Used by chat.message plugins to skip injection inside Moluoxixi sub-agent turns.
-const MOLUOXIXI_SUBAGENT_RE = /^moluoxixi-(implement|check|research)$/
+const MOLUOXIXI_SUBAGENT_RE = /^moluoxixi-(implement|frontend|backend|database|check|test|security|research)$/
 
 /**
  * Return true when the OpenCode `chat.message` input represents a Moluoxixi
@@ -229,16 +234,17 @@ export class MoluoxixiContext {
     if (!normalized) {
       return null
     }
-
-    if (isAbsolute(normalized)) {
-      return normalized
+    try {
+      const tasksRoot = realpathSync(join(this.directory, ".moluoxixi", "tasks"))
+      const candidate = isAbsolute(normalized)
+        ? realpathSync(normalized)
+        : normalized.startsWith(".moluoxixi/")
+          ? realpathSync(resolve(this.directory, normalized))
+          : realpathSync(resolve(tasksRoot, normalized))
+      return dirname(candidate) === tasksRoot ? candidate : null
+    } catch {
+      return null
     }
-
-    if (normalized.startsWith(".moluoxixi/")) {
-      return join(this.directory, normalized)
-    }
-
-    return join(this.directory, ".moluoxixi", "tasks", normalized)
   }
 
   // ============================================================
@@ -318,8 +324,30 @@ export class MoluoxixiContext {
    */
   readJsonlWithFiles(jsonlPath) {
     const results = []
-    const content = this.readFile(jsonlPath)
-    if (!content) return results
+    let allowedRoots
+    let projectRoot
+    let content
+    try {
+      projectRoot = realpathSync(this.directory)
+      const workflowRoot = join(projectRoot, ".moluoxixi")
+      const tasksPath = join(workflowRoot, "tasks")
+      const specPath = join(workflowRoot, "spec")
+      if ([workflowRoot, tasksPath, specPath, jsonlPath].some(candidate => lstatSync(candidate).isSymbolicLink()))
+        return results
+      const tasksRoot = realpathSync(tasksPath)
+      const manifest = realpathSync(jsonlPath)
+      const taskDir = dirname(manifest)
+      if (dirname(taskDir) !== tasksRoot || !["implement.jsonl", "check.jsonl"].includes(basename(manifest)))
+        return results
+      const researchPath = join(taskDir, "research")
+      if (existsSync(researchPath) && lstatSync(researchPath).isSymbolicLink())
+        return results
+      allowedRoots = [specPath, researchPath].filter(existsSync).map(root => realpathSync(root))
+      content = this.readFile(manifest)
+      if (!content) return results
+    } catch {
+      return results
+    }
 
     for (const line of content.split("\n")) {
       if (!line.trim()) continue
@@ -328,16 +356,27 @@ export class MoluoxixiContext {
         const file = item.file || item.path
         const entryType = item.type || "file"
 
-        if (!file) continue
+        if (!file || typeof file !== "string" || isAbsolute(file)) continue
+        const normalized = file.trim().replaceAll("\\", "/").replace(/\/$/u, "")
+        if (!normalized || normalized.split("/").some(part => !part || part === "." || part === "..")) continue
+
+        let canonical
+        try {
+          const candidate = realpathSync(resolve(projectRoot, ...normalized.split("/")))
+          if (!allowedRoots.some(root => isInsideRoot(root, candidate))) continue
+          canonical = relative(projectRoot, candidate).replaceAll("\\", "/")
+        } catch {
+          continue
+        }
 
         if (entryType === "directory") {
-          const dirEntries = this.readDirectoryMdFiles(file)
+          const dirEntries = this.readDirectoryMdFiles(canonical)
           results.push(...dirEntries)
         } else {
-          const fullPath = join(this.directory, file)
+          const fullPath = join(this.directory, canonical)
           const fileContent = this.readFile(fullPath)
           if (fileContent) {
-            results.push({ path: file, content: fileContent })
+            results.push({ path: canonical, content: fileContent })
           }
         }
       } catch {

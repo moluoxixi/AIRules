@@ -148,7 +148,7 @@ Read specs at session start:
 
 ---
 
-## Creating New Specs
+## Proposing New Specs
 
 ### 1. Choose Category
 
@@ -156,19 +156,17 @@ Read specs at session start:
 - Backend/API patterns → `backend/`
 - Cross-cutting guides → `guides/`
 
-### 2. Create Spec File
+### 2. Prepare A Task-Local Candidate
 
-```bash
-touch .moluoxixi/spec/cli/frontend/new-pattern.md
-```
+Prepare the complete desired file under the active task's `research/` directory.
 
 ### 3. Follow Format
 
 Use the spec file format above.
 
-### 4. Update Index
+### 4. Prepare The Complete Index Candidate
 
-Add to category's `index.md`:
+Include the new entry in a complete candidate for the category's `index.md`:
 
 ```markdown
 ## Specifications
@@ -176,33 +174,30 @@ Add to category's `index.md`:
 N. [New Pattern](./new-pattern.md)
 ```
 
-### 5. Reference in JSONL
+### 5. Submit, Review, Then Reference
 
-Add to relevant task context files.
+Submit each target with `update-spec`. Only after explicit human promotion with
+`spec-review` may the formal spec be added to relevant task context files.
 
 ---
 
 ## Adding New Categories
 
-### 1. Create Directory
+### 1. Prepare Candidates
 
-```bash
-mkdir .moluoxixi/spec/mobile
-```
+Prepare the complete desired category files under the active task's `research/`
+directory. Do not create the formal spec directory yet.
 
-### 2. Create Index
+### 2. Prepare Index
 
-```bash
-touch .moluoxixi/spec/mobile/index.md
-```
-
-### 3. Add Category Specs
+### 3. Prepare Category Specs
 
 Create individual spec files.
 
-### 4. Update Task Templates
+### 4. Submit And Review
 
-Ensure new category is available in JSONL templates.
+Submit every formal target separately. After human-reviewed promotion, use
+`task.py add-context` for tasks that need the new category.
 
 ---
 
@@ -211,5 +206,5 @@ Ensure new category is available in JSONL templates.
 1. **Keep specs focused** - One topic per file
 2. **Use examples** - Show do/don't patterns
 3. **Link related specs** - Cross-reference
-4. **Update regularly** - Specs evolve with codebase
+4. **Review proposals regularly** - Specs evolve only through human-approved promotion
 5. **Index everything** - Keep index files current

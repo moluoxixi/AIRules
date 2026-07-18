@@ -4,7 +4,7 @@ description: "Moluoxixi Copilot prompt: Update Code-Spec - Capture Executable Co
 
 # Update Code-Spec - Capture Executable Contracts
 
-When you learn something valuable (from debugging, implementing, or discussion), use this command to update the relevant code-spec documents.
+When you learn something valuable, prepare the complete desired code-spec content and submit it to `.moluoxixi/spec-proposals/`. Do not directly edit `.moluoxixi/spec/`; only `spec-review` promotes approved knowledge.
 
 **Timing**: After completing a task, fixing a bug, or discovering a new pattern
 
@@ -118,7 +118,7 @@ Answer these questions:
 
 ### Step 3: Read the Target Code-Spec
 
-Before editing, read the current code-spec to:
+Before preparing a candidate, read the current code-spec to:
 - Understand existing structure
 - Avoid duplicating content
 - Find the right section for your update
@@ -127,7 +127,7 @@ Before editing, read the current code-spec to:
 cat .moluoxixi/spec/<category>/<file>.md
 ```
 
-### Step 4: Make the Update
+### Step 4: Prepare and Submit the Candidate
 
 Follow these principles:
 
@@ -137,9 +137,24 @@ Follow these principles:
 4. **Show Code**: Add code snippets for key patterns
 5. **Keep it Short**: One concept per section
 
-### Step 5: Update the Index (if needed)
+Write the complete desired target content to a task-local candidate, normally
+under the active task's `research/` directory. Submit it without changing the
+formal spec:
 
-If you added a new section or the code-spec status changed, update the category's `index.md`.
+```bash
+node ./.moluoxixi/scripts/spec-proposals.mjs propose \
+  --target <category/file.md> \
+  --content-file <task-local-candidate> \
+  --source-task <active-task-path> \
+  --reason "<why this knowledge should be retained>"
+```
+
+For obsolete knowledge, use `--delete` instead of `--content-file`.
+
+### Step 5: Propose the Index Change Separately (if needed)
+
+If the category index must change, submit its complete desired content as a
+separate proposal. Approval of one target never approves another target.
 
 ---
 
@@ -329,6 +344,8 @@ Before finishing your code-spec update:
 - [ ] Is it in the right code-spec file?
 - [ ] Does it duplicate existing content?
 - [ ] Would a new team member understand it?
+- [ ] Was it submitted without directly editing `.moluoxixi/spec/`?
+- [ ] Was promotion left to the user and `spec-review`?
 
 ---
 
@@ -343,7 +360,7 @@ Development Flow:
 ```
 
 - `/` - Analyzes bugs deeply, often reveals spec updates needed
-- `/` - Actually makes the updates (this command)
+- `/` - Creates reviewable knowledge proposals
 - `/` - Reminds you to check if specs need updates
 
 ---

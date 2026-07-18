@@ -68,4 +68,4 @@ If information should be followed every time code is written in the future, put 
 
 ## AI Usage Rules
 
-The AI should not treat workspace as the only source of truth. When resuming a task, read the current task first, then use workspace for background. After a task is complete, record important process notes in workspace; if long-term rules emerged, update spec.
+The AI should not treat workspace as the only source of truth. When resuming a task, read the current task first, then use workspace for background. After a task is complete, record important process notes in workspace; if long-term rules emerged, submit them through `update-spec` for human review.

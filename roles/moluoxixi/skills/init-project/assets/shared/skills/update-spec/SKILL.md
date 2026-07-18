@@ -1,11 +1,11 @@
 ---
 name: update-spec
-description: "Captures executable contracts and coding conventions into .moluoxixi/spec/ documents. Use when learning something valuable from debugging, implementing, or discussion that should be preserved for future sessions."
+description: "Captures executable contracts and coding conventions as human-reviewable proposals for .moluoxixi/spec/. Use when learning something valuable from debugging, implementing, or discussion that should be preserved for future sessions without bypassing knowledge review."
 ---
 
 # Update Code-Spec - Capture Executable Contracts
 
-When you learn something valuable (from debugging, implementing, or discussion), use this to update the relevant code-spec documents.
+When you learn something valuable, prepare a complete candidate for the relevant code-spec and submit it to `.moluoxixi/spec-proposals/`. Do not directly edit `.moluoxixi/spec/`; only `spec-review` may promote approved knowledge.
 
 **Timing**: After completing a task, fixing a bug, or discovering a new pattern
 
@@ -125,7 +125,7 @@ Before editing, read the current code-spec to:
 cat .moluoxixi/spec/<category>/<file>.md
 ```
 
-### Step 4: Make the Update
+### Step 4: Prepare the Proposed Result
 
 Follow these principles:
 
@@ -135,9 +135,23 @@ Follow these principles:
 4. **Show Code**: Add code snippets for key patterns
 5. **Keep it Short**: One concept per section
 
-### Step 5: Update the Index (if needed)
+Write the complete desired target content to a task-local candidate file, normally under the active task's `research/` directory. The candidate must include the existing content that should remain; proposals are complete desired states, not ambiguous patches.
 
-If you added a new section or the code-spec status changed, update the category's `index.md`.
+Submit it without modifying the formal spec:
+
+```bash
+node ./.moluoxixi/scripts/spec-proposals.mjs propose \
+  --target <category/file.md> \
+  --content-file <task-local-candidate.md> \
+  --source-task <active-task-path> \
+  --reason "<why this knowledge should be retained>"
+```
+
+For obsolete knowledge that should be removed, use `--delete` instead of `--content-file`.
+
+### Step 5: Propose Index Changes Separately (if needed)
+
+If the category index must change, create a separate proposal for its complete reviewed result. Do not assume approval of one target approves another target.
 
 ---
 
@@ -315,7 +329,7 @@ If you're unsure what to update, answer these prompts:
 
 ## Quality Checklist
 
-Before finishing your code-spec update:
+Before finishing your knowledge proposal:
 
 - [ ] Is the content specific and actionable?
 - [ ] Did you include a code example?
@@ -327,6 +341,8 @@ Before finishing your code-spec update:
 - [ ] Is it in the right code-spec file?
 - [ ] Does it duplicate existing content?
 - [ ] Would a new team member understand it?
+- [ ] Was it submitted to `spec-proposals` without directly editing `spec/`?
+- [ ] Did you leave approval and promotion to `moluoxixi-spec-review` and the user?
 
 ---
 
@@ -334,14 +350,15 @@ Before finishing your code-spec update:
 
 ```
 Development Flow:
-  Learn something → `update-spec` (Moluoxixi command) → Knowledge captured
-       ↑                                  ↓
-  `break-loop` (Moluoxixi command) ←──────────────────── Future sessions benefit
+  Learn something → `update-spec` → pending proposal → human `spec-review`
+       ↑                                                       ↓
+  `break-loop` ←──────────────────────── approved `.moluoxixi/spec/`
   (deep bug analysis)
 ```
 
 - ``break-loop` (Moluoxixi command)` - Analyzes bugs deeply, often reveals spec updates needed
-- ``update-spec` (Moluoxixi command)` - Actually makes the updates
+- ``update-spec` (Moluoxixi command)` - Creates reviewable knowledge proposals
+- ``spec-review` (Moluoxixi command)` - Reviews and promotes approved proposals
 - ``finish-work` (Moluoxixi command)` - Reminds you to check if specs need updates
 
 ---

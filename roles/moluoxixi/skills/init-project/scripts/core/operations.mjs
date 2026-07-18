@@ -175,4 +175,5 @@ function isUserDataPath(relativePath) {
     || relativePath.startsWith('.moluoxixi/workspace/')
     || relativePath.startsWith('.moluoxixi/tasks/')
     || relativePath.startsWith('.moluoxixi/spec/')
+    || relativePath.startsWith('.moluoxixi/spec-proposals/')
 }

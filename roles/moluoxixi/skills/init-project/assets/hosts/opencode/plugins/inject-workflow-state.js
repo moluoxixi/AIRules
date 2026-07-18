@@ -67,7 +67,7 @@ function getActiveTask(ctx, platformInput = null) {
   if (!taskRef) return null
   const taskDir = ctx.resolveTaskDir(taskRef)
   if (active.stale || !taskDir || !existsSync(taskDir)) {
-    return { id: taskRef.split("/").pop(), status: "stale", source: active.source }
+    return { id: taskRef.split("/").pop(), status: "stale", source: active.source, complexity: "unknown", executionMode: "manual" }
   }
   const taskJsonPath = join(taskDir, "task.json")
   if (!existsSync(taskJsonPath)) return null
@@ -76,7 +76,9 @@ function getActiveTask(ctx, platformInput = null) {
     const status = typeof data.status === "string" ? data.status : ""
     if (!status) return null
     const id = data.id || taskRef.split("/").pop()
-    return { id, status, source: active.source }
+    const complexity = data.complexity && typeof data.complexity === "object" ? data.complexity.level || "unclassified" : "legacy"
+    const executionMode = data.executionApproval && typeof data.executionApproval === "object" ? data.executionApproval.mode || "manual" : "legacy"
+    return { id, status, source: active.source, complexity, executionMode }
   } catch {
     return null
   }
@@ -89,12 +91,14 @@ function getActiveTask(ctx, platformInput = null) {
  *   "Refer to workflow.md for current step." line
  * - no_task pseudo-status (id === null) → header omits task info
  */
-function buildBreadcrumb(id, status, templates) {
+function buildBreadcrumb(id, status, templates, complexity = null, executionMode = null) {
   let body = templates[status]
   if (body === undefined) {
     body = "Refer to workflow.md for current step."
   }
   let header = id === null ? `Status: ${status}` : `Task: ${id} (${status})`
+  if (id !== null && complexity && executionMode)
+    header += `; complexity=${complexity}; execution=${executionMode}`
   return `<workflow-state>\n${header}\n${body}\n</workflow-state>`
 }
 
@@ -127,7 +131,7 @@ export default async ({ directory }) => {
           const templates = loadBreadcrumbs(directory)
           const task = getActiveTask(ctx, input)
           const breadcrumb = task
-            ? buildBreadcrumb(task.id, task.status, templates, task.source)
+            ? buildBreadcrumb(task.id, task.status, templates, task.complexity, task.executionMode)
             : buildBreadcrumb(null, "no_task", templates)
 
           const parts = output?.parts || []

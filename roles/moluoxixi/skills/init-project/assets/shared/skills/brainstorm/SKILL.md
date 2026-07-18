@@ -27,10 +27,10 @@ Use this skill during Phase 1 planning to turn the user's request into clear req
 
 Use this skill only after task-creation consent has been given and the user is ready to enter Moluoxixi planning.
 
-If no task exists yet, create one:
+Classify the task as `lightweight` or `complex`, then create it with the classification persisted:
 
 ```bash
-TASK_DIR=$(python3 ./.moluoxixi/scripts/task.py create "<short task title>" --slug <slug>)
+TASK_DIR=$(python3 ./.moluoxixi/scripts/task.py create "<short task title>" --slug <slug> --complexity <lightweight|complex>)
 ```
 
 Use a concise title from the user's request. Use a slug without a date prefix. `task.py create` adds the `MM-DD-` directory prefix automatically.
@@ -141,7 +141,7 @@ For each component of the current plan:
 
 Lightweight tasks may have only `prd.md`. Complex tasks must have `prd.md`, `design.md`, and `implement.md` before `task.py start`.
 
-`implement.md` is not a replacement for `implement.jsonl`. On sub-agent-dispatch workflows, `implement.jsonl` and `check.jsonl` must each contain at least one real spec/research entry before `task.py start`; the seed `_example` row does not count. Inline workflows skip this JSONL gate because Phase 2 loads context through `before-dev`.
+`implement.md` is not a replacement for `implement.jsonl`. On complex sub-agent-dispatch workflows, `implement.jsonl` and `check.jsonl` must each contain at least one real spec/research entry before `task.py start`; the seed `_example` row does not count. Lightweight and inline workflows skip this JSONL gate.
 
 ## PRD Convergence Pass
 
@@ -167,7 +167,7 @@ Before declaring planning ready:
 - Repository-answerable questions have already been answered through inspection.
 - Remaining open questions are genuinely about user intent or scope.
 - Complex tasks have `design.md` and `implement.md`.
-- Sub-agent-dispatch tasks have real curated entries in both `implement.jsonl` and `check.jsonl`; seed-only manifests are not ready.
+- Complex sub-agent-dispatch tasks have real curated entries in both `implement.jsonl` and `check.jsonl`; seed-only manifests are not ready.
 - The user has reviewed the final planning artifacts or explicitly approved proceeding.
 
-Do not start implementation until the user approves or asks for implementation.
+In manual mode, do not run `task.py start --user-approved` until the user approves or asks for implementation. If the user explicitly requests automatic execution for this task, record it with `task.py set-execution-mode <task> auto --user-authorized`; never infer or persist auto mode globally.

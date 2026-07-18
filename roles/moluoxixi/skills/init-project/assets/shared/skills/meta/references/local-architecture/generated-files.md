@@ -17,6 +17,7 @@ This page only describes files that are visible and editable inside the user pro
 ├── runtime/
 ├── scripts/
 ├── spec/
+├── spec-proposals/
 ├── tasks/
 └── workspace/
 ```
@@ -25,7 +26,8 @@ This page only describes files that are visible and editable inside the user pro
 | --- | --- | --- |
 | `.moluoxixi/workflow.md` | Yes | Local workflow documentation and AI routing rules. |
 | `.moluoxixi/config.yaml` | Yes | Project configuration, hooks, packages, journal line limits, and related settings. |
-| `.moluoxixi/spec/` | Yes | Project specs, intended to be updated regularly by users and AI. |
+| `.moluoxixi/spec/` | Yes | Human-reviewed project specs; AI workflow changes arrive only through approved proposals. |
+| `.moluoxixi/spec-proposals/` | Yes | Pending candidates, approval history, audits, and backups. User data, never initializer-owned. |
 | `.moluoxixi/tasks/` | Yes | Task material and research artifacts, maintained by the task workflow. |
 | `.moluoxixi/workspace/` | Yes | Session records, usually written by `add_session.py`. |
 | `.moluoxixi/scripts/` | Carefully | Local runtime. It can be customized, but only after understanding the call chain. |
@@ -43,7 +45,7 @@ Different platforms generate different directories. Common categories:
 | --- | --- | --- |
 | hooks | `.claude/hooks/`, `.codex/hooks/`, `.cursor/hooks/` | Inject session context, workflow-state, and sub-agent context. |
 | settings | `.claude/settings.json`, `.codex/hooks.json`, `.qoder/settings.json` | Tell the platform when to run hooks or plugins. |
-| agents | `.claude/agents/`, `.codex/agents/`, `.kiro/agents/`, `.zcode/cli/agents/` | Define agents such as `moluoxixi-research`, `moluoxixi-implement`, and `moluoxixi-check`. |
+| agents | `.claude/agents/`, `.codex/agents/`, `.kiro/agents/`, `.zcode/agents/` | Define workflow and optional professional sub-agents. |
 | skills | `.claude/skills/`, `.agents/skills/`, `.qoder/skills/` | Skills that auto-trigger or can be read by AI. |
 | commands/prompts/workflows | `.cursor/commands/`, `.github/prompts/`, `.devin/workflows/`, `.zcode/commands/` | Explicit user-invoked command or workflow entry points. |
 
@@ -68,6 +70,7 @@ Editable by default:
 - `.moluoxixi/workflow.md`
 - `.moluoxixi/config.yaml`
 - `.moluoxixi/spec/**`
+- `.moluoxixi/spec-proposals/**`
 - `.moluoxixi/scripts/**`
 - Platform hooks, settings, agents, skills, commands, prompts, and workflows
 

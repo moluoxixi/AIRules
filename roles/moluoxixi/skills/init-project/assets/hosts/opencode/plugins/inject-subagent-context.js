@@ -11,8 +11,10 @@ import { join } from "path"
 import { MoluoxixiContext, debugLog } from "../lib/moluoxixi-context.js"
 
 // Supported subagent types
-const AGENTS_ALL = ["implement", "check", "research"]
-const AGENTS_REQUIRE_TASK = ["implement", "check"]
+const IMPLEMENT_CONTEXT_AGENTS = ["implement", "frontend", "backend", "database"]
+const CHECK_CONTEXT_AGENTS = ["check", "test", "security"]
+const AGENTS_ALL = [...IMPLEMENT_CONTEXT_AGENTS, ...CHECK_CONTEXT_AGENTS, "research"]
+const AGENTS_REQUIRE_TASK = [...IMPLEMENT_CONTEXT_AGENTS, ...CHECK_CONTEXT_AGENTS]
 
 // Match `Active task: <path>` on the first non-empty line of the dispatch
 // prompt. Mirrors the contract in workflow.md's [workflow-state:in_progress]
@@ -212,17 +214,17 @@ ${originalPrompt}
 1. **Review changes** - Run \`git diff --name-only\` to see all changed files
 2. **Verify task artifacts** - Check prd.md and, when present, design.md / implement.md
 3. **Spec sync** - Analyze whether changes introduce new patterns, contracts, or conventions
-   - If new pattern/convention found: read target spec file → update it → update index.md if needed
-   - If infra/cross-layer change: follow the 7-section mandatory template from update-spec.md
+   - If new pattern/convention found: read the target spec, then recommend a complete candidate for update-spec to submit under .moluoxixi/spec-proposals/
+   - If infra/cross-layer change: the proposal follows the 7-section mandatory template from update-spec.md
    - If pure code fix with no new patterns: skip this step
 4. **Run final checks** - Execute lint and typecheck
 5. **Confirm ready** - Ensure code is ready for PR
 
 ## Important Constraints
 
-- You MAY update spec files when gaps are detected (use update-spec.md as guide)
-- MUST read the target spec file BEFORE editing (avoid duplicating existing content)
-- Do NOT update specs for trivial changes (typos, formatting, obvious fixes)
+- You MUST NOT edit .moluoxixi/spec/ directly; return proposal-ready knowledge to the main session
+- MUST read the target spec file before recommending a candidate (avoid duplicate content)
+- Do NOT propose spec knowledge for trivial changes (typos, formatting, obvious fixes)
 - If critical CODE issues found, report them clearly (fix specs, not code)
 - Verify all acceptance criteria in prd.md are met
 - Verify design.md and implement.md constraints when those files are present` :
@@ -478,26 +480,24 @@ export default async ({ directory, platform: hostPlatform = process.platform, en
 
           // Get context based on agent type
           let context = ""
-          switch (subagentType) {
-            case "implement":
-              context = getImplementContext(ctx, taskDir)
-              break
-            case "check":
-              context = isFinish
-                ? getFinishContext(ctx, taskDir)
-                : getCheckContext(ctx, taskDir)
-              break
-            case "research":
-              context = getResearchContext(ctx, taskDir)
-              break
-          }
+          const contextType = IMPLEMENT_CONTEXT_AGENTS.includes(subagentType)
+            ? "implement"
+            : CHECK_CONTEXT_AGENTS.includes(subagentType)
+              ? "check"
+              : "research"
+          if (contextType === "implement")
+            context = getImplementContext(ctx, taskDir)
+          else if (contextType === "check")
+            context = isFinish && subagentType === "check" ? getFinishContext(ctx, taskDir) : getCheckContext(ctx, taskDir)
+          else
+            context = getResearchContext(ctx, taskDir)
 
           if (!context) {
             debugLog("inject", "No context to inject")
             return
           }
 
-          const newPrompt = buildPrompt(subagentType, originalPrompt, context, isFinish)
+          const newPrompt = buildPrompt(contextType, originalPrompt, context, isFinish)
 
           // Mutate args in-place — whole-object replacement does NOT work for the task tool
           // because the runtime holds a local reference to the same args object.

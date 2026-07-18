@@ -140,8 +140,8 @@ def _resolve_active_task(root: Path, input_data: dict):
     return resolve_active_task(root, input_data, platform=_detect_platform(input_data))
 
 
-def get_active_task(root: Path, input_data: dict) -> Optional[tuple[str, str, str]]:
-    """Return (task_id, status, source) from the current active task."""
+def get_active_task(root: Path, input_data: dict) -> Optional[tuple[str, str, str, str, str]]:
+    """Return task id, status, source, complexity, and execution mode."""
     active = _resolve_active_task(root, input_data)
     if not active.task_path:
         return None
@@ -150,7 +150,7 @@ def get_active_task(root: Path, input_data: dict) -> Optional[tuple[str, str, st
     if not task_dir.is_absolute():
         task_dir = root / task_dir
     if active.stale:
-        return task_dir.name, f"stale_{active.source_type}", active.source
+        return task_dir.name, f"stale_{active.source_type}", active.source, "unknown", "manual"
 
     task_json = task_dir / "task.json"
     if not task_json.is_file():
@@ -164,7 +164,11 @@ def get_active_task(root: Path, input_data: dict) -> Optional[tuple[str, str, st
     status = data.get("status", "")
     if not isinstance(status, str) or not status:
         return None
-    return task_id, status, active.source
+    complexity = data.get("complexity")
+    complexity_level = complexity.get("level") if isinstance(complexity, dict) else "legacy"
+    approval = data.get("executionApproval")
+    execution_mode = approval.get("mode") if isinstance(approval, dict) else "legacy"
+    return task_id, status, active.source, str(complexity_level), str(execution_mode)
 
 
 # ---------------------------------------------------------------------------
@@ -285,6 +289,8 @@ def build_breadcrumb(
     templates: dict[str, str],
     source: str | None = None,
     breadcrumb_key: str | None = None,
+    complexity: str | None = None,
+    execution_mode: str | None = None,
 ) -> str:
     """Build the <workflow-state>...</workflow-state> block.
 
@@ -300,6 +306,8 @@ def build_breadcrumb(
     if body is None:
         body = "Refer to workflow.md for current step."
     header = f"Status: {status}" if task_id is None else f"Task: {task_id} ({status})"
+    if task_id is not None and complexity and execution_mode:
+        header += f"; complexity={complexity}; execution={execution_mode}"
     return f"<workflow-state>\n{header}\n{body}\n</workflow-state>"
 
 
@@ -365,11 +373,17 @@ def main() -> int:
             None, "no_task", templates, breadcrumb_key=no_task_key
         )
     else:
-        task_id, status, source = task
+        task_id, status, source, complexity, execution_mode = task
         status_key = resolve_breadcrumb_key(status, platform, config)
         source_for_breadcrumb = None if platform == "codex" else source
         breadcrumb = build_breadcrumb(
-            task_id, status, templates, source_for_breadcrumb, breadcrumb_key=status_key
+            task_id,
+            status,
+            templates,
+            source_for_breadcrumb,
+            breadcrumb_key=status_key,
+            complexity=complexity,
+            execution_mode=execution_mode,
         )
     if platform == "codex":
         parts: list[str] = []

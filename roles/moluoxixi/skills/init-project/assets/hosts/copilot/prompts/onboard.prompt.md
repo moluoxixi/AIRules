@@ -292,18 +292,18 @@ Explain to the developer:
 
 The templates contain placeholder text that needs to be replaced with YOUR project's actual conventions. Without this, `/before-*-dev` commands won't provide useful guidance.
 
-**Your first task should be to fill in these guidelines:**
+**Your first task should be to prepare these guidelines for review:**
 
 1. Look at your existing codebase
 2. Identify the patterns and conventions already in use
-3. Document them in the guideline files
+3. Prepare complete guideline candidates under the bootstrap task's `research/` directory
 
 For example, for `.moluoxixi/spec/backend/database-guidelines.md`:
 - What ORM/query library does your project use?
 - How are migrations managed?
 - What naming conventions for tables/columns?
 
-Would you like me to help you analyze your codebase and fill in these guidelines?"
+Would you like me to help analyze the codebase and submit guideline proposals for your review?"
 
 **Situation B: Guidelines already customized**
 
@@ -315,15 +315,21 @@ Explain to the developer:
 
 I recommend reading through `.moluoxixi/spec/` to familiarize yourself with the team's coding standards."
 
-## Step 3: Help Fill Guidelines (If Empty)
+## Step 3: Help Propose Guidelines (If Empty)
 
-If the developer wants help filling guidelines, create a feature to track this:
+If the developer wants help, use the initializer-created bootstrap task when
+available, or create a task to track the analysis:
 
 ```bash
 python3 ./.moluoxixi/scripts/task.py create "Fill spec guidelines" --slug fill-spec-guidelines
 ```
 
-Then systematically analyze the codebase and fill each guideline file:
+Run `spec-bootstrap` to systematically analyze the codebase, prepare each
+complete desired guideline, and submit it to `.moluoxixi/spec-proposals/`.
+Do not edit `.moluoxixi/spec/` directly. After proposals are ready, show them
+to the developer and wait for explicit approval through `spec-review`.
+
+Cover one target at a time:
 
 1. **Analyze the codebase** - Look at existing code patterns
 2. **Document conventions** - Write what you observe, not ideals
@@ -356,7 +362,7 @@ After covering all three parts, summarize:
 
 **Next steps** (tell user):
 1. Run `/` to record this onboard session
-2. [If guidelines empty] Start filling in `.moluoxixi/spec/` guidelines
+2. [If guidelines empty] Run `spec-bootstrap`, then review its pending proposals
 3. [If guidelines ready] Start your first development task
 
 What would you like to do first?"

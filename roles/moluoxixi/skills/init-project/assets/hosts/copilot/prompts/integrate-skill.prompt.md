@@ -20,13 +20,13 @@ Adapt and integrate a Claude global skill into your project's development guidel
 
 ## Core Principle
 
-> [!] **Important**: The goal of skill integration is to update **development guidelines**, not to generate project code directly.
+> [!] **Important**: The goal is to prepare complete, reviewable development-guideline candidates, not to generate project code or modify formal specs directly.
 >
-> - Guidelines content -> Write to `.moluoxixi/spec/{target}/doc.md`
-> - Code examples -> Place in `.moluoxixi/spec/{target}/examples/skills/<skill-name>/`
+> - Guidelines target -> `.moluoxixi/spec/{target}/doc.md`
+> - Code-example targets -> `.moluoxixi/spec/{target}/examples/skills/<skill-name>/`
 > - Example files -> Use `.template` suffix (e.g., `component.tsx.template`) to avoid IDE errors
 >
-> Where `{target}` is `frontend` or `backend`, determined by skill type.
+> Prepare candidates under the active task's `research/` directory and submit each target through `spec-proposals.mjs`. A human promotes them with `spec-review`.
 
 ## Execution Steps
 
@@ -60,9 +60,9 @@ Extract from the skill:
 - **Code patterns**: Reusable code templates
 - **Caveats**: Common issues and solutions
 
-### 4. Execute Integration
+### 4. Prepare Integration Candidates
 
-#### 4.1 Update Guidelines Document
+#### 4.1 Prepare the Complete Guidelines Document
 
 Add a new section to the corresponding `doc.md`:
 
@@ -90,7 +90,7 @@ See `examples/skills/<skill-name>/`
 @@@/section:skill-<skill-name>
 ```
 
-#### 4.2 Create Examples Directory (if code examples exist)
+#### 4.2 Prepare Example Candidates (if code examples exist)
 
 ```bash
 # Directory structure ({target} = frontend or backend)
@@ -110,13 +110,28 @@ See `examples/skills/<skill-name>/`
 - Config files: `<name>.config.template` (e.g., `tailwind.config.template`)
 - Documentation: `README.md` (normal suffix)
 
-#### 4.3 Update Index File
+#### 4.3 Prepare the Complete Index Candidate
 
 Add to the Quick Navigation table in `index.md`:
 
 ```markdown
 | <Skill-related task> | <Section name> | `skill-<skill-name>` |
 ```
+
+#### 4.4 Submit Every Target for Review
+
+For each complete candidate, including `.template` examples, run:
+
+```bash
+node ./.moluoxixi/scripts/spec-proposals.mjs propose \
+  --target <path-relative-to-.moluoxixi/spec> \
+  --content-file <task-local-candidate> \
+  --source-task <active-task-path> \
+  --reason "Integrate <skill-name> into project guidance"
+```
+
+Do not create or edit any formal `.moluoxixi/spec/` target. Report all proposal
+IDs and wait for explicit human review through `spec-review`.
 
 ### 5. Generate Integration Report
 
@@ -155,12 +170,13 @@ pnpm add <package>
 yarn add <package>
 ```
 
-### [OK] Completed Changes
+### [OK] Proposed Changes
 
-- [ ] Added `@@@section:skill-<name>` section to `doc.md`
-- [ ] Added index entry to `index.md`
-- [ ] Created example files in `examples/skills/<name>/`
-- [ ] Example files use `.template` suffix
+- [ ] Submitted complete `doc.md` candidate
+- [ ] Submitted complete `index.md` candidate
+- [ ] Submitted each example candidate under `examples/skills/<name>/`
+- [ ] Example targets use `.template` suffix
+- [ ] Left formal specs unchanged pending human review
 
 ### # Related Guidelines
 

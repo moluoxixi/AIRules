@@ -1,6 +1,6 @@
-import { existsSync, readFileSync, readdirSync, statSync } from "node:fs";
+import { existsSync, lstatSync, readFileSync, readdirSync, realpathSync, statSync } from "node:fs";
 import { createHash, randomBytes } from "node:crypto";
-import { delimiter, dirname, isAbsolute, join, resolve } from "node:path";
+import { delimiter, dirname, isAbsolute, join, relative, resolve } from "node:path";
 import { spawn, spawnSync } from "node:child_process";
 
 // ── Types ──────────────────────────────────────────────────────────────
@@ -72,6 +72,11 @@ const MOLUOXIXI_AGENT_JSONL: Record<string, string> = {
   implement: "implement.jsonl",
   "moluoxixi-check": "check.jsonl",
   check: "check.jsonl",
+  "moluoxixi-frontend": "implement.jsonl",
+  "moluoxixi-backend": "implement.jsonl",
+  "moluoxixi-database": "implement.jsonl",
+  "moluoxixi-test": "check.jsonl",
+  "moluoxixi-security": "check.jsonl",
 };
 const MAX_STDOUT = 8 * 1024 * 1024;
 const MAX_STDERR = 1024 * 1024;
@@ -813,11 +818,40 @@ function readTaskDir(root: string, key: string | null): string | null {
     ref = ref;
     ref = ref.replace(/\\/g, "/").replace(/^\.\//, "");
     if (ref.startsWith("tasks/")) ref = `.moluoxixi/${ref}`;
-    return ref.startsWith(".moluoxixi/")
+    const candidate = ref.startsWith(".moluoxixi/")
       ? join(root, ref)
       : isAbsolute(ref)
         ? ref
         : join(root, ".moluoxixi", "tasks", ref);
+    const workflowRoot = join(root, ".moluoxixi");
+    const tasksPath = join(workflowRoot, "tasks");
+    if ([workflowRoot, tasksPath].some((candidate) => lstatSync(candidate).isSymbolicLink())) return null;
+    const tasksRoot = realpathSync(tasksPath);
+    const resolvedTask = realpathSync(candidate);
+    return dirname(resolvedTask) === tasksRoot ? resolvedTask : null;
+  } catch {
+    return null;
+  }
+}
+
+function isInsideRoot(root: string, candidate: string): boolean {
+  const rel = relative(root, candidate);
+  return rel === "" || (rel !== ".." && !rel.startsWith("../") && !rel.startsWith("..\\") && !isAbsolute(rel));
+}
+
+function resolveCuratedContextFile(root: string, taskDir: string, file: string): string | null {
+  if (!file.trim() || isAbsolute(file)) return null;
+  const normalized = file.trim().replace(/\\/g, "/").replace(/\/$/, "");
+  if (!normalized || normalized.split("/").some((part) => !part || part === "." || part === "..")) return null;
+  try {
+    const projectRoot = realpathSync(root);
+    const candidate = realpathSync(resolve(projectRoot, normalized));
+    const workflowRoot = join(projectRoot, ".moluoxixi");
+    const specRoot = join(workflowRoot, "spec");
+    const researchRoot = join(taskDir, "research");
+    if ([workflowRoot, specRoot, researchRoot].some((allowed) => existsSync(allowed) && lstatSync(allowed).isSymbolicLink())) return null;
+    const allowedRoots = [specRoot, researchRoot].filter(existsSync).map((allowed) => realpathSync(allowed));
+    return allowedRoots.some((allowed) => isInsideRoot(allowed, candidate)) ? candidate : null;
   } catch {
     return null;
   }
@@ -950,7 +984,8 @@ function buildContext(root: string, agent: string, key: string | null): string {
         const r = JSON.parse(t) as JsonObject;
         const f = typeof r.file === "string" ? r.file : "";
         if (f) {
-          const c = readText(join(root, f));
+          const contextFile = resolveCuratedContextFile(root, dir, f);
+          const c = contextFile ? readText(contextFile) : "";
           if (c) chunks.push(`## ${f}\n\n${c}`);
         }
       } catch {}

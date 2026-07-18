@@ -46,6 +46,7 @@ const EXCLUDED = [
   '/workspace/',
   '/tasks/',
   '/spec/',
+  '/spec-proposals/',
   '/backlog/',
   '/agent-traces/',
   '/worktrees/',

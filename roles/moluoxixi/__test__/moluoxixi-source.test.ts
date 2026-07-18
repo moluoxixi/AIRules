@@ -54,9 +54,9 @@ const upstream = {
 }
 
 const selectedIntegrity = {
-  bytes: 1618062,
-  files: 242,
-  hash: 'a3787116b181bb41a1dee8fccfac581d16b7fead254f4b27a8a6b06e7b82c53f',
+  bytes: 1800454,
+  files: 317,
+  hash: 'a4857e5e721a4ff8cd345c7c8917b9e9f9aefa535d3f35db9263d53e309a0713',
 }
 
 const migratedRuntimePaths = [
@@ -83,27 +83,28 @@ const projectSkillNames = [
   'python-design',
   'session-insight',
   'spec-bootstrap',
+  'spec-review',
   'start',
   'ts-sdk-author',
   'update-spec',
 ]
 
 const nativeCapabilityCounts = [
-  ['skills/init-project/assets/hosts/claude', 5],
-  ['skills/init-project/assets/hosts/codebuddy', 4],
-  ['skills/init-project/assets/hosts/codex', 19],
+  ['skills/init-project/assets/hosts/claude', 10],
+  ['skills/init-project/assets/hosts/codebuddy', 9],
+  ['skills/init-project/assets/hosts/codex', 24],
   ['skills/init-project/assets/hosts/copilot', 16],
-  ['skills/init-project/assets/hosts/cursor', 4],
-  ['skills/init-project/assets/hosts/droid', 4],
-  ['skills/init-project/assets/hosts/gemini', 4],
-  ['skills/init-project/assets/hosts/kiro', 5],
-  ['skills/init-project/assets/hosts/omp', 4],
-  ['skills/init-project/assets/hosts/opencode', 9],
-  ['skills/init-project/assets/hosts/pi', 5],
-  ['skills/init-project/assets/hosts/qoder', 4],
-  ['skills/init-project/assets/hosts/reasonix', 2],
-  ['skills/init-project/assets/hosts/trae', 4],
-  ['skills/init-project/assets/hosts/zcode', 3],
+  ['skills/init-project/assets/hosts/cursor', 9],
+  ['skills/init-project/assets/hosts/droid', 9],
+  ['skills/init-project/assets/hosts/gemini', 9],
+  ['skills/init-project/assets/hosts/kiro', 10],
+  ['skills/init-project/assets/hosts/omp', 9],
+  ['skills/init-project/assets/hosts/opencode', 14],
+  ['skills/init-project/assets/hosts/pi', 10],
+  ['skills/init-project/assets/hosts/qoder', 9],
+  ['skills/init-project/assets/hosts/reasonix', 8],
+  ['skills/init-project/assets/hosts/trae', 9],
+  ['skills/init-project/assets/hosts/zcode', 8],
 ] as const
 
 const nativeCapabilityEntrypoints = [

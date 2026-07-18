@@ -5,6 +5,11 @@ Moluoxixi agent files define specialized roles. Common Moluoxixi agents in a use
 - `moluoxixi-research`
 - `moluoxixi-implement`
 - `moluoxixi-check`
+- `moluoxixi-frontend`
+- `moluoxixi-backend`
+- `moluoxixi-test`
+- `moluoxixi-security`
+- `moluoxixi-database`
 
 File locations and formats differ by platform, but responsibility boundaries should stay consistent.
 
@@ -15,6 +20,11 @@ File locations and formats differ by platform, but responsibility boundaries sho
 | `moluoxixi-research` | Investigate the question and write findings into the current task's `research/`. |
 | `moluoxixi-implement` | Implement against `prd.md`, optional `design.md` / `implement.md`, `implement.jsonl`, and related spec/research. |
 | `moluoxixi-check` | Review changes, fix discovered issues, and run necessary checks. |
+| `moluoxixi-frontend` | Own an approved frontend slice: UI boundaries, client state, accessibility, and browser validation. |
+| `moluoxixi-backend` | Own an approved backend slice: APIs, domain logic, reliability, and contract validation. |
+| `moluoxixi-test` | Independently add or improve tests and report production defects without changing production code. |
+| `moluoxixi-security` | Independently review trust boundaries and persist severity-ranked findings under task research. |
+| `moluoxixi-database` | Own approved schema, migration, query, rollout, rollback, and data-safety work. |
 
 Agent files should not become generic chat prompts. They should define input sources, write boundaries, whether code may be changed, and how results are reported.
 
@@ -33,11 +43,15 @@ Agent files should not become generic chat prompts. They should define input sou
 | Factory Droid | `.factory/droids/moluoxixi-*.md` |
 | Pi Agent | `.pi/agents/moluoxixi-*.md` |
 | Reasonix | `.reasonix/skills/moluoxixi-*/SKILL.md` (subagent frontmatter) |
-| ZCode | `.zcode/cli/agents/moluoxixi-*.md` |
+| ZCode | `.zcode/agents/moluoxixi-*.md` |
+| Trae | `.trae/agents/moluoxixi-*.md` |
+| Oh My Pi | `.omp/agents/moluoxixi-*.md` |
 
 GitHub Copilot agent/prompt support is provided by a combination of directories such as `.github/agents/`, `.github/prompts/`, and `.github/skills/`; inspect the files actually generated in the user project.
 
 Main-session workflow platforms such as Kilo, Antigravity, and Devin may not have Moluoxixi sub-agent files. They usually rely on workflows/skills to guide the main session.
+
+Professional agents are optional and scope-driven. Keep `research / implement / check` as the workflow backbone. Dispatch frontend, backend, database, test, or security only when the approved task materially needs that boundary. Language expertise remains in skills loaded by the selected agent rather than multiplying agents per language.
 
 ## Two Context Loading Modes
 

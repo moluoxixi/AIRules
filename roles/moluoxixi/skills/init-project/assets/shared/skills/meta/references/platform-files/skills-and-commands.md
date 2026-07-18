@@ -82,4 +82,6 @@ They should not store task state; task state belongs in `.moluoxixi/tasks/` and 
 3. **Keep the same semantics consistent across platforms**. File formats can differ, but behavior descriptions should match.
 4. **Put project-specific capabilities in local skills**. Do not put team-private flows into public `meta`.
 
-If the user only wants local AI to know one more project rule, usually create a project-local skill or update `.moluoxixi/spec/` instead of changing a Moluoxixi built-in workflow skill.
+If the user only wants local AI to know one more project rule, usually create a
+project-local skill or submit an `update-spec` proposal instead of changing a
+Moluoxixi built-in workflow skill.

@@ -82,7 +82,9 @@ function createBootstrapTask(projectRoot, developer, pythonCommand, projectType,
     name,
     title: 'Bootstrap Guidelines',
     description: 'Fill in project development guidelines for AI agents',
-    status: 'in_progress',
+    status: 'planning',
+    complexity: { level: 'complex', signals: ['initializer', 'multi_deliverable'], reason: 'Repository-wide knowledge bootstrap requires reviewed proposals' },
+    executionApproval: { mode: 'manual', granted: false, source: null, grantedAt: null, reason: '' },
     dev_type: 'docs',
     priority: 'P1',
     creator: developer,
@@ -100,7 +102,9 @@ function createJoinerTask(projectRoot, developer, pythonCommand, created) {
     name,
     title: `Joining: Onboard to this Moluoxixi project (${developer})`,
     description: 'Onboard a new developer to an existing Moluoxixi project: learn the workflow, conventions, and find assigned work',
-    status: 'in_progress',
+    status: 'planning',
+    complexity: { level: 'lightweight', signals: ['initializer'], reason: 'Initializer-created onboarding task' },
+    executionApproval: { mode: 'manual', granted: false, source: null, grantedAt: null, reason: '' },
     dev_type: 'docs',
     priority: 'P1',
     creator: developer,
@@ -161,6 +165,8 @@ function taskRecord(overrides) {
     title: '',
     description: '',
     status: 'planning',
+    complexity: { level: 'unclassified', signals: [], reason: '' },
+    executionApproval: { mode: 'manual', granted: false, source: null, grantedAt: null, reason: '' },
     dev_type: null,
     scope: null,
     package: null,
@@ -190,7 +196,7 @@ function workspaceIndex(developer) {
 
 function bootstrapPrd(projectType, packages, pythonCommand) {
   const targets = packages.length > 0
-    ? packages.map(pkg => `- [ ] Fill guidelines for ${pkg.name} under \`${PROJECT_ROOT_DIR}/spec/${sanitizePackageName(pkg.name)}/\``).join('\n')
+    ? packages.map(pkg => `- [ ] Prepare reviewed guideline proposals for ${pkg.name} targeting \`${PROJECT_ROOT_DIR}/spec/${sanitizePackageName(pkg.name)}/\``).join('\n')
     : projectType === 'frontend'
       ? '- [ ] Fill frontend guidelines\n- [ ] Add real code examples'
       : projectType === 'backend'
@@ -200,9 +206,9 @@ function bootstrapPrd(projectType, packages, pythonCommand) {
 
 **You (the AI) are running this task. The developer does not read this file.**
 
-The developer just initialized Moluoxixi for this project. Help populate
-\`${PROJECT_ROOT_DIR}/spec/\` with the team's real coding conventions so implement
-and check sub-agents load project-specific guidance instead of generic advice.
+The developer just initialized Moluoxixi for this project. Prepare
+\`${PROJECT_ROOT_DIR}/spec-proposals/\` candidates for the team's real coding conventions.
+Do not directly replace formal specs; a human reviews and promotes candidates first.
 
 ## Status
 
@@ -224,17 +230,18 @@ when they clearly do not fit this repository.
 2. Scan real code for anything not covered. Find 2-3 real examples for every
    documented pattern and reference their paths.
 3. Document current reality, including known debt; do not write aspirational rules.
-4. Fill the applicable backend/frontend files and keep the general guides accurate.
+4. Use \`moluoxixi-spec-bootstrap\` to prepare complete candidates and submit one proposal per target.
+5. Present the proposal batch and use \`moluoxixi-spec-review\` only after explicit human approval.
 
 ## Runtime mechanics
 
 - Every task carries implement.jsonl and check.jsonl context manifests.
 - Project hooks inject those spec files plus the task PRD into implementation and
   verification prompts.
-- The project spec directory is the convention source of truth; empty specs lead
+- The reviewed project spec directory is the convention source of truth; empty specs lead
   to generic output, while examples from real code reproduce team patterns.
 
-When the guidelines contain real examples, finish and archive this task:
+When the proposal batch contains real examples and the human has reviewed the decisions, finish and archive this task:
 
 \`\`\`bash
 ${pythonCommand} ./${PROJECT_ROOT_DIR}/scripts/task.py finish

@@ -1,5 +1,5 @@
 import type { ExtensionAPI } from "@oh-my-pi/pi-coding-agent";
-import { existsSync, readFileSync, readdirSync, realpathSync } from "node:fs";
+import { existsSync, lstatSync, readFileSync, readdirSync, realpathSync } from "node:fs";
 import { join, dirname, isAbsolute, relative, resolve } from "node:path";
 import { spawnSync } from "node:child_process";
 import { createHash } from "node:crypto";
@@ -58,11 +58,19 @@ function isInsideRoot(root: string, candidate: string): boolean {
    return rel === "" || (rel !== ".." && !rel.startsWith("../") && !rel.startsWith("..\\") && !isAbsolute(rel));
 }
 
-function resolveProjectFile(projectRoot: string, file: string): string | null {
+function resolveCuratedContextFile(projectRoot: string, taskDir: string, file: string): string | null {
+   if (!file.trim() || isAbsolute(file)) return null;
+   const normalized = file.trim().replace(/\\/g, "/").replace(/\/$/, "");
+   if (!normalized || normalized.split("/").some((part) => !part || part === "." || part === "..")) return null;
    try {
       const rootReal = realpathSync(projectRoot);
-      const targetReal = realpathSync(resolve(projectRoot, file));
-      return isInsideRoot(rootReal, targetReal) ? targetReal : null;
+      const targetReal = realpathSync(resolve(projectRoot, normalized));
+      const workflowRoot = join(rootReal, ".moluoxixi");
+      const specRoot = join(workflowRoot, "spec");
+      const researchRoot = join(taskDir, "research");
+      if ([workflowRoot, specRoot, researchRoot].some((root) => existsSync(root) && lstatSync(root).isSymbolicLink())) return null;
+      const allowedRoots = [specRoot, researchRoot].filter(existsSync).map((root) => realpathSync(root));
+      return allowedRoots.some((root) => isInsideRoot(root, targetReal)) ? targetReal : null;
    } catch {
       return null;
    }
@@ -116,7 +124,20 @@ function resolveActiveTaskStatus(
    if (typeof currentTask !== "string" || !currentTask)
       return { status: "no_task", taskDir: null, taskTitle: null };
 
-   const taskDir = join(projectRoot, currentTask);
+   let taskDir: string;
+   try {
+      const workflowRoot = join(projectRoot, ".moluoxixi");
+      const tasksPath = join(workflowRoot, "tasks");
+      if ([workflowRoot, tasksPath].some((root) => lstatSync(root).isSymbolicLink()))
+         return { status: "no_task", taskDir: null, taskTitle: null };
+      const tasksRoot = realpathSync(tasksPath);
+      const candidate = realpathSync(resolve(projectRoot, currentTask));
+      if (dirname(candidate) !== tasksRoot)
+         return { status: "no_task", taskDir: null, taskTitle: null };
+      taskDir = candidate;
+   } catch {
+      return { status: "no_task", taskDir: null, taskTitle: null };
+   }
    const taskJsonPath = join(taskDir, "task.json");
    if (!existsSync(taskJsonPath)) return { status: "no_task", taskDir: null, taskTitle: null };
 
@@ -167,7 +188,7 @@ function buildSessionContext(projectRoot: string, contextKey: string | null): st
 // Task context — prd.md, info.md, and jsonl-referenced spec/research files
 // ---------------------------------------------------------------------------
 
-type AgentType = "moluoxixi-implement" | "moluoxixi-check" | "moluoxixi-research" | null;
+type AgentType = "moluoxixi-implement" | "moluoxixi-check" | "moluoxixi-research" | "moluoxixi-frontend" | "moluoxixi-backend" | "moluoxixi-test" | "moluoxixi-security" | "moluoxixi-database" | null;
 
 function buildTaskContext(projectRoot: string, taskDir: string, agentType?: AgentType): string {
    const parts: string[] = [];
@@ -183,9 +204,9 @@ function buildTaskContext(projectRoot: string, taskDir: string, agentType?: Agen
 
    // Determine which jsonl files to read based on agent type
    let jsonlNames: string[];
-   if (agentType === "moluoxixi-implement") {
+   if (["moluoxixi-implement", "moluoxixi-frontend", "moluoxixi-backend", "moluoxixi-database"].includes(agentType ?? "")) {
       jsonlNames = ["implement.jsonl"];
-   } else if (agentType === "moluoxixi-check") {
+   } else if (["moluoxixi-check", "moluoxixi-test", "moluoxixi-security"].includes(agentType ?? "")) {
       jsonlNames = ["check.jsonl"];
    } else if (agentType === "moluoxixi-research") {
       jsonlNames = []; // research agent gets only prd + info
@@ -212,7 +233,7 @@ function buildTaskContext(projectRoot: string, taskDir: string, agentType?: Agen
             const row = JSON.parse(trimmed) as Record<string, unknown>;
             const file = typeof row.file === "string" ? row.file.trim() : "";
             if (!file) continue;
-            const targetPath = resolveProjectFile(projectRoot, file);
+            const targetPath = resolveCuratedContextFile(projectRoot, taskDir, file);
             if (!targetPath) continue;
             let content = "";
             try { content = readFileSync(targetPath, "utf-8"); } catch { }
@@ -311,7 +332,7 @@ function parseWorkflowStateBlocks(markdown: string): WorkflowStateBlock[] {
 // Sub-agent detection
 // ---------------------------------------------------------------------------
 
-const MOLUOXIXI_AGENTS = new Set(["moluoxixi-implement", "moluoxixi-check", "moluoxixi-research"]);
+const MOLUOXIXI_AGENTS = new Set(["moluoxixi-implement", "moluoxixi-check", "moluoxixi-research", "moluoxixi-frontend", "moluoxixi-backend", "moluoxixi-test", "moluoxixi-security", "moluoxixi-database"]);
 
 function detectAgentType(): AgentType {
    const blocked = process.env.PI_BLOCKED_AGENT;

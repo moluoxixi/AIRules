@@ -43,6 +43,7 @@ const projectSkillNames = [
   'python-design',
   'session-insight',
   'spec-bootstrap',
+  'spec-review',
   'start',
   'ts-sdk-author',
   'update-spec',
@@ -130,9 +131,9 @@ function migratedAssetStats(): { bytes: number, files: number, hash: string } {
 describe('init-project skill', () => {
   it('pins the migrated Moluoxixi project templates', () => {
     expect(migratedAssetStats()).toEqual({
-      bytes: 1618062,
-      files: 242,
-      hash: '0fe1e0f647fe527ddb547db15f7b6a4ea2c6c947c574a2d17ec67a463e7aac5b',
+      bytes: 1800454,
+      files: 317,
+      hash: '29f3e3db862248174a66fc8a6cfb84f6b4e977a695684c3ab4e7d5cd7dfd996a',
     })
     expect(fs.existsSync(path.join(assetRoot, 'moluoxixi-v0.6.7'))).toBe(false)
     expect(fs.existsSync(path.join(assetRoot, 'legal', 'LICENSE'))).toBe(false)
@@ -190,7 +191,7 @@ describe('init-project skill', () => {
     const alias = runInitializer(aliasRoot, ['--platform', 'windsurf', '--dry-run'])
     expect(alias).toMatchObject({ status: 0, stderr: '' })
     expect(alias.summary?.platforms).toEqual(['devin'])
-  })
+  }, 15_000)
 
   it('initializes shared runtime and selected platforms idempotently', () => {
     const projectRoot = temporaryProject()
@@ -199,6 +200,7 @@ describe('init-project skill', () => {
     expect(first).toMatchObject({ status: 0, stderr: '' })
     expect(first.summary?.conflicts).toEqual([])
     expect(fs.existsSync(path.join(projectRoot, '.moluoxixi', 'scripts', 'task.py'))).toBe(true)
+    expect(fs.existsSync(path.join(projectRoot, '.moluoxixi', 'scripts', 'spec-proposals.mjs'))).toBe(true)
     expect(fs.existsSync(path.join(projectRoot, '.moluoxixi', 'runtime', 'source', 'packages', 'core', 'src', 'channel', 'index.ts'))).toBe(true)
     expect(fs.existsSync(path.join(projectRoot, '.moluoxixi', 'runtime', 'update', 'init-project', 'assets', 'project', 'workflow.md'))).toBe(true)
     expect(fs.existsSync(path.join(projectRoot, '.moluoxixi', 'runtime', 'update', 'init-project', 'scripts', 'migrations', 'manifests'))).toBe(false)
@@ -210,6 +212,7 @@ describe('init-project skill', () => {
       schemaVersion: 2,
     })
     expect(initialManifest).not.toHaveProperty('upstreamRevision')
+    expect(Object.keys(initialManifest.entries as Record<string, unknown>).some(relativePath => relativePath.startsWith('.moluoxixi/spec-proposals/'))).toBe(false)
     expect(fs.existsSync(path.join(projectRoot, legacyProjectRoot))).toBe(false)
     expect(fs.existsSync(path.join(projectRoot, '.claude', 'settings.json'))).toBe(true)
     expect(JSON.parse(fs.readFileSync(path.join(projectRoot, '.claude', 'settings.json'), 'utf8'))).not.toHaveProperty('statusLine')
@@ -268,6 +271,7 @@ describe('init-project skill', () => {
     expect(snapshot(projectRoot)).toEqual(initialSnapshot)
 
     const projectRuntime = path.join(projectRoot, '.moluoxixi', 'runtime', 'moluoxixi.mjs')
+    expect(runRuntime(projectRuntime, ['spec', 'audit', '--json'], projectRoot)).toMatchObject({ status: 0, stderr: '' })
     const update = runRuntime(projectRuntime, ['update', '--dry-run'], projectRoot)
     expect(update).toMatchObject({ status: 0, stderr: '' })
     expect(JSON.parse(update.stdout)).toMatchObject({ conflicts: [], created: [], updated: [] })
@@ -433,7 +437,10 @@ describe('init-project skill', () => {
     expect(runInitializer(projectRoot, ['--platform', 'claude'])).toMatchObject({ status: 0, stderr: '' })
     const projectRuntime = path.join(projectRoot, '.moluoxixi', 'runtime', 'moluoxixi.mjs')
     const unknown = path.join(projectRoot, '.moluoxixi', 'tasks', 'user-note.md')
+    const pendingKnowledge = path.join(projectRoot, '.moluoxixi', 'spec-proposals', 'inbox', 'user-note.json')
     fs.writeFileSync(unknown, '# Keep me\n')
+    fs.mkdirSync(path.dirname(pendingKnowledge), { recursive: true })
+    fs.writeFileSync(pendingKnowledge, '{"user":true}\n')
 
     const preview = runRuntime(projectRuntime, ['uninstall', '--dry-run'], projectRoot)
     expect(preview).toMatchObject({ status: 0, stderr: '' })
@@ -444,6 +451,7 @@ describe('init-project skill', () => {
     expect(removed).toMatchObject({ status: 0, stderr: '' })
     expect(fs.existsSync(path.join(projectRoot, '.moluoxixi', 'airules-init-manifest.json'))).toBe(false)
     expect(fs.readFileSync(unknown, 'utf8')).toBe('# Keep me\n')
+    expect(fs.readFileSync(pendingKnowledge, 'utf8')).toBe('{"user":true}\n')
     expect(fs.existsSync(path.join(projectRoot, '.claude', 'settings.json'))).toBe(false)
   })
 
