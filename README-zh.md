@@ -29,6 +29,19 @@ airules contract-diff --expected <openapi.json|yaml> --actual <openapi.json|yaml
 airules sync --host all --role moluoxixi
 ```
 
+安装官方原生 Trellis CLI 使用独立的 `trellis` 角色：
+
+```bash
+airules sync --host all --role trellis
+# 安装完成后，进入目标项目调用 init-project skill（Codex 中为 $init-project），
+# 或直接使用原生命令：
+trellis init -u <your-name>
+```
+
+- `trellis` 角色执行官方命令 `npm install --global @mindfoldhq/trellis@latest`，并向支持的宿主分发一个项目级 `init-project` skill。该 skill 收集项目目录、开发者名称和平台选择后调用官方 `trellis init`。
+- AIRules 只拥有初始化入口，不复制、改名或重写 Trellis 的 skills、agents、hooks、MCP 或项目资产；这些内容全部由当前安装的官方 Trellis CLI 生成。需要指定平台时使用 Trellis 原生选项，例如 `trellis init --cursor --opencode --codex -u <your-name>`。
+- 安装或升级时不要使用 `--skip-vendors`；该选项会跳过角色 setup。原生 Trellis 仍要求 Node.js >= 18 和 Python >= 3.9。
+
 - 同步会以可回滚替换方式安装完整角色到 `~/.moluoxixi/roles/moluoxixi`。mandatory `~/.agents/skills` canonical 层始终同步，不属于角色 host allowlist；随后才把 AIRules 管理的 canonical skills 与显式所选角色声明的 MCP 配置投影到支持的可选宿主。Moluoxixi 角色全局只暴露一个 `init-project` skill，同时在角色内声明 CodeGraph setup/MCP；未选择角色时不会安装 CodeGraph，也不会修改 MCP 文件。
 - 其余角色资产全部由 `init-project` 管理。它会在项目内安装 `start`、`check`、`channel` 等 15 个无前缀 skills、项目 runtime，以及 18 个宿主的原生 agents、commands、hooks、plugins、extensions 与 settings。宿主专属源分别维护在 `assets/hosts/<host>`；只有真正宿主无关的 skills、commands、hooks 才进入 `assets/shared`。Agent 身份和 commands 统一使用 `moluoxixi-*` 命名空间。
 - `roles/moluoxixi` 包含 `mindfold-ai/Trellis` `v0.6.7` 提交 `e7c5ead4d0dfd717d11a40b6bc0c80d8af94c49a` 的精选角色资产。仓库自动化、package workspace、测试、demo、发布专用资产、备份与上游项目迁移历史均有意省略。Moluoxixi 从 `0.1.0` 建立自己的版本线；初始化器只使用适配后的角色资产，不安装或调用 Trellis npm CLI。

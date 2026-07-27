@@ -29,6 +29,19 @@ Select the `moluoxixi` role explicitly:
 airules sync --host all --role moluoxixi
 ```
 
+Use the separate `trellis` role to install the official native Trellis CLI:
+
+```bash
+airules sync --host all --role trellis
+# Then enter the target project and invoke the init-project skill
+# ($init-project in Codex), or use the native command directly:
+trellis init -u <your-name>
+```
+
+- The `trellis` role runs the official `npm install --global @mindfoldhq/trellis@latest` command and distributes one project-level `init-project` skill to supported hosts. The skill gathers the project root, developer identity, and platform selection before invoking official `trellis init`.
+- AIRules owns only the initialization entry point. It does not copy, rename, or rewrite Trellis skills, agents, hooks, MCP, or project assets; the installed official Trellis CLI generates all of them. Use native options such as `trellis init --cursor --opencode --codex -u <your-name>` when needed.
+- Do not pass `--skip-vendors` when installing or upgrading; that option skips role setup. Native Trellis still requires Node.js >= 18 and Python >= 3.9.
+
 - Sync installs the complete role at `~/.moluoxixi/roles/moluoxixi` with rollback-safe replacement. The mandatory `~/.agents/skills` canonical layer is always synchronized and does not belong in role host allowlists. AIRules then projects canonical skills and any explicitly selected role-owned MCP configuration to supported optional hosts. The Moluoxixi role exposes one global skill, `init-project`, and owns the CodeGraph setup/MCP declaration; roleless sync does not install CodeGraph or modify MCP files.
 - `init-project` owns the remaining role assets. It installs 15 project skills with unprefixed names such as `start`, `check`, and `channel`, the project runtime, and native agents, commands, hooks, plugins, extensions, and settings for 18 hosts. Host-specific sources remain independent under `assets/hosts/<host>`; only genuinely host-neutral skills, commands, and hooks live under `assets/shared`. Agent identities and commands use the `moluoxixi-*` namespace.
 - `roles/moluoxixi` contains a curated role subset from `mindfold-ai/Trellis` `v0.6.7` commit `e7c5ead4d0dfd717d11a40b6bc0c80d8af94c49a`. Repository automation, package workspaces, tests, demos, release-only assets, backups, and upstream project migration history are intentionally omitted. Moluoxixi starts its own version line at `0.1.0`; the initializer uses adapted role assets and does not install or invoke the Trellis npm CLI.

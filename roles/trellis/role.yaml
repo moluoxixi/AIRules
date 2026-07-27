@@ -1,0 +1,19 @@
+schema_version: 1
+role_id: trellis
+role_version: 0.1.0
+status: stable
+canonical_root: roles/trellis
+description: Installs the official Trellis CLI and exposes native project initialization through AIRules.
+assets:
+  skills: skills
+distribution:
+  bootstrap_manifest: constants/skills.ts
+  full_role_path_required: true
+  npm_embedded_source: false
+entrypoints:
+  initialize_project_skill: init-project
+third_party:
+  upstream:
+    name: Trellis
+    source: https://github.com/mindfold-ai/Trellis.git
+    package: '@mindfoldhq/trellis@latest'
