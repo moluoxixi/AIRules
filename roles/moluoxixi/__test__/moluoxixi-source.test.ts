@@ -54,9 +54,9 @@ const upstream = {
 }
 
 const selectedIntegrity = {
-  bytes: 1800471,
-  files: 317,
-  hash: '1550cc44df8817ab323c043a4dfcd01e6255c6199b57754a2f235a29fc753526',
+  bytes: 1748956,
+  files: 309,
+  hash: '4659a8752877c3f439882ec331e481a1e7c9da95d0ba5fbb2348617e12c75748',
 }
 
 const migratedRuntimePaths = [
@@ -93,7 +93,7 @@ const nativeCapabilityCounts = [
   ['skills/init-project/assets/hosts/claude', 10],
   ['skills/init-project/assets/hosts/codebuddy', 9],
   ['skills/init-project/assets/hosts/codex', 24],
-  ['skills/init-project/assets/hosts/copilot', 16],
+  ['skills/init-project/assets/hosts/copilot', 11],
   ['skills/init-project/assets/hosts/cursor', 9],
   ['skills/init-project/assets/hosts/droid', 9],
   ['skills/init-project/assets/hosts/gemini', 9],
@@ -113,6 +113,7 @@ const nativeCapabilityEntrypoints = [
   'skills/init-project/assets/hosts/codex/agents/moluoxixi-check.toml',
   'skills/init-project/assets/hosts/codex/config.toml',
   'skills/init-project/assets/hosts/codex/hooks.json',
+  'skills/init-project/assets/hosts/copilot/agents/moluoxixi-check.md',
   'skills/init-project/assets/hosts/cursor/agents/moluoxixi-check.md',
   'skills/init-project/assets/hosts/cursor/hooks.json',
   'skills/init-project/assets/hosts/omp/agents/moluoxixi-check.md',
@@ -241,6 +242,16 @@ describe('moluoxixi curated upstream role assets', () => {
       expect(fs.statSync(resolveRolePath(entrypoint)).isFile()).toBe(true)
     }
     expect(selectedFiles().filter(file => file.endsWith('.backup'))).toEqual([])
+  })
+
+  it('keeps Reasonix in the project sub-agent context platform set', () => {
+    const taskStore = fs.readFileSync(resolveRolePath('skills/init-project/assets/project/scripts/common/task_store.py'), 'utf8')
+    expect(taskStore).toContain('".reasonix"')
+  })
+
+  it('keeps host and project asset roots free of unprojected legacy payloads', () => {
+    expect(fs.existsSync(resolveRolePath('skills/init-project/assets/hosts/copilot/prompts'))).toBe(false)
+    expect(fs.existsSync(resolveRolePath('skills/init-project/assets/project/optional'))).toBe(false)
   })
 
   it('keeps the legacy brand only in immutable provenance and published source specifiers', () => {

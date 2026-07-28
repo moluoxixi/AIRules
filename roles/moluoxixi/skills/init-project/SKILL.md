@@ -38,5 +38,6 @@ For future Moluoxixi releases, review the dry-run migration list and pass `--mig
 - Roll back writes when any transactional write fails.
 - Require Python 3.9+ because the migrated project runtime under `.moluoxixi/scripts` is Python.
 - Keep upstream command coverage mapped to AIRules-owned equivalents; read [upstream-capability-map.md](references/upstream-capability-map.md) when auditing parity or changing an initializer surface.
+- Keep source ownership within the boundaries in [asset-layout.md](references/asset-layout.md) when changing initializer assets or host projections.
 
 Use `--platform all` only when the user explicitly wants every supported integration. Use `--python <command>` when the project environment requires a non-default Python executable.

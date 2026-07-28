@@ -16,16 +16,17 @@ Parity baseline: upstream revision `e7c5ead4d0dfd717d11a40b6bc0c80d8af94c49a`.
 | Bootstrap/onboarding | First-init `00-bootstrap-guidelines` and new-developer `00-join-<slug>` task creation after developer initialization |
 | Global setup and MCP | Role-owned CodeGraph install/setup plus JSON/TOML MCP projection for supported hosts; absent during roleless sync |
 
+## Intentional Omissions And Replacements
+
+- The official npm CLI and package workspace are not distributed. AIRules owns global role upgrades, while the embedded initializer and project-local runtime own project operations.
+- Upstream release-specific migration manifests and historical project-state transitions are not inherited. Moluoxixi starts its own migration line at `0.1.0` while retaining the migration engine.
+- Repository and maintainer tooling is omitted, including upstream CI/release assets, demos, docs sites, examples, package workspaces, `contribute`, `create-manifest`, `publish-skill`, the Claude `improve-ut` command, and the Claude `gitnexus` skill.
+- The upstream marketplace repository payload is not distributed. Runtime workflow/spec marketplace sources remain supported through URLs and Git repositories.
+- Worktree/Ralph automation is not an active Moluoxixi runtime surface: the initializer does not project `worktree.yaml` and no worktree/Ralph executor is shipped.
+
 ## Host Contract
 
-The initializer maintains native templates independently under `assets/hosts/<host>`. Cross-host skills, commands, and hooks live under `assets/core` only when their source and behavior are host-neutral.
-
-### Asset Layout
-
-- `assets/core`: canonical cross-host skills, commands, and hook implementations; the initializer adapts these to each selected host.
-- `assets/hosts/<host>`: host-native agents, plugins, extensions, settings, and other assets that cannot be represented by the core contract.
-- `assets/project`: host-independent project files such as the workflow, specs, scripts, and managed root instructions.
-- `assets/runtime`: the project-local Moluoxixi CLI, updater, migration engine, and bundled runtime dependencies.
+The initializer maintains native templates independently under `assets/hosts/<host>` and reusable projection sources under `assets/core`. See [asset-layout.md](asset-layout.md) for the source and output ownership contract.
 
 Pull-based implement/check Agents for Codex, Gemini, Qoder, Copilot, Pi, ZCode, and Trae receive an explicit active-task/context prelude. Copilot also receives native YAML tool-array frontmatter. Hook-based hosts retain their native hook or plugin context injection.
 

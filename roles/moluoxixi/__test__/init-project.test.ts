@@ -131,9 +131,9 @@ function migratedAssetStats(): { bytes: number, files: number, hash: string } {
 describe('init-project skill', () => {
   it('pins the migrated Moluoxixi project templates', () => {
     expect(migratedAssetStats()).toEqual({
-      bytes: 1800471,
-      files: 317,
-      hash: '58bf05c17ca884c53300b2eeb318cf3c08664d76c5615ab8bdbfe23f3b95af07',
+      bytes: 1748956,
+      files: 309,
+      hash: '4b33f4627e2464335efdaadca5347a2e3c18ce28221dcc0fe600d7e03ca34747',
     })
     expect(fs.existsSync(path.join(assetRoot, 'moluoxixi-v0.6.7'))).toBe(false)
     expect(fs.existsSync(path.join(assetRoot, 'legal', 'LICENSE'))).toBe(false)
@@ -630,6 +630,7 @@ describe('init-project skill', () => {
     const staged = path.join(homeDir, 'vendor', 'skills', 'init-project')
     expect(fs.existsSync(path.join(staged, 'scripts', 'init-project.mjs'))).toBe(true)
     expect(fs.existsSync(path.join(staged, 'references', 'platforms.md'))).toBe(true)
+    expect(fs.existsSync(path.join(staged, 'references', 'asset-layout.md'))).toBe(true)
     expect(fs.existsSync(path.join(staged, 'assets', 'project', 'workflow.md'))).toBe(true)
     expect(fs.existsSync(path.join(staged, 'assets', 'runtime', 'moluoxixi.mjs'))).toBe(true)
     expect(fs.existsSync(path.join(staged, 'assets', 'core', 'skills', 'channel', 'scripts', 'moluoxixi.mjs'))).toBe(true)

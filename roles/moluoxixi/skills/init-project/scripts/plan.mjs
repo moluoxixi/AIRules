@@ -455,7 +455,7 @@ function addDirectPlatformAssets(plan, platform, pythonCommand, withStatusline) 
     const hookConfig = localizeProjectRuntime('hooks.json', resolveTemplate(fs.readFileSync(path.join(root, 'hooks.json'), 'utf8'), PLATFORM_CONTEXT.copilot, pythonCommand))
     addPlan(plan, '.github/copilot/hooks.json', hookConfig, { merge: 'json', platform })
     addPlan(plan, '.github/hooks/moluoxixi.json', hookConfig, { merge: 'json', platform })
-    addTree(plan, path.join(HOST_ASSET_ROOT, 'cursor', 'agents'), '.github/agents', { python: pythonCommand, context: PLATFORM_CONTEXT.copilot, platform, rename: relative => relative.replace(/\.md$/u, '.agent.md'), transform: (relativePath, content) => transformHostAsset('copilot', relativePath, content, pythonCommand) })
+    addTree(plan, path.join(root, 'agents'), '.github/agents', { python: pythonCommand, context: PLATFORM_CONTEXT.copilot, platform, rename: relative => relative.replace(/\.md$/u, '.agent.md'), transform: (relativePath, content) => transformHostAsset('copilot', relativePath, content, pythonCommand) })
     return
   }
   if (platform === 'reasonix') {
