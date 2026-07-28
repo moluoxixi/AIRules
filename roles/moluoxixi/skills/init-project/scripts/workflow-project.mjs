@@ -50,7 +50,7 @@ async function main() {
         baselineContent: desired.toString('base64'),
         mode: 'replace',
         ownership: owned?.ownership ?? { type: current ? 'modified' : 'created', ...(current ? { originalContent: Buffer.from(current).toString('base64'), originalHash: sha256(Buffer.from(current)) } : {}) },
-        platform: 'shared',
+        platform: 'core',
         templateHash: sha256(desired),
       }
     }

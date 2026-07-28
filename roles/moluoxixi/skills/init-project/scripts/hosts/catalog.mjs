@@ -74,7 +74,7 @@ export const PLATFORM_SKILLS_ROOT = {
   omp: '.omp/skills',
 }
 
-export const SHARED_HOOKS = {
+export const CORE_HOOKS = {
   claude: ['session-start.py', 'inject-workflow-state.py', 'inject-subagent-context.py'],
   cursor: ['session-start.py', 'inject-shell-session-context.py', 'inject-subagent-context.py'],
   codex: ['inject-workflow-state.py'],

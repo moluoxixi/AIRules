@@ -43,7 +43,7 @@ const workspaceFolderPlaceholder = '$' + '{workspaceFolder}'
 const selectedPaths = [
   'skills/init-project/assets/hosts',
   'skills/init-project/assets/project',
-  'skills/init-project/assets/shared',
+  'skills/init-project/assets/core',
 ]
 
 const upstream = {
@@ -54,9 +54,9 @@ const upstream = {
 }
 
 const selectedIntegrity = {
-  bytes: 1800454,
+  bytes: 1800471,
   files: 317,
-  hash: 'a4857e5e721a4ff8cd345c7c8917b9e9f9aefa535d3f35db9263d53e309a0713',
+  hash: '1550cc44df8817ab323c043a4dfcd01e6255c6199b57754a2f235a29fc753526',
 }
 
 const migratedRuntimePaths = [
@@ -121,8 +121,8 @@ const nativeCapabilityEntrypoints = [
   'skills/init-project/assets/hosts/opencode/plugins/inject-workflow-state.js',
   'skills/init-project/assets/hosts/pi/agents/moluoxixi-check.md',
   'skills/init-project/assets/hosts/pi/extensions/moluoxixi/index.ts.txt',
-  'skills/init-project/assets/shared/commands/continue.md',
-  'skills/init-project/assets/shared/hooks/inject-workflow-state.py',
+  'skills/init-project/assets/core/commands/continue.md',
+  'skills/init-project/assets/core/hooks/inject-workflow-state.py',
 ]
 
 function sortPaths(paths: string[]): string[] {
@@ -227,11 +227,11 @@ describe('moluoxixi curated upstream role assets', () => {
     expect(distributedSkills.every(entry => entry.isDirectory())).toBe(true)
     expect(distributedSkills.map(entry => entry.name)).toEqual(['init-project'])
 
-    const projectSkills = fs.readdirSync(resolveRolePath('skills/init-project/assets/shared/skills'), { withFileTypes: true })
+    const projectSkills = fs.readdirSync(resolveRolePath('skills/init-project/assets/core/skills'), { withFileTypes: true })
     expect(projectSkills.every(entry => entry.isDirectory())).toBe(true)
     expect(sortPaths(projectSkills.map(entry => entry.name))).toEqual(sortPaths([...projectSkillNames]))
     for (const skillName of projectSkillNames) {
-      expect(fs.readFileSync(resolveRolePath(`skills/init-project/assets/shared/skills/${skillName}/SKILL.md`), 'utf8')).toMatch(new RegExp(`^name: ${skillName}$`, 'mu'))
+      expect(fs.readFileSync(resolveRolePath(`skills/init-project/assets/core/skills/${skillName}/SKILL.md`), 'utf8')).toMatch(new RegExp(`^name: ${skillName}$`, 'mu'))
     }
 
     for (const [nativeRoot, expectedFiles] of nativeCapabilityCounts) {
@@ -325,7 +325,7 @@ describe('moluoxixi curated upstream role assets', () => {
         'skills/init-project/assets/project',
         'skills/init-project/assets/runtime/source',
         'skills/init-project/assets/runtime/vendor/channel-mem.mjs',
-        'skills/init-project/assets/shared',
+        'skills/init-project/assets/core',
       ],
       revision: upstream.revision,
       source: upstream.source,

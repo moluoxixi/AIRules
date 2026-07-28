@@ -9,8 +9,8 @@ export const ASSET_ROOT = path.join(SKILL_ROOT, 'assets')
 export const HOST_ASSET_ROOT = path.join(ASSET_ROOT, 'hosts')
 export const PROJECT_ASSET_ROOT = path.join(ASSET_ROOT, 'project')
 export const RUNTIME_ROOT = path.join(ASSET_ROOT, 'runtime')
-export const SHARED_ASSET_ROOT = path.join(ASSET_ROOT, 'shared')
-export const LOCAL_SKILLS_ROOT = path.join(SHARED_ASSET_ROOT, 'skills')
+export const CORE_ASSET_ROOT = path.join(ASSET_ROOT, 'core')
+export const CORE_SKILLS_ROOT = path.join(CORE_ASSET_ROOT, 'skills')
 
 export const PROJECT_ROOT_DIR = '.moluoxixi'
 export const MANIFEST_PATH = projectPath('airules-init-manifest.json')

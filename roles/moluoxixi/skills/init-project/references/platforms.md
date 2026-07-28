@@ -25,4 +25,4 @@ Pass one or more IDs to `--platform`, separated by commas.
 
 `claude-code` is accepted as an alias for `claude`. The deprecated upstream ID `windsurf` is accepted as an alias for `devin`. `all` expands to every ID above.
 
-The initializer always creates the shared `.moluoxixi/` runtime, root managed instructions, project specs, workspace index, and task root.
+The initializer always creates the core `.moluoxixi/` runtime, root managed instructions, project specs, workspace index, and task root.

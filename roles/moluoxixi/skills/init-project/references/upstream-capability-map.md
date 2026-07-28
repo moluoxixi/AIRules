@@ -18,7 +18,14 @@ Parity baseline: upstream revision `e7c5ead4d0dfd717d11a40b6bc0c80d8af94c49a`.
 
 ## Host Contract
 
-The initializer maintains native templates independently under `assets/hosts/<host>`. Shared skills, commands, and hooks live under `assets/shared` only when their source and behavior are host-neutral.
+The initializer maintains native templates independently under `assets/hosts/<host>`. Cross-host skills, commands, and hooks live under `assets/core` only when their source and behavior are host-neutral.
+
+### Asset Layout
+
+- `assets/core`: canonical cross-host skills, commands, and hook implementations; the initializer adapts these to each selected host.
+- `assets/hosts/<host>`: host-native agents, plugins, extensions, settings, and other assets that cannot be represented by the core contract.
+- `assets/project`: host-independent project files such as the workflow, specs, scripts, and managed root instructions.
+- `assets/runtime`: the project-local Moluoxixi CLI, updater, migration engine, and bundled runtime dependencies.
 
 Pull-based implement/check Agents for Codex, Gemini, Qoder, Copilot, Pi, ZCode, and Trae receive an explicit active-task/context prelude. Copilot also receives native YAML tool-array frontmatter. Hook-based hosts retain their native hook or plugin context injection.
 

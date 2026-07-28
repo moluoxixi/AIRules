@@ -112,7 +112,7 @@ function contentHash(content: Buffer | string): string {
 }
 
 function migratedAssetStats(): { bytes: number, files: number, hash: string } {
-  const selectedRoots = ['hosts', 'project', 'shared']
+  const selectedRoots = ['core', 'hosts', 'project']
   const relativeFiles = selectedRoots.flatMap((selectedRoot) => {
     const root = path.join(assetRoot, selectedRoot)
     return walkFiles(root).map(file => path.relative(assetRoot, file).split(path.sep).join('/'))
@@ -131,9 +131,9 @@ function migratedAssetStats(): { bytes: number, files: number, hash: string } {
 describe('init-project skill', () => {
   it('pins the migrated Moluoxixi project templates', () => {
     expect(migratedAssetStats()).toEqual({
-      bytes: 1800454,
+      bytes: 1800471,
       files: 317,
-      hash: '29f3e3db862248174a66fc8a6cfb84f6b4e977a695684c3ab4e7d5cd7dfd996a',
+      hash: '58bf05c17ca884c53300b2eeb318cf3c08664d76c5615ab8bdbfe23f3b95af07',
     })
     expect(fs.existsSync(path.join(assetRoot, 'moluoxixi-v0.6.7'))).toBe(false)
     expect(fs.existsSync(path.join(assetRoot, 'legal', 'LICENSE'))).toBe(false)
@@ -169,7 +169,7 @@ describe('init-project skill', () => {
     expect([...new Set(plannedSkillNames)]).toEqual(expect.arrayContaining(projectSkillNames))
     expect(plannedSkillNames.every(name => !name.startsWith('moluoxixi-'))).toBe(true)
     expect(result.summary?.created).not.toContain('.claude/hooks/statusline.py')
-    const updaterBundledSkillPrefix = '.moluoxixi/runtime/update/init-project/assets/shared/skills/'
+    const updaterBundledSkillPrefix = '.moluoxixi/runtime/update/init-project/assets/core/skills/'
     const updaterBundledSkillNames = result.summary?.created
       .filter(relativePath => relativePath.startsWith(updaterBundledSkillPrefix) && relativePath.endsWith('/SKILL.md'))
       .map(relativePath => relativePath.slice(updaterBundledSkillPrefix.length).split('/')[0])
@@ -193,7 +193,7 @@ describe('init-project skill', () => {
     expect(alias.summary?.platforms).toEqual(['devin'])
   }, 15_000)
 
-  it('initializes shared runtime and selected platforms idempotently', () => {
+  it('initializes the project core and selected platforms idempotently', () => {
     const projectRoot = temporaryProject()
     const args = ['--platform', 'claude,codex', '--developer', 'tester']
     const first = runInitializer(projectRoot, args)
@@ -226,7 +226,7 @@ describe('init-project skill', () => {
     expect(fs.existsSync(path.join(projectRoot, '.moluoxixi', 'COPYRIGHT'))).toBe(false)
     expect(fs.existsSync(path.join(projectRoot, '.moluoxixi', 'THIRD_PARTY_NOTICES.md'))).toBe(false)
     expect(fs.readFileSync(path.join(projectRoot, '.moluoxixi', 'scripts', 'common', 'session_context.py'), 'utf8')).not.toContain('["moluoxixi", "--version"]')
-    const updaterBundledSkillsRoot = path.join(projectRoot, '.moluoxixi', 'runtime', 'update', 'init-project', 'assets', 'shared', 'skills')
+    const updaterBundledSkillsRoot = path.join(projectRoot, '.moluoxixi', 'runtime', 'update', 'init-project', 'assets', 'core', 'skills')
     const updaterBundledSkillNames = fs.readdirSync(updaterBundledSkillsRoot).sort()
     expect(updaterBundledSkillNames).toEqual(projectSkillNames)
     for (const skillName of updaterBundledSkillNames) {
@@ -513,7 +513,7 @@ describe('init-project skill', () => {
     expect(runRuntime(roleRuntime, ['mem', 'help'], roleRoot)).toMatchObject({ status: 0, stderr: '' })
     expect(runRuntime(roleRuntime, ['channel', '--help'], roleRoot)).toMatchObject({ status: 0, stderr: '' })
     const localSkillFiles = ['channel', 'meta', 'session-insight']
-      .flatMap(skill => walkFiles(path.join(skillRoot, 'assets', 'shared', 'skills', skill)))
+      .flatMap(skill => walkFiles(path.join(skillRoot, 'assets', 'core', 'skills', skill)))
       .filter(file => file.endsWith('.md'))
     for (const file of localSkillFiles) {
       const content = fs.readFileSync(file, 'utf8')
@@ -632,7 +632,7 @@ describe('init-project skill', () => {
     expect(fs.existsSync(path.join(staged, 'references', 'platforms.md'))).toBe(true)
     expect(fs.existsSync(path.join(staged, 'assets', 'project', 'workflow.md'))).toBe(true)
     expect(fs.existsSync(path.join(staged, 'assets', 'runtime', 'moluoxixi.mjs'))).toBe(true)
-    expect(fs.existsSync(path.join(staged, 'assets', 'shared', 'skills', 'channel', 'scripts', 'moluoxixi.mjs'))).toBe(true)
+    expect(fs.existsSync(path.join(staged, 'assets', 'core', 'skills', 'channel', 'scripts', 'moluoxixi.mjs'))).toBe(true)
     expect(fs.existsSync(path.join(homeDir, 'vendor', 'agents'))).toBe(false)
     expect(fs.existsSync(path.join(homeDir, 'vendor', 'AGENTS.md'))).toBe(false)
     expect(fs.existsSync(path.join(homeDir, 'roles', 'moluoxixi', 'runtime'))).toBe(false)

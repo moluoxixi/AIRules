@@ -192,7 +192,7 @@ def cli_name(self) -> str:
 
 ## Generated Runtime Registration (Moluoxixi-specific)
 
-Moluoxixi project assets have one canonical source under the AIRules `init-project` skill. Host-specific assets live under `assets/hosts/<host>`, project runtime files under `assets/project`, and truly shared files under `assets/shared`.
+Moluoxixi project assets have one canonical source under the AIRules `init-project` skill. Cross-host skills, commands, and hooks live under `assets/core`; host adapters live under `assets/hosts/<host>`; project runtime files live under `assets/project`.
 
 When changing a generated `.moluoxixi/scripts/` file in the AIRules repository, update its canonical `assets/project/scripts/` source and verify a fresh initialization plus project-local update. Do not maintain a second copy under a host root or an upstream package template directory.
 

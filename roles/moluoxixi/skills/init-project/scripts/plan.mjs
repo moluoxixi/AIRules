@@ -5,14 +5,14 @@ import path from 'node:path'
 import process from 'node:process'
 import {
   canonicalSkillName,
+  CORE_ASSET_ROOT,
+  CORE_SKILLS_ROOT,
   HOST_ASSET_ROOT,
-  LOCAL_SKILLS_ROOT,
   MOLUOXIXI_VERSION,
   NAMESPACED_SKILL_RENAMES,
   PROJECT_ASSET_ROOT,
   projectPath,
   RUNTIME_ROOT,
-  SHARED_ASSET_ROOT,
   SKILL_ROOT,
   toPosix,
   UPSTREAM_BRAND,
@@ -20,11 +20,11 @@ import {
 import { sanitizePackageName } from './core/project-detector.mjs'
 import {
   commandTarget,
+  CORE_HOOKS,
   HOOK_ROOTS,
   PLATFORM_CONTEXT,
   PLATFORM_DIRECT,
   PLATFORM_SKILLS_ROOT,
-  SHARED_HOOKS,
 } from './hosts/catalog.mjs'
 
 export function requirePython(command) {
@@ -77,7 +77,7 @@ export function buildPlan(platforms, pythonCommand, withStatusline = false, pack
       : []
   const externalPackages = new Set(specs.map(spec => spec.packageName).filter(Boolean))
   const hasSingleProjectSpec = packages.length === 0 && specs.length > 0
-  addSharedRuntime(plan, pythonCommand, packages, defaultPackage, projectType, extras.workflow, extras.configSections, { externalPackages, hasSingleProjectSpec })
+  addProjectCore(plan, pythonCommand, packages, defaultPackage, projectType, extras.workflow, extras.configSections, { externalPackages, hasSingleProjectSpec })
   for (const spec of specs) {
     const packageName = spec.packageName ? sanitizePackageName(spec.packageName) : ''
     addExternalSpec(plan, spec.files, spec.strategy ?? 'skip', packageName, extras.projectRoot)
@@ -159,7 +159,7 @@ function addPlan(plan, relativePath, content, options = {}) {
     force: options.force === true,
     managed: options.managed !== false,
     merge: options.merge ?? 'replace',
-    platform: options.platform ?? 'shared',
+    platform: options.platform ?? 'core',
     preserveExisting: options.preserveExisting === true,
     override: options.override === true,
     skipExisting: options.skipExisting === true,
@@ -342,7 +342,7 @@ function mapCopilotTool(tool) {
   }[tool] ?? []
 }
 
-function addSharedRuntime(plan, pythonCommand, packages, defaultPackage, projectType, workflow, configSections, specSelection) {
+function addProjectCore(plan, pythonCommand, packages, defaultPackage, projectType, workflow, configSections, specSelection) {
   addTree(plan, path.join(PROJECT_ASSET_ROOT, 'scripts'), projectPath('scripts'), { python: pythonCommand, transform: localizeProjectRuntime })
   addTree(plan, path.join(PROJECT_ASSET_ROOT, 'agents'), projectPath('agents'), { python: pythonCommand, transform: localizeProjectRuntime })
   addTree(plan, RUNTIME_ROOT, projectPath('runtime'), { merge: 'replace' })
@@ -429,16 +429,16 @@ function buildProjectConfig(packages, defaultPackage) {
   return content
 }
 
-function commonTemplates(platform, pythonCommand) {
+function coreTemplates(platform, pythonCommand) {
   const ctx = PLATFORM_CONTEXT[platform]
-  const commands = walkFiles(path.join(SHARED_ASSET_ROOT, 'commands')).map(file => ({ name: path.basename(file, '.md'), content: localizeProjectRuntime(path.basename(file), resolveTemplate(fs.readFileSync(file, 'utf8'), ctx, pythonCommand)) }))
+  const commands = walkFiles(path.join(CORE_ASSET_ROOT, 'commands')).map(file => ({ name: path.basename(file, '.md'), content: localizeProjectRuntime(path.basename(file), resolveTemplate(fs.readFileSync(file, 'utf8'), ctx, pythonCommand)) }))
   return ctx.agentCapable && ctx.hasHooks && platform !== 'pi' ? commands.filter(command => command.name !== 'start') : commands
 }
 
-function addProjectSkills(plan, platform, root, pythonCommand) {
-  for (const entry of fs.readdirSync(LOCAL_SKILLS_ROOT, { withFileTypes: true }).filter(entry => entry.isDirectory())) {
+function addCoreSkills(plan, platform, root, pythonCommand) {
+  for (const entry of fs.readdirSync(CORE_SKILLS_ROOT, { withFileTypes: true }).filter(entry => entry.isDirectory())) {
     const skillName = canonicalSkillName(entry.name)
-    addTree(plan, path.join(LOCAL_SKILLS_ROOT, entry.name), path.posix.join(root, skillName), {
+    addTree(plan, path.join(CORE_SKILLS_ROOT, entry.name), path.posix.join(root, skillName), {
       context: PLATFORM_CONTEXT[platform],
       platform,
       python: pythonCommand,
@@ -481,18 +481,18 @@ function addDirectPlatformAssets(plan, platform, pythonCommand, withStatusline) 
   })
 }
 
-function addPlatform(plan, platform, pythonCommand, skipSharedSkills = false, withStatusline = false) {
+function addPlatform(plan, platform, pythonCommand, skipCoreSkills = false, withStatusline = false) {
   addDirectPlatformAssets(plan, platform, pythonCommand, withStatusline)
   const ctx = PLATFORM_CONTEXT[platform]
-  const commands = commonTemplates(platform, pythonCommand)
+  const commands = coreTemplates(platform, pythonCommand)
   if (platform === 'codex' || platform === 'kiro' || platform === 'reasonix') {
     const root = platform === 'codex' ? '.agents/skills' : platform === 'kiro' ? '.kiro/skills' : '.reasonix/skills'
-    addProjectSkills(plan, platform, root, pythonCommand)
+    addCoreSkills(plan, platform, root, pythonCommand)
   }
   else {
     const skillsRoot = PLATFORM_SKILLS_ROOT[platform]
-    if (skillsRoot && !skipSharedSkills)
-      addProjectSkills(plan, platform, skillsRoot, pythonCommand)
+    if (skillsRoot && !skipCoreSkills)
+      addCoreSkills(plan, platform, skillsRoot, pythonCommand)
     for (const command of commands) {
       const target = commandTarget(platform, command.name)
       if (!target)
@@ -507,9 +507,9 @@ function addPlatform(plan, platform, pythonCommand, skipSharedSkills = false, wi
       addPlan(plan, target, content, { platform })
     }
   }
-  const hookNames = SHARED_HOOKS[platform] ?? []
+  const hookNames = CORE_HOOKS[platform] ?? []
   for (const hookName of hookNames) {
-    const hook = fs.readFileSync(path.join(SHARED_ASSET_ROOT, 'hooks', hookName), 'utf8')
+    const hook = fs.readFileSync(path.join(CORE_ASSET_ROOT, 'hooks', hookName), 'utf8')
     addPlan(plan, `${HOOK_ROOTS[platform]}/${hookName}`, localizeProjectRuntime(hookName, resolveTemplate(hook, ctx, pythonCommand)), { executable: true, platform })
   }
 }
