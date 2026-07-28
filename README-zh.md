@@ -1,69 +1,99 @@
 # Moluoxixi AIRules
 
-AIRules 通过 `airules` CLI 分发 AI skills 与完整角色资产。
+AIRules 为支持的 AI 编程宿主安装 skills 与角色资产。
 
-角色清单随发行包提供；第一方资产在运行时从远程仓库按完整 role path 同步，不从安装包中的本地角色目录投影。公共模式默认不选择角色；通过 `--role <name>` 显式选择需要安装的角色。
+> npm 的 `latest` 版本可能落后于仓库。下面的提示词会从源码安装当前版本。
 
-## 安装
+## Moluoxixi 角色
 
-```bash
-npm install
-npm run build
-npm link
+Moluoxixi 角色用于安装 `init-project` skill、CodeGraph 及相关 MCP 配置。
+
+### 使用 AI 安装
+
+将下面的提示词复制给你的 AI 编程助手：
+
+```text
+请在这台机器上通过 AIRules 安装 Moluoxixi 角色。
+
+1. 检查 Node.js 22 或更高版本、npm 和 Git 是否可用。
+2. 确定我的用户根目录，将 https://github.com/moluoxixi/AIRules.git 克隆到 `<用户根目录>/AIRules`。不要克隆到业务项目中，也不要克隆为 `<用户根目录>/.moluoxixi`。
+3. 进入 `<用户根目录>/AIRules`。
+4. 依次执行 `npm install`、`npm run build` 和 `npm link`。
+5. 执行 `airules --version`，确认安装的版本为 0.2.0 或更高版本。
+6. 同步前，先告知我 AIRules 将写入 `<用户根目录>/.moluoxixi`、`<用户根目录>/.agents/skills` 以及受支持的 AI 宿主配置目录。角色同步是用户级操作，不需要在业务项目中执行。
+7. 得到我确认后，执行 `airules sync --host all --role moluoxixi`。
+8. 执行 `airules verify --host all --role moluoxixi`，并报告安装版本、已更新的宿主、实际写入目录和所有错误。
+
+不要使用 sudo，不要传入 `--skip-vendors` 或 `--no-verify`，不要删除或覆盖不由 AIRules 管理的文件。
 ```
 
-## CLI
+### 用法
 
-```bash
-airules sync --host all
-airules sync --host all --role <name>
-airules verify --host all
-airules --version
-airules contract-diff --capabilities
-airules contract-diff --expected <openapi.json|yaml> --actual <openapi.json|yaml> --output <audit.json>
-```
-
-`moluoxixi` 角色需要显式选择：
+安装或更新角色：
 
 ```bash
 airules sync --host all --role moluoxixi
 ```
 
-安装官方原生 Trellis CLI 使用独立的 `trellis` 角色：
+验证安装结果：
+
+```bash
+airules verify --host all --role moluoxixi
+```
+
+角色同步是用户级操作，可以在 `<用户根目录>/AIRules` 中执行。初始化项目时，先进入目标业务项目，再在 AI 编程宿主中调用 `init-project` skill。
+
+## Trellis 角色
+
+Trellis 角色用于安装官方 Trellis CLI 及其 `init-project` skill。
+
+### 使用 AI 安装
+
+将下面的提示词复制给你的 AI 编程助手：
+
+```text
+请在这台机器上通过 AIRules 安装 Trellis 角色。
+
+1. 检查 Node.js 22 或更高版本、npm、Git 和 Python 3.9 或更高版本是否可用。
+2. 确定我的用户根目录，将 https://github.com/moluoxixi/AIRules.git 克隆到 `<用户根目录>/AIRules`。不要克隆到业务项目中，也不要克隆为 `<用户根目录>/.moluoxixi`。
+3. 进入 `<用户根目录>/AIRules`。
+4. 依次执行 `npm install`、`npm run build` 和 `npm link`。
+5. 执行 `airules --version`，确认安装的版本为 0.2.0 或更高版本。
+6. 同步前，先告知我 AIRules 将安装官方 Trellis CLI，并将初始化 skill 写入受支持的 AI 宿主目录。角色同步是用户级操作，不需要在业务项目中执行。
+7. 得到我确认后，执行 `airules sync --host all --role trellis`。
+8. 执行 `airules verify --host all --role trellis`，并报告安装版本、已更新的宿主、实际写入目录和所有错误。
+
+不要使用 sudo，不要传入 `--skip-vendors` 或 `--no-verify`，不要删除或覆盖不由 AIRules 管理的文件。
+```
+
+### 用法
+
+安装或更新角色：
 
 ```bash
 airules sync --host all --role trellis
-# 安装完成后，进入目标项目调用 init-project skill（Codex 中为 $init-project），
-# 或直接使用原生命令：
-trellis init -u <your-name>
 ```
 
-- `trellis` 角色执行官方命令 `npm install --global @mindfoldhq/trellis@latest`，并向支持的宿主分发一个项目级 `init-project` skill。该 skill 收集项目目录、开发者名称和平台选择后调用官方 `trellis init`。
-- AIRules 只拥有初始化入口，不复制、改名或重写 Trellis 的 skills、agents、hooks、MCP 或项目资产；这些内容全部由当前安装的官方 Trellis CLI 生成。需要指定平台时使用 Trellis 原生选项，例如 `trellis init --cursor --opencode --codex -u <your-name>`。
-- 安装或升级时不要使用 `--skip-vendors`；该选项会跳过角色 setup。原生 Trellis 仍要求 Node.js >= 18 和 Python >= 3.9。
-
-- 同步会以可回滚替换方式安装完整角色到 `~/.moluoxixi/roles/moluoxixi`。mandatory `~/.agents/skills` canonical 层始终同步，不属于角色 host allowlist；随后才把 AIRules 管理的 canonical skills 与显式所选角色声明的 MCP 配置投影到支持的可选宿主。Moluoxixi 角色全局只暴露一个 `init-project` skill，同时在角色内声明 CodeGraph setup/MCP；未选择角色时不会安装 CodeGraph，也不会修改 MCP 文件。
-- 其余角色资产全部由 `init-project` 管理。它会在项目内安装 `start`、`check`、`channel` 等 15 个无前缀 skills、项目 runtime，以及 18 个宿主的原生 agents、commands、hooks、plugins、extensions 与 settings。宿主专属源分别维护在 `assets/hosts/<host>`；只有真正宿主无关的 skills、commands、hooks 才进入 `assets/shared`。Agent 身份和 commands 统一使用 `moluoxixi-*` 命名空间。
-- `roles/moluoxixi` 包含 `mindfold-ai/Trellis` `v0.6.7` 提交 `e7c5ead4d0dfd717d11a40b6bc0c80d8af94c49a` 的精选角色资产。仓库自动化、package workspace、测试、demo、发布专用资产、备份与上游项目迁移历史均有意省略。Moluoxixi 从 `0.1.0` 建立自己的版本线；初始化器只使用适配后的角色资产，不安装或调用 Trellis npm CLI。
-- 角色运行时从 AIRules 远程仓库的 `roles/moluoxixi` 完整路径同步；精选 Trellis 角色资产不随 AIRules npm 包重复发布。当前分支合入远端默认分支后，该同步入口才可用。
-- `sync` 更新所选远程资产、同步 mandatory Agent skills 层，将公共可选宿主注册表与所选角色的 host ID allowlist 取交集，投影 canonical skills、执行所选角色的 setup，并按宿主 MCP contract 投影所选角色的 MCP 声明。`hermes desktop` 作为输入 alias 归一化为 canonical `hermes`；不再配置 `cc-switch`。
-- `verify` 严格检查 mandatory Agent skills 层，并检查所选可选宿主的 AIRules skill 投影。项目内的 agents、commands、hooks、plugins、extensions 与 settings 归项目初始化器所有，公共层不会修改。
-- `contract-diff` 确定性比对固定版本的 OpenAPI 3.x JSON/YAML 快照。退出码 `0` 表示无阻断差异，`2` 会保留有效的阻断差异报告；输入无效或语义不受支持时返回 `1`，并在输出路径安全时写入结构化 error audit。无法完整比对的 OpenAPI 线协议语义必须失败关闭。文件输出采用锚定目录的 create-only 直接写入协议：既有 target 只有在仍是基线记录的同一 inode 且内容完全相同时才可幂等复用；基线中不存在的 target 以排他方式创建，任何并发出现（即使内容相同）都会失败。该协议不承诺 rename 式原子可见性。语义提交前，新文件以 `!` 开头并刻意保持为无效 JSON；进程崩溃可能留下该不完整文件，并发读取者也可能观察到它。只有在无效标记的完整 payload 写入并同步、受保护输入和 target inode 复核、首字节替换为 `{` 并再次同步、且路径仍指向所创建 inode 后才报告成功。消费者必须对 JSON 解析或 schema 校验失败关闭；遗留的无效 partial 文件必须由证据 owner 显式清理后再重试。
-- `contract-diff --capabilities` 以机器可读 JSON 暴露 CLI 版本、审计报告版本与退出码契约，使远程同步角色能在分析前拒绝不兼容的可执行文件。
-- `--skip-vendors` 仅在缓存 checkout 的 origin、工作树和固定 revision 校验通过后跳过更新；未固定的完整远程 role path 必须刷新，不能跳过。
-- `--no-verify` 跳过同步后的宿主校验。
-
-## 维护
+验证安装结果：
 
 ```bash
-npm run typecheck
-npm run build
-npm run lint:check
-npm test
+airules verify --host all --role trellis
 ```
 
-远程 revision 由各角色 manifest 声明并在同步时校验，不再维护第二套仓库级 vendor lock 路径。
+角色同步是用户级操作，可以在 `<用户根目录>/AIRules` 中执行。初始化项目时，先进入目标业务项目，再调用 `init-project` skill，或直接执行：
+
+```bash
+trellis init -u <你的名字>
+```
+
+## 查看版本
+
+```bash
+airules --version
+```
+
+English documentation: [README.md](README.md)
 
 ## 许可证
 
-AIRules 公共代码采用 MIT 许可证。
+MIT
