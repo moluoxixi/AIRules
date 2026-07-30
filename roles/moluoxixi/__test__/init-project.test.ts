@@ -131,9 +131,9 @@ function migratedAssetStats(): { bytes: number, files: number, hash: string } {
 describe('init-project skill', () => {
   it('pins the migrated Moluoxixi project templates', () => {
     expect(migratedAssetStats()).toEqual({
-      bytes: 1748956,
-      files: 309,
-      hash: '4b33f4627e2464335efdaadca5347a2e3c18ce28221dcc0fe600d7e03ca34747',
+      bytes: 1749498,
+      files: 310,
+      hash: 'cfbc23be2e4de637bde1200c96e1dd6592d2366d5be0ee9c34382a477765d564',
     })
     expect(fs.existsSync(path.join(assetRoot, 'moluoxixi-v0.6.7'))).toBe(false)
     expect(fs.existsSync(path.join(assetRoot, 'legal', 'LICENSE'))).toBe(false)
@@ -160,6 +160,7 @@ describe('init-project skill', () => {
       '.github/copilot/hooks.json',
       '.omp/extensions/moluoxixi/index.ts',
       '.pi/extensions/moluoxixi/index.ts',
+      'README.md',
     ]))
     const plannedSkillNames = result.summary?.created
       .filter(relativePath => !relativePath.startsWith('.moluoxixi/runtime/update/'))
@@ -217,6 +218,10 @@ describe('init-project skill', () => {
     expect(fs.existsSync(path.join(projectRoot, '.claude', 'settings.json'))).toBe(true)
     expect(JSON.parse(fs.readFileSync(path.join(projectRoot, '.claude', 'settings.json'), 'utf8'))).not.toHaveProperty('statusLine')
     expect(fs.existsSync(path.join(projectRoot, '.codex', 'config.toml'))).toBe(true)
+    const readme = fs.readFileSync(path.join(projectRoot, 'README.md'), 'utf8')
+    expect(readme).toContain('<!-- AIRULES:MOLUOXIXI:START -->')
+    expect(readme).toContain('请使用 Moluoxixi 开始处理这个需求：<描述需求>')
+    expect(readme).toContain('请使用 Moluoxixi 完成本次工作。')
     expect(fs.readFileSync(path.join(projectRoot, '.moluoxixi', '.developer'), 'utf8')).toMatch(/^name=tester\ninitialized_at=/u)
     expect(fs.existsSync(path.join(projectRoot, '.moluoxixi', 'tasks', '00-bootstrap-guidelines', 'task.json'))).toBe(true)
     const developerProbe = spawnSync(pythonCommand, [path.join(projectRoot, '.moluoxixi', 'scripts', 'get_developer.py')], { cwd: projectRoot, encoding: 'utf8' })
@@ -458,19 +463,23 @@ describe('init-project skill', () => {
   it('restores pre-existing JSON and managed-block files during uninstall', () => {
     const projectRoot = temporaryProject()
     const agents = '# User rules\n'
+    const readme = '# User project\n\nKeep this hard break.  \nContinued line.\n'
     const settings = '{"custom":true}\n'
     const codex = 'model = "gpt-test"\n'
     fs.mkdirSync(path.join(projectRoot, '.claude'), { recursive: true })
     fs.mkdirSync(path.join(projectRoot, '.codex'), { recursive: true })
     fs.writeFileSync(path.join(projectRoot, 'AGENTS.md'), agents)
+    fs.writeFileSync(path.join(projectRoot, 'README.md'), readme)
     fs.writeFileSync(path.join(projectRoot, '.claude', 'settings.json'), settings)
     fs.writeFileSync(path.join(projectRoot, '.codex', 'config.toml'), codex)
 
     expect(runInitializer(projectRoot, ['--platform', 'claude,codex'])).toMatchObject({ status: 0, stderr: '' })
+    fs.appendFileSync(path.join(projectRoot, 'README.md'), '\nUser notes after initialization.\n')
     const projectRuntime = path.join(projectRoot, '.moluoxixi', 'runtime', 'moluoxixi.mjs')
     const removed = runRuntime(projectRuntime, ['uninstall', '--yes'], projectRoot)
     expect(removed).toMatchObject({ status: 0, stderr: '' })
     expect(fs.readFileSync(path.join(projectRoot, 'AGENTS.md'), 'utf8')).toBe(agents)
+    expect(fs.readFileSync(path.join(projectRoot, 'README.md'), 'utf8')).toBe(`${readme}\nUser notes after initialization.\n`)
     expect(fs.readFileSync(path.join(projectRoot, '.claude', 'settings.json'), 'utf8')).toBe(settings)
     expect(fs.readFileSync(path.join(projectRoot, '.codex', 'config.toml'), 'utf8')).toBe(codex)
   })
@@ -549,6 +558,64 @@ describe('init-project skill', () => {
     const forced = runInitializer(projectRoot, ['--platform', 'claude', '--force'])
     expect(forced.status).toBe(0)
     expect(fs.readFileSync(path.join(projectRoot, '.moluoxixi', 'workflow.md'), 'utf8')).not.toBe('# User workflow\n')
+  })
+
+  it('injects one managed usage block into an existing README across re-initialization', () => {
+    const projectRoot = temporaryProject()
+    const original = '# Existing project\n\nProject-specific documentation.\n'
+    const readmePath = path.join(projectRoot, 'README.md')
+    fs.writeFileSync(readmePath, original)
+
+    const first = runInitializer(projectRoot, ['--platform', 'codex'])
+    expect(first).toMatchObject({ status: 0, stderr: '' })
+    const injected = fs.readFileSync(readmePath, 'utf8')
+    expect(injected).toContain(original.trim())
+    expect(injected).toContain('请使用 Moluoxixi 继续当前任务。')
+    expect(injected.match(/<!-- AIRULES:MOLUOXIXI:START -->/gu)).toHaveLength(1)
+    expect(injected.match(/<!-- AIRULES:MOLUOXIXI:END -->/gu)).toHaveLength(1)
+    const manifest = JSON.parse(fs.readFileSync(path.join(projectRoot, '.moluoxixi', 'airules-init-manifest.json'), 'utf8')) as {
+      entries: Record<string, { mode: string, ownership: { type: string } }>
+    }
+    expect(manifest.entries['README.md']).toMatchObject({
+      mode: 'block-html',
+      ownership: { type: 'modified' },
+    })
+
+    fs.appendFileSync(readmePath, '\nAdditional project notes.\n')
+    const second = runInitializer(projectRoot, ['--platform', 'codex'])
+    expect(second).toMatchObject({ status: 0, stderr: '' })
+    expect(second.summary?.preserved).toContain('README.md')
+    const reinjected = fs.readFileSync(readmePath, 'utf8')
+    expect(reinjected).toContain('Additional project notes.')
+    expect(reinjected.match(/<!-- AIRULES:MOLUOXIXI:START -->/gu)).toHaveLength(1)
+    expect(reinjected.match(/<!-- AIRULES:MOLUOXIXI:END -->/gu)).toHaveLength(1)
+  })
+
+  it('removes the managed block from an initializer-created README without deleting later user documentation', () => {
+    const projectRoot = temporaryProject()
+    expect(runInitializer(projectRoot, ['--platform', 'codex'])).toMatchObject({ status: 0, stderr: '' })
+    const readmePath = path.join(projectRoot, 'README.md')
+    const userDocumentation = 'User documentation with a hard break.  \nContinued line.\n'
+    fs.appendFileSync(readmePath, `\n${userDocumentation}`)
+
+    const projectRuntime = path.join(projectRoot, '.moluoxixi', 'runtime', 'moluoxixi.mjs')
+    const removed = runRuntime(projectRuntime, ['uninstall', '--yes'], projectRoot)
+
+    expect(removed).toMatchObject({ status: 0, stderr: '' })
+    expect(fs.readFileSync(readmePath, 'utf8')).toBe(userDocumentation)
+  })
+
+  it('preserves a non-UTF-8 README as a conflict even when force is requested', () => {
+    const projectRoot = temporaryProject()
+    const readmePath = path.join(projectRoot, 'README.md')
+    const utf16Readme = Buffer.from('\uFEFF# UTF-16 project\r\n', 'utf16le')
+    fs.writeFileSync(readmePath, utf16Readme)
+
+    const initialized = runInitializer(projectRoot, ['--platform', 'codex', '--force'])
+
+    expect(initialized.status).toBe(2)
+    expect(initialized.summary?.conflicts).toContain('README.md')
+    expect(fs.readFileSync(readmePath)).toEqual(utf16Readme)
   })
 
   it('does not import upstream project roots, hashes, JSON keys, or managed blocks', () => {
@@ -632,6 +699,7 @@ describe('init-project skill', () => {
     expect(fs.existsSync(path.join(staged, 'references', 'platforms.md'))).toBe(true)
     expect(fs.existsSync(path.join(staged, 'references', 'asset-layout.md'))).toBe(true)
     expect(fs.existsSync(path.join(staged, 'assets', 'project', 'workflow.md'))).toBe(true)
+    expect(fs.existsSync(path.join(staged, 'assets', 'project', 'readme-usage.md'))).toBe(true)
     expect(fs.existsSync(path.join(staged, 'assets', 'runtime', 'moluoxixi.mjs'))).toBe(true)
     expect(fs.existsSync(path.join(staged, 'assets', 'core', 'skills', 'channel', 'scripts', 'moluoxixi.mjs'))).toBe(true)
     expect(fs.existsSync(path.join(homeDir, 'vendor', 'agents'))).toBe(false)
@@ -647,6 +715,7 @@ describe('init-project skill', () => {
     fs.mkdirSync(projectRoot)
     const installed = runInitializer(projectRoot, ['--platform', 'claude,codex'], path.join(standalone, 'scripts', 'init-project.mjs'))
     expect(installed).toMatchObject({ status: 0, stderr: '' })
+    expect(fs.readFileSync(path.join(projectRoot, 'README.md'), 'utf8')).toContain('请使用 Moluoxixi 开始处理这个需求：<描述需求>')
     const channelLauncher = path.join(projectRoot, '.agents', 'skills', 'channel', 'scripts', 'moluoxixi.mjs')
     expect(runRuntime(channelLauncher, ['--version'], projectRoot)).toMatchObject({ status: 0, stderr: '', stdout: '0.1.0\n' })
     const projectRuntime = path.join(projectRoot, '.moluoxixi', 'runtime', 'moluoxixi.mjs')

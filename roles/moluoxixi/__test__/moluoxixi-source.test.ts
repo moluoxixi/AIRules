@@ -54,9 +54,9 @@ const upstream = {
 }
 
 const selectedIntegrity = {
-  bytes: 1748956,
-  files: 309,
-  hash: '4659a8752877c3f439882ec331e481a1e7c9da95d0ba5fbb2348617e12c75748',
+  bytes: 1749498,
+  files: 310,
+  hash: '2098d21f78758c5424ab5cea0481fbc28b9a034ab32eb10839d21100a1deff2f',
 }
 
 const migratedRuntimePaths = [

@@ -1,3 +1,5 @@
+import { Buffer } from 'node:buffer'
+import { spawnSync } from 'node:child_process'
 import fs from 'node:fs'
 import os from 'node:os'
 import path from 'node:path'
@@ -66,11 +68,13 @@ describe('native Trellis role', () => {
     expect(fs.readdirSync(roleRoot).sort()).toEqual(['__test__', 'constants', 'role.yaml', 'skills'])
     expect(fs.existsSync(path.join(roleRoot, 'mcp'))).toBe(false)
     expect(fs.readdirSync(path.join(roleRoot, 'skills')).sort()).toEqual(['init-project'])
-    expect(fs.existsSync(path.join(roleRoot, 'skills', 'init-project', 'scripts'))).toBe(false)
+    expect(fs.statSync(path.join(roleRoot, 'skills', 'init-project', 'scripts', 'inject-readme.mjs')).isFile()).toBe(true)
+    expect(fs.statSync(path.join(roleRoot, 'skills', 'init-project', 'assets', 'readme-usage.md')).isFile()).toBe(true)
 
     const skill = fs.readFileSync(path.join(roleRoot, 'skills', 'init-project', 'SKILL.md'), 'utf8')
     expect(skill).toContain('trellis init --help')
     expect(skill).toContain('trellis init <confirmed-platform-flags> -u <confirmed-developer>')
+    expect(skill).toContain('scripts/inject-readme.mjs')
     expect(skill).toContain('Do not stage or commit generated files')
 
     const document = parseDocument(fs.readFileSync(path.join(roleRoot, 'role.yaml'), 'utf8'), {
@@ -107,6 +111,51 @@ describe('native Trellis role', () => {
     })
   })
 
+  it('injects one Chinese Trellis usage block while preserving project documentation', () => {
+    const projectRoot = fs.mkdtempSync(path.join(os.tmpdir(), 'airules-trellis-readme-'))
+    temporaryRoots.push(projectRoot)
+    const readmePath = path.join(projectRoot, 'README.md')
+    const injector = path.join(roleRoot, 'skills', 'init-project', 'scripts', 'inject-readme.mjs')
+    const original = '# Existing project\n\nProject documentation.  \nContinued line.\n'
+    fs.writeFileSync(readmePath, original)
+
+    const first = spawnSync(process.execPath, [injector, '--project', projectRoot], { encoding: 'utf8' })
+    expect(first).toMatchObject({ status: 0, stderr: '' })
+    expect(JSON.parse(first.stdout)).toEqual({ readme: 'README.md', status: 'updated' })
+    const injected = fs.readFileSync(readmePath, 'utf8')
+    expect(injected).toContain(original.trim())
+    expect(injected).toContain('请使用 Trellis 开始处理这个需求：<描述需求>')
+    expect(injected.match(/<!-- AIRULES:TRELLIS:START -->/gu)).toHaveLength(1)
+    expect(injected.match(/<!-- AIRULES:TRELLIS:END -->/gu)).toHaveLength(1)
+
+    const second = spawnSync(process.execPath, [injector, '--project', projectRoot], { encoding: 'utf8' })
+    expect(second).toMatchObject({ status: 0, stderr: '' })
+    expect(JSON.parse(second.stdout)).toEqual({ readme: 'README.md', status: 'unchanged' })
+    expect(fs.readFileSync(readmePath, 'utf8')).toBe(injected)
+
+    const emptyProject = fs.mkdtempSync(path.join(os.tmpdir(), 'airules-trellis-readme-'))
+    temporaryRoots.push(emptyProject)
+    const created = spawnSync(process.execPath, [injector, '--project', emptyProject], { encoding: 'utf8' })
+    expect(created).toMatchObject({ status: 0, stderr: '' })
+    expect(JSON.parse(created.stdout)).toEqual({ readme: 'README.md', status: 'created' })
+    expect(fs.readFileSync(path.join(emptyProject, 'README.md'), 'utf8')).toContain('请使用 Trellis 完成本次工作。')
+  })
+
+  it('preserves a non-UTF-8 README during Trellis usage injection', () => {
+    const projectRoot = fs.mkdtempSync(path.join(os.tmpdir(), 'airules-trellis-readme-'))
+    temporaryRoots.push(projectRoot)
+    const readmePath = path.join(projectRoot, 'README.md')
+    const injector = path.join(roleRoot, 'skills', 'init-project', 'scripts', 'inject-readme.mjs')
+    const utf16Readme = Buffer.from('\uFEFF# UTF-16 project\r\n', 'utf16le')
+    fs.writeFileSync(readmePath, utf16Readme)
+
+    const result = spawnSync(process.execPath, [injector, '--project', projectRoot], { encoding: 'utf8' })
+
+    expect(result.status).toBe(2)
+    expect(result.stderr).toContain('README.md is not UTF-8 text')
+    expect(fs.readFileSync(readmePath)).toEqual(utf16Readme)
+  })
+
   it('stages the project initializer as the role skill', async () => {
     const root = fs.mkdtempSync(path.join(os.tmpdir(), 'airules-trellis-role-'))
     temporaryRoots.push(root)
@@ -127,5 +176,7 @@ describe('native Trellis role', () => {
     expect(inventory.skills).toEqual(['init-project'])
     expect(fs.existsSync(path.join(homeDir, 'vendor', 'skills', 'init-project', 'SKILL.md'))).toBe(true)
     expect(fs.existsSync(path.join(homeDir, 'vendor', 'skills', 'init-project', 'agents', 'openai.yaml'))).toBe(true)
+    expect(fs.existsSync(path.join(homeDir, 'vendor', 'skills', 'init-project', 'assets', 'readme-usage.md'))).toBe(true)
+    expect(fs.existsSync(path.join(homeDir, 'vendor', 'skills', 'init-project', 'scripts', 'inject-readme.mjs'))).toBe(true)
   })
 })

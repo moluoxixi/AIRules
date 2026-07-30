@@ -32,6 +32,7 @@ For future Moluoxixi releases, review the dry-run migration list and pass `--mig
 - Refuse to initialize the exact user home unless `MOLUOXIXI_ALLOW_HOMEDIR=1` explicitly authorizes it.
 - Preserve unknown files by default.
 - Merge JSON configuration and managed instruction blocks without deleting unrelated user content.
+- Inject a host-neutral Moluoxixi usage block into the project `README.md` while preserving project documentation outside the managed block.
 - Preserve existing user JSON, YAML, TOML, instruction blocks, workspace journals, tasks, and specs when updating or uninstalling.
 - Track only files or blocks actually owned by this initializer in `.moluoxixi/airules-init-manifest.json`.
 - Keep uninstall confirmation (`-y` / `--yes`) separate from conflict replacement (`--force`).

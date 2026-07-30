@@ -1,7 +1,7 @@
 import { Buffer } from 'node:buffer'
 import path from 'node:path'
 import { sha256 } from '../constants.mjs'
-import { removeManagedBlock, restoreJson } from './migration.mjs'
+import { decodeUtf8, removeManagedBlock, restoreJson, upsertBlock } from './migration.mjs'
 
 const HASH = /^[a-f0-9]{64}$/u
 const MODES = new Set(['replace', 'json', 'config', 'block-hash', 'block-html', 'block-moluoxixi'])
@@ -46,7 +46,7 @@ export function createManifestEntry(operation, existing) {
     platform: operation.platform,
     templateHash: sha256(operation.content),
   }
-  if (ownership.type !== 'created')
+  if (ownership.type !== 'created' || operation.merge?.startsWith('block-'))
     entry.baselineContent = operation.desired.toString('base64')
   if (operation.merge === 'json' || operation.merge === 'config' || operation.merge?.startsWith('block-'))
     entry.templateContent = operation.content.toString('base64')
@@ -60,11 +60,22 @@ export function decodeEntryContent(entry, field) {
 
 export function planOwnedRemoval(current, entry, force = false) {
   const pristine = entry.baselineHash === sha256(current)
-  if (entry.ownership.type === 'created')
-    return pristine || force ? { action: 'delete' } : { action: 'conflict' }
-
   const original = decodeEntryContent(entry.ownership, 'originalContent')
-  const baseline = decodeEntryContent(entry, 'baselineContent')
+  const baseline = blockBaseline(entry)
+  if (entry.ownership.type === 'created') {
+    if (pristine)
+      return { action: 'delete' }
+    if (entry.mode.startsWith('block-') && baseline) {
+      try {
+        const restored = removeManagedBlock(decodeUtf8(current), entry.mode, decodeUtf8(baseline), force)
+        if (!restored.conflict)
+          return restored.content ? { action: 'write', content: Buffer.from(restored.content) } : { action: 'delete' }
+      }
+      catch {}
+    }
+    return force ? { action: 'delete' } : { action: 'conflict' }
+  }
+
   if (entry.ownership.type === 'modified' && original) {
     if (pristine || force)
       return { action: 'write', content: original }
@@ -82,7 +93,7 @@ export function planOwnedRemoval(current, entry, force = false) {
     }
     if (entry.mode.startsWith('block-') && baseline) {
       try {
-        const restored = removeManagedBlock(current.toString('utf8'), entry.mode, baseline.toString('utf8'), false)
+        const restored = removeManagedBlock(decodeUtf8(current), entry.mode, decodeUtf8(baseline), false)
         if (!restored.conflict)
           return restored.content ? { action: 'write', content: Buffer.from(restored.content) } : { action: 'delete' }
       }
@@ -93,13 +104,28 @@ export function planOwnedRemoval(current, entry, force = false) {
 
   if (entry.mode.startsWith('block-')) {
     try {
-      const restored = removeManagedBlock(current.toString('utf8'), entry.mode, baseline?.toString('utf8'), force)
+      const restored = removeManagedBlock(decodeUtf8(current), entry.mode, baseline ? decodeUtf8(baseline) : undefined, force)
       if (!restored.conflict)
         return restored.content ? { action: 'write', content: Buffer.from(restored.content) } : { action: 'delete' }
     }
     catch {}
   }
   return pristine || force ? { action: 'delete' } : { action: 'conflict' }
+}
+
+function blockBaseline(entry) {
+  const baseline = decodeEntryContent(entry, 'baselineContent')
+  if (baseline || !entry.mode?.startsWith('block-'))
+    return baseline
+  const template = decodeEntryContent(entry, 'templateContent')
+  if (!template)
+    return undefined
+  try {
+    return Buffer.from(upsertBlock('', decodeUtf8(template), entry.mode))
+  }
+  catch {
+    return undefined
+  }
 }
 
 function normalizeEntry(candidate, file) {

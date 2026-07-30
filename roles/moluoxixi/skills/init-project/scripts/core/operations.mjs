@@ -2,7 +2,7 @@ import { Buffer } from 'node:buffer'
 import fs from 'node:fs'
 import path from 'node:path'
 import { GENERATOR_VERSION, MANIFEST_PATH, MOLUOXIXI_VERSION, sha256 } from '../constants.mjs'
-import { mergeConfig, mergeJson, upgradeJson, upsertBlock } from './migration.mjs'
+import { decodeUtf8, InvalidUtf8Error, mergeConfig, mergeJson, upgradeJson, upsertBlock } from './migration.mjs'
 import { decodeEntryContent, emptyManifest, normalizeManifest, ownershipFor, planOwnedRemoval } from './ownership.mjs'
 import { assertSafeTarget } from './safety.mjs'
 
@@ -65,11 +65,11 @@ export function prepareOperations(projectRoot, plan, manifest, force, createNew 
         desired = Buffer.from(mergeConfig(current.toString('utf8'), item.content.toString('utf8'), owned, item.configSections))
       }
       else if (item.merge.startsWith('block-')) {
-        desired = Buffer.from(upsertBlock(current?.toString('utf8') ?? '', item.content.toString('utf8'), item.merge))
+        desired = Buffer.from(upsertBlock(current ? decodeUtf8(current) : '', decodeUtf8(item.content), item.merge))
       }
     }
     catch (error) {
-      if (!force && !item.force) {
+      if (error instanceof InvalidUtf8Error || (!force && !item.force)) {
         recordConflict(relativePath, item, desired)
         continue
       }

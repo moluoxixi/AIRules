@@ -1,4 +1,20 @@
+import { TextDecoder } from 'node:util'
 import { sha256 } from '../constants.mjs'
+
+const UTF8_DECODER = new TextDecoder('utf-8', { fatal: true, ignoreBOM: true })
+
+export class InvalidUtf8Error extends Error {}
+
+export function decodeUtf8(content) {
+  if (content.includes(0))
+    throw new InvalidUtf8Error('Managed block target is not UTF-8 text')
+  try {
+    return UTF8_DECODER.decode(content)
+  }
+  catch (error) {
+    throw new InvalidUtf8Error('Managed block target is not UTF-8 text', { cause: error })
+  }
+}
 
 export function mergeJson(current, template) {
   if (Array.isArray(current) && Array.isArray(template)) {
@@ -70,10 +86,11 @@ export function upsertBlock(current, template, kind) {
   if ((start >= 0) !== (end >= 0) || (start >= 0 && current.includes(markers[0], start + markers[0].length)))
     throw new Error('Malformed or duplicate managed block')
   if (start < 0)
-    return current.trim() ? `${current.replace(/\s*$/u, '')}\n\n${managed}\n` : `${managed}\n`
+    return current.trim() ? `${trimTrailingBlockBoundary(current)}\n\n${managed}\n` : `${managed}\n`
   if (end < start)
     throw new Error('Malformed managed block order')
-  return `${current.slice(0, start)}${managed}${current.slice(end + markers[1].length)}`.replace(/\s*$/u, '\n')
+  const updated = `${current.slice(0, start)}${managed}${current.slice(end + markers[1].length)}`
+  return /\r?\n$/u.test(updated) ? updated : `${updated}\n`
 }
 
 export function removeManagedBlock(current, kind, baseline, force = false) {
@@ -85,10 +102,16 @@ export function removeManagedBlock(current, kind, baseline, force = false) {
     if (!baselineRange || current.slice(currentRange.start, currentRange.end) !== baseline.slice(baselineRange.start, baselineRange.end))
       return { conflict: true, content: current }
   }
-  const before = current.slice(0, currentRange.start).replace(/[ \t]+$/gmu, '').replace(/\n{3,}$/u, '\n\n')
-  const after = current.slice(currentRange.end).replace(/^\s*\n/u, '')
-  const content = `${before}${before && after ? '\n' : ''}${after}`.replace(/\s*$/u, before || after ? '\n' : '')
+  const newline = current.includes('\r\n') ? '\r\n' : '\n'
+  const before = trimTrailingBlockBoundary(current.slice(0, currentRange.start))
+  const after = current.slice(currentRange.end).replace(/^(?:[ \t]*\r?\n)+/u, '')
+  const joined = before && after ? `${before}${newline}${newline}${after}` : before || after
+  const content = joined && !/\r?\n$/u.test(joined) ? `${joined}${newline}` : joined
   return { conflict: false, content }
+}
+
+function trimTrailingBlockBoundary(content) {
+  return content.replace(/(?:\r?\n[ \t]*)+$/u, '')
 }
 
 function blockMarkers(kind, brand) {

@@ -384,6 +384,7 @@ function addProjectCore(plan, pythonCommand, packages, defaultPackage, projectTy
     }
   }
   addPlan(plan, 'AGENTS.md', fs.readFileSync(path.join(PROJECT_ASSET_ROOT, 'AGENTS.md')), { merge: 'block-moluoxixi' })
+  addPlan(plan, 'README.md', readProjectText('readme-usage.md'), { merge: 'block-html' })
 }
 
 function addExternalSpec(plan, files, strategy, packageName, projectRoot) {
