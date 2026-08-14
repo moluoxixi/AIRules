@@ -1,0 +1,4 @@
+# Moluoxixi: append-only developer journals merge across parallel sessions and
+# worktrees. Do not apply this to workspace/*/index.md: it is regenerated each
+# session, and task state lives in task.json.
+.moluoxixi/workspace/*/journal-*.md merge=union

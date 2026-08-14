@@ -67,10 +67,27 @@ def _normalize_windows_shell_path(path_str: str) -> str:
     return path_str
 
 
-FIRST_REPLY_NOTICE = """<first-reply-notice>
-First visible reply: say once in Chinese that Moluoxixi SessionStart context is loaded, then answer directly.
-This notice is one-shot: do not repeat it after the first assistant reply in the same session.
+_FIRST_REPLY_NOTICE_HEAD = """<first-reply-notice>
+On the first visible assistant reply in this session, briefly acknowledge that Moluoxixi SessionStart context loaded.
+"""
+
+_FIRST_REPLY_NOTICE_TAIL = """Use the language of the user's current request. If it has no clear natural language, use the established project language; otherwise use exactly: `Moluoxixi SessionStart loaded`.
+Continue directly with the request and do not change the language of the rest of the response.
+This notice is one-shot: do not repeat it after the first visible assistant reply in this session.
 </first-reply-notice>"""
+
+FIRST_REPLY_NOTICE = f"{_FIRST_REPLY_NOTICE_HEAD}{_FIRST_REPLY_NOTICE_TAIL}"
+
+
+def _build_first_reply_notice(update_hint: str | None) -> str:
+    """Attach an update reminder to the user-visible first-reply notice."""
+    if not update_hint:
+        return FIRST_REPLY_NOTICE
+    return (
+        f"{_FIRST_REPLY_NOTICE_HEAD}"
+        f"Also relay this Moluoxixi maintenance notice on its own line in that same reply: {update_hint}\n"
+        f"{_FIRST_REPLY_NOTICE_TAIL}"
+    )
 
 # Force UTF-8 on stdin/stdout/stderr on Windows. Default codepage there is
 # cp936 / cp1252 / etc. — non-ASCII content (Chinese task names, prd snippets)
@@ -188,7 +205,7 @@ def _detect_platform(input_data: dict) -> str | None:
     if isinstance(input_data.get("cursor_version"), str):
         return "cursor"
     env_map = {
-        "CLAUDE_PROJECT_DIR": "claude",
+        "ZCODE_PROJECT_DIR": "zcode",
         "CURSOR_PROJECT_DIR": "cursor",
         "CODEBUDDY_PROJECT_DIR": "codebuddy",
         "FACTORY_PROJECT_DIR": "droid",
@@ -197,6 +214,8 @@ def _detect_platform(input_data: dict) -> str | None:
         "KIRO_PROJECT_DIR": "kiro",
         "COPILOT_PROJECT_DIR": "copilot",
         "TRAE_PROJECT_DIR": "trae",
+        # Compatibility alias shared by several hosts; check it last.
+        "CLAUDE_PROJECT_DIR": "claude",
     }
     for env_name, platform in env_map.items():
         if os.environ.get(env_name):
@@ -232,6 +251,19 @@ def _resolve_context_key(moluoxixi_dir: Path, input_data: dict) -> str | None:
     return resolve_context_key(input_data, platform=_detect_platform(input_data))
 
 
+def _resolve_update_hint(moluoxixi_dir: Path, context_key: str | None) -> str | None:
+    """Resolve the optional update reminder without blocking SessionStart."""
+    scripts_dir = moluoxixi_dir / "scripts"
+    if str(scripts_dir) not in sys.path:
+        sys.path.insert(0, str(scripts_dir))
+    try:
+        from common.session_context import get_update_hint  # type: ignore[import-not-found]
+
+        return get_update_hint(moluoxixi_dir.parent, context_key)
+    except Exception:
+        return None
+
+
 def _persist_context_key_for_bash(context_key: str | None) -> None:
     """Expose Moluoxixi session identity to later Claude Code Bash commands.
 
@@ -245,11 +277,27 @@ def _persist_context_key_for_bash(context_key: str | None) -> None:
     env_file = os.environ.get("CLAUDE_ENV_FILE")
     if not env_file:
         return
+    export_line = f"export MOLUOXIXI_CONTEXT_ID={shlex.quote(context_key)}"
     try:
+        if _last_context_key_export(env_file) == export_line:
+            return
         with open(env_file, "a", encoding="utf-8") as handle:
-            handle.write(f"export MOLUOXIXI_CONTEXT_ID={shlex.quote(context_key)}\n")
+            handle.write(f"{export_line}\n")
     except OSError:
         pass  # Optional shell bridge; keep session-start non-fatal.
+
+
+def _last_context_key_export(env_file: str) -> str | None:
+    last_export = None
+    try:
+        with open(env_file, "r", encoding="utf-8", errors="replace") as handle:
+            for raw_line in handle:
+                stripped = raw_line.strip()
+                if stripped.startswith("export MOLUOXIXI_CONTEXT_ID="):
+                    last_export = stripped
+    except FileNotFoundError:
+        return None
+    return last_export
 
 
 def _resolve_active_task(moluoxixi_dir: Path, input_data: dict):
@@ -745,7 +793,7 @@ def main():
 
     # Try platform-specific env vars, hook cwd, fallback to cwd
     project_dir_env_vars = [
-        "CLAUDE_PROJECT_DIR",
+        "ZCODE_PROJECT_DIR",
         "QODER_PROJECT_DIR",
         "CODEBUDDY_PROJECT_DIR",
         "FACTORY_PROJECT_DIR",
@@ -754,6 +802,8 @@ def main():
         "KIRO_PROJECT_DIR",
         "COPILOT_PROJECT_DIR",
         "TRAE_PROJECT_DIR",
+        # Compatibility alias shared by several hosts; check it last.
+        "CLAUDE_PROJECT_DIR",
     ]
     project_dir = None
     for var in project_dir_env_vars:
@@ -784,7 +834,7 @@ Moluoxixi compact SessionStart context. Use it to orient the session; load detai
 </session-context>
 
 """)
-    output.write(FIRST_REPLY_NOTICE)
+    output.write(_build_first_reply_notice(_resolve_update_hint(moluoxixi_dir, context_key)))
     output.write("\n\n")
 
     # Legacy migration warning

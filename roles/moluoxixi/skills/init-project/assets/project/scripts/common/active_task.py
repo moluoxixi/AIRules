@@ -23,8 +23,9 @@ DIR_WORKFLOW = ".moluoxixi"
 DIR_TASKS = "tasks"
 DIR_RUNTIME = ".runtime"
 DIR_SESSIONS = "sessions"
-DIR_CURSOR_SHELL = "cursor-shell"
-CURSOR_SHELL_TICKET_TTL_SECONDS = 30
+DIR_SHELL_TICKETS = "shell-tickets"
+DIR_LEGACY_CURSOR_SHELL_TICKETS = "cursor-shell"
+SHELL_TICKET_TTL_SECONDS = 30
 TASK_SESSION_COMMANDS = {"start", "current", "finish"}
 
 _SESSION_KEYS = ("session_id", "sessionId", "sessionID")
@@ -44,28 +45,24 @@ _KNOWN_PLATFORMS = {
     "copilot",
     "pi",
     "trae",
+    "zcode",
 }
 
+# Only names with evidence belong here. Platforms without a verified identity
+# variable resolve through hook input or MOLUOXIXI_CONTEXT_ID bridges.
 _ENV_SESSION_KEYS: tuple[tuple[str, tuple[str, ...]], ...] = (
-    ("claude", ("CLAUDE_SESSION_ID", "CLAUDE_CODE_SESSION_ID")),
-    ("codex", ("CODEX_SESSION_ID", "CODEX_THREAD_ID")),
-    ("cursor", ("CURSOR_SESSION_ID",)),
-    ("opencode", ("OPENCODE_SESSION_ID", "OPENCODE_SESSIONID", "OPENCODE_RUN_ID")),
+    ("claude", ("CLAUDE_CODE_SESSION_ID",)),
+    ("codex", ("CODEX_THREAD_ID",)),
     ("gemini", ("GEMINI_SESSION_ID",)),
-    ("droid", ("FACTORY_SESSION_ID", "DROID_SESSION_ID")),
     ("qoder", ("QODER_SESSION_ID",)),
-    ("codebuddy", ("CODEBUDDY_SESSION_ID",)),
     ("kiro", ("KIRO_SESSION_ID",)),
     ("copilot", ("COPILOT_SESSION_ID", "COPILOT_SESSIONID")),
-    ("pi", ("PI_SESSION_ID", "PI_SESSIONID")),
-    ("trae", ("TRAE_SESSION_ID",)),
+    ("zcode", ("CLAUDE_CODE_SESSION_ID", "CLAUDE_SESSION_ID")),
 )
 _ENV_CONVERSATION_KEYS: tuple[tuple[str, tuple[str, ...]], ...] = (
     ("cursor", ("CURSOR_CONVERSATION_ID", "CURSOR_CONVERSATIONID")),
 )
 _ENV_TRANSCRIPT_KEYS: tuple[tuple[str, tuple[str, ...]], ...] = (
-    ("claude", ("CLAUDE_TRANSCRIPT_PATH",)),
-    ("codex", ("CODEX_TRANSCRIPT_PATH",)),
     ("cursor", ("CURSOR_TRANSCRIPT_PATH",)),
     ("gemini", ("GEMINI_TRANSCRIPT_PATH",)),
     ("droid", ("FACTORY_TRANSCRIPT_PATH", "DROID_TRANSCRIPT_PATH")),
@@ -77,6 +74,10 @@ _ENV_PLATFORM_ALIASES = {
     "factory": "droid",
     "factory-ai": "droid",
     "github-copilot": "copilot",
+}
+_CONTEXT_KEY_PLATFORM_ALIASES = {
+    "zcode": "claude",
+    "factory": "droid",
 }
 
 
@@ -120,19 +121,30 @@ def normalize_task_ref(task_ref: str) -> str:
 
 
 def resolve_task_ref(task_ref: str, repo_root: Path) -> Path | None:
-    """Resolve a task ref to an absolute task directory."""
+    """Resolve a task ref to an absolute path contained by the repository.
+
+    This mirrors ``paths.resolve_task_ref`` because hooks load this module as
+    a standalone dependency.
+    """
     normalized = normalize_task_ref(task_ref)
     if not normalized:
         return None
 
     path_obj = Path(normalized)
     if path_obj.is_absolute():
-        return path_obj
+        candidate = path_obj
+    elif normalized.startswith(f"{DIR_WORKFLOW}/"):
+        candidate = repo_root / path_obj
+    else:
+        candidate = repo_root / DIR_WORKFLOW / DIR_TASKS / path_obj
 
-    if normalized.startswith(f"{DIR_WORKFLOW}/"):
-        return repo_root / path_obj
-
-    return repo_root / DIR_WORKFLOW / DIR_TASKS / path_obj
+    try:
+        resolved = candidate.resolve()
+        root = repo_root.resolve()
+        resolved.relative_to(root)
+    except (OSError, RuntimeError, ValueError):
+        return None
+    return resolved
 
 
 def _runtime_sessions_dir(repo_root: Path) -> Path:
@@ -191,6 +203,7 @@ def _detect_platform(platform_input: dict[str, Any] | None, platform: str | None
 
 
 def _context_key(platform_name: str, kind: str, value: str) -> str:
+    platform_name = _CONTEXT_KEY_PLATFORM_ALIASES.get(platform_name, platform_name)
     if kind == "transcript":
         return f"{platform_name}_transcript_{_hash_value(value)}"
     safe_value = _sanitize_key(value)
@@ -256,8 +269,12 @@ def _find_repo_root_from_cwd() -> Path | None:
         current = current.parent
 
 
-def _cursor_shell_ticket_dir(repo_root: Path) -> Path:
-    return repo_root / DIR_WORKFLOW / DIR_RUNTIME / DIR_CURSOR_SHELL
+def _shell_ticket_dirs(repo_root: Path) -> tuple[Path, ...]:
+    runtime_dir = repo_root / DIR_WORKFLOW / DIR_RUNTIME
+    return (
+        runtime_dir / DIR_SHELL_TICKETS,
+        runtime_dir / DIR_LEGACY_CURSOR_SHELL_TICKETS,
+    )
 
 
 def _remove_file(path: Path) -> bool:
@@ -315,7 +332,7 @@ def _ticket_is_fresh(ticket: dict[str, Any], ticket_path: Path, now: float) -> b
 
     created_at = ticket.get("created_at_epoch")
     if isinstance(created_at, (int, float)):
-        if now - created_at <= CURSOR_SHELL_TICKET_TTL_SECONDS:
+        if now - created_at <= SHELL_TICKET_TTL_SECONDS:
             return True
         _remove_file(ticket_path)
         return False
@@ -333,13 +350,13 @@ def _ticket_cwd_matches_repo(ticket: dict[str, Any], repo_root: Path) -> bool:
     return True
 
 
-def _matching_cursor_ticket_context_key(
+def _matching_ticket_context_key(
     ticket_path: Path,
     repo_root: Path,
     now: float,
 ) -> str | None:
     ticket = _read_json(ticket_path)
-    if ticket is None or ticket.get("platform") != "cursor":
+    if ticket is None:
         return None
     if not _ticket_is_fresh(ticket, ticket_path, now):
         return None
@@ -350,29 +367,21 @@ def _matching_cursor_ticket_context_key(
     return _string_value(ticket.get("context_key"))
 
 
-def _lookup_cursor_shell_ticket_context_key() -> str | None:
-    """Resolve Cursor conversation identity from a short-lived shell ticket.
-
-    Cursor exposes `conversation_id` to `beforeShellExecution`, but does not
-    export it into the shell command environment. The Cursor hook writes a
-    short-lived ticket just before `task.py` runs. We accept a ticket only when
-    the current `task.py` subcommand matches and exactly one fresh context key
-    matches, which avoids cross-window pointer contamination.
-    """
+def _lookup_shell_ticket_context_key() -> str | None:
+    """Resolve hook identity from an unambiguous short-lived shell ticket."""
     repo_root = _find_repo_root_from_cwd()
     if repo_root is None:
         return None
 
-    ticket_dir = _cursor_shell_ticket_dir(repo_root)
-    if not ticket_dir.is_dir():
-        return None
-
     now = time.time()
     candidates: set[str] = set()
-    for ticket_path in ticket_dir.glob("*.json"):
-        context_key = _matching_cursor_ticket_context_key(ticket_path, repo_root, now)
-        if context_key:
-            candidates.add(context_key)
+    for ticket_dir in _shell_ticket_dirs(repo_root):
+        if not ticket_dir.is_dir():
+            continue
+        for ticket_path in ticket_dir.glob("*.json"):
+            context_key = _matching_ticket_context_key(ticket_path, repo_root, now)
+            if context_key:
+                candidates.add(context_key)
 
     if len(candidates) == 1:
         return next(iter(candidates))
@@ -382,15 +391,18 @@ def _lookup_cursor_shell_ticket_context_key() -> str | None:
 def resolve_context_key(
     platform_input: dict[str, Any] | None = None,
     platform: str | None = None,
+    *,
+    allow_environment_context: bool = True,
 ) -> str | None:
     """Resolve a stable session/window context key, if one is available.
 
     `MOLUOXIXI_CONTEXT_ID` is an explicit context-key override used by CLI
     scripts and subprocesses. It does not store the task itself.
     """
-    override = _string_value(os.environ.get("MOLUOXIXI_CONTEXT_ID"))
-    if override:
-        return _sanitize_key(override) or _hash_value(override)
+    if allow_environment_context:
+        override = _string_value(os.environ.get("MOLUOXIXI_CONTEXT_ID"))
+        if override:
+            return _sanitize_key(override) or _hash_value(override)
 
     data = _as_dict(platform_input)
     platform_name = _detect_platform(data, platform) if data or platform else None
@@ -408,12 +420,13 @@ def resolve_context_key(
         if transcript_path:
             return _context_key(platform_name or "session", "transcript", transcript_path)
 
-    env_context_key = _lookup_env_context_key(platform_name)
-    if env_context_key:
-        return env_context_key
+    if allow_environment_context:
+        env_context_key = _lookup_env_context_key(platform_name)
+        if env_context_key:
+            return env_context_key
 
-    if platform_name in (None, "session", "cursor"):
-        return _lookup_cursor_shell_ticket_context_key()
+    if allow_environment_context:
+        return _lookup_shell_ticket_context_key()
     return None
 
 
@@ -445,9 +458,9 @@ def _canonical_task_ref(task_path: str, repo_root: Path) -> str | None:
     if full_path is None or not full_path.is_dir():
         return None
     try:
-        return full_path.relative_to(repo_root).as_posix()
+        return full_path.relative_to(repo_root.resolve()).as_posix()
     except ValueError:
-        return str(full_path)
+        return None
 
 
 def _active_from_ref(
@@ -471,6 +484,9 @@ def resolve_active_task(
     repo_root: Path,
     platform_input: dict[str, Any] | None = None,
     platform: str | None = None,
+    *,
+    allow_single_session_fallback: bool = True,
+    allow_environment_context: bool = True,
 ) -> ActiveTask:
     """Resolve the active task from session runtime state only.
 
@@ -481,7 +497,11 @@ def resolve_active_task(
     copilot, gemini, qoder) that don't inherit the parent's session id. ≥2
     files or 0 files yield ActiveTask(None) — refuses to guess across windows.
     """
-    context_key = resolve_context_key(platform_input, platform)
+    context_key = resolve_context_key(
+        platform_input,
+        platform,
+        allow_environment_context=allow_environment_context,
+    )
     if context_key:
         context = _read_json(_context_path(repo_root, context_key)) or {}
         task_ref = _string_value(context.get("current_task"))
@@ -489,9 +509,10 @@ def resolve_active_task(
         if active:
             return active
 
-    fallback = _resolve_single_session_fallback(repo_root)
-    if fallback is not None:
-        return fallback
+    if allow_single_session_fallback:
+        fallback = _resolve_single_session_fallback(repo_root)
+        if fallback is not None:
+            return fallback
 
     return ActiveTask(None, "none", context_key)
 
@@ -581,13 +602,16 @@ def clear_active_task(
     platform_input: dict[str, Any] | None = None,
     platform: str | None = None,
 ) -> ActiveTask:
-    """Clear the active task by deleting the current session context file."""
+    """Clear the active task by deleting its resolved session context file."""
     context_key = resolve_context_key(platform_input, platform)
     if not context_key:
         return ActiveTask(None, "none")
 
     previous = resolve_active_task(repo_root, platform_input, platform)
-    context_path = _context_path(repo_root, context_key)
+    if not previous.task_path or not previous.context_key:
+        return previous
+
+    context_path = _context_path(repo_root, previous.context_key)
     if context_path.is_file():
         _remove_file(context_path)
     return previous

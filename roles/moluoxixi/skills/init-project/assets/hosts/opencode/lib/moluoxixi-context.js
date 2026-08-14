@@ -5,7 +5,8 @@
  * JSONL parsing, and context building capabilities.
  */
 
-import { existsSync, readFileSync, appendFileSync, lstatSync, readdirSync, realpathSync } from "fs"
+import { existsSync, readFileSync, appendFileSync, lstatSync, readdirSync, realpathSync, statSync } from "fs"
+import { isUtf8 } from "buffer"
 import { basename, dirname, isAbsolute, join, relative, resolve } from "path"
 import { platform } from "os"
 import { execSync } from "child_process"
@@ -83,6 +84,177 @@ export function isMoluoxixiSubagent(input) {
   return MOLUOXIXI_SUBAGENT_RE.test(agent)
 }
 
+const DEFAULT_CONTEXT_INJECTION_LIMITS = {
+  max_file_bytes: 32768,
+  max_artifact_bytes: 65536,
+  max_total_bytes: 131072,
+}
+
+function truncateUtf8(data, cap) {
+  if (cap <= 0 || data.length <= cap) return data
+  let end = cap
+  while (end > 0 && !isUtf8(data.subarray(0, end))) end--
+  return data.subarray(0, end)
+}
+
+function stripInlineComment(value) {
+  let inQuote = null
+  for (let index = 0; index < value.length; index++) {
+    const char = value[index]
+    if (inQuote) {
+      if (char === inQuote) inQuote = null
+      continue
+    }
+    if (char === '"' || char === "'") {
+      inQuote = char
+      continue
+    }
+    if (char === "#" && (index === 0 || /\s/.test(value[index - 1])))
+      return value.slice(0, index)
+  }
+  return value
+}
+
+function unquoteYaml(value) {
+  if (value.length >= 2 && value[0] === value[value.length - 1] && (value[0] === '"' || value[0] === "'"))
+    return value.slice(1, -1)
+  return value
+}
+
+function readContextInjectionLimits(repoRoot) {
+  const limits = { ...DEFAULT_CONTEXT_INJECTION_LIMITS }
+  let text
+  try {
+    text = readFileSync(join(repoRoot, ".moluoxixi", "config.yaml"), "utf-8")
+  } catch {
+    return limits
+  }
+
+  let inSection = false
+  let sectionIndent = -1
+  for (const rawLine of text.split(/\r?\n/)) {
+    const trimmed = rawLine.trim()
+    if (!inSection) {
+      if (/^context_injection\s*:\s*(#.*)?$/.test(trimmed)) {
+        inSection = true
+        sectionIndent = rawLine.length - rawLine.trimStart().length
+      }
+      continue
+    }
+    if (!trimmed || trimmed.startsWith("#")) continue
+    const indent = rawLine.length - rawLine.trimStart().length
+    if (indent <= sectionIndent) break
+    const match = trimmed.match(/^([A-Za-z_][A-Za-z0-9_]*)\s*:\s*(.*)$/)
+    if (!match || !(match[1] in limits)) continue
+    const raw = unquoteYaml(stripInlineComment(match[2]).trim()).trim()
+    if (!/^-?\d+$/.test(raw) || Number.parseInt(raw, 10) < 0) continue
+    limits[match[1]] = Number.parseInt(raw, 10)
+  }
+  return limits
+}
+
+class ContextBudget {
+  constructor(maxTotalBytes) {
+    this.maxTotalBytes = maxTotalBytes
+    this.used = 0
+  }
+
+  hasRoom(size) {
+    return this.maxTotalBytes <= 0 || this.used + size <= this.maxTotalBytes
+  }
+
+  add(size) {
+    this.used += size
+  }
+}
+
+function truncateNotice(path, cap) {
+  return `\n[Moluoxixi: truncated at ${cap} bytes; read ${path} for full content]`
+}
+
+function isBinaryContent(data) {
+  return data.includes(0) || !isUtf8(data)
+}
+
+function binaryNotice(path, size, reason) {
+  return `[Moluoxixi: binary file not inlined; ${path} (${size} bytes): ${reason}]`
+}
+
+function indexNotice(path, size, reason) {
+  return `[Moluoxixi: total context limit reached; ${path} (${size} bytes): ${reason}]`
+}
+
+function budgetedBlock(budget, header, plainPath, content, reason, sourceSize) {
+  const block = `=== ${header} ===\n${content}`
+  const size = Buffer.byteLength(block, "utf-8")
+  if (!budget.hasRoom(size)) {
+    const notice = indexNotice(plainPath, sourceSize, reason)
+    budget.add(Buffer.byteLength(notice, "utf-8"))
+    return notice
+  }
+  budget.add(size)
+  return block
+}
+
+function readFileBytes(basePath, filePath) {
+  const fullPath = isAbsolute(filePath) ? filePath : join(basePath, filePath)
+  try {
+    if (!statSync(fullPath).isFile()) return null
+    return readFileSync(fullPath)
+  } catch {
+    return null
+  }
+}
+
+function materializeFile(basePath, filePath, reason, limits, budget) {
+  const data = readFileBytes(basePath, filePath)
+  if (data === null) return null
+  const size = data.length
+  if (isBinaryContent(data)) {
+    const notice = binaryNotice(filePath, size, reason)
+    budget.add(Buffer.byteLength(notice, "utf-8"))
+    return notice
+  }
+  const truncated = truncateUtf8(data, limits.max_file_bytes)
+  let content = truncated.toString("utf-8")
+  if (truncated.length < size)
+    content += truncateNotice(filePath, limits.max_file_bytes)
+  return budgetedBlock(budget, filePath, filePath, content, reason, size)
+}
+
+function materializeDirectory(basePath, dirPath, reason, limits, budget, maxFiles = 20) {
+  const blocks = []
+  const fullPath = isAbsolute(dirPath) ? dirPath : join(basePath, dirPath)
+  try {
+    const files = readdirSync(fullPath)
+      .filter(name => name.endsWith(".md") && !lstatSync(join(fullPath, name)).isSymbolicLink() && statSync(join(fullPath, name)).isFile())
+      .sort()
+      .slice(0, maxFiles)
+    for (const filename of files) {
+      const filePath = join(dirPath, filename)
+      const block = materializeFile(basePath, filePath, reason, limits, budget)
+      if (block) blocks.push(block)
+    }
+  } catch {}
+  return blocks
+}
+
+function materializeArtifact(basePath, filePath, header, reason, limits, budget) {
+  const data = readFileBytes(basePath, filePath)
+  if (data === null) return null
+  const size = data.length
+  if (isBinaryContent(data)) {
+    const notice = binaryNotice(filePath, size, reason)
+    budget.add(Buffer.byteLength(notice, "utf-8"))
+    return notice
+  }
+  const truncated = truncateUtf8(data, limits.max_artifact_bytes)
+  let content = truncated.toString("utf-8")
+  if (truncated.length < size)
+    content += truncateNotice(filePath, limits.max_artifact_bytes)
+  return budgetedBlock(budget, header, filePath, content, reason, size)
+}
+
 /**
  * Moluoxixi Context Manager
  */
@@ -105,9 +277,6 @@ export class MoluoxixiContext {
     if (override) {
       return sanitizeKey(override) || hashValue(override)
     }
-
-    const runID = stringValue(process.env.OPENCODE_RUN_ID)
-    if (runID) return buildContextKey("opencode", "session", runID)
 
     const input = platformInput && typeof platformInput === "object" ? platformInput : null
     if (!input) return null
@@ -322,8 +491,8 @@ export class MoluoxixiContext {
    *   {"file": "path/to/file.md", "reason": "..."}
    *   {"file": "path/to/dir/", "type": "directory", "reason": "..."}
    */
-  readJsonlWithFiles(jsonlPath) {
-    const results = []
+  readJsonlWithFiles(jsonlPath, limits, budget) {
+    const blocks = []
     let allowedRoots
     let projectRoot
     let content
@@ -333,20 +502,20 @@ export class MoluoxixiContext {
       const tasksPath = join(workflowRoot, "tasks")
       const specPath = join(workflowRoot, "spec")
       if ([workflowRoot, tasksPath, specPath, jsonlPath].some(candidate => lstatSync(candidate).isSymbolicLink()))
-        return results
+        return blocks
       const tasksRoot = realpathSync(tasksPath)
       const manifest = realpathSync(jsonlPath)
       const taskDir = dirname(manifest)
       if (dirname(taskDir) !== tasksRoot || !["implement.jsonl", "check.jsonl"].includes(basename(manifest)))
-        return results
+        return blocks
       const researchPath = join(taskDir, "research")
       if (existsSync(researchPath) && lstatSync(researchPath).isSymbolicLink())
-        return results
+        return blocks
       allowedRoots = [specPath, researchPath].filter(existsSync).map(root => realpathSync(root))
       content = this.readFile(manifest)
-      if (!content) return results
+      if (!content) return blocks
     } catch {
-      return results
+      return blocks
     }
 
     for (const line of content.split("\n")) {
@@ -355,6 +524,7 @@ export class MoluoxixiContext {
         const item = JSON.parse(line)
         const file = item.file || item.path
         const entryType = item.type || "file"
+        const reason = typeof item.reason === "string" && item.reason.trim() ? item.reason.trim() : "-"
 
         if (!file || typeof file !== "string" || isAbsolute(file)) continue
         const normalized = file.trim().replaceAll("\\", "/").replace(/\/$/u, "")
@@ -370,24 +540,20 @@ export class MoluoxixiContext {
         }
 
         if (entryType === "directory") {
-          const dirEntries = this.readDirectoryMdFiles(canonical)
-          results.push(...dirEntries)
+          blocks.push(...materializeDirectory(this.directory, canonical, reason, limits, budget))
         } else {
-          const fullPath = join(this.directory, canonical)
-          const fileContent = this.readFile(fullPath)
-          if (fileContent) {
-            results.push({ path: canonical, content: fileContent })
-          }
+          const block = materializeFile(this.directory, canonical, reason, limits, budget)
+          if (block) blocks.push(block)
         }
       } catch {
         // Ignore parse errors for individual lines
       }
     }
-    return results
+    return blocks
   }
 
-  buildContextFromEntries(entries) {
-    return entries.map(e => `=== ${e.path} ===\n${e.content}`).join("\n\n")
+  buildContextFromEntries(blocks) {
+    return blocks.join("\n\n")
   }
 }
 
@@ -417,4 +583,13 @@ class ContextCollector {
 export const contextCollector = new ContextCollector()
 
 // Export debug log for plugins
-export { debugLog }
+export {
+  debugLog,
+  DEFAULT_CONTEXT_INJECTION_LIMITS,
+  truncateUtf8,
+  readContextInjectionLimits,
+  ContextBudget,
+  materializeFile,
+  materializeDirectory,
+  materializeArtifact,
+}

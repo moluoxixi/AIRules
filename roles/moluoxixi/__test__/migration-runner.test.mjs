@@ -1,3 +1,4 @@
+import { Buffer } from 'node:buffer'
 import { createHash } from 'node:crypto'
 import fs from 'node:fs'
 import os from 'node:os'
@@ -178,6 +179,55 @@ describe('moluoxixi version migrations', () => {
     expect(fs.existsSync(path.join(projectRoot, ...retired.split('/')))).toBe(false)
     expect(fs.existsSync(path.join(projectRoot, ...safeRetired.split('/')))).toBe(false)
     expect(fs.readFileSync(path.join(projectRoot, ...userOwned.split('/')), 'utf8')).toBe('user edit\n')
+  })
+
+  it('does not safe-delete a path reintroduced by the current template set', () => {
+    const projectRoot = temporaryProject()
+    const reintroduced = '.claude/commands/safe-retired.md'
+    writeProjectFile(projectRoot, reintroduced, 'current template\n')
+    const state = manifest({ [reintroduced]: { baselineHash: hash('current template\n') } })
+    const currentTemplates = new Map([[reintroduced, Buffer.from('current template\n')]])
+
+    const result = runVersionMigrations(projectRoot, state, '0.3.0', '0.4.0', {
+      currentTemplates,
+      manifests: futureReleases,
+      migrate: true,
+    })
+
+    expect(result.applied).not.toContain(reintroduced)
+    expect(fs.readFileSync(path.join(projectRoot, ...reintroduced.split('/')), 'utf8')).toBe('current template\n')
+  })
+
+  it('keeps a canonical rename-dir target instead of replacing it with stale source bytes', () => {
+    const projectRoot = temporaryProject()
+    const source = '.pi/skills'
+    const target = '.agents/skills'
+    const sourceFile = `${source}/check/SKILL.md`
+    const targetFile = `${target}/check/SKILL.md`
+    writeProjectFile(projectRoot, sourceFile, 'stale Pi template\n')
+    writeProjectFile(projectRoot, targetFile, 'current shared template\n')
+    const targetEntry = { baselineHash: hash('current shared template\n') }
+    const state = manifest({
+      [sourceFile]: { baselineHash: hash('stale Pi template\n') },
+      [targetFile]: targetEntry,
+    })
+    const releases = [{
+      version: '0.2.0',
+      migrations: [{ type: 'rename-dir', from: source, to: target }],
+    }]
+    const currentTemplates = new Map([[targetFile, Buffer.from('current shared template\n')]])
+
+    const result = runVersionMigrations(projectRoot, state, '0.1.0', '0.2.0', {
+      currentTemplates,
+      manifests: releases,
+      migrate: true,
+    })
+
+    expect(result.applied).toContain(source)
+    expect(fs.existsSync(path.join(projectRoot, ...source.split('/')))).toBe(false)
+    expect(fs.readFileSync(path.join(projectRoot, ...targetFile.split('/')), 'utf8')).toBe('current shared template\n')
+    expect(state.entries[sourceFile]).toBeUndefined()
+    expect(state.entries[targetFile]).toBe(targetEntry)
   })
 
   it('requires migrate for a breaking release and rejects schema v1 manifests', () => {

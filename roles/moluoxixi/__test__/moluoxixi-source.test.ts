@@ -28,6 +28,7 @@ interface RoleManifest {
     upstream: {
       name: string
       paths: string[]
+      reconciliation: string
       revision: string
       source: string
       version: string
@@ -48,15 +49,15 @@ const selectedPaths = [
 
 const upstream = {
   name: ['Tre', 'llis'].join(''),
-  revision: 'e7c5ead4d0dfd717d11a40b6bc0c80d8af94c49a',
+  revision: 'd8fff53ce4964ed1a3e52fea6b418b27eba093e4',
   source: 'https://github.com/mindfold-ai/Trellis.git',
-  version: '0.6.7',
+  version: '0.6.15',
 }
 
 const selectedIntegrity = {
-  bytes: 1749498,
-  files: 310,
-  hash: '2098d21f78758c5424ab5cea0481fbc28b9a034ab32eb10839d21100a1deff2f',
+  bytes: 1811745,
+  files: 313,
+  hash: '945163b533fb20dd1ae5c1434447a99aee8f85fc3744759a614a44aa5f4d5f21',
 }
 
 const migratedRuntimePaths = [
@@ -65,9 +66,9 @@ const migratedRuntimePaths = [
 ]
 
 const runtimeIntegrity = {
-  bytes: 860872,
-  files: 85,
-  hash: '3977e70e7a22795bc3fa33a2b06f6a752f8037aac1ff246d5b3512cb15b24e0e',
+  bytes: 993614,
+  files: 89,
+  hash: 'ac3bb73309040c21854cb2a16535c9b60be5a4e9fe1e56a96c79451ec6497c30',
 }
 
 const projectSkillNames = [
@@ -99,12 +100,12 @@ const nativeCapabilityCounts = [
   ['skills/init-project/assets/hosts/gemini', 9],
   ['skills/init-project/assets/hosts/kiro', 10],
   ['skills/init-project/assets/hosts/omp', 9],
-  ['skills/init-project/assets/hosts/opencode', 14],
+  ['skills/init-project/assets/hosts/opencode', 15],
   ['skills/init-project/assets/hosts/pi', 10],
   ['skills/init-project/assets/hosts/qoder', 9],
   ['skills/init-project/assets/hosts/reasonix', 8],
   ['skills/init-project/assets/hosts/trae', 9],
-  ['skills/init-project/assets/hosts/zcode', 8],
+  ['skills/init-project/assets/hosts/zcode', 9],
 ] as const
 
 const nativeCapabilityEntrypoints = [
@@ -260,8 +261,11 @@ describe('moluoxixi curated upstream role assets', () => {
 
     const provenanceFiles = new Set([
       '__test__/moluoxixi-source.test.ts',
+      '__test__/runtime-upstream.test.ts',
+      '__test__/upstream-script-sync.test.ts',
       'role.yaml',
       'skills/init-project/references/upstream-capability-map.md',
+      'skills/init-project/references/upstream-reconciliation-v0.6.15.json',
     ])
     for (const relativePath of allFiles) {
       const content = fs.readFileSync(resolveRolePath(relativePath), 'utf8')
@@ -327,7 +331,7 @@ describe('moluoxixi curated upstream role assets', () => {
         moluoxixi_runtime: 'skills/init-project/assets/runtime/moluoxixi.mjs',
       },
       role_id: 'moluoxixi',
-      role_version: '0.1.0',
+      role_version: '0.2.0',
     })
     expect(manifest.third_party.upstream).toEqual({
       name: upstream.name,
@@ -338,6 +342,7 @@ describe('moluoxixi curated upstream role assets', () => {
         'skills/init-project/assets/runtime/vendor/channel-mem.mjs',
         'skills/init-project/assets/core',
       ],
+      reconciliation: 'skills/init-project/references/upstream-reconciliation-v0.6.15.json',
       revision: upstream.revision,
       source: upstream.source,
       version: upstream.version,
@@ -400,13 +405,46 @@ describe('moluoxixi curated upstream role assets', () => {
     }
   })
 
-  it('omits license and notice artifacts from the role assets', () => {
-    expect(fs.existsSync(resolveRolePath('LICENSE'))).toBe(false)
-    expect(fs.existsSync(resolveRolePath('COPYRIGHT'))).toBe(false)
-    expect(fs.existsSync(resolveRolePath('THIRD_PARTY_NOTICES.md'))).toBe(false)
-    expect(fs.existsSync(resolveRolePath('skills/init-project/assets/moluoxixi-v0.6.7'))).toBe(false)
-    expect(fs.existsSync(resolveRolePath('skills/init-project/assets/runtime/NOTICE.md'))).toBe(false)
-    expect(fs.existsSync(resolveRolePath('skills/init-project/assets/runtime/legal'))).toBe(false)
-    expect(fs.readFileSync(resolveRolePath('role.yaml'), 'utf8')).not.toMatch(/^\s*license:/mu)
+  it('reconciles every official non-merge commit in the v0.6.7 to v0.6.15 range', () => {
+    const ledger = JSON.parse(fs.readFileSync(
+      resolveRolePath('skills/init-project/references/upstream-reconciliation-v0.6.15.json'),
+      'utf8',
+    ))
+    expect(ledger.upstream).toEqual({
+      name: upstream.name,
+      source: upstream.source,
+      from: { tag: 'v0.6.7', revision: 'e7c5ead4d0dfd717d11a40b6bc0c80d8af94c49a' },
+      to: { tag: 'v0.6.15', revision: upstream.revision },
+      history: { order: 'reverse', excludeMerges: true, commitCount: 122 },
+    })
+    expect(ledger.entries).toHaveLength(122)
+    expect(new Set(ledger.entries.map((entry: { hash: string }) => entry.hash)).size).toBe(122)
+    expect(ledger.entries[0]?.hash).toBe('200365b45a2afa68ff55c66a93d004303332f616')
+    expect(ledger.entries.at(-1)?.hash).toBe(upstream.revision)
+    expect(createHash('sha256').update(
+      ledger.entries.map((entry: { hash: string, subject: string }) => `${entry.hash}\0${entry.subject}\n`).join(''),
+    ).digest('hex')).toBe('7242f63c61794aaede0ab1b94799b2e62730e8910a8ed94b5ef1f9689f781eca')
+
+    const allowedStatuses = new Set(['adapted', 'retained-local', 'reviewed-no-change', 'not-applicable'])
+    const counts: Record<string, number> = {}
+    for (const entry of ledger.entries) {
+      expect(entry.hash).toMatch(/^[a-f0-9]{40}$/u)
+      expect(entry.subject).toEqual(expect.any(String))
+      expect(allowedStatuses.has(entry.status)).toBe(true)
+      counts[entry.status] = (counts[entry.status] ?? 0) + 1
+      if (entry.status === 'adapted' || entry.status === 'retained-local') {
+        expect(entry.localEvidence.length).toBeGreaterThan(0)
+        for (const evidence of entry.localEvidence) {
+          expect(evidence.symbol).toEqual(expect.any(String))
+          expect(fs.statSync(path.resolve(roleRoot, '..', '..', ...evidence.path.split('/'))).isFile()).toBe(true)
+        }
+      }
+    }
+    expect(counts).toEqual({
+      'adapted': 51,
+      'not-applicable': 64,
+      'retained-local': 4,
+      'reviewed-no-change': 3,
+    })
   })
 })

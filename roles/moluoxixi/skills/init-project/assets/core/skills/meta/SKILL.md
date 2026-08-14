@@ -39,7 +39,7 @@ Do not assume the user has the upstream Moluoxixi repository. The authoritative 
 - `references/local-architecture/workspace-memory.md`: `.moluoxixi/workspace/` journals plus `node "<skill-root>/scripts/moluoxixi.mjs" mem` cross-session recall and the `the Moluoxixi memory runtime source` SDK.
 - `references/local-architecture/context-injection.md`: Hooks, sub-agent preludes, and channel-runtime worker inbox routing.
 - `references/local-architecture/multi-agent-channel.md`: `node "<skill-root>/scripts/moluoxixi.mjs" channel` subcommands, project-scoped event store, forum/thread channels, worker OOM guard, durable idempotency, and bundled `.moluoxixi/agents/` runtime agents.
-- `references/local-architecture/bundled-skills.md`: Auto-dispatched bundled skills (`meta`, `spec-bootstrap`, `session-insight`) and how `getBundledSkillTemplates()` ships them to every platform skill root.
+- `references/local-architecture/bundled-skills.md`: AIRules role-level skill distribution and how the initializer's `addCoreSkills()` projects project-facing skills to each selected platform root.
 
 ### Platform Files
 

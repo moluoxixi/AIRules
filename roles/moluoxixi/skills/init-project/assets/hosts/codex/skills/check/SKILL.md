@@ -62,6 +62,14 @@ Run the project's lint, type-check, and test commands. Fix any failures before p
 
 > "If I fixed a bug or discovered something non-obvious, should I preserve it for review so future me won't hit the same issue?" → If YES, return it for `update-spec`. Do not edit formal specs directly.
 
+### Scope Discipline
+
+- [ ] Any tidying the task did not require?
+- [ ] Any abstraction, config, or extension point for a case that does not exist yet?
+- [ ] Any speculative fallback for an impossible state?
+- [ ] Any changed file not required by acceptance criteria?
+- [ ] Any caller workaround instead of a fix at the behavior's real owner?
+
 ## Step 5: Cross-Layer Dimensions (if applicable)
 
 Skip this step if your change is confined to a single layer.
@@ -79,7 +87,7 @@ Skip this step if your change is confined to a single layer.
   ```bash
   grep -r "pattern" src/
   ```
-- [ ] If 2+ places define same value → extracted to shared constant?
+- [ ] Extract a repeated value only when it is one stable concept whose callers must change together; coincidentally matching literals stay separate.
 - [ ] After batch modification, all occurrences updated?
 
 ### C. Import/Dependency (creating new files)
@@ -95,4 +103,4 @@ Skip this step if your change is confined to a single layer.
 
 ## Step 6: Report and Fix
 
-Report violations found and fix them directly. Re-run project checks after fixes.
+Report every violation. Fix mechanical local issues and re-run checks. For design or judgment calls, record evidence and a recommendation, then stop instead of rewriting silently. If a fix crosses the current task boundary, report it rather than widening scope.

@@ -7,10 +7,56 @@ import { debugLog } from "./moluoxixi-context.js"
 
 const PYTHON_CMD = platform() === "win32" ? "python" : "python3"
 
-const FIRST_REPLY_NOTICE = `<first-reply-notice>
+const FIRST_REPLY_NOTICE_HEAD = `<first-reply-notice>
 First visible reply: say once in Chinese that Moluoxixi SessionStart context is loaded, then answer directly.
-This notice is one-shot: do not repeat it after the first assistant reply in the same session.
+`
+const FIRST_REPLY_NOTICE_TAIL = `This notice is one-shot: do not repeat it after the first assistant reply in the same session.
 </first-reply-notice>`
+const FIRST_REPLY_NOTICE = `${FIRST_REPLY_NOTICE_HEAD}${FIRST_REPLY_NOTICE_TAIL}`
+
+function buildFirstReplyNotice(updateHint) {
+  if (!updateHint) return FIRST_REPLY_NOTICE
+  return (
+    FIRST_REPLY_NOTICE_HEAD +
+    `Also relay this Moluoxixi maintenance notice on its own line in that same reply: ${updateHint}\n` +
+    FIRST_REPLY_NOTICE_TAIL
+  )
+}
+
+function resolveUpdateHint(directory, contextKey = null) {
+  const scriptsDir = join(directory, ".moluoxixi", "scripts")
+  const sessionContextPath = join(scriptsDir, "common", "session_context.py")
+  if (!existsSync(sessionContextPath)) return null
+
+  const probe = [
+    "import sys",
+    "from pathlib import Path",
+    "sys.path.insert(0, sys.argv[1])",
+    "from common.session_context import get_update_hint",
+    "print(get_update_hint(Path(sys.argv[2]), sys.argv[3] or None) or '')",
+  ].join("\n")
+
+  try {
+    const output = execFileSync(
+      PYTHON_CMD,
+      ["-c", probe, scriptsDir, directory, contextKey || ""],
+      {
+        cwd: directory,
+        timeout: 5000,
+        encoding: "utf-8",
+        stdio: ["pipe", "pipe", "pipe"],
+        env: {
+          ...process.env,
+          ...(contextKey ? { MOLUOXIXI_CONTEXT_ID: contextKey } : {}),
+        },
+      },
+    )
+    return output.trim() || null
+  } catch (e) {
+    debugLog("session", "resolveUpdateHint error:", e.message)
+    return null
+  }
+}
 
 function hasCuratedJsonlEntry(jsonlPath) {
   try {
@@ -372,7 +418,7 @@ export function buildSessionContext(ctx, platformInput = null) {
   parts.push(`<session-context>
 Moluoxixi compact SessionStart context. Use it to orient the session; load details on demand.
 </session-context>`)
-  parts.push(FIRST_REPLY_NOTICE)
+  parts.push(buildFirstReplyNotice(resolveUpdateHint(directory, contextKey)))
 
   const legacyWarning = checkLegacySpec(directory, config)
   if (legacyWarning) {

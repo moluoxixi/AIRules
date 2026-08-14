@@ -233,7 +233,7 @@ def normalize_task_ref(task_ref: str) -> str:
 
 
 def resolve_task_ref(task_ref: str, repo_root: Path | None = None) -> Path | None:
-    """Resolve a task ref to an absolute task directory path."""
+    """Resolve a task ref to an absolute path contained by the repository."""
     if repo_root is None:
         repo_root = get_repo_root()
 
@@ -243,12 +243,19 @@ def resolve_task_ref(task_ref: str, repo_root: Path | None = None) -> Path | Non
 
     path_obj = Path(normalized)
     if path_obj.is_absolute():
-        return path_obj
+        candidate = path_obj
+    elif normalized.startswith(f"{DIR_WORKFLOW}/"):
+        candidate = repo_root / path_obj
+    else:
+        candidate = repo_root / DIR_WORKFLOW / DIR_TASKS / path_obj
 
-    if normalized.startswith(f"{DIR_WORKFLOW}/"):
-        return repo_root / path_obj
-
-    return repo_root / DIR_WORKFLOW / DIR_TASKS / path_obj
+    try:
+        resolved = candidate.resolve()
+        root = repo_root.resolve()
+        resolved.relative_to(root)
+    except (OSError, RuntimeError, ValueError):
+        return None
+    return resolved
 
 
 def get_current_task(

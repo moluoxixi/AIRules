@@ -32,6 +32,14 @@ import sys
 from pathlib import Path
 from typing import Any
 
+# Hook hosts send UTF-8 JSON regardless of the process locale.
+_stdin_reconfigure = getattr(sys.stdin, "reconfigure", None)
+if callable(_stdin_reconfigure):
+    try:
+        _stdin_reconfigure(encoding="utf-8", errors="replace")
+    except (OSError, ValueError):
+        pass
+
 # IMPORTANT: Force stdout to use UTF-8 on Windows
 # This fixes UnicodeEncodeError when outputting non-ASCII characters
 if sys.platform.startswith("win"):
@@ -91,7 +99,7 @@ def _detect_platform(input_data: dict) -> str | None:
     if isinstance(input_data.get("cursor_version"), str):
         return "cursor"
     env_map = {
-        "CLAUDE_PROJECT_DIR": "claude",
+        "ZCODE_PROJECT_DIR": "zcode",
         "CURSOR_PROJECT_DIR": "cursor",
         "CODEBUDDY_PROJECT_DIR": "codebuddy",
         "FACTORY_PROJECT_DIR": "droid",
@@ -99,6 +107,9 @@ def _detect_platform(input_data: dict) -> str | None:
         "QODER_PROJECT_DIR": "qoder",
         "KIRO_PROJECT_DIR": "kiro",
         "COPILOT_PROJECT_DIR": "copilot",
+        "TRAE_PROJECT_DIR": "trae",
+        # Compatibility alias shared by several hosts; check it last.
+        "CLAUDE_PROJECT_DIR": "claude",
     }
     for env_name, platform in env_map.items():
         if os.environ.get(env_name):
@@ -121,7 +132,15 @@ def _detect_platform(input_data: dict) -> str | None:
     return None
 
 
-def get_current_task(repo_root: str, input_data: dict) -> str | None:
+def get_current_task(
+    repo_root: str,
+    input_data: dict,
+    *,
+    platform: str | None = None,
+    allow_single_session_fallback: bool = True,
+    allow_environment_context: bool = True,
+    require_existing: bool = False,
+) -> str | None:
     """Resolve current task directory through the unified active task resolver."""
     scripts_dir = Path(repo_root) / DIR_WORKFLOW / "scripts"
     if str(scripts_dir) not in sys.path:
@@ -134,68 +153,175 @@ def get_current_task(repo_root: str, input_data: dict) -> str | None:
     active = resolve_active_task(
         Path(repo_root),
         input_data,
-        platform=_detect_platform(input_data),
+        platform=platform or _detect_platform(input_data),
+        allow_single_session_fallback=allow_single_session_fallback,
+        allow_environment_context=allow_environment_context,
     )
+    if require_existing and active.stale:
+        return None
     return active.task_path
 
 
-def read_file_content(base_path: str, file_path: str) -> str | None:
-    """Read file content, return None if file doesn't exist"""
-    full_path = os.path.join(base_path, file_path)
-    if os.path.exists(full_path) and os.path.isfile(full_path):
+DEFAULT_MAX_FILE_BYTES = 32768
+DEFAULT_MAX_ARTIFACT_BYTES = 65536
+DEFAULT_MAX_TOTAL_BYTES = 131072
+DEFAULT_LIMITS: dict[str, int] = {
+    "max_file_bytes": DEFAULT_MAX_FILE_BYTES,
+    "max_artifact_bytes": DEFAULT_MAX_ARTIFACT_BYTES,
+    "max_total_bytes": DEFAULT_MAX_TOTAL_BYTES,
+}
+
+
+def _get_limits(repo_root: str) -> dict[str, int]:
+    """Load context-injection byte limits, falling back to safe defaults."""
+    scripts_dir = Path(repo_root) / DIR_WORKFLOW / "scripts"
+    if str(scripts_dir) not in sys.path:
+        sys.path.insert(0, str(scripts_dir))
+    try:
+        from common.config import get_context_injection_limits  # type: ignore[import-not-found]
+
+        return get_context_injection_limits(Path(repo_root))
+    except Exception:
+        return dict(DEFAULT_LIMITS)
+
+
+def truncate_utf8(data: bytes, cap: int) -> bytes:
+    """Truncate bytes without splitting a UTF-8 sequence; 0 disables the cap."""
+    if cap <= 0 or len(data) <= cap:
+        return data
+    end = cap
+    while end > 0:
         try:
-            with open(full_path, "r", encoding="utf-8") as f:
-                return f.read()
-        except Exception:
-            return None
-    return None
+            data[:end].decode("utf-8", errors="strict")
+            return data[:end]
+        except UnicodeDecodeError:
+            end -= 1
+    return b""
 
 
-def read_directory_contents(
-    base_path: str, dir_path: str, max_files: int = 20
-) -> list[tuple[str, str]]:
-    """
-    Read all .md files in a directory
+class _Budget:
+    def __init__(self, max_total_bytes: int) -> None:
+        self.max_total_bytes = max_total_bytes
+        self.used = 0
 
-    Args:
-        base_path: Base path (usually repo_root)
-        dir_path: Directory relative path
-        max_files: Max files to read (prevent huge directories)
+    def has_room(self, size: int) -> bool:
+        return self.max_total_bytes <= 0 or self.used + size <= self.max_total_bytes
 
-    Returns:
-        [(file_path, content), ...]
-    """
+    def add(self, size: int) -> None:
+        self.used += size
+
+
+def _read_file_bytes(base_path: str, file_path: str) -> bytes | None:
+    full_path = os.path.join(base_path, file_path)
+    if not os.path.isfile(full_path):
+        return None
+    try:
+        with open(full_path, "rb") as file:
+            return file.read()
+    except Exception:
+        return None
+
+
+def _truncate_notice(path: str, cap: int) -> str:
+    return f"\n[Moluoxixi: truncated at {cap} bytes; read {path} for full content]"
+
+
+def _is_binary_content(data: bytes) -> bool:
+    if b"\x00" in data:
+        return True
+    try:
+        data.decode("utf-8", errors="strict")
+    except UnicodeDecodeError:
+        return True
+    return False
+
+
+def _binary_notice(path: str, size: int, reason: str) -> str:
+    return f"[Moluoxixi: binary file not inlined; {path} ({size} bytes): {reason}]"
+
+
+def _index_notice(path: str, size: int, reason: str) -> str:
+    return (
+        f"[Moluoxixi: total context limit reached; "
+        f"{path} ({size} bytes): {reason}]"
+    )
+
+
+def _budgeted_block(
+    budget: _Budget,
+    header: str,
+    plain_path: str,
+    content: str,
+    reason: str,
+    source_size: int,
+) -> str:
+    block = f"=== {header} ===\n{content}"
+    block_size = len(block.encode("utf-8"))
+    if not budget.has_room(block_size):
+        notice = _index_notice(plain_path, source_size, reason)
+        budget.add(len(notice.encode("utf-8")))
+        return notice
+    budget.add(block_size)
+    return block
+
+
+def _materialize_file(
+    base_path: str,
+    file_path: str,
+    reason: str,
+    limits: dict[str, int],
+    budget: _Budget,
+) -> str | None:
+    data = _read_file_bytes(base_path, file_path)
+    if data is None:
+        return None
+    size = len(data)
+    if _is_binary_content(data):
+        notice = _binary_notice(file_path, size, reason)
+        budget.add(len(notice.encode("utf-8")))
+        return notice
+
+    truncated = truncate_utf8(data, limits["max_file_bytes"])
+    content = truncated.decode("utf-8")
+    if len(truncated) < size:
+        content += _truncate_notice(file_path, limits["max_file_bytes"])
+    return _budgeted_block(budget, file_path, file_path, content, reason, size)
+
+
+def _materialize_directory(
+    base_path: str,
+    dir_path: str,
+    reason: str,
+    limits: dict[str, int],
+    budget: _Budget,
+    max_files: int = 20,
+) -> list[str]:
     full_path = os.path.join(base_path, dir_path)
-    if not os.path.exists(full_path) or not os.path.isdir(full_path):
+    if not os.path.isdir(full_path):
         return []
 
-    results = []
+    blocks: list[str] = []
     try:
-        # Only read .md files, sorted by filename
-        md_files = sorted(
-            [
-                f
-                for f in os.listdir(full_path)
-                if f.endswith(".md") and os.path.isfile(os.path.join(full_path, f))
-            ]
+        filenames = sorted(
+            filename
+            for filename in os.listdir(full_path)
+            if filename.endswith(".md")
+            and os.path.isfile(os.path.join(full_path, filename))
+            and not os.path.islink(os.path.join(full_path, filename))
         )
-
-        for filename in md_files[:max_files]:
-            file_full_path = os.path.join(full_path, filename)
-            relative_path = os.path.join(dir_path, filename)
-            try:
-                with open(file_full_path, "r", encoding="utf-8") as f:
-                    content = f.read()
-                    results.append((relative_path, content))
-            except Exception:
-                continue
+        for filename in filenames[:max_files]:
+            relative_path = os.path.join(dir_path, filename).replace("\\", "/")
+            block = _materialize_file(
+                base_path, relative_path, reason, limits, budget
+            )
+            if block:
+                blocks.append(block)
     except Exception:
         pass
+    return blocks
 
-    return results
 
-
-def read_jsonl_entries(base_path: str, jsonl_path: str) -> list[tuple[str, str]]:
+def read_jsonl_entries(base_path: str, jsonl_path: str) -> list[dict[str, str]]:
     """
     Read all file/directory contents referenced in jsonl file
 
@@ -209,8 +335,7 @@ def read_jsonl_entries(base_path: str, jsonl_path: str) -> list[tuple[str, str]]
     silently. If the resulting entry list is empty, a stderr warning is
     emitted so the operator can debug missing context.
 
-    Returns:
-        [(path, content), ...]
+    Returns validated entries without reading their content.
     """
     full_path = os.path.join(base_path, jsonl_path)
     if not os.path.exists(full_path):
@@ -221,7 +346,7 @@ def read_jsonl_entries(base_path: str, jsonl_path: str) -> list[tuple[str, str]]
         )
         return []
 
-    results = []
+    entries: list[dict[str, str]] = []
     saw_real_entry = False
     repo_root = os.path.realpath(base_path)
     task_dir = os.path.dirname(jsonl_path.replace("\\", "/"))
@@ -268,6 +393,7 @@ def read_jsonl_entries(base_path: str, jsonl_path: str) -> list[tuple[str, str]]
                     item = json.loads(line)
                     file_path = item.get("file") or item.get("path")
                     entry_type = item.get("type", "file")
+                    reason = item.get("reason")
 
                     if not file_path:
                         # Seed / comment row — skip silently
@@ -284,18 +410,20 @@ def read_jsonl_entries(base_path: str, jsonl_path: str) -> list[tuple[str, str]]
                         continue
                     full_context_path, canonical_path = safe_path
                     if entry_type == "directory":
-                        # Read all .md files in directory
                         if not os.path.isdir(full_context_path):
                             continue
-                        dir_contents = read_directory_contents(base_path, canonical_path)
-                        results.extend(dir_contents)
                     else:
-                        # Read single file
                         if not os.path.isfile(full_context_path):
                             continue
-                        content = read_file_content(base_path, canonical_path)
-                        if content:
-                            results.append((canonical_path, content))
+                    entries.append(
+                        {
+                            "file": canonical_path,
+                            "type": "directory" if entry_type == "directory" else "file",
+                            "reason": reason.strip()
+                            if isinstance(reason, str) and reason.strip()
+                            else "-",
+                        }
+                    )
                 except json.JSONDecodeError:
                     continue
     except Exception:
@@ -309,23 +437,63 @@ def read_jsonl_entries(base_path: str, jsonl_path: str) -> list[tuple[str, str]]
             file=sys.stderr,
         )
 
-    return results
+    return entries
 
 
-
-
-def get_agent_context(repo_root: str, task_dir: str, agent_type: str) -> str:
+def get_agent_context(
+    repo_root: str,
+    task_dir: str,
+    agent_type: str,
+    limits: dict[str, int],
+    budget: _Budget,
+) -> str:
     """
     Get context from {agent_type}.jsonl for the specified agent.
     Only reads implement.jsonl or check.jsonl (the two JSONL files the task system creates).
     """
-    context_parts = []
-
     agent_jsonl = f"{task_dir}/{agent_type}.jsonl"
-    for file_path, content in read_jsonl_entries(repo_root, agent_jsonl):
-        context_parts.append(f"=== {file_path} ===\n{content}")
+    blocks: list[str] = []
+    for entry in read_jsonl_entries(repo_root, agent_jsonl):
+        if entry["type"] == "directory":
+            blocks.extend(
+                _materialize_directory(
+                    repo_root,
+                    entry["file"],
+                    entry["reason"],
+                    limits,
+                    budget,
+                )
+            )
+        else:
+            block = _materialize_file(
+                repo_root, entry["file"], entry["reason"], limits, budget
+            )
+            if block:
+                blocks.append(block)
+    return "\n\n".join(blocks)
 
-    return "\n\n".join(context_parts)
+
+def _materialize_artifact(
+    base_path: str,
+    file_path: str,
+    header: str,
+    reason: str,
+    limits: dict[str, int],
+    budget: _Budget,
+) -> str | None:
+    data = _read_file_bytes(base_path, file_path)
+    if data is None:
+        return None
+    size = len(data)
+    if _is_binary_content(data):
+        notice = _binary_notice(file_path, size, reason)
+        budget.add(len(notice.encode("utf-8")))
+        return notice
+    truncated = truncate_utf8(data, limits["max_artifact_bytes"])
+    content = truncated.decode("utf-8")
+    if len(truncated) < size:
+        content += _truncate_notice(file_path, limits["max_artifact_bytes"])
+    return _budgeted_block(budget, header, file_path, content, reason, size)
 
 
 def get_implement_context(repo_root: str, task_dir: str) -> str:
@@ -338,31 +506,52 @@ def get_implement_context(repo_root: str, task_dir: str) -> str:
     3. design.md if present (technical design)
     4. implement.md if present (execution plan)
     """
-    context_parts = []
+    limits = _get_limits(repo_root)
+    budget = _Budget(limits["max_total_bytes"])
+    context_parts: list[str] = []
 
     # 1. Read implement.jsonl
-    base_context = get_agent_context(repo_root, task_dir, "implement")
+    base_context = get_agent_context(
+        repo_root, task_dir, "implement", limits, budget
+    )
     if base_context:
         context_parts.append(base_context)
 
     # 2. Requirements document
-    prd_content = read_file_content(repo_root, f"{task_dir}/prd.md")
-    if prd_content:
-        context_parts.append(f"=== {task_dir}/prd.md (Requirements) ===\n{prd_content}")
+    prd = _materialize_artifact(
+        repo_root,
+        f"{task_dir}/prd.md",
+        f"{task_dir}/prd.md (Requirements)",
+        "Requirements document",
+        limits,
+        budget,
+    )
+    if prd:
+        context_parts.append(prd)
 
     # 3. Technical design for complex tasks
-    design_content = read_file_content(repo_root, f"{task_dir}/design.md")
-    if design_content:
-        context_parts.append(
-            f"=== {task_dir}/design.md (Technical Design) ===\n{design_content}"
-        )
+    design = _materialize_artifact(
+        repo_root,
+        f"{task_dir}/design.md",
+        f"{task_dir}/design.md (Technical Design)",
+        "Technical design document",
+        limits,
+        budget,
+    )
+    if design:
+        context_parts.append(design)
 
     # 4. Execution plan for complex tasks
-    implement_plan_content = read_file_content(repo_root, f"{task_dir}/implement.md")
-    if implement_plan_content:
-        context_parts.append(
-            f"=== {task_dir}/implement.md (Execution Plan) ===\n{implement_plan_content}"
-        )
+    plan = _materialize_artifact(
+        repo_root,
+        f"{task_dir}/implement.md",
+        f"{task_dir}/implement.md (Execution Plan)",
+        "Execution plan document",
+        limits,
+        budget,
+    )
+    if plan:
+        context_parts.append(plan)
 
     return "\n\n".join(context_parts)
 
@@ -371,26 +560,29 @@ def get_check_context(repo_root: str, task_dir: str) -> str:
     """
     Context for Check Agent: check.jsonl + task artifacts.
     """
-    context_parts = []
+    limits = _get_limits(repo_root)
+    budget = _Budget(limits["max_total_bytes"])
+    context_parts: list[str] = []
 
-    for file_path, content in read_jsonl_entries(repo_root, f"{task_dir}/check.jsonl"):
-        context_parts.append(f"=== {file_path} ===\n{content}")
+    base_context = get_agent_context(repo_root, task_dir, "check", limits, budget)
+    if base_context:
+        context_parts.append(base_context)
 
-    prd_content = read_file_content(repo_root, f"{task_dir}/prd.md")
-    if prd_content:
-        context_parts.append(f"=== {task_dir}/prd.md (Requirements) ===\n{prd_content}")
-
-    design_content = read_file_content(repo_root, f"{task_dir}/design.md")
-    if design_content:
-        context_parts.append(
-            f"=== {task_dir}/design.md (Technical Design) ===\n{design_content}"
+    for filename, label, reason in (
+        ("prd.md", "Requirements", "Requirements document"),
+        ("design.md", "Technical Design", "Technical design document"),
+        ("implement.md", "Execution Plan", "Execution plan document"),
+    ):
+        artifact = _materialize_artifact(
+            repo_root,
+            f"{task_dir}/{filename}",
+            f"{task_dir}/{filename} ({label})",
+            reason,
+            limits,
+            budget,
         )
-
-    implement_plan_content = read_file_content(repo_root, f"{task_dir}/implement.md")
-    if implement_plan_content:
-        context_parts.append(
-            f"=== {task_dir}/implement.md (Execution Plan) ===\n{implement_plan_content}"
-        )
+        if artifact:
+            context_parts.append(artifact)
 
     return "\n\n".join(context_parts)
 
@@ -630,6 +822,90 @@ def _string_value(value: Any) -> str:
     return ""
 
 
+def _hook_event_name(input_data: dict) -> str:
+    return _string_value(
+        input_data.get("hook_event_name") or input_data.get("hookEventName")
+    )
+
+
+def _codex_subagent_type(input_data: dict) -> str:
+    if _hook_event_name(input_data) != "SubagentStart":
+        return ""
+    agent_type = _string_value(
+        input_data.get("agent_type") or input_data.get("agentType")
+    )
+    return agent_type if agent_type in AGENTS_ALL else ""
+
+
+def build_codex_subagent_context(
+    subagent_type: str,
+    task_dir: str,
+    context: str,
+) -> str:
+    role = subagent_type.removeprefix("moluoxixi-")
+    return f"""<!-- moluoxixi-hook-injected -->
+# Moluoxixi Native {role.title()} Subagent
+
+You are the dispatched `{subagent_type}` role for this task. Perform that role
+directly; do not follow main-session dispatch instructions and do not spawn
+another Moluoxixi subagent.
+
+Active task: {task_dir}
+
+## Curated Context
+
+{context}"""
+
+
+def _handle_codex_subagent_start(input_data: dict) -> None:
+    """Emit role-specific context for a recognised native Codex subagent."""
+    subagent_type = _codex_subagent_type(input_data)
+    parent_session_id = _string_value(
+        input_data.get("session_id") or input_data.get("sessionId")
+    )
+    if not subagent_type or not parent_session_id:
+        return
+
+    cwd = _string_value(input_data.get("cwd")) or os.getcwd()
+    repo_root = find_repo_root(cwd)
+    if not repo_root:
+        return
+
+    task_dir = get_current_task(
+        repo_root,
+        {"session_id": parent_session_id},
+        platform="codex",
+        allow_single_session_fallback=False,
+        allow_environment_context=False,
+        require_existing=True,
+    )
+    if not task_dir:
+        return
+
+    if subagent_type in IMPLEMENT_CONTEXT_AGENTS:
+        context = get_implement_context(repo_root, task_dir)
+    elif subagent_type in CHECK_CONTEXT_AGENTS:
+        context = get_check_context(repo_root, task_dir)
+    else:
+        context = get_research_context(repo_root, task_dir)
+    if not context:
+        return
+
+    print(
+        json.dumps(
+            {
+                "hookSpecificOutput": {
+                    "hookEventName": "SubagentStart",
+                    "additionalContext": build_codex_subagent_context(
+                        subagent_type, task_dir, context
+                    ),
+                }
+            },
+            ensure_ascii=False,
+        )
+    )
+
+
 def _extract_subagent_name(value: Any) -> str:
     """Extract a sub-agent name from common platform encodings.
 
@@ -690,6 +966,8 @@ def _extract_subagent_type(tool_input: dict) -> str:
         "subagentType",
         "subagent_type_name",
         "subagentTypeName",
+        "subagent_name",
+        "subagentName",
         "agent_type",
         "agentType",
         "name",
@@ -712,6 +990,10 @@ def _parse_hook_input(input_data: dict) -> tuple[str, str, dict]:
     - Kiro: agentSpawn hook, agent_name field at top level
     """
     tool_input = input_data.get("tool_input", {})
+    if not isinstance(tool_input, dict):
+        tool_input = input_data.get("toolInput", {})
+    if not isinstance(tool_input, dict):
+        tool_input = {}
 
     # Standard format: Task/Agent tool with subagent_type
     tool_name = input_data.get("tool_name", "") or input_data.get("toolName", "")
@@ -748,6 +1030,16 @@ def main():
         input_data = json.load(sys.stdin)
     except json.JSONDecodeError:
         sys.exit(0)
+    if not isinstance(input_data, dict):
+        sys.exit(0)
+
+    if _hook_event_name(input_data) == "SubagentStart":
+        try:
+            _handle_codex_subagent_start(input_data)
+        except Exception:
+            # Context loading must not prevent Codex from starting the child.
+            pass
+        sys.exit(0)
 
     subagent_type, original_prompt, tool_input = _parse_hook_input(input_data)
     cwd = input_data.get("cwd", os.getcwd())
@@ -768,8 +1060,13 @@ def main():
     if subagent_type in AGENTS_REQUIRE_TASK:
         if not task_dir:
             sys.exit(0)
-        # Check if task directory exists
-        task_dir_full = os.path.join(repo_root, task_dir)
+        try:
+            root_real = os.path.realpath(repo_root)
+            task_dir_full = os.path.realpath(os.path.join(repo_root, task_dir))
+            if os.path.commonpath([root_real, task_dir_full]) != root_real:
+                sys.exit(0)
+        except (OSError, ValueError):
+            sys.exit(0)
         if not os.path.exists(task_dir_full):
             sys.exit(0)
 

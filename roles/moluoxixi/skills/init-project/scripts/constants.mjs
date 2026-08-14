@@ -14,8 +14,8 @@ export const CORE_SKILLS_ROOT = path.join(CORE_ASSET_ROOT, 'skills')
 
 export const PROJECT_ROOT_DIR = '.moluoxixi'
 export const MANIFEST_PATH = projectPath('airules-init-manifest.json')
-export const GENERATOR_VERSION = '0.1.0'
-export const MOLUOXIXI_VERSION = '0.1.0'
+export const GENERATOR_VERSION = '0.2.0'
+export const MOLUOXIXI_VERSION = '0.2.0'
 export const UPSTREAM_BRAND = ['tre', 'llis'].join('')
 
 export const NAMESPACED_SKILL_RENAMES = {

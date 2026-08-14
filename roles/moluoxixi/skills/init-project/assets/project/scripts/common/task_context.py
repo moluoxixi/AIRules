@@ -21,8 +21,10 @@ import argparse
 import json
 from pathlib import Path, PurePosixPath
 
+from .git import branch_exists_locally
+from .io import read_json
 from .log import Colors, colored
-from .paths import get_repo_root
+from .paths import DIR_ARCHIVE, DIR_TASKS, DIR_WORKFLOW, FILE_TASK_JSON, get_repo_root
 from .task_utils import resolve_task_dir
 
 
@@ -45,8 +47,15 @@ def _resolve_context_path(
         return None
 
     unresolved = repo_root.joinpath(*relative.parts)
-    current = repo_root
-    for part in relative.parts:
+    archive_parts = task_dir.resolve().relative_to(repo_root.resolve()).parts
+    archive_prefix = (DIR_WORKFLOW, DIR_TASKS, DIR_ARCHIVE)
+    if len(archive_parts) == 5 and archive_parts[:3] == archive_prefix:
+        historical_root = (DIR_WORKFLOW, DIR_TASKS, task_dir.name)
+        if relative.parts[:3] == historical_root:
+            unresolved = task_dir.joinpath(*relative.parts[3:])
+
+    current = unresolved.anchor and Path(unresolved.anchor) or Path()
+    for part in unresolved.parts[1:] if unresolved.anchor else unresolved.parts:
         current = current / part
         if current.exists() and current.is_symlink():
             return None
@@ -163,7 +172,7 @@ def cmd_add_context(args: argparse.Namespace) -> int:
     context_path = args.path
     reason = args.reason or "Added manually"
 
-    if not target_dir.is_dir():
+    if not target_dir or not target_dir.is_dir():
         print(colored(f"Error: Directory not found: {target_dir}", Colors.RED))
         return 1
 
@@ -226,13 +235,27 @@ def cmd_validate(args: argparse.Namespace) -> int:
     repo_root = get_repo_root()
     target_dir = resolve_task_dir(args.dir, repo_root)
 
-    if not target_dir.is_dir():
+    if not target_dir or not target_dir.is_dir():
         print(colored("Error: task directory required", Colors.RED))
         return 1
 
     print(colored("=== Validating Context Files ===", Colors.BLUE))
     print(f"Target dir: {target_dir}")
     print()
+
+    task_json_path = target_dir / FILE_TASK_JSON
+    if task_json_path.is_file():
+        task_data = read_json(task_json_path)
+        stored_branch = task_data.get("branch") if task_data else None
+        if stored_branch and not branch_exists_locally(stored_branch, repo_root):
+            print(
+                colored(
+                    f"Warning: recorded branch '{stored_branch}' no longer exists locally "
+                    "(likely merged and deleted).",
+                    Colors.YELLOW,
+                )
+            )
+            print()
 
     total_errors = 0
     for jsonl_name in ["implement.jsonl", "check.jsonl"]:
@@ -286,7 +309,7 @@ def cmd_list_context(args: argparse.Namespace) -> int:
     repo_root = get_repo_root()
     target_dir = resolve_task_dir(args.dir, repo_root)
 
-    if not target_dir.is_dir():
+    if not target_dir or not target_dir.is_dir():
         print(colored("Error: task directory required", Colors.RED))
         return 1
 

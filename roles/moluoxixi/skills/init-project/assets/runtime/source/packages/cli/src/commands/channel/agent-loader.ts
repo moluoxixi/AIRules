@@ -36,7 +36,11 @@ const FRONTMATTER_FENCE = /^---\s*\n([\s\S]*?)\n---\s*\n?([\s\S]*)$/;
 
 const SAFE_AGENT_NAME = /^[A-Za-z0-9._-]+$/;
 
-export function findAgentFile(name: string, cwd: string): string | null {
+export function findAgentFile(
+  name: string,
+  cwd: string,
+  trustedRoots: string[] = [],
+): string | null {
   // Reject path-traversal attempts (`..`, `/`, etc.) — agent names must be
   // a single safe identifier. Without this, `--agent ../../etc/passwd`
   // would read arbitrary host files into the worker system prompt.
@@ -53,7 +57,12 @@ export function findAgentFile(name: string, cwd: string): string | null {
   for (const p of candidates) {
     // Defense in depth: confirm the resolved path stays under agentsRoot.
     const real = fs.existsSync(p) ? fs.realpathSync(p) : p;
-    if (real !== agentsRoot && !real.startsWith(agentsRoot + path.sep)) {
+    const inAgentsRoot =
+      real === agentsRoot || real.startsWith(agentsRoot + path.sep);
+    const inTrustedRoot = trustedRoots.some(
+      (root) => real === root || real.startsWith(root + path.sep),
+    );
+    if (!inAgentsRoot && !inTrustedRoot) {
       continue;
     }
     if (fs.existsSync(p)) return p;
@@ -64,8 +73,9 @@ export function findAgentFile(name: string, cwd: string): string | null {
 export function loadAgent(
   name: string,
   cwd: string = process.cwd(),
+  trustedRoots: string[] = [],
 ): AgentDefinition {
-  const file = findAgentFile(name, cwd);
+  const file = findAgentFile(name, cwd, trustedRoots);
   if (!file) {
     throw new Error(
       `Agent '${name}' not found. Looked in:\n  ${[

@@ -17,7 +17,7 @@ Pass one or more IDs to `--platform`, separated by commas.
 | `codebuddy` | `.codebuddy/` |
 | `copilot` | `.github/agents`, `.github/copilot`, `.github/hooks`, `.github/prompts`, `.github/skills` |
 | `droid` | `.factory/` |
-| `pi` | `.pi/` |
+| `pi` | `.pi/` and `.agents/skills/` |
 | `reasonix` | `.reasonix/` |
 | `zcode` | `.zcode/` |
 | `trae` | `.trae/` |

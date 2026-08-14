@@ -8,7 +8,13 @@
 
 import { existsSync, readdirSync } from "fs"
 import { join } from "path"
-import { MoluoxixiContext, debugLog } from "../lib/moluoxixi-context.js"
+import {
+  MoluoxixiContext,
+  debugLog,
+  readContextInjectionLimits,
+  ContextBudget,
+  materializeArtifact,
+} from "../lib/moluoxixi-context.js"
 
 // Supported subagent types
 const IMPLEMENT_CONTEXT_AGENTS = ["implement", "frontend", "backend", "database"]
@@ -37,25 +43,29 @@ function getImplementContext(ctx, taskDir) {
   const taskDirFull = ctx.resolveTaskDir(taskDir)
   if (!taskDirFull) return ""
 
+  const limits = readContextInjectionLimits(ctx.directory)
+  const budget = new ContextBudget(limits.max_total_bytes)
+
   const jsonlPath = join(taskDirFull, "implement.jsonl")
-  const entries = ctx.readJsonlWithFiles(jsonlPath)
-  if (entries.length > 0) {
-    parts.push(ctx.buildContextFromEntries(entries))
+  const blocks = ctx.readJsonlWithFiles(jsonlPath, limits, budget)
+  if (blocks.length > 0) {
+    parts.push(ctx.buildContextFromEntries(blocks))
   }
 
-  const prd = ctx.readFile(join(taskDirFull, "prd.md"))
-  if (prd) {
-    parts.push(`=== ${taskDir}/prd.md (Requirements) ===\n${prd}`)
-  }
-
-  const design = ctx.readFile(join(taskDirFull, "design.md"))
-  if (design) {
-    parts.push(`=== ${taskDir}/design.md (Technical Design) ===\n${design}`)
-  }
-
-  const implementPlan = ctx.readFile(join(taskDirFull, "implement.md"))
-  if (implementPlan) {
-    parts.push(`=== ${taskDir}/implement.md (Execution Plan) ===\n${implementPlan}`)
+  for (const [filename, label, reason] of [
+    ["prd.md", "Requirements", "Requirements document"],
+    ["design.md", "Technical Design", "Technical design document"],
+    ["implement.md", "Execution Plan", "Execution plan document"],
+  ]) {
+    const artifact = materializeArtifact(
+      ctx.directory,
+      join(taskDirFull, filename),
+      `${taskDir}/${filename} (${label})`,
+      reason,
+      limits,
+      budget,
+    )
+    if (artifact) parts.push(artifact)
   }
 
   return parts.join("\n\n")
@@ -69,25 +79,29 @@ function getCheckContext(ctx, taskDir) {
   const taskDirFull = ctx.resolveTaskDir(taskDir)
   if (!taskDirFull) return ""
 
+  const limits = readContextInjectionLimits(ctx.directory)
+  const budget = new ContextBudget(limits.max_total_bytes)
+
   const jsonlPath = join(taskDirFull, "check.jsonl")
-  const entries = ctx.readJsonlWithFiles(jsonlPath)
-  if (entries.length > 0) {
-    parts.push(ctx.buildContextFromEntries(entries))
+  const blocks = ctx.readJsonlWithFiles(jsonlPath, limits, budget)
+  if (blocks.length > 0) {
+    parts.push(ctx.buildContextFromEntries(blocks))
   }
 
-  const prd = ctx.readFile(join(taskDirFull, "prd.md"))
-  if (prd) {
-    parts.push(`=== ${taskDir}/prd.md (Requirements) ===\n${prd}`)
-  }
-
-  const design = ctx.readFile(join(taskDirFull, "design.md"))
-  if (design) {
-    parts.push(`=== ${taskDir}/design.md (Technical Design) ===\n${design}`)
-  }
-
-  const implementPlan = ctx.readFile(join(taskDirFull, "implement.md"))
-  if (implementPlan) {
-    parts.push(`=== ${taskDir}/implement.md (Execution Plan) ===\n${implementPlan}`)
+  for (const [filename, label, reason] of [
+    ["prd.md", "Requirements", "Requirements document"],
+    ["design.md", "Technical Design", "Technical design document"],
+    ["implement.md", "Execution Plan", "Execution plan document"],
+  ]) {
+    const artifact = materializeArtifact(
+      ctx.directory,
+      join(taskDirFull, filename),
+      `${taskDir}/${filename} (${label})`,
+      reason,
+      limits,
+      budget,
+    )
+    if (artifact) parts.push(artifact)
   }
 
   return parts.join("\n\n")

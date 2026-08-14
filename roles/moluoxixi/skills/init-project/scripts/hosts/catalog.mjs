@@ -68,7 +68,7 @@ export const PLATFORM_SKILLS_ROOT = {
   codebuddy: '.codebuddy/skills',
   copilot: '.github/skills',
   droid: '.factory/skills',
-  pi: '.pi/skills',
+  pi: '.agents/skills',
   zcode: '.zcode/skills',
   trae: '.trae/skills',
   omp: '.omp/skills',
@@ -77,14 +77,15 @@ export const PLATFORM_SKILLS_ROOT = {
 export const CORE_HOOKS = {
   claude: ['session-start.py', 'inject-workflow-state.py', 'inject-subagent-context.py'],
   cursor: ['session-start.py', 'inject-shell-session-context.py', 'inject-subagent-context.py'],
-  codex: ['inject-workflow-state.py'],
-  gemini: ['session-start.py', 'inject-workflow-state.py'],
-  qoder: ['session-start.py', 'inject-workflow-state.py'],
+  codex: ['inject-workflow-state.py', 'inject-subagent-context.py'],
+  gemini: ['session-start.py', 'inject-workflow-state.py', 'inject-shell-session-context.py'],
+  qoder: ['session-start.py', 'inject-workflow-state.py', 'inject-shell-session-context.py'],
   copilot: ['inject-workflow-state.py'],
-  codebuddy: ['session-start.py', 'inject-workflow-state.py', 'inject-subagent-context.py'],
-  droid: ['session-start.py', 'inject-workflow-state.py', 'inject-subagent-context.py'],
+  codebuddy: ['session-start.py', 'inject-workflow-state.py', 'inject-subagent-context.py', 'inject-shell-session-context.py'],
+  droid: ['session-start.py', 'inject-workflow-state.py', 'inject-subagent-context.py', 'inject-shell-session-context.py'],
   kiro: ['session-start.py', 'inject-workflow-state.py', 'inject-subagent-context.py'],
-  trae: ['session-start.py', 'inject-workflow-state.py'],
+  trae: ['session-start.py', 'inject-workflow-state.py', 'inject-shell-session-context.py'],
+  zcode: ['session-start.py', 'inject-workflow-state.py', 'inject-subagent-context.py', 'inject-shell-session-context.py'],
 }
 
 export const HOOK_ROOTS = {
@@ -98,6 +99,7 @@ export const HOOK_ROOTS = {
   droid: '.factory/hooks',
   kiro: '.kiro/hooks',
   trae: '.trae/hooks',
+  zcode: '.zcode/hooks',
 }
 
 function context(cmdRefPrefix, executorAI, userActionLabel, agentCapable, hasHooks, cliFlag) {

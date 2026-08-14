@@ -4,7 +4,7 @@ import { createHash } from 'node:crypto'
 import fs from 'node:fs'
 import os from 'node:os'
 import path from 'node:path'
-import { fileURLToPath } from 'node:url'
+import { fileURLToPath, pathToFileURL } from 'node:url'
 import { afterEach, describe, expect, it } from 'vitest'
 import { rebuildVendorAssets } from '../../../scripts/lib/vendor-staging.js'
 
@@ -131,11 +131,11 @@ function migratedAssetStats(): { bytes: number, files: number, hash: string } {
 describe('init-project skill', () => {
   it('pins the migrated Moluoxixi project templates', () => {
     expect(migratedAssetStats()).toEqual({
-      bytes: 1749498,
-      files: 310,
-      hash: 'cfbc23be2e4de637bde1200c96e1dd6592d2366d5be0ee9c34382a477765d564',
+      bytes: 1811745,
+      files: 313,
+      hash: '0f06c6f039dede138a1c72939d9cd0a043c48ef1ec09dd42f39dc08534b5d85a',
     })
-    expect(fs.existsSync(path.join(assetRoot, 'moluoxixi-v0.6.7'))).toBe(false)
+    expect(fs.existsSync(path.join(assetRoot, 'moluoxixi-v0.6.15'))).toBe(false)
     expect(fs.existsSync(path.join(assetRoot, 'legal', 'LICENSE'))).toBe(false)
     expect(fs.existsSync(path.join(assetRoot, 'legal', 'COPYRIGHT'))).toBe(false)
   })
@@ -208,8 +208,8 @@ describe('init-project skill', () => {
     expect(fs.existsSync(path.join(projectRoot, '.moluoxixi', 'airules-init-manifest.json'))).toBe(true)
     const initialManifest = JSON.parse(fs.readFileSync(path.join(projectRoot, '.moluoxixi', 'airules-init-manifest.json'), 'utf8'))
     expect(initialManifest).toMatchObject({
-      generatorVersion: '0.1.0',
-      moluoxixiVersion: '0.1.0',
+      generatorVersion: '0.2.0',
+      moluoxixiVersion: '0.2.0',
       schemaVersion: 2,
     })
     expect(initialManifest).not.toHaveProperty('upstreamRevision')
@@ -266,7 +266,7 @@ describe('init-project skill', () => {
     }
     expect([...new Set(projectedSkillFiles.map(file => path.basename(path.dirname(file))))]).toEqual(expect.arrayContaining(projectSkillNames))
     const launcher = path.join(projectRoot, '.agents', 'skills', 'channel', 'scripts', 'moluoxixi.mjs')
-    expect(runRuntime(launcher, ['--version'], projectRoot)).toMatchObject({ status: 0, stderr: '', stdout: '0.1.0\n' })
+    expect(runRuntime(launcher, ['--version'], projectRoot)).toMatchObject({ status: 0, stderr: '', stdout: '0.2.0\n' })
     const initialSnapshot = snapshot(projectRoot)
 
     const second = runInitializer(projectRoot, args)
@@ -283,6 +283,121 @@ describe('init-project skill', () => {
     const workflow = runRuntime(projectRuntime, ['workflow', '--force'], projectRoot)
     expect(workflow).toMatchObject({ status: 0, stderr: '' })
     expect(fs.readFileSync(path.join(projectRoot, '.moluoxixi', 'workflow.md'), 'utf8')).not.toContain(legacyProjectRoot)
+  })
+
+  it('reports a newer synchronized role once per session without a global CLI', () => {
+    const projectRoot = temporaryProject()
+    const airulesHome = temporaryProject('airules-home-')
+    expect(runInitializer(projectRoot, ['--platform', 'codex'])).toMatchObject({ status: 0, stderr: '' })
+
+    const installedRoleRoot = path.join(airulesHome, '.moluoxixi', 'roles', 'moluoxixi')
+    fs.mkdirSync(installedRoleRoot, { recursive: true })
+    const roleManifest = path.join(installedRoleRoot, 'role.yaml')
+    const probe = [
+      'import os',
+      'import sys',
+      'from pathlib import Path',
+      'from unittest.mock import patch',
+      'sys.path.insert(0, str(Path.cwd() / ".moluoxixi" / "scripts"))',
+      'from common import session_context',
+      'with patch.object(session_context.Path, "home", return_value=Path(os.environ["AIRULES_TEST_HOME"])):',
+      '    print(session_context.get_update_hint(Path.cwd()) or "")',
+    ].join('\n')
+    const runProbe = (contextId: string) => spawnSync(pythonCommand, ['-c', probe], {
+      cwd: projectRoot,
+      encoding: 'utf8',
+      env: {
+        ...process.env,
+        AIRULES_TEST_HOME: airulesHome,
+        MOLUOXIXI_CONTEXT_ID: contextId,
+      },
+    })
+
+    fs.writeFileSync(roleManifest, 'schema_version: 1\nrole_id: moluoxixi\nrole_version: 0.2.0\n')
+    const sameVersion = runProbe('same-version')
+    expect(sameVersion).toMatchObject({ status: 0, stderr: '' })
+    expect(sameVersion.stdout.trim()).toBe('')
+
+    fs.writeFileSync(roleManifest, 'schema_version: 1\nrole_id: moluoxixi\nrole_version: 0.3.0\n')
+    const newerVersion = runProbe('newer-version')
+    expect(newerVersion).toMatchObject({ status: 0, stderr: '' })
+    expect(newerVersion.stdout.trim()).toBe('Moluoxixi update available: 0.2.0 -> 0.3.0, run the current init-project skill')
+    const repeated = runProbe('newer-version')
+    expect(repeated).toMatchObject({ status: 0, stderr: '' })
+    expect(repeated.stdout.trim()).toBe('')
+  })
+
+  it('surfaces the update reminder through the projected SessionStart hook', () => {
+    const projectRoot = temporaryProject()
+    const airulesHome = temporaryProject('airules-home-')
+    expect(runInitializer(projectRoot, ['--platform', 'claude'])).toMatchObject({ status: 0, stderr: '' })
+
+    const installedRoleRoot = path.join(airulesHome, '.moluoxixi', 'roles', 'moluoxixi')
+    fs.mkdirSync(installedRoleRoot, { recursive: true })
+    fs.writeFileSync(path.join(installedRoleRoot, 'role.yaml'), 'schema_version: 1\nrole_id: moluoxixi\nrole_version: 0.3.0\n')
+    const hook = path.join(projectRoot, '.claude', 'hooks', 'session-start.py')
+    const runHook = () => spawnSync(pythonCommand, [hook], {
+      cwd: projectRoot,
+      encoding: 'utf8',
+      input: JSON.stringify({ cwd: projectRoot, session_id: 'hook-update-session' }),
+      env: {
+        ...process.env,
+        AIRULES_TEST_HOME: airulesHome,
+        HOME: airulesHome,
+        USERPROFILE: airulesHome,
+      },
+    })
+
+    const first = runHook()
+    expect(first).toMatchObject({ status: 0, stderr: '' })
+    const firstPayload = JSON.parse(first.stdout) as { hookSpecificOutput: { additionalContext: string } }
+    expect(firstPayload.hookSpecificOutput.additionalContext).toContain(
+      'Moluoxixi update available: 0.2.0 -> 0.3.0, run the current init-project skill',
+    )
+
+    const repeated = runHook()
+    expect(repeated).toMatchObject({ status: 0, stderr: '' })
+    const repeatedPayload = JSON.parse(repeated.stdout) as { hookSpecificOutput: { additionalContext: string } }
+    expect(repeatedPayload.hookSpecificOutput.additionalContext).not.toContain('Moluoxixi update available:')
+  })
+
+  it('surfaces the update reminder through the projected OpenCode session plugin', () => {
+    const projectRoot = temporaryProject()
+    const airulesHome = temporaryProject('airules-home-')
+    expect(runInitializer(projectRoot, ['--platform', 'opencode'])).toMatchObject({ status: 0, stderr: '' })
+
+    const installedRoleRoot = path.join(airulesHome, '.moluoxixi', 'roles', 'moluoxixi')
+    fs.mkdirSync(installedRoleRoot, { recursive: true })
+    fs.writeFileSync(path.join(installedRoleRoot, 'role.yaml'), 'schema_version: 1\nrole_id: moluoxixi\nrole_version: 0.3.0\n')
+
+    const pluginUrl = pathToFileURL(path.join(projectRoot, '.opencode', 'plugins', 'session-start.js')).href
+    const probe = [
+      `import createPlugin from ${JSON.stringify(pluginUrl)}`,
+      'const client = { session: { messages: async () => ({ data: [] }) } }',
+      'const plugin = await createPlugin({ directory: process.cwd(), client })',
+      'const output = { parts: [{ id: "prt_000000000100abcdefghijklmn", sessionID: "opencode-update-session", messageID: "msg_1", type: "text", text: "hello" }] }',
+      'await plugin["chat.message"]({ sessionID: "opencode-update-session" }, output)',
+      'console.log(JSON.stringify(output.parts))',
+    ].join('\n')
+    const runPlugin = () => spawnSync(process.execPath, ['--no-warnings', '--input-type=module', '-e', probe], {
+      cwd: projectRoot,
+      encoding: 'utf8',
+      env: {
+        ...process.env,
+        HOME: airulesHome,
+        USERPROFILE: airulesHome,
+      },
+    })
+
+    const first = runPlugin()
+    expect(first).toMatchObject({ status: 0, stderr: '' })
+    expect(first.stdout).toContain(
+      'Moluoxixi update available: 0.2.0 -> 0.3.0, run the current init-project skill',
+    )
+
+    const repeated = runPlugin()
+    expect(repeated).toMatchObject({ status: 0, stderr: '' })
+    expect(repeated.stdout).not.toContain('Moluoxixi update available:')
   })
 
   it('adapts pull-based agents for every host that cannot inject sub-agent context', () => {
@@ -302,9 +417,12 @@ describe('init-project skill', () => {
     for (const [agentRoot, extension] of agentRoots) {
       for (const agentType of ['implement', 'check']) {
         const content = fs.readFileSync(path.join(projectRoot, ...agentRoot.split('/'), `moluoxixi-${agentType}${extension}`), 'utf8')
-        expect(content).toContain('## Required: Load Moluoxixi Context First')
+        if (agentRoot === '.codex/agents')
+          expect(content).toContain('Moluoxixi Context Loading Protocol:')
+        else
+          expect(content).toContain('## Required: Load Moluoxixi Context First')
         expect(content).toContain('Active task: <path>')
-        expect(content).toContain(`/${agentType}.jsonl`)
+        expect(content).toContain(`${agentType}.jsonl`)
       }
       const research = fs.readFileSync(path.join(projectRoot, ...agentRoot.split('/'), `moluoxixi-research${extension}`), 'utf8')
       expect(research).not.toContain('## Required: Load Moluoxixi Context First')
@@ -515,8 +633,8 @@ describe('init-project skill', () => {
   })
 
   it('provides local channel and memory command surfaces without an upstream package install', () => {
-    expect(runRuntime(roleRuntime, ['--version'], roleRoot)).toMatchObject({ status: 0, stderr: '', stdout: '0.1.0\n' })
-    expect(runRuntime(roleRuntime, ['-v'], roleRoot)).toMatchObject({ status: 0, stderr: '', stdout: '0.1.0\n' })
+    expect(runRuntime(roleRuntime, ['--version'], roleRoot)).toMatchObject({ status: 0, stderr: '', stdout: '0.2.0\n' })
+    expect(runRuntime(roleRuntime, ['-v'], roleRoot)).toMatchObject({ status: 0, stderr: '', stdout: '0.2.0\n' })
     expect(runRuntime(roleRuntime, ['update', '--help'], roleRoot)).toMatchObject({ status: 0, stderr: '' })
     expect(runRuntime(roleRuntime, ['workflow', '--help'], roleRoot)).toMatchObject({ status: 0, stderr: '' })
     expect(runRuntime(roleRuntime, ['mem', 'help'], roleRoot)).toMatchObject({ status: 0, stderr: '' })
@@ -717,7 +835,7 @@ describe('init-project skill', () => {
     expect(installed).toMatchObject({ status: 0, stderr: '' })
     expect(fs.readFileSync(path.join(projectRoot, 'README.md'), 'utf8')).toContain('请使用 Moluoxixi 开始处理这个需求：<描述需求>')
     const channelLauncher = path.join(projectRoot, '.agents', 'skills', 'channel', 'scripts', 'moluoxixi.mjs')
-    expect(runRuntime(channelLauncher, ['--version'], projectRoot)).toMatchObject({ status: 0, stderr: '', stdout: '0.1.0\n' })
+    expect(runRuntime(channelLauncher, ['--version'], projectRoot)).toMatchObject({ status: 0, stderr: '', stdout: '0.2.0\n' })
     const projectRuntime = path.join(projectRoot, '.moluoxixi', 'runtime', 'moluoxixi.mjs')
     expect(runRuntime(projectRuntime, ['update', '--dry-run'], projectRoot)).toMatchObject({ status: 0, stderr: '' })
   }, 30_000)

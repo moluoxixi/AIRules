@@ -117,10 +117,11 @@ def _parse_yaml_block(
             key, _, value = stripped.partition(":")
             key = key.strip()
             value = _strip_inline_comment(value).strip()
+            was_quoted = len(value) >= 2 and value[0] == value[-1] and value[0] in ('"', "'")
             value = _unquote(value)
             current_list = None
 
-            if value:
+            if value or was_quoted:
                 # key: value
                 target[key] = value
                 i += 1
@@ -167,7 +168,11 @@ def _next_content_line(lines: list[str], start: int) -> tuple[int, str]:
 DEFAULT_SESSION_COMMIT_MESSAGE = "chore: record journal"
 DEFAULT_MAX_JOURNAL_LINES = 2000
 DEFAULT_SESSION_AUTO_COMMIT = True
-DEFAULT_CODEX_DISPATCH_MODE = "inline"
+DEFAULT_CODEX_DISPATCH_MODE = "auto"
+DEFAULT_CONTEXT_INJECTION_MAX_FILE_BYTES = 32768
+DEFAULT_CONTEXT_INJECTION_MAX_ARTIFACT_BYTES = 65536
+DEFAULT_CONTEXT_INJECTION_MAX_TOTAL_BYTES = 131072
+DEFAULT_PROMPT_INJECTION_SKIP_KEYWORD = "no-moluoxixi"
 
 CONFIG_FILE = "config.yaml"
 
@@ -247,8 +252,10 @@ def get_session_auto_commit(repo_root: Path | None = None) -> bool:
 def get_codex_dispatch_mode(repo_root: Path | None = None) -> str:
     """Return Codex dispatch mode.
 
-    Default is ``inline``. ``sub-agent`` is an explicit opt-in because Codex
-    sub-agents do not inherit the parent session context.
+    Default is ``auto`` because native SubagentStart injection supplies the
+    task context. ``inline`` is an explicit opt-out and ``sub-agent`` remains
+    a backwards-compatible alias for ``auto``. Invalid explicit values use
+    ``inline`` so malformed configuration never starts a child unexpectedly.
     """
     config = _load_config(repo_root)
     codex = config.get("codex")
@@ -256,20 +263,81 @@ def get_codex_dispatch_mode(repo_root: Path | None = None) -> str:
         return DEFAULT_CODEX_DISPATCH_MODE
     if not isinstance(codex, dict):
         print(
-            f"[WARN] invalid codex config: {codex!r}; using {DEFAULT_CODEX_DISPATCH_MODE}",
+            f"[WARN] invalid codex config: {codex!r}; using inline",
             file=sys.stderr,
         )
-        return DEFAULT_CODEX_DISPATCH_MODE
+        return "inline"
 
     raw = codex.get("dispatch_mode", DEFAULT_CODEX_DISPATCH_MODE)
     mode = str(raw).strip().lower()
-    if mode in ("inline", "sub-agent"):
+    if mode in ("auto", "inline"):
         return mode
+    if mode == "sub-agent":
+        return "auto"
     print(
-        f"[WARN] invalid codex.dispatch_mode value: {raw!r}; using {DEFAULT_CODEX_DISPATCH_MODE}",
+        f"[WARN] invalid codex.dispatch_mode value: {raw!r}; using inline",
         file=sys.stderr,
     )
-    return DEFAULT_CODEX_DISPATCH_MODE
+    return "inline"
+
+
+def get_context_injection_limits(repo_root: Path | None = None) -> dict[str, int]:
+    """Return the configured sub-agent context byte limits.
+
+    ``0`` disables a limit. Missing, negative, or non-integer values use the
+    corresponding default so a malformed config cannot remove the guard.
+    """
+    defaults = {
+        "max_file_bytes": DEFAULT_CONTEXT_INJECTION_MAX_FILE_BYTES,
+        "max_artifact_bytes": DEFAULT_CONTEXT_INJECTION_MAX_ARTIFACT_BYTES,
+        "max_total_bytes": DEFAULT_CONTEXT_INJECTION_MAX_TOTAL_BYTES,
+    }
+    config = _load_config(repo_root)
+    section = config.get("context_injection")
+    if not isinstance(section, dict):
+        return defaults
+
+    result = dict(defaults)
+    for key, default_value in defaults.items():
+        if key not in section:
+            continue
+        raw = section[key]
+        try:
+            value = int(raw)
+        except (TypeError, ValueError):
+            print(
+                f"[WARN] invalid context_injection.{key} value: {raw!r}; "
+                f"using default {default_value}",
+                file=sys.stderr,
+            )
+            continue
+        if value < 0:
+            print(
+                f"[WARN] invalid context_injection.{key} value: {raw!r}; "
+                f"using default {default_value}",
+                file=sys.stderr,
+            )
+            continue
+        result[key] = value
+    return result
+
+
+def get_prompt_injection_config(repo_root: Path | None = None) -> dict[str, str]:
+    """Return the per-turn workflow breadcrumb escape-hatch configuration."""
+    defaults = {"skip_keyword": DEFAULT_PROMPT_INJECTION_SKIP_KEYWORD}
+    config = _load_config(repo_root)
+    section = config.get("prompt_injection")
+    if not isinstance(section, dict):
+        return defaults
+    raw = section.get("skip_keyword", DEFAULT_PROMPT_INJECTION_SKIP_KEYWORD)
+    if not isinstance(raw, str):
+        print(
+            f"[WARN] invalid prompt_injection.skip_keyword value: {raw!r}; "
+            f"using default {DEFAULT_PROMPT_INJECTION_SKIP_KEYWORD!r}",
+            file=sys.stderr,
+        )
+        return defaults
+    return {"skip_keyword": raw}
 
 
 def get_hooks(event: str, repo_root: Path | None = None) -> list[str]:

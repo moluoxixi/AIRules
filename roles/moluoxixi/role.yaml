@@ -1,6 +1,6 @@
 schema_version: 1
 role_id: moluoxixi
-role_version: 0.1.0
+role_version: 0.2.0
 status: experimental
 canonical_root: roles/moluoxixi
 description: Self-contained Moluoxixi role assets and AIRules-owned project initialization.
@@ -25,5 +25,6 @@ third_party:
       - skills/init-project/assets/runtime/vendor/channel-mem.mjs
       - skills/init-project/assets/core
     source: https://github.com/mindfold-ai/Trellis.git
-    version: 0.6.7
-    revision: e7c5ead4d0dfd717d11a40b6bc0c80d8af94c49a
+    version: 0.6.15
+    revision: d8fff53ce4964ed1a3e52fea6b418b27eba093e4
+    reconciliation: skills/init-project/references/upstream-reconciliation-v0.6.15.json

@@ -29,6 +29,7 @@
   "scripts": {
     "airules": "tsx scripts/cli.ts",
     "build": "tsc -p tsconfig.build.json",
+    "build:moluoxixi-runtime": "node scripts/build-moluoxixi-runtime.mjs",
     "prebuild": "node scripts/clean-dist.mjs",
     "prepare": "husky",
     "prepack": "npm run build",
@@ -53,6 +54,9 @@
     "@types/node": "25.9.1",
     "@vitest/coverage-v8": "4.1.4",
     "ajv": "8.20.0",
+    "chalk": "5.6.2",
+    "commander": "12.1.0",
+    "esbuild": "0.27.7",
     "eslint": "10.2.1",
     "eslint-plugin-format": "2.0.1",
     "husky": "9.1.7",

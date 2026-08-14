@@ -1,3 +1,4 @@
+import { Buffer } from 'node:buffer'
 import { spawnSync } from 'node:child_process'
 import fs from 'node:fs'
 import os from 'node:os'
@@ -40,6 +41,44 @@ function createTask(root: string, slug: string, complexity?: 'lightweight' | 'co
 
 function taskData(root: string, taskDir: string): Record<string, unknown> {
   return JSON.parse(fs.readFileSync(path.join(root, taskDir, 'task.json'), 'utf8'))
+}
+
+function injectedImplementContext(root: string, taskDir: string): string {
+  const hook = path.join(root, '.claude', 'hooks', 'inject-subagent-context.py')
+  const script = [
+    'import importlib.util, sys',
+    'spec = importlib.util.spec_from_file_location("moluoxixi_hook", sys.argv[1])',
+    'module = importlib.util.module_from_spec(spec)',
+    'spec.loader.exec_module(module)',
+    'print(module.get_implement_context(sys.argv[2], sys.argv[3]))',
+  ].join('; ')
+  const result = spawnSync(pythonCommand, ['-c', script, hook, root, taskDir], {
+    cwd: root,
+    encoding: 'utf8',
+  })
+  if (result.status !== 0)
+    throw new Error(result.stderr || result.stdout || 'context hook failed')
+  return result.stdout
+}
+
+function runPythonModuleFunction(
+  modulePath: string,
+  expression: string,
+  options: { cwd: string, env?: NodeJS.ProcessEnv },
+) {
+  const script = [
+    'import importlib.util, sys',
+    'spec = importlib.util.spec_from_file_location("target_module", sys.argv[1])',
+    'module = importlib.util.module_from_spec(spec)',
+    'sys.modules[spec.name] = module',
+    'spec.loader.exec_module(module)',
+    `print(${expression})`,
+  ].join('; ')
+  return spawnSync(pythonCommand, ['-c', script, modulePath], {
+    cwd: options.cwd,
+    env: options.env,
+    encoding: 'utf8',
+  })
 }
 
 describe('task review governance', () => {
@@ -93,7 +132,45 @@ describe('task review governance', () => {
       complexity: { level: 'lightweight' },
       executionApproval: { mode: 'manual', granted: true, source: 'explicit_user' },
     }))
-    expect(task(root, ['start', outside]).stdout).toContain('direct child of .moluoxixi/tasks')
+    const outsideBefore = fs.readFileSync(path.join(outside, 'task.json'), 'utf8')
+    expect(task(root, ['start', outside])).toMatchObject({ status: 1 })
+    expect(task(root, ['set-complexity', outside, 'complex'])).toMatchObject({ status: 1 })
+    expect(task(root, ['set-execution-mode', outside, 'manual'])).toMatchObject({ status: 1 })
+    expect(task(root, ['set-branch', outside, 'unsafe'])).toMatchObject({ status: 1 })
+    expect(task(root, ['set-base-branch', outside, 'unsafe'])).toMatchObject({ status: 1 })
+    expect(task(root, ['set-scope', outside, 'unsafe'])).toMatchObject({ status: 1 })
+    expect(task(root, ['add-context', outside, 'implement', '.moluoxixi/spec/backend/index.md'])).toMatchObject({ status: 1 })
+    expect(task(root, ['validate', outside])).toMatchObject({ status: 1 })
+    expect(task(root, ['list-context', outside])).toMatchObject({ status: 1 })
+
+    const local = createTask(root, 'local-child', 'lightweight')
+    expect(task(root, ['add-subtask', outside, local])).toMatchObject({ status: 1 })
+    expect(task(root, ['remove-subtask', outside, local])).toMatchObject({ status: 1 })
+    expect(fs.readFileSync(path.join(outside, 'task.json'), 'utf8')).toBe(outsideBefore)
+  })
+
+  it('validates archived task research through its contained archive copy', () => {
+    const root = project('kilo')
+    const active = createTask(root, 'archived-context', 'lightweight')
+    const activePath = path.join(root, active)
+    fs.mkdirSync(path.join(activePath, 'research'), { recursive: true })
+    fs.writeFileSync(path.join(activePath, 'research', 'evidence.md'), '# Evidence\n')
+    fs.writeFileSync(
+      path.join(activePath, 'implement.jsonl'),
+      `${JSON.stringify({ file: `${active}/research/evidence.md`, reason: 'historical self-reference' })}\n`,
+    )
+
+    const archived = path.join(root, '.moluoxixi', 'tasks', 'archive', '2026-08', path.basename(active))
+    fs.mkdirSync(path.dirname(archived), { recursive: true })
+    fs.renameSync(activePath, archived)
+    const archivedRef = path.relative(root, archived)
+    expect(task(root, ['validate', archivedRef])).toMatchObject({ status: 0 })
+
+    fs.writeFileSync(
+      path.join(archived, 'implement.jsonl'),
+      `${JSON.stringify({ file: `${active}/research/../task.json`, reason: 'escape' })}\n`,
+    )
+    expect(task(root, ['validate', archivedRef])).toMatchObject({ status: 1 })
   })
 
   it('enforces complex planning artifacts and curated sub-agent context', () => {
@@ -152,4 +229,129 @@ describe('task review governance', () => {
       executionApproval: { mode: 'manual', granted: false, source: null },
     })
   })
+
+  it('caps injected context without corrupting UTF-8 or inlining binary data', () => {
+    const root = project('claude')
+    const contextTask = createTask(root, 'bounded-context', 'lightweight')
+    const specDir = path.join(root, '.moluoxixi', 'spec', 'backend')
+    fs.mkdirSync(specDir, { recursive: true })
+    fs.writeFileSync(path.join(specDir, 'utf8.md'), 'a你b and more text\n')
+    fs.writeFileSync(path.join(specDir, 'binary.md'), Buffer.from([0x41, 0x00, 0x42]))
+    fs.writeFileSync(
+      path.join(root, contextTask, 'implement.jsonl'),
+      [
+        JSON.stringify({ file: '.moluoxixi/spec/backend/utf8.md', reason: 'utf8 boundary' }),
+        JSON.stringify({ file: '.moluoxixi/spec/backend/binary.md', reason: 'binary fixture' }),
+      ].join('\n'),
+    )
+    fs.appendFileSync(
+      path.join(root, '.moluoxixi', 'config.yaml'),
+      '\ncontext_injection:\n  max_file_bytes: 4\n  max_artifact_bytes: 64\n  max_total_bytes: 4096\n',
+    )
+
+    const context = injectedImplementContext(root, contextTask)
+    expect(context).toContain('a你')
+    expect(context).not.toContain('\uFFFD')
+    expect(context).toContain('[Moluoxixi: truncated at 4 bytes;')
+    expect(context).toContain('[Moluoxixi: binary file not inlined;')
+    expect(context).not.toContain('A\0B')
+
+    fs.appendFileSync(
+      path.join(root, '.moluoxixi', 'config.yaml'),
+      '\ncontext_injection:\n  max_file_bytes: 128\n  max_artifact_bytes: 128\n  max_total_bytes: 8\n',
+    )
+    expect(injectedImplementContext(root, contextTask)).toContain(
+      '[Moluoxixi: total context limit reached;',
+    )
+
+    const piExtension = fs.readFileSync(
+      path.join(roleRoot, 'skills', 'init-project', 'assets', 'hosts', 'pi', 'extensions', 'moluoxixi', 'index.ts.txt'),
+      'utf8',
+    )
+    expect(piExtension).toContain('function readContextInjectionLimits')
+    expect(piExtension).toContain('function truncateUtf8')
+    expect(piExtension).toContain('[Moluoxixi: binary file not inlined;')
+  }, 15_000)
+
+  it('ignores invented host session variables and injects native Codex child context', () => {
+    const root = project('codex')
+    const activeTask = createTask(root, 'codex-native', 'lightweight')
+    fs.mkdirSync(path.join(root, '.git'), { recursive: true })
+    const activeTaskDir = path.join(root, activeTask)
+    fs.writeFileSync(path.join(activeTaskDir, 'prd.md'), '# Native context\n')
+    fs.mkdirSync(path.join(root, '.moluoxixi', '.runtime', 'sessions'), { recursive: true })
+    fs.writeFileSync(
+      path.join(root, '.moluoxixi', '.runtime', 'sessions', 'codex_parent.json'),
+      `${JSON.stringify({ current_task: activeTask })}\n`,
+    )
+
+    const hook = path.join(root, '.codex', 'hooks', 'inject-subagent-context.py')
+    const native = spawnSync(pythonCommand, [hook], {
+      cwd: root,
+      input: JSON.stringify({
+        hook_event_name: 'SubagentStart',
+        agent_type: 'moluoxixi-implement',
+        session_id: 'parent',
+        cwd: root,
+      }),
+      encoding: 'utf8',
+    })
+    expect(native).toMatchObject({ status: 0 })
+    const payload = JSON.parse(native.stdout)
+    expect(payload.hookSpecificOutput.additionalContext).toContain('Moluoxixi Native Implement Subagent')
+    expect(payload.hookSpecificOutput.additionalContext).toContain('# Native context')
+
+    const activeTaskModule = path.join(root, '.moluoxixi', 'scripts', 'common', 'active_task.py')
+    for (const [platform, variable] of [
+      ['codex', 'CODEX_SESSION_ID'],
+      ['opencode', 'OPENCODE_RUN_ID'],
+      ['codebuddy', 'CODEBUDDY_SESSION_ID'],
+      ['pi', 'PI_SESSION_ID'],
+      ['trae', 'TRAE_SESSION_ID'],
+    ]) {
+      const env = { ...process.env, [variable]: 'invented-value' }
+      for (const key of [
+        'MOLUOXIXI_CONTEXT_ID',
+        'CLAUDE_CODE_SESSION_ID',
+        'CODEX_THREAD_ID',
+        'GEMINI_SESSION_ID',
+        'QODER_SESSION_ID',
+        'KIRO_SESSION_ID',
+        'COPILOT_SESSION_ID',
+        'COPILOT_SESSIONID',
+      ])
+        delete env[key]
+      env[variable] = 'invented-value'
+      const resolved = runPythonModuleFunction(
+        activeTaskModule,
+        `module.resolve_context_key({}, platform=${JSON.stringify(platform)})`,
+        { cwd: root, env },
+      )
+      expect(resolved.status).toBe(0)
+      expect(resolved.stdout.trim()).toBe('None')
+    }
+  }, 15_000)
+
+  it('bridges CodeBuddy hook session identity into a short-lived shell ticket', () => {
+    const root = project('codebuddy')
+    const hook = path.join(root, '.codebuddy', 'hooks', 'inject-shell-session-context.py')
+    const result = spawnSync(pythonCommand, [hook], {
+      cwd: root,
+      input: JSON.stringify({
+        session_id: 'bridge-session',
+        cwd: root,
+        tool_input: { command: 'python .moluoxixi/scripts/task.py current' },
+      }),
+      encoding: 'utf8',
+    })
+    expect(result).toMatchObject({ status: 0, stdout: '' })
+    const ticketDir = path.join(root, '.moluoxixi', '.runtime', 'shell-tickets')
+    const tickets = fs.readdirSync(ticketDir)
+    expect(tickets).toHaveLength(1)
+    expect(JSON.parse(fs.readFileSync(path.join(ticketDir, tickets[0]), 'utf8'))).toMatchObject({
+      platform: 'codebuddy',
+      context_key: 'codebuddy_bridge-session',
+      subcommands: [{ name: 'current' }],
+    })
+  }, 15_000)
 })

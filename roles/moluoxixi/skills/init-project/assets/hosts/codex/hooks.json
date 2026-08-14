@@ -10,6 +10,18 @@
           }
         ]
       }
+    ],
+    "SubagentStart": [
+      {
+        "matcher": "^(?:moluoxixi-(?:implement|check|research|frontend|backend|test|security|database))$",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "{{PYTHON_CMD}} -X utf8 .codex/hooks/inject-subagent-context.py",
+            "timeout": 15
+          }
+        ]
+      }
     ]
   }
 }

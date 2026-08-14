@@ -25,11 +25,73 @@
 
 import { existsSync, readFileSync } from "fs"
 import { join } from "path"
+import { findUserTextPart, insertSyntheticTextPart } from "../lib/context-visibility.js"
 import { MoluoxixiContext, debugLog, isMoluoxixiSubagent } from "../lib/moluoxixi-context.js"
 
 // Supports STATUS values with letters, digits, underscores, hyphens
 // (so "in-review" / "blocked-by-team" work alongside "in_progress").
 const TAG_RE = /\[workflow-state:([A-Za-z0-9_-]+)\]\s*\n([\s\S]*?)\n\s*\[\/workflow-state:\1\]/g
+const DEFAULT_PROMPT_INJECTION_SKIP_KEYWORD = "no-moluoxixi"
+
+function stripInlineComment(value) {
+  let inQuote = null
+  for (let idx = 0; idx < value.length; idx++) {
+    const ch = value[idx]
+    if (inQuote) {
+      if (ch === inQuote) inQuote = null
+      continue
+    }
+    if (ch === '"' || ch === "'") {
+      inQuote = ch
+      continue
+    }
+    if (ch === "#" && (idx === 0 || /\s/.test(value[idx - 1])))
+      return value.slice(0, idx)
+  }
+  return value
+}
+
+function unquoteYaml(value) {
+  if (value.length >= 2 && value[0] === value[value.length - 1] && (value[0] === '"' || value[0] === "'"))
+    return value.slice(1, -1)
+  return value
+}
+
+function readSkipKeyword(directory) {
+  const configPath = join(directory, ".moluoxixi", "config.yaml")
+  if (!existsSync(configPath)) return DEFAULT_PROMPT_INJECTION_SKIP_KEYWORD
+  let text
+  try {
+    text = readFileSync(configPath, "utf-8")
+  } catch {
+    return DEFAULT_PROMPT_INJECTION_SKIP_KEYWORD
+  }
+  let inSection = false
+  let sectionIndent = -1
+  for (const rawLine of text.split(/\r?\n/)) {
+    const trimmed = rawLine.trim()
+    if (!inSection) {
+      if (/^prompt_injection\s*:\s*(#.*)?$/.test(trimmed)) {
+        inSection = true
+        sectionIndent = rawLine.length - rawLine.trimStart().length
+      }
+      continue
+    }
+    if (!trimmed || trimmed.startsWith("#")) continue
+    const indent = rawLine.length - rawLine.trimStart().length
+    if (indent <= sectionIndent) break
+    const match = trimmed.match(/^skip_keyword\s*:\s*(.*)$/)
+    if (match)
+      return unquoteYaml(stripInlineComment(match[1]).trim())
+  }
+  return DEFAULT_PROMPT_INJECTION_SKIP_KEYWORD
+}
+
+function promptHasSkipKeyword(text, keyword) {
+  if (!keyword || typeof text !== "string") return false
+  const escaped = keyword.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")
+  return new RegExp(`(?<![\\w-])${escaped}(?![\\w-])`, "i").test(text)
+}
 
 /**
  * Parse workflow.md for [workflow-state:STATUS] blocks.
@@ -108,8 +170,7 @@ export default async ({ directory }) => {
   debugLog("workflow-state", "Plugin loaded, directory:", directory)
 
   return {
-      // chat.message fires on every user message. Inject breadcrumb in-place
-      // so it persists in conversation history.
+      // Persist a synthetic breadcrumb without changing the user prompt.
       "chat.message": async (input, output) => {
         try {
           // Skip Moluoxixi sub-agent turns — the per-turn breadcrumb is for the
@@ -128,22 +189,19 @@ export default async ({ directory }) => {
           if (!ctx.isMoluoxixiProject()) {
             return
           }
+          const parts = output?.parts || []
+          const originalText = findUserTextPart(parts)?.text || ""
+          if (promptHasSkipKeyword(originalText, readSkipKeyword(directory))) {
+            debugLog("workflow-state", "Skipping turn: skip keyword present in prompt")
+            return
+          }
           const templates = loadBreadcrumbs(directory)
           const task = getActiveTask(ctx, input)
           const breadcrumb = task
             ? buildBreadcrumb(task.id, task.status, templates, task.complexity, task.executionMode)
             : buildBreadcrumb(null, "no_task", templates)
 
-          const parts = output?.parts || []
-          const textPartIndex = parts.findIndex(
-            p => p.type === "text" && p.text !== undefined,
-          )
-          if (textPartIndex !== -1) {
-            const originalText = parts[textPartIndex].text || ""
-            parts[textPartIndex].text = `${breadcrumb}\n\n${originalText}`
-          } else {
-            parts.unshift({ type: "text", text: breadcrumb })
-          }
+          insertSyntheticTextPart(parts, breadcrumb, "workflowState")
           debugLog(
             "workflow-state",
             "Injected breadcrumb for task",

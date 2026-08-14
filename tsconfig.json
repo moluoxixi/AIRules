@@ -4,6 +4,14 @@
     "lib": ["ES2022"],
     "module": "NodeNext",
     "moduleResolution": "NodeNext",
+    "paths": {
+      "@mindfoldhq/trellis-core/channel": [
+        "./roles/moluoxixi/skills/init-project/assets/runtime/source/packages/core/src/channel/index.ts"
+      ],
+      "@mindfoldhq/trellis-core/mem": [
+        "./roles/moluoxixi/skills/init-project/assets/runtime/source/packages/core/src/mem/index.ts"
+      ]
+    },
     "types": ["node"],
     "strict": true,
     "noEmit": true,

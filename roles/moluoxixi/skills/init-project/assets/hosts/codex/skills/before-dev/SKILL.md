@@ -35,6 +35,8 @@ Execute these steps:
    cat .moluoxixi/spec/guides/index.md
    ```
 
-7. Understand the coding standards and patterns you need to follow, then proceed with your development plan.
+7. **For a non-trivial task, state the change boundary before writing code.** Record the smallest behavior gap, its actual owner, every expected file and why, explicit exclusions, and how any local refactor will prove equivalent behavior. If evidence reveals materially larger scope, report it before continuing; do not widen the task silently.
+
+8. Understand the coding standards and patterns you need to follow, then proceed with your development plan.
 
 This step is **mandatory** before writing any code.

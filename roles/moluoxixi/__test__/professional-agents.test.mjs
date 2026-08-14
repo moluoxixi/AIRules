@@ -3,7 +3,12 @@ import os from 'node:os'
 import path from 'node:path'
 import { fileURLToPath } from 'node:url'
 import { describe, expect, it } from 'vitest'
-import { MoluoxixiContext } from '../skills/init-project/assets/hosts/opencode/lib/moluoxixi-context.js'
+import { parseDocument } from 'yaml'
+import { insertSyntheticTextPart } from '../skills/init-project/assets/hosts/opencode/lib/context-visibility.js'
+import {
+  ContextBudget,
+  MoluoxixiContext,
+} from '../skills/init-project/assets/hosts/opencode/lib/moluoxixi-context.js'
 import { PLATFORM_ORDER } from '../skills/init-project/scripts/hosts/catalog.mjs'
 import { buildPlan } from '../skills/init-project/scripts/plan.mjs'
 
@@ -43,6 +48,26 @@ function agentPath(platform, name) {
 }
 
 describe('professional sub-agent distribution', () => {
+  it('quotes generated command frontmatter that contains YAML-significant colons', () => {
+    const plan = buildPlan(['trae', 'omp'], 'python3')
+    for (const target of [
+      '.trae/commands/moluoxixi-finish-work.md',
+      '.omp/commands/moluoxixi-finish-work.md',
+    ]) {
+      const content = String(plan.get(target).content)
+      const frontmatter = content.match(/^---\n([\s\S]*?)\n---/u)
+      expect(frontmatter, `missing frontmatter in ${target}`).not.toBeNull()
+      const document = parseDocument(frontmatter[1])
+      expect(document.errors, target).toHaveLength(0)
+      expect(document.toJS()).toMatchObject({
+        description: 'Wrap up the current session: quality gate, commit reminder, archive, journal.',
+      })
+      expect(frontmatter[1]).toContain('description: "Wrap up the current session:')
+    }
+    expect(String(plan.get('.omp/commands/moluoxixi-finish-work.md').content))
+      .toContain('argument-hint: "[task-name]"')
+  })
+
   it('projects workflow and optional professional agents to every capable host', () => {
     const plan = buildPlan(PLATFORM_ORDER, 'python3')
     for (const platform of Object.keys(projectedRoots)) {
@@ -56,7 +81,7 @@ describe('professional sub-agent distribution', () => {
 
   it('injects implementation or check context by specialist boundary', () => {
     const plan = buildPlan(PLATFORM_ORDER, 'python3')
-    for (const platform of ['codex', 'gemini', 'qoder', 'copilot', 'pi', 'reasonix', 'zcode', 'trae']) {
+    for (const platform of ['gemini', 'qoder', 'copilot', 'pi', 'reasonix', 'zcode', 'trae']) {
       for (const name of ['moluoxixi-frontend', 'moluoxixi-backend', 'moluoxixi-database']) {
         const content = String(plan.get(agentPath(platform, name)).content)
         expect(content).toContain('## Required: Load Moluoxixi Context First')
@@ -68,6 +93,10 @@ describe('professional sub-agent distribution', () => {
         expect(content).toContain('/check.jsonl')
       }
     }
+    const codexImplement = String(plan.get(agentPath('codex', 'moluoxixi-implement')).content)
+    expect(codexImplement).toContain('Moluoxixi Context Loading Protocol')
+    expect(codexImplement).toContain('moluoxixi-hook-injected')
+    expect(codexImplement).not.toContain('This host does not auto-inject task context')
   })
 
   it('keeps specialist authority below human review and knowledge promotion', () => {
@@ -75,7 +104,7 @@ describe('professional sub-agent distribution', () => {
     for (const platform of ['claude', 'kiro', 'codex']) {
       for (const name of agentNames.slice(3)) {
         const content = String(plan.get(agentPath(platform, name)).content)
-        expect(content).toContain('Work only when `status` is `in_progress`')
+        expect(content.toLowerCase()).toContain('work only when `status` is `in_progress`')
         expect(content).toContain('Do not create, approve, or apply knowledge proposals')
         expect(content).toContain('Do not run git commit, push, merge, reset, or checkout')
       }
@@ -116,11 +145,17 @@ describe('professional sub-agent distribution', () => {
         { file: 'README.md' },
         { file: '../outside.md' },
       ].map(entry => JSON.stringify(entry)).join('\n'))
-      const entries = new MoluoxixiContext(root).readJsonlWithFiles(manifest)
-      expect(entries.map(entry => entry.path)).toEqual([
-        '.moluoxixi/spec/backend.md',
-        '.moluoxixi/tasks/sample/research/evidence.md',
-      ])
+      const limits = { max_file_bytes: 32768, max_artifact_bytes: 65536, max_total_bytes: 131072 }
+      const blocks = new MoluoxixiContext(root).readJsonlWithFiles(
+        manifest,
+        limits,
+        new ContextBudget(limits.max_total_bytes),
+      )
+      const context = blocks.join('\n')
+      expect(context).toContain('.moluoxixi/spec/backend.md')
+      expect(context).toContain('.moluoxixi/tasks/sample/research/evidence.md')
+      expect(context).not.toContain('spec-proposals')
+      expect(context).not.toContain('README.md')
     }
     finally {
       fs.rmSync(root, { recursive: true, force: true })
@@ -152,5 +187,74 @@ describe('professional sub-agent distribution', () => {
     ), 'utf8')
     expect(openCodeContext).toContain('[workflowRoot, tasksPath, specPath, jsonlPath]')
     expect(openCodeContext).toContain('lstatSync(candidate).isSymbolicLink()')
+  })
+
+  it('persists OpenCode context as synthetic parts without rewriting user text', () => {
+    const userPart = {
+      id: 'prt_000000000100abcdefghijklmn',
+      sessionID: 'ses_1',
+      messageID: 'msg_1',
+      type: 'text',
+      text: 'original prompt',
+    }
+    const parts = [userPart]
+    const session = insertSyntheticTextPart(parts, 'session context', 'sessionStart')
+    const workflow = insertSyntheticTextPart(parts, 'workflow context', 'workflowState')
+    expect(userPart.text).toBe('original prompt')
+    expect(session).toMatchObject({ synthetic: true, text: 'session context' })
+    expect(workflow).toMatchObject({ synthetic: true, text: 'workflow context' })
+    expect(parts.map(part => part.id)).toEqual([...parts.map(part => part.id)].sort())
+  })
+
+  it('projects native Codex hooks, shared Pi skills, and all shell-ticket bridges', () => {
+    const plan = buildPlan(PLATFORM_ORDER, 'python3')
+    expect(plan.has('.codex/hooks/inject-subagent-context.py')).toBe(true)
+    expect(String(plan.get('.codex/hooks.json').content)).toContain('SubagentStart')
+    expect(plan.has('.agents/skills/start/SKILL.md')).toBe(true)
+    expect([...plan.keys()].some(target => target.startsWith('.pi/skills/'))).toBe(false)
+    for (const hook of [
+      '.gemini/hooks/inject-shell-session-context.py',
+      '.qoder/hooks/inject-shell-session-context.py',
+      '.codebuddy/hooks/inject-shell-session-context.py',
+      '.factory/hooks/inject-shell-session-context.py',
+      '.trae/hooks/inject-shell-session-context.py',
+      '.zcode/hooks/inject-shell-session-context.py',
+    ])
+      expect(plan.has(hook), `missing ${hook}`).toBe(true)
+  })
+
+  it('preserves user-pinned Codex model keys during regeneration', () => {
+    const root = fs.mkdtempSync(path.join(os.tmpdir(), 'airules-codex-model-'))
+    try {
+      const target = path.join(root, '.codex', 'agents', 'moluoxixi-implement.toml')
+      fs.mkdirSync(path.dirname(target), { recursive: true })
+      fs.writeFileSync(target, 'sandbox_mode = "workspace-write"\nmodel = "custom-model"\nmodel_reasoning_effort = "xhigh"\ndeveloper_instructions = """\nmodel = "ignore-me"\n"""\n')
+      const plan = buildPlan(['codex'], 'python3', false, [], undefined, 'fullstack', { projectRoot: root })
+      const content = String(plan.get('.codex/agents/moluoxixi-implement.toml').content)
+      expect(content).toContain('model = "custom-model"')
+      expect(content).toContain('model_reasoning_effort = "xhigh"')
+      expect(content).not.toContain('model = "ignore-me"')
+    }
+    finally {
+      fs.rmSync(root, { recursive: true, force: true })
+    }
+  })
+
+  it('keeps upstream scope discipline behind Moluoxixi planning and knowledge gates', () => {
+    for (const base of [
+      ['skills', 'init-project', 'assets', 'core', 'skills'],
+      ['skills', 'init-project', 'assets', 'hosts', 'codex', 'skills'],
+    ]) {
+      const beforeDev = fs.readFileSync(path.join(roleRoot, ...base, 'before-dev', 'SKILL.md'), 'utf8')
+      const check = fs.readFileSync(path.join(roleRoot, ...base, 'check', 'SKILL.md'), 'utf8')
+      const brainstorm = fs.readFileSync(path.join(roleRoot, ...base, 'brainstorm', 'SKILL.md'), 'utf8')
+      expect(beforeDev).toContain('state the change boundary')
+      expect(check).toContain('Scope Discipline')
+      expect(check).toContain('Do not edit formal specs directly')
+      expect(brainstorm).toContain('Only a subsequent')
+      expect(brainstorm).toContain('latest final planning summary')
+      expect(brainstorm).toContain('execution-mode')
+      expect(brainstorm).toContain('Complex tasks must have `prd.md`, `design.md`, and `implement.md`')
+    }
   })
 })

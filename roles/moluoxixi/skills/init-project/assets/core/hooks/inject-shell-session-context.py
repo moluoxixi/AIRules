@@ -1,10 +1,9 @@
 #!/usr/bin/env python3
-"""Cursor beforeShellExecution hook: bridge conversation identity to task.py.
+"""Bridge hook-provided session identity into task.py shell commands.
 
-Cursor's shell command environment does not inherit SessionStart data. This
-hook writes a short-lived runtime ticket before Cursor runs a shell command
-that calls `task.py start/current/finish`. The task script then consumes the
-ticket only when it has no native session environment.
+Hook-capable hosts expose session identity on hook stdin but generally do not
+export it into shell children. Before task.py start/current/finish, this hook
+writes a short-lived ticket that the task resolver consumes fail-closed.
 """
 from __future__ import annotations
 
@@ -17,10 +16,18 @@ import time
 from pathlib import Path
 from typing import Any
 
+# Hook hosts send UTF-8 JSON regardless of the process locale.
+_stdin_reconfigure = getattr(sys.stdin, "reconfigure", None)
+if callable(_stdin_reconfigure):
+    try:
+        _stdin_reconfigure(encoding="utf-8", errors="replace")
+    except (OSError, ValueError):
+        pass
+
 
 DIR_WORKFLOW = ".moluoxixi"
 DIR_RUNTIME = ".runtime"
-DIR_CURSOR_SHELL = "cursor-shell"
+DIR_SHELL_TICKETS = "shell-tickets"
 SESSION_SUBCOMMANDS = {"start", "current", "finish"}
 TICKET_TTL_SECONDS = 30
 CONTEXT_IDENTITY_KEYS = (
@@ -34,6 +41,8 @@ CONTEXT_IDENTITY_KEYS = (
     "transcriptPath",
     "transcript",
 )
+TOOL_INPUT_KEYS = ("tool_input", "toolInput")
+SHELL_EVENT_RESPONSE = {"permission": "allow"}
 
 
 def _string_value(value: Any) -> str | None:
@@ -54,7 +63,30 @@ def _find_moluoxixi_root(start: Path) -> Path | None:
 
 
 def _runtime_ticket_dir(root: Path) -> Path:
-    return root / DIR_WORKFLOW / DIR_RUNTIME / DIR_CURSOR_SHELL
+    return root / DIR_WORKFLOW / DIR_RUNTIME / DIR_SHELL_TICKETS
+
+
+def _pending_shell_command(
+    hook_input: dict[str, Any],
+) -> tuple[str, dict[str, Any] | None]:
+    command = _string_value(hook_input.get("command"))
+    if command:
+        return command, SHELL_EVENT_RESPONSE
+    for key in TOOL_INPUT_KEYS:
+        tool_input = hook_input.get(key)
+        if not isinstance(tool_input, dict):
+            continue
+        command = _string_value(tool_input.get("command"))
+        if command:
+            return command, None
+    return "", None
+
+
+def _host_platform_name() -> str | None:
+    for part in reversed(Path(sys.argv[0]).parts):
+        if part.startswith(".") and part not in (".", "..") and len(part) > 1:
+            return part[1:]
+    return None
 
 
 def _load_active_task_resolver(root: Path):
@@ -110,6 +142,8 @@ def _write_ticket(
     root: Path,
     hook_input: dict[str, Any],
     context_key: str,
+    command: str,
+    platform_name: str | None,
     subcommands: list[dict[str, str]],
 ) -> None:
     now = time.time()
@@ -117,14 +151,13 @@ def _write_ticket(
     ticket_dir.mkdir(parents=True, exist_ok=True)
     _cleanup_expired_tickets(ticket_dir, now)
 
-    command = _string_value(hook_input.get("command")) or ""
     digest = hashlib.sha256(
         f"{context_key}\0{command}\0{now}".encode("utf-8"),
     ).hexdigest()[:16]
     ticket_path = ticket_dir / f"{int(now * 1000)}-{digest}.json"
 
     payload = {
-        "platform": "cursor",
+        "platform": platform_name,
         "context_key": context_key,
         "conversation_id": _string_value(hook_input.get("conversation_id")),
         "session_id": _string_value(hook_input.get("session_id")),
@@ -152,7 +185,7 @@ def main() -> int:
     if not isinstance(hook_input, dict):
         hook_input = {}
 
-    command = _string_value(hook_input.get("command")) or ""
+    command, response = _pending_shell_command(hook_input)
     subcommands = _extract_task_subcommands(command)
     if not subcommands:
         return 0
@@ -165,17 +198,26 @@ def main() -> int:
     if not _has_context_identity(hook_input):
         return 0
 
+    platform_name = _host_platform_name()
     resolve_context_key = _load_active_task_resolver(root)
-    context_key = resolve_context_key(hook_input, platform="cursor")
+    context_key = resolve_context_key(hook_input, platform=platform_name)
     if not context_key:
         return 0
 
     try:
-        _write_ticket(root, hook_input, context_key, subcommands)
+        _write_ticket(
+            root,
+            hook_input,
+            context_key,
+            command,
+            platform_name,
+            subcommands,
+        )
     except OSError:
         return 0
 
-    print(json.dumps({"permission": "allow"}, ensure_ascii=False))
+    if response is not None:
+        print(json.dumps(response, ensure_ascii=False))
     return 0
 
 

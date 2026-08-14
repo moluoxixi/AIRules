@@ -84,7 +84,56 @@ export function buildPlan(platforms, pythonCommand, withStatusline = false, pack
   }
   for (const platform of platforms)
     addPlatform(plan, platform, pythonCommand, platform === 'gemini' && platforms.includes('codex'), withStatusline)
+  preserveCodexAgentModelKeys(plan, extras.projectRoot)
   return plan
+}
+
+export function extractCodexAgentModelKeys(content) {
+  const result = {}
+  let inMultilineString = false
+  for (const rawLine of content.split(/\r?\n/u)) {
+    const trimmed = rawLine.trim()
+    if (inMultilineString) {
+      if (trimmed.includes('"""'))
+        inMultilineString = false
+      continue
+    }
+    if (/^[A-Za-z_][\w-]*\s*=\s*"""/u.test(trimmed)) {
+      if ((trimmed.match(/"""/gu) ?? []).length < 2)
+        inMultilineString = true
+      continue
+    }
+    const match = trimmed.match(/^(model|model_reasoning_effort)\s*=\s*"((?:[^"\\]|\\.)*)"\s*(?:#.*)?$/u)
+    if (match)
+      result[match[1]] = match[2].replaceAll('\\"', '"').replaceAll('\\\\', '\\')
+  }
+  return result
+}
+
+export function applyCodexAgentModelKeys(content, preserved) {
+  const lines = []
+  for (const key of ['model', 'model_reasoning_effort']) {
+    if (preserved[key])
+      lines.push(`${key} = "${preserved[key].replaceAll('\\', '\\\\').replaceAll('"', '\\"')}"`)
+  }
+  if (lines.length === 0)
+    return content
+  return content.replace(/^(sandbox_mode\s*=\s*".*"\r?\n)/mu, match => `${match}${lines.join('\n')}\n`)
+}
+
+function preserveCodexAgentModelKeys(plan, projectRoot) {
+  if (!projectRoot)
+    return
+  for (const [target, entry] of plan) {
+    if (!target.startsWith('.codex/agents/moluoxixi-') || !target.endsWith('.toml'))
+      continue
+    try {
+      const existing = fs.readFileSync(path.join(projectRoot, target), 'utf8')
+      const preserved = extractCodexAgentModelKeys(existing)
+      entry.content = Buffer.from(applyCodexAgentModelKeys(entry.content.toString('utf8'), preserved))
+    }
+    catch {}
+  }
 }
 
 function walkFiles(root) {
@@ -128,7 +177,7 @@ function wrapCommand(name, content) {
     'continue': 'Resume work on the current task at the correct phase.',
     'finish-work': 'Wrap up the current session: quality gate, commit reminder, archive, journal.',
   }[name.replace(/^moluoxixi-/u, '')]
-  return `---\nname: ${name}\ndescription: ${description}\n---\n\n${content}`
+  return `---\nname: ${name}\ndescription: ${JSON.stringify(description)}\n---\n\n${content}`
 }
 
 function wrapOmpCommand(name, content) {
@@ -138,8 +187,8 @@ function wrapOmpCommand(name, content) {
     'continue': 'Resume work on the current task at the correct phase.',
     'finish-work': 'Wrap up the current session: quality gate, commit reminder, archive, journal.',
   }[base]
-  const hint = base === 'finish-work' ? '\nargument-hint: [task-name]' : ''
-  return `---\ndescription: ${description}${hint}\n---\n\n${content.replace(/^# [^\n]+\n\n/u, '')}`
+  const hint = base === 'finish-work' ? `\nargument-hint: ${JSON.stringify('[task-name]')}` : ''
+  return `---\ndescription: ${JSON.stringify(description)}${hint}\n---\n\n${content.replace(/^# [^\n]+\n\n/u, '')}`
 }
 
 function addPlan(plan, relativePath, content, options = {}) {
@@ -194,6 +243,7 @@ function addTree(plan, sourceRoot, targetRoot, options = {}) {
 
 function localizeProjectRuntime(relativePath, content) {
   let localized = content
+    .replaceAll('"run moluoxixi update"', '"run the current init-project skill"')
     .replaceAll('moluoxixi channel', `node ${projectPath('runtime', 'moluoxixi.mjs')} channel`)
     .replaceAll('moluoxixi mem', `node ${projectPath('runtime', 'moluoxixi.mjs')} mem`)
     .replaceAll('moluoxixi workflow', `node ${projectPath('runtime', 'moluoxixi.mjs')} workflow`)
@@ -225,7 +275,25 @@ function localizeProjectRuntime(relativePath, content) {
   if (relativePath === 'common/session_context.py') {
     localized = localized.replace(
       /def _fetch_moluoxixi_version_output\(\) -> str \| None:\n[\s\S]*?\n\ndef _extract_available_update_version/u,
-      'def _fetch_moluoxixi_version_output() -> str | None:\n    # AIRules updates are driven by the project-local runtime, never a global CLI.\n    return None\n\n\ndef _extract_available_update_version',
+      `def _fetch_moluoxixi_version_output() -> str | None:
+    role_manifest = (
+        Path.home() / DIR_WORKFLOW / "roles" / "moluoxixi" / "role.yaml"
+    )
+    try:
+        content = role_manifest.read_text(encoding="utf-8")
+    except (OSError, UnicodeError):
+        return None
+
+    version_match = re.search(
+        r"(?m)^role_version:\\s*"
+        r"(?P<version>\\d+(?:\\.\\d+){0,2}(?:-[0-9A-Za-z.-]+)?)"
+        r"\\s*(?:#.*)?$",
+        content,
+    )
+    return version_match.group("version") if version_match else None
+
+
+def _extract_available_update_version`,
     )
   }
   return localized
@@ -256,12 +324,12 @@ You may self-fix production code within the assigned scope. Do not edit \`.moluo
       ? injectJsonAgentPrelude(transformed, knowledgeBoundary)
       : injectPullBasedPreludeMarkdown(transformed, knowledgeBoundary)
   }
+  if (platform === 'codex')
+    return injectPullBasedPreludeToml(transformed, knowledgeBoundary)
   if (platform === 'copilot')
     transformed = normalizeCopilotAgentFrontmatter(transformed)
   const prelude = `${knowledgeBoundary}${buildPullBasedPrelude(agentType, pythonCommand)}`
-  return platform === 'codex'
-    ? injectPullBasedPreludeToml(transformed, prelude)
-    : injectPullBasedPreludeMarkdown(transformed, prelude)
+  return injectPullBasedPreludeMarkdown(transformed, prelude)
 }
 
 function buildPullBasedPrelude(agentType, pythonCommand) {
@@ -355,6 +423,7 @@ function addProjectCore(plan, pythonCommand, packages, defaultPackage, projectTy
   addPlan(plan, projectPath('config.yaml'), buildProjectConfig(packages, defaultPackage), { configSections, merge: 'config' })
   addPlan(plan, projectPath('.version'), `${MOLUOXIXI_VERSION}\n`)
   addPlan(plan, projectPath('.gitignore'), readProjectText('gitignore.txt'))
+  addPlan(plan, '.gitattributes', readProjectText('gitattributes.txt'), { merge: 'block-hash' })
   addPlan(plan, projectPath('workspace', 'index.md'), resolveTemplate(localizeProjectRuntime('workspace-index.md', readProjectText('workspace-index.md')), undefined, pythonCommand), { managed: false, preserveExisting: true })
   addPlan(plan, projectPath('tasks', '.gitkeep'), '', { managed: false, preserveExisting: true })
   if (!specSelection.hasSingleProjectSpec)
