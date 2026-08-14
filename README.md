@@ -45,7 +45,7 @@ Role synchronization is user-level and can be run from `<user-home>/AIRules`. To
 
 ## Trellis Role
 
-The Trellis role installs the official Trellis CLI and its `init-project` skill.
+The Trellis role installs the official Trellis CLI, its `init-project` skill, and the default CodeGraph, Context7, Sequential Thinking, and Playwright MCP servers.
 
 ### Install with AI
 
@@ -59,7 +59,7 @@ Install the Trellis role from AIRules on this machine.
 3. Enter `<user-home>/AIRules`.
 4. Run `npm install`, `npm run build`, and `npm link`.
 5. Run `airules --version` and confirm that version 0.2.0 or newer is installed.
-6. Before syncing, tell me that AIRules will install the official Trellis CLI and write its initialization skill to supported AI host directories. The sync command is user-level and does not need to run inside a project.
+6. Before syncing, tell me that AIRules will install the official Trellis and CodeGraph CLIs, write the initialization skill to supported AI host directories, and merge the default MCP servers into supported host configurations. The sync command is user-level and does not need to run inside a project.
 7. After I confirm, run `airules sync --host all --role trellis`.
 8. Run `airules verify --host all --role trellis` and report the installed versions, updated hosts, written directories, and any errors.
 

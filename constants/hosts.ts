@@ -6,10 +6,14 @@ export interface McpProjection {
   fileName: string
   serversKey: string
   format: 'json' | 'toml'
+  /** 仅在对应宿主目录存在时写 MCP；用于配置文件位于宿主目录外的场景。 */
+  requireHostHome?: boolean
   defaultTopLevel?: Record<string, unknown>
   /** 应用于每个 MCP server、但不覆盖角色显式字段的宿主默认值。 */
   serverDefaults?: Record<string, unknown>
   serverOverrides?: Record<string, Record<string, unknown>>
+  /** 将中性的 command + args 转成宿主要求的 command 数组。 */
+  serverCommandFormat?: 'command-and-args' | 'command-array'
 }
 
 /** 单个 AI 宿主的 skills 投影配置。 */
@@ -41,17 +45,64 @@ export const GLOBAL_AGENT_SKILLS = {
  * Agents、commands、hooks、settings 等宿主原生资产由角色的项目初始化器安装。
  */
 export const HOST_CONFIGS: HostConfig[] = [
-  { id: 'claude', homeRelPath: '.claude', mcp: { relDir: '.', fileName: '.mcp.json', serversKey: 'mcpServers', format: 'json' } },
-  { id: 'codex', homeRelPath: '.codex', mcp: { relDir: '.', fileName: 'config.toml', serversKey: 'mcp_servers', format: 'toml' } },
+  {
+    id: 'claude',
+    homeRelPath: '.claude',
+    mcp: {
+      homeRelPath: '.',
+      relDir: '.',
+      fileName: '.claude.json',
+      serversKey: 'mcpServers',
+      format: 'json',
+      requireHostHome: true,
+      serverDefaults: { type: 'stdio' },
+      serverOverrides: { codegraph: { args: ['serve', '--mcp'] } },
+    },
+  },
+  {
+    id: 'codex',
+    homeRelPath: '.codex',
+    mcp: {
+      relDir: '.',
+      fileName: 'config.toml',
+      serversKey: 'mcp_servers',
+      format: 'toml',
+      serverOverrides: { codegraph: { args: ['serve', '--mcp'] } },
+    },
+  },
   { id: 'hermes', aliases: ['hermes desktop'], homeRelPath: path.join('AppData', 'Local', 'hermes') },
-  { id: 'cursor', homeRelPath: '.cursor', skillsDirName: 'skills-cursor', mcp: { relDir: '.', fileName: 'mcp.json', serversKey: 'mcpServers', format: 'json' } },
+  {
+    id: 'cursor',
+    homeRelPath: '.cursor',
+    skillsDirName: 'skills-cursor',
+    mcp: {
+      relDir: '.',
+      fileName: 'mcp.json',
+      serversKey: 'mcpServers',
+      format: 'json',
+      serverDefaults: { type: 'stdio' },
+    },
+  },
   { id: 'qoderwork', homeRelPath: '.qoderwork' },
   { id: 'trae', homeRelPath: '.trae', mcp: { homeRelPath: path.join('AppData', 'Roaming', 'Trae', 'User'), relDir: '.', fileName: 'mcp.json', serversKey: 'mcpServers', format: 'json', defaultTopLevel: { inputs: [] } } },
   { id: 'trae-cn', homeRelPath: '.trae-cn', mcp: { homeRelPath: path.join('AppData', 'Roaming', 'Trae CN', 'User'), relDir: '.', fileName: 'mcp.json', serversKey: 'mcpServers', format: 'json', defaultTopLevel: { inputs: [] } } },
   { id: 'trae-solo', homeRelPath: '.trae-solo', projectSkills: false, mcp: { homeRelPath: path.join('AppData', 'Roaming', 'TRAE SOLO', 'User'), relDir: '.', fileName: 'mcp.json', serversKey: 'mcpServers', format: 'json', defaultTopLevel: { inputs: [] } } },
   { id: 'trae-solo-cn', homeRelPath: '.trae-solo-cn', projectSkills: false, mcp: { homeRelPath: path.join('AppData', 'Roaming', 'TRAE SOLO CN', 'User'), relDir: '.', fileName: 'mcp.json', serversKey: 'mcpServers', format: 'json', defaultTopLevel: { inputs: [] } } },
   { id: 'qoder', homeRelPath: '.qoder', mcp: { homeRelPath: path.join('AppData', 'Roaming', 'Qoder', 'SharedClientCache'), relDir: '.', fileName: 'mcp.json', serversKey: 'mcpServers', format: 'json', serverDefaults: { type: 'stdio' } } },
-  { id: 'opencode', homeRelPath: path.join('.config', 'opencode'), mcp: { relDir: '.', fileName: 'opencode.json', serversKey: 'mcp', format: 'json' } },
+  {
+    id: 'opencode',
+    homeRelPath: path.join('.config', 'opencode'),
+    mcp: {
+      relDir: '.',
+      fileName: 'opencode.json',
+      serversKey: 'mcp',
+      format: 'json',
+      defaultTopLevel: { $schema: 'https://opencode.ai/config.json' },
+      serverDefaults: { type: 'local', enabled: true },
+      serverOverrides: { codegraph: { args: ['serve', '--mcp'] } },
+      serverCommandFormat: 'command-array',
+    },
+  },
 ]
 
 /** 所有已登记宿主 ID，供显式 `--host` 校验与帮助输出使用。 */

@@ -1,11 +1,12 @@
 schema_version: 1
 role_id: trellis
-role_version: 0.1.0
+role_version: 0.2.0
 status: stable
 canonical_root: roles/trellis
-description: Installs the official Trellis CLI and exposes native project initialization through AIRules.
+description: Installs the official Trellis CLI, default coding MCP servers, and native project initialization through AIRules.
 assets:
   skills: skills
+  mcp: mcp
 distribution:
   bootstrap_manifest: constants/skills.ts
   full_role_path_required: true

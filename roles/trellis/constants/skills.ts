@@ -13,6 +13,16 @@ export const vendors: VendorRepo[] = [
         command: 'npm',
         args: ['install', '--global', '@mindfoldhq/trellis@latest'],
       },
+      {
+        command: 'npm',
+        args: ['install', '--global', '@colbymchenry/codegraph'],
+        skipIfCommandAvailable: 'codegraph',
+      },
+      {
+        command: 'codegraph',
+        args: ['install', '--yes'],
+        windowsCommandShim: true,
+      },
     ],
     projections: [
       {

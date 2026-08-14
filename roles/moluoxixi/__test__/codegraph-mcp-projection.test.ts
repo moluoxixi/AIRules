@@ -34,7 +34,7 @@ describe('moluoxixi CodeGraph MCP projection', () => {
   it('projects only for an explicitly selected role and preserves user JSON servers', () => {
     const { moluoHome, userHome } = createFixture()
     const claudeHome = path.join(userHome, '.claude')
-    const target = path.join(claudeHome, '.mcp.json')
+    const target = path.join(userHome, '.claude.json')
     fs.mkdirSync(claudeHome, { recursive: true })
     fs.writeFileSync(target, '\uFEFF{"custom":true,"mcpServers":{"codegraph":{"command":"user-codegraph"}}}\n')
 
@@ -62,7 +62,8 @@ describe('moluoxixi CodeGraph MCP projection', () => {
     const content = fs.readFileSync(target, 'utf8')
     expect(content).toContain('[mcp_servers.custom]')
     expect(content).toContain('[mcp_servers.codegraph]')
-    expect(content).toContain(`"${workspaceFolderPlaceholder}"`)
+    expect(content).toContain('args = ["serve", "--mcp"]')
+    expect(content).not.toContain(workspaceFolderPlaceholder)
     expect(content.match(/# >>> AIRULES MCP >>>/gu)).toHaveLength(1)
     expect(content.match(/# <<< AIRULES MCP <<</gu)).toHaveLength(1)
   })

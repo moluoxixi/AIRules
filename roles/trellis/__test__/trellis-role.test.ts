@@ -14,6 +14,7 @@ import { extendsRoles, hosts, vendors } from '../constants/skills.js'
 const roleRoot = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..')
 const manifestPath = path.join(roleRoot, 'constants', 'skills.ts')
 const temporaryRoots: string[] = []
+const workspaceFolderPlaceholder = '$' + '{workspaceFolder}'
 
 afterEach(() => {
   for (const root of temporaryRoots.splice(0)) {
@@ -33,6 +34,16 @@ describe('native Trellis role', () => {
           {
             command: 'npm',
             args: ['install', '--global', '@mindfoldhq/trellis@latest'],
+          },
+          {
+            command: 'npm',
+            args: ['install', '--global', '@colbymchenry/codegraph'],
+            skipIfCommandAvailable: 'codegraph',
+          },
+          {
+            command: 'codegraph',
+            args: ['install', '--yes'],
+            windowsCommandShim: true,
           },
         ],
         projections: [
@@ -60,13 +71,22 @@ describe('native Trellis role', () => {
           command: 'npm',
           args: ['install', '--global', '@mindfoldhq/trellis@latest'],
         },
+        {
+          command: 'npm',
+          args: ['install', '--global', '@colbymchenry/codegraph'],
+          skipIfCommandAvailable: 'codegraph',
+        },
+        {
+          command: 'codegraph',
+          args: ['install', '--yes'],
+          windowsCommandShim: true,
+        },
       ],
     })
   })
 
-  it('ships only the native initialization entry alongside role metadata', () => {
-    expect(fs.readdirSync(roleRoot).sort()).toEqual(['__test__', 'constants', 'role.yaml', 'skills'])
-    expect(fs.existsSync(path.join(roleRoot, 'mcp'))).toBe(false)
+  it('ships the native initialization entry and default coding MCP servers', () => {
+    expect(fs.readdirSync(roleRoot).sort()).toEqual(['__test__', 'constants', 'mcp', 'role.yaml', 'skills'])
     expect(fs.readdirSync(path.join(roleRoot, 'skills')).sort()).toEqual(['init-project'])
     expect(fs.statSync(path.join(roleRoot, 'skills', 'init-project', 'scripts', 'inject-readme.mjs')).isFile()).toBe(true)
     expect(fs.statSync(path.join(roleRoot, 'skills', 'init-project', 'assets', 'readme-usage.md')).isFile()).toBe(true)
@@ -76,6 +96,27 @@ describe('native Trellis role', () => {
     expect(skill).toContain('trellis init <confirmed-platform-flags> -u <confirmed-developer>')
     expect(skill).toContain('scripts/inject-readme.mjs')
     expect(skill).toContain('Do not stage or commit generated files')
+
+    expect(JSON.parse(fs.readFileSync(path.join(roleRoot, 'mcp', 'mcp.json'), 'utf8'))).toEqual({
+      mcpServers: {
+        'codegraph': {
+          command: 'codegraph',
+          args: ['serve', '--mcp', '--path', workspaceFolderPlaceholder],
+        },
+        'context7': {
+          command: 'npx',
+          args: ['-y', '@upstash/context7-mcp@latest'],
+        },
+        'sequential-thinking': {
+          command: 'npx',
+          args: ['-y', '@modelcontextprotocol/server-sequential-thinking@latest'],
+        },
+        'playwright': {
+          command: 'npx',
+          args: ['-y', '@playwright/mcp@latest'],
+        },
+      },
+    })
 
     const document = parseDocument(fs.readFileSync(path.join(roleRoot, 'role.yaml'), 'utf8'), {
       merge: false,
@@ -87,11 +128,12 @@ describe('native Trellis role', () => {
     expect(document.toJS({ maxAliasCount: 0 })).toMatchObject({
       schema_version: 1,
       role_id: 'trellis',
-      role_version: '0.1.0',
+      role_version: '0.2.0',
       status: 'stable',
       canonical_root: 'roles/trellis',
       assets: {
         skills: 'skills',
+        mcp: 'mcp',
       },
       distribution: {
         bootstrap_manifest: 'constants/skills.ts',
@@ -178,5 +220,6 @@ describe('native Trellis role', () => {
     expect(fs.existsSync(path.join(homeDir, 'vendor', 'skills', 'init-project', 'agents', 'openai.yaml'))).toBe(true)
     expect(fs.existsSync(path.join(homeDir, 'vendor', 'skills', 'init-project', 'assets', 'readme-usage.md'))).toBe(true)
     expect(fs.existsSync(path.join(homeDir, 'vendor', 'skills', 'init-project', 'scripts', 'inject-readme.mjs'))).toBe(true)
+    expect(fs.existsSync(path.join(homeDir, 'roles', 'trellis', 'mcp', 'mcp.json'))).toBe(true)
   })
 })

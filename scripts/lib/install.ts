@@ -521,14 +521,23 @@ function readHostConfigForMerge(targetFile: string): string {
 
 function applyMcpServerProjection(
   servers: Record<string, unknown>,
-  defaults: McpProjection['serverDefaults'],
-  overrides: McpProjection['serverOverrides'],
+  mcp: Pick<McpProjection, 'serverCommandFormat' | 'serverDefaults' | 'serverOverrides'>,
 ): Record<string, unknown> {
-  if (!defaults && !overrides)
+  const { serverCommandFormat, serverDefaults, serverOverrides } = mcp
+  if (!serverDefaults && !serverOverrides && serverCommandFormat !== 'command-array')
     return servers
   return Object.fromEntries(Object.entries(servers).map(([name, value]) => {
     const base = typeof value === 'object' && value !== null && !Array.isArray(value) ? value as Record<string, unknown> : {}
-    return [name, { ...defaults, ...base, ...overrides?.[name] }]
+    const projected = { ...serverDefaults, ...base, ...serverOverrides?.[name] }
+    if (serverCommandFormat !== 'command-array' || typeof projected.command !== 'string')
+      return [name, projected]
+
+    const { args, command, env, ...rest } = projected
+    const commandArguments = Array.isArray(args) ? args.map(argument => String(argument)) : []
+    const environment = typeof env === 'object' && env !== null && !Array.isArray(env)
+      ? { environment: env }
+      : {}
+    return [name, { ...rest, command: [command, ...commandArguments], ...environment }]
   }))
 }
 
@@ -536,7 +545,7 @@ function projectMcpToHost(moluoHome: string, role: string, mcpHome: string, mcp:
   const servers = readRoleMcpServers(moluoHome, role)
   if (!servers)
     return
-  const projectedServers = applyMcpServerProjection(servers, mcp.serverDefaults, mcp.serverOverrides)
+  const projectedServers = applyMcpServerProjection(servers, mcp)
   const targetDir = mcp.relDir === '.' ? mcpHome : path.join(mcpHome, mcp.relDir)
   const targetFile = path.join(targetDir, mcp.fileName)
   mkdirSync(targetDir, { recursive: true })
@@ -646,7 +655,12 @@ export function projectHostById(
   const { hostHome, projectSkills, skillsDirName, excludedSkills, mcpHome, mcp } = resolveHostPaths(config, userHome)
   const hostHomePath = path.resolve(hostHome)
   const hasHostHome = existsSync(hostHomePath)
-  const hasMcpHome = Boolean(role && mcp && existsSync(path.resolve(mcpHome)))
+  const hasMcpHome = Boolean(
+    role
+    && mcp
+    && existsSync(path.resolve(mcpHome))
+    && (mcp.requireHostHome !== true || hasHostHome),
+  )
 
   if (!hasHostHome && !hasMcpHome) {
     console.warn(`[skip] 宿主目录不存在，跳过投影: ${host} (${hostHomePath})`)

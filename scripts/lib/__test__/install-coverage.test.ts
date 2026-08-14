@@ -67,8 +67,6 @@ function realLinkPath(linkPath: string) {
   return fs.realpathSync(linkPath).replace(/\\/g, '/')
 }
 
-const workspaceFolderPlaceholder = '$' + '{workspaceFolder}'
-
 it('hosts - 解析默认和自定义宿主路径', () => {
   const cursor = findHostConfig('cursor')
   const claude = findHostConfig('claude')
@@ -77,6 +75,7 @@ it('hosts - 解析默认和自定义宿主路径', () => {
   const traeSoloCn = findHostConfig('trae-solo-cn')
   const qoder = findHostConfig('qoder')
   const qoderwork = findHostConfig('qoderwork')
+  const opencode = findHostConfig('opencode')
   const missing = findHostConfig('missing-host')
 
   assert.ok(cursor)
@@ -86,6 +85,7 @@ it('hosts - 解析默认和自定义宿主路径', () => {
   assert.ok(traeSoloCn)
   assert.ok(qoder)
   assert.ok(qoderwork)
+  assert.ok(opencode)
   assert.equal(missing, undefined)
   assert.equal(HOST_IDS.includes('qoder-cli'), false)
   assert.equal(HOST_IDS.includes('agentsmd'), false)
@@ -100,7 +100,10 @@ it('hosts - 解析默认和自定义宿主路径', () => {
 
   const claudePaths = resolveHostPaths(claude, 'C:/Users/example')
   assert.equal(normalizePath(claudePaths.hostHome), 'C:/Users/example/.claude')
+  assert.equal(normalizePath(claudePaths.mcpHome), 'C:/Users/example')
   assert.equal(claudePaths.skillsDirName, 'skills')
+  assert.equal(claudePaths.mcp?.fileName, '.claude.json')
+  assert.equal(claudePaths.mcp?.requireHostHome, true)
 
   const hermesPaths = resolveHostPaths(hermes, 'C:/Users/example')
   assert.equal(normalizePath(hermesPaths.hostHome), 'C:/Users/example/AppData/Local/hermes')
@@ -122,6 +125,10 @@ it('hosts - 解析默认和自定义宿主路径', () => {
 
   const qoderworkPaths = resolveHostPaths(qoderwork, 'C:/Users/example')
   assert.equal(qoderworkPaths.projectSkills, true)
+
+  const openCodePaths = resolveHostPaths(opencode, 'C:/Users/example')
+  assert.equal(openCodePaths.mcp?.serverCommandFormat, 'command-array')
+  assert.deepEqual(openCodePaths.mcp?.defaultTopLevel, { $schema: 'https://opencode.ai/config.json' })
 })
 
 it('links - 构建按目标路径排序的绝对链接计划', () => {

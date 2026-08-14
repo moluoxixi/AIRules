@@ -45,7 +45,7 @@ airules verify --host all --role moluoxixi
 
 ## Trellis 角色
 
-Trellis 角色用于安装官方 Trellis CLI 及其 `init-project` skill。
+Trellis 角色用于安装官方 Trellis CLI、`init-project` skill，以及默认的 CodeGraph、Context7、Sequential Thinking 和 Playwright MCP 服务。
 
 ### 使用 AI 安装
 
@@ -59,7 +59,7 @@ Trellis 角色用于安装官方 Trellis CLI 及其 `init-project` skill。
 3. 进入 `<用户根目录>/AIRules`。
 4. 依次执行 `npm install`、`npm run build` 和 `npm link`。
 5. 执行 `airules --version`，确认安装的版本为 0.2.0 或更高版本。
-6. 同步前，先告知我 AIRules 将安装官方 Trellis CLI，并将初始化 skill 写入受支持的 AI 宿主目录。角色同步是用户级操作，不需要在业务项目中执行。
+6. 同步前，先告知我 AIRules 将安装官方 Trellis 和 CodeGraph CLI、将初始化 skill 写入受支持的 AI 宿主目录，并把默认 MCP 服务合并到受支持的宿主配置。角色同步是用户级操作，不需要在业务项目中执行。
 7. 得到我确认后，执行 `airules sync --host all --role trellis`。
 8. 执行 `airules verify --host all --role trellis`，并报告安装版本、已更新的宿主、实际写入目录和所有错误。
 
