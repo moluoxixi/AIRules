@@ -36,6 +36,7 @@
     "lint": "eslint --fix",
     "lint:check": "eslint .",
     "sync": "tsx scripts/cli.ts sync --host all",
+    "sync:matt": "tsx scripts/cli.ts sync --host all --role matt",
     "sync:moluoxixi": "tsx scripts/cli.ts sync --host all --role moluoxixi",
     "sync:trellis": "tsx scripts/cli.ts sync --host all --role trellis",
     "test": "vitest run",

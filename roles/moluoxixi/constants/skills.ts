@@ -27,4 +27,16 @@ export const vendors: VendorRepo[] = [
       },
     ],
   },
+  {
+    name: 'mattpocock',
+    source: 'https://github.com/mattpocock/skills.git',
+    revision: '8b78b531ab965735c5dc74f6f7a219e1e37326df',
+    projections: [
+      {
+        kind: 'namespace',
+        sourceDir: 'skills/productivity',
+        output: 'productivity',
+      },
+    ],
+  },
 ]

@@ -1,0 +1,20 @@
+schema_version: 1
+role_id: matt
+role_version: 0.1.0
+status: experimental
+canonical_root: roles/matt
+description: Installs Matt Pocock's engineering and productivity skills through AIRules.
+assets:
+  skills: skills
+distribution:
+  bootstrap_manifest: constants/skills.ts
+  full_role_path_required: true
+  npm_embedded_source: false
+third_party:
+  upstream:
+    name: Matt Pocock Skills
+    source: https://github.com/mattpocock/skills.git
+    revision: 8b78b531ab965735c5dc74f6f7a219e1e37326df
+    categories:
+      - skills/engineering
+      - skills/productivity

@@ -15,6 +15,8 @@ const roleRoot = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..'
 const manifestPath = path.join(roleRoot, 'constants', 'skills.ts')
 const temporaryRoots: string[] = []
 const workspaceFolderPlaceholder = '$' + '{workspaceFolder}'
+const mattSkillsSource = 'https://github.com/mattpocock/skills.git'
+const mattSkillsRevision = '8b78b531ab965735c5dc74f6f7a219e1e37326df'
 
 afterEach(() => {
   for (const root of temporaryRoots.splice(0)) {
@@ -53,6 +55,18 @@ describe('native Trellis role', () => {
           },
         ],
       },
+      {
+        name: 'mattpocock',
+        source: mattSkillsSource,
+        revision: mattSkillsRevision,
+        projections: [
+          {
+            kind: 'namespace',
+            sourceDir: 'skills/productivity',
+            output: 'productivity',
+          },
+        ],
+      },
     ])
 
     const loaded = await loadVendorManifest(manifestPath)
@@ -82,6 +96,15 @@ describe('native Trellis role', () => {
           windowsCommandShim: true,
         },
       ],
+    })
+    expect(loaded.vendors.mattpocock).toMatchObject({
+      repo: mattSkillsSource,
+      revision: mattSkillsRevision,
+      links: [{
+        kind: 'namespace-dir',
+        source: 'skills/productivity',
+        target: 'vendor/skills/productivity',
+      }],
     })
   })
 
@@ -128,7 +151,7 @@ describe('native Trellis role', () => {
     expect(document.toJS({ maxAliasCount: 0 })).toMatchObject({
       schema_version: 1,
       role_id: 'trellis',
-      role_version: '0.2.0',
+      role_version: '0.3.0',
       status: 'stable',
       canonical_root: 'roles/trellis',
       assets: {
@@ -148,6 +171,12 @@ describe('native Trellis role', () => {
           name: 'Trellis',
           source: 'https://github.com/mindfold-ai/Trellis.git',
           package: '@mindfoldhq/trellis@latest',
+        },
+        productivity_skills: {
+          name: 'Matt Pocock Skills',
+          source: mattSkillsSource,
+          revision: mattSkillsRevision,
+          category: 'skills/productivity',
         },
       },
     })

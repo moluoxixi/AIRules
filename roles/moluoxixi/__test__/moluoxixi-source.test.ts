@@ -25,6 +25,12 @@ interface RoleManifest {
   role_id: string
   role_version: string
   third_party: {
+    productivity_skills: {
+      category: string
+      name: string
+      revision: string
+      source: string
+    }
     upstream: {
       name: string
       paths: string[]
@@ -40,6 +46,8 @@ const roleRoot = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..'
 const legacyBrand = ['tre', 'llis'].join('')
 const legacyProjectRoot = `.${legacyBrand}`
 const workspaceFolderPlaceholder = '$' + '{workspaceFolder}'
+const mattSkillsSource = 'https://github.com/mattpocock/skills.git'
+const mattSkillsRevision = '8b78b531ab965735c5dc74f6f7a219e1e37326df'
 
 const selectedPaths = [
   'skills/init-project/assets/hosts',
@@ -331,7 +339,7 @@ describe('moluoxixi curated upstream role assets', () => {
         moluoxixi_runtime: 'skills/init-project/assets/runtime/moluoxixi.mjs',
       },
       role_id: 'moluoxixi',
-      role_version: '0.2.0',
+      role_version: '0.3.0',
     })
     expect(manifest.third_party.upstream).toEqual({
       name: upstream.name,
@@ -347,13 +355,19 @@ describe('moluoxixi curated upstream role assets', () => {
       source: upstream.source,
       version: upstream.version,
     })
+    expect(manifest.third_party.productivity_skills).toEqual({
+      name: 'Matt Pocock Skills',
+      source: mattSkillsSource,
+      revision: mattSkillsRevision,
+      category: 'skills/productivity',
+    })
     expect(fs.statSync(resolveRolePath(manifest.assets.skills)).isDirectory()).toBe(true)
     expect(fs.statSync(resolveRolePath(manifest.assets.mcp)).isDirectory()).toBe(true)
     expect(fs.existsSync(resolveRolePath('skills/init-project/scripts/migrations/manifests'))).toBe(false)
 
     expect(extendsRoles).toEqual([])
     expect(hosts).toBe('all')
-    expect(vendors).toHaveLength(1)
+    expect(vendors).toHaveLength(2)
     expect(vendors[0]).toMatchObject({
       name: 'moluoxixi',
       projections: [
@@ -372,6 +386,18 @@ describe('moluoxixi curated upstream role assets', () => {
         windowsCommandShim: true,
       },
     ])
+    expect(vendors[1]).toEqual({
+      name: 'mattpocock',
+      source: mattSkillsSource,
+      revision: mattSkillsRevision,
+      projections: [
+        {
+          kind: 'namespace',
+          sourceDir: 'skills/productivity',
+          output: 'productivity',
+        },
+      ],
+    })
     expect(JSON.parse(fs.readFileSync(resolveRolePath('mcp/mcp.json'), 'utf8'))).toEqual({
       mcpServers: {
         codegraph: {
