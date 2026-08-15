@@ -1,3 +1,4 @@
+import { Buffer } from 'node:buffer'
 import { createHash } from 'node:crypto'
 import fs from 'node:fs'
 import path from 'node:path'
@@ -76,9 +77,9 @@ const migratedRuntimePaths = [
 ]
 
 const runtimeIntegrity = {
-  bytes: 4798933,
+  bytes: 4680397,
   files: 636,
-  hash: '7a679228a89c988c4d6e3efc34c83919a91f4a0f2e3bbb91db08279b1e92b080',
+  hash: '038c8e81d1ccbc9a780f33403af81b33dc0f9dd2e1e32b2b442f64f778cbc362',
 }
 
 const projectSkillNames = [
@@ -180,12 +181,30 @@ function selectedFiles(): string[] {
   return sortPaths(files)
 }
 
-function selectedStats(files: string[]): { bytes: number, hash: string } {
+function normalizeCrLf(content: Buffer): Buffer {
+  const normalized = Buffer.allocUnsafe(content.length)
+  let target = 0
+
+  for (let source = 0; source < content.length; source += 1) {
+    if (content[source] === 13 && content[source + 1] === 10) {
+      continue
+    }
+    normalized[target] = content[source]
+    target += 1
+  }
+
+  return normalized.subarray(0, target)
+}
+
+function selectedStats(files: string[], normalizeTextEol = false): { bytes: number, hash: string } {
   const hash = createHash('sha256')
   let bytes = 0
 
   for (const relativePath of files) {
-    const content = fs.readFileSync(resolveRolePath(relativePath))
+    const rawContent = fs.readFileSync(resolveRolePath(relativePath))
+    const content = normalizeTextEol
+      ? normalizeCrLf(rawContent)
+      : rawContent
     bytes += content.byteLength
     hash.update(`${relativePath}\0${content.byteLength}\0`, 'utf8')
     hash.update(content)
@@ -418,7 +437,9 @@ describe('moluoxixi curated upstream role assets', () => {
     expect(selectedFiles()).toHaveLength(selectedIntegrity.files)
     const runtimeFiles = migratedRuntimePaths.flatMap(collectFiles)
     expect(runtimeFiles).toHaveLength(runtimeIntegrity.files)
-    expect(selectedStats(sortPaths(runtimeFiles))).toEqual({
+    // Git may materialize auto-detected text as CRLF on an existing Windows
+    // checkout. Hash the LF-normalized package sources used by clean CI.
+    expect(selectedStats(sortPaths(runtimeFiles), true)).toEqual({
       bytes: runtimeIntegrity.bytes,
       hash: runtimeIntegrity.hash,
     })
