@@ -1,0 +1,9 @@
+{
+  "name": "@moluoxixi/airules-moluoxixi-role",
+  "type": "module",
+  "version": "0.3.0",
+  "private": true,
+  "workspaces": [
+    "packages/*"
+  ]
+}

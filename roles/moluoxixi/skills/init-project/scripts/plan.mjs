@@ -512,6 +512,7 @@ function addCoreSkills(plan, platform, root, pythonCommand) {
       context: PLATFORM_CONTEXT[platform],
       platform,
       python: pythonCommand,
+      rename: renameSkillTemplatePath,
       transform: (relativePath, content) => localizeProjectRuntime(`skills/${skillName}/${relativePath}`, content),
     })
   }
@@ -547,7 +548,7 @@ function addDirectPlatformAssets(plan, platform, pythonCommand, withStatusline) 
     platform,
     transform: (relativePath, content) => transformHostAsset(platform, relativePath, content, pythonCommand, withStatusline),
     filter: relative => platform !== 'claude' || relative !== 'hooks/statusline.py' || withStatusline,
-    rename: relative => renameProjectedSkillPath(relative.endsWith('.ts.txt') ? relative.slice(0, -4) : relative),
+    rename: relative => relative.endsWith('.ts.txt') ? relative.slice(0, -4) : relative,
   })
 }
 
@@ -588,10 +589,6 @@ function readProjectText(...segments) {
   return fs.readFileSync(path.join(PROJECT_ASSET_ROOT, ...segments), 'utf8')
 }
 
-function renameProjectedSkillPath(relativePath) {
-  const segments = relativePath.split('/')
-  const skillsIndex = segments.indexOf('skills')
-  if (skillsIndex >= 0 && segments[skillsIndex + 1])
-    segments[skillsIndex + 1] = canonicalSkillName(segments[skillsIndex + 1])
-  return segments.join('/')
+function renameSkillTemplatePath(relativePath) {
+  return relativePath.replace(/(^|\/)SKILL\.md\.txt$/u, '$1SKILL.md')
 }

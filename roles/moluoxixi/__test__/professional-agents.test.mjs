@@ -42,6 +42,28 @@ const projectedRoots = {
   omp: ['.omp/agents', '.md'],
 }
 
+const coreSkillRoots = {
+  claude: '.claude/skills',
+  cursor: '.cursor/skills',
+  opencode: '.opencode/skills',
+  codex: '.agents/skills',
+  kilo: '.kilocode/skills',
+  kiro: '.kiro/skills',
+  gemini: '.agents/skills',
+  antigravity: '.agent/skills',
+  devin: '.devin/skills',
+  qoder: '.qoder/skills',
+  codebuddy: '.codebuddy/skills',
+  copilot: '.github/skills',
+  droid: '.factory/skills',
+  pi: '.agents/skills',
+  reasonix: '.reasonix/skills',
+  zcode: '.zcode/skills',
+  trae: '.trae/skills',
+  omp: '.omp/skills',
+}
+const allPlatformPlan = buildPlan(PLATFORM_ORDER, 'python3')
+
 function agentPath(platform, name) {
   const [root, suffix] = projectedRoots[platform]
   return suffix.startsWith('/') ? path.posix.join(root, name, suffix.slice(1)) : path.posix.join(root, `${name}${suffix}`)
@@ -69,7 +91,7 @@ describe('professional sub-agent distribution', () => {
   })
 
   it('projects workflow and optional professional agents to every capable host', () => {
-    const plan = buildPlan(PLATFORM_ORDER, 'python3')
+    const plan = allPlatformPlan
     for (const platform of Object.keys(projectedRoots)) {
       for (const name of agentNames)
         expect(plan.has(agentPath(platform, name)), `${platform} missing ${name}`).toBe(true)
@@ -80,7 +102,7 @@ describe('professional sub-agent distribution', () => {
   })
 
   it('injects implementation or check context by specialist boundary', () => {
-    const plan = buildPlan(PLATFORM_ORDER, 'python3')
+    const plan = allPlatformPlan
     for (const platform of ['gemini', 'qoder', 'copilot', 'pi', 'reasonix', 'zcode', 'trae']) {
       for (const name of ['moluoxixi-frontend', 'moluoxixi-backend', 'moluoxixi-database']) {
         const content = String(plan.get(agentPath(platform, name)).content)
@@ -116,7 +138,7 @@ describe('professional sub-agent distribution', () => {
   })
 
   it('projects the formal-knowledge boundary into every implementation and check agent', () => {
-    const plan = buildPlan(PLATFORM_ORDER, 'python3')
+    const plan = allPlatformPlan
     for (const platform of Object.keys(projectedRoots)) {
       for (const name of agentNames.slice(1, 7)) {
         const content = String(plan.get(agentPath(platform, name)).content)
@@ -206,11 +228,13 @@ describe('professional sub-agent distribution', () => {
     expect(parts.map(part => part.id)).toEqual([...parts.map(part => part.id)].sort())
   })
 
-  it('projects native Codex hooks, shared Pi skills, and all shell-ticket bridges', () => {
-    const plan = buildPlan(PLATFORM_ORDER, 'python3')
+  it('projects native Codex hooks, shared core skills, and all shell-ticket bridges', () => {
+    const plan = allPlatformPlan
     expect(plan.has('.codex/hooks/inject-subagent-context.py')).toBe(true)
     expect(String(plan.get('.codex/hooks.json').content)).toContain('SubagentStart')
     expect(plan.has('.agents/skills/start/SKILL.md')).toBe(true)
+    expect([...plan.keys()].some(target => target.startsWith('.codex/skills/'))).toBe(false)
+    expect([...plan.keys()].some(target => !target.startsWith('.moluoxixi/runtime/update/') && target.endsWith('/SKILL.md.txt'))).toBe(false)
     expect([...plan.keys()].some(target => target.startsWith('.pi/skills/'))).toBe(false)
     for (const hook of [
       '.gemini/hooks/inject-shell-session-context.py',
@@ -221,6 +245,31 @@ describe('professional sub-agent distribution', () => {
       '.zcode/hooks/inject-shell-session-context.py',
     ])
       expect(plan.has(hook), `missing ${hook}`).toBe(true)
+  })
+
+  it('restores bundled skill templates for every supported host', () => {
+    expect(Object.keys(coreSkillRoots)).toEqual(PLATFORM_ORDER)
+    const plan = allPlatformPlan
+
+    for (const platform of PLATFORM_ORDER) {
+      const skillEntry = `${coreSkillRoots[platform]}/start/SKILL.md`
+      expect(plan.has(skillEntry), `${platform} missing ${skillEntry}`).toBe(true)
+      expect(String(plan.get(skillEntry).content), `${platform} has invalid start skill frontmatter`).toMatch(/^name: start$/mu)
+    }
+
+    const leakedTemplates = [...plan.keys()].filter(target =>
+      !target.startsWith('.moluoxixi/runtime/update/') && target.endsWith('/SKILL.md.txt'),
+    )
+    expect(leakedTemplates).toEqual([])
+
+    for (const platform of ['codex', 'gemini', 'pi']) {
+      const isolatedPlan = buildPlan([platform], 'python3')
+      const skillEntry = `${coreSkillRoots[platform]}/start/SKILL.md`
+      expect(isolatedPlan.has(skillEntry), `${platform} missing ${skillEntry} in isolation`).toBe(true)
+      expect([...isolatedPlan.keys()].filter(target =>
+        !target.startsWith('.moluoxixi/runtime/update/') && target.endsWith('/SKILL.md.txt'),
+      ), `${platform} leaked bundled skill templates in isolation`).toEqual([])
+    }
   })
 
   it('preserves user-pinned Codex model keys during regeneration', () => {
@@ -241,20 +290,16 @@ describe('professional sub-agent distribution', () => {
   })
 
   it('keeps upstream scope discipline behind Moluoxixi planning and knowledge gates', () => {
-    for (const base of [
-      ['skills', 'init-project', 'assets', 'core', 'skills'],
-      ['skills', 'init-project', 'assets', 'hosts', 'codex', 'skills'],
-    ]) {
-      const beforeDev = fs.readFileSync(path.join(roleRoot, ...base, 'before-dev', 'SKILL.md'), 'utf8')
-      const check = fs.readFileSync(path.join(roleRoot, ...base, 'check', 'SKILL.md'), 'utf8')
-      const brainstorm = fs.readFileSync(path.join(roleRoot, ...base, 'brainstorm', 'SKILL.md'), 'utf8')
-      expect(beforeDev).toContain('state the change boundary')
-      expect(check).toContain('Scope Discipline')
-      expect(check).toContain('Do not edit formal specs directly')
-      expect(brainstorm).toContain('Only a subsequent')
-      expect(brainstorm).toContain('latest final planning summary')
-      expect(brainstorm).toContain('execution-mode')
-      expect(brainstorm).toContain('Complex tasks must have `prd.md`, `design.md`, and `implement.md`')
-    }
+    const base = ['skills', 'init-project', 'assets', 'core', 'skills']
+    const beforeDev = fs.readFileSync(path.join(roleRoot, ...base, 'before-dev', 'SKILL.md.txt'), 'utf8')
+    const check = fs.readFileSync(path.join(roleRoot, ...base, 'check', 'SKILL.md.txt'), 'utf8')
+    const brainstorm = fs.readFileSync(path.join(roleRoot, ...base, 'brainstorm', 'SKILL.md.txt'), 'utf8')
+    expect(beforeDev).toContain('state the change boundary')
+    expect(check).toContain('Scope Discipline')
+    expect(check).toContain('Do not edit formal specs directly')
+    expect(brainstorm).toContain('Only a subsequent')
+    expect(brainstorm).toContain('latest final planning summary')
+    expect(brainstorm).toContain('execution-mode')
+    expect(brainstorm).toContain('Complex tasks must have `prd.md`, `design.md`, and `implement.md`')
   })
 })

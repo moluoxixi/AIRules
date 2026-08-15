@@ -30,7 +30,7 @@
       "status": "adapted",
       "localEvidence": [
         {
-          "path": "roles/moluoxixi/skills/init-project/assets/runtime/source/packages/core/src/mem/sessions.ts",
+          "path": "roles/moluoxixi/packages/core/src/mem/sessions.ts",
           "symbol": "listAll and extractDialogue"
         },
         {
@@ -51,7 +51,7 @@
       "status": "adapted",
       "localEvidence": [
         {
-          "path": "roles/moluoxixi/skills/init-project/assets/runtime/source/packages/core/src/mem/internal/sqlite-readonly.ts",
+          "path": "roles/moluoxixi/packages/core/src/mem/internal/sqlite-readonly.ts",
           "symbol": "SqliteReadOnly"
         }
       ]
@@ -127,7 +127,7 @@
       "status": "adapted",
       "localEvidence": [
         {
-          "path": "roles/moluoxixi/skills/init-project/assets/core/skills/brainstorm/SKILL.md",
+          "path": "roles/moluoxixi/skills/init-project/assets/core/skills/brainstorm/SKILL.md.txt",
           "symbol": "explicit post-planning implementation approval"
         }
       ]
@@ -204,11 +204,11 @@
       "status": "adapted",
       "localEvidence": [
         {
-          "path": "roles/moluoxixi/skills/init-project/assets/runtime/source/packages/cli/src/commands/channel/adapters/codex.ts",
+          "path": "roles/moluoxixi/packages/cli/src/commands/channel/adapters/codex.ts",
           "symbol": "parseCodexSandboxMode"
         },
         {
-          "path": "roles/moluoxixi/skills/init-project/assets/runtime/source/packages/cli/src/commands/channel/index.ts",
+          "path": "roles/moluoxixi/packages/cli/src/commands/channel/index.ts",
           "symbol": "--sandbox option"
         }
       ]
@@ -305,11 +305,11 @@
       "status": "adapted",
       "localEvidence": [
         {
-          "path": "roles/moluoxixi/skills/init-project/assets/runtime/source/packages/cli/src/commands/channel/spawn.ts",
+          "path": "roles/moluoxixi/packages/cli/src/commands/channel/spawn.ts",
           "symbol": "SpawnOptions.sandbox"
         },
         {
-          "path": "roles/moluoxixi/skills/init-project/assets/runtime/source/packages/cli/src/commands/channel/supervisor.ts",
+          "path": "roles/moluoxixi/packages/cli/src/commands/channel/supervisor.ts",
           "symbol": "SupervisorConfig.sandbox"
         }
       ]
@@ -501,7 +501,7 @@
       "status": "adapted",
       "localEvidence": [
         {
-          "path": "roles/moluoxixi/skills/init-project/assets/runtime/source/packages/cli/src/commands/channel/context-trust.ts",
+          "path": "roles/moluoxixi/packages/cli/src/commands/channel/context-trust.ts",
           "symbol": "resolveTrustedRoots"
         },
         {
@@ -646,7 +646,7 @@
       "status": "adapted",
       "localEvidence": [
         {
-          "path": "roles/moluoxixi/skills/init-project/assets/runtime/source/packages/cli/src/commands/channel/adapters/codex.ts",
+          "path": "roles/moluoxixi/packages/cli/src/commands/channel/adapters/codex.ts",
           "symbol": "failed turn and terminal error handling"
         }
       ]
@@ -657,7 +657,7 @@
       "status": "adapted",
       "localEvidence": [
         {
-          "path": "roles/moluoxixi/skills/init-project/assets/runtime/source/packages/cli/src/commands/channel/supervisor/idle.ts",
+          "path": "roles/moluoxixi/packages/cli/src/commands/channel/supervisor/idle.ts",
           "symbol": "scheduleSupervisorIdleTimer"
         }
       ]
@@ -792,24 +792,30 @@
     {
       "hash": "82fc41a2c0874121d146b83f710226b3662ba72f",
       "subject": "chore(templates): remove unused codex skills directory",
-      "status": "retained-local",
-      "reason": "Moluoxixi keeps its manifest-driven full-role distribution contract for this surface.",
+      "status": "adapted",
       "localEvidence": [
         {
-          "path": "roles/moluoxixi/skills/init-project/assets/hosts/codex/skills/before-dev/SKILL.md",
-          "symbol": "retained Codex shared skill projection"
+          "path": "roles/moluoxixi/skills/init-project/assets/core/skills/before-dev/SKILL.md.txt",
+          "symbol": "canonical shared skill source"
+        },
+        {
+          "path": "roles/moluoxixi/__test__/professional-agents.test.mjs",
+          "symbol": "Codex projection excludes .codex/skills"
         }
       ]
     },
     {
       "hash": "57ea914bf91a2f6f5eaf40580a8c809a2ad83196",
       "subject": "chore(templates): drop dead getAllCodexSkills loader",
-      "status": "retained-local",
-      "reason": "Moluoxixi keeps its manifest-driven full-role distribution contract for this surface.",
+      "status": "adapted",
       "localEvidence": [
         {
           "path": "roles/moluoxixi/skills/init-project/scripts/plan.mjs",
-          "symbol": "Codex skill projection from role assets"
+          "symbol": "addCoreSkills projects Codex skills to .agents/skills"
+        },
+        {
+          "path": "roles/moluoxixi/__test__/professional-agents.test.mjs",
+          "symbol": "all-host core skill projection matrix"
         }
       ]
     },
@@ -899,7 +905,7 @@
       "status": "adapted",
       "localEvidence": [
         {
-          "path": "roles/moluoxixi/skills/init-project/assets/core/skills/meta/SKILL.md",
+          "path": "roles/moluoxixi/skills/init-project/assets/core/skills/meta/SKILL.md.txt",
           "symbol": "addCoreSkills project-facing distribution contract"
         },
         {
@@ -959,11 +965,11 @@
       "status": "adapted",
       "localEvidence": [
         {
-          "path": "roles/moluoxixi/skills/init-project/assets/runtime/source/packages/core/src/mem/adapters/codex.ts",
+          "path": "roles/moluoxixi/packages/core/src/mem/adapters/codex.ts",
           "symbol": "compaction history recovery"
         },
         {
-          "path": "roles/moluoxixi/skills/init-project/assets/runtime/source/packages/core/src/mem/adapters/grok.ts",
+          "path": "roles/moluoxixi/packages/core/src/mem/adapters/grok.ts",
           "symbol": "Grok session adapter"
         }
       ]
@@ -1092,11 +1098,11 @@
       "status": "adapted",
       "localEvidence": [
         {
-          "path": "roles/moluoxixi/skills/init-project/assets/core/skills/before-dev/SKILL.md",
+          "path": "roles/moluoxixi/skills/init-project/assets/core/skills/before-dev/SKILL.md.txt",
           "symbol": "task scope declaration"
         },
         {
-          "path": "roles/moluoxixi/skills/init-project/assets/core/skills/check/SKILL.md",
+          "path": "roles/moluoxixi/skills/init-project/assets/core/skills/check/SKILL.md.txt",
           "symbol": "task-scoped validation"
         }
       ]

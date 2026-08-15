@@ -606,7 +606,7 @@ while the remotely synchronized role still lacks the files.
 ```bash
 tmpdir=$(mktemp -d /tmp/moluoxixi-built-bin-smoke-XXXXXX)
 git -C "$tmpdir" init -q
-node /path/to/init-project/scripts/init-project.mjs --project "$tmpdir" --platform claude,codex --developer smoke
+node /path/to/moluoxixi/packages/cli/bin/init-project.js --project "$tmpdir" --platform claude,codex --developer smoke
 test -f "$tmpdir/.claude/skills/<skill>/SKILL.md"
 test -f "$tmpdir/.agents/skills/<skill>/SKILL.md"
 test -f "$tmpdir/.moluoxixi/airules-init-manifest.json"

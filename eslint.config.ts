@@ -10,7 +10,7 @@ export default eslintConfig({
     'dist',
     'roles/moluoxixi/skills/init-project/assets/hosts/**',
     'roles/moluoxixi/skills/init-project/assets/project/**/*.yaml',
-    'roles/moluoxixi/skills/init-project/assets/runtime/source/**',
+    'roles/moluoxixi/packages/**',
     'roles/moluoxixi/skills/init-project/assets/runtime/vendor/**',
     'roles/moluoxixi/skills/**/*.md',
     'vendor',

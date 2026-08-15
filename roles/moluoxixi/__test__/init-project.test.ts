@@ -25,7 +25,7 @@ interface InitSummary {
 
 const roleRoot = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..')
 const skillRoot = path.join(roleRoot, 'skills', 'init-project')
-const initializer = path.join(skillRoot, 'scripts', 'init-project.mjs')
+const initializer = path.join(skillRoot, 'scripts', 'run-role-cli.mjs')
 const assetRoot = path.join(skillRoot, 'assets')
 const roleRuntime = path.join(skillRoot, 'assets', 'runtime', 'moluoxixi.mjs')
 const legacyBrand = ['tre', 'llis'].join('')
@@ -63,7 +63,7 @@ function temporaryProject(prefix = 'airules-init-project-'): string {
   return root
 }
 
-function runInitializer(projectRoot: string, args: string[] = [], entry = initializer): { status: number, summary?: InitSummary, stderr: string } {
+function runInitializer(projectRoot: string, args: string[] = [], entry = initializer, env = process.env): { status: number, summary?: InitSummary, stderr: string } {
   const result = spawnSync(process.execPath, [
     entry,
     '--project',
@@ -71,7 +71,7 @@ function runInitializer(projectRoot: string, args: string[] = [], entry = initia
     '--python',
     pythonCommand,
     ...args,
-  ], { encoding: 'utf8' })
+  ], { encoding: 'utf8', env })
   return {
     status: result.status ?? -1,
     summary: result.stdout ? JSON.parse(result.stdout) as InitSummary : undefined,
@@ -131,9 +131,9 @@ function migratedAssetStats(): { bytes: number, files: number, hash: string } {
 describe('init-project skill', () => {
   it('pins the migrated Moluoxixi project templates', () => {
     expect(migratedAssetStats()).toEqual({
-      bytes: 1811745,
-      files: 313,
-      hash: '0f06c6f039dede138a1c72939d9cd0a043c48ef1ec09dd42f39dc08534b5d85a',
+      bytes: 1741771,
+      files: 300,
+      hash: 'f59a53060e5afb62eac05bce46982d3532f5367912af9a490f2ab72f60afd60f',
     })
     expect(fs.existsSync(path.join(assetRoot, 'moluoxixi-v0.6.15'))).toBe(false)
     expect(fs.existsSync(path.join(assetRoot, 'legal', 'LICENSE'))).toBe(false)
@@ -172,7 +172,7 @@ describe('init-project skill', () => {
     expect(result.summary?.created).not.toContain('.claude/hooks/statusline.py')
     const updaterBundledSkillPrefix = '.moluoxixi/runtime/update/init-project/assets/core/skills/'
     const updaterBundledSkillNames = result.summary?.created
-      .filter(relativePath => relativePath.startsWith(updaterBundledSkillPrefix) && relativePath.endsWith('/SKILL.md'))
+      .filter(relativePath => relativePath.startsWith(updaterBundledSkillPrefix) && relativePath.endsWith('/SKILL.md.txt'))
       .map(relativePath => relativePath.slice(updaterBundledSkillPrefix.length).split('/')[0])
       .sort() ?? []
     expect(updaterBundledSkillNames).toEqual(projectSkillNames)
@@ -202,7 +202,7 @@ describe('init-project skill', () => {
     expect(first.summary?.conflicts).toEqual([])
     expect(fs.existsSync(path.join(projectRoot, '.moluoxixi', 'scripts', 'task.py'))).toBe(true)
     expect(fs.existsSync(path.join(projectRoot, '.moluoxixi', 'scripts', 'spec-proposals.mjs'))).toBe(true)
-    expect(fs.existsSync(path.join(projectRoot, '.moluoxixi', 'runtime', 'source', 'packages', 'core', 'src', 'channel', 'index.ts'))).toBe(true)
+    expect(fs.existsSync(path.join(projectRoot, '.moluoxixi', 'runtime', 'source'))).toBe(false)
     expect(fs.existsSync(path.join(projectRoot, '.moluoxixi', 'runtime', 'update', 'init-project', 'assets', 'project', 'workflow.md'))).toBe(true)
     expect(fs.existsSync(path.join(projectRoot, '.moluoxixi', 'runtime', 'update', 'init-project', 'scripts', 'migrations', 'manifests'))).toBe(false)
     expect(fs.existsSync(path.join(projectRoot, '.moluoxixi', 'airules-init-manifest.json'))).toBe(true)
@@ -235,7 +235,7 @@ describe('init-project skill', () => {
     const updaterBundledSkillNames = fs.readdirSync(updaterBundledSkillsRoot).sort()
     expect(updaterBundledSkillNames).toEqual(projectSkillNames)
     for (const skillName of updaterBundledSkillNames) {
-      const content = fs.readFileSync(path.join(updaterBundledSkillsRoot, skillName, 'SKILL.md'), 'utf8')
+      const content = fs.readFileSync(path.join(updaterBundledSkillsRoot, skillName, 'SKILL.md.txt'), 'utf8')
       expect(content).toMatch(new RegExp(`^name: ${skillName}$`, 'mu'))
     }
     const projectedRoots = [
@@ -641,7 +641,7 @@ describe('init-project skill', () => {
     expect(runRuntime(roleRuntime, ['channel', '--help'], roleRoot)).toMatchObject({ status: 0, stderr: '' })
     const localSkillFiles = ['channel', 'meta', 'session-insight']
       .flatMap(skill => walkFiles(path.join(skillRoot, 'assets', 'core', 'skills', skill)))
-      .filter(file => file.endsWith('.md'))
+      .filter(file => /\.md(?:\.txt)?$/u.test(file))
     for (const file of localSkillFiles) {
       const content = fs.readFileSync(file, 'utf8')
       expect(content).not.toContain(`npm install -g @mindfoldhq/${legacyBrand}`)
@@ -794,7 +794,7 @@ describe('init-project skill', () => {
     expect(finalManifest.entries['.pi/settings.json'].baselineHash).not.toBe(contentHash(fs.readFileSync(settingsPath)))
   })
 
-  it('distributes only the self-contained initializer and runs it without the installed role', async () => {
+  it('stages the complete role and initializes through its private local CLI', async () => {
     const root = temporaryProject('airules-init-project-staging-')
     const homeDir = path.join(root, 'home')
     const repository = path.join(homeDir, 'vendor', 'repos', 'moluoxixi')
@@ -813,6 +813,11 @@ describe('init-project skill', () => {
     const inventory = await rebuildVendorAssets({ homeDir, role: 'moluoxixi', manifestPath })
     expect(inventory.skills).toEqual(['init-project'])
     const staged = path.join(homeDir, 'vendor', 'skills', 'init-project')
+    const installedRole = path.join(homeDir, 'roles', 'moluoxixi')
+    expect(walkFiles(staged)
+      .map(file => path.relative(staged, file).split(path.sep).join('/'))
+      .filter(relativePath => path.posix.basename(relativePath) === 'SKILL.md'))
+      .toEqual(['SKILL.md'])
     expect(fs.existsSync(path.join(staged, 'scripts', 'init-project.mjs'))).toBe(true)
     expect(fs.existsSync(path.join(staged, 'references', 'platforms.md'))).toBe(true)
     expect(fs.existsSync(path.join(staged, 'references', 'asset-layout.md'))).toBe(true)
@@ -820,22 +825,32 @@ describe('init-project skill', () => {
     expect(fs.existsSync(path.join(staged, 'assets', 'project', 'readme-usage.md'))).toBe(true)
     expect(fs.existsSync(path.join(staged, 'assets', 'runtime', 'moluoxixi.mjs'))).toBe(true)
     expect(fs.existsSync(path.join(staged, 'assets', 'core', 'skills', 'channel', 'scripts', 'moluoxixi.mjs'))).toBe(true)
+    expect(fs.existsSync(path.join(installedRole, 'packages', 'core', 'package.json'))).toBe(true)
+    expect(fs.existsSync(path.join(installedRole, 'packages', 'cli', 'bin', 'init-project.js'))).toBe(true)
     expect(fs.existsSync(path.join(homeDir, 'vendor', 'agents'))).toBe(false)
     expect(fs.existsSync(path.join(homeDir, 'vendor', 'AGENTS.md'))).toBe(false)
     expect(fs.existsSync(path.join(homeDir, 'roles', 'moluoxixi', 'runtime'))).toBe(false)
     expect(fs.existsSync(path.join(homeDir, 'roles', 'moluoxixi', 'agents'))).toBe(false)
 
-    const standalone = path.join(root, 'standalone-init-project')
-    fs.cpSync(staged, standalone, { recursive: true, dereference: true })
-    fs.rmSync(path.join(homeDir, 'roles'), { recursive: true, force: true })
-    fs.rmSync(repository, { recursive: true, force: true })
     const projectRoot = path.join(root, 'project')
     fs.mkdirSync(projectRoot)
-    const installed = runInitializer(projectRoot, ['--platform', 'claude,codex'], path.join(standalone, 'scripts', 'init-project.mjs'))
+    const installed = runInitializer(
+      projectRoot,
+      ['--platform', 'claude,codex'],
+      path.join(staged, 'scripts', 'run-role-cli.mjs'),
+      {
+        ...process.env,
+        npm_config_offline: 'true',
+        npm_config_registry: 'http://127.0.0.1:9',
+      },
+    )
     expect(installed).toMatchObject({ status: 0, stderr: '' })
     expect(fs.readFileSync(path.join(projectRoot, 'README.md'), 'utf8')).toContain('请使用 Moluoxixi 开始处理这个需求：<描述需求>')
+    expect(fs.existsSync(path.join(projectRoot, '.agents', 'skills', 'start', 'SKILL.md'))).toBe(true)
     const channelLauncher = path.join(projectRoot, '.agents', 'skills', 'channel', 'scripts', 'moluoxixi.mjs')
     expect(runRuntime(channelLauncher, ['--version'], projectRoot)).toMatchObject({ status: 0, stderr: '', stdout: '0.2.0\n' })
+    fs.rmSync(path.join(homeDir, 'roles'), { recursive: true, force: true })
+    fs.rmSync(repository, { recursive: true, force: true })
     const projectRuntime = path.join(projectRoot, '.moluoxixi', 'runtime', 'moluoxixi.mjs')
     expect(runRuntime(projectRuntime, ['update', '--dry-run'], projectRoot)).toMatchObject({ status: 0, stderr: '' })
   }, 30_000)

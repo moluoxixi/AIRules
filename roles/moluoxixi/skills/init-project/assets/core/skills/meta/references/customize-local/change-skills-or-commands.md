@@ -80,7 +80,7 @@ If a command only repeats workflow rules, prefer making it reference/read `.molu
 | Claude Code | `.claude/skills/`, `.claude/commands/` |
 | Cursor | `.cursor/skills/`, `.cursor/commands/` |
 | OpenCode | `.opencode/skills/`, `.opencode/commands/` |
-| Codex | `.agents/skills/`, `.codex/skills/` |
+| Codex | `.agents/skills/` |
 | Gemini CLI | `.agents/skills/`, `.gemini/commands/` |
 | Kiro | `.kiro/skills/` |
 | Qoder | `.qoder/skills/`, `.qoder/commands/` |

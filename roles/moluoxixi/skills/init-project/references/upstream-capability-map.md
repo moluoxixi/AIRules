@@ -2,10 +2,11 @@
 
 Parity baseline: upstream revision `d8fff53ce4964ed1a3e52fea6b418b27eba093e4`.
 The non-merge commit reconciliation from `v0.6.7` is recorded in [upstream-reconciliation-v0.6.15.json](upstream-reconciliation-v0.6.15.json).
+Behaviors that future upstream synchronization must preserve are recorded in [sync-preservation-contracts.json](sync-preservation-contracts.json), including both local extensions and explicit upstream parity contracts.
 
 | Upstream surface | Moluoxixi surface |
 | --- | --- |
-| `init` and re-init | `init-project` skill plus `scripts/init-project.mjs`; supports 18 hosts, developer identity, reviewed monorepo package maps, dry-run, conflict preservation, force, and optional Claude statusline |
+| `init` and re-init | `init-project` skill resolves the private role-local `@moluoxixi/airules-moluoxixi-cli` package, which executes the bundled initializer without registry access; supports 18 hosts, developer identity, reviewed monorepo package maps, dry-run, conflict preservation, force, and optional Claude statusline |
 | `update` | `.moluoxixi/runtime/moluoxixi.mjs update`; uses the embedded initializer, exact baseline hashes, JSON/block merging, and transactional rollback |
 | `upgrade` | Global `airules sync --role moluoxixi`; SessionStart and text context compare the synchronized role version with the project version and direct stale projects to the current `init-project` skill; project runtime never installs an npm CLI |
 | `uninstall` | `.moluoxixi/runtime/moluoxixi.mjs uninstall`; manifest-owned files only, with dry-run, interactive confirmation or `--yes`, force kept separate, and modified-file conflicts |
@@ -13,15 +14,16 @@ The non-merge commit reconciliation from `v0.6.7` is recorded in [upstream-recon
 | `channel` | Project runtime `channel`; bundled local dispatcher and channel store, typed Codex sandbox overrides, trusted context roots, surfaced Codex turn failures, and post-turn idle shutdown |
 | `mem` | Project runtime `mem`; bundled Claude, Codex, Grok, Pi, and ZCode history adapters with compaction-boundary recovery, ZCode read-only SQLite/WAL access, and environment/global/project-local Pi `sessionDir` discovery. The OpenCode reader remains explicitly unavailable in this build. |
 | Remote workflow/spec registries | Project initializer `--workflow/--workflow-source` and `--template/--registry`; anonymous public HTTP archives, credential-aware self-hosted/SSH Git, backend-stable workflow reads, typed errors, direct registries, per-package monorepo templates, persisted metadata, and directory-level skip/overwrite/append |
-| Versioned migrations | Moluoxixi keeps the complete migration engine: orphan detection, rename, owned rename-dir, delete, safe-file-delete, versioned config sections, complete managed-root snapshots, modified-file sidecar backups, breaking migration gate, and `--migrate` / `--allow-downgrade`. Version 0.1.0 is the initial baseline, so no upstream release manifests are inherited. |
+| Versioned migrations | Moluoxixi keeps the complete migration engine: orphan detection, rename, owned rename-dir, delete, safe-file-delete, versioned config sections, complete managed-root snapshots, modified-file sidecar backups, breaking migration gate, and `--migrate` / `--allow-downgrade`. The upstream CLI package retains its historical manifests unchanged; the AIRules initializer uses Moluoxixi's independent migration line beginning at 0.1.0. |
 | Bootstrap/onboarding | First-init `00-bootstrap-guidelines` and new-developer `00-join-<slug>` task creation after developer initialization |
 | Global setup and MCP | Role-owned CodeGraph install/setup plus JSON/TOML MCP projection for supported hosts; absent during roleless sync |
 
 ## Intentional Omissions And Replacements
 
-- The official npm CLI and package workspace are not distributed. AIRules owns global role upgrades, while the embedded initializer and project-local runtime own project operations.
-- Upstream release-specific migration manifests and historical project-state transitions are not inherited. Moluoxixi starts its own migration line at `0.1.0` while retaining the migration engine.
-- Repository and maintainer tooling is omitted, including upstream CI/release assets, demos, docs sites, examples, package workspaces, `contribute`, `create-manifest`, `publish-skill`, the Claude `improve-ut` command, and the Claude `gitnexus` skill.
+- AIRules installs the complete upstream core/CLI package trees under the Moluoxixi role with unique package names. They remain `private` today to prevent accidental publication, but retain upstream package build, test, and release surfaces so publication can be enabled deliberately later.
+- Project initialization runs the role-local AIRules entry directly and never installs from a registry. Initialized projects receive only the self-contained runtime bundle and updater assets.
+- Upstream migration manifests remain in the complete CLI package for source parity but are not applied by the AIRules initializer. Moluoxixi starts its own migration line at `0.1.0`.
+- Repository-level CI, demos, docs sites, examples, marketplaces, and root release orchestration remain outside the role. Package-local release helpers are retained. Generated-role omissions still include `contribute`, `create-manifest`, `publish-skill`, the Claude `improve-ut` command, and the Claude `gitnexus` skill.
 - The upstream marketplace repository payload is not distributed. Runtime workflow/spec marketplace sources remain supported through URLs and Git repositories.
 - Worktree/Ralph automation is not an active Moluoxixi runtime surface: the initializer does not project `worktree.yaml` and no worktree/Ralph executor is shipped.
 

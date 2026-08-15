@@ -9,7 +9,7 @@ This page lists common Moluoxixi file locations in a user project by platform. W
 | Claude Code | `--platform claude` | `.claude/` | `.claude/skills/` | `.claude/agents/` | `.claude/hooks/` + `.claude/settings.json` |
 | Cursor | `--platform cursor` | `.cursor/` | `.cursor/skills/` | `.cursor/agents/` | `.cursor/hooks.json` + `.cursor/hooks/` |
 | OpenCode | `--platform opencode` | `.opencode/` | `.opencode/skills/` | `.opencode/agents/` | `.opencode/plugins/` |
-| Codex | `--platform codex` | `.codex/` | `.agents/skills/` and `.codex/skills/` | `.codex/agents/` | `.codex/hooks/` + `.codex/hooks.json` |
+| Codex | `--platform codex` | `.codex/` | `.agents/skills/` | `.codex/agents/` | `.codex/hooks/` + `.codex/hooks.json` |
 | Kilo | `--platform kilo` | `.kilocode/` | `.kilocode/skills/` | None | `.kilocode/workflows/` |
 | Kiro | `--platform kiro` | `.kiro/` | `.kiro/skills/` | `.kiro/agents/` | `.kiro/hooks/` |
 | Gemini CLI | `--platform gemini` | `.gemini/` | `.agents/skills/` | `.gemini/agents/` | `.gemini/settings.json` + `.gemini/hooks/` |

@@ -3,17 +3,18 @@ role_id: moluoxixi
 role_version: 0.3.0
 status: experimental
 canonical_root: roles/moluoxixi
-description: Self-contained Moluoxixi assets, project initialization, and Matt Pocock productivity skills.
+description: Self-contained Moluoxixi assets, private role-local runtime packages, project initialization, and Matt Pocock productivity skills.
 assets:
   skills: skills
   mcp: mcp
+  packages: packages
 distribution:
   bootstrap_manifest: constants/skills.ts
   full_role_path_required: true
   npm_embedded_source: false
 entrypoints:
   initialize_project_skill: init-project
-  initialize_project_script: skills/init-project/scripts/init-project.mjs
+  initialize_project_script: packages/cli/bin/init-project.js
   moluoxixi_runtime: skills/init-project/assets/runtime/moluoxixi.mjs
 third_party:
   upstream:
@@ -21,7 +22,8 @@ third_party:
     paths:
       - skills/init-project/assets/hosts
       - skills/init-project/assets/project
-      - skills/init-project/assets/runtime/source
+      - packages/core
+      - packages/cli
       - skills/init-project/assets/runtime/vendor/channel-mem.mjs
       - skills/init-project/assets/core
     source: https://github.com/mindfold-ai/Trellis.git

@@ -5,11 +5,20 @@
     "module": "NodeNext",
     "moduleResolution": "NodeNext",
     "paths": {
-      "@mindfoldhq/trellis-core/channel": [
-        "./roles/moluoxixi/skills/init-project/assets/runtime/source/packages/core/src/channel/index.ts"
+      "@moluoxixi/airules-moluoxixi-core": [
+        "./roles/moluoxixi/packages/core/src/index.ts"
       ],
-      "@mindfoldhq/trellis-core/mem": [
-        "./roles/moluoxixi/skills/init-project/assets/runtime/source/packages/core/src/mem/index.ts"
+      "@moluoxixi/airules-moluoxixi-core/channel": [
+        "./roles/moluoxixi/packages/core/src/channel/index.ts"
+      ],
+      "@moluoxixi/airules-moluoxixi-core/mem": [
+        "./roles/moluoxixi/packages/core/src/mem/index.ts"
+      ],
+      "@moluoxixi/airules-moluoxixi-core/task": [
+        "./roles/moluoxixi/packages/core/src/task/index.ts"
+      ],
+      "@moluoxixi/airules-moluoxixi-core/testing": [
+        "./roles/moluoxixi/packages/core/src/testing/index.ts"
       ]
     },
     "types": ["node"],
@@ -26,6 +35,7 @@
     "coverage",
     "dist",
     "node_modules",
+    "roles/*/packages/**",
     "roles/*/runtime/source/**",
     "roles/*/skills/*/assets/**",
     "vendor"

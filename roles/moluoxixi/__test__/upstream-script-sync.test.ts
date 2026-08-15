@@ -137,6 +137,22 @@ describe('trellis v0.6.15 project script adaptations', () => {
     expect(openCodePlugin).toContain('DEFAULT_PROMPT_INJECTION_SKIP_KEYWORD = "no-moluoxixi"')
   })
 
+  it('keeps the upstream small-task creation opt-out contract', () => {
+    const workflow = fs.readFileSync(path.join(skillRoot, 'assets', 'project', 'workflow.md'), 'utf8')
+    const start = fs.readFileSync(path.join(skillRoot, 'assets', 'core', 'skills', 'start', 'SKILL.md.txt'), 'utf8')
+    const sessionStart = fs.readFileSync(path.join(skillRoot, 'assets', 'core', 'hooks', 'session-start.py'), 'utf8')
+    const openCodeSession = fs.readFileSync(path.join(skillRoot, 'assets', 'hosts', 'opencode', 'lib', 'session-utils.js'), 'utf8')
+
+    const consentRule = 'Simple conversation / small task: ask only whether this turn should create a Moluoxixi task. If the user says no, skip Moluoxixi for this session.'
+    expect(workflow).toContain(consentRule)
+    expect(workflow).toMatch(/\[workflow-state:no_task\][\s\S]*If the user says no, skip Moluoxixi for this session\.[\s\S]*\[\/workflow-state:no_task\]/u)
+    expect(start).toContain('If the user says no, skip Moluoxixi for this session.')
+    for (const hostContext of [sessionStart, openCodeSession]) {
+      expect(hostContext).toContain('Classify the current turn before creating any Moluoxixi task.')
+      expect(hostContext).toContain('Simple conversation / small task asks only whether this turn should create a Moluoxixi task.')
+    }
+  })
+
   it('writes structured journal sections and merges the journal attribute block', () => {
     const root = temporaryProject('kilo', false)
     fs.writeFileSync(path.join(root, '.gitattributes'), '*.bin binary\n')
@@ -221,7 +237,7 @@ describe('trellis v0.6.15 project script adaptations', () => {
     }
 
     const workflowHook = fs.readFileSync(path.join(core, 'hooks', 'inject-workflow-state.py'), 'utf8')
-    const metaSkill = fs.readFileSync(path.join(core, 'skills', 'meta', 'SKILL.md'), 'utf8')
+    const metaSkill = fs.readFileSync(path.join(core, 'skills', 'meta', 'SKILL.md.txt'), 'utf8')
     expect(workflowHook).toContain('``CORE_HOOKS``')
     expect(workflowHook).not.toContain('writeSharedHooks()')
     expect(metaSkill).toContain('`addCoreSkills()`')

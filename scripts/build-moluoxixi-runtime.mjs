@@ -3,19 +3,11 @@ import { fileURLToPath } from 'node:url'
 import { build } from 'esbuild'
 
 const repoRoot = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..')
-const sourceRoot = path.join(
-  repoRoot,
-  'roles',
-  'moluoxixi',
-  'skills',
-  'init-project',
-  'assets',
-  'runtime',
-  'source',
-)
+const roleRoot = path.join(repoRoot, 'roles', 'moluoxixi')
+const packagesRoot = path.join(roleRoot, 'packages')
 
 await build({
-  entryPoints: [path.join(sourceRoot, 'packages', 'cli', 'src', 'airules-runtime-entry.ts')],
+  entryPoints: [path.join(packagesRoot, 'cli', 'src', 'airules-runtime-entry.ts')],
   outfile: path.join(
     repoRoot,
     'roles',
@@ -28,17 +20,15 @@ await build({
     'channel-mem.mjs',
   ),
   alias: {
-    '@mindfoldhq/trellis-core/channel': path.join(
-      sourceRoot,
-      'packages',
+    '@moluoxixi/airules-moluoxixi-core/channel': path.join(
+      packagesRoot,
       'core',
       'src',
       'channel',
       'index.ts',
     ),
-    '@mindfoldhq/trellis-core/mem': path.join(
-      sourceRoot,
-      'packages',
+    '@moluoxixi/airules-moluoxixi-core/mem': path.join(
+      packagesRoot,
       'core',
       'src',
       'mem',

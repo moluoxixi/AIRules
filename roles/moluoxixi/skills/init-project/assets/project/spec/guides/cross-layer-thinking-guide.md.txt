@@ -125,16 +125,16 @@ After implementation:
 
 ## Cross-Platform Template Consistency
 
-In Moluoxixi, command templates (e.g., `record-session.md`) exist in **multiple platforms** with identical or near-identical content. This is a cross-layer boundary.
+In Moluoxixi, shared workflow skills such as `check` and `finish-work` have one canonical source under `assets/core/skills/` and are projected to host-native skill roots. Host overlays are needed only for platform-specific integration.
 
 ### Checklist: After Modifying Any Command Template
 
-- [ ] Find all platforms with the same command: `find src/templates/*/commands/moluoxixi/ -name "<command>.*"`
-- [ ] Update all platform copies (Markdown `.md` and TOML `.toml`)
-- [ ] For Gemini TOML: adapt line continuations (`\\` vs `\`) and triple-quoted strings
-- [ ] Run `/moluoxixi:check-cross-layer` to verify nothing was missed
+- [ ] Locate the canonical core skill or command body
+- [ ] Update the core source once; do not create host-specific skill copies
+- [ ] Inspect `assets/hosts/<host>` only for native agents, settings, hooks, plugins, extensions, or wrappers affected by the change
+- [ ] Run `check` and the all-host projection tests to verify every supported output
 
-**Real-world example**: Updated `record-session.md` in Claude to use `--mode record`, but forgot iFlow, Kilo, OpenCode, and Gemini — caught by cross-layer check.
+**Real-world example**: Upstream merged `check-cross-layer` into `check` and `record-session` into `finish-work`. Retaining Codex-only copies created a stale fork while every other host used the shared core skills.
 
 ---
 
@@ -222,16 +222,16 @@ When a CLI auto-detects a mode by probing a remote resource (e.g., checking if `
 
 ## Cross-Platform Template Consistency
 
-In Moluoxixi, command templates (e.g., `record-session.md`) exist in **multiple platforms** with identical or near-identical content. This is a cross-layer boundary.
+In Moluoxixi, shared workflow skills such as `check` and `finish-work` have one canonical source under `assets/core/skills/` and are projected to host-native skill roots. Host overlays are needed only for platform-specific integration.
 
 ### Checklist: After Modifying Any Command Template
 
-- [ ] Find all platforms with the same command: `find src/templates/*/commands/moluoxixi/ -name "<command>.*"`
-- [ ] Update all platform copies (Markdown `.md` and TOML `.toml`)
-- [ ] For Gemini TOML: adapt line continuations (`\\` vs `\`) and triple-quoted strings
-- [ ] Run `/moluoxixi:check-cross-layer` to verify nothing was missed
+- [ ] Locate the canonical core skill or command body
+- [ ] Update the core source once; do not create host-specific skill copies
+- [ ] Inspect `assets/hosts/<host>` only for native agents, settings, hooks, plugins, extensions, or wrappers affected by the change
+- [ ] Run `check` and the all-host projection tests to verify every supported output
 
-**Real-world example**: Updated `record-session.md` in Claude to use `--mode record`, but forgot iFlow, Kilo, OpenCode, and Gemini — caught by cross-layer check.
+**Real-world example**: Upstream merged `check-cross-layer` into `check` and `record-session` into `finish-work`. Retaining Codex-only copies created a stale fork while every other host used the shared core skills.
 
 ---
 
