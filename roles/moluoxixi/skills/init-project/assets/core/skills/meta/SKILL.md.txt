@@ -7,7 +7,7 @@ description: Understand and customize the AIRules-distributed Moluoxixi architec
 
 This skill is for projects initialized with the `init-project` skill. Resolve `<skill-root>` to this skill's directory and use `scripts/moluoxixi.mjs` for channel, memory, workflow, and update commands. Never install or invoke the upstream Moluoxixi CLI.
 
-The migrated v0.6 runtime adds two architectural surfaces on top of the workflow, persistence, and platform model. `node "<skill-root>/scripts/moluoxixi.mjs" channel` coordinates worker processes through project-scoped JSONL event logs at `~/.moluoxixi/channels/<project>/<channel>/events.jsonl`, with worker guards, forum/thread channels, durable idempotency keys, and `.moluoxixi/agents/{check,implement}.md` role definitions. `node "<skill-root>/scripts/moluoxixi.mjs" mem list | search | context | extract | projects` reads local Claude Code, Codex, and Pi JSONL, slices by task phase, and uploads nothing. The role carries private core/CLI source packages and the executable project bundle; no registry-installed Moluoxixi npm package is required.
+The migrated v0.6 runtime adds two architectural surfaces on top of the workflow, persistence, and platform model. `node "<skill-root>/scripts/moluoxixi.mjs" channel` coordinates worker processes through project-scoped JSONL event logs at `~/.moluoxixi/channels/<project>/<channel>/events.jsonl`, with worker guards, forum/thread channels, durable idempotency keys, and `.moluoxixi/agents/{check,implement}.md` role definitions. `node "<skill-root>/scripts/moluoxixi.mjs" mem list | search | context | extract | projects` reads local Claude Code, Codex, and Pi JSONL, slices by task phase, and uploads nothing. The role carries complete core/CLI source packages and the executable project bundle; no registry-installed Moluoxixi npm package is required.
 
 The default operating scope is local files in the user project:
 
@@ -17,7 +17,7 @@ The default operating scope is local files in the user project:
 - User-owned channel store outside the project tree: `~/.moluoxixi/channels/<project>/<channel>/events.jsonl`.
 - Raw platform conversation logs queryable via `node "<skill-root>/scripts/moluoxixi.mjs" mem`: `~/.claude/projects/`, `~/.codex/sessions/`, and `~/.pi/agent/sessions/` (OpenCode adapter degraded for the v0.6 line).
 
-Do not assume the user has the upstream Moluoxixi repository. The authoritative deployed runtime is `.moluoxixi/runtime`, and its source/provenance comes from the synchronized role's private `packages/core` and `packages/cli`. Do not publish or install those packages globally, and do not modify `node_modules`.
+Do not assume the user has the upstream Moluoxixi repository. The authoritative deployed runtime is `.moluoxixi/runtime`, and its source/provenance comes from the synchronized role's `packages/core` and `packages/cli`. Do not publish or install those packages globally as part of project initialization, and do not modify `node_modules`.
 
 ## How To Use
 
@@ -36,7 +36,7 @@ Do not assume the user has the upstream Moluoxixi repository. The authoritative 
 - `references/local-architecture/workflow.md`: Phases, routing, workflow-state blocks, and reviewed local workflow templates in `.moluoxixi/workflow.md`.
 - `references/local-architecture/task-system.md`: Task directories, active task, JSONL context, parent/child task trees, and task runtime.
 - `references/local-architecture/spec-system.md`: How `.moluoxixi/spec/` is organized, injected, and updated after reviewing external spec sources.
-- `references/local-architecture/workspace-memory.md`: `.moluoxixi/workspace/` journals plus `node "<skill-root>/scripts/moluoxixi.mjs" mem` cross-session recall and the private Moluoxixi core SDK.
+- `references/local-architecture/workspace-memory.md`: `.moluoxixi/workspace/` journals plus `node "<skill-root>/scripts/moluoxixi.mjs" mem` cross-session recall and the Moluoxixi core SDK.
 - `references/local-architecture/context-injection.md`: Hooks, sub-agent preludes, and channel-runtime worker inbox routing.
 - `references/local-architecture/multi-agent-channel.md`: `node "<skill-root>/scripts/moluoxixi.mjs" channel` subcommands, project-scoped event store, forum/thread channels, worker OOM guard, durable idempotency, and bundled `.moluoxixi/agents/` runtime agents.
 - `references/local-architecture/bundled-skills.md`: AIRules role-level skill distribution and how the initializer's `addCoreSkills()` projects project-facing skills to each selected platform root.
@@ -81,6 +81,6 @@ Do not assume the user has the upstream Moluoxixi repository. The authoritative 
 - Do not install or modify a global Moluoxixi package. Customize the generated project files or the Moluoxixi role source, according to the user's scope.
 - Do not overwrite user-modified local files with default templates; check `.moluoxixi/airules-init-manifest.json` first and prefer `.new` sidecar files over destructive overwrites.
 - Do not put team-private project rules into any public bundled skill (`meta`, `spec-bootstrap`, `session-insight`, `channel`); put project rules in `.moluoxixi/spec/`, a project-local skill, the current task, or the workspace journal — `node "<skill-root>/scripts/moluoxixi.mjs" update` will overwrite anything inside a bundled skill directory.
-- Do not hand-edit `~/.moluoxixi/channels/<project>/<channel>/events.jsonl`; sequence numbers are assigned under a file lock and replay-safe writes go through the `node "<skill-root>/scripts/moluoxixi.mjs" channel` CLI or the private Moluoxixi core channel SDK.
+- Do not hand-edit `~/.moluoxixi/channels/<project>/<channel>/events.jsonl`; sequence numbers are assigned under a file lock and replay-safe writes go through the `node "<skill-root>/scripts/moluoxixi.mjs" channel` CLI or the Moluoxixi core channel SDK.
 - Do not edit `.claude/agents/moluoxixi-implement.md` (or any other per-platform sub-agent file) when the goal is to change channel runtime worker behavior — edit `.moluoxixi/agents/<name>.md` instead.
 - Do not describe removed or never-shipped mechanisms as current Moluoxixi behavior; cross-check against the local `.moluoxixi/config.yaml` and the installed CLI's `moluoxixi --help` before claiming a knob exists.

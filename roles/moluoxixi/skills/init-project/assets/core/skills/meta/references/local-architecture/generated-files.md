@@ -31,7 +31,7 @@ This page only describes files that are visible and editable inside the user pro
 | `.moluoxixi/tasks/` | Yes | Task material and research artifacts, maintained by the task workflow. |
 | `.moluoxixi/workspace/` | Yes | Session records, usually written by `add_session.py`. |
 | `.moluoxixi/scripts/` | Carefully | Local runtime. It can be customized, but only after understanding the call chain. |
-| `.moluoxixi/runtime/` | No | AIRules-owned channel, memory, workflow, and updater runtime. Canonical TypeScript source stays in the installed role's private packages. |
+| `.moluoxixi/runtime/` | No | AIRules-owned channel, memory, workflow, and updater runtime. Canonical TypeScript source stays in the installed role's packages. |
 | `.moluoxixi/.runtime/` | No | Runtime state, usually written automatically by hooks/scripts. |
 | `.moluoxixi/.developer` | Carefully | Current developer identity. |
 | `.moluoxixi/.version` | No | Moluoxixi version record used by update/migration logic. |

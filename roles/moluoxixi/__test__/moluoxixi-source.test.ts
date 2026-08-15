@@ -64,9 +64,9 @@ const upstream = {
 }
 
 const selectedIntegrity = {
-  bytes: 1741771,
+  bytes: 1741795,
   files: 300,
-  hash: '5f3ccbc77b9735045312ed6668bb7443563cb419998a51be934067b9160df285',
+  hash: 'f9ef9b1cec9686bb93e95efedb6f4ce09cc2a15c529aaff9906cbeefeae173ff',
 }
 
 const migratedRuntimePaths = [
@@ -76,9 +76,9 @@ const migratedRuntimePaths = [
 ]
 
 const runtimeIntegrity = {
-  bytes: 4792798,
+  bytes: 4798933,
   files: 636,
-  hash: '0916f4b89f917d2aefe36b7230122b7fdfd1cf67871a6fe81d9f185bc69617af',
+  hash: '7a679228a89c988c4d6e3efc34c83919a91f4a0f2e3bbb91db08279b1e92b080',
 }
 
 const projectSkillNames = [
@@ -226,7 +226,7 @@ describe('moluoxixi curated upstream role assets', () => {
     })
   })
 
-  it('keeps the role root limited to distribution metadata, private packages, and the initializer', () => {
+  it('keeps the role root limited to distribution metadata, publishable packages, and the initializer', () => {
     expect(sortPaths(fs.readdirSync(roleRoot))).toEqual(sortPaths([
       '__test__',
       'constants',
@@ -425,7 +425,7 @@ describe('moluoxixi curated upstream role assets', () => {
     expect(fs.statSync(resolveRolePath('skills/init-project/assets/runtime/moluoxixi.mjs')).isFile()).toBe(true)
   })
 
-  it('keeps complete role-local packages private, collision-resistant, and publication-capable', () => {
+  it('keeps complete role-local packages public, collision-resistant, and publication-capable', () => {
     const workspace = JSON.parse(fs.readFileSync(resolveRolePath('package.json'), 'utf8'))
     const core = JSON.parse(fs.readFileSync(resolveRolePath('packages/core/package.json'), 'utf8'))
     const cli = JSON.parse(fs.readFileSync(resolveRolePath('packages/cli/package.json'), 'utf8'))
@@ -438,7 +438,6 @@ describe('moluoxixi curated upstream role assets', () => {
     expect(fs.readFileSync(resolveRolePath('pnpm-workspace.yaml'), 'utf8')).toContain('- \'packages/*\'')
     expect(core).toMatchObject({
       name: '@moluoxixi/airules-moluoxixi-core',
-      private: true,
       version: upstream.version,
       exports: {
         './task': expect.any(Object),
@@ -449,31 +448,49 @@ describe('moluoxixi curated upstream role assets', () => {
         provenance: true,
       },
       scripts: {
-        build: expect.any(String),
-        test: expect.any(String),
-        typecheck: expect.any(String),
+        'build': expect.any(String),
+        'lint:publish': expect.any(String),
+        'test': expect.any(String),
+        'test:publish': expect.any(String),
+        'typecheck': expect.any(String),
+        'prepublishOnly': expect.stringContaining('test:publish'),
       },
     })
+    expect(core).not.toHaveProperty('private')
     expect(cli).toMatchObject({
       name: '@moluoxixi/airules-moluoxixi-cli',
-      private: true,
       version: upstream.version,
       bin: {
-        'trellis': './bin/trellis.js',
-        'tl': './bin/trellis.js',
-        'airules-moluoxixi': './bin/airules-moluoxixi.js',
-        'airules-moluoxixi-init-project': './bin/init-project.js',
+        trellis: './bin/trellis.js',
+        tl: './bin/trellis.js',
       },
       dependencies: {
         '@moluoxixi/airules-moluoxixi-core': 'workspace:*',
       },
       publishConfig: {
         access: 'public',
+        provenance: true,
       },
       scripts: {
-        build: expect.any(String),
-        test: expect.any(String),
-        typecheck: expect.any(String),
+        'build': expect.any(String),
+        'lint:publish': expect.any(String),
+        'test': expect.any(String),
+        'test:publish': expect.any(String),
+        'typecheck': expect.any(String),
+        'prepublishOnly': expect.stringContaining('test:publish'),
+      },
+    })
+    expect(cli).not.toHaveProperty('private')
+    expect(cli.files).toEqual(['dist', 'bin/trellis.js'])
+    expect(workspace).toMatchObject({
+      packageManager: 'pnpm@10.32.1',
+      scripts: {
+        'build': expect.any(String),
+        'publish:dry-run': expect.any(String),
+        'test': expect.any(String),
+        'test:publish': expect.any(String),
+        'typecheck': expect.any(String),
+        'verify:publish': expect.any(String),
       },
     })
     expect(workspace).not.toHaveProperty('publishConfig')
@@ -557,7 +574,7 @@ describe('moluoxixi curated upstream role assets', () => {
 
     const expectedContracts = {
       'review-gated-spec-proposals': ['local-extension', 'preserve-local'],
-      'role-local-private-runtime-packages': ['local-extension', 'preserve-local'],
+      'role-local-publishable-runtime-packages': ['local-extension', 'preserve-local'],
       'simple-task-creation-opt-out': ['upstream-parity', 'preserve-upstream'],
       'task-complexity-triage': ['local-extension', 'preserve-local'],
     }

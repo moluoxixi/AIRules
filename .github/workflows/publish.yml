@@ -5,6 +5,8 @@ on:
   push:
     tags:
       - 'v*.*.*'
+      # Moluoxixi role packages publish from the dedicated workflow below.
+      - '!moluoxixi-v*.*.*'
   workflow_dispatch:
     inputs:
       tag:

@@ -1,7 +1,6 @@
 {
   "name": "@moluoxixi/airules-moluoxixi-core",
   "version": "0.6.15",
-  "private": true,
   "description": "Trellis core SDK — channel and task domain primitives consumed by the Trellis CLI and downstream Node services",
   "type": "module",
   "main": "./dist/index.js",
@@ -47,7 +46,10 @@
     "clean": "node -e \"require('node:fs').rmSync('dist', { recursive: true, force: true })\"",
     "dev": "tsc --watch",
     "test": "vitest run",
+    "test:publish": "pnpm test",
     "test:watch": "vitest",
+    "lint:publish": "publint --strict && attw --pack . --profile esm-only",
+    "prepublishOnly": "pnpm run test:publish && pnpm run build",
     "lint": "eslint src/ test/",
     "lint:fix": "eslint src/ test/ --fix",
     "typecheck": "tsc --noEmit"

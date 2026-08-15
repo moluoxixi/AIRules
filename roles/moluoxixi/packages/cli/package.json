@@ -1,19 +1,17 @@
 {
   "name": "@moluoxixi/airules-moluoxixi-cli",
   "version": "0.6.15",
-  "private": true,
   "description": "AI capabilities grow like ivy — Trellis provides the structure to guide them along a disciplined path",
   "type": "module",
   "main": "./dist/index.js",
   "types": "./dist/index.d.ts",
   "bin": {
     "trellis": "./bin/trellis.js",
-    "tl": "./bin/trellis.js",
-    "airules-moluoxixi": "./bin/airules-moluoxixi.js",
-    "airules-moluoxixi-init-project": "./bin/init-project.js"
+    "tl": "./bin/trellis.js"
   },
   "publishConfig": {
-    "access": "public"
+    "access": "public",
+    "provenance": true
   },
   "scripts": {
     "build": "pnpm run clean && tsc && pnpm run copy-templates",
@@ -22,8 +20,10 @@
     "dev": "tsc --watch",
     "start": "node ./dist/cli/index.js",
     "test": "vitest run",
+    "test:publish": "pnpm --filter @moluoxixi/airules-moluoxixi-core build && vitest run test/commands/channel-codex-adapter.test.ts test/commands/channel-context-trust.test.ts test/commands/channel-guard.test.ts test/commands/channel-name-safety.test.ts test/commands/channel-supervisor-idle.test.ts test/commands/channel-supervisor-path.test.ts test/commands/channel-wait-warning.test.ts test/commands/channel.test.ts test/commands/mem-helpers.test.ts test/commands/mem-integration.test.ts test/commands/upgrade.test.ts",
     "test:watch": "vitest",
     "test:coverage": "vitest run --coverage",
+    "lint:publish": "publint --strict && attw --pack . --profile esm-only",
     "lint": "eslint src/ test/",
     "lint:fix": "eslint src/ test/ --fix",
     "format": "prettier --write src/",
@@ -31,7 +31,7 @@
     "typecheck": "tsc --noEmit",
     "lint:py": "basedpyright",
     "lint:all": "pnpm lint && pnpm lint:py",
-    "prepublishOnly": "pnpm test && pnpm run build && cp ../../README.md ../../LICENSE .",
+    "prepublishOnly": "pnpm run test:publish && pnpm run build",
     "release": "node scripts/release.js patch",
     "release:minor": "node scripts/release.js minor",
     "release:major": "node scripts/release.js major",
@@ -82,9 +82,7 @@
   },
   "files": [
     "dist",
-    "bin",
-    "README.md",
-    "LICENSE"
+    "bin/trellis.js"
   ],
   "repository": {
     "type": "git",

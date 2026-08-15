@@ -6,7 +6,7 @@ Behaviors that future upstream synchronization must preserve are recorded in [sy
 
 | Upstream surface | Moluoxixi surface |
 | --- | --- |
-| `init` and re-init | `init-project` skill resolves the private role-local `@moluoxixi/airules-moluoxixi-cli` package, which executes the bundled initializer without registry access; supports 18 hosts, developer identity, reviewed monorepo package maps, dry-run, conflict preservation, force, and optional Claude statusline |
+| `init` and re-init | `init-project` skill resolves the role-local `@moluoxixi/airules-moluoxixi-cli` package, which executes the bundled initializer without registry access; supports 18 hosts, developer identity, reviewed monorepo package maps, dry-run, conflict preservation, force, and optional Claude statusline |
 | `update` | `.moluoxixi/runtime/moluoxixi.mjs update`; uses the embedded initializer, exact baseline hashes, JSON/block merging, and transactional rollback |
 | `upgrade` | Global `airules sync --role moluoxixi`; SessionStart and text context compare the synchronized role version with the project version and direct stale projects to the current `init-project` skill; project runtime never installs an npm CLI |
 | `uninstall` | `.moluoxixi/runtime/moluoxixi.mjs uninstall`; manifest-owned files only, with dry-run, interactive confirmation or `--yes`, force kept separate, and modified-file conflicts |
@@ -20,7 +20,7 @@ Behaviors that future upstream synchronization must preserve are recorded in [sy
 
 ## Intentional Omissions And Replacements
 
-- AIRules installs the complete upstream core/CLI package trees under the Moluoxixi role with unique package names. They remain `private` today to prevent accidental publication, but retain upstream package build, test, and release surfaces so publication can be enabled deliberately later.
+- AIRules installs the complete upstream core/CLI package trees under the Moluoxixi role with unique package names. Both packages are publishable under the AIRules namespace, while role installation and project initialization continue to run from the complete local role without registry access.
 - Project initialization runs the role-local AIRules entry directly and never installs from a registry. Initialized projects receive only the self-contained runtime bundle and updater assets.
 - Upstream migration manifests remain in the complete CLI package for source parity but are not applied by the AIRules initializer. Moluoxixi starts its own migration line at `0.1.0`.
 - Repository-level CI, demos, docs sites, examples, marketplaces, and root release orchestration remain outside the role. Package-local release helpers are retained. Generated-role omissions still include `contribute`, `create-manifest`, `publish-skill`, the Claude `improve-ut` command, and the Claude `gitnexus` skill.

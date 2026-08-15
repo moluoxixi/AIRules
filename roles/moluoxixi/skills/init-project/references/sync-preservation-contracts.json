@@ -117,23 +117,39 @@
       ]
     },
     {
-      "id": "role-local-private-runtime-packages",
+      "id": "role-local-publishable-runtime-packages",
       "title": "Complete role-local core and CLI packages with guarded publication",
       "origin": "local-extension",
       "syncPolicy": "preserve-local",
-      "reason": "Moluoxixi keeps the complete upstream package trees under collision-resistant names, marks them private today to prevent accidental publication, executes project initialization through the local CLI without registry access, and preserves a deliberate future publication path while shipping initialized projects only the self-contained runtime bundle and updater.",
+      "reason": "Moluoxixi keeps the complete upstream package trees under collision-resistant names, publishes them only when the synchronized role release pipeline is invoked, executes project initialization through the local CLI without registry access, and ships initialized projects only the self-contained runtime bundle and updater.",
       "localEvidence": [
         {
           "path": "roles/moluoxixi/packages/core/package.json",
-          "symbol": "complete private core package manifest with upstream exports and publish metadata"
+          "symbol": "complete publishable core package manifest with upstream exports and publish metadata"
         },
         {
           "path": "roles/moluoxixi/packages/cli/package.json",
-          "symbol": "complete private CLI package with collision-resistant workspace dependency"
+          "symbol": "complete publishable CLI package with collision-resistant workspace dependency"
         },
         {
           "path": "roles/moluoxixi/packages/cli/bin/init-project.js",
           "symbol": "role-local initializer entry"
+        },
+        {
+          "path": "roles/moluoxixi/packages/cli/scripts/release-preflight.js",
+          "symbol": "verify-publish tarball and sandbox gates"
+        },
+        {
+          "path": "roles/moluoxixi/package.json",
+          "symbol": "test:publish, verify:publish, and publish:dry-run role workspace gates"
+        },
+        {
+          "path": ".github/workflows/publish-moluoxixi.yml",
+          "symbol": "tag-gated idempotent core-first package publication"
+        },
+        {
+          "path": "roles/moluoxixi/packages/cli/src/templates/opencode/package.json",
+          "symbol": "published ESM template module boundary"
         },
         {
           "path": "roles/moluoxixi/skills/init-project/scripts/run-role-cli.mjs",
@@ -141,17 +157,17 @@
         },
         {
           "path": "scripts/build-moluoxixi-runtime.mjs",
-          "symbol": "private package source bundling"
+          "symbol": "role-local package source bundling"
         }
       ],
       "verification": [
         {
           "path": "roles/moluoxixi/__test__/moluoxixi-source.test.ts",
-          "symbol": "keeps complete role-local packages private, collision-resistant, and publication-capable"
+          "symbol": "keeps complete role-local packages public, collision-resistant, and publication-capable"
         },
         {
           "path": "roles/moluoxixi/__test__/init-project.test.ts",
-          "symbol": "stages the complete role and initializes through its private local CLI"
+          "symbol": "stages the complete role and initializes through its role-local CLI"
         }
       ]
     }

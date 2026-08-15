@@ -5,7 +5,7 @@ description: Initialize or extend a project with the self-contained Moluoxixi wo
 
 # Initialize Project
 
-Use the private CLI installed with the complete Moluoxixi role. Do not run `moluoxixi init`, `npx moluoxixi`, install an upstream npm CLI, or fetch either role-local package from a registry.
+Use the role-local CLI installed with the complete Moluoxixi role. Do not run `moluoxixi init`, `npx moluoxixi`, install an upstream npm CLI, or fetch either role-local package from a registry during project initialization.
 
 ## Workflow
 
@@ -40,6 +40,6 @@ For future Moluoxixi releases, review the dry-run migration list and pass `--mig
 - Require Python 3.9+ because the migrated project runtime under `.moluoxixi/scripts` is Python.
 - Keep upstream command coverage mapped to AIRules-owned equivalents; read [upstream-capability-map.md](references/upstream-capability-map.md) when auditing parity or changing an initializer surface.
 - Keep source ownership within the boundaries in [asset-layout.md](references/asset-layout.md) when changing initializer assets or host projections.
-- Resolve initialization through the installed role-local CLI package; never install or publish its private core/CLI workspace packages as part of project initialization.
+- Resolve initialization through the installed role-local CLI package; never install or publish its core/CLI workspace packages as part of project initialization.
 
 Use `--platform all` only when the user explicitly wants every supported integration. Use `--python <command>` when the project environment requires a non-default Python executable.

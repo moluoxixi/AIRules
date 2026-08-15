@@ -131,9 +131,9 @@ function migratedAssetStats(): { bytes: number, files: number, hash: string } {
 describe('init-project skill', () => {
   it('pins the migrated Moluoxixi project templates', () => {
     expect(migratedAssetStats()).toEqual({
-      bytes: 1741771,
+      bytes: 1741795,
       files: 300,
-      hash: 'f59a53060e5afb62eac05bce46982d3532f5367912af9a490f2ab72f60afd60f',
+      hash: 'ed5a677650cc4ad0b27d2a3e0fac06eadef2fed22e814c1f59561c4cd1a2fca8',
     })
     expect(fs.existsSync(path.join(assetRoot, 'moluoxixi-v0.6.15'))).toBe(false)
     expect(fs.existsSync(path.join(assetRoot, 'legal', 'LICENSE'))).toBe(false)
@@ -794,7 +794,7 @@ describe('init-project skill', () => {
     expect(finalManifest.entries['.pi/settings.json'].baselineHash).not.toBe(contentHash(fs.readFileSync(settingsPath)))
   })
 
-  it('stages the complete role and initializes through its private local CLI', async () => {
+  it('stages the complete role and initializes through its role-local CLI', async () => {
     const root = temporaryProject('airules-init-project-staging-')
     const homeDir = path.join(root, 'home')
     const repository = path.join(homeDir, 'vendor', 'repos', 'moluoxixi')
