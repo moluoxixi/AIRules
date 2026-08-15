@@ -1,6 +1,6 @@
 {
   "name": "@moluoxixi/airules-moluoxixi-core",
-  "version": "0.6.15",
+  "version": "0.6.16",
   "description": "Trellis core SDK — channel and task domain primitives consumed by the Trellis CLI and downstream Node services",
   "type": "module",
   "main": "./dist/index.js",
@@ -76,6 +76,6 @@
   },
   "repository": {
     "type": "git",
-    "url": "https://github.com/mindfold-ai/trellis.git"
+    "url": "https://github.com/moluoxixi/AIRules"
   }
 }

@@ -7,7 +7,7 @@ on:
   workflow_dispatch:
     inputs:
       tag:
-        description: Existing Moluoxixi release tag, for example moluoxixi-v0.6.15
+        description: Existing Moluoxixi release tag, for example moluoxixi-v0.6.16
         required: true
         type: string
 

@@ -1,6 +1,6 @@
 {
   "name": "@moluoxixi/airules-moluoxixi-cli",
-  "version": "0.6.15",
+  "version": "0.6.16",
   "description": "AI capabilities grow like ivy — Trellis provides the structure to guide them along a disciplined path",
   "type": "module",
   "main": "./dist/index.js",
@@ -86,6 +86,6 @@
   ],
   "repository": {
     "type": "git",
-    "url": "https://github.com/mindfold-ai/trellis.git"
+    "url": "https://github.com/moluoxixi/AIRules"
   }
 }

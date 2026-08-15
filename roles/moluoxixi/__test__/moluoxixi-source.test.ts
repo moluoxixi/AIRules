@@ -64,6 +64,9 @@ const upstream = {
   version: '0.6.15',
 }
 
+const publishedPackageVersion = '0.6.16'
+const publishedRepository = 'https://github.com/moluoxixi/AIRules'
+
 const selectedIntegrity = {
   bytes: 1741795,
   files: 300,
@@ -77,9 +80,9 @@ const migratedRuntimePaths = [
 ]
 
 const runtimeIntegrity = {
-  bytes: 4680397,
+  bytes: 4680385,
   files: 636,
-  hash: '038c8e81d1ccbc9a780f33403af81b33dc0f9dd2e1e32b2b442f64f778cbc362',
+  hash: '6255b1cb6f330a39bee7cad02fe5f71b9f5dc2e45e038b9f4d75f0d3025c1bd1',
 }
 
 const projectSkillNames = [
@@ -459,7 +462,7 @@ describe('moluoxixi curated upstream role assets', () => {
     expect(fs.readFileSync(resolveRolePath('pnpm-workspace.yaml'), 'utf8')).toContain('- \'packages/*\'')
     expect(core).toMatchObject({
       name: '@moluoxixi/airules-moluoxixi-core',
-      version: upstream.version,
+      version: publishedPackageVersion,
       exports: {
         './task': expect.any(Object),
         './testing': expect.any(Object),
@@ -467,6 +470,10 @@ describe('moluoxixi curated upstream role assets', () => {
       publishConfig: {
         access: 'public',
         provenance: true,
+      },
+      repository: {
+        type: 'git',
+        url: publishedRepository,
       },
       scripts: {
         'build': expect.any(String),
@@ -480,7 +487,7 @@ describe('moluoxixi curated upstream role assets', () => {
     expect(core).not.toHaveProperty('private')
     expect(cli).toMatchObject({
       name: '@moluoxixi/airules-moluoxixi-cli',
-      version: upstream.version,
+      version: publishedPackageVersion,
       bin: {
         trellis: './bin/trellis.js',
         tl: './bin/trellis.js',
@@ -491,6 +498,10 @@ describe('moluoxixi curated upstream role assets', () => {
       publishConfig: {
         access: 'public',
         provenance: true,
+      },
+      repository: {
+        type: 'git',
+        url: publishedRepository,
       },
       scripts: {
         'build': expect.any(String),

@@ -121,7 +121,7 @@
       "title": "Complete role-local core and CLI packages with guarded publication",
       "origin": "local-extension",
       "syncPolicy": "preserve-local",
-      "reason": "Moluoxixi keeps the complete upstream package trees under collision-resistant names, publishes them only when the synchronized role release pipeline is invoked, executes project initialization through the local CLI without registry access, and ships initialized projects only the self-contained runtime bundle and updater.",
+      "reason": "Moluoxixi keeps the complete upstream package trees under collision-resistant names, publishes them only when the synchronized role release pipeline is invoked, and advances the paired npm package version independently when local publication metadata or adaptations change. Published manifests identify the AIRules repository so npm provenance matches the workflow source. Project initialization executes through the local CLI without registry access, and initialized projects receive only the self-contained runtime bundle and updater.",
       "localEvidence": [
         {
           "path": "roles/moluoxixi/packages/core/package.json",
