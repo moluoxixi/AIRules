@@ -7,10 +7,9 @@ import {
   ensureInstallRoot,
   getDefaultInstallPaths,
   projectHostById,
-  rebuildVendorSkillLinks,
   runSkillSetupCommands,
 } from './install.js'
-import { DEFAULT_ROLE, resolveRoleManifestPath } from './roles.js'
+import { resolveRoleManifestPath } from './roles.js'
 import { rebuildVendorAssets } from './vendor-staging.js'
 import { ensureVendorRepo, verifyVendorRepoRevision } from './vendor-sync.js'
 import { loadVendorManifest } from './vendors.js'
@@ -29,7 +28,7 @@ export interface SyncOptions {
   home: string
   userHome?: string
   host: string
-  role?: string
+  role: string
   skipVendors: boolean
   verify: boolean
 }
@@ -45,7 +44,7 @@ export interface VerifyOptions {
   userHome?: string
   host: string
   repoRoot: string
-  role?: string
+  role: string
 }
 
 export function getDefaultMoluoHome(): string {
@@ -57,18 +56,18 @@ function isRunningFromDist(): boolean {
   return currentFile.split(path.sep).includes('dist')
 }
 
-function resolveManifestPath(repoRoot: string, role = DEFAULT_ROLE): string {
+function resolveManifestPath(repoRoot: string, role: string): string {
   return resolveRoleManifestPath(repoRoot, role, { preferDist: isRunningFromDist() })
 }
 
-export function resolveToolPaths(repoRoot: string, home: string, userHome = os.homedir(), role = DEFAULT_ROLE): ToolPaths {
+export function resolveToolPaths(repoRoot: string, home: string, userHome: string | undefined, role: string): ToolPaths {
   const moluoHome = path.resolve(home)
   const resolvedRepoRoot = path.resolve(repoRoot)
 
   return {
     repoRoot: resolvedRepoRoot,
     moluoHome,
-    userHome: path.resolve(userHome),
+    userHome: path.resolve(userHome ?? os.homedir()),
     role,
     manifestPath: resolveManifestPath(resolvedRepoRoot, role),
   }
@@ -89,9 +88,7 @@ export function resolveHostTargets(host: string, supportedHosts?: string[]): str
   return [canonicalHost]
 }
 
-function roleSupportedHosts(paths: ToolPaths, manifest: Awaited<ReturnType<typeof loadVendorManifest>>): string[] | undefined {
-  if (!paths.role)
-    return undefined
+function roleSupportedHosts(paths: ToolPaths, manifest: Awaited<ReturnType<typeof loadVendorManifest>>): string[] {
   if (manifest.hosts === undefined)
     throw new Error(`AIRules role "${paths.role}" must export a "hosts" allowlist`)
   return manifest.hosts
@@ -125,19 +122,11 @@ async function syncVendorStaging(paths: ToolPaths, skipVendors: boolean, manifes
   }
   ensureInstallRoot(installPaths)
   await syncVendorsIfNeeded(paths, skipVendors, manifest)
-  if (paths.role) {
-    await rebuildVendorAssets({
-      homeDir: paths.moluoHome,
-      role: paths.role,
-      manifestPath: paths.manifestPath,
-    })
-  }
-  else {
-    await rebuildVendorSkillLinks({
-      homeDir: paths.moluoHome,
-      manifestPath: paths.manifestPath,
-    })
-  }
+  await rebuildVendorAssets({
+    homeDir: paths.moluoHome,
+    role: paths.role,
+    manifestPath: paths.manifestPath,
+  })
   ensureGlobalSkillLink(installPaths)
 }
 

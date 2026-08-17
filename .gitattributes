@@ -13,6 +13,7 @@ roles/moluoxixi/skills/init-project/assets/runtime/moluoxixi.mjs text eol=lf
 roles/moluoxixi/skills/init-project/assets/runtime/source/** -text whitespace=-trailing-space
 roles/moluoxixi/skills/init-project/assets/runtime/vendor/** -text whitespace=-trailing-space
 roles/moluoxixi/packages/** text eol=lf
+roles/moluoxixi/overlays/** text eol=lf
 roles/moluoxixi/__test__/** text eol=lf
 roles/moluoxixi/constants/** text eol=lf
 roles/moluoxixi/role.yaml text eol=lf

@@ -7,6 +7,7 @@ export default defineConfig({
       '**/dist/**',
       'roles/*/packages/**',
       '.skill-references/**',
+      '.sync/*/work/**',
       'vendor/**',
       '.cache-git/**',
     ],

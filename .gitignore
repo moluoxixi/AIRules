@@ -33,6 +33,10 @@ coverage
 cypress
 stats.html
 
+# AI upstream maintenance workspace
+.sync/*/work/
+.sync/*/reports/
+
 # 日志
 logs
 *.log

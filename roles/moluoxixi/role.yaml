@@ -17,19 +17,6 @@ entrypoints:
   initialize_project_script: packages/cli/bin/init-project.js
   moluoxixi_runtime: skills/init-project/assets/runtime/moluoxixi.mjs
 third_party:
-  upstream:
-    name: Trellis
-    paths:
-      - skills/init-project/assets/hosts
-      - skills/init-project/assets/project
-      - packages/core
-      - packages/cli
-      - skills/init-project/assets/runtime/vendor/channel-mem.mjs
-      - skills/init-project/assets/core
-    source: https://github.com/mindfold-ai/Trellis.git
-    version: 0.6.15
-    revision: d8fff53ce4964ed1a3e52fea6b418b27eba093e4
-    reconciliation: skills/init-project/references/upstream-reconciliation-v0.6.15.json
   productivity_skills:
     name: Matt Pocock Skills
     source: https://github.com/mattpocock/skills.git

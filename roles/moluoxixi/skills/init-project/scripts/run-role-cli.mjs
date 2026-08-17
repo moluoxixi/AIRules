@@ -17,7 +17,7 @@ const candidates = [
 const entry = candidates.find(candidate => fs.statSync(candidate, { throwIfNoEntry: false })?.isFile())
 
 if (!entry)
-  throw new Error('The installed Moluoxixi role-local CLI is missing; run `airules sync --role moluoxixi` first')
+  throw new Error('The installed Moluoxixi role-local CLI is missing; run `airules install moluoxixi` first')
 
 const result = spawnSync(process.execPath, [entry, ...process.argv.slice(2)], {
   cwd: process.cwd(),

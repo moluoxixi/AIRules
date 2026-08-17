@@ -33,14 +33,6 @@ interface RoleManifest {
       revision: string
       source: string
     }
-    upstream: {
-      name: string
-      paths: string[]
-      reconciliation: string
-      revision: string
-      source: string
-      version: string
-    }
   }
 }
 
@@ -52,25 +44,16 @@ const mattSkillsSource = 'https://github.com/mattpocock/skills.git'
 const mattSkillsRevision = '8b78b531ab965735c5dc74f6f7a219e1e37326df'
 
 const selectedPaths = [
-  'skills/init-project/assets/hosts',
-  'skills/init-project/assets/project',
-  'skills/init-project/assets/core',
+  'overlays',
 ]
-
-const upstream = {
-  name: ['Tre', 'llis'].join(''),
-  revision: 'd8fff53ce4964ed1a3e52fea6b418b27eba093e4',
-  source: 'https://github.com/mindfold-ai/Trellis.git',
-  version: '0.6.15',
-}
 
 const publishedPackageVersion = '0.6.16'
 const publishedRepository = 'https://github.com/moluoxixi/AIRules'
 
 const selectedIntegrity = {
-  bytes: 1741795,
-  files: 300,
-  hash: 'f9ef9b1cec9686bb93e95efedb6f4ce09cc2a15c529aaff9906cbeefeae173ff',
+  bytes: 403243,
+  files: 36,
+  hash: 'cdde00447f780298d0feb278b2b00d2ace2bce8bdaa603c7d5a2af06e543c7e5',
 }
 
 const migratedRuntimePaths = [
@@ -80,66 +63,10 @@ const migratedRuntimePaths = [
 ]
 
 const runtimeIntegrity = {
-  bytes: 4680385,
-  files: 636,
-  hash: '6255b1cb6f330a39bee7cad02fe5f71b9f5dc2e45e038b9f4d75f0d3025c1bd1',
+  bytes: 4711215,
+  files: 637,
+  hash: '2c5efb8fd5c8155841e3a8c5e0d658328f98c1a878de6f80dbeb75d852fbe89f',
 }
-
-const projectSkillNames = [
-  'before-dev',
-  'brainstorm',
-  'break-loop',
-  'channel',
-  'check',
-  'continue',
-  'finish-work',
-  'first-principles-thinking',
-  'meta',
-  'python-design',
-  'session-insight',
-  'spec-bootstrap',
-  'spec-review',
-  'start',
-  'ts-sdk-author',
-  'update-spec',
-]
-
-const nativeCapabilityCounts = [
-  ['skills/init-project/assets/hosts/claude', 10],
-  ['skills/init-project/assets/hosts/codebuddy', 9],
-  ['skills/init-project/assets/hosts/codex', 11],
-  ['skills/init-project/assets/hosts/copilot', 11],
-  ['skills/init-project/assets/hosts/cursor', 9],
-  ['skills/init-project/assets/hosts/droid', 9],
-  ['skills/init-project/assets/hosts/gemini', 9],
-  ['skills/init-project/assets/hosts/kiro', 10],
-  ['skills/init-project/assets/hosts/omp', 9],
-  ['skills/init-project/assets/hosts/opencode', 15],
-  ['skills/init-project/assets/hosts/pi', 10],
-  ['skills/init-project/assets/hosts/qoder', 9],
-  ['skills/init-project/assets/hosts/reasonix', 8],
-  ['skills/init-project/assets/hosts/trae', 9],
-  ['skills/init-project/assets/hosts/zcode', 9],
-] as const
-
-const nativeCapabilityEntrypoints = [
-  'skills/init-project/assets/hosts/claude/agents/moluoxixi-check.md',
-  'skills/init-project/assets/hosts/claude/settings.json',
-  'skills/init-project/assets/hosts/codex/agents/moluoxixi-check.toml',
-  'skills/init-project/assets/hosts/codex/config.toml',
-  'skills/init-project/assets/hosts/codex/hooks.json',
-  'skills/init-project/assets/hosts/copilot/agents/moluoxixi-check.md',
-  'skills/init-project/assets/hosts/cursor/agents/moluoxixi-check.md',
-  'skills/init-project/assets/hosts/cursor/hooks.json',
-  'skills/init-project/assets/hosts/omp/agents/moluoxixi-check.md',
-  'skills/init-project/assets/hosts/omp/extensions/moluoxixi/index.ts.txt',
-  'skills/init-project/assets/hosts/opencode/agents/moluoxixi-check.md',
-  'skills/init-project/assets/hosts/opencode/plugins/inject-workflow-state.js',
-  'skills/init-project/assets/hosts/pi/agents/moluoxixi-check.md',
-  'skills/init-project/assets/hosts/pi/extensions/moluoxixi/index.ts.txt',
-  'skills/init-project/assets/core/commands/continue.md',
-  'skills/init-project/assets/core/hooks/inject-workflow-state.py',
-]
 
 function sortPaths(paths: string[]): string[] {
   return paths.sort((left, right) => left < right ? -1 : left > right ? 1 : 0)
@@ -253,6 +180,7 @@ describe('moluoxixi curated upstream role assets', () => {
       '__test__',
       'constants',
       'mcp',
+      'overlays',
       'package.json',
       'packages',
       'pnpm-workspace.yaml',
@@ -267,24 +195,12 @@ describe('moluoxixi curated upstream role assets', () => {
       'skills/init-project/SKILL.md',
     ])
 
-    const projectSkills = fs.readdirSync(resolveRolePath('skills/init-project/assets/core/skills'), { withFileTypes: true })
-    expect(projectSkills.every(entry => entry.isDirectory())).toBe(true)
-    expect(sortPaths(projectSkills.map(entry => entry.name))).toEqual(sortPaths([...projectSkillNames]))
-    for (const skillName of projectSkillNames) {
-      expect(fs.readFileSync(resolveRolePath(`skills/init-project/assets/core/skills/${skillName}/SKILL.md.txt`), 'utf8')).toMatch(new RegExp(`^name: ${skillName}$`, 'mu'))
-    }
-
-    for (const [nativeRoot, expectedFiles] of nativeCapabilityCounts) {
-      expect(collectFiles(nativeRoot)).toHaveLength(expectedFiles)
-    }
-    for (const entrypoint of nativeCapabilityEntrypoints) {
-      expect(fs.statSync(resolveRolePath(entrypoint)).isFile()).toBe(true)
-    }
+    expect(fs.statSync(resolveRolePath('overlays/manifest.json')).isFile()).toBe(true)
     expect(selectedFiles().filter(file => file.endsWith('.backup'))).toEqual([])
   })
 
   it('keeps Reasonix in the project sub-agent context platform set', () => {
-    const taskStore = fs.readFileSync(resolveRolePath('skills/init-project/assets/project/scripts/common/task_store.py'), 'utf8')
+    const taskStore = fs.readFileSync(resolveRolePath('overlays/packages/cli/src/templates/overrides/trellis/scripts/common/task_store.py'), 'utf8')
     expect(taskStore).toContain('".reasonix"')
   })
 
@@ -297,20 +213,23 @@ describe('moluoxixi curated upstream role assets', () => {
     const allFiles = collectFiles('.')
     expect(allFiles.filter(relativePath =>
       relativePath.toLowerCase().includes(legacyBrand)
-      && !relativePath.startsWith('packages/'),
+      && !relativePath.startsWith('packages/')
+      && !relativePath.startsWith('overlays/'),
     )).toEqual([])
 
     const provenanceFiles = new Set([
+      '__test__/init-project.test.ts',
       '__test__/moluoxixi-source.test.ts',
+      '__test__/professional-agents.test.mjs',
+      '__test__/project-script-parity.test.ts',
       '__test__/runtime-upstream.test.ts',
-      '__test__/upstream-script-sync.test.ts',
-      'role.yaml',
-      'skills/init-project/references/sync-preservation-contracts.json',
-      'skills/init-project/references/upstream-capability-map.md',
-      'skills/init-project/references/upstream-reconciliation-v0.6.15.json',
+      '__test__/upstream-diff-scan.test.mjs',
+      'skills/init-project/scripts/init-project.mjs',
+      'skills/init-project/scripts/plan.mjs',
+      'skills/init-project/scripts/workflow-project.mjs',
     ])
     for (const relativePath of allFiles) {
-      if (relativePath.startsWith('packages/'))
+      if (relativePath.startsWith('packages/') || relativePath.startsWith('overlays/'))
         continue
       const content = fs.readFileSync(resolveRolePath(relativePath), 'utf8')
       if (!content.toLowerCase().includes(legacyBrand))
@@ -370,26 +289,13 @@ describe('moluoxixi curated upstream role assets', () => {
       role_id: 'moluoxixi',
       role_version: '0.3.0',
     })
-    expect(manifest.third_party.upstream).toEqual({
-      name: upstream.name,
-      paths: [
-        'skills/init-project/assets/hosts',
-        'skills/init-project/assets/project',
-        'packages/core',
-        'packages/cli',
-        'skills/init-project/assets/runtime/vendor/channel-mem.mjs',
-        'skills/init-project/assets/core',
-      ],
-      reconciliation: 'skills/init-project/references/upstream-reconciliation-v0.6.15.json',
-      revision: upstream.revision,
-      source: upstream.source,
-      version: upstream.version,
-    })
-    expect(manifest.third_party.productivity_skills).toEqual({
-      name: 'Matt Pocock Skills',
-      source: mattSkillsSource,
-      revision: mattSkillsRevision,
-      category: 'skills/productivity',
+    expect(manifest.third_party).toEqual({
+      productivity_skills: {
+        name: 'Matt Pocock Skills',
+        source: mattSkillsSource,
+        revision: mattSkillsRevision,
+        category: 'skills/productivity',
+      },
     })
     expect(fs.statSync(resolveRolePath(manifest.assets.skills)).isDirectory()).toBe(true)
     expect(fs.statSync(resolveRolePath(manifest.assets.mcp)).isDirectory()).toBe(true)
@@ -527,7 +433,7 @@ describe('moluoxixi curated upstream role assets', () => {
     })
     expect(workspace).not.toHaveProperty('publishConfig')
     expect(collectFiles('packages/core')).toHaveLength(78)
-    expect(collectFiles('packages/cli')).toHaveLength(557)
+    expect(collectFiles('packages/cli')).toHaveLength(558)
     expect(fs.existsSync(resolveRolePath('skills/init-project/assets/runtime/source'))).toBe(false)
   })
 
@@ -543,102 +449,6 @@ describe('moluoxixi curated upstream role assets', () => {
       const content = fs.readFileSync(resolveRolePath(relativePath), 'utf8')
       expect(content).toContain('.moluoxixi')
       expect(content).not.toContain(legacyProjectRoot)
-    }
-  })
-
-  it('reconciles every official non-merge commit in the v0.6.7 to v0.6.15 range', () => {
-    const ledger = JSON.parse(fs.readFileSync(
-      resolveRolePath('skills/init-project/references/upstream-reconciliation-v0.6.15.json'),
-      'utf8',
-    ))
-    expect(ledger.upstream).toEqual({
-      name: upstream.name,
-      source: upstream.source,
-      from: { tag: 'v0.6.7', revision: 'e7c5ead4d0dfd717d11a40b6bc0c80d8af94c49a' },
-      to: { tag: 'v0.6.15', revision: upstream.revision },
-      history: { order: 'reverse', excludeMerges: true, commitCount: 122 },
-    })
-    expect(ledger.entries).toHaveLength(122)
-    expect(new Set(ledger.entries.map((entry: { hash: string }) => entry.hash)).size).toBe(122)
-    expect(ledger.entries[0]?.hash).toBe('200365b45a2afa68ff55c66a93d004303332f616')
-    expect(ledger.entries.at(-1)?.hash).toBe(upstream.revision)
-    expect(createHash('sha256').update(
-      ledger.entries.map((entry: { hash: string, subject: string }) => `${entry.hash}\0${entry.subject}\n`).join(''),
-    ).digest('hex')).toBe('7242f63c61794aaede0ab1b94799b2e62730e8910a8ed94b5ef1f9689f781eca')
-
-    const allowedStatuses = new Set(['adapted', 'retained-local', 'reviewed-no-change', 'not-applicable'])
-    const counts: Record<string, number> = {}
-    for (const entry of ledger.entries) {
-      expect(entry.hash).toMatch(/^[a-f0-9]{40}$/u)
-      expect(entry.subject).toEqual(expect.any(String))
-      expect(allowedStatuses.has(entry.status)).toBe(true)
-      counts[entry.status] = (counts[entry.status] ?? 0) + 1
-      if (entry.status === 'adapted' || entry.status === 'retained-local') {
-        expect(entry.localEvidence.length).toBeGreaterThan(0)
-        for (const evidence of entry.localEvidence) {
-          expect(evidence.symbol).toEqual(expect.any(String))
-          expect(fs.statSync(path.resolve(roleRoot, '..', '..', ...evidence.path.split('/'))).isFile()).toBe(true)
-        }
-      }
-    }
-    expect(counts).toEqual({
-      'adapted': 53,
-      'not-applicable': 64,
-      'retained-local': 2,
-      'reviewed-no-change': 3,
-    })
-  })
-
-  it('records synchronization-preservation contracts for intentional behavior', () => {
-    const ledger = JSON.parse(fs.readFileSync(
-      resolveRolePath('skills/init-project/references/sync-preservation-contracts.json'),
-      'utf8',
-    ))
-    expect(ledger).toMatchObject({
-      schemaVersion: 1,
-      baseline: {
-        name: upstream.name,
-        source: upstream.source,
-        version: upstream.version,
-        revision: upstream.revision,
-      },
-    })
-
-    const expectedContracts = {
-      'review-gated-spec-proposals': ['local-extension', 'preserve-local'],
-      'role-local-publishable-runtime-packages': ['local-extension', 'preserve-local'],
-      'simple-task-creation-opt-out': ['upstream-parity', 'preserve-upstream'],
-      'task-complexity-triage': ['local-extension', 'preserve-local'],
-    }
-    const contracts = ledger.contracts as Array<{
-      id: string
-      title: string
-      origin: string
-      syncPolicy: string
-      reason: string
-      localEvidence: Array<{ path: string, symbol: string }>
-      verification: Array<{ path: string, symbol: string }>
-    }>
-    expect(sortPaths(contracts.map(contract => contract.id))).toEqual(Object.keys(expectedContracts))
-    expect(new Set(contracts.map(contract => contract.id)).size).toBe(contracts.length)
-
-    for (const contract of contracts) {
-      expect([contract.origin, contract.syncPolicy]).toEqual(expectedContracts[contract.id as keyof typeof expectedContracts])
-      expect(contract.title.trim()).not.toBe('')
-      expect(contract.reason.trim()).not.toBe('')
-      expect(contract.localEvidence.length).toBeGreaterThan(0)
-      expect(contract.verification.length).toBeGreaterThan(0)
-      for (const evidence of [...contract.localEvidence, ...contract.verification]) {
-        expect(evidence.path).not.toContain('\\')
-        expect(evidence.path).not.toContain('\0')
-        expect(path.posix.isAbsolute(evidence.path)).toBe(false)
-        expect(path.posix.normalize(evidence.path)).toBe(evidence.path)
-        expect(evidence.path.split('/')).not.toContain('..')
-        expect(evidence.symbol.trim()).not.toBe('')
-        const evidenceStats = fs.lstatSync(path.resolve(roleRoot, '..', '..', ...evidence.path.split('/')))
-        expect(evidenceStats.isSymbolicLink()).toBe(false)
-        expect(evidenceStats.isFile()).toBe(true)
-      }
     }
   })
 })

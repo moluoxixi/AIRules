@@ -26,6 +26,27 @@ For an explicitly requested workflow or spec template, preserve the upstream com
 
 For future Moluoxixi releases, review the dry-run migration list and pass `--migrate` for versioned renames/deletes. Modified migration sources receive an inline `.backup` by default; `--skip-all` preserves them and explicit `--force` migrates without the inline copy. Moluoxixi 0.1.0 is the initial baseline and contains no inherited upstream migration history. Use `--allow-downgrade` only when intentionally applying an older Moluoxixi template revision. Do not invoke an upstream CLI.
 
+## Temporary Legacy Hook Cleanup
+
+This is a one-release compatibility bridge. Remove this section in the next Moluoxixi version.
+
+Before the project dry run, inspect only these active user-level files; treat the directory containing each file as `<host-home>` and skip absent files. Do not traverse backups, history snapshots, or project-local configuration.
+
+| Configuration | Event array | Entry shape |
+| --- | --- | --- |
+| `.claude/settings.json` | `hooks.Stop` | grouped: each outer entry contains `hooks[]` command objects |
+| `.qoder/settings.json` | `hooks.Stop` | grouped |
+| `.trae/hooks.json` | `hooks.Stop` | grouped |
+| `.trae-cn/hooks.json` | `hooks.Stop` | grouped |
+| `.cursor/hooks.json` | `hooks.stop` | flat: each array entry is a command object |
+| `.codex/config.toml` | `[[hooks.Stop]]` | each group contains `[[hooks.Stop.hooks]]` command tables |
+
+Match only a string `command` with no shell operators whose tokens are `node`, the absolute `<host-home>/hooks/session-log.mjs` path, and optionally the sole trailing token `--airules-managed-hook`. Normalize quoting and path separators for comparison, and use case-insensitive path comparison only on Windows. In grouped JSON or Codex TOML, remove only the matching child and prune its parent only when empty; in flat JSON, remove only the matching array entry. Parse JSON structurally and preserve every unrelated hook and setting.
+
+For Codex, remove the exact marker lines `# >>> AIRULES HOOK session-log.mjs >>>`, `# <<< AIRULES HOOK session-log.mjs <<<`, or their `AIRULES HOOK Stop session-log.mjs` variants individually; preserve every other AIRULES marker. A closing marker may have drifted below unrelated user configuration, so never delete the marker-delimited span as a blind range. Preserve all `hooks.state` entries because they are inert without the hook command.
+
+Preserve any `session-log.mjs` script file as an unreferenced legacy artifact. Report every modified active configuration and every preserved artifact.
+
 ## Guarantees
 
 - Keep every output inside the canonical project root and reject symlinked path segments.
@@ -38,7 +59,7 @@ For future Moluoxixi releases, review the dry-run migration list and pass `--mig
 - Keep uninstall confirmation (`-y` / `--yes`) separate from conflict replacement (`--force`).
 - Roll back writes when any transactional write fails.
 - Require Python 3.9+ because the migrated project runtime under `.moluoxixi/scripts` is Python.
-- Keep upstream command coverage mapped to AIRules-owned equivalents; read [upstream-capability-map.md](references/upstream-capability-map.md) when auditing parity or changing an initializer surface.
+- Keep project command coverage mapped to AIRules-owned equivalents when changing an initializer surface.
 - Keep source ownership within the boundaries in [asset-layout.md](references/asset-layout.md) when changing initializer assets or host projections.
 - Resolve initialization through the installed role-local CLI package; never install or publish its core/CLI workspace packages as part of project initialization.
 

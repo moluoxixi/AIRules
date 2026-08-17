@@ -7,6 +7,7 @@ import path from 'node:path'
 import { fileURLToPath, pathToFileURL } from 'node:url'
 import { afterEach, describe, expect, it } from 'vitest'
 import { rebuildVendorAssets } from '../../../scripts/lib/vendor-staging.js'
+import { listTemplateFiles, readTemplateFile, readTemplateOrAddition } from '../skills/init-project/scripts/templates.mjs'
 
 interface InitSummary {
   conflicts: string[]
@@ -27,6 +28,8 @@ const roleRoot = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..'
 const skillRoot = path.join(roleRoot, 'skills', 'init-project')
 const initializer = path.join(skillRoot, 'scripts', 'run-role-cli.mjs')
 const assetRoot = path.join(skillRoot, 'assets')
+const packageTemplateRoot = path.join(roleRoot, 'packages', 'cli', 'src', 'templates')
+const overlayRoot = path.join(roleRoot, 'overlays')
 const roleRuntime = path.join(skillRoot, 'assets', 'runtime', 'moluoxixi.mjs')
 const legacyBrand = ['tre', 'llis'].join('')
 const legacyProjectRoot = `.${legacyBrand}`
@@ -38,14 +41,11 @@ const projectSkillNames = [
   'check',
   'continue',
   'finish-work',
-  'first-principles-thinking',
   'meta',
-  'python-design',
   'session-insight',
   'spec-bootstrap',
   'spec-review',
   'start',
-  'ts-sdk-author',
   'update-spec',
 ]
 const pythonCommand = process.platform === 'win32' ? 'python' : 'python3'
@@ -111,40 +111,44 @@ function contentHash(content: Buffer | string): string {
   return createHash('sha256').update(content).digest('hex')
 }
 
-function migratedAssetStats(): { bytes: number, files: number, hash: string } {
-  const selectedRoots = ['core', 'hosts', 'project']
-  const relativeFiles = selectedRoots.flatMap((selectedRoot) => {
-    const root = path.join(assetRoot, selectedRoot)
-    return walkFiles(root).map(file => path.relative(assetRoot, file).split(path.sep).join('/'))
-  }).sort((left, right) => left < right ? -1 : left > right ? 1 : 0)
-  const hash = createHash('sha256')
-  let bytes = 0
-  for (const relativeFile of relativeFiles) {
-    const content = fs.readFileSync(path.join(assetRoot, ...relativeFile.split('/')))
-    bytes += content.byteLength
-    hash.update(`${relativeFile}\0${content.byteLength}\0`)
-    hash.update(content)
-  }
-  return { bytes, files: relativeFiles.length, hash: hash.digest('hex') }
-}
-
 describe('init-project skill', () => {
-  it('pins the migrated Moluoxixi project templates', () => {
-    expect(migratedAssetStats()).toEqual({
-      bytes: 1741795,
-      files: 300,
-      hash: 'ed5a677650cc4ad0b27d2a3e0fac06eadef2fed22e814c1f59561c4cd1a2fca8',
-    })
-    expect(fs.existsSync(path.join(assetRoot, 'moluoxixi-v0.6.15'))).toBe(false)
-    expect(fs.existsSync(path.join(assetRoot, 'legal', 'LICENSE'))).toBe(false)
-    expect(fs.existsSync(path.join(assetRoot, 'legal', 'COPYRIGHT'))).toBe(false)
+  it('keeps upstream templates outside the discoverable init-project skill and pins every overlay', () => {
+    const nestedSkills = walkFiles(skillRoot)
+      .filter(file => path.basename(file) === 'SKILL.md')
+      .map(file => path.relative(skillRoot, file).split(path.sep).join('/'))
+    expect(nestedSkills).toEqual(['SKILL.md'])
+    for (const legacyRoot of ['core', 'hosts', 'project']) {
+      const root = path.join(assetRoot, legacyRoot)
+      expect(fs.existsSync(root) ? walkFiles(root) : []).toEqual([])
+    }
+
+    const manifest = JSON.parse(fs.readFileSync(path.join(overlayRoot, 'manifest.json'), 'utf8')) as {
+      additions: Array<{ path: string, overlay: string, overlaySha256: string }>
+      overrides: Array<{ overlay: string, overlaySha256: string, source: string, sourceSha256: string }>
+      schemaVersion: number
+    }
+    expect(manifest).toMatchObject({ schemaVersion: 1 })
+    expect(manifest.overrides).toHaveLength(27)
+    expect(manifest.additions).toHaveLength(7)
+    for (const entry of manifest.overrides) {
+      expect(contentHash(fs.readFileSync(path.join(packageTemplateRoot, ...entry.source.split('/'))))).toBe(entry.sourceSha256)
+      expect(contentHash(fs.readFileSync(path.join(overlayRoot, ...entry.overlay.split('/'))))).toBe(entry.overlaySha256)
+      expect(readTemplateFile(entry.source)).toBe(fs.readFileSync(path.join(overlayRoot, ...entry.overlay.split('/')), 'utf8'))
+    }
+    for (const entry of manifest.additions) {
+      expect(contentHash(fs.readFileSync(path.join(overlayRoot, ...entry.overlay.split('/'))))).toBe(entry.overlaySha256)
+      expect(readTemplateOrAddition(entry.path)).toBe(fs.readFileSync(path.join(overlayRoot, ...entry.overlay.split('/')), 'utf8'))
+      const parent = path.posix.dirname(entry.path)
+      expect(listTemplateFiles(parent)).not.toContain(entry.path)
+      expect(listTemplateFiles(parent, { additions: true })).toContain(entry.path)
+    }
   })
 
   it('plans every supported platform without invoking or writing anything', () => {
     const projectRoot = temporaryProject()
     const result = runInitializer(projectRoot, ['--platform', 'all', '--dry-run'])
     expect(result).toMatchObject({ status: 0, stderr: '' })
-    expect(result.summary?.platforms).toHaveLength(18)
+    expect(result.summary?.platforms).toHaveLength(22)
     expect(result.summary?.conflicts).toEqual([])
     expect(result.summary?.manifest).toBe('.moluoxixi/airules-init-manifest.json')
     expect(result.summary?.warnings).toContain('Codex hooks require [features].hooks = true and one-time /hooks approval in the project.')
@@ -153,13 +157,16 @@ describe('init-project skill', () => {
       '.moluoxixi/runtime/moluoxixi.mjs',
       '.moluoxixi/runtime/update/init-project/scripts/init-project.mjs',
       '.claude/settings.json',
-      '.claude/skills/channel/scripts/moluoxixi.mjs',
       '.codex/config.toml',
       '.gemini/commands/moluoxixi/continue.toml',
       '.gemini/commands/moluoxixi/finish-work.toml',
       '.github/copilot/hooks.json',
+      '.dsh/DSH.md',
+      '.grok/commands/moluoxixi-start.md',
+      '.kimi-code/skills/start/SKILL.md',
       '.omp/extensions/moluoxixi/index.ts',
       '.pi/extensions/moluoxixi/index.ts',
+      '.snow/hooks/onSessionStart.json',
       'README.md',
     ]))
     const plannedSkillNames = result.summary?.created
@@ -170,12 +177,11 @@ describe('init-project skill', () => {
     expect([...new Set(plannedSkillNames)]).toEqual(expect.arrayContaining(projectSkillNames))
     expect(plannedSkillNames.every(name => !name.startsWith('moluoxixi-'))).toBe(true)
     expect(result.summary?.created).not.toContain('.claude/hooks/statusline.py')
-    const updaterBundledSkillPrefix = '.moluoxixi/runtime/update/init-project/assets/core/skills/'
-    const updaterBundledSkillNames = result.summary?.created
-      .filter(relativePath => relativePath.startsWith(updaterBundledSkillPrefix) && relativePath.endsWith('/SKILL.md.txt'))
-      .map(relativePath => relativePath.slice(updaterBundledSkillPrefix.length).split('/')[0])
-      .sort() ?? []
-    expect(updaterBundledSkillNames).toEqual(projectSkillNames)
+    expect(result.summary?.created).toContain('.moluoxixi/runtime/update/packages/cli/src/templates/trellis/workflow.md')
+    expect(result.summary?.created).toContain('.moluoxixi/runtime/update/overlays/manifest.json')
+    expect(result.summary?.created?.filter(relativePath => relativePath.startsWith('.moluoxixi/runtime/update/init-project/') && relativePath.endsWith('/SKILL.md'))).toEqual([
+      '.moluoxixi/runtime/update/init-project/SKILL.md',
+    ])
     expect(fs.readdirSync(projectRoot)).toEqual([])
 
     const statusline = runInitializer(projectRoot, ['--platform', 'claude', '--with-statusline'])
@@ -203,7 +209,8 @@ describe('init-project skill', () => {
     expect(fs.existsSync(path.join(projectRoot, '.moluoxixi', 'scripts', 'task.py'))).toBe(true)
     expect(fs.existsSync(path.join(projectRoot, '.moluoxixi', 'scripts', 'spec-proposals.mjs'))).toBe(true)
     expect(fs.existsSync(path.join(projectRoot, '.moluoxixi', 'runtime', 'source'))).toBe(false)
-    expect(fs.existsSync(path.join(projectRoot, '.moluoxixi', 'runtime', 'update', 'init-project', 'assets', 'project', 'workflow.md'))).toBe(true)
+    expect(fs.existsSync(path.join(projectRoot, '.moluoxixi', 'runtime', 'update', 'packages', 'cli', 'src', 'templates', 'trellis', 'workflow.md'))).toBe(true)
+    expect(fs.existsSync(path.join(projectRoot, '.moluoxixi', 'runtime', 'update', 'overlays', 'manifest.json'))).toBe(true)
     expect(fs.existsSync(path.join(projectRoot, '.moluoxixi', 'runtime', 'update', 'init-project', 'scripts', 'migrations', 'manifests'))).toBe(false)
     expect(fs.existsSync(path.join(projectRoot, '.moluoxixi', 'airules-init-manifest.json'))).toBe(true)
     const initialManifest = JSON.parse(fs.readFileSync(path.join(projectRoot, '.moluoxixi', 'airules-init-manifest.json'), 'utf8'))
@@ -231,13 +238,10 @@ describe('init-project skill', () => {
     expect(fs.existsSync(path.join(projectRoot, '.moluoxixi', 'COPYRIGHT'))).toBe(false)
     expect(fs.existsSync(path.join(projectRoot, '.moluoxixi', 'THIRD_PARTY_NOTICES.md'))).toBe(false)
     expect(fs.readFileSync(path.join(projectRoot, '.moluoxixi', 'scripts', 'common', 'session_context.py'), 'utf8')).not.toContain('["moluoxixi", "--version"]')
-    const updaterBundledSkillsRoot = path.join(projectRoot, '.moluoxixi', 'runtime', 'update', 'init-project', 'assets', 'core', 'skills')
-    const updaterBundledSkillNames = fs.readdirSync(updaterBundledSkillsRoot).sort()
-    expect(updaterBundledSkillNames).toEqual(projectSkillNames)
-    for (const skillName of updaterBundledSkillNames) {
-      const content = fs.readFileSync(path.join(updaterBundledSkillsRoot, skillName, 'SKILL.md.txt'), 'utf8')
-      expect(content).toMatch(new RegExp(`^name: ${skillName}$`, 'mu'))
-    }
+    const updaterSkillFiles = walkFiles(path.join(projectRoot, '.moluoxixi', 'runtime', 'update', 'init-project'))
+      .filter(file => path.basename(file) === 'SKILL.md')
+      .map(file => path.relative(path.join(projectRoot, '.moluoxixi', 'runtime', 'update', 'init-project'), file).split(path.sep).join('/'))
+    expect(updaterSkillFiles).toEqual(['SKILL.md'])
     const projectedRoots = [
       path.join(projectRoot, '.moluoxixi', 'scripts'),
       path.join(projectRoot, '.moluoxixi', 'agents'),
@@ -265,7 +269,7 @@ describe('init-project skill', () => {
       expect(fs.readFileSync(file, 'utf8')).toMatch(new RegExp(`^name: ${name}$`, 'mu'))
     }
     expect([...new Set(projectedSkillFiles.map(file => path.basename(path.dirname(file))))]).toEqual(expect.arrayContaining(projectSkillNames))
-    const launcher = path.join(projectRoot, '.agents', 'skills', 'channel', 'scripts', 'moluoxixi.mjs')
+    const launcher = path.join(projectRoot, '.moluoxixi', 'runtime', 'moluoxixi.mjs')
     expect(runRuntime(launcher, ['--version'], projectRoot)).toMatchObject({ status: 0, stderr: '', stdout: '0.2.0\n' })
     const initialSnapshot = snapshot(projectRoot)
 
@@ -639,9 +643,11 @@ describe('init-project skill', () => {
     expect(runRuntime(roleRuntime, ['workflow', '--help'], roleRoot)).toMatchObject({ status: 0, stderr: '' })
     expect(runRuntime(roleRuntime, ['mem', 'help'], roleRoot)).toMatchObject({ status: 0, stderr: '' })
     expect(runRuntime(roleRuntime, ['channel', '--help'], roleRoot)).toMatchObject({ status: 0, stderr: '' })
-    const localSkillFiles = ['channel', 'meta', 'session-insight']
-      .flatMap(skill => walkFiles(path.join(skillRoot, 'assets', 'core', 'skills', skill)))
-      .filter(file => /\.md(?:\.txt)?$/u.test(file))
+    const localSkillFiles = [
+      'common/bundled-skills/trellis-channel/SKILL.md',
+      'common/bundled-skills/trellis-meta/SKILL.md',
+      'common/bundled-skills/trellis-session-insight/SKILL.md',
+    ].map(relativePath => path.join(packageTemplateRoot, ...relativePath.split('/')))
     for (const file of localSkillFiles) {
       const content = fs.readFileSync(file, 'utf8')
       expect(content).not.toContain(`npm install -g @mindfoldhq/${legacyBrand}`)
@@ -821,10 +827,9 @@ describe('init-project skill', () => {
     expect(fs.existsSync(path.join(staged, 'scripts', 'init-project.mjs'))).toBe(true)
     expect(fs.existsSync(path.join(staged, 'references', 'platforms.md'))).toBe(true)
     expect(fs.existsSync(path.join(staged, 'references', 'asset-layout.md'))).toBe(true)
-    expect(fs.existsSync(path.join(staged, 'assets', 'project', 'workflow.md'))).toBe(true)
-    expect(fs.existsSync(path.join(staged, 'assets', 'project', 'readme-usage.md'))).toBe(true)
+    expect(fs.existsSync(path.join(installedRole, 'packages', 'cli', 'src', 'templates', 'trellis', 'workflow.md'))).toBe(true)
+    expect(fs.existsSync(path.join(installedRole, 'overlays', 'manifest.json'))).toBe(true)
     expect(fs.existsSync(path.join(staged, 'assets', 'runtime', 'moluoxixi.mjs'))).toBe(true)
-    expect(fs.existsSync(path.join(staged, 'assets', 'core', 'skills', 'channel', 'scripts', 'moluoxixi.mjs'))).toBe(true)
     expect(fs.existsSync(path.join(installedRole, 'packages', 'core', 'package.json'))).toBe(true)
     expect(fs.existsSync(path.join(installedRole, 'packages', 'cli', 'bin', 'init-project.js'))).toBe(true)
     expect(fs.existsSync(path.join(homeDir, 'vendor', 'agents'))).toBe(false)
@@ -847,7 +852,7 @@ describe('init-project skill', () => {
     expect(installed).toMatchObject({ status: 0, stderr: '' })
     expect(fs.readFileSync(path.join(projectRoot, 'README.md'), 'utf8')).toContain('请使用 Moluoxixi 开始处理这个需求：<描述需求>')
     expect(fs.existsSync(path.join(projectRoot, '.agents', 'skills', 'start', 'SKILL.md'))).toBe(true)
-    const channelLauncher = path.join(projectRoot, '.agents', 'skills', 'channel', 'scripts', 'moluoxixi.mjs')
+    const channelLauncher = path.join(projectRoot, '.moluoxixi', 'runtime', 'moluoxixi.mjs')
     expect(runRuntime(channelLauncher, ['--version'], projectRoot)).toMatchObject({ status: 0, stderr: '', stdout: '0.2.0\n' })
     fs.rmSync(path.join(homeDir, 'roles'), { recursive: true, force: true })
     fs.rmSync(repository, { recursive: true, force: true })

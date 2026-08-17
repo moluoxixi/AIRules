@@ -5,6 +5,7 @@ import os from 'node:os'
 import path from 'node:path'
 import { fileURLToPath } from 'node:url'
 import { afterEach, describe, expect, it } from 'vitest'
+import { buildPlan } from '../skills/init-project/scripts/plan.mjs'
 
 const roleRoot = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..')
 const initializer = path.join(roleRoot, 'skills', 'init-project', 'scripts', 'init-project.mjs')
@@ -147,7 +148,7 @@ describe('task review governance', () => {
     expect(task(root, ['add-subtask', outside, local])).toMatchObject({ status: 1 })
     expect(task(root, ['remove-subtask', outside, local])).toMatchObject({ status: 1 })
     expect(fs.readFileSync(path.join(outside, 'task.json'), 'utf8')).toBe(outsideBefore)
-  })
+  }, 15_000)
 
   it('validates archived task research through its contained archive copy', () => {
     const root = project('kilo')
@@ -264,13 +265,12 @@ describe('task review governance', () => {
       '[Moluoxixi: total context limit reached;',
     )
 
-    const piExtension = fs.readFileSync(
-      path.join(roleRoot, 'skills', 'init-project', 'assets', 'hosts', 'pi', 'extensions', 'moluoxixi', 'index.ts.txt'),
-      'utf8',
-    )
+    const piEntry = buildPlan(['pi'], pythonCommand).get('.pi/extensions/moluoxixi/index.ts')
+    expect(piEntry).toBeDefined()
+    const piExtension = String(piEntry?.content)
     expect(piExtension).toContain('function readContextInjectionLimits')
     expect(piExtension).toContain('function truncateUtf8')
-    expect(piExtension).toContain('[Moluoxixi: binary file not inlined;')
+    expect(piExtension).toContain('[Moluoxixi: not inlined (binary file)')
   }, 15_000)
 
   it('ignores invented host session variables and injects native Codex child context', () => {
