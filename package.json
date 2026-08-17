@@ -1,7 +1,7 @@
 {
   "name": "moluoxixi-ai-rules",
   "type": "module",
-  "version": "0.2.0",
+  "version": "0.2.1",
   "description": "Remote AI role asset distribution for supported hosts.",
   "license": "MIT",
   "repository": "https://github.com/moluoxixi/AIRules",

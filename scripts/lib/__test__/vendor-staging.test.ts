@@ -388,6 +388,71 @@ describe('rebuildVendorAssets', () => {
     expect(fs.readFileSync(repoPath(homeDir, 'broken', '.git', 'keep'), 'utf8')).toBe('repository marker\n')
   })
 
+  it('mirrors managed skills without replacing the watched skills root', async () => {
+    const { root, homeDir } = createFixture()
+    const skillsRoot = path.join(homeDir, 'vendor', 'skills')
+    writeFile(path.join(skillsRoot, 'alpha', 'SKILL.md'), '# old alpha\n')
+    writeFile(path.join(skillsRoot, 'stale', 'SKILL.md'), '# stale\n')
+    writeFile(repoPath(homeDir, 'remote', 'skills', 'alpha', 'SKILL.md'), '# new alpha\n')
+    writeFile(repoPath(homeDir, 'remote', 'skills', 'fresh', 'SKILL.md'), '# fresh\n')
+    const manifestPath = writeManifest(root, 'in-place-skills', [
+      vendorDefinition('remote', [{ kind: 'skills', sourceBaseDir: 'skills', skills: ['alpha', 'fresh'] }]),
+    ])
+    const rootInode = fs.statSync(skillsRoot).ino
+    const renameSync = fs.renameSync.bind(fs)
+    const renamedPaths: string[] = []
+    const renameSpy = vi.spyOn(fs, 'renameSync').mockImplementation((source, destination) => {
+      renamedPaths.push(path.resolve(String(source)), path.resolve(String(destination)))
+      renameSync(source, destination)
+    })
+
+    try {
+      await rebuildVendorAssets({ homeDir, role: 'alpha', manifestPath })
+    }
+    finally {
+      renameSpy.mockRestore()
+    }
+
+    expect(fs.statSync(skillsRoot).ino).toBe(rootInode)
+    expect(renamedPaths).not.toContain(path.resolve(skillsRoot))
+    expect(fs.readFileSync(path.join(skillsRoot, 'alpha', 'SKILL.md'), 'utf8')).toBe('# new alpha\n')
+    expect(fs.readFileSync(path.join(skillsRoot, 'fresh', 'SKILL.md'), 'utf8')).toBe('# fresh\n')
+    expect(fs.existsSync(path.join(skillsRoot, 'stale'))).toBe(false)
+  })
+
+  it('restores every managed skill when an in-place mirror fails partway through', async () => {
+    const { root, homeDir } = createFixture()
+    const skillsRoot = path.join(homeDir, 'vendor', 'skills')
+    writeFile(path.join(skillsRoot, 'alpha', 'SKILL.md'), '# old alpha\n')
+    writeFile(path.join(skillsRoot, 'stale', 'SKILL.md'), '# stale\n')
+    writeFile(repoPath(homeDir, 'remote', 'skills', 'alpha', 'SKILL.md'), '# new alpha\n')
+    writeFile(repoPath(homeDir, 'remote', 'skills', 'z-fresh', 'SKILL.md'), '# fresh\n')
+    const manifestPath = writeManifest(root, 'in-place-skills-rollback', [
+      vendorDefinition('remote', [{ kind: 'skills', sourceBaseDir: 'skills', skills: ['alpha', 'z-fresh'] }]),
+    ])
+    const rootInode = fs.statSync(skillsRoot).ino
+    const renameSync = fs.renameSync.bind(fs)
+    const renameSpy = vi.spyOn(fs, 'renameSync').mockImplementation((source, destination) => {
+      if (String(source).includes(`${path.sep}.airules-vendor-next-`)
+        && String(source).endsWith(path.join('vendor', 'skills', 'z-fresh'))) {
+        throw new Error('simulated skills install failure')
+      }
+      renameSync(source, destination)
+    })
+
+    try {
+      await expect(rebuildVendorAssets({ homeDir, role: 'alpha', manifestPath })).rejects.toThrow(/simulated skills install failure/i)
+    }
+    finally {
+      renameSpy.mockRestore()
+    }
+
+    expect(fs.statSync(skillsRoot).ino).toBe(rootInode)
+    expect(fs.readFileSync(path.join(skillsRoot, 'alpha', 'SKILL.md'), 'utf8')).toBe('# old alpha\n')
+    expect(fs.readFileSync(path.join(skillsRoot, 'stale', 'SKILL.md'), 'utf8')).toBe('# stale\n')
+    expect(fs.existsSync(path.join(skillsRoot, 'z-fresh'))).toBe(false)
+  })
+
   it('rejects a linked roles root without writing through it', async () => {
     const { root, homeDir } = createFixture()
     const outside = path.join(root, 'outside-roles')

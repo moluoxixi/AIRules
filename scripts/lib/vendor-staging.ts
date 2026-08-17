@@ -519,6 +519,7 @@ interface ManagedEntrySpec {
   current: string
   next: string
   backup: string
+  preserveRoot?: boolean
 }
 
 function requirePlainDirectoryOrMissing(target: string, label: string): void {
@@ -557,6 +558,62 @@ function rollbackManagedEntries(entries: ManagedEntryCommit[]): Error[] {
   return rollbackErrors
 }
 
+function managedChildNames(currentRoot: string, nextRoot: string): string[] {
+  const names = new Map<string, string>()
+  for (const root of [currentRoot, nextRoot]) {
+    if (!fs.existsSync(root))
+      continue
+    requirePlainDirectoryOrMissing(root, 'Managed vendor skills root')
+    for (const entry of fs.readdirSync(root, { withFileTypes: true })) {
+      if (!entry.isDirectory() && !entry.isFile())
+        throw new Error(`Managed vendor skill has unsupported filesystem type: ${path.join(root, entry.name)}`)
+      const key = entry.name.toLowerCase()
+      const previous = names.get(key)
+      if (previous !== undefined && previous !== entry.name)
+        throw new Error(`Managed vendor skill names differ only by case: ${previous}, ${entry.name}`)
+      names.set(key, entry.name)
+    }
+  }
+  return [...names.values()].sort(compareStable)
+}
+
+function commitManagedChildren(
+  spec: ManagedEntrySpec,
+  committedEntries: ManagedEntryCommit[],
+  createdRoots: string[],
+): void {
+  requirePlainDirectoryOrMissing(spec.current, 'Managed vendor skills root')
+  requirePlainDirectoryOrMissing(spec.next, 'Staged vendor skills root')
+  const childNames = managedChildNames(spec.current, spec.next)
+  if (!fs.existsSync(spec.current)) {
+    if (!fs.existsSync(spec.next))
+      return
+    fs.mkdirSync(spec.current, { recursive: true })
+    createdRoots.push(spec.current)
+  }
+
+  for (const name of childNames) {
+    const entry: ManagedEntryCommit = {
+      current: path.join(spec.current, name),
+      backup: path.join(spec.backup, name),
+      movedCurrent: false,
+      installedNext: false,
+    }
+    committedEntries.push(entry)
+
+    if (fs.existsSync(entry.current)) {
+      fs.mkdirSync(path.dirname(entry.backup), { recursive: true })
+      fs.renameSync(entry.current, entry.backup)
+      entry.movedCurrent = true
+    }
+    const nextChild = path.join(spec.next, name)
+    if (fs.existsSync(nextChild)) {
+      fs.renameSync(nextChild, entry.current)
+      entry.installedNext = true
+    }
+  }
+}
+
 async function commitManagedEntries(
   stagingRoot: string,
   roleStagingRoot: string | undefined,
@@ -580,6 +637,7 @@ async function commitManagedEntries(
   const nextRoot = path.join(nextWorkspace, 'vendor')
   const backupRoot = fs.mkdtempSync(path.join(resolvedHome, '.airules-vendor-backup-'))
   const committedEntries: ManagedEntryCommit[] = []
+  const createdRoots: string[] = []
 
   try {
     fs.mkdirSync(nextRoot)
@@ -588,6 +646,7 @@ async function commitManagedEntries(
       current: path.join(vendorRoot, name),
       next: path.join(nextRoot, name),
       backup: path.join(backupRoot, 'vendor', name),
+      preserveRoot: name === 'skills',
     }))
     if (roleStagingRoot !== undefined) {
       const nextRole = path.join(nextWorkspace, 'roles', role)
@@ -601,6 +660,10 @@ async function commitManagedEntries(
     }
 
     for (const spec of specs) {
+      if (spec.preserveRoot) {
+        commitManagedChildren(spec, committedEntries, createdRoots)
+        continue
+      }
       const entry: ManagedEntryCommit = {
         current: spec.current,
         backup: spec.backup,
@@ -623,6 +686,14 @@ async function commitManagedEntries(
   }
   catch (error) {
     const rollbackErrors = rollbackManagedEntries(committedEntries)
+    for (const root of [...createdRoots].reverse()) {
+      try {
+        fs.rmdirSync(root)
+      }
+      catch (rollbackError) {
+        rollbackErrors.push(rollbackError instanceof Error ? rollbackError : new Error(String(rollbackError)))
+      }
+    }
     removeBestEffort(nextWorkspace)
     if (rollbackErrors.length > 0) {
       throw new AggregateError(
