@@ -2,7 +2,7 @@ import fs from 'node:fs'
 import os from 'node:os'
 import path from 'node:path'
 import { afterEach, describe, expect, it, vi } from 'vitest'
-import { rebuildVendorAssets } from '../vendor-staging.js'
+import { cleanupEmptyVendorSkillDirectories, rebuildVendorAssets } from '../vendor-staging.js'
 
 const temporaryRoots: string[] = []
 
@@ -392,17 +392,29 @@ describe('rebuildVendorAssets', () => {
     const { root, homeDir } = createFixture()
     const skillsRoot = path.join(homeDir, 'vendor', 'skills')
     writeFile(path.join(skillsRoot, 'alpha', 'SKILL.md'), '# old alpha\n')
+    writeFile(path.join(skillsRoot, 'alpha', 'assets', 'old.txt'), 'old asset\n')
     writeFile(path.join(skillsRoot, 'stale', 'SKILL.md'), '# stale\n')
     writeFile(repoPath(homeDir, 'remote', 'skills', 'alpha', 'SKILL.md'), '# new alpha\n')
+    writeFile(repoPath(homeDir, 'remote', 'skills', 'alpha', 'assets', 'new.txt'), 'new asset\n')
     writeFile(repoPath(homeDir, 'remote', 'skills', 'fresh', 'SKILL.md'), '# fresh\n')
     const manifestPath = writeManifest(root, 'in-place-skills', [
       vendorDefinition('remote', [{ kind: 'skills', sourceBaseDir: 'skills', skills: ['alpha', 'fresh'] }]),
     ])
     const rootInode = fs.statSync(skillsRoot).ino
+    const alphaRoot = path.join(skillsRoot, 'alpha')
+    const assetsRoot = path.join(alphaRoot, 'assets')
+    const alphaInode = fs.statSync(alphaRoot).ino
+    const assetsInode = fs.statSync(assetsRoot).ino
+    const watchedRoots = new Set([skillsRoot, alphaRoot, assetsRoot].map(root => path.resolve(root)))
     const renameSync = fs.renameSync.bind(fs)
     const renamedPaths: string[] = []
     const renameSpy = vi.spyOn(fs, 'renameSync').mockImplementation((source, destination) => {
-      renamedPaths.push(path.resolve(String(source)), path.resolve(String(destination)))
+      const resolvedSource = path.resolve(String(source))
+      const resolvedDestination = path.resolve(String(destination))
+      renamedPaths.push(resolvedSource, resolvedDestination)
+      if (watchedRoots.has(resolvedSource) || watchedRoots.has(resolvedDestination)) {
+        throw Object.assign(new Error('simulated watched directory lock'), { code: 'EPERM' })
+      }
       renameSync(source, destination)
     })
 
@@ -414,8 +426,14 @@ describe('rebuildVendorAssets', () => {
     }
 
     expect(fs.statSync(skillsRoot).ino).toBe(rootInode)
+    expect(fs.statSync(alphaRoot).ino).toBe(alphaInode)
+    expect(fs.statSync(assetsRoot).ino).toBe(assetsInode)
     expect(renamedPaths).not.toContain(path.resolve(skillsRoot))
+    expect(renamedPaths).not.toContain(path.resolve(alphaRoot))
+    expect(renamedPaths).not.toContain(path.resolve(assetsRoot))
     expect(fs.readFileSync(path.join(skillsRoot, 'alpha', 'SKILL.md'), 'utf8')).toBe('# new alpha\n')
+    expect(fs.existsSync(path.join(assetsRoot, 'old.txt'))).toBe(false)
+    expect(fs.readFileSync(path.join(assetsRoot, 'new.txt'), 'utf8')).toBe('new asset\n')
     expect(fs.readFileSync(path.join(skillsRoot, 'fresh', 'SKILL.md'), 'utf8')).toBe('# fresh\n')
     expect(fs.existsSync(path.join(skillsRoot, 'stale'))).toBe(false)
   })
@@ -451,6 +469,18 @@ describe('rebuildVendorAssets', () => {
     expect(fs.readFileSync(path.join(skillsRoot, 'alpha', 'SKILL.md'), 'utf8')).toBe('# old alpha\n')
     expect(fs.readFileSync(path.join(skillsRoot, 'stale', 'SKILL.md'), 'utf8')).toBe('# stale\n')
     expect(fs.existsSync(path.join(skillsRoot, 'z-fresh'))).toBe(false)
+  })
+
+  it('removes empty vendor skill directories after stale host links are projected away', () => {
+    const { homeDir } = createFixture()
+    const skillsRoot = path.join(homeDir, 'vendor', 'skills')
+    fs.mkdirSync(path.join(skillsRoot, 'stale'), { recursive: true })
+    writeFile(path.join(skillsRoot, 'active', 'SKILL.md'), '# active\n')
+
+    cleanupEmptyVendorSkillDirectories(homeDir)
+
+    expect(fs.existsSync(path.join(skillsRoot, 'stale'))).toBe(false)
+    expect(fs.readFileSync(path.join(skillsRoot, 'active', 'SKILL.md'), 'utf8')).toBe('# active\n')
   })
 
   it('rejects a linked roles root without writing through it', async () => {

@@ -208,7 +208,7 @@ describe('contract-diff CLI', () => {
     expect(versionResult.status).toBe(0)
     expect(versionResult.stderr).toBe('')
     expect(versionResult.stdout.trim()).toBe(packageVersion)
-    expect(packageVersion).toBe('0.2.1')
+    expect(packageVersion).toBe('0.2.2')
   })
 
   it('documents the command without requiring contract paths', () => {

@@ -10,7 +10,7 @@ import {
   runSkillSetupCommands,
 } from './install.js'
 import { resolveRoleManifestPath } from './roles.js'
-import { rebuildVendorAssets } from './vendor-staging.js'
+import { cleanupEmptyVendorSkillDirectories, rebuildVendorAssets } from './vendor-staging.js'
 import { ensureVendorRepo, verifyVendorRepoRevision } from './vendor-sync.js'
 import { loadVendorManifest } from './vendors.js'
 import { verifyGlobalAgentSkills, verifyHost } from './verify.js'
@@ -168,6 +168,8 @@ export async function syncToHosts(options: SyncOptions): Promise<SyncResult> {
       }
     }
   }
+
+  cleanupEmptyVendorSkillDirectories(paths.moluoHome)
 
   if (failedHosts.length > 0) {
     throw new Error(`Host verification failed: ${failedHosts.join(', ')}`)
