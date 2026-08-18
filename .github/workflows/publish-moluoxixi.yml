@@ -46,7 +46,7 @@ jobs:
 
       - name: Install AIRules repository dependencies
         working-directory: .
-        run: npm ci
+        run: npm install
 
       - name: Verify the committed project runtime bundle
         working-directory: .
