@@ -60,8 +60,7 @@ jobs:
       - name: Verify tag and package versions
         env:
           RELEASE_TAG: ${{ github.event_name == 'workflow_dispatch' && inputs.tag || github.ref_name }}
-          GITHUB_REF_NAME: ${{ github.event_name == 'workflow_dispatch' && inputs.tag || github.ref_name }}
-        run: pnpm exec node packages/cli/scripts/release-preflight.js check-versions --require-tag
+        run: GITHUB_REF_NAME="$RELEASE_TAG" pnpm exec node packages/cli/scripts/release-preflight.js check-versions --require-tag
 
       - name: Run publish gates and tarball sandbox smoke
         run: pnpm run verify:publish && pnpm run typecheck
