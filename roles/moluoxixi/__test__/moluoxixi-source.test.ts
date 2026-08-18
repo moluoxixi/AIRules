@@ -43,18 +43,8 @@ const workspaceFolderPlaceholder = '$' + '{workspaceFolder}'
 const mattSkillsSource = 'https://github.com/mattpocock/skills.git'
 const mattSkillsRevision = '8b78b531ab965735c5dc74f6f7a219e1e37326df'
 
-const selectedPaths = [
-  'overlays',
-]
-
-const publishedPackageVersion = '0.6.17'
+const publishedPackageVersion = '0.6.18'
 const publishedRepository = 'https://github.com/moluoxixi/AIRules'
-
-const selectedIntegrity = {
-  bytes: 403243,
-  files: 36,
-  hash: 'cdde00447f780298d0feb278b2b00d2ace2bce8bdaa603c7d5a2af06e543c7e5',
-}
 
 const migratedRuntimePaths = [
   'packages/core',
@@ -63,9 +53,9 @@ const migratedRuntimePaths = [
 ]
 
 const runtimeIntegrity = {
-  bytes: 4711198,
-  files: 637,
-  hash: '85c68080826aa455dd83c069bdfaa671864b85bc500df3a8c41f4e0ca64e5c69',
+  bytes: 4749513,
+  files: 644,
+  hash: 'd20ffa1e6430ca6355f2a04320396e1b845bb6d71e97d5ebb5a845d09f05519d',
 }
 
 function sortPaths(paths: string[]): string[] {
@@ -80,6 +70,8 @@ function collectFiles(relativeRoot: string): string[] {
   const files: string[] = []
 
   function visit(relativePath: string): void {
+    if (relativePath === '.sync' || relativePath.startsWith('.sync/'))
+      return
     const absolutePath = resolveRolePath(relativePath)
     const stats = fs.lstatSync(absolutePath)
 
@@ -101,14 +93,6 @@ function collectFiles(relativeRoot: string): string[] {
 
   visit(relativeRoot)
   return files
-}
-
-function selectedFiles(): string[] {
-  const files = selectedPaths.flatMap(collectFiles)
-  if (new Set(files).size !== files.length) {
-    throw new Error('Selected Moluoxixi paths must not overlap')
-  }
-  return sortPaths(files)
 }
 
 function normalizeCrLf(content: Buffer): Buffer {
@@ -155,32 +139,13 @@ function readRoleManifest(): RoleManifest {
 }
 
 describe('moluoxixi curated upstream role assets', () => {
-  it('pins the selected upstream paths and curated content', () => {
-    expect(new Set(selectedPaths).size).toBe(selectedPaths.length)
-    for (const selectedPath of selectedPaths) {
-      expect(selectedPath).not.toContain('\\')
-      expect(selectedPath).not.toContain('\0')
-      expect(path.isAbsolute(selectedPath)).toBe(false)
-      expect(path.posix.isAbsolute(selectedPath)).toBe(false)
-      expect(path.posix.normalize(selectedPath)).toBe(selectedPath)
-      expect(selectedPath.split('/')).not.toContain('..')
-    }
-
-    const files = selectedFiles()
-    const stats = selectedStats(files)
-    expect(files).toHaveLength(selectedIntegrity.files)
-    expect(stats).toEqual({
-      bytes: selectedIntegrity.bytes,
-      hash: selectedIntegrity.hash,
-    })
-  })
-
-  it('keeps the role root limited to distribution metadata, publishable packages, and the initializer', () => {
-    expect(sortPaths(fs.readdirSync(roleRoot))).toEqual(sortPaths([
+  it('keeps the role root limited to finalized distribution assets', () => {
+    const distributedEntries = fs.readdirSync(roleRoot).filter(name => name !== '.sync')
+    expect(sortPaths(distributedEntries)).toEqual(sortPaths([
+      '.gitignore',
       '__test__',
       'constants',
       'mcp',
-      'overlays',
       'package.json',
       'packages',
       'pnpm-workspace.yaml',
@@ -195,12 +160,12 @@ describe('moluoxixi curated upstream role assets', () => {
       'skills/init-project/SKILL.md',
     ])
 
-    expect(fs.statSync(resolveRolePath('overlays/manifest.json')).isFile()).toBe(true)
-    expect(selectedFiles().filter(file => file.endsWith('.backup'))).toEqual([])
+    expect(fs.readFileSync(resolveRolePath('.gitignore'), 'utf8')).toContain('.sync/')
+    expect(fs.existsSync(resolveRolePath('overlays'))).toBe(false)
   })
 
   it('keeps Reasonix in the project sub-agent context platform set', () => {
-    const taskStore = fs.readFileSync(resolveRolePath('overlays/packages/cli/src/templates/overrides/trellis/scripts/common/task_store.py'), 'utf8')
+    const taskStore = fs.readFileSync(resolveRolePath('packages/cli/src/templates/trellis/scripts/common/task_store.py'), 'utf8')
     expect(taskStore).toContain('".reasonix"')
   })
 
@@ -213,8 +178,7 @@ describe('moluoxixi curated upstream role assets', () => {
     const allFiles = collectFiles('.')
     expect(allFiles.filter(relativePath =>
       relativePath.toLowerCase().includes(legacyBrand)
-      && !relativePath.startsWith('packages/')
-      && !relativePath.startsWith('overlays/'),
+      && !relativePath.startsWith('packages/'),
     )).toEqual([])
 
     const provenanceFiles = new Set([
@@ -223,13 +187,14 @@ describe('moluoxixi curated upstream role assets', () => {
       '__test__/professional-agents.test.mjs',
       '__test__/project-script-parity.test.ts',
       '__test__/runtime-upstream.test.ts',
-      '__test__/upstream-diff-scan.test.mjs',
       'skills/init-project/scripts/init-project.mjs',
       'skills/init-project/scripts/plan.mjs',
       'skills/init-project/scripts/workflow-project.mjs',
+      'skills/init-project/SKILL.md',
+      'skills/init-project/references/upstream-maintenance.md',
     ])
     for (const relativePath of allFiles) {
-      if (relativePath.startsWith('packages/') || relativePath.startsWith('overlays/'))
+      if (relativePath.startsWith('packages/'))
         continue
       const content = fs.readFileSync(resolveRolePath(relativePath), 'utf8')
       if (!content.toLowerCase().includes(legacyBrand))
@@ -287,7 +252,7 @@ describe('moluoxixi curated upstream role assets', () => {
         moluoxixi_runtime: 'skills/init-project/assets/runtime/moluoxixi.mjs',
       },
       role_id: 'moluoxixi',
-      role_version: '0.3.0',
+      role_version: '0.3.1',
     })
     expect(manifest.third_party).toEqual({
       productivity_skills: {
@@ -343,7 +308,6 @@ describe('moluoxixi curated upstream role assets', () => {
         },
       },
     })
-    expect(selectedFiles()).toHaveLength(selectedIntegrity.files)
     const runtimeFiles = migratedRuntimePaths.flatMap(collectFiles)
     expect(runtimeFiles).toHaveLength(runtimeIntegrity.files)
     // Git may materialize auto-detected text as CRLF on an existing Windows
@@ -433,7 +397,7 @@ describe('moluoxixi curated upstream role assets', () => {
     })
     expect(workspace).not.toHaveProperty('publishConfig')
     expect(collectFiles('packages/core')).toHaveLength(78)
-    expect(collectFiles('packages/cli')).toHaveLength(558)
+    expect(collectFiles('packages/cli')).toHaveLength(565)
     expect(fs.existsSync(resolveRolePath('skills/init-project/assets/runtime/source'))).toBe(false)
   })
 

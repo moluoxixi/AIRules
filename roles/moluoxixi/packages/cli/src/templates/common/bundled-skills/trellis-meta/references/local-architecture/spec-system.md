@@ -1,13 +1,15 @@
 # Local Spec System
 
-`.trellis/spec/` is the user's project-specific engineering spec library. Trellis is not about making AI memorize conventions; it injects relevant specs or requires the AI to read them at the right time.
+`.moluoxixi/spec/` is the user's project-specific engineering spec library. Moluoxixi is not about making AI memorize conventions; it injects relevant specs or requires the AI to read them at the right time.
+
+Only reviewed knowledge belongs in this library. AI-discovered conventions first enter `.moluoxixi/spec-proposals/`; proposal files are not injected as active guidance.
 
 ## Directory Model
 
 A common single-repository structure:
 
 ```text
-.trellis/spec/
+.moluoxixi/spec/
 ├── backend/
 │   ├── index.md
 │   └── ...
@@ -22,7 +24,7 @@ A common single-repository structure:
 A common monorepo structure:
 
 ```text
-.trellis/spec/
+.moluoxixi/spec/
 ├── cli/
 │   ├── backend/
 │   │   ├── index.md
@@ -43,7 +45,7 @@ A common monorepo structure:
 
 ## Package Configuration
 
-`.trellis/config.yaml` can declare packages:
+`.moluoxixi/config.yaml` can declare packages:
 
 ```yaml
 packages:
@@ -58,7 +60,7 @@ default_package: cli
 The AI can run:
 
 ```bash
-python3 ./.trellis/scripts/get_context.py --mode packages
+python3 ./.moluoxixi/scripts/get_context.py --mode packages
 ```
 
 This command lists packages and spec layers for the current project. Use this output as the reference when configuring context JSONL.
@@ -68,8 +70,8 @@ This command lists packages and spec layers for the current project. Use this ou
 Before a task enters implementation, planning may write relevant specs into `implement.jsonl` / `check.jsonl` when the task needs spec or research context beyond the task artifacts:
 
 ```jsonl
-{"file": ".trellis/spec/cli/backend/index.md", "reason": "CLI backend conventions"}
-{"file": ".trellis/spec/cli/unit-test/conventions.md", "reason": "Test expectations"}
+{"file": ".moluoxixi/spec/cli/backend/index.md", "reason": "CLI backend conventions"}
+{"file": ".moluoxixi/spec/cli/unit-test/conventions.md", "reason": "Test expectations"}
 ```
 
 Sub-agents or platform preludes read these JSONL files and load the referenced specs. On platforms without sub-agent support, the AI should read the relevant specs directly according to the workflow.
@@ -85,18 +87,20 @@ Specs should contain executable engineering conventions for the project, not gen
 - Cases that require tests.
 - Project-specific pitfalls and how to avoid them.
 
-When the AI learns a new rule during implementation or debugging, it should update `.trellis/spec/` rather than only summarizing it in chat.
+When the AI learns a new rule during implementation or debugging, it should use `moluoxixi-update-spec` to submit a complete desired-state candidate under `.moluoxixi/spec-proposals/`. A human reviews promote, merge, reject, deduplicate, and delete decisions through `moluoxixi-spec-review`; only approved application changes `.moluoxixi/spec/`.
+
+The review audit is event-driven and read-only by default. It becomes due after 30 days without a reviewed audit or when at least 10 proposals are pending. The queue and formal spec are both user data and are preserved by project updates and uninstall.
 
 ## Local Customization Points
 
 | Need | Edit location |
 | --- | --- |
-| Add a new spec layer | `.trellis/spec/<package>/<layer>/index.md` and corresponding guideline files. |
-| Change monorepo spec mapping | `packages` / `default_package` / `spec_scope` in `.trellis/config.yaml`. |
+| Add a new spec layer | `.moluoxixi/spec/<package>/<layer>/index.md` and corresponding guideline files. |
+| Change monorepo spec mapping | `packages` / `default_package` / `spec_scope` in `.moluoxixi/config.yaml`. |
 | Change which specs AI reads before implementation | The task's `implement.jsonl`. |
 | Change which specs AI reads during checking | The task's `check.jsonl`. |
-| Change when specs should be updated | Phase 3.3 in `.trellis/workflow.md` and the `trellis-update-spec` skill. |
+| Change knowledge proposal or review timing | Phase 3.3 in `.moluoxixi/workflow.md`, `update-spec`, and `spec-review`. |
 
 ## Boundaries
 
-`.trellis/spec/` is the user's project specification, not a permanent copy of Trellis built-in templates. The AI should encourage the user to update it according to the actual project code instead of treating Trellis default templates as immutable documents.
+`.moluoxixi/spec/` is the user's reviewed project specification, not a permanent copy of Moluoxixi built-in templates. `.moluoxixi/spec-proposals/` is the auditable pending layer. Neither directory belongs to the initializer manifest.

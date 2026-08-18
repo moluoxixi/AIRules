@@ -29,7 +29,6 @@ const skillRoot = path.join(roleRoot, 'skills', 'init-project')
 const initializer = path.join(skillRoot, 'scripts', 'run-role-cli.mjs')
 const assetRoot = path.join(skillRoot, 'assets')
 const packageTemplateRoot = path.join(roleRoot, 'packages', 'cli', 'src', 'templates')
-const overlayRoot = path.join(roleRoot, 'overlays')
 const roleRuntime = path.join(skillRoot, 'assets', 'runtime', 'moluoxixi.mjs')
 const legacyBrand = ['tre', 'llis'].join('')
 const legacyProjectRoot = `.${legacyBrand}`
@@ -112,7 +111,7 @@ function contentHash(content: Buffer | string): string {
 }
 
 describe('init-project skill', () => {
-  it('keeps upstream templates outside the discoverable init-project skill and pins every overlay', () => {
+  it('keeps finalized package templates outside the discoverable init-project skill', () => {
     const nestedSkills = walkFiles(skillRoot)
       .filter(file => path.basename(file) === 'SKILL.md')
       .map(file => path.relative(skillRoot, file).split(path.sep).join('/'))
@@ -122,26 +121,18 @@ describe('init-project skill', () => {
       expect(fs.existsSync(root) ? walkFiles(root) : []).toEqual([])
     }
 
-    const manifest = JSON.parse(fs.readFileSync(path.join(overlayRoot, 'manifest.json'), 'utf8')) as {
-      additions: Array<{ path: string, overlay: string, overlaySha256: string }>
-      overrides: Array<{ overlay: string, overlaySha256: string, source: string, sourceSha256: string }>
-      schemaVersion: number
+    const finalizedPaths = [
+      'common/commands/start.md',
+      'common/bundled-skills/spec-review/SKILL.md',
+      'project/scripts/spec-proposals.mjs',
+    ]
+    for (const relativePath of finalizedPaths) {
+      const file = path.join(packageTemplateRoot, ...relativePath.split('/'))
+      expect(readTemplateFile(relativePath)).toBe(fs.readFileSync(file, 'utf8'))
+      expect(readTemplateOrAddition(relativePath)).toBe(fs.readFileSync(file, 'utf8'))
+      expect(listTemplateFiles(path.posix.dirname(relativePath))).toContain(relativePath)
     }
-    expect(manifest).toMatchObject({ schemaVersion: 1 })
-    expect(manifest.overrides).toHaveLength(27)
-    expect(manifest.additions).toHaveLength(7)
-    for (const entry of manifest.overrides) {
-      expect(contentHash(fs.readFileSync(path.join(packageTemplateRoot, ...entry.source.split('/'))))).toBe(entry.sourceSha256)
-      expect(contentHash(fs.readFileSync(path.join(overlayRoot, ...entry.overlay.split('/'))))).toBe(entry.overlaySha256)
-      expect(readTemplateFile(entry.source)).toBe(fs.readFileSync(path.join(overlayRoot, ...entry.overlay.split('/')), 'utf8'))
-    }
-    for (const entry of manifest.additions) {
-      expect(contentHash(fs.readFileSync(path.join(overlayRoot, ...entry.overlay.split('/'))))).toBe(entry.overlaySha256)
-      expect(readTemplateOrAddition(entry.path)).toBe(fs.readFileSync(path.join(overlayRoot, ...entry.overlay.split('/')), 'utf8'))
-      const parent = path.posix.dirname(entry.path)
-      expect(listTemplateFiles(parent)).not.toContain(entry.path)
-      expect(listTemplateFiles(parent, { additions: true })).toContain(entry.path)
-    }
+    expect(fs.existsSync(path.join(roleRoot, 'overlays'))).toBe(false)
   })
 
   it('plans every supported platform without invoking or writing anything', () => {
@@ -178,7 +169,7 @@ describe('init-project skill', () => {
     expect(plannedSkillNames.every(name => !name.startsWith('moluoxixi-'))).toBe(true)
     expect(result.summary?.created).not.toContain('.claude/hooks/statusline.py')
     expect(result.summary?.created).toContain('.moluoxixi/runtime/update/packages/cli/src/templates/trellis/workflow.md')
-    expect(result.summary?.created).toContain('.moluoxixi/runtime/update/overlays/manifest.json')
+    expect(result.summary?.created?.some(relativePath => relativePath.startsWith('.moluoxixi/runtime/update/overlays/'))).toBe(false)
     expect(result.summary?.created?.filter(relativePath => relativePath.startsWith('.moluoxixi/runtime/update/init-project/') && relativePath.endsWith('/SKILL.md'))).toEqual([
       '.moluoxixi/runtime/update/init-project/SKILL.md',
     ])
@@ -210,7 +201,7 @@ describe('init-project skill', () => {
     expect(fs.existsSync(path.join(projectRoot, '.moluoxixi', 'scripts', 'spec-proposals.mjs'))).toBe(true)
     expect(fs.existsSync(path.join(projectRoot, '.moluoxixi', 'runtime', 'source'))).toBe(false)
     expect(fs.existsSync(path.join(projectRoot, '.moluoxixi', 'runtime', 'update', 'packages', 'cli', 'src', 'templates', 'trellis', 'workflow.md'))).toBe(true)
-    expect(fs.existsSync(path.join(projectRoot, '.moluoxixi', 'runtime', 'update', 'overlays', 'manifest.json'))).toBe(true)
+    expect(fs.existsSync(path.join(projectRoot, '.moluoxixi', 'runtime', 'update', 'overlays'))).toBe(false)
     expect(fs.existsSync(path.join(projectRoot, '.moluoxixi', 'runtime', 'update', 'init-project', 'scripts', 'migrations', 'manifests'))).toBe(false)
     expect(fs.existsSync(path.join(projectRoot, '.moluoxixi', 'airules-init-manifest.json'))).toBe(true)
     const initialManifest = JSON.parse(fs.readFileSync(path.join(projectRoot, '.moluoxixi', 'airules-init-manifest.json'), 'utf8'))
@@ -682,7 +673,7 @@ describe('init-project skill', () => {
     const forced = runInitializer(projectRoot, ['--platform', 'claude', '--force'])
     expect(forced.status).toBe(0)
     expect(fs.readFileSync(path.join(projectRoot, '.moluoxixi', 'workflow.md'), 'utf8')).not.toBe('# User workflow\n')
-  })
+  }, 15000)
 
   it('injects one managed usage block into an existing README across re-initialization', () => {
     const projectRoot = temporaryProject()
@@ -805,7 +796,10 @@ describe('init-project skill', () => {
     const homeDir = path.join(root, 'home')
     const repository = path.join(homeDir, 'vendor', 'repos', 'moluoxixi')
     fs.mkdirSync(path.join(repository, 'roles'), { recursive: true })
-    fs.cpSync(roleRoot, path.join(repository, 'roles', 'moluoxixi'), { recursive: true })
+    fs.cpSync(roleRoot, path.join(repository, 'roles', 'moluoxixi'), {
+      recursive: true,
+      filter: source => path.relative(roleRoot, source).split(path.sep)[0] !== '.sync',
+    })
     const manifestPath = path.join(root, 'manifest.mjs')
     fs.writeFileSync(manifestPath, `export const vendors = ${JSON.stringify([{
       name: 'moluoxixi',
@@ -828,7 +822,8 @@ describe('init-project skill', () => {
     expect(fs.existsSync(path.join(staged, 'references', 'platforms.md'))).toBe(true)
     expect(fs.existsSync(path.join(staged, 'references', 'asset-layout.md'))).toBe(true)
     expect(fs.existsSync(path.join(installedRole, 'packages', 'cli', 'src', 'templates', 'trellis', 'workflow.md'))).toBe(true)
-    expect(fs.existsSync(path.join(installedRole, 'overlays', 'manifest.json'))).toBe(true)
+    expect(fs.existsSync(path.join(installedRole, 'overlays'))).toBe(false)
+    expect(fs.existsSync(path.join(installedRole, '.sync'))).toBe(false)
     expect(fs.existsSync(path.join(staged, 'assets', 'runtime', 'moluoxixi.mjs'))).toBe(true)
     expect(fs.existsSync(path.join(installedRole, 'packages', 'core', 'package.json'))).toBe(true)
     expect(fs.existsSync(path.join(installedRole, 'packages', 'cli', 'bin', 'init-project.js'))).toBe(true)

@@ -1,6 +1,6 @@
 /* global process */
 /**
- * Trellis Context Injection Plugin
+ * Moluoxixi Context Injection Plugin
  *
  * Injects context when Task tool is called with supported subagent types.
  * Uses OpenCode's tool.execute.before hook.
@@ -9,7 +9,7 @@
 import { existsSync, readdirSync } from "fs"
 import { join } from "path"
 import {
-  TrellisContext,
+  TrellisContext as MoluoxixiContext,
   debugLog,
   readContextInjectionLimits,
   ContextBudget,
@@ -17,8 +17,10 @@ import {
 } from "../lib/trellis-context.js"
 
 // Supported subagent types
-const AGENTS_ALL = ["implement", "check", "research"]
-const AGENTS_REQUIRE_TASK = ["implement", "check"]
+const IMPLEMENT_CONTEXT_AGENTS = ["implement", "frontend", "backend", "database"]
+const CHECK_CONTEXT_AGENTS = ["check", "test", "security"]
+const AGENTS_ALL = [...IMPLEMENT_CONTEXT_AGENTS, ...CHECK_CONTEXT_AGENTS, "research"]
+const AGENTS_REQUIRE_TASK = [...IMPLEMENT_CONTEXT_AGENTS, ...CHECK_CONTEXT_AGENTS]
 
 // Match `Active task: <path>` on the first non-empty line of the dispatch
 // prompt. Mirrors the contract in workflow.md's [workflow-state:in_progress]
@@ -33,15 +35,8 @@ function extractActiveTaskHint(prompt) {
 
 /**
  * Get context for implement agent. `taskDir` may be relative
- * (`.trellis/tasks/foo`) or absolute; both are resolved via
+ * (`.moluoxixi/tasks/foo`) or absolute; both are resolved via
  * `ctx.resolveTaskDir`.
- *
- * Read order (mirrors Python `get_implement_context`):
- *   1. All files in implement.jsonl (spec/research manifests)
- *   2. prd.md (requirements)
- *   3. design.md if present (technical design)
- *   4. implement.md if present (execution plan)
- * All blocks share one total budget (issue #441).
  */
 function getImplementContext(ctx, taskDir) {
   const parts = []
@@ -51,52 +46,33 @@ function getImplementContext(ctx, taskDir) {
   const limits = readContextInjectionLimits(ctx.directory)
   const budget = new ContextBudget(limits.max_total_bytes)
 
-  // 1. Read implement.jsonl
   const jsonlPath = join(taskDirFull, "implement.jsonl")
   const blocks = ctx.readJsonlWithFiles(jsonlPath, limits, budget)
   if (blocks.length > 0) {
     parts.push(ctx.buildContextFromEntries(blocks))
   }
 
-  // 2. Requirements document
-  const prdBlock = materializeArtifact(
-    ctx.directory,
-    `${taskDir}/prd.md`,
-    `${taskDir}/prd.md (Requirements)`,
-    "Requirements document",
-    limits,
-    budget,
-  )
-  if (prdBlock) parts.push(prdBlock)
-
-  // 3. Technical design for complex tasks
-  const designBlock = materializeArtifact(
-    ctx.directory,
-    `${taskDir}/design.md`,
-    `${taskDir}/design.md (Technical Design)`,
-    "Technical design document",
-    limits,
-    budget,
-  )
-  if (designBlock) parts.push(designBlock)
-
-  // 4. Execution plan for complex tasks
-  const implementPlanBlock = materializeArtifact(
-    ctx.directory,
-    `${taskDir}/implement.md`,
-    `${taskDir}/implement.md (Execution Plan)`,
-    "Execution plan document",
-    limits,
-    budget,
-  )
-  if (implementPlanBlock) parts.push(implementPlanBlock)
+  for (const [filename, label, reason] of [
+    ["prd.md", "Requirements", "Requirements document"],
+    ["design.md", "Technical Design", "Technical design document"],
+    ["implement.md", "Execution Plan", "Execution plan document"],
+  ]) {
+    const artifact = materializeArtifact(
+      ctx.directory,
+      join(taskDirFull, filename),
+      `${taskDir}/${filename} (${label})`,
+      reason,
+      limits,
+      budget,
+    )
+    if (artifact) parts.push(artifact)
+  }
 
   return parts.join("\n\n")
 }
 
 /**
  * Get context for check agent. `taskDir` may be relative or absolute.
- * Same read order and shared budget as the implement context.
  */
 function getCheckContext(ctx, taskDir) {
   const parts = []
@@ -112,35 +88,21 @@ function getCheckContext(ctx, taskDir) {
     parts.push(ctx.buildContextFromEntries(blocks))
   }
 
-  const prdBlock = materializeArtifact(
-    ctx.directory,
-    `${taskDir}/prd.md`,
-    `${taskDir}/prd.md (Requirements)`,
-    "Requirements document",
-    limits,
-    budget,
-  )
-  if (prdBlock) parts.push(prdBlock)
-
-  const designBlock = materializeArtifact(
-    ctx.directory,
-    `${taskDir}/design.md`,
-    `${taskDir}/design.md (Technical Design)`,
-    "Technical design document",
-    limits,
-    budget,
-  )
-  if (designBlock) parts.push(designBlock)
-
-  const implementPlanBlock = materializeArtifact(
-    ctx.directory,
-    `${taskDir}/implement.md`,
-    `${taskDir}/implement.md (Execution Plan)`,
-    "Execution plan document",
-    limits,
-    budget,
-  )
-  if (implementPlanBlock) parts.push(implementPlanBlock)
+  for (const [filename, label, reason] of [
+    ["prd.md", "Requirements", "Requirements document"],
+    ["design.md", "Technical Design", "Technical design document"],
+    ["implement.md", "Execution Plan", "Execution plan document"],
+  ]) {
+    const artifact = materializeArtifact(
+      ctx.directory,
+      join(taskDirFull, filename),
+      `${taskDir}/${filename} (${label})`,
+      reason,
+      limits,
+      budget,
+    )
+    if (artifact) parts.push(artifact)
+  }
 
   return parts.join("\n\n")
 }
@@ -161,7 +123,7 @@ function getResearchContext(ctx) {
   const parts = []
 
   // Dynamic project structure (scan actual spec directory)
-  const specPath = ".trellis/spec"
+  const specPath = ".moluoxixi/spec"
   const specFull = join(ctx.directory, specPath)
 
   const structureLines = [`## Project Spec Directory Structure\n\n\`\`\`\n${specPath}/`]
@@ -201,8 +163,8 @@ function getResearchContext(ctx) {
 
 ## Search Tips
 
-- Spec files: \`.trellis/spec/**/*.md\`
-- Known issues: \`.trellis/big-question/\`
+- Spec files: \`.moluoxixi/spec/**/*.md\`
+- Known issues: \`.moluoxixi/big-question/\`
 - Code search: Use Glob and Grep tools
 - Tech solutions: Use mcp__exa__web_search_exa or mcp__exa__get_code_context_exa`)
 
@@ -214,7 +176,7 @@ function getResearchContext(ctx) {
  */
 function buildPrompt(agentType, originalPrompt, context, isFinish = false) {
   const templates = {
-    implement: `<!-- trellis-hook-injected -->
+    implement: `<!-- moluoxixi-hook-injected -->
 # Implement Agent Task
 
 You are the Implement Agent in the Multi-Agent Pipeline.
@@ -244,7 +206,7 @@ ${originalPrompt}
 - Follow all dev specs injected above
 - Report list of modified/created files when done`,
 
-    check: isFinish ? `<!-- trellis-hook-injected -->
+    check: isFinish ? `<!-- moluoxixi-hook-injected -->
 # Finish Agent Task
 
 You are performing the final check before creating a PR.
@@ -266,21 +228,21 @@ ${originalPrompt}
 1. **Review changes** - Run \`git diff --name-only\` to see all changed files
 2. **Verify task artifacts** - Check prd.md and, when present, design.md / implement.md
 3. **Spec sync** - Analyze whether changes introduce new patterns, contracts, or conventions
-   - If new pattern/convention found: read target spec file → update it → update index.md if needed
-   - If infra/cross-layer change: follow the 7-section mandatory template from update-spec.md
+   - If new pattern/convention found: read the target spec, then recommend a complete candidate for update-spec to submit under .moluoxixi/spec-proposals/
+   - If infra/cross-layer change: the proposal follows the 7-section mandatory template from update-spec.md
    - If pure code fix with no new patterns: skip this step
 4. **Run final checks** - Execute lint and typecheck
 5. **Confirm ready** - Ensure code is ready for PR
 
 ## Important Constraints
 
-- You MAY update spec files when gaps are detected (use update-spec.md as guide)
-- MUST read the target spec file BEFORE editing (avoid duplicating existing content)
-- Do NOT update specs for trivial changes (typos, formatting, obvious fixes)
+- You MUST NOT edit .moluoxixi/spec/ directly; return proposal-ready knowledge to the main session
+- MUST read the target spec file before recommending a candidate (avoid duplicate content)
+- Do NOT propose spec knowledge for trivial changes (typos, formatting, obvious fixes)
 - If critical CODE issues found, report them clearly (fix specs, not code)
 - Verify all acceptance criteria in prd.md are met
 - Verify design.md and implement.md constraints when those files are present` :
-      `<!-- trellis-hook-injected -->
+      `<!-- moluoxixi-hook-injected -->
 # Check Agent Task
 
 You are the Check Agent in the Multi-Agent Pipeline.
@@ -309,7 +271,7 @@ ${originalPrompt}
 - Fix issues yourself, don't just report
 - Must execute complete checklist`,
 
-    research: `<!-- trellis-hook-injected -->
+    research: `<!-- moluoxixi-hook-injected -->
 # Research Agent Task
 
 You are the Research Agent in the Multi-Agent Pipeline.
@@ -376,12 +338,12 @@ function isWindowsPosixShell(env = process.env) {
   return /^(bash|sh|zsh)(\.exe)?$/.test(shell)
 }
 
-function buildTrellisContextPrefix(contextKey, hostPlatform = process.platform, env = process.env) {
+function buildMoluoxixiContextPrefix(contextKey, hostPlatform = process.platform, env = process.env) {
   if (hostPlatform === "win32" && !isWindowsPosixShell(env)) {
-    return `$env:TRELLIS_CONTEXT_ID = ${powershellQuote(contextKey)}; `
+    return `$env:MOLUOXIXI_CONTEXT_ID = ${powershellQuote(contextKey)}; `
   }
 
-  return `export TRELLIS_CONTEXT_ID=${shellQuote(contextKey)}; `
+  return `export MOLUOXIXI_CONTEXT_ID=${shellQuote(contextKey)}; `
 }
 
 function getBashCommandKey(args) {
@@ -391,35 +353,33 @@ function getBashCommandKey(args) {
   return null
 }
 
-function commandStartsWithTrellisContext(command) {
+function commandStartsWithMoluoxixiContext(command) {
   const firstCommand = command.trimStart().split(/[;&|]/, 1)[0].trimStart()
   return (
-    /^TRELLIS_CONTEXT_ID\s*=/.test(firstCommand) ||
-    /^export\s+TRELLIS_CONTEXT_ID\s*=/.test(firstCommand) ||
-    /^env\s+(?:(?:-\S+|[A-Za-z_][A-Za-z0-9_]*=\S*)\s+)*TRELLIS_CONTEXT_ID\s*=/.test(firstCommand) ||
-    /^\$env:TRELLIS_CONTEXT_ID\s*=/i.test(firstCommand)
+    /^MOLUOXIXI_CONTEXT_ID\s*=/.test(firstCommand) ||
+    /^export\s+MOLUOXIXI_CONTEXT_ID\s*=/.test(firstCommand) ||
+    /^env\s+(?:(?:-\S+|[A-Za-z_][A-Za-z0-9_]*=\S*)\s+)*MOLUOXIXI_CONTEXT_ID\s*=/.test(firstCommand) ||
+    /^\$env:MOLUOXIXI_CONTEXT_ID\s*=/i.test(firstCommand)
   )
 }
 
 /**
- * OpenCode exposes no session identity to Bash at all — it sets no session env
- * var in any process. The plugin hook does receive it, so inject it into Bash
- * commands before execution; that prefix is the only channel by which an
- * AI-run `task.py` sees the OpenCode session.
+ * OpenCode TUI may not expose OPENCODE_RUN_ID to Bash. The plugin hook still
+ * receives session identity, so inject it into Bash commands before execution.
  */
-function injectTrellisContextIntoBash(ctx, input, output, hostPlatform, env) {
+function injectMoluoxixiContextIntoBash(ctx, input, output, hostPlatform, env) {
   const args = output?.args
   const commandKey = getBashCommandKey(args)
   if (!commandKey) return false
 
   const command = args[commandKey]
   if (!command.trim()) return false
-  if (commandStartsWithTrellisContext(command)) return false
+  if (commandStartsWithMoluoxixiContext(command)) return false
 
   const contextKey = ctx.getContextKey(input)
   if (!contextKey) return false
 
-  args[commandKey] = `${buildTrellisContextPrefix(contextKey, hostPlatform, env)}${command}`
+  args[commandKey] = `${buildMoluoxixiContextPrefix(contextKey, hostPlatform, env)}${command}`
   return true
 }
 
@@ -429,21 +389,21 @@ function injectTrellisContextIntoBash(ctx, input, output, hostPlatform, env) {
 // the previous `{ id, server }` object shape failed with
 // `TypeError: fn is not a function` in 1.2.x.
 export default async ({ directory, platform: hostPlatform = process.platform, env = process.env }) => {
-  const ctx = new TrellisContext(directory)
+  const ctx = new MoluoxixiContext(directory)
   debugLog("inject", "Plugin loaded, directory:", directory)
 
   return {
       "tool.execute.before": async (input, output) => {
         try {
-          if (process.env.TRELLIS_HOOKS === "0" || process.env.TRELLIS_DISABLE_HOOKS === "1") {
+          if (process.env.MOLUOXIXI_HOOKS === "0" || process.env.MOLUOXIXI_DISABLE_HOOKS === "1") {
             return
           }
           debugLog("inject", "tool.execute.before called, tool:", input?.tool)
 
           const toolName = input?.tool?.toLowerCase()
           if (toolName === "bash") {
-            if (injectTrellisContextIntoBash(ctx, input, output, hostPlatform, env)) {
-              debugLog("inject", "Injected TRELLIS_CONTEXT_ID into Bash command")
+            if (injectMoluoxixiContextIntoBash(ctx, input, output, hostPlatform, env)) {
+              debugLog("inject", "Injected MOLUOXIXI_CONTEXT_ID into Bash command")
             }
             return
           }
@@ -456,8 +416,8 @@ export default async ({ directory, platform: hostPlatform = process.platform, en
           if (!args) return
 
           const rawSubagentType = args.subagent_type
-          // Strip "trellis-" prefix added by v0.5.0-beta.5 agent rename migration
-          const subagentType = (rawSubagentType || "").replace(/^trellis-/, "")
+          // Strip "moluoxixi-" prefix added by v0.5.0-beta.5 agent rename migration
+          const subagentType = (rawSubagentType || "").replace(/^moluoxixi-/, "")
           const originalPrompt = args.prompt || ""
 
           debugLog("inject", "Task tool called, subagent_type:", rawSubagentType)
@@ -517,7 +477,7 @@ export default async ({ directory, platform: hostPlatform = process.platform, en
 
           // Agents requiring task directory
           if (AGENTS_REQUIRE_TASK.includes(subagentType)) {
-            // subagentType is already stripped of "trellis-" prefix above
+            // subagentType is already stripped of "moluoxixi-" prefix above
             if (!taskDir) {
               debugLog("inject", "Skipping - no current task")
               return
@@ -534,26 +494,24 @@ export default async ({ directory, platform: hostPlatform = process.platform, en
 
           // Get context based on agent type
           let context = ""
-          switch (subagentType) {
-            case "implement":
-              context = getImplementContext(ctx, taskDir)
-              break
-            case "check":
-              context = isFinish
-                ? getFinishContext(ctx, taskDir)
-                : getCheckContext(ctx, taskDir)
-              break
-            case "research":
-              context = getResearchContext(ctx, taskDir)
-              break
-          }
+          const contextType = IMPLEMENT_CONTEXT_AGENTS.includes(subagentType)
+            ? "implement"
+            : CHECK_CONTEXT_AGENTS.includes(subagentType)
+              ? "check"
+              : "research"
+          if (contextType === "implement")
+            context = getImplementContext(ctx, taskDir)
+          else if (contextType === "check")
+            context = isFinish && subagentType === "check" ? getFinishContext(ctx, taskDir) : getCheckContext(ctx, taskDir)
+          else
+            context = getResearchContext(ctx, taskDir)
 
           if (!context) {
             debugLog("inject", "No context to inject")
             return
           }
 
-          const newPrompt = buildPrompt(subagentType, originalPrompt, context, isFinish)
+          const newPrompt = buildPrompt(contextType, originalPrompt, context, isFinish)
 
           // Mutate args in-place — whole-object replacement does NOT work for the task tool
           // because the runtime holds a local reference to the same args object.

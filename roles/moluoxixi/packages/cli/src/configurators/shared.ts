@@ -253,6 +253,8 @@ const SKILL_DESCRIPTIONS: Record<string, string> = {
     "Deep bug analysis to break the fix-forget-repeat cycle. Analyzes root cause category, why fixes failed, prevention mechanisms, and captures knowledge into specs. Use after fixing a bug to prevent the same class of bugs.",
   "update-spec":
     "Captures executable contracts and coding conventions into .trellis/spec/ documents. Use when learning something valuable from debugging, implementing, or discussion that should be preserved for future sessions.",
+  "spec-review":
+    "Reviews pending project knowledge proposals with explicit human approval before promoting them into formal specs. Use when inspecting, approving, rejecting, merging, or applying entries from .moluoxixi/spec-proposals/.",
 };
 
 /**
@@ -283,6 +285,8 @@ const COMMAND_DESCRIPTIONS: Record<string, string> = {
   continue: "Resume work on the current task at the correct phase.",
   "finish-work":
     "Wrap up the current session: quality gate, commit reminder, archive, journal.",
+  "spec-review":
+    "Review pending project knowledge proposals before promoting approved changes.",
 };
 
 /** Wrap resolved command content with YAML frontmatter (name + description). */

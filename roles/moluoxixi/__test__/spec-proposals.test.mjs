@@ -7,7 +7,7 @@ import { fileURLToPath } from 'node:url'
 import { afterEach, describe, expect, it } from 'vitest'
 
 const roleRoot = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..')
-const entry = path.join(roleRoot, 'overlays', 'packages', 'cli', 'src', 'templates', 'additions', 'project', 'scripts', 'spec-proposals.mjs')
+const entry = path.join(roleRoot, 'packages', 'cli', 'src', 'templates', 'project', 'scripts', 'spec-proposals.mjs')
 const roots = []
 
 afterEach(() => {

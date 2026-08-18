@@ -11,10 +11,6 @@ export const ROLE_ROOT = ROLE_ROOT_CANDIDATES.find(candidate => fs.statSync(path
 export const ASSET_ROOT = path.join(SKILL_ROOT, 'assets')
 export const RUNTIME_ROOT = path.join(ASSET_ROOT, 'runtime')
 export const PACKAGE_TEMPLATE_ROOT = path.join(ROLE_ROOT, 'packages', 'cli', 'src', 'templates')
-export const OVERLAY_ROOT = path.join(ROLE_ROOT, 'overlays')
-export const OVERLAY_TEMPLATE_ROOT = path.join(OVERLAY_ROOT, 'packages', 'cli', 'src', 'templates')
-export const OVERLAY_OVERRIDE_ROOT = path.join(OVERLAY_TEMPLATE_ROOT, 'overrides')
-export const OVERLAY_ADDITION_ROOT = path.join(OVERLAY_TEMPLATE_ROOT, 'additions')
 
 export const PROJECT_ROOT_DIR = '.moluoxixi'
 export const MANIFEST_PATH = projectPath('airules-init-manifest.json')

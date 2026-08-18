@@ -46,7 +46,6 @@ from .paths import (
 # Helpers
 # =============================================================================
 
-_PACKAGE_NAME = "@mindfoldhq/trellis"
 _UPDATE_CHECK_TIMEOUT_SECONDS = 1.0
 _VERSION_RE = re.compile(
     r"^\s*(\d+)(?:\.(\d+))?(?:\.(\d+))?(?:-([0-9A-Za-z.-]+))?\s*$"
@@ -220,7 +219,7 @@ def _discover_child_git_repos(repo_root: Path) -> list[tuple[str, str]]:
             "warning: found more than "
             f"{_POLYREPO_SCAN_MAX_REPOS} child Git repositories; "
             "skipping automatic Git status collection. Configure explicit "
-            "packages entries with path and git: true in .trellis/config.yaml.",
+            "packages entries with path and git: true in .moluoxixi/config.yaml.",
             file=sys.stderr,
         )
         return []
@@ -236,7 +235,7 @@ def _collect_package_git_info(
     """Collect Git status for independent package repositories.
 
     Packages marked with ``git: true`` in config.yaml are authoritative.
-    When the Trellis root is not a Git repo and no configured package repos are
+    When the Moluoxixi root is not a Git repo and no configured package repos are
     available, optionally fall back to the bounded polyrepo child scan.
 
     Returns:
@@ -328,28 +327,27 @@ def _read_project_version(repo_root: Path) -> str | None:
     return version or None
 
 
-def _fetch_trellis_version_output() -> str | None:
+def _fetch_moluoxixi_version_output() -> str | None:
+    role_manifest = (
+        Path.home() / DIR_WORKFLOW / "roles" / "moluoxixi" / "role.yaml"
+    )
     try:
-        result = subprocess.run(
-            ["trellis", "--version"],
-            capture_output=True,
-            text=True,
-            encoding="utf-8",
-            errors="replace",
-            timeout=_UPDATE_CHECK_TIMEOUT_SECONDS,
-        )
-    except (OSError, subprocess.SubprocessError, TimeoutError):
+        content = role_manifest.read_text(encoding="utf-8")
+    except (OSError, UnicodeError):
         return None
 
-    if result.returncode != 0:
-        return None
-    output = f"{result.stdout}\n{result.stderr}".strip()
-    return output or None
+    version_match = re.search(
+        r"(?m)^role_version:\s*"
+        r"(?P<version>\d+(?:\.\d+){0,2}(?:-[0-9A-Za-z.-]+)?)"
+        r"\s*(?:#.*)?$",
+        content,
+    )
+    return version_match.group("version") if version_match else None
 
 
 def _extract_available_update_version(output: str) -> str | None:
     update_match = re.search(
-        r"Trellis update available:\s*"
+        r"Moluoxixi update available:\s*"
         r"(?P<current>\S+)\s*(?:→|->)\s*(?P<latest>\S+)",
         output,
     )
@@ -360,7 +358,7 @@ def _extract_available_update_version(output: str) -> str | None:
 
 
 def _resolve_available_update_version() -> str | None:
-    output = _fetch_trellis_version_output()
+    output = _fetch_moluoxixi_version_output()
     if not output:
         return None
     return _extract_available_update_version(output)
@@ -419,13 +417,7 @@ def _compare_versions(left: str, right: str) -> int | None:
 
 
 def _update_marker_path(repo_root: Path, context_key: str | None = None) -> Path:
-    """Path of the once-per-session marker that throttles the update check.
-
-    `context_key` lets a caller that already resolved session identity pass it
-    in — the SessionStart hook reads the session id from hook stdin, which is
-    more reliable than this function's environment-only fallback chain. Shell
-    entry points leave it None and keep the previous behavior.
-    """
+    """Path of the once-per-session marker that throttles the update check."""
     if not context_key:
         context_key = resolve_context_key()
     if not context_key:
@@ -458,12 +450,7 @@ def _mark_update_check_attempted(
 
 
 def get_update_hint(repo_root: Path, context_key: str | None = None) -> str | None:
-    """Return the "update available" line for this session, at most once.
-
-    Public because the SessionStart hook imports it: the text-mode CLI path
-    (`get_context.py`) used to be the only caller, so hook-driven platforms —
-    Claude Code included — never saw the reminder at all.
-    """
+    """Return the update reminder for this session, at most once."""
     marker_path = _update_marker_path(repo_root, context_key)
     if marker_path.exists():
         return None
@@ -482,8 +469,8 @@ def get_update_hint(repo_root: Path, context_key: str | None = None) -> str | No
         return None
 
     return (
-        f"Trellis update available: {current_version} -> {latest_version}, "
-        "run trellis update"
+        f"Moluoxixi update available: {current_version} -> {latest_version}, "
+        "run moluoxixi update"
     )
 
 
@@ -633,6 +620,10 @@ def get_context_text(repo_root: Path | None = None) -> str:
         if ct:
             lines.append(f"Name: {ct.name}")
             lines.append(f"Status: {ct.status}")
+            complexity = ct.raw.get("complexity")
+            approval = ct.raw.get("executionApproval")
+            lines.append(f"Complexity: {complexity.get('level', 'legacy') if isinstance(complexity, dict) else 'legacy'}")
+            lines.append(f"Execution: {approval.get('mode', 'legacy') if isinstance(approval, dict) else 'legacy'}")
             lines.append(f"Created: {ct.raw.get('createdAt', 'unknown')}")
             if ct.description:
                 lines.append(f"Description: {ct.description}")
@@ -773,6 +764,8 @@ def get_context_record_json(repo_root: Path | None = None) -> dict:
                 "status": ct.status,
                 "source": source_type,
                 "contextKey": context_key,
+                "complexity": ct.raw.get("complexity", {"level": "legacy"}),
+                "executionApproval": ct.raw.get("executionApproval", {"mode": "legacy"}),
             }
 
     # Package git repos

@@ -1,6 +1,6 @@
 schema_version: 1
 role_id: moluoxixi
-role_version: 0.3.0
+role_version: 0.3.1
 status: experimental
 canonical_root: roles/moluoxixi
 description: Self-contained Moluoxixi assets, publishable role-local runtime packages, project initialization, and Matt Pocock productivity skills.

@@ -7,7 +7,6 @@ import {
   canonicalSkillName,
   MOLUOXIXI_VERSION,
   NAMESPACED_SKILL_RENAMES,
-  OVERLAY_ROOT,
   PACKAGE_TEMPLATE_ROOT,
   projectPath,
   RUNTIME_ROOT,
@@ -461,7 +460,6 @@ function addProjectCore(plan, pythonCommand, packages, defaultPackage, projectTy
   addTree(plan, RUNTIME_ROOT, projectPath('runtime'), { merge: 'replace' })
   addTree(plan, SKILL_ROOT, projectPath('runtime', 'update', 'init-project'), { merge: 'replace' })
   addTree(plan, PACKAGE_TEMPLATE_ROOT, projectPath('runtime', 'update', 'packages', 'cli', 'src', 'templates'), { merge: 'replace' })
-  addTree(plan, OVERLAY_ROOT, projectPath('runtime', 'update', 'overlays'), { merge: 'replace' })
   const workflowContent = workflow?.content ?? readTemplateFile('trellis/workflow.md')
   addPlan(plan, projectPath('workflow.md'), resolveTemplate(localizeProjectRuntime('workflow.md', workflowContent), undefined, pythonCommand), {
     managed: workflow?.id === undefined || workflow.id === 'native',

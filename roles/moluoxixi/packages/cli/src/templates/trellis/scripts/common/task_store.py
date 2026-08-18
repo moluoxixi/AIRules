@@ -117,7 +117,7 @@ def _repo_relative_path(path: Path, repo_root: Path) -> str:
 # Config directories of platforms that consume implement.jsonl / check.jsonl.
 # Keep in sync with src/types/ai-tools.ts AI_TOOLS entries — these are the
 # platforms listed in workflow.md's "agent-capable" Skill Routing block.
-# Codex is checked separately because explicit inline mode does not consume
+# Codex is checked separately because default inline mode does not consume
 # JSONL. Kilo / Antigravity / Devin are NOT in this list either: they load
 # specs through skills instead of JSONL.
 _SUBAGENT_CONFIG_DIRS: tuple[str, ...] = (
@@ -134,26 +134,24 @@ _SUBAGENT_CONFIG_DIRS: tuple[str, ...] = (
     ".trae",      # Trae IDE
     ".omp",       # Oh My Pi
     ".zcode",     # ZCode
-    ".grok",      # Grok Build
-    ".kimi-code", # Kimi Code
+    ".reasonix",  # Reasonix
 )
 _CODEX_CONFIG_DIR = ".codex"
 
 _SEED_EXAMPLE = (
     "Fill with {\"file\": \"<path>\", \"reason\": \"<why>\"}. "
     "Put spec/research files only — no code paths. "
-    "Run `python3 .trellis/scripts/get_context.py --mode packages` to list available specs. "
+    "Run `python3 .moluoxixi/scripts/get_context.py --mode packages` to list available specs. "
     "Delete this line once real entries are added."
 )
 
 
-def _has_subagent_platform(repo_root: Path) -> bool:
+def has_subagent_platform(repo_root: Path) -> bool:
     """Return True if any sub-agent-capable platform is configured.
 
     Detected by probing well-known config directories at the repo root. Codex
-    counts by default through ``codex.dispatch_mode: auto`` (including the
-    legacy ``sub-agent`` alias); explicit inline mode loads context through
-    skills, not JSONL.
+    only counts when ``codex.dispatch_mode`` explicitly opts into
+    ``sub-agent``; inline mode loads context through skills, not JSONL.
     """
     for config_dir in _SUBAGENT_CONFIG_DIRS:
         if (repo_root / config_dir).is_dir():
@@ -175,12 +173,7 @@ def _write_seed_jsonl(path: Path) -> None:
 
 
 def _parse_meta_pairs(pairs: list[str] | None) -> dict[str, str] | None:
-    """Parse repeatable ``--meta key=value`` pairs into a dict.
-
-    Returns ``None`` (after printing an error naming the bad value) on the
-    first malformed pair: missing ``=`` or an empty key. Values are stored
-    as-is (strings, no nesting, no type coercion).
-    """
+    """Parse repeatable ``--meta key=value`` pairs without type coercion."""
     meta: dict[str, str] = {}
     for pair in pairs or []:
         key, sep, value = pair.partition("=")
@@ -232,7 +225,6 @@ def cmd_create(args: argparse.Namespace) -> int:
         print(colored("Error: title is required", Colors.RED), file=sys.stderr)
         return 1
 
-    # Validate --meta (CLI source: fail-fast, before any directory is created)
     meta = _parse_meta_pairs(getattr(args, "meta", None))
     if meta is None:
         return 1
@@ -322,12 +314,8 @@ def cmd_create(args: argparse.Namespace) -> int:
 
     today = datetime.now().strftime("%Y-%m-%d")
 
-    # Record the PR target branch. Prefer the repo's actual default branch
-    # (origin/HEAD) so creating a task from a feature branch doesn't
-    # mis-stamp that feature branch as the PR target (#399 item 1). Falls
-    # back to the checked-out branch when the default can't be resolved
-    # (no remote configured, offline, etc.) — the pre-existing behavior.
-    # --base-branch lets the caller override both when neither is correct.
+    # Prefer the repository default branch so feature-branch task creation does
+    # not accidentally stamp that feature branch as the PR target.
     _, branch_out, _ = run_git(["branch", "--show-current"], cwd=repo_root)
     current_branch = branch_out.strip() or "main"
     explicit_base_branch: str | None = getattr(args, "base_branch", None)
@@ -341,7 +329,7 @@ def cmd_create(args: argparse.Namespace) -> int:
             base_branch = current_branch
             print(
                 colored(
-                    f"warning: could not resolve the repository's default branch "
+                    "warning: could not resolve the repository's default branch "
                     f"(no remote configured, offline, etc.); stamping base_branch as "
                     f"the checked-out branch '{base_branch}'. Pass --base-branch to override.",
                     Colors.YELLOW,
@@ -359,12 +347,25 @@ def cmd_create(args: argparse.Namespace) -> int:
             file=sys.stderr,
         )
 
+    complexity = getattr(args, "complexity", None)
     task_data = {
         "id": slug,
         "name": slug,
         "title": args.title,
         "description": description,
         "status": "planning",
+        "complexity": {
+            "level": complexity or "unclassified",
+            "signals": [],
+            "reason": "",
+        },
+        "executionApproval": {
+            "mode": "manual",
+            "granted": False,
+            "source": None,
+            "grantedAt": None,
+            "reason": "",
+        },
         "dev_type": None,
         "scope": None,
         "package": package,
@@ -398,9 +399,9 @@ def cmd_create(args: argparse.Namespace) -> int:
     # Seed implement.jsonl / check.jsonl for sub-agent-capable platforms.
     # Agent curates real entries during planning when the task needs them.
     # Agent-less platforms (Kilo / Antigravity / Devin) skip this — they
-    # load specs via the trellis-before-dev skill instead of JSONL.
+    # load specs via the moluoxixi-before-dev skill instead of JSONL.
     seeded_jsonl = False
-    if _has_subagent_platform(repo_root):
+    if has_subagent_platform(repo_root):
         for jsonl_name in ("implement.jsonl", "check.jsonl"):
             jsonl_path = task_dir / jsonl_name
             if not jsonl_path.exists():
@@ -410,10 +411,13 @@ def cmd_create(args: argparse.Namespace) -> int:
     # Handle --parent: establish bidirectional link
     if args.parent:
         parent_dir = resolve_task_dir(args.parent, repo_root)
-        if not parent_dir or not (parent_dir / FILE_TASK_JSON).is_file():
+        if parent_dir is None:
+            print(colored(f"Warning: Parent task not found: {args.parent}", Colors.YELLOW), file=sys.stderr)
+            parent_dir = Path()
+        parent_json_path = parent_dir / FILE_TASK_JSON
+        if not parent_json_path.is_file():
             print(colored(f"Warning: Parent task.json not found: {args.parent}", Colors.YELLOW), file=sys.stderr)
         else:
-            parent_json_path = parent_dir / FILE_TASK_JSON
             parent_data = read_json(parent_json_path)
             if parent_data:
                 # Add child to parent's children list
@@ -459,8 +463,6 @@ def cmd_create(args: argparse.Namespace) -> int:
                     file=sys.stderr,
                 )
             else:
-                # No session identity is the normal CLI-outside-an-AI-session
-                # case (see comment above) — stay silent, not a failure.
                 if context_key:
                     try:
                         rel_dir = task_dir.relative_to(repo_root).as_posix()
@@ -490,6 +492,10 @@ def cmd_create(args: argparse.Namespace) -> int:
     print("", file=sys.stderr)
     print(colored("Next steps:", Colors.BLUE), file=sys.stderr)
     print("  - Fill prd.md with requirements and acceptance criteria", file=sys.stderr)
+    if complexity:
+        print(f"  - Recorded complexity: {complexity}", file=sys.stderr)
+    else:
+        print("  - Classify with task.py set-complexity before task.py start", file=sys.stderr)
     print("  - Lightweight task: PRD-only is valid", file=sys.stderr)
     print("  - Complex task: add design.md and implement.md before task.py start", file=sys.stderr)
     if seeded_jsonl:
@@ -497,7 +503,7 @@ def cmd_create(args: argparse.Namespace) -> int:
             "  - Curate implement.jsonl / check.jsonl as spec/research manifests when sub-agents need context",
             file=sys.stderr,
         )
-    print("  - Use /trellis:continue or phase context to decide the next step", file=sys.stderr)
+    print("  - Use /moluoxixi:continue or phase context to decide the next step", file=sys.stderr)
     print("", file=sys.stderr)
 
     # Output relative path for script chaining
@@ -535,7 +541,7 @@ def cmd_archive(args: argparse.Namespace) -> int:
         return 1
 
     # Refuse to archive anything that isn't a real task directly under
-    # .trellis/tasks/. A mistyped name (e.g. "src") resolves to repo_root/src,
+    # .moluoxixi/tasks/. A mistyped name (e.g. "src") resolves to repo_root/src,
     # which is a dir but not a task — without this guard archive would move the
     # user's source directory out of the repo.
     if not is_within_tasks_dir(task_dir, repo_root):
@@ -556,8 +562,6 @@ def cmd_archive(args: argparse.Namespace) -> int:
     if task_json_path.is_file():
         data = read_json(task_json_path)
         if data:
-            # Warn (don't block) when the recorded branch is stale — it was
-            # likely already merged and deleted (#399 item 2).
             stored_branch = data.get("branch")
             if stored_branch and not branch_exists_locally(stored_branch, repo_root):
                 print(
@@ -568,7 +572,6 @@ def cmd_archive(args: argparse.Namespace) -> int:
                     ),
                     file=sys.stderr,
                 )
-
             data["status"] = "completed"
             data["completedAt"] = today
             write_json(task_json_path, data)
@@ -632,7 +635,7 @@ def _auto_commit_archive(
     repo_root: Path,
     modified_children: list[str] | None = None,
 ) -> bool:
-    """Stage Trellis-owned task paths and commit after archive.
+    """Stage Moluoxixi-owned task paths and commit after archive.
 
     Scoped narrowly to the archived task's source + destination paths
     plus any child task dirs whose ``task.json`` was edited (parent →
@@ -641,10 +644,10 @@ def _auto_commit_archive(
 
     If ``.gitignore`` blocks the paths, we warn + skip — we do NOT
     retry with ``git add -f``. The warning explicitly forbids
-    ``git add -f .trellis/`` (which would fan out to caches/backups)
+    ``git add -f .moluoxixi/`` (which would fan out to caches/backups)
     and points users at ``session_auto_commit: false``.
 
-    Honors ``session_auto_commit`` in ``.trellis/config.yaml``: when
+    Honors ``session_auto_commit`` in ``.moluoxixi/config.yaml``: when
     set to ``false``, this function returns immediately without
     touching git (the archive directory move on disk is unaffected).
     """
@@ -723,12 +726,8 @@ def cmd_add_subtask(args: argparse.Namespace) -> int:
     parent_dir = resolve_task_dir(args.parent_dir, repo_root)
     child_dir = resolve_task_dir(args.child_dir, repo_root)
 
-    if not parent_dir:
-        print(colored(f"Error: Parent task.json not found: {args.parent_dir}", Colors.RED), file=sys.stderr)
-        return 1
-
-    if not child_dir:
-        print(colored(f"Error: Child task.json not found: {args.child_dir}", Colors.RED), file=sys.stderr)
+    if parent_dir is None or child_dir is None:
+        print(colored("Error: Parent or child task not found", Colors.RED), file=sys.stderr)
         return 1
 
     parent_json_path = parent_dir / FILE_TASK_JSON
@@ -784,12 +783,8 @@ def cmd_remove_subtask(args: argparse.Namespace) -> int:
     parent_dir = resolve_task_dir(args.parent_dir, repo_root)
     child_dir = resolve_task_dir(args.child_dir, repo_root)
 
-    if not parent_dir:
-        print(colored(f"Error: Parent task.json not found: {args.parent_dir}", Colors.RED), file=sys.stderr)
-        return 1
-
-    if not child_dir:
-        print(colored(f"Error: Child task.json not found: {args.child_dir}", Colors.RED), file=sys.stderr)
+    if parent_dir is None or child_dir is None:
+        print(colored("Error: Parent or child task not found", Colors.RED), file=sys.stderr)
         return 1
 
     parent_json_path = parent_dir / FILE_TASK_JSON
@@ -843,9 +838,7 @@ def cmd_set_branch(args: argparse.Namespace) -> int:
         print("Usage: python3 task.py set-branch <task-dir> <branch-name>")
         return 1
 
-    if not target_dir:
-        # target_dir is None here, so it must not appear in the message. This
-        # is also the branch a ref pointing outside the repo lands in.
+    if target_dir is None:
         print(colored(f"Error: Task not found: {args.dir}", Colors.RED))
         return 1
 
@@ -883,9 +876,7 @@ def cmd_set_base_branch(args: argparse.Namespace) -> int:
         print("This sets the target branch for PR (the branch your feature will merge into).")
         return 1
 
-    if not target_dir:
-        # target_dir is None here, so it must not appear in the message. This
-        # is also the branch a ref pointing outside the repo lands in.
+    if target_dir is None:
         print(colored(f"Error: Task not found: {args.dir}", Colors.RED))
         return 1
 
@@ -921,9 +912,7 @@ def cmd_set_scope(args: argparse.Namespace) -> int:
         print("Usage: python3 task.py set-scope <task-dir> <scope>")
         return 1
 
-    if not target_dir:
-        # target_dir is None here, so it must not appear in the message. This
-        # is also the branch a ref pointing outside the repo lands in.
+    if target_dir is None:
         print(colored(f"Error: Task not found: {args.dir}", Colors.RED))
         return 1
 
@@ -948,20 +937,14 @@ def cmd_set_scope(args: argparse.Namespace) -> int:
 # =============================================================================
 
 def cmd_set_meta(args: argparse.Namespace) -> int:
-    """Set/overwrite one metadata key on an existing task."""
+    """Set or overwrite one metadata key on an existing task."""
     repo_root = get_repo_root()
     target_dir = resolve_task_dir(args.dir, repo_root)
-    key = args.key
-    value = args.value
-
-    if not key:
+    if not args.key:
         print(colored("Error: Missing arguments", Colors.RED))
         print("Usage: python3 task.py set-meta <task-dir> <key> <value>")
         return 1
-
-    if not target_dir:
-        # target_dir is None here, so it must not appear in the message. This
-        # is also the branch a ref pointing outside the repo lands in.
+    if target_dir is None:
         print(colored(f"Error: Task not found: {args.dir}", Colors.RED))
         return 1
 
@@ -969,17 +952,16 @@ def cmd_set_meta(args: argparse.Namespace) -> int:
     if not task_json.is_file():
         print(colored(f"Error: task.json not found at {target_dir}", Colors.RED))
         return 1
-
     data = read_json(task_json)
     if not data:
         return 1
-
     meta = data.get("meta")
     if not isinstance(meta, dict):
         meta = {}
-    meta[key] = value
+    meta[args.key] = args.value
     data["meta"] = meta
-    write_json(task_json, data)
-
-    print(colored(f"✓ Meta set: {key} = {value}", Colors.GREEN))
+    if not write_json(task_json, data):
+        print(colored(f"Error: failed to update {task_json}", Colors.RED))
+        return 1
+    print(colored(f"✓ Meta set: {args.key} = {args.value}", Colors.GREEN))
     return 0
