@@ -3537,7 +3537,7 @@ var chalk = createChalk();
 var chalkStderr = createChalk({ level: stderrColor ? stderrColor.level : 0 });
 var source_default = chalk;
 
-// roles/moluoxixi/skills/init-project/assets/runtime/source/packages/cli/src/commands/channel/adapters/claude.ts
+// roles/moluoxixi/packages/cli/src/commands/channel/adapters/claude.ts
 function summarizeInput(input, max = 120) {
   if (input === null || input === void 0) return "";
   let s;
@@ -3706,7 +3706,7 @@ function buildClaudeArgs(opts) {
   return args;
 }
 
-// roles/moluoxixi/skills/init-project/assets/runtime/source/packages/cli/src/commands/channel/adapters/codex.ts
+// roles/moluoxixi/packages/cli/src/commands/channel/adapters/codex.ts
 function createCodexCtx() {
   return {
     pending: /* @__PURE__ */ new Map(),
@@ -4208,20 +4208,22 @@ var CODEX_SANDBOX_MODES = /* @__PURE__ */ new Set([
   "workspace-write",
   "danger-full-access"
 ]);
-function parseCodexSandboxMode(value) {
-  if (value === void 0) return void 0;
-  if (!CODEX_SANDBOX_MODES.has(value)) {
+function parseCodexSandboxMode(v) {
+  if (v === void 0) return void 0;
+  if (!CODEX_SANDBOX_MODES.has(v)) {
     throw new Error(
-      `Invalid --sandbox '${value}'. Must be one of: ${[...CODEX_SANDBOX_MODES].join(", ")}`
+      `Invalid --sandbox '${v}'. Must be one of: ${[...CODEX_SANDBOX_MODES].join(", ")}`
     );
   }
-  return value;
+  return v;
 }
 function buildCodexThreadStartParams(cwd, systemPrompt, sandbox) {
   const params = {
     cwd,
     // MVP: aggressive permissive defaults to avoid getting stuck mid-turn.
     approvalPolicy: "never",
+    // Default stays workspace-write; callers (channel spawn --sandbox) may
+    // override to match the user's main-session Codex permissions (#413).
     sandbox: sandbox ?? "workspace-write",
     // Disable codex native multi-agent so spawned worker can't recurse into
     // its own sub-agents (would conflict with channel's collaboration layer
@@ -4239,7 +4241,7 @@ function buildCodexThreadStartParams(cwd, systemPrompt, sandbox) {
   return params;
 }
 
-// roles/moluoxixi/skills/init-project/assets/runtime/source/packages/cli/src/commands/channel/adapters/index.ts
+// roles/moluoxixi/packages/cli/src/commands/channel/adapters/index.ts
 var claudeAdapter = {
   provider: "claude",
   buildArgs(view) {
@@ -4338,7 +4340,7 @@ function sleep(ms) {
   return new Promise((r) => setTimeout(r, ms));
 }
 
-// roles/moluoxixi/skills/init-project/assets/runtime/source/packages/core/src/channel/internal/store/schema.ts
+// roles/moluoxixi/packages/core/src/channel/internal/store/schema.ts
 import path from "node:path";
 var GLOBAL_PROJECT_KEY = "_global";
 var INBOX_POLICIES = /* @__PURE__ */ new Set([
@@ -4453,11 +4455,11 @@ function contextEntryKey(entry) {
   return entry.type === "file" ? `file:${entry.path}` : `raw:${entry.text}`;
 }
 
-// roles/moluoxixi/skills/init-project/assets/runtime/source/packages/core/src/channel/internal/store/events.ts
+// roles/moluoxixi/packages/core/src/channel/internal/store/events.ts
 import fs4 from "node:fs";
 import fsp2 from "node:fs/promises";
 
-// roles/moluoxixi/skills/init-project/assets/runtime/source/packages/core/src/channel/internal/store/lock.ts
+// roles/moluoxixi/packages/core/src/channel/internal/store/lock.ts
 import fs from "node:fs";
 import path2 from "node:path";
 var DEFAULT_RETRY_INTERVAL_MS = 25;
@@ -4534,7 +4536,7 @@ function sleep2(ms) {
   return new Promise((r) => setTimeout(r, ms));
 }
 
-// roles/moluoxixi/skills/init-project/assets/runtime/source/packages/core/src/channel/internal/store/paths.ts
+// roles/moluoxixi/packages/core/src/channel/internal/store/paths.ts
 import fs2 from "node:fs";
 import os2 from "node:os";
 import path3 from "node:path";
@@ -4717,7 +4719,7 @@ function resolveExistingChannelRef(name, opts = {}) {
   );
 }
 
-// roles/moluoxixi/skills/init-project/assets/runtime/source/packages/core/src/channel/internal/store/seq.ts
+// roles/moluoxixi/packages/core/src/channel/internal/store/seq.ts
 import fs3 from "node:fs";
 import fsp from "node:fs/promises";
 import path4 from "node:path";
@@ -4807,7 +4809,7 @@ async function writeSidecar(sidecarPath, seq) {
   await fsp.rename(tmp, sidecarPath);
 }
 
-// roles/moluoxixi/skills/init-project/assets/runtime/source/packages/core/src/channel/internal/store/events.ts
+// roles/moluoxixi/packages/core/src/channel/internal/store/events.ts
 var CHANNEL_EVENT_KINDS = /* @__PURE__ */ new Set([
   "create",
   "join",
@@ -4962,7 +4964,7 @@ async function readChannelEvents(name, project, pagination) {
   return limit !== void 0 ? all.slice(Math.max(0, all.length - limit)) : all;
 }
 
-// roles/moluoxixi/skills/init-project/assets/runtime/source/packages/core/src/channel/internal/store/inbox.ts
+// roles/moluoxixi/packages/core/src/channel/internal/store/inbox.ts
 var DEFAULT_INBOX_POLICY = "explicitOnly";
 function toList(to) {
   if (to === void 0) return [];
@@ -4976,7 +4978,7 @@ function matchesInboxPolicy(ev, workerId, policy) {
   return policy === "broadcastAndExplicit";
 }
 
-// roles/moluoxixi/skills/init-project/assets/runtime/source/packages/core/src/channel/internal/store/worker-state.ts
+// roles/moluoxixi/packages/core/src/channel/internal/store/worker-state.ts
 var TERMINAL_LIFECYCLES = /* @__PURE__ */ new Set([
   "done",
   "error",
@@ -5171,7 +5173,7 @@ function isTerminalLifecycle(lifecycle) {
   return TERMINAL_LIFECYCLES.has(lifecycle);
 }
 
-// roles/moluoxixi/skills/init-project/assets/runtime/source/packages/core/src/channel/internal/store/delivery.ts
+// roles/moluoxixi/packages/core/src/channel/internal/store/delivery.ts
 var DELIVERY_MODES = /* @__PURE__ */ new Set([
   "appendOnly",
   "requireKnownWorker",
@@ -5203,7 +5205,7 @@ function classifyDelivery(registry, targets, mode) {
   return failed;
 }
 
-// roles/moluoxixi/skills/init-project/assets/runtime/source/packages/core/src/channel/internal/store/filter.ts
+// roles/moluoxixi/packages/core/src/channel/internal/store/filter.ts
 var MEANINGFUL_EVENT_KINDS = /* @__PURE__ */ new Set([
   "create",
   "join",
@@ -5256,7 +5258,7 @@ function matchesEventFilter(ev, filter) {
   return true;
 }
 
-// roles/moluoxixi/skills/init-project/assets/runtime/source/packages/core/src/channel/internal/store/channel-metadata.ts
+// roles/moluoxixi/packages/core/src/channel/internal/store/channel-metadata.ts
 function reduceChannelMetadata(events) {
   let type = "chat";
   let description;
@@ -5312,7 +5314,7 @@ function normalizeChannelType(value) {
   return "chat";
 }
 
-// roles/moluoxixi/skills/init-project/assets/runtime/source/packages/core/src/channel/internal/store/thread-state.ts
+// roles/moluoxixi/packages/core/src/channel/internal/store/thread-state.ts
 function buildThreadAliasResolver(events) {
   const aliasToCurrent = /* @__PURE__ */ new Map();
   const aliasesByCurrent = /* @__PURE__ */ new Map();
@@ -5486,11 +5488,11 @@ function collectThreadTimeline(events, threadKey) {
   return out;
 }
 
-// roles/moluoxixi/skills/init-project/assets/runtime/source/packages/core/src/channel/api/create.ts
+// roles/moluoxixi/packages/core/src/channel/api/create.ts
 import fs5 from "node:fs";
 import path5 from "node:path";
 
-// roles/moluoxixi/skills/init-project/assets/runtime/source/packages/core/src/channel/api/resolve.ts
+// roles/moluoxixi/packages/core/src/channel/api/resolve.ts
 function resolveChannelRef(opts) {
   if (opts.projectKey) {
     const project = opts.projectKey;
@@ -5513,7 +5515,7 @@ function resolveChannelRef(opts) {
   });
 }
 
-// roles/moluoxixi/skills/init-project/assets/runtime/source/packages/core/src/channel/api/create.ts
+// roles/moluoxixi/packages/core/src/channel/api/create.ts
 async function createChannel(opts) {
   const ref = resolveChannelRef({
     channel: opts.channel,
@@ -5606,7 +5608,7 @@ function sleep3(ms) {
   return new Promise((r) => setTimeout(r, ms));
 }
 
-// roles/moluoxixi/skills/init-project/assets/runtime/source/packages/core/src/channel/api/send.ts
+// roles/moluoxixi/packages/core/src/channel/api/send.ts
 async function sendMessage(opts) {
   const ref = resolveChannelRef({
     channel: opts.channel,
@@ -5655,7 +5657,7 @@ async function sendMessage(opts) {
   return event;
 }
 
-// roles/moluoxixi/skills/init-project/assets/runtime/source/packages/core/src/channel/api/assert.ts
+// roles/moluoxixi/packages/core/src/channel/api/assert.ts
 async function readForumChannelEvents(channel, project, operation) {
   const events = await readChannelEvents(channel, project);
   const metadata = reduceChannelMetadata(events);
@@ -5667,7 +5669,7 @@ async function readForumChannelEvents(channel, project, operation) {
   return events;
 }
 
-// roles/moluoxixi/skills/init-project/assets/runtime/source/packages/core/src/channel/api/post-thread.ts
+// roles/moluoxixi/packages/core/src/channel/api/post-thread.ts
 var VALID_ACTIONS = /* @__PURE__ */ new Set([
   "opened",
   "comment",
@@ -5773,7 +5775,7 @@ async function renameThread(opts) {
   return event;
 }
 
-// roles/moluoxixi/skills/init-project/assets/runtime/source/packages/core/src/channel/api/context.ts
+// roles/moluoxixi/packages/core/src/channel/api/context.ts
 async function appendContextEvent(ref, by, action, target, context, thread, origin, meta) {
   if (!context || context.length === 0) {
     throw new Error("context must contain at least one entry");
@@ -5917,7 +5919,7 @@ function assertKnownThread(states, thread, channel) {
   }
 }
 
-// roles/moluoxixi/skills/init-project/assets/runtime/source/packages/core/src/channel/api/title.ts
+// roles/moluoxixi/packages/core/src/channel/api/title.ts
 async function setChannelTitle(opts) {
   if (!opts.title || opts.title.length === 0) {
     throw new Error("Channel title must not be empty (use clearChannelTitle)");
@@ -5964,7 +5966,7 @@ async function clearChannelTitle(opts) {
   return event;
 }
 
-// roles/moluoxixi/skills/init-project/assets/runtime/source/packages/core/src/channel/api/read.ts
+// roles/moluoxixi/packages/core/src/channel/api/read.ts
 async function listForumThreads(opts) {
   const ref = resolveChannelRef({
     channel: opts.channel,
@@ -5994,7 +5996,7 @@ async function showThread(opts) {
   return collectThreadTimeline(events, normalizeThreadKey(opts.thread));
 }
 
-// roles/moluoxixi/skills/init-project/assets/runtime/source/packages/core/src/channel/api/interrupt.ts
+// roles/moluoxixi/packages/core/src/channel/api/interrupt.ts
 async function requestInterrupt(input) {
   const ref = resolveChannelRef({
     channel: input.channel,
@@ -6017,13 +6019,13 @@ async function requestInterrupt(input) {
   );
 }
 
-// roles/moluoxixi/skills/init-project/assets/runtime/source/packages/cli/src/commands/channel/store/schema.ts
+// roles/moluoxixi/packages/cli/src/commands/channel/store/schema.ts
 function parseCsv(value) {
   const out = value?.split(",").map((s) => s.trim()).filter(Boolean);
   return out && out.length > 0 ? out : void 0;
 }
 
-// roles/moluoxixi/skills/init-project/assets/runtime/source/packages/cli/src/commands/channel/context.ts
+// roles/moluoxixi/packages/cli/src/commands/channel/context.ts
 async function channelContextAdd(channelName, opts) {
   const context = buildContextEntries(opts.file, opts.raw);
   if (!context) {
@@ -6097,7 +6099,7 @@ async function channelContextList(channelName, opts) {
   }
 }
 
-// roles/moluoxixi/skills/init-project/assets/runtime/source/packages/cli/src/commands/channel/create.ts
+// roles/moluoxixi/packages/cli/src/commands/channel/create.ts
 async function createChannel2(name, opts) {
   const scope = parseChannelScope(opts.scope) ?? "project";
   const channelType = parseChannelType(opts.type);
@@ -6142,7 +6144,7 @@ function channelDirFromEvent(name, scope, cwd) {
   return ref.dir;
 }
 
-// roles/moluoxixi/skills/init-project/assets/runtime/source/packages/cli/src/commands/channel/dev-parse-trace.ts
+// roles/moluoxixi/packages/cli/src/commands/channel/dev-parse-trace.ts
 import fs6 from "node:fs";
 function parseTrace(adapter, file) {
   const raw = fs6.readFileSync(file, "utf-8");
@@ -6201,14 +6203,14 @@ function printResult(lineNo, result) {
   }
 }
 
-// roles/moluoxixi/skills/init-project/assets/runtime/source/packages/cli/src/commands/channel/kill.ts
+// roles/moluoxixi/packages/cli/src/commands/channel/kill.ts
 import fs10 from "node:fs";
 
-// roles/moluoxixi/skills/init-project/assets/runtime/source/packages/cli/src/commands/channel/store/events.ts
+// roles/moluoxixi/packages/cli/src/commands/channel/store/events.ts
 import fs9 from "node:fs";
 import fsp3 from "node:fs/promises";
 
-// roles/moluoxixi/skills/init-project/assets/runtime/source/packages/cli/src/commands/channel/store/lock.ts
+// roles/moluoxixi/packages/cli/src/commands/channel/store/lock.ts
 import fs7 from "node:fs";
 import path6 from "node:path";
 var DEFAULT_RETRY_INTERVAL_MS2 = 25;
@@ -6285,7 +6287,7 @@ function sleep4(ms) {
   return new Promise((r) => setTimeout(r, ms));
 }
 
-// roles/moluoxixi/skills/init-project/assets/runtime/source/packages/cli/src/commands/channel/store/paths.ts
+// roles/moluoxixi/packages/cli/src/commands/channel/store/paths.ts
 import fs8 from "node:fs";
 import os3 from "node:os";
 import path7 from "node:path";
@@ -6329,7 +6331,7 @@ function eventsPath2(name, project = currentProjectKey2()) {
 function lockPath2(name, project = currentProjectKey2()) {
   return path7.join(channelDir2(name, project), `${name}.lock`);
 }
-function workerFile2(name, worker, suffix, project = currentProjectKey2()) {
+function workerFile(name, worker, suffix, project = currentProjectKey2()) {
   assertSafeName2(worker, "worker");
   return path7.join(channelDir2(name, project), `${worker}.${suffix}`);
 }
@@ -6455,7 +6457,7 @@ function resolveExistingChannelRef2(name, opts = {}) {
   );
 }
 
-// roles/moluoxixi/skills/init-project/assets/runtime/source/packages/cli/src/commands/channel/store/events.ts
+// roles/moluoxixi/packages/cli/src/commands/channel/store/events.ts
 async function ensureChannelDir2(name, project) {
   const dir = channelDir2(name, project);
   await fsp3.mkdir(dir, { recursive: true, mode: 448 });
@@ -6511,7 +6513,7 @@ async function readChannelMetadata2(name, project) {
   return reduceChannelMetadata(await readChannelEvents3(name, project));
 }
 
-// roles/moluoxixi/skills/init-project/assets/runtime/source/packages/cli/src/commands/channel/kill.ts
+// roles/moluoxixi/packages/cli/src/commands/channel/kill.ts
 var POLL_INTERVAL_MS = 100;
 var KILL_GRACE_MS = 8e3;
 async function channelKill(channelName, opts) {
@@ -6525,7 +6527,7 @@ async function channelKill(channelName, opts) {
   );
 }
 async function killLocked(channelName, opts, project) {
-  const pidPath = workerFile2(channelName, opts.as, "pid", project);
+  const pidPath = workerFile(channelName, opts.as, "pid", project);
   if (!fs10.existsSync(pidPath)) {
     throw new Error(
       `Worker '${opts.as}' not running in channel '${channelName}'`
@@ -6547,7 +6549,7 @@ async function killLocked(channelName, opts, project) {
     return;
   }
   if (opts.force) {
-    const workerPidPath = workerFile2(
+    const workerPidPath = workerFile(
       channelName,
       opts.as,
       "worker-pid",
@@ -6618,7 +6620,7 @@ function alive(pid) {
 function cleanupFiles(channelName, worker, project) {
   for (const suffix of ["pid", "worker-pid", "config", "spawnlock"]) {
     try {
-      fs10.unlinkSync(workerFile2(channelName, worker, suffix, project));
+      fs10.unlinkSync(workerFile(channelName, worker, suffix, project));
     } catch {
     }
   }
@@ -6627,7 +6629,7 @@ function sleep5(ms) {
   return new Promise((r) => setTimeout(r, ms));
 }
 
-// roles/moluoxixi/skills/init-project/assets/runtime/source/packages/cli/src/commands/channel/text-body.ts
+// roles/moluoxixi/packages/cli/src/commands/channel/text-body.ts
 import fs11 from "node:fs";
 async function resolveChannelTextBody(opts, resolveOpts) {
   const raw = await readChannelTextBody(opts);
@@ -6670,7 +6672,7 @@ async function readStdin() {
   });
 }
 
-// roles/moluoxixi/skills/init-project/assets/runtime/source/packages/cli/src/commands/channel/interrupt.ts
+// roles/moluoxixi/packages/cli/src/commands/channel/interrupt.ts
 async function channelInterrupt(channelName, opts) {
   const message = await resolveChannelTextBody(opts, {
     required: true,
@@ -6690,7 +6692,7 @@ async function channelInterrupt(channelName, opts) {
   console.log(JSON.stringify(event));
 }
 
-// roles/moluoxixi/skills/init-project/assets/runtime/source/packages/cli/src/commands/channel/list.ts
+// roles/moluoxixi/packages/cli/src/commands/channel/list.ts
 import fs12 from "node:fs";
 import path8 from "node:path";
 async function channelList(opts = {}) {
@@ -6880,10 +6882,10 @@ function colorKind(k) {
   }
 }
 
-// roles/moluoxixi/skills/init-project/assets/runtime/source/packages/cli/src/commands/channel/messages.ts
+// roles/moluoxixi/packages/cli/src/commands/channel/messages.ts
 import fs14 from "node:fs";
 
-// roles/moluoxixi/skills/init-project/assets/runtime/source/packages/cli/src/commands/channel/store/thread-state.ts
+// roles/moluoxixi/packages/cli/src/commands/channel/store/thread-state.ts
 function formatThreadBoard(states) {
   if (states.length === 0) return ["(no threads)"];
   return [
@@ -6896,7 +6898,7 @@ function formatThreadBoard(states) {
   ];
 }
 
-// roles/moluoxixi/skills/init-project/assets/runtime/source/packages/cli/src/commands/channel/store/watch.ts
+// roles/moluoxixi/packages/cli/src/commands/channel/store/watch.ts
 import fs13 from "node:fs";
 async function readNewEvents(filePath, state) {
   if (!fs13.existsSync(filePath)) {
@@ -6934,7 +6936,7 @@ async function readNewEvents(filePath, state) {
     await fh.close();
   }
 }
-async function* watchEvents2(channelName, filter, opts = {}) {
+async function* watchEvents(channelName, filter, opts = {}) {
   const file = eventsPath2(channelName, opts.project);
   if (!fs13.existsSync(channelDir2(channelName, opts.project))) {
     await fs13.promises.mkdir(channelDir2(channelName, opts.project), {
@@ -7000,7 +7002,7 @@ async function* watchEvents2(channelName, filter, opts = {}) {
   }
 }
 
-// roles/moluoxixi/skills/init-project/assets/runtime/source/packages/cli/src/commands/channel/messages.ts
+// roles/moluoxixi/packages/cli/src/commands/channel/messages.ts
 async function channelMessages(channelName, opts) {
   const ref = resolveExistingChannelRef2(channelName, {
     scope: parseChannelScope(opts.scope)
@@ -7046,7 +7048,7 @@ async function channelMessages(channelName, opts) {
   if (opts.follow) {
     const abort = new AbortController();
     process.on("SIGINT", () => abort.abort());
-    for await (const ev of watchEvents2(channelName, filter, {
+    for await (const ev of watchEvents(channelName, filter, {
       signal: abort.signal,
       project: ref.project
     })) {
@@ -7234,7 +7236,7 @@ function summarizeProgress(detail) {
   return parts.join(" ");
 }
 
-// roles/moluoxixi/skills/init-project/assets/runtime/source/packages/cli/src/commands/channel/rm.ts
+// roles/moluoxixi/packages/cli/src/commands/channel/rm.ts
 import fs15 from "node:fs";
 import path9 from "node:path";
 async function channelRm(name, opts = {}) {
@@ -7407,7 +7409,7 @@ function sleep6(ms) {
   return new Promise((r) => setTimeout(r, ms));
 }
 
-// roles/moluoxixi/skills/init-project/assets/runtime/source/packages/cli/src/commands/channel/send.ts
+// roles/moluoxixi/packages/cli/src/commands/channel/send.ts
 async function channelSend(channelName, opts) {
   const text = await resolveChannelTextBody(opts, {
     required: true,
@@ -7429,17 +7431,17 @@ async function channelSend(channelName, opts) {
   console.log(JSON.stringify(event));
 }
 
-// roles/moluoxixi/skills/init-project/assets/runtime/source/packages/cli/src/commands/channel/run.ts
+// roles/moluoxixi/packages/cli/src/commands/channel/run.ts
 import crypto from "node:crypto";
 import fs24 from "node:fs";
 
-// roles/moluoxixi/skills/init-project/assets/runtime/source/packages/cli/src/commands/channel/spawn.ts
+// roles/moluoxixi/packages/cli/src/commands/channel/spawn.ts
 import { spawn as spawn2 } from "node:child_process";
 import fs23 from "node:fs";
 import path15 from "node:path";
 import { fileURLToPath } from "node:url";
 
-// roles/moluoxixi/skills/init-project/assets/runtime/source/packages/cli/src/commands/channel/agent-loader.ts
+// roles/moluoxixi/packages/cli/src/commands/channel/agent-loader.ts
 import fs16 from "node:fs";
 import path10 from "node:path";
 var FRONTMATTER_FENCE = /^---\s*\n([\s\S]*?)\n---\s*\n?([\s\S]*)$/;
@@ -7556,7 +7558,7 @@ function parseFrontmatter(text) {
   return out;
 }
 
-// roles/moluoxixi/skills/init-project/assets/runtime/source/packages/cli/src/commands/channel/context-loader.ts
+// roles/moluoxixi/packages/cli/src/commands/channel/context-loader.ts
 import fs17 from "node:fs";
 import path11 from "node:path";
 var MAX_PER_FILE_BYTES = 1e6;
@@ -7592,7 +7594,7 @@ function assembleContext(cwd, files = [], jsonls = [], trustedRoots = []) {
     for (const resolved of expandGlob(cwd, spec)) {
       const jailed = jailedRealpath(resolved, cwd, trustedRoots);
       if (!jailed) continue;
-      const block = readFileBlock(jailed, cwd, "file");
+      const block = readFileBlock(jailed, cwd, "file", void 0, trustedRoots);
       if (block) blocks.push(block);
     }
   }
@@ -7632,7 +7634,13 @@ function assembleContext(cwd, files = [], jsonls = [], trustedRoots = []) {
         trustedRoots
       );
       if (!jailed) continue;
-      const block = readFileBlock(jailed, cwd, "jsonl", obj.reason);
+      const block = readFileBlock(
+        jailed,
+        cwd,
+        "jsonl",
+        obj.reason,
+        trustedRoots
+      );
       if (block) blocks.push(block);
     }
   }
@@ -7745,7 +7753,7 @@ function segmentToRegex(seg) {
   }
   return new RegExp(re + "$");
 }
-function readFileBlock(absPath, cwd, source, reason) {
+function readFileBlock(absPath, cwd, source, reason, trustedRoots = []) {
   if (!fs17.existsSync(absPath)) {
     process.stderr.write(
       `[channel spawn] --${source}: file not found, skipping: ${path11.relative(cwd, absPath)}
@@ -7760,11 +7768,20 @@ function readFileBlock(absPath, cwd, source, reason) {
     return null;
   }
   if (lstat.isSymbolicLink()) {
-    process.stderr.write(
-      `[channel spawn] --${source}: refusing unresolved symlink: ${path11.relative(cwd, absPath)}
+    let real;
+    try {
+      real = fs17.realpathSync(absPath);
+    } catch {
+      real = absPath;
+    }
+    const cwdReal = fs17.realpathSync(cwd);
+    if (!isUnderRoot(real, cwdReal) && !trustedRoots.some((root) => isUnderRoot(real, root))) {
+      process.stderr.write(
+        `[channel spawn] --${source}: refusing unresolved symlink: ${path11.relative(cwd, absPath)}
 `
-    );
-    return null;
+      );
+      return null;
+    }
   }
   let stat;
   try {
@@ -7804,72 +7821,18 @@ function formatBlock(b) {
 ${b.content.trimEnd()}`;
 }
 
-// roles/moluoxixi/skills/init-project/assets/runtime/source/packages/cli/src/commands/channel/context-trust.ts
+// roles/moluoxixi/packages/cli/src/commands/channel/context-trust.ts
 import fs18 from "node:fs";
 import path12 from "node:path";
-
-// roles/moluoxixi/skills/init-project/assets/runtime/source/packages/cli/src/constants/paths.ts
-var DIR_NAMES = {
-  /** Root workflow directory */
-  WORKFLOW: ".moluoxixi",
-  /** Workspace directory (under .moluoxixi/) - developer work areas */
-  WORKSPACE: "workspace",
-  /** Tasks directory (under .moluoxixi/) - unified task storage */
-  TASKS: "tasks",
-  /** Archive directory (under tasks/) */
-  ARCHIVE: "archive",
-  /** Spec/guidelines directory (under .moluoxixi/) */
-  SPEC: "spec",
-  /** Scripts directory (under .moluoxixi/) */
-  SCRIPTS: "scripts",
-  /** Channel runtime agent definitions (under .moluoxixi/) */
-  AGENTS: "agents"
-};
-var FILE_NAMES = {
-  /** Root agent instructions file */
-  AGENTS: "AGENTS.md",
-  /** Developer identity file */
-  DEVELOPER: ".developer",
-  /** Current task pointer */
-  CURRENT_TASK: ".current-task",
-  /** Task metadata */
-  TASK_JSON: "task.json",
-  /** Requirements document */
-  PRD: "prd.md",
-  /** Workflow guide */
-  WORKFLOW_GUIDE: "workflow.md",
-  /** Journal file prefix */
-  JOURNAL_PREFIX: "journal-"
-};
-var PATHS = {
-  /** .moluoxixi/ */
-  WORKFLOW: DIR_NAMES.WORKFLOW,
-  /** .moluoxixi/workspace/ */
-  WORKSPACE: `${DIR_NAMES.WORKFLOW}/${DIR_NAMES.WORKSPACE}`,
-  /** .moluoxixi/tasks/ */
-  TASKS: `${DIR_NAMES.WORKFLOW}/${DIR_NAMES.TASKS}`,
-  /** .moluoxixi/spec/ */
-  SPEC: `${DIR_NAMES.WORKFLOW}/${DIR_NAMES.SPEC}`,
-  /** .moluoxixi/scripts/ */
-  SCRIPTS: `${DIR_NAMES.WORKFLOW}/${DIR_NAMES.SCRIPTS}`,
-  /** .moluoxixi/agents/ */
-  AGENTS: `${DIR_NAMES.WORKFLOW}/${DIR_NAMES.AGENTS}`,
-  /** .moluoxixi/.developer */
-  DEVELOPER_FILE: `${DIR_NAMES.WORKFLOW}/${FILE_NAMES.DEVELOPER}`,
-  /** .moluoxixi/.current-task */
-  CURRENT_TASK_FILE: `${DIR_NAMES.WORKFLOW}/${FILE_NAMES.CURRENT_TASK}`,
-  /** .moluoxixi/workflow.md */
-  WORKFLOW_GUIDE_FILE: `${DIR_NAMES.WORKFLOW}/${FILE_NAMES.WORKFLOW_GUIDE}`
-};
-
-// roles/moluoxixi/skills/init-project/assets/runtime/source/packages/cli/src/commands/channel/context-trust.ts
+var WORKFLOW_DIR = ".moluoxixi";
 var AUTO_TRUST_ENTRIES = ["tasks", "workspace"];
 function parseChannelTrustSection(content) {
+  const lines = content.split("\n");
   const trustedDirs = [];
   let autoTrustSymlinks;
   let inChannel = false;
   let inList = false;
-  for (const raw of content.split("\n")) {
+  for (const raw of lines) {
     const line = raw.replace(/\r$/, "");
     const trimmed = line.trimEnd();
     if (trimmed.trim().startsWith("#")) continue;
@@ -7888,8 +7851,8 @@ function parseChannelTrustSection(content) {
     if (inList) {
       const item = trimmed.match(/^ {4}-\s*(.+)$/);
       if (item) {
-        const value2 = stripValue(item[1]);
-        if (value2) trustedDirs.push(value2);
+        const val = stripTrustValue(item[1]);
+        if (val) trustedDirs.push(val);
         continue;
       }
       inList = false;
@@ -7901,36 +7864,42 @@ function parseChannelTrustSection(content) {
     const boolMatch = trimmed.match(
       /^ {2}auto_trust_moluoxixi_symlinks:\s*(.+)$/
     );
-    if (!boolMatch) continue;
-    const value = stripValue(boolMatch[1]).toLowerCase();
-    if (value === "false") autoTrustSymlinks = false;
-    else if (value === "true") autoTrustSymlinks = true;
-    else {
-      process.stderr.write(
-        `[channel] channel.auto_trust_moluoxixi_symlinks: invalid value '${value}', ignoring
+    if (boolMatch) {
+      const val = stripTrustValue(boolMatch[1]).toLowerCase();
+      if (val === "false") autoTrustSymlinks = false;
+      else if (val === "true") autoTrustSymlinks = true;
+      else {
+        process.stderr.write(
+          `[channel] channel.auto_trust_moluoxixi_symlinks: invalid value '${val}', ignoring
 `
-      );
+        );
+      }
+      continue;
     }
   }
   return { trustedDirs, autoTrustSymlinks };
 }
-function stripValue(value) {
-  return value.trim().replace(/\s*#.*$/, "").trim().replace(/^['"]|['"]$/g, "");
+function stripTrustValue(s) {
+  return s.trim().replace(/\s*#.*$/, "").trim().replace(/^['"]|['"]$/g, "");
 }
 function loadChannelTrustConfig(cwd) {
-  const configPath = path12.join(cwd, DIR_NAMES.WORKFLOW, "config.yaml");
+  const configPath = path12.join(cwd, WORKFLOW_DIR, "config.yaml");
+  if (!fs18.existsSync(configPath)) return { trustedDirs: [] };
+  let content;
   try {
-    return parseChannelTrustSection(fs18.readFileSync(configPath, "utf-8"));
+    content = fs18.readFileSync(configPath, "utf-8");
   } catch {
     return { trustedDirs: [] };
   }
+  return parseChannelTrustSection(content);
 }
 function resolveTrustedRoots(cwd) {
   const config = loadChannelTrustConfig(cwd);
   const roots = [];
   for (const entry of config.trustedDirs) {
+    const resolved = path12.resolve(cwd, entry);
     try {
-      roots.push(fs18.realpathSync(path12.resolve(cwd, entry)));
+      roots.push(fs18.realpathSync(resolved));
     } catch {
       process.stderr.write(
         `[channel] channel.trusted_context_dirs: entry not found or invalid, skipping: ${entry}
@@ -7940,11 +7909,16 @@ function resolveTrustedRoots(cwd) {
   }
   if (config.autoTrustSymlinks !== false) {
     for (const entryName of AUTO_TRUST_ENTRIES) {
-      const entryPath = path12.join(cwd, DIR_NAMES.WORKFLOW, entryName);
+      const entryPath = path12.join(cwd, WORKFLOW_DIR, entryName);
+      let lstat;
       try {
-        if (fs18.lstatSync(entryPath).isSymbolicLink()) {
-          roots.push(fs18.realpathSync(entryPath));
-        }
+        lstat = fs18.lstatSync(entryPath);
+      } catch {
+        continue;
+      }
+      if (!lstat.isSymbolicLink()) continue;
+      try {
+        roots.push(fs18.realpathSync(entryPath));
       } catch {
       }
     }
@@ -7952,12 +7926,12 @@ function resolveTrustedRoots(cwd) {
   return [...new Set(roots)];
 }
 
-// roles/moluoxixi/skills/init-project/assets/runtime/source/packages/cli/src/commands/channel/guard.ts
+// roles/moluoxixi/packages/cli/src/commands/channel/guard.ts
 import { execFileSync } from "node:child_process";
 import fs19 from "node:fs";
 import path13 from "node:path";
 
-// roles/moluoxixi/skills/init-project/assets/runtime/source/packages/cli/src/commands/channel/wait.ts
+// roles/moluoxixi/packages/cli/src/commands/channel/wait.ts
 var TIMEOUT_EXIT_CODE = 124;
 async function channelWait(channelName, opts) {
   const ref = resolveExistingChannelRef2(channelName, {
@@ -7981,7 +7955,7 @@ async function channelWait(channelName, opts) {
   const timer = opts.timeoutMs ? setTimeout(() => abort.abort(), opts.timeoutMs) : void 0;
   const pending = opts.all ? new Set(fromList) : null;
   try {
-    for await (const ev of watchEvents2(channelName, filter, {
+    for await (const ev of watchEvents(channelName, filter, {
       signal: abort.signal,
       project: ref.project
     })) {
@@ -8022,7 +7996,8 @@ function parseDuration(s) {
   }
 }
 
-// roles/moluoxixi/skills/init-project/assets/runtime/source/packages/cli/src/commands/channel/guard.ts
+// roles/moluoxixi/packages/cli/src/commands/channel/guard.ts
+var WORKFLOW_DIR2 = ".moluoxixi";
 var DEFAULT_IDLE_TTL_MS = 5 * 60 * 1e3;
 var DEFAULT_MAX_LIVE_WORKERS = 6;
 var ENV_IDLE_TIMEOUT = "MOLUOXIXI_CHANNEL_WORKER_IDLE_TIMEOUT";
@@ -8088,7 +8063,7 @@ function parseEnvInt(raw, envName) {
   return n;
 }
 function loadWorkerGuardConfig(cwd) {
-  const configPath = path13.join(cwd, DIR_NAMES.WORKFLOW, "config.yaml");
+  const configPath = path13.join(cwd, WORKFLOW_DIR2, "config.yaml");
   if (!fs19.existsSync(configPath)) return void 0;
   let content;
   try {
@@ -8120,14 +8095,14 @@ function parseWorkerGuardSection(content) {
     if (inGuard) {
       const idle = trimmed.match(/^ {4}idle_timeout:\s*(.+)$/);
       if (idle) {
-        const val = stripValue2(idle[1]);
+        const val = stripValue(idle[1]);
         found.idleTimeoutMs = parseGuardDuration(val, "idle_timeout");
         any = true;
         continue;
       }
       const max = trimmed.match(/^ {4}max_live_workers:\s*(.+)$/);
       if (max) {
-        const val = stripValue2(max[1]);
+        const val = stripValue(max[1]);
         const n = Number(val);
         if (!Number.isInteger(n) || n < 0) {
           throw new Error(
@@ -8149,7 +8124,7 @@ function parseWorkerGuardSection(content) {
   }
   return any ? found : void 0;
 }
-function stripValue2(s) {
+function stripValue(s) {
   return s.trim().replace(/\s*#.*$/, "").trim().replace(/^['"]|['"]$/g, "");
 }
 function parseGuardDuration(raw, key) {
@@ -8202,14 +8177,14 @@ function scanLiveWorkers(opts = {}) {
     for (const state of workers) {
       if (state.terminal || isTerminalLifecycle(state.lifecycle)) continue;
       const supervisorPid = readPid(
-        workerFile2(entry, state.workerId, "pid", project)
+        workerFile(entry, state.workerId, "pid", project)
       );
       if (supervisorPid === void 0 || !pidAlive6(supervisorPid)) {
         continue;
       }
       const supervisorVerified = opts.isSupervisorProcess ? opts.isSupervisorProcess(supervisorPid, entry, state.workerId) : isSupervisorProcess(supervisorPid, entry, state.workerId);
       const workerPid = readPid(
-        workerFile2(entry, state.workerId, "worker-pid", project)
+        workerFile(entry, state.workerId, "worker-pid", project)
       );
       out.push({
         channel: entry,
@@ -8225,7 +8200,7 @@ function scanLiveWorkers(opts = {}) {
         continue;
       }
       const supervisorPid = readPid(
-        workerFile2(entry, state.workerId, "pid", project)
+        workerFile(entry, state.workerId, "pid", project)
       );
       if (supervisorPid === void 0 || !pidAlive6(supervisorPid)) continue;
       const supervisorVerified = opts.isSupervisorProcess ? opts.isSupervisorProcess(supervisorPid, entry, state.workerId) : isSupervisorProcess(supervisorPid, entry, state.workerId);
@@ -8340,7 +8315,7 @@ async function cleanupExpiredIdleWorkers(candidates, idleTimeoutMs, opts = {}) {
       if (live.supervisorPid === void 0 || live.supervisorVerified !== true || !pidAlive6(live.supervisorPid)) {
         continue;
       }
-      const reasonFile = workerFile2(
+      const reasonFile = workerFile(
         live.channel,
         live.workerId,
         "shutdown-reason",
@@ -8409,12 +8384,12 @@ function formatBudgetOverflowError(args) {
   return [header, rows, hint].join("\n");
 }
 
-// roles/moluoxixi/skills/init-project/assets/runtime/source/packages/cli/src/commands/channel/supervisor.ts
+// roles/moluoxixi/packages/cli/src/commands/channel/supervisor.ts
 import { spawn } from "node:child_process";
 import fs22 from "node:fs";
 import path14 from "node:path";
 
-// roles/moluoxixi/skills/init-project/assets/runtime/source/packages/cli/src/commands/channel/supervisor/idle.ts
+// roles/moluoxixi/packages/cli/src/commands/channel/supervisor/idle.ts
 function scheduleSupervisorIdleTimer(args) {
   const { idleTimeoutMs, shutdown, isChildExited, log } = args;
   if (idleTimeoutMs <= 0) {
@@ -8461,13 +8436,13 @@ function scheduleSupervisorIdleTimer(args) {
   };
 }
 
-// roles/moluoxixi/skills/init-project/assets/runtime/source/packages/cli/src/commands/channel/supervisor/inbox.ts
+// roles/moluoxixi/packages/cli/src/commands/channel/supervisor/inbox.ts
 import fs20 from "node:fs";
 async function runInboxWatcher(args) {
   const { channelName, workerName, adapter, ctx, child, signal } = args;
   const inboxPolicy = args.inboxPolicy ?? DEFAULT_INBOX_POLICY;
   let cursor = readInboxCursor(channelName, workerName);
-  for await (const ev of watchEvents2(
+  for await (const ev of watchEvents(
     channelName,
     {
       self: workerName,
@@ -8562,7 +8537,7 @@ async function runInboxWatcher(args) {
 function readInboxCursor(channelName, workerName) {
   try {
     const raw = fs20.readFileSync(
-      workerFile2(channelName, workerName, "inbox-cursor"),
+      workerFile(channelName, workerName, "inbox-cursor"),
       "utf-8"
     );
     const n = Number(raw.trim());
@@ -8574,7 +8549,7 @@ function readInboxCursor(channelName, workerName) {
 function writeInboxCursor(channelName, workerName, seq) {
   try {
     fs20.writeFileSync(
-      workerFile2(channelName, workerName, "inbox-cursor"),
+      workerFile(channelName, workerName, "inbox-cursor"),
       String(seq),
       "utf-8"
     );
@@ -8590,7 +8565,7 @@ async function waitForActiveTurnToFinish(turnTracker, signal) {
   }
 }
 
-// roles/moluoxixi/skills/init-project/assets/runtime/source/packages/cli/src/commands/channel/supervisor/shutdown.ts
+// roles/moluoxixi/packages/cli/src/commands/channel/supervisor/shutdown.ts
 function createShutdown(args) {
   const {
     channelName,
@@ -8703,7 +8678,7 @@ function createShutdown(args) {
   };
 }
 
-// roles/moluoxixi/skills/init-project/assets/runtime/source/packages/cli/src/commands/channel/supervisor/stdout.ts
+// roles/moluoxixi/packages/cli/src/commands/channel/supervisor/stdout.ts
 import fs21 from "node:fs";
 function pumpStdout(stream, onLine, onError) {
   let buf = "";
@@ -8784,13 +8759,13 @@ async function applyParseResult(channelName, workerName, result, child, shutdown
     const { reply, persistSessionId, persistThreadId } = result.side;
     if (persistSessionId) {
       fs21.writeFileSync(
-        workerFile2(channelName, workerName, "session-id"),
+        workerFile(channelName, workerName, "session-id"),
         persistSessionId
       );
     }
     if (persistThreadId) {
       fs21.writeFileSync(
-        workerFile2(channelName, workerName, "thread-id"),
+        workerFile(channelName, workerName, "thread-id"),
         persistThreadId
       );
     }
@@ -8841,7 +8816,7 @@ function startStdoutPump(args) {
   );
 }
 
-// roles/moluoxixi/skills/init-project/assets/runtime/source/packages/cli/src/commands/channel/supervisor/turns.ts
+// roles/moluoxixi/packages/cli/src/commands/channel/supervisor/turns.ts
 var TurnTracker = class {
   #turns = [];
   #hooks;
@@ -8873,7 +8848,7 @@ var TurnTracker = class {
   }
 };
 
-// roles/moluoxixi/skills/init-project/assets/runtime/source/packages/cli/src/commands/channel/supervisor/warning.ts
+// roles/moluoxixi/packages/cli/src/commands/channel/supervisor/warning.ts
 var SUPERVISOR_TIMEOUT_WARNING_REMAINING_MS = 5 * 6e4;
 function scheduleSupervisorTimeoutWarning(args) {
   const { channelName, workerName, timeoutMs, shutdown, isChildExited, log } = args;
@@ -8919,7 +8894,7 @@ function scheduleSupervisorTimeoutWarning(args) {
   };
 }
 
-// roles/moluoxixi/skills/init-project/assets/runtime/source/packages/cli/src/commands/channel/supervisor.ts
+// roles/moluoxixi/packages/cli/src/commands/channel/supervisor.ts
 var SHUTDOWN_GRACE_MS = 3e3;
 function resolveProviderPath(provider, cwd) {
   const fallback = { command: provider, prefixArgs: [] };
@@ -8957,7 +8932,7 @@ async function runSupervisor(channelName, workerName, configPath) {
   const config = readConfig(configPath);
   const project = process.env.MOLUOXIXI_CHANNEL_PROJECT;
   fs22.writeFileSync(
-    workerFile2(channelName, workerName, "pid", project),
+    workerFile(channelName, workerName, "pid", project),
     String(process.pid)
   );
   const adapter = getAdapter(config.provider);
@@ -8965,9 +8940,9 @@ async function runSupervisor(channelName, workerName, configPath) {
   const view = {
     resume: config.resume,
     model: config.model,
-    sandbox: config.sandbox,
     systemPrompt: config.systemPrompt,
-    cwd: config.cwd
+    cwd: config.cwd,
+    sandbox: config.sandbox
   };
   const args = adapter.buildArgs(view);
   const env2 = {
@@ -8977,7 +8952,7 @@ async function runSupervisor(channelName, workerName, configPath) {
     MOLUOXIXI_CHANNEL: channelName,
     MOLUOXIXI_CHANNEL_AS: workerName
   };
-  const logPath = workerFile2(channelName, workerName, "log", project);
+  const logPath = workerFile(channelName, workerName, "log", project);
   const log = fs22.createWriteStream(logPath);
   const resolvedProvider = resolveProviderPath(adapter.provider, config.cwd);
   const resolvedProviderDisplay = [
@@ -9081,7 +9056,7 @@ async function runSupervisor(channelName, workerName, configPath) {
     return;
   }
   fs22.writeFileSync(
-    workerFile2(channelName, workerName, "worker-pid", project),
+    workerFile(channelName, workerName, "worker-pid", project),
     String(child.pid)
   );
   await appendEvent2(
@@ -9189,7 +9164,7 @@ async function cleanup(channelName, workerName) {
   ]) {
     try {
       fs22.unlinkSync(
-        workerFile2(
+        workerFile(
           channelName,
           workerName,
           suffix,
@@ -9201,7 +9176,7 @@ async function cleanup(channelName, workerName) {
   }
 }
 function readExternalShutdownReason(channelName, workerName, project) {
-  const file = workerFile2(channelName, workerName, "shutdown-reason", project);
+  const file = workerFile(channelName, workerName, "shutdown-reason", project);
   try {
     const reason = fs22.readFileSync(file, "utf-8").trim();
     fs22.unlinkSync(file);
@@ -9214,13 +9189,13 @@ function readConfig(p) {
   return JSON.parse(fs22.readFileSync(p, "utf-8"));
 }
 function writeSupervisorConfig(channelName, workerName, config, project) {
-  const p = workerFile2(channelName, workerName, "config", project);
+  const p = workerFile(channelName, workerName, "config", project);
   fs22.mkdirSync(path14.dirname(p), { recursive: true });
   fs22.writeFileSync(p, JSON.stringify(config, null, 2), "utf-8");
   return p;
 }
 
-// roles/moluoxixi/skills/init-project/assets/runtime/source/packages/cli/src/commands/channel/spawn.ts
+// roles/moluoxixi/packages/cli/src/commands/channel/spawn.ts
 function resolveSpawn(channelName, opts) {
   const cwd = opts.cwd ?? process.cwd();
   const trustedRoots = resolveTrustedRoots(cwd);
@@ -9339,7 +9314,7 @@ async function channelSpawn(channelName, opts) {
   );
 }
 async function spawnLocked(channelName, resolved, opts, project, idleTimeoutMs) {
-  const pidPath = workerFile2(channelName, resolved.as, "pid", project);
+  const pidPath = workerFile(channelName, resolved.as, "pid", project);
   if (fs23.existsSync(pidPath)) {
     const existing = Number(fs23.readFileSync(pidPath, "utf-8").trim());
     if (existing && processAlive(existing)) {
@@ -9371,7 +9346,7 @@ async function spawnLocked(channelName, resolved, opts, project, idleTimeoutMs) 
     project
   );
   const supervisorBinary = resolveCliEntry();
-  const reservationPath = workerFile2(
+  const reservationPath = workerFile(
     channelName,
     resolved.as,
     "reservation",
@@ -9439,7 +9414,7 @@ async function spawnLocked(channelName, resolved, opts, project, idleTimeoutMs) 
   child.unref();
   const result = {
     pid: child.pid ?? -1,
-    log: workerFile2(channelName, resolved.as, "log", project),
+    log: workerFile(channelName, resolved.as, "log", project),
     worker: resolved.as
   };
   console.log(JSON.stringify(result));
@@ -9454,10 +9429,13 @@ function processAlive(pid) {
   }
 }
 function resolveCliEntry() {
-  return fileURLToPath(import.meta.url);
+  const here = fileURLToPath(import.meta.url);
+  if (path15.basename(here) === "channel-mem.mjs") return here;
+  const distRoot = path15.resolve(path15.dirname(here), "..", "..");
+  return path15.join(distRoot, "cli", "index.js");
 }
 
-// roles/moluoxixi/skills/init-project/assets/runtime/source/packages/cli/src/commands/channel/run.ts
+// roles/moluoxixi/packages/cli/src/commands/channel/run.ts
 async function channelRun(opts) {
   const name = opts.name ?? `run-${crypto.randomBytes(4).toString("hex")}`;
   const timeoutMs = opts.timeoutMs ?? 5 * 60 * 1e3;
@@ -9509,7 +9487,7 @@ async function waitForDone(channelName, workerName, timeoutMs) {
   const abort = new AbortController();
   const timer = setTimeout(() => abort.abort(), timeoutMs);
   try {
-    for await (const ev of watchEvents2(
+    for await (const ev of watchEvents(
       channelName,
       {
         self: "main",
@@ -9550,7 +9528,7 @@ async function printFinalMessage(channelName, workerName) {
   if (!text.endsWith("\n")) process.stdout.write("\n");
 }
 
-// roles/moluoxixi/skills/init-project/assets/runtime/source/packages/cli/src/commands/channel/threads.ts
+// roles/moluoxixi/packages/cli/src/commands/channel/threads.ts
 async function channelThreadPost(channelName, opts) {
   const parsed = parseThreadAction(opts.action);
   if (parsed === "rename") {
@@ -9653,7 +9631,7 @@ function printTimelineEvent(ev) {
   console.log(`  ${ts} context-${action} by=${ev.by}`);
 }
 
-// roles/moluoxixi/skills/init-project/assets/runtime/source/packages/cli/src/commands/channel/title.ts
+// roles/moluoxixi/packages/cli/src/commands/channel/title.ts
 async function channelTitleSet(channelName, opts) {
   const scope = parseChannelScope(opts.scope);
   const event = await setChannelTitle({
@@ -9676,7 +9654,7 @@ async function channelTitleClear(channelName, opts) {
   console.log(JSON.stringify(event));
 }
 
-// roles/moluoxixi/skills/init-project/assets/runtime/source/packages/cli/src/commands/channel/index.ts
+// roles/moluoxixi/packages/cli/src/commands/channel/index.ts
 function parseNonNegativeInteger(value) {
   if (!/^\d+$/.test(value)) {
     throw new InvalidArgumentError(
@@ -9825,7 +9803,7 @@ function registerChannelCommand(program3) {
     "worker name in the channel (default: <agent-name> if --agent is set)"
   ).option("--cwd <path>", "worker working directory (default: process cwd)").option("--model <id>", "model override").option("--resume <id>", "resume an existing session/thread id").option(
     "--sandbox <mode>",
-    "Codex sandbox: read-only | workspace-write | danger-full-access"
+    "codex-only: worker sandbox mode: read-only | workspace-write | danger-full-access (default workspace-write)"
   ).option(
     "--timeout <duration>",
     "auto-kill worker after this duration (e.g. 30m, 1h, 7200s)"
@@ -9865,6 +9843,7 @@ function registerChannelCommand(program3) {
       process.exit(1);
     }
     try {
+      const sandbox = parseCodexSandboxMode(opts.sandbox);
       await channelSpawn(name, {
         agent: opts.agent,
         provider: opts.provider,
@@ -9872,7 +9851,7 @@ function registerChannelCommand(program3) {
         cwd: opts.cwd,
         model: opts.model,
         resume: opts.resume,
-        sandbox: parseCodexSandboxMode(opts.sandbox),
+        sandbox,
         timeoutMs: parseDuration(opts.timeout),
         warnBeforeMs: parseDuration(opts.warnBefore),
         files: opts.file,
@@ -10255,15 +10234,15 @@ function registerChannelCommand(program3) {
   });
 }
 
-// roles/moluoxixi/skills/init-project/assets/runtime/source/packages/cli/src/commands/mem.ts
+// roles/moluoxixi/packages/cli/src/commands/mem.ts
 import * as os5 from "node:os";
 import * as path22 from "node:path";
 
-// roles/moluoxixi/skills/init-project/assets/runtime/source/packages/core/src/mem/adapters/claude.ts
+// roles/moluoxixi/packages/core/src/mem/adapters/claude.ts
 import * as fs27 from "node:fs";
 import * as path18 from "node:path";
 
-// roles/moluoxixi/skills/init-project/assets/runtime/source/packages/core/src/mem/dialogue.ts
+// roles/moluoxixi/packages/core/src/mem/dialogue.ts
 var INJECTION_TAGS = [
   "system-reminder",
   "task-status",
@@ -10319,7 +10298,7 @@ function turnKey(turn) {
   return `${turn.role}\0${turn.text}`;
 }
 
-// roles/moluoxixi/skills/init-project/assets/runtime/source/packages/core/src/mem/filter.ts
+// roles/moluoxixi/packages/core/src/mem/filter.ts
 import * as path16 from "node:path";
 function inRangeOverlap(start, end, f) {
   const s = start ?? end;
@@ -10343,7 +10322,7 @@ function sameProject(sessionCwd, target) {
   return a === b || a.startsWith(b + path16.sep);
 }
 
-// roles/moluoxixi/skills/init-project/assets/runtime/source/packages/core/src/mem/internal/jsonl.ts
+// roles/moluoxixi/packages/core/src/mem/internal/jsonl.ts
 import * as fs25 from "node:fs";
 var CHUNK = 256 * 1024;
 var OPEN_BRACE = 123;
@@ -10428,7 +10407,7 @@ function readJsonFile(file) {
   }
 }
 
-// roles/moluoxixi/skills/init-project/assets/runtime/source/packages/core/src/mem/internal/paths.ts
+// roles/moluoxixi/packages/core/src/mem/internal/paths.ts
 import * as fs26 from "node:fs";
 import * as os4 from "node:os";
 import * as path17 from "node:path";
@@ -10518,7 +10497,7 @@ function* walkDir(root) {
   }
 }
 
-// roles/moluoxixi/skills/init-project/assets/runtime/source/packages/core/src/mem/phase.ts
+// roles/moluoxixi/packages/core/src/mem/phase.ts
 function parseTaskPyCommandsAll(cmd) {
   if (typeof cmd !== "string" || cmd.length === 0) return [];
   const all = [];
@@ -10692,7 +10671,7 @@ function pushWindow(windows, startTurn, endTurn, slug, counter) {
   });
 }
 
-// roles/moluoxixi/skills/init-project/assets/runtime/source/packages/core/src/mem/search.ts
+// roles/moluoxixi/packages/core/src/mem/search.ts
 function relevanceScore(h) {
   if (h.totalTurns === 0) return 0;
   return (3 * h.userCount + h.asstCount) / h.totalTurns;
@@ -10786,7 +10765,7 @@ function searchInDialogue(turns, kw, maxExcerpts = 3, chunkChars = 400) {
   };
 }
 
-// roles/moluoxixi/skills/init-project/assets/runtime/source/packages/core/src/mem/adapters/claude.ts
+// roles/moluoxixi/packages/core/src/mem/adapters/claude.ts
 function claudeListSessions(f) {
   if (!fs27.existsSync(CLAUDE_PROJECTS)) return [];
   const out = [];
@@ -10944,7 +10923,7 @@ function collectClaudeTurnsAndEvents(s) {
   return { turns, events };
 }
 
-// roles/moluoxixi/skills/init-project/assets/runtime/source/packages/core/src/mem/adapters/codex.ts
+// roles/moluoxixi/packages/core/src/mem/adapters/codex.ts
 import * as fs28 from "node:fs";
 import * as path19 from "node:path";
 function parseDialogueRole(v) {
@@ -11189,7 +11168,7 @@ function collectCodexTurnsAndEvents(s, warnings) {
   return { turns: pool.toArray(), events };
 }
 
-// roles/moluoxixi/skills/init-project/assets/runtime/source/packages/core/src/mem/adapters/grok.ts
+// roles/moluoxixi/packages/core/src/mem/adapters/grok.ts
 import * as fs29 from "node:fs";
 import * as path20 from "node:path";
 var CHAT_HISTORY = "chat_history.jsonl";
@@ -11329,7 +11308,7 @@ function collectGrokTurnsAndEvents(s, warnings) {
   return { turns, events };
 }
 
-// roles/moluoxixi/skills/init-project/assets/runtime/source/packages/core/src/mem/adapters/opencode.ts
+// roles/moluoxixi/packages/core/src/mem/adapters/opencode.ts
 function opencodeListSessions(_f) {
   return [];
 }
@@ -11340,7 +11319,7 @@ function opencodeSearch(kw) {
   return searchInDialogue([], kw);
 }
 
-// roles/moluoxixi/skills/init-project/assets/runtime/source/packages/core/src/mem/adapters/pi.ts
+// roles/moluoxixi/packages/core/src/mem/adapters/pi.ts
 import * as fs30 from "node:fs";
 import * as path21 from "node:path";
 function piListSessions(f) {
@@ -11560,10 +11539,10 @@ function pushTaskEvents(command, timestamp, turnIndex, events) {
   }
 }
 
-// roles/moluoxixi/skills/init-project/assets/runtime/source/packages/core/src/mem/adapters/zcode.ts
+// roles/moluoxixi/packages/core/src/mem/adapters/zcode.ts
 import * as fs32 from "node:fs";
 
-// roles/moluoxixi/skills/init-project/assets/runtime/source/packages/core/src/mem/internal/sqlite-readonly.ts
+// roles/moluoxixi/packages/core/src/mem/internal/sqlite-readonly.ts
 import * as fs31 from "node:fs";
 var SqliteParseError = class extends Error {
   constructor(message, cause) {
@@ -12166,7 +12145,7 @@ function openSqliteReadOnly(mainPath) {
   };
 }
 
-// roles/moluoxixi/skills/init-project/assets/runtime/source/packages/core/src/mem/adapters/zcode.ts
+// roles/moluoxixi/packages/core/src/mem/adapters/zcode.ts
 function parseDialogueRole2(v) {
   return v === "user" || v === "assistant" ? v : void 0;
 }
@@ -12497,7 +12476,7 @@ function collectZcodeTurnsAndEvents(s, warnings = []) {
   return { turns, events };
 }
 
-// roles/moluoxixi/skills/init-project/assets/runtime/source/packages/core/src/mem/sessions.ts
+// roles/moluoxixi/packages/core/src/mem/sessions.ts
 var WIDE_LIMIT = 1e6;
 var MemSessionNotFoundError = class extends Error {
   sessionId;
@@ -12759,7 +12738,7 @@ function extractMemDialogue(options) {
   };
 }
 
-// roles/moluoxixi/skills/init-project/assets/runtime/source/packages/core/src/mem/context.ts
+// roles/moluoxixi/packages/core/src/mem/context.ts
 function selectContextTurns(turns, grep, nTurns, around, maxChars) {
   let hitIndices = [];
   let totalHitTurns = 0;
@@ -12855,7 +12834,7 @@ function readMemContext(options) {
   };
 }
 
-// roles/moluoxixi/skills/init-project/assets/runtime/source/packages/core/src/mem/projects.ts
+// roles/moluoxixi/packages/core/src/mem/projects.ts
 function listMemProjects(options) {
   const f = resolveFilter(options?.filter);
   const warnings = [];
@@ -12891,7 +12870,7 @@ function listMemProjects(options) {
   );
 }
 
-// roles/moluoxixi/skills/init-project/assets/runtime/source/packages/cli/src/commands/mem.ts
+// roles/moluoxixi/packages/cli/src/commands/mem.ts
 function parseArgv(argv) {
   const cmd = argv[0] ?? "list";
   const positional = [];
@@ -13304,7 +13283,7 @@ function runMem(args) {
   }
 }
 
-// roles/moluoxixi/skills/init-project/assets/runtime/source/packages/cli/src/airules-runtime-entry.ts
+// roles/moluoxixi/packages/cli/src/airules-runtime-entry.ts
 var program2 = new Command();
 program2.name("moluoxixi-runtime").description("AIRules-owned local runtime for bundled Moluoxixi capabilities").version("0.2.0");
 registerChannelCommand(program2);

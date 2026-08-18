@@ -14,7 +14,7 @@ Run the official `trellis init` command in the target project. Trellis owns ever
 3. Verify `trellis --version` succeeds. If it does not, stop and tell the user to install this role with:
 
    ```bash
-   airules sync --host all --role trellis
+   airules install trellis --host all
    ```
 
 4. Obtain the developer identifier used by Trellis. Use a value supplied or confirmed by the user; never silently invent one. A detected Git user name may be offered as a suggestion, but requires confirmation.

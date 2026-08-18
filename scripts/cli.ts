@@ -11,6 +11,7 @@ import {
   serializeContractAudit,
   writeContractAudit,
 } from './lib/contract-diff.js'
+import { requireRoleName } from './lib/role-assets.js'
 import {
   getDefaultMoluoHome,
   syncToHosts,
@@ -44,20 +45,22 @@ const PACKAGE_VERSION = (() => {
 })()
 function printHelp() {
   console.log(`Usage:
-  airules sync [--role <name>] [--host <name|all>] [--home <dir>] [--user-home <dir>] [--skip-vendors] [--no-verify]
-  airules verify [--role <name>] [--host <name|all>] [--home <dir>] [--user-home <dir>]
+  airules install <role> [--host <name|all>] [--home <dir>] [--user-home <dir>]
+  airules verify <role> [--host <name|all>] [--home <dir>] [--user-home <dir>]
+  airules sync <role> [options]  # deprecated install alias
   airules contract-diff --expected <openapi.json|yaml> --actual <openapi.json|yaml> [--output <audit.json>]
   airules --version
 
 Commands:
-  sync           同步远程 skills 到宿主
-  verify         校验宿主 skills 链接完整性
+  install        更新 AIRules 并安装、验证一个角色
+  verify         校验一个已安装角色的宿主投影
+  sync           install 的兼容别名；角色仍为必填
   contract-diff  确定性比对两个 OpenAPI 3.x 契约
 
 Selectable hosts:
   ${HOST_IDS.join(', ')}
 
-The mandatory ~/.agents/skills shared layer is always synchronized and verified.
+Install accepts exactly one role. The mandatory ~/.agents/skills shared layer is synchronized and verified with it.
 `)
 }
 
@@ -98,12 +101,24 @@ function parseCommandArgs(args: string[]) {
   })
 }
 
-function commonOptions(values: Record<string, string | boolean | undefined>) {
+function requireCommandRole(command: 'install' | 'sync' | 'verify', positionals: string[], roleOption: string | undefined): string {
+  if (positionals.length > 1)
+    throw new Error(`${command} accepts exactly one role`)
+  if (positionals.length === 1 && roleOption !== undefined)
+    throw new Error(`${command} received the role twice; use a positional role`)
+
+  const role = positionals[0] ?? roleOption
+  if (role === undefined || role === '')
+    throw new Error(`${command} requires a role; use: airules install <role>`)
+  return requireRoleName(role)
+}
+
+function commonOptions(values: Record<string, string | boolean | undefined>, role: string) {
   return {
     home: String(values.home ?? getDefaultMoluoHome()),
     host: String(values.host ?? 'all'),
     repoRoot: String(values['repo-root'] ?? PACKAGE_ROOT),
-    role: values.role === undefined ? undefined : String(values.role),
+    role,
     userHome: values['user-home'] === undefined ? undefined : String(values['user-home']),
   }
 }
@@ -169,21 +184,25 @@ function preScanContractDiffPaths(args: string[]): { expected?: string, actual?:
   }
 }
 
-async function runSync(args: string[]) {
-  const { values } = parseCommandArgs(args)
+async function runInstall(args: string[], command: 'install' | 'sync') {
+  const { positionals, values } = parseCommandArgs(args)
   if (values.help === true) {
     printHelp()
     return
   }
 
-  const options = commonOptions(values)
+  const role = requireCommandRole(command, positionals, values.role)
+  if (command === 'sync')
+    console.warn(kleur.yellow('[deprecated] Use `airules install <role>`; `sync` will be removed in a future release.'))
+
+  const options = commonOptions(values, role)
   const result = await syncToHosts({
     ...options,
     skipVendors: values['skip-vendors'] === true,
     verify: values['no-verify'] !== true,
   })
 
-  console.log(kleur.green(`[sync] 完成: ${result.projectedHosts.join(', ') || '无宿主投影'}`))
+  console.log(kleur.green(`[install] ${role} 完成: ${result.projectedHosts.join(', ') || '无宿主投影'}`))
   console.log(`[home] ${result.moluoHome}`)
   if (result.skippedHosts.length > 0) {
     console.log(`[skip] 宿主目录不存在: ${result.skippedHosts.join(', ')}`)
@@ -191,13 +210,14 @@ async function runSync(args: string[]) {
 }
 
 async function runVerify(args: string[]) {
-  const { values } = parseCommandArgs(args)
+  const { positionals, values } = parseCommandArgs(args)
   if (values.help === true) {
     printHelp()
     return
   }
 
-  const options = commonOptions(values)
+  const role = requireCommandRole('verify', positionals, values.role)
+  const options = commonOptions(values, role)
   const targets = await verifyHosts({
     home: options.home,
     host: options.host,
@@ -206,7 +226,7 @@ async function runVerify(args: string[]) {
     userHome: options.userHome,
   })
 
-  console.log(kleur.green(`[verify] 通过: ${targets.join(', ')}`))
+  console.log(kleur.green(`[verify] ${role} 通过: ${targets.join(', ')}`))
 }
 
 function runContractDiff(args: string[]) {
@@ -315,8 +335,8 @@ async function main() {
     return
   }
 
-  if (command === 'sync') {
-    await runSync(commandArgs)
+  if (command === 'install' || command === 'sync') {
+    await runInstall(commandArgs, command)
     return
   }
 

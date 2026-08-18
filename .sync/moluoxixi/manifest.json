@@ -1,0 +1,30 @@
+{
+  "schemaVersion": 1,
+  "role": "moluoxixi",
+  "upstream": {
+    "name": "Trellis",
+    "source": "https://github.com/mindfold-ai/Trellis.git",
+    "baseline": {
+      "version": "0.6.15",
+      "revision": "bd454938dc406e2f692a07c3f3888e5375ff674d"
+    }
+  },
+  "packages": [
+    {
+      "upstreamPath": "packages/core",
+      "finalizedPath": "roles/moluoxixi/packages/core"
+    },
+    {
+      "upstreamPath": "packages/cli",
+      "finalizedPath": "roles/moluoxixi/packages/cli"
+    }
+  ],
+  "workingClone": ".sync/moluoxixi/work/trellis",
+  "rebuildWorktree": ".sync/moluoxixi/work/rebuild",
+  "rebuildBranchPattern": "moluoxixi/rebuild-<short-revision>",
+  "records": {
+    "capabilities": ".sync/moluoxixi/capability-map.md",
+    "preservationContracts": ".sync/moluoxixi/preservation-contracts.json",
+    "reconciliation": ".sync/moluoxixi/history/reconciliation-bd454938.json"
+  }
+}

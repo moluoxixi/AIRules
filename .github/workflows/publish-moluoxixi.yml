@@ -1,0 +1,76 @@
+name: Publish Moluoxixi role packages
+
+on:
+  push:
+    tags:
+      - 'moluoxixi-v*.*.*'
+  workflow_dispatch:
+    inputs:
+      tag:
+        description: Existing Moluoxixi release tag, for example moluoxixi-v0.6.17
+        required: true
+        type: string
+
+permissions:
+  contents: read
+  id-token: write
+
+concurrency:
+  group: publish-moluoxixi-${{ github.event_name == 'workflow_dispatch' && inputs.tag || github.ref_name }}
+  cancel-in-progress: false
+
+jobs:
+  publish:
+    name: Build, verify, and publish core/CLI
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: roles/moluoxixi
+
+    steps:
+      - name: Checkout release tag
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event_name == 'workflow_dispatch' && inputs.tag || github.ref }}
+
+      - name: Set up pnpm
+        uses: pnpm/action-setup@v4
+        with:
+          version: 10.32.1
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          registry-url: https://registry.npmjs.org
+
+      - name: Install role workspace dependencies
+        run: pnpm install --include-workspace-root --no-frozen-lockfile
+
+      - name: Verify tag and package versions
+        env:
+          RELEASE_TAG: ${{ github.event_name == 'workflow_dispatch' && inputs.tag || github.ref_name }}
+          GITHUB_REF_NAME: ${{ github.event_name == 'workflow_dispatch' && inputs.tag || github.ref_name }}
+        run: pnpm exec node packages/cli/scripts/release-preflight.js check-versions --require-tag
+
+      - name: Run publish gates and tarball sandbox smoke
+        run: pnpm run verify:publish && pnpm run typecheck
+
+      - name: Plan idempotent package publication
+        id: publish-plan
+        run: pnpm exec node packages/cli/scripts/release-preflight.js publish-plan --github
+
+      - name: Publish core first
+        if: steps.publish-plan.outputs.core_publish == 'true'
+        env:
+          NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
+        run: pnpm --filter @moluoxixi/airules-moluoxixi-core publish --no-git-checks --provenance --access public --tag "$(pnpm exec node packages/cli/scripts/release-preflight.js npm-tag)"
+
+      - name: Publish CLI second
+        if: steps.publish-plan.outputs.cli_publish == 'true'
+        env:
+          NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
+        run: pnpm --filter @moluoxixi/airules-moluoxixi-cli publish --no-git-checks --provenance --access public --tag "$(pnpm exec node packages/cli/scripts/release-preflight.js npm-tag)"
+
+      - name: Verify public registry visibility
+        run: pnpm exec node packages/cli/scripts/release-preflight.js verify-npm --package all

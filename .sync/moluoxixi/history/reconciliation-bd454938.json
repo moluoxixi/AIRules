@@ -1,0 +1,120 @@
+{
+  "schemaVersion": 1,
+  "upstream": {
+    "name": "Trellis",
+    "source": "https://github.com/mindfold-ai/Trellis.git",
+    "from": {
+      "tag": "v0.6.15",
+      "revision": "d8fff53ce4964ed1a3e52fea6b418b27eba093e4"
+    },
+    "to": {
+      "tag": null,
+      "revision": "bd454938dc406e2f692a07c3f3888e5375ff674d"
+    },
+    "history": {
+      "order": "reverse",
+      "excludeMerges": true,
+      "commitCount": 6
+    }
+  },
+  "previousRecord": ".sync/moluoxixi/history/reconciliation-v0.6.15.json",
+  "statusDefinitions": {
+    "adapted": "The upstream behavior is present in the finalized Moluoxixi package tree and localEvidence identifies the implementation.",
+    "reviewed-no-change": "The commit was reviewed and requires no Moluoxixi behavior change."
+  },
+  "localAdaptations": [
+    {
+      "path": "roles/moluoxixi/packages/cli/test/templates/omp.test.ts",
+      "upstreamRevision": "bd454938dc406e2f692a07c3f3888e5375ff674d",
+      "decision": "Remove the second duplicate node:os import so Vitest/Oxc can parse and execute the complete upstream OMP regression suite.",
+      "verification": "pnpm --filter @moluoxixi/airules-moluoxixi-cli exec vitest run test/templates/omp.test.ts"
+    }
+  ],
+  "entries": [
+    {
+      "hash": "09f1b7dda2d238f1625cdcaf5b9abb6583b99798",
+      "subject": "fix(workflow): stop dropping routing blocks for four platforms",
+      "status": "adapted",
+      "localEvidence": [
+        {
+          "path": "roles/moluoxixi/packages/cli/src/templates/trellis/scripts/common/workflow_phase.py",
+          "symbol": "PLATFORM_MARKER_LABEL and resolve_effective_platform"
+        },
+        {
+          "path": "roles/moluoxixi/packages/cli/test/registry-invariants.test.ts",
+          "symbol": "workflow routing marker coverage"
+        }
+      ]
+    },
+    {
+      "hash": "ca8f5dda5eda5161d278fce07b1ca3291ade9e5e",
+      "subject": "fix(channel): drain stdout before supervisor exit (#542)",
+      "status": "adapted",
+      "localEvidence": [
+        {
+          "path": "roles/moluoxixi/packages/cli/src/commands/channel/supervisor.ts",
+          "symbol": "stdout drain before finalize"
+        },
+        {
+          "path": "roles/moluoxixi/packages/cli/src/commands/channel/supervisor/stdout.ts",
+          "symbol": "createStdoutDrainControl"
+        }
+      ]
+    },
+    {
+      "hash": "a8a50a5e5d247b922f4e751d2604659923d9883b",
+      "subject": "fix(omp): deduplicate shared task context files (#540)",
+      "status": "adapted",
+      "localEvidence": [
+        {
+          "path": "roles/moluoxixi/packages/cli/src/templates/omp/extensions/trellis/index.ts.txt",
+          "symbol": "includedPaths task context deduplication"
+        },
+        {
+          "path": "roles/moluoxixi/packages/cli/test/templates/omp.test.ts",
+          "symbol": "shared task context deduplication regression"
+        }
+      ]
+    },
+    {
+      "hash": "93185b490a58e85acbef6626154dccd5a1658ab3",
+      "subject": "fix(omp): refresh task context after file changes (#541)",
+      "status": "adapted",
+      "localEvidence": [
+        {
+          "path": "roles/moluoxixi/packages/cli/src/templates/omp/extensions/trellis/index.ts.txt",
+          "symbol": "taskContextSignature and context hook replacement"
+        },
+        {
+          "path": "roles/moluoxixi/packages/cli/test/templates/omp.test.ts",
+          "symbol": "task context refresh regression"
+        }
+      ]
+    },
+    {
+      "hash": "e9e6f5917644b645789c53c3c5a7df13a3b013fe",
+      "subject": "fix(channel): pass the claude system prompt as a file to avoid argv limits (#555)",
+      "status": "adapted",
+      "localEvidence": [
+        {
+          "path": "roles/moluoxixi/packages/cli/src/commands/channel/adapters/claude.ts",
+          "symbol": "INLINE_SYSTEM_PROMPT_MAX_CHARS and --append-system-prompt-file"
+        },
+        {
+          "path": "roles/moluoxixi/packages/cli/src/commands/channel/supervisor.ts",
+          "symbol": "system-prompt.md worker file"
+        },
+        {
+          "path": "roles/moluoxixi/packages/cli/test/commands/channel-claude-adapter.test.ts",
+          "symbol": "large system prompt file regression"
+        }
+      ]
+    },
+    {
+      "hash": "bd454938dc406e2f692a07c3f3888e5375ff674d",
+      "subject": "chore: normalize line endings on checkin",
+      "status": "reviewed-no-change",
+      "reason": "The finalized packages were rebuilt from this exact commit, so its byte-level normalization is retained without a separate Moluoxixi behavior change."
+    }
+  ]
+}

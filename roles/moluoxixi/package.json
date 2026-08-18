@@ -1,0 +1,23 @@
+{
+  "name": "@moluoxixi/airules-moluoxixi-role",
+  "type": "module",
+  "version": "0.3.0",
+  "private": true,
+  "packageManager": "pnpm@10.32.1",
+  "workspaces": [
+    "packages/*"
+  ],
+  "scripts": {
+    "build": "pnpm --filter @moluoxixi/airules-moluoxixi-core build && pnpm --filter @moluoxixi/airules-moluoxixi-cli build",
+    "test": "pnpm --filter @moluoxixi/airules-moluoxixi-core test && pnpm --filter @moluoxixi/airules-moluoxixi-cli test",
+    "test:publish": "pnpm --filter @moluoxixi/airules-moluoxixi-core test:publish && pnpm --filter @moluoxixi/airules-moluoxixi-cli test:publish",
+    "lint": "pnpm --filter @moluoxixi/airules-moluoxixi-core lint && pnpm --filter @moluoxixi/airules-moluoxixi-cli lint",
+    "typecheck": "pnpm --filter @moluoxixi/airules-moluoxixi-core typecheck && pnpm --filter @moluoxixi/airules-moluoxixi-cli typecheck",
+    "verify:publish": "pnpm run test:publish && pnpm run build && node packages/cli/scripts/release-preflight.js verify-publish",
+    "publish:dry-run": "pnpm run verify:publish && pnpm --filter @moluoxixi/airules-moluoxixi-core publish --dry-run --no-git-checks --access public && pnpm --filter @moluoxixi/airules-moluoxixi-cli publish --dry-run --no-git-checks --access public"
+  },
+  "devDependencies": {
+    "@arethetypeswrong/cli": "0.18.5",
+    "publint": "0.3.23"
+  }
+}

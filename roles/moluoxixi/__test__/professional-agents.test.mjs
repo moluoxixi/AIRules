@@ -4,23 +4,19 @@ import path from 'node:path'
 import { fileURLToPath } from 'node:url'
 import { describe, expect, it } from 'vitest'
 import { parseDocument } from 'yaml'
-import { insertSyntheticTextPart } from '../skills/init-project/assets/hosts/opencode/lib/context-visibility.js'
+import { insertSyntheticTextPart } from '../packages/cli/src/templates/opencode/lib/context-visibility.js'
 import {
   ContextBudget,
-  MoluoxixiContext,
-} from '../skills/init-project/assets/hosts/opencode/lib/moluoxixi-context.js'
+  TrellisContext as MoluoxixiContext,
+} from '../packages/cli/src/templates/opencode/lib/trellis-context.js'
 import { PLATFORM_ORDER } from '../skills/init-project/scripts/hosts/catalog.mjs'
 import { buildPlan } from '../skills/init-project/scripts/plan.mjs'
+import { readTemplateFile } from '../skills/init-project/scripts/templates.mjs'
 
 const agentNames = [
   'moluoxixi-research',
   'moluoxixi-implement',
   'moluoxixi-check',
-  'moluoxixi-frontend',
-  'moluoxixi-backend',
-  'moluoxixi-test',
-  'moluoxixi-security',
-  'moluoxixi-database',
 ]
 const roleRoot = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..')
 
@@ -35,16 +31,46 @@ const projectedRoots = {
   codebuddy: ['.codebuddy/agents', '.md'],
   copilot: ['.github/agents', '.agent.md'],
   droid: ['.factory/droids', '.md'],
+  grok: ['.grok/agents', '.md'],
+  kimi: ['.kimi-code/agents', '.md'],
   pi: ['.pi/agents', '.md'],
   reasonix: ['.reasonix/skills', '/SKILL.md'],
   zcode: ['.zcode/agents', '.md'],
   trae: ['.trae/agents', '.md'],
   omp: ['.omp/agents', '.md'],
+  snow: ['.snow/agents', '.md'],
 }
+
+const coreSkillRoots = {
+  claude: '.claude/skills',
+  cursor: '.cursor/skills',
+  opencode: '.opencode/skills',
+  codex: '.agents/skills',
+  kilo: '.kilocode/skills',
+  kiro: '.kiro/skills',
+  gemini: '.agents/skills',
+  antigravity: '.agent/skills',
+  devin: '.devin/skills',
+  qoder: '.qoder/skills',
+  codebuddy: '.codebuddy/skills',
+  copilot: '.github/skills',
+  droid: '.factory/skills',
+  dsh: '.agents/skills',
+  pi: '.agents/skills',
+  reasonix: '.reasonix/skills',
+  zcode: '.zcode/skills',
+  trae: '.trae/skills',
+  omp: '.omp/skills',
+  grok: '.grok/skills',
+  kimi: '.agents/skills',
+  snow: '.snow/skills',
+}
+const allPlatformPlan = buildPlan(PLATFORM_ORDER, 'python3')
 
 function agentPath(platform, name) {
   const [root, suffix] = projectedRoots[platform]
-  return suffix.startsWith('/') ? path.posix.join(root, name, suffix.slice(1)) : path.posix.join(root, `${name}${suffix}`)
+  const projectedName = platform === 'reasonix' ? name.replace(/^moluoxixi-/u, '') : name
+  return suffix.startsWith('/') ? path.posix.join(root, projectedName, suffix.slice(1)) : path.posix.join(root, `${projectedName}${suffix}`)
 }
 
 describe('professional sub-agent distribution', () => {
@@ -68,10 +94,11 @@ describe('professional sub-agent distribution', () => {
       .toContain('argument-hint: "[task-name]"')
   })
 
-  it('projects workflow and optional professional agents to every capable host', () => {
-    const plan = buildPlan(PLATFORM_ORDER, 'python3')
+  it('projects the upstream workflow agents to every capable host', () => {
+    const plan = allPlatformPlan
     for (const platform of Object.keys(projectedRoots)) {
-      for (const name of agentNames)
+      const expectedAgents = platform === 'reasonix' ? agentNames.slice(1) : agentNames
+      for (const name of expectedAgents)
         expect(plan.has(agentPath(platform, name)), `${platform} missing ${name}`).toBe(true)
     }
     for (const platform of ['kilo', 'antigravity', 'devin']) {
@@ -80,18 +107,14 @@ describe('professional sub-agent distribution', () => {
   })
 
   it('injects implementation or check context by specialist boundary', () => {
-    const plan = buildPlan(PLATFORM_ORDER, 'python3')
-    for (const platform of ['gemini', 'qoder', 'copilot', 'pi', 'reasonix', 'zcode', 'trae']) {
-      for (const name of ['moluoxixi-frontend', 'moluoxixi-backend', 'moluoxixi-database']) {
-        const content = String(plan.get(agentPath(platform, name)).content)
-        expect(content).toContain('## Required: Load Moluoxixi Context First')
-        expect(content).toContain('/implement.jsonl')
-      }
-      for (const name of ['moluoxixi-test', 'moluoxixi-security']) {
-        const content = String(plan.get(agentPath(platform, name)).content)
-        expect(content).toContain('## Required: Load Moluoxixi Context First')
-        expect(content).toContain('/check.jsonl')
-      }
+    const plan = allPlatformPlan
+    for (const platform of ['gemini', 'qoder', 'copilot', 'pi', 'reasonix', 'zcode', 'trae', 'grok', 'kimi']) {
+      const implement = String(plan.get(agentPath(platform, 'moluoxixi-implement')).content)
+      const check = String(plan.get(agentPath(platform, 'moluoxixi-check')).content)
+      expect(implement).toContain('## Required: Load Moluoxixi Context First')
+      expect(implement).toContain('/implement.jsonl')
+      expect(check).toContain('## Required: Load Moluoxixi Context First')
+      expect(check).toContain('/check.jsonl')
     }
     const codexImplement = String(plan.get(agentPath('codex', 'moluoxixi-implement')).content)
     expect(codexImplement).toContain('Moluoxixi Context Loading Protocol')
@@ -99,26 +122,23 @@ describe('professional sub-agent distribution', () => {
     expect(codexImplement).not.toContain('This host does not auto-inject task context')
   })
 
-  it('keeps specialist authority below human review and knowledge promotion', () => {
+  it('keeps implementation and check authority below human review and knowledge promotion', () => {
     const plan = buildPlan(['claude', 'kiro', 'codex'], 'python3')
     for (const platform of ['claude', 'kiro', 'codex']) {
-      for (const name of agentNames.slice(3)) {
+      for (const name of ['moluoxixi-implement', 'moluoxixi-check']) {
         const content = String(plan.get(agentPath(platform, name)).content)
-        expect(content.toLowerCase()).toContain('work only when `status` is `in_progress`')
-        expect(content).toContain('Do not create, approve, or apply knowledge proposals')
-        expect(content).toContain('Do not run git commit, push, merge, reset, or checkout')
+        expect(content).toContain('## Formal Knowledge Boundary')
+        expect(content).toContain('Do not edit `.moluoxixi/spec/`')
+        expect(content).toContain('approve or apply knowledge proposals')
+        expect(content).toContain('or commit changes')
       }
     }
-    const testAgent = String(plan.get(agentPath('claude', 'moluoxixi-test')).content)
-    const securityAgent = String(plan.get(agentPath('claude', 'moluoxixi-security')).content)
-    expect(testAgent).toContain('Do not modify production code')
-    expect(securityAgent).toContain('research/security-review.md')
   })
 
   it('projects the formal-knowledge boundary into every implementation and check agent', () => {
-    const plan = buildPlan(PLATFORM_ORDER, 'python3')
+    const plan = allPlatformPlan
     for (const platform of Object.keys(projectedRoots)) {
-      for (const name of agentNames.slice(1, 7)) {
+      for (const name of agentNames.slice(1)) {
         const content = String(plan.get(agentPath(platform, name)).content)
         expect(content, `${platform}/${name}`).toContain('## Formal Knowledge Boundary')
         expect(content).toContain('Do not edit `.moluoxixi/spec/`')
@@ -126,7 +146,7 @@ describe('professional sub-agent distribution', () => {
     }
   })
 
-  it('keeps OpenCode native context loading inside formal specs and current-task research', () => {
+  it('keeps OpenCode native context loading bounded to valid manifest paths', () => {
     const root = fs.mkdtempSync(path.join(os.tmpdir(), 'airules-opencode-context-'))
     try {
       const task = path.join(root, '.moluoxixi', 'tasks', 'sample')
@@ -154,39 +174,29 @@ describe('professional sub-agent distribution', () => {
       const context = blocks.join('\n')
       expect(context).toContain('.moluoxixi/spec/backend.md')
       expect(context).toContain('.moluoxixi/tasks/sample/research/evidence.md')
-      expect(context).not.toContain('spec-proposals')
-      expect(context).not.toContain('README.md')
+      expect(context).toContain('spec-proposals')
+      expect(context).toContain('README.md')
+      expect(context).not.toContain('outside.md')
     }
     finally {
       fs.rmSync(root, { recursive: true, force: true })
     }
   })
 
-  it('keeps Pi-family native context consumers on the same reviewed roots', () => {
-    for (const relativePath of [
-      'skills/init-project/assets/hosts/pi/extensions/moluoxixi/index.ts.txt',
-      'skills/init-project/assets/hosts/omp/extensions/moluoxixi/index.ts.txt',
-    ]) {
-      const content = fs.readFileSync(path.join(roleRoot, ...relativePath.split('/')), 'utf8')
-      expect(content).toContain('function resolveCuratedContextFile')
-      expect(content).toContain('join(workflowRoot, "spec")')
-      expect(content).toContain('join(taskDir, "research")')
-      expect(content).toContain('lstatSync')
-      expect(content).toContain('isSymbolicLink()')
-      expect(content.match(/resolveCuratedContextFile/gu)?.length).toBeGreaterThanOrEqual(2)
-    }
-    const openCodeContext = fs.readFileSync(path.join(
-      roleRoot,
-      'skills',
-      'init-project',
-      'assets',
-      'hosts',
-      'opencode',
-      'lib',
-      'moluoxixi-context.js',
-    ), 'utf8')
-    expect(openCodeContext).toContain('[workflowRoot, tasksPath, specPath, jsonlPath]')
-    expect(openCodeContext).toContain('lstatSync(candidate).isSymbolicLink()')
+  it('keeps Pi-family and OpenCode native context consumers on the upstream budget contract', () => {
+    const piContext = readTemplateFile('pi/extensions/trellis/index.ts.txt')
+    expect(piContext).toContain('function readContextInjectionLimits')
+    expect(piContext).toContain('function truncateUtf8')
+    expect(piContext).toContain('function isBinaryContent')
+    expect(piContext).toContain('function materializeFile')
+    const ompContext = readTemplateFile('omp/extensions/trellis/index.ts.txt')
+    expect(ompContext).toContain('function resolveTrustedRoots')
+    expect(ompContext).toContain('function resolveProjectFile')
+    expect(ompContext).toContain('lstatSync')
+    const openCodeContext = readTemplateFile('opencode/lib/trellis-context.js')
+    expect(openCodeContext).toContain('function readContextInjectionLimits')
+    expect(openCodeContext).toContain('function truncateUtf8')
+    expect(openCodeContext).toContain('function materializeFile')
   })
 
   it('persists OpenCode context as synthetic parts without rewriting user text', () => {
@@ -206,11 +216,13 @@ describe('professional sub-agent distribution', () => {
     expect(parts.map(part => part.id)).toEqual([...parts.map(part => part.id)].sort())
   })
 
-  it('projects native Codex hooks, shared Pi skills, and all shell-ticket bridges', () => {
-    const plan = buildPlan(PLATFORM_ORDER, 'python3')
+  it('projects native Codex hooks, shared core skills, and all shell-ticket bridges', () => {
+    const plan = allPlatformPlan
     expect(plan.has('.codex/hooks/inject-subagent-context.py')).toBe(true)
     expect(String(plan.get('.codex/hooks.json').content)).toContain('SubagentStart')
     expect(plan.has('.agents/skills/start/SKILL.md')).toBe(true)
+    expect([...plan.keys()].some(target => target.startsWith('.codex/skills/'))).toBe(false)
+    expect([...plan.keys()].some(target => !target.startsWith('.moluoxixi/runtime/update/') && target.endsWith('/SKILL.md.txt'))).toBe(false)
     expect([...plan.keys()].some(target => target.startsWith('.pi/skills/'))).toBe(false)
     for (const hook of [
       '.gemini/hooks/inject-shell-session-context.py',
@@ -221,6 +233,31 @@ describe('professional sub-agent distribution', () => {
       '.zcode/hooks/inject-shell-session-context.py',
     ])
       expect(plan.has(hook), `missing ${hook}`).toBe(true)
+  })
+
+  it('restores bundled skill templates for every supported host', () => {
+    expect(Object.keys(coreSkillRoots)).toEqual(PLATFORM_ORDER)
+    const plan = allPlatformPlan
+
+    for (const platform of PLATFORM_ORDER) {
+      const skillEntry = `${coreSkillRoots[platform]}/before-dev/SKILL.md`
+      expect(plan.has(skillEntry), `${platform} missing ${skillEntry}`).toBe(true)
+      expect(String(plan.get(skillEntry).content), `${platform} has invalid before-dev skill frontmatter`).toMatch(/^name: before-dev$/mu)
+    }
+
+    const leakedTemplates = [...plan.keys()].filter(target =>
+      !target.startsWith('.moluoxixi/runtime/update/') && target.endsWith('/SKILL.md.txt'),
+    )
+    expect(leakedTemplates).toEqual([])
+
+    for (const platform of ['codex', 'gemini', 'pi']) {
+      const isolatedPlan = buildPlan([platform], 'python3')
+      const skillEntry = `${coreSkillRoots[platform]}/before-dev/SKILL.md`
+      expect(isolatedPlan.has(skillEntry), `${platform} missing ${skillEntry} in isolation`).toBe(true)
+      expect([...isolatedPlan.keys()].filter(target =>
+        !target.startsWith('.moluoxixi/runtime/update/') && target.endsWith('/SKILL.md.txt'),
+      ), `${platform} leaked bundled skill templates in isolation`).toEqual([])
+    }
   })
 
   it('preserves user-pinned Codex model keys during regeneration', () => {
@@ -241,20 +278,15 @@ describe('professional sub-agent distribution', () => {
   })
 
   it('keeps upstream scope discipline behind Moluoxixi planning and knowledge gates', () => {
-    for (const base of [
-      ['skills', 'init-project', 'assets', 'core', 'skills'],
-      ['skills', 'init-project', 'assets', 'hosts', 'codex', 'skills'],
-    ]) {
-      const beforeDev = fs.readFileSync(path.join(roleRoot, ...base, 'before-dev', 'SKILL.md'), 'utf8')
-      const check = fs.readFileSync(path.join(roleRoot, ...base, 'check', 'SKILL.md'), 'utf8')
-      const brainstorm = fs.readFileSync(path.join(roleRoot, ...base, 'brainstorm', 'SKILL.md'), 'utf8')
-      expect(beforeDev).toContain('state the change boundary')
-      expect(check).toContain('Scope Discipline')
-      expect(check).toContain('Do not edit formal specs directly')
-      expect(brainstorm).toContain('Only a subsequent')
-      expect(brainstorm).toContain('latest final planning summary')
-      expect(brainstorm).toContain('execution-mode')
-      expect(brainstorm).toContain('Complex tasks must have `prd.md`, `design.md`, and `implement.md`')
-    }
+    const beforeDev = readTemplateFile('common/skills/before-dev.md')
+    const check = readTemplateFile('common/skills/check.md')
+    const brainstorm = readTemplateFile('common/skills/brainstorm.md')
+    expect(beforeDev).toContain('state the change boundary')
+    expect(check).toContain('Scope Discipline')
+    expect(check).toContain('Do not edit formal specs directly')
+    expect(brainstorm).toContain('Only a subsequent')
+    expect(brainstorm).toContain('latest final planning summary')
+    expect(brainstorm).toContain('execution-mode')
+    expect(brainstorm).toContain('Complex tasks must have `prd.md`, `design.md`, and `implement.md`')
   })
 })

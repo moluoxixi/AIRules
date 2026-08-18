@@ -1,0 +1,246 @@
+{
+  "schemaVersion": 1,
+  "baseline": {
+    "name": "Trellis",
+    "source": "https://github.com/mindfold-ai/Trellis.git",
+    "version": "0.6.15",
+    "revision": "bd454938dc406e2f692a07c3f3888e5375ff674d"
+  },
+  "originDefinitions": {
+    "local-extension": "Behavior intentionally added by Moluoxixi beyond the upstream baseline.",
+    "upstream-parity": "Upstream behavior that Moluoxixi intentionally keeps equivalent during AI review."
+  },
+  "syncPolicyDefinitions": {
+    "preserve-local": "Keep the Moluoxixi behavior and adapt incoming upstream changes around it.",
+    "preserve-upstream": "Keep this behavior aligned with the upstream baseline unless an explicit local decision replaces it."
+  },
+  "contracts": [
+    {
+      "id": "task-complexity-triage",
+      "title": "Persisted task complexity classification",
+      "origin": "local-extension",
+      "syncPolicy": "preserve-local",
+      "reason": "Moluoxixi records lightweight or complex task classification, fails closed while it is unclassified, and requires the planning artifacts appropriate to the recorded level.",
+      "localEvidence": [
+        {
+          "path": "roles/moluoxixi/overlays/packages/cli/src/templates/overrides/trellis/workflow.md",
+          "symbol": "Request Triage and Planning Artifacts"
+        },
+        {
+          "path": "roles/moluoxixi/overlays/packages/cli/src/templates/overrides/trellis/scripts/task.py",
+          "symbol": "cmd_set_complexity"
+        },
+        {
+          "path": "roles/moluoxixi/overlays/packages/cli/src/templates/overrides/trellis/scripts/common/task_store.py",
+          "symbol": "create_task complexity default"
+        },
+        {
+          "path": "roles/moluoxixi/overlays/packages/cli/src/templates/overrides/trellis/scripts/common/task_context.py",
+          "symbol": "planning_readiness_errors"
+        }
+      ],
+      "verification": [
+        {
+          "path": "roles/moluoxixi/__test__/task-review-governance.test.ts",
+          "symbol": "fails closed until complexity and manual planning approval are recorded"
+        },
+        {
+          "path": "roles/moluoxixi/__test__/task-review-governance.test.ts",
+          "symbol": "enforces complex planning artifacts and curated sub-agent context"
+        }
+      ]
+    },
+    {
+      "id": "simple-task-creation-opt-out",
+      "title": "Small tasks may skip task creation",
+      "origin": "upstream-parity",
+      "syncPolicy": "preserve-upstream",
+      "reason": "When there is no active task, a simple conversation or small task asks only for task-creation consent; declining skips Moluoxixi for the current session.",
+      "localEvidence": [
+        {
+          "path": "roles/moluoxixi/packages/cli/src/templates/trellis/workflow.md",
+          "symbol": "workflow-state:no_task"
+        },
+        {
+          "path": "roles/moluoxixi/packages/cli/src/templates/common/commands/start.md",
+          "symbol": "Step 4 no-active-task routing"
+        },
+        {
+          "path": "roles/moluoxixi/packages/cli/src/templates/shared-hooks/session-start.py",
+          "symbol": "no active task request triage"
+        },
+        {
+          "path": "roles/moluoxixi/packages/cli/src/templates/opencode/lib/session-utils.js",
+          "symbol": "buildSessionContext no-active-task branch"
+        }
+      ],
+      "verification": [
+        {
+          "path": "roles/moluoxixi/__test__/project-script-parity.test.ts",
+          "symbol": "keeps the upstream small-task creation opt-out contract"
+        }
+      ]
+    },
+    {
+      "id": "review-gated-spec-proposals",
+      "title": "Review-gated spec proposal promotion",
+      "origin": "local-extension",
+      "syncPolicy": "preserve-local",
+      "reason": "Reusable knowledge enters a proposal inbox first; promotion into formal specs requires an explicit human approval record and rejects stale or concurrently changed targets.",
+      "localEvidence": [
+        {
+          "path": "roles/moluoxixi/overlays/packages/cli/src/templates/additions/project/scripts/spec-proposals.mjs",
+          "symbol": "commandReview and commandApply"
+        },
+        {
+          "path": "roles/moluoxixi/overlays/packages/cli/src/templates/overrides/common/skills/update-spec.md",
+          "symbol": "proposal submission boundary"
+        },
+        {
+          "path": "roles/moluoxixi/overlays/packages/cli/src/templates/additions/common/bundled-skills/spec-review/SKILL.md",
+          "symbol": "Review and Apply workflow"
+        },
+        {
+          "path": "roles/moluoxixi/overlays/packages/cli/src/templates/overrides/trellis/workflow.md",
+          "symbol": "Phase 3.3 Spec update"
+        }
+      ],
+      "verification": [
+        {
+          "path": "roles/moluoxixi/__test__/spec-proposals.test.mjs",
+          "symbol": "requires a human approval record before promoting formal knowledge"
+        },
+        {
+          "path": "roles/moluoxixi/__test__/spec-proposals.test.mjs",
+          "symbol": "rejects stale approvals and backs up reviewed replacements"
+        }
+      ]
+    },
+    {
+      "id": "role-local-publishable-runtime-packages",
+      "title": "Complete role-local core and CLI packages with guarded publication",
+      "origin": "local-extension",
+      "syncPolicy": "preserve-local",
+      "reason": "Moluoxixi keeps the complete upstream package trees under collision-resistant names, publishes them only when the role release pipeline is invoked, and advances the paired npm package version independently when local publication metadata or adaptations change. Published manifests identify the AIRules repository so npm provenance matches the workflow source. Project initialization executes through the local CLI without registry access, and initialized projects receive only the self-contained runtime bundle and updater.",
+      "localEvidence": [
+        {
+          "path": "roles/moluoxixi/packages/core/package.json",
+          "symbol": "complete publishable core package manifest with upstream exports and publish metadata"
+        },
+        {
+          "path": "roles/moluoxixi/packages/cli/package.json",
+          "symbol": "complete publishable CLI package with collision-resistant workspace dependency"
+        },
+        {
+          "path": "roles/moluoxixi/packages/cli/bin/init-project.js",
+          "symbol": "role-local initializer entry"
+        },
+        {
+          "path": "roles/moluoxixi/packages/cli/bin/airules-moluoxixi.js",
+          "symbol": "role-local command entry"
+        },
+        {
+          "path": "roles/moluoxixi/packages/cli/src/airules-runtime-entry.ts",
+          "symbol": "bundled channel and memory runtime entry"
+        },
+        {
+          "path": "roles/moluoxixi/packages/cli/scripts/release-preflight.js",
+          "symbol": "verify-publish tarball and sandbox gates"
+        },
+        {
+          "path": "roles/moluoxixi/packages/cli/scripts/bump-versions.js",
+          "symbol": "paired AIRules package version bump"
+        },
+        {
+          "path": "roles/moluoxixi/packages/cli/scripts/check-manifest-continuity.js",
+          "symbol": "AIRules npm release continuity"
+        },
+        {
+          "path": "roles/moluoxixi/packages/cli/scripts/create-manifest.js",
+          "symbol": "AIRules package release manifest"
+        },
+        {
+          "path": "roles/moluoxixi/packages/cli/scripts/release.js",
+          "symbol": "Moluoxixi tag and core-first release flow"
+        },
+        {
+          "path": "roles/moluoxixi/packages/core/src/channel/internal/store/paths.ts",
+          "symbol": "Moluoxixi channel state namespace"
+        },
+        {
+          "path": "roles/moluoxixi/packages/cli/src/commands/channel/store/paths.ts",
+          "symbol": "Moluoxixi CLI channel state namespace"
+        },
+        {
+          "path": "roles/moluoxixi/package.json",
+          "symbol": "test:publish, verify:publish, and publish:dry-run role workspace gates"
+        },
+        {
+          "path": ".github/workflows/publish-moluoxixi.yml",
+          "symbol": "tag-gated idempotent core-first package publication"
+        },
+        {
+          "path": "roles/moluoxixi/packages/cli/src/templates/opencode/package.json",
+          "symbol": "published ESM template module boundary"
+        },
+        {
+          "path": "roles/moluoxixi/packages/cli/test/templates/omp.test.ts",
+          "symbol": "single node:os import keeps the complete upstream OMP regression suite executable"
+        },
+        {
+          "path": "roles/moluoxixi/skills/init-project/scripts/run-role-cli.mjs",
+          "symbol": "installed role CLI resolver"
+        },
+        {
+          "path": "scripts/build-moluoxixi-runtime.mjs",
+          "symbol": "role-local package source bundling"
+        }
+      ],
+      "verification": [
+        {
+          "path": "roles/moluoxixi/__test__/moluoxixi-source.test.ts",
+          "symbol": "keeps complete role-local packages public, collision-resistant, and publication-capable"
+        },
+        {
+          "path": "roles/moluoxixi/__test__/init-project.test.ts",
+          "symbol": "stages the complete role and initializes through its role-local CLI"
+        }
+      ]
+    },
+    {
+      "id": "ai-reviewed-upstream-maintenance",
+      "title": "AI-reviewed Trellis package maintenance",
+      "origin": "local-extension",
+      "syncPolicy": "preserve-local",
+      "reason": "An AI agent creates a local Git worktree from an exact Trellis commit, reapplies explicitly recorded local behavior as reviewable local commits, exports only the verified package trees, reviews every overlapping path, and advances the baseline only with the verified final result. The local branch is never pushed, and the scanner reports differences but cannot modify role sources.",
+      "localEvidence": [
+        {
+          "path": ".sync/moluoxixi/AI-PROTOCOL.md",
+          "symbol": "AI Upstream Review Protocol"
+        },
+        {
+          "path": "roles/moluoxixi/overlays/manifest.json",
+          "symbol": "hashed task-classification and spec-approval overlays"
+        },
+        {
+          "path": "roles/moluoxixi/skills/init-project/scripts/templates.mjs",
+          "symbol": "fail-closed overlay source and integrity validation"
+        },
+        {
+          "path": ".sync/moluoxixi/manifest.json",
+          "symbol": "exact upstream baseline and finalized package mappings"
+        },
+        {
+          "path": ".sync/moluoxixi/preservation-contracts.json",
+          "symbol": "intentional local behavior contracts"
+        }
+      ],
+      "verification": [
+        {
+          "path": "roles/moluoxixi/__test__/upstream-diff-scan.test.mjs",
+          "symbol": "Moluoxixi upstream diff scanner"
+        }
+      ]
+    }
+  ]
+}

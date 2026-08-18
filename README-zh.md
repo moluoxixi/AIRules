@@ -4,6 +4,21 @@ AIRules 为支持的 AI 编程宿主安装 skills 与角色资产。
 
 > npm 的 `latest` 版本可能落后于仓库。下面的提示词会从源码安装当前版本。
 
+## 从源码安装
+
+首次执行以下命令即可安装最新的 Moluoxixi 角色，并注册 `airules` 命令：
+
+```bash
+git clone https://github.com/moluoxixi/AIRules.git
+cd AIRules
+npm install
+npm run build
+npm link
+airules install moluoxixi --host all
+```
+
+安装其他角色时，将 `moluoxixi` 替换为 `trellis` 或 `matt`。后续更新只需执行 `airules install <role> --host all`；安装和验证角色前会先快进更新干净的源码 checkout。
+
 ## Moluoxixi 角色
 
 Moluoxixi 角色用于安装 `init-project` skill、CodeGraph、相关 MCP 配置，以及 Matt Pocock 的生产率 skills。
@@ -20,9 +35,9 @@ Moluoxixi 角色用于安装 `init-project` skill、CodeGraph、相关 MCP 配�
 3. 进入 `<用户根目录>/AIRules`。
 4. 依次执行 `npm install`、`npm run build` 和 `npm link`。
 5. 执行 `airules --version`，确认安装的版本为 0.2.0 或更高版本。
-6. 同步前，先告知我 AIRules 将把 Moluoxixi 资产和 Matt Pocock 生产率 skills 写入 `<用户根目录>/.moluoxixi`、`<用户根目录>/.agents/skills` 以及受支持的 AI 宿主配置目录。角色同步是用户级操作，不需要在业务项目中执行。
-7. 得到我确认后，执行 `airules sync --host all --role moluoxixi`。
-8. 执行 `airules verify --host all --role moluoxixi`，并报告安装版本、已更新的宿主、实际写入目录和所有错误。
+6. 安装前，先告知我 AIRules 会先对干净的 Git checkout 执行 `git pull --ff-only`，再把 Moluoxixi 资产和 Matt Pocock 生产率 skills 写入 `<用户根目录>/.moluoxixi`、`<用户根目录>/.agents/skills` 以及受支持的 AI 宿主配置目录。角色安装是用户级操作，不需要在业务项目中执行。
+7. 得到我确认后，执行 `airules install moluoxixi --host all`。
+8. 安装命令会自动验证结果；请报告安装版本、已更新的宿主、实际写入目录和所有错误。
 
 不要使用 sudo，不要传入 `--skip-vendors` 或 `--no-verify`，不要删除或覆盖不由 AIRules 管理的文件。
 ```
@@ -32,16 +47,16 @@ Moluoxixi 角色用于安装 `init-project` skill、CodeGraph、相关 MCP 配�
 安装或更新角色：
 
 ```bash
-airules sync --host all --role moluoxixi
+airules install moluoxixi --host all
 ```
 
-验证安装结果：
+不重新安装，仅再次验证：
 
 ```bash
-airules verify --host all --role moluoxixi
+airules verify moluoxixi --host all
 ```
 
-角色同步是用户级操作，可以在 `<用户根目录>/AIRules` 中执行。初始化项目时，先进入目标业务项目，再在 AI 编程宿主中调用 `init-project` skill。
+角色安装是用户级操作，可以在 `<用户根目录>/AIRules` 中执行。初始化项目时，先进入目标业务项目，再在 AI 编程宿主中调用 `init-project` skill。
 
 ## Trellis 角色
 
@@ -59,9 +74,9 @@ Trellis 角色用于安装官方 Trellis CLI、`init-project` skill、默认的 
 3. 进入 `<用户根目录>/AIRules`。
 4. 依次执行 `npm install`、`npm run build` 和 `npm link`。
 5. 执行 `airules --version`，确认安装的版本为 0.2.0 或更高版本。
-6. 同步前，先告知我 AIRules 将安装官方 Trellis 和 CodeGraph CLI、将初始化和 Matt 生产率 skills 写入受支持的 AI 宿主目录，并把默认 MCP 服务合并到受支持的宿主配置。角色同步是用户级操作，不需要在业务项目中执行。
-7. 得到我确认后，执行 `airules sync --host all --role trellis`。
-8. 执行 `airules verify --host all --role trellis`，并报告安装版本、已更新的宿主、实际写入目录和所有错误。
+6. 安装前，先告知我 AIRules 会先对干净的 Git checkout 执行 `git pull --ff-only`，再安装官方 Trellis 和 CodeGraph CLI、将初始化和 Matt 生产率 skills 写入受支持的 AI 宿主目录，并把默认 MCP 服务合并到受支持的宿主配置。角色安装是用户级操作，不需要在业务项目中执行。
+7. 得到我确认后，执行 `airules install trellis --host all`。
+8. 安装命令会自动验证结果；请报告安装版本、已更新的宿主、实际写入目录和所有错误。
 
 不要使用 sudo，不要传入 `--skip-vendors` 或 `--no-verify`，不要删除或覆盖不由 AIRules 管理的文件。
 ```
@@ -71,16 +86,16 @@ Trellis 角色用于安装官方 Trellis CLI、`init-project` skill、默认的 
 安装或更新角色：
 
 ```bash
-airules sync --host all --role trellis
+airules install trellis --host all
 ```
 
-验证安装结果：
+不重新安装，仅再次验证：
 
 ```bash
-airules verify --host all --role trellis
+airules verify trellis --host all
 ```
 
-角色同步是用户级操作，可以在 `<用户根目录>/AIRules` 中执行。初始化项目时，先进入目标业务项目，再调用 `init-project` skill，或直接执行：
+角色安装是用户级操作，可以在 `<用户根目录>/AIRules` 中执行。初始化项目时，先进入目标业务项目，再调用 `init-project` skill，或直接执行：
 
 ```bash
 trellis init -u <你的名字>
@@ -102,9 +117,9 @@ Matt 角色用于安装 `mattpocock/skills` 中的全部工程化与生产率 sk
 3. 进入 `<用户根目录>/AIRules`。
 4. 依次执行 `npm install`、`npm run build` 和 `npm link`。
 5. 执行 `airules --version`，确认安装的版本为 0.2.0 或更高版本。
-6. 同步前，先告知我 AIRules 将克隆固定 revision 的 Matt Pocock skills，并将工程化与生产率 skills 写入 `<用户根目录>/.moluoxixi`、`<用户根目录>/.agents/skills` 以及受支持的 AI 宿主目录。
-7. 得到我确认后，执行 `airules sync --host all --role matt`。
-8. 执行 `airules verify --host all --role matt`，并报告安装版本、已更新的宿主、实际写入目录和所有错误。
+6. 安装前，先告知我 AIRules 会先对干净的 Git checkout 执行 `git pull --ff-only`，再克隆固定 revision 的 Matt Pocock skills，并将工程化与生产率 skills 写入 `<用户根目录>/.moluoxixi`、`<用户根目录>/.agents/skills` 以及受支持的 AI 宿主目录。
+7. 得到我确认后，执行 `airules install matt --host all`。
+8. 安装命令会自动验证结果；请报告安装版本、已更新的宿主、实际写入目录和所有错误。
 
 不要使用 sudo，不要传入 `--skip-vendors` 或 `--no-verify`，不要删除或覆盖不由 AIRules 管理的文件。
 ```
@@ -114,13 +129,13 @@ Matt 角色用于安装 `mattpocock/skills` 中的全部工程化与生产率 sk
 安装或更新角色：
 
 ```bash
-airules sync --host all --role matt
+airules install matt --host all
 ```
 
-验证安装结果：
+不重新安装，仅再次验证：
 
 ```bash
-airules verify --host all --role matt
+airules verify matt --host all
 ```
 
 ## 查看版本

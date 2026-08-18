@@ -8,12 +8,12 @@ import {
   encodeCodexUserMessage,
   parseCodexLine,
   parseCodexSandboxMode,
-} from '../skills/init-project/assets/runtime/source/packages/cli/src/commands/channel/adapters/codex.js'
-import { assembleContext } from '../skills/init-project/assets/runtime/source/packages/cli/src/commands/channel/context-loader.js'
-import { parseChannelTrustSection } from '../skills/init-project/assets/runtime/source/packages/cli/src/commands/channel/context-trust.js'
-import { scheduleSupervisorIdleTimer } from '../skills/init-project/assets/runtime/source/packages/cli/src/commands/channel/supervisor/idle.js'
-import { claudeExtractDialogue, claudeSearch } from '../skills/init-project/assets/runtime/source/packages/core/src/mem/adapters/claude.js'
-import { codexExtractDialogue } from '../skills/init-project/assets/runtime/source/packages/core/src/mem/adapters/codex.js'
+} from '../packages/cli/src/commands/channel/adapters/codex.js'
+import { assembleContext } from '../packages/cli/src/commands/channel/context-loader.js'
+import { parseChannelTrustSection } from '../packages/cli/src/commands/channel/context-trust.js'
+import { scheduleSupervisorIdleTimer } from '../packages/cli/src/commands/channel/supervisor/idle.js'
+import { claudeExtractDialogue, claudeSearch } from '../packages/core/src/mem/adapters/claude.js'
+import { codexExtractDialogue } from '../packages/core/src/mem/adapters/codex.js'
 
 const roots: string[] = []
 

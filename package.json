@@ -1,7 +1,7 @@
 {
   "name": "moluoxixi-ai-rules",
   "type": "module",
-  "version": "0.2.0",
+  "version": "0.2.2",
   "description": "Remote AI role asset distribution for supported hosts.",
   "license": "MIT",
   "repository": "https://github.com/moluoxixi/AIRules",
@@ -12,7 +12,7 @@
     }
   },
   "bin": {
-    "airules": "./dist/scripts/cli.js"
+    "airules": "./bin/airules.js"
   },
   "publishConfig": {
     "registry": "https://registry.npmjs.org/"
@@ -21,13 +21,14 @@
     "LICENSE",
     "README-zh.md",
     "README.md",
+    "bin",
     "dist",
     "docs",
     "roles/*/constants/**",
     "roles/*/role.yaml"
   ],
   "scripts": {
-    "airules": "tsx scripts/cli.ts",
+    "airules": "node bin/airules.js",
     "build": "tsc -p tsconfig.build.json",
     "build:moluoxixi-runtime": "node scripts/build-moluoxixi-runtime.mjs",
     "prebuild": "node scripts/clean-dist.mjs",
@@ -35,10 +36,6 @@
     "prepack": "npm run build",
     "lint": "eslint --fix",
     "lint:check": "eslint .",
-    "sync": "tsx scripts/cli.ts sync --host all",
-    "sync:matt": "tsx scripts/cli.ts sync --host all --role matt",
-    "sync:moluoxixi": "tsx scripts/cli.ts sync --host all --role moluoxixi",
-    "sync:trellis": "tsx scripts/cli.ts sync --host all --role trellis",
     "test": "vitest run",
     "typecheck": "tsc --noEmit",
     "coverage": "vitest run --coverage"
@@ -69,7 +66,7 @@
   },
   "lint-staged": {
     "*.{vue,jsx,tsx,js,ts,mjs}": [
-      "eslint --fix"
+      "eslint --fix --config eslint.config.ts --no-warn-ignored"
     ]
   }
 }

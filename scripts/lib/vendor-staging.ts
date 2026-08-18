@@ -519,6 +519,7 @@ interface ManagedEntrySpec {
   current: string
   next: string
   backup: string
+  preserveRoot?: boolean
 }
 
 function requirePlainDirectoryOrMissing(target: string, label: string): void {
@@ -557,6 +558,95 @@ function rollbackManagedEntries(entries: ManagedEntryCommit[]): Error[] {
   return rollbackErrors
 }
 
+function managedChildNames(currentRoot: string, nextRoot: string, label: string): string[] {
+  const names = new Map<string, string>()
+  for (const root of [currentRoot, nextRoot]) {
+    if (!fs.existsSync(root))
+      continue
+    requirePlainDirectoryOrMissing(root, label)
+    for (const entry of fs.readdirSync(root, { withFileTypes: true })) {
+      if (!entry.isDirectory() && !entry.isFile())
+        throw new Error(`${label} has unsupported filesystem type: ${path.join(root, entry.name)}`)
+      const key = entry.name.toLowerCase()
+      const previous = names.get(key)
+      if (previous !== undefined && previous !== entry.name)
+        throw new Error(`${label} names differ only by case: ${previous}, ${entry.name}`)
+      names.set(key, entry.name)
+    }
+  }
+  return [...names.values()].sort(compareStable)
+}
+
+function isPlainDirectory(target: string): boolean {
+  const stats = fs.lstatSync(target, { throwIfNoEntry: false })
+  return stats !== undefined && stats.isDirectory() && !stats.isSymbolicLink()
+}
+
+function commitDirectoryContents(
+  currentRoot: string,
+  nextRoot: string,
+  backupRoot: string,
+  committedEntries: ManagedEntryCommit[],
+  emptiedRoots: string[],
+): void {
+  const childNames = managedChildNames(currentRoot, nextRoot, 'Managed vendor skill directory')
+  for (const name of childNames) {
+    const currentChild = path.join(currentRoot, name)
+    const nextChild = path.join(nextRoot, name)
+    const hasNextChild = fs.existsSync(nextChild)
+    if (isPlainDirectory(currentChild) && (!hasNextChild || isPlainDirectory(nextChild))) {
+      commitDirectoryContents(
+        currentChild,
+        nextChild,
+        path.join(backupRoot, name),
+        committedEntries,
+        emptiedRoots,
+      )
+      if (!hasNextChild)
+        emptiedRoots.push(currentChild)
+      continue
+    }
+
+    const entry: ManagedEntryCommit = {
+      current: currentChild,
+      backup: path.join(backupRoot, name),
+      movedCurrent: false,
+      installedNext: false,
+    }
+    committedEntries.push(entry)
+
+    if (fs.existsSync(entry.current)) {
+      fs.mkdirSync(path.dirname(entry.backup), { recursive: true })
+      fs.renameSync(entry.current, entry.backup)
+      entry.movedCurrent = true
+    }
+    if (fs.existsSync(nextChild)) {
+      fs.renameSync(nextChild, entry.current)
+      entry.installedNext = true
+    }
+  }
+}
+
+function commitManagedChildren(
+  spec: ManagedEntrySpec,
+  committedEntries: ManagedEntryCommit[],
+  createdRoots: string[],
+  emptiedRoots: string[],
+): void {
+  requirePlainDirectoryOrMissing(spec.current, 'Managed vendor skills root')
+  requirePlainDirectoryOrMissing(spec.next, 'Staged vendor skills root')
+  const childNames = managedChildNames(spec.current, spec.next, 'Managed vendor skill')
+  if (!fs.existsSync(spec.current)) {
+    if (!fs.existsSync(spec.next))
+      return
+    fs.mkdirSync(spec.current, { recursive: true })
+    createdRoots.push(spec.current)
+  }
+
+  if (childNames.length > 0)
+    commitDirectoryContents(spec.current, spec.next, spec.backup, committedEntries, emptiedRoots)
+}
+
 async function commitManagedEntries(
   stagingRoot: string,
   roleStagingRoot: string | undefined,
@@ -580,6 +670,8 @@ async function commitManagedEntries(
   const nextRoot = path.join(nextWorkspace, 'vendor')
   const backupRoot = fs.mkdtempSync(path.join(resolvedHome, '.airules-vendor-backup-'))
   const committedEntries: ManagedEntryCommit[] = []
+  const createdRoots: string[] = []
+  const emptiedRoots: string[] = []
 
   try {
     fs.mkdirSync(nextRoot)
@@ -588,6 +680,7 @@ async function commitManagedEntries(
       current: path.join(vendorRoot, name),
       next: path.join(nextRoot, name),
       backup: path.join(backupRoot, 'vendor', name),
+      preserveRoot: name === 'skills',
     }))
     if (roleStagingRoot !== undefined) {
       const nextRole = path.join(nextWorkspace, 'roles', role)
@@ -601,6 +694,10 @@ async function commitManagedEntries(
     }
 
     for (const spec of specs) {
+      if (spec.preserveRoot) {
+        commitManagedChildren(spec, committedEntries, createdRoots, emptiedRoots)
+        continue
+      }
       const entry: ManagedEntryCommit = {
         current: spec.current,
         backup: spec.backup,
@@ -623,6 +720,14 @@ async function commitManagedEntries(
   }
   catch (error) {
     const rollbackErrors = rollbackManagedEntries(committedEntries)
+    for (const root of [...createdRoots].reverse()) {
+      try {
+        fs.rmdirSync(root)
+      }
+      catch (rollbackError) {
+        rollbackErrors.push(rollbackError instanceof Error ? rollbackError : new Error(String(rollbackError)))
+      }
+    }
     removeBestEffort(nextWorkspace)
     if (rollbackErrors.length > 0) {
       throw new AggregateError(
@@ -635,8 +740,38 @@ async function commitManagedEntries(
     throw new Error(`Role and vendor staging commit failed; previous managed assets restored: ${String(error)}`, { cause: error })
   }
 
+  for (const root of emptiedRoots)
+    removeEmptyDirectoryBestEffort(root)
   removeBestEffort(nextWorkspace)
   removeBestEffort(backupRoot)
+}
+
+function removeEmptyDirectoryBestEffort(target: string): void {
+  try {
+    fs.rmdirSync(target)
+  }
+  catch {
+    // Host junctions can keep an empty skill directory locked until projection finishes.
+  }
+}
+
+function cleanupEmptyDirectoryTree(root: string): void {
+  for (const entry of fs.readdirSync(root, { withFileTypes: true })) {
+    if (entry.isDirectory())
+      cleanupEmptyDirectoryTree(path.join(root, entry.name))
+  }
+  removeEmptyDirectoryBestEffort(root)
+}
+
+export function cleanupEmptyVendorSkillDirectories(homeDir: string): void {
+  const skillsRoot = path.resolve(homeDir, 'vendor', 'skills')
+  if (!fs.existsSync(skillsRoot))
+    return
+  requirePlainDirectoryOrMissing(skillsRoot, 'Managed vendor skills root')
+  for (const entry of fs.readdirSync(skillsRoot, { withFileTypes: true })) {
+    if (entry.isDirectory())
+      cleanupEmptyDirectoryTree(path.join(skillsRoot, entry.name))
+  }
 }
 
 export async function rebuildVendorAssets(options: RebuildVendorAssetsOptions): Promise<VendorAssetInventory> {

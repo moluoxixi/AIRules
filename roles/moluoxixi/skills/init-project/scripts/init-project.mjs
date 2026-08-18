@@ -4,7 +4,7 @@ import fs from 'node:fs'
 import path from 'node:path'
 import process from 'node:process'
 import { parseArgs, printHelp } from './cli.mjs'
-import { MANIFEST_PATH, MOLUOXIXI_VERSION, PROJECT_ASSET_ROOT } from './constants.mjs'
+import { MANIFEST_PATH, MOLUOXIXI_VERSION } from './constants.mjs'
 import { createPersistentBackup } from './core/backup.mjs'
 import { applyLifecycle, captureLifecycleState, detectGitDeveloper, readDeveloper } from './core/lifecycle.mjs'
 import { prepareOperations, readManifest } from './core/operations.mjs'
@@ -16,6 +16,7 @@ import { commit } from './core/transaction.mjs'
 import { normalizePlatforms } from './hosts/catalog.mjs'
 import { compareVersions, runVersionMigrations } from './migrations/runner.mjs'
 import { buildPlan, requirePython } from './plan.mjs'
+import { readTemplateFile } from './templates.mjs'
 
 async function main() {
   const options = parseArgs(process.argv.slice(2))
@@ -122,7 +123,7 @@ async function main() {
 }
 
 function readProjectWorkflow() {
-  return fs.readFileSync(path.join(PROJECT_ASSET_ROOT, 'workflow.md'), 'utf8')
+  return readTemplateFile('trellis/workflow.md')
 }
 
 function readVersion(projectRoot) {

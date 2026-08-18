@@ -1,3 +1,4 @@
+import { Buffer } from 'node:buffer'
 import { createHash } from 'node:crypto'
 import fs from 'node:fs'
 import path from 'node:path'
@@ -9,6 +10,7 @@ import { extendsRoles, hosts, vendors } from '../constants/skills.js'
 interface RoleManifest {
   assets: {
     mcp: string
+    packages: string
     skills: string
   }
   canonical_root: string
@@ -31,14 +33,6 @@ interface RoleManifest {
       revision: string
       source: string
     }
-    upstream: {
-      name: string
-      paths: string[]
-      reconciliation: string
-      revision: string
-      source: string
-      version: string
-    }
   }
 }
 
@@ -50,90 +44,29 @@ const mattSkillsSource = 'https://github.com/mattpocock/skills.git'
 const mattSkillsRevision = '8b78b531ab965735c5dc74f6f7a219e1e37326df'
 
 const selectedPaths = [
-  'skills/init-project/assets/hosts',
-  'skills/init-project/assets/project',
-  'skills/init-project/assets/core',
+  'overlays',
 ]
 
-const upstream = {
-  name: ['Tre', 'llis'].join(''),
-  revision: 'd8fff53ce4964ed1a3e52fea6b418b27eba093e4',
-  source: 'https://github.com/mindfold-ai/Trellis.git',
-  version: '0.6.15',
-}
+const publishedPackageVersion = '0.6.17'
+const publishedRepository = 'https://github.com/moluoxixi/AIRules'
 
 const selectedIntegrity = {
-  bytes: 1811745,
-  files: 313,
-  hash: '945163b533fb20dd1ae5c1434447a99aee8f85fc3744759a614a44aa5f4d5f21',
+  bytes: 403243,
+  files: 36,
+  hash: 'cdde00447f780298d0feb278b2b00d2ace2bce8bdaa603c7d5a2af06e543c7e5',
 }
 
 const migratedRuntimePaths = [
-  'skills/init-project/assets/runtime/source',
+  'packages/core',
+  'packages/cli',
   'skills/init-project/assets/runtime/vendor/channel-mem.mjs',
 ]
 
 const runtimeIntegrity = {
-  bytes: 993614,
-  files: 89,
-  hash: 'ac3bb73309040c21854cb2a16535c9b60be5a4e9fe1e56a96c79451ec6497c30',
+  bytes: 4711198,
+  files: 637,
+  hash: '85c68080826aa455dd83c069bdfaa671864b85bc500df3a8c41f4e0ca64e5c69',
 }
-
-const projectSkillNames = [
-  'before-dev',
-  'brainstorm',
-  'break-loop',
-  'channel',
-  'check',
-  'continue',
-  'finish-work',
-  'first-principles-thinking',
-  'meta',
-  'python-design',
-  'session-insight',
-  'spec-bootstrap',
-  'spec-review',
-  'start',
-  'ts-sdk-author',
-  'update-spec',
-]
-
-const nativeCapabilityCounts = [
-  ['skills/init-project/assets/hosts/claude', 10],
-  ['skills/init-project/assets/hosts/codebuddy', 9],
-  ['skills/init-project/assets/hosts/codex', 24],
-  ['skills/init-project/assets/hosts/copilot', 11],
-  ['skills/init-project/assets/hosts/cursor', 9],
-  ['skills/init-project/assets/hosts/droid', 9],
-  ['skills/init-project/assets/hosts/gemini', 9],
-  ['skills/init-project/assets/hosts/kiro', 10],
-  ['skills/init-project/assets/hosts/omp', 9],
-  ['skills/init-project/assets/hosts/opencode', 15],
-  ['skills/init-project/assets/hosts/pi', 10],
-  ['skills/init-project/assets/hosts/qoder', 9],
-  ['skills/init-project/assets/hosts/reasonix', 8],
-  ['skills/init-project/assets/hosts/trae', 9],
-  ['skills/init-project/assets/hosts/zcode', 9],
-] as const
-
-const nativeCapabilityEntrypoints = [
-  'skills/init-project/assets/hosts/claude/agents/moluoxixi-check.md',
-  'skills/init-project/assets/hosts/claude/settings.json',
-  'skills/init-project/assets/hosts/codex/agents/moluoxixi-check.toml',
-  'skills/init-project/assets/hosts/codex/config.toml',
-  'skills/init-project/assets/hosts/codex/hooks.json',
-  'skills/init-project/assets/hosts/copilot/agents/moluoxixi-check.md',
-  'skills/init-project/assets/hosts/cursor/agents/moluoxixi-check.md',
-  'skills/init-project/assets/hosts/cursor/hooks.json',
-  'skills/init-project/assets/hosts/omp/agents/moluoxixi-check.md',
-  'skills/init-project/assets/hosts/omp/extensions/moluoxixi/index.ts.txt',
-  'skills/init-project/assets/hosts/opencode/agents/moluoxixi-check.md',
-  'skills/init-project/assets/hosts/opencode/plugins/inject-workflow-state.js',
-  'skills/init-project/assets/hosts/pi/agents/moluoxixi-check.md',
-  'skills/init-project/assets/hosts/pi/extensions/moluoxixi/index.ts.txt',
-  'skills/init-project/assets/core/commands/continue.md',
-  'skills/init-project/assets/core/hooks/inject-workflow-state.py',
-]
 
 function sortPaths(paths: string[]): string[] {
   return paths.sort((left, right) => left < right ? -1 : left > right ? 1 : 0)
@@ -178,12 +111,30 @@ function selectedFiles(): string[] {
   return sortPaths(files)
 }
 
-function selectedStats(files: string[]): { bytes: number, hash: string } {
+function normalizeCrLf(content: Buffer): Buffer {
+  const normalized = Buffer.allocUnsafe(content.length)
+  let target = 0
+
+  for (let source = 0; source < content.length; source += 1) {
+    if (content[source] === 13 && content[source + 1] === 10) {
+      continue
+    }
+    normalized[target] = content[source]
+    target += 1
+  }
+
+  return normalized.subarray(0, target)
+}
+
+function selectedStats(files: string[], normalizeTextEol = false): { bytes: number, hash: string } {
   const hash = createHash('sha256')
   let bytes = 0
 
   for (const relativePath of files) {
-    const content = fs.readFileSync(resolveRolePath(relativePath))
+    const rawContent = fs.readFileSync(resolveRolePath(relativePath))
+    const content = normalizeTextEol
+      ? normalizeCrLf(rawContent)
+      : rawContent
     bytes += content.byteLength
     hash.update(`${relativePath}\0${content.byteLength}\0`, 'utf8')
     hash.update(content)
@@ -224,11 +175,15 @@ describe('moluoxixi curated upstream role assets', () => {
     })
   })
 
-  it('keeps the role root limited to distribution metadata and the initializer', () => {
+  it('keeps the role root limited to distribution metadata, publishable packages, and the initializer', () => {
     expect(sortPaths(fs.readdirSync(roleRoot))).toEqual(sortPaths([
       '__test__',
       'constants',
       'mcp',
+      'overlays',
+      'package.json',
+      'packages',
+      'pnpm-workspace.yaml',
       'role.yaml',
       'skills',
     ]))
@@ -236,25 +191,16 @@ describe('moluoxixi curated upstream role assets', () => {
     const distributedSkills = fs.readdirSync(resolveRolePath('skills'), { withFileTypes: true })
     expect(distributedSkills.every(entry => entry.isDirectory())).toBe(true)
     expect(distributedSkills.map(entry => entry.name)).toEqual(['init-project'])
+    expect(collectFiles('skills/init-project').filter(file => path.posix.basename(file) === 'SKILL.md')).toEqual([
+      'skills/init-project/SKILL.md',
+    ])
 
-    const projectSkills = fs.readdirSync(resolveRolePath('skills/init-project/assets/core/skills'), { withFileTypes: true })
-    expect(projectSkills.every(entry => entry.isDirectory())).toBe(true)
-    expect(sortPaths(projectSkills.map(entry => entry.name))).toEqual(sortPaths([...projectSkillNames]))
-    for (const skillName of projectSkillNames) {
-      expect(fs.readFileSync(resolveRolePath(`skills/init-project/assets/core/skills/${skillName}/SKILL.md`), 'utf8')).toMatch(new RegExp(`^name: ${skillName}$`, 'mu'))
-    }
-
-    for (const [nativeRoot, expectedFiles] of nativeCapabilityCounts) {
-      expect(collectFiles(nativeRoot)).toHaveLength(expectedFiles)
-    }
-    for (const entrypoint of nativeCapabilityEntrypoints) {
-      expect(fs.statSync(resolveRolePath(entrypoint)).isFile()).toBe(true)
-    }
+    expect(fs.statSync(resolveRolePath('overlays/manifest.json')).isFile()).toBe(true)
     expect(selectedFiles().filter(file => file.endsWith('.backup'))).toEqual([])
   })
 
   it('keeps Reasonix in the project sub-agent context platform set', () => {
-    const taskStore = fs.readFileSync(resolveRolePath('skills/init-project/assets/project/scripts/common/task_store.py'), 'utf8')
+    const taskStore = fs.readFileSync(resolveRolePath('overlays/packages/cli/src/templates/overrides/trellis/scripts/common/task_store.py'), 'utf8')
     expect(taskStore).toContain('".reasonix"')
   })
 
@@ -263,28 +209,32 @@ describe('moluoxixi curated upstream role assets', () => {
     expect(fs.existsSync(resolveRolePath('skills/init-project/assets/project/optional'))).toBe(false)
   })
 
-  it('keeps the legacy brand only in immutable provenance and published source specifiers', () => {
+  it('keeps the legacy brand only in the upstream package baseline and immutable provenance', () => {
     const allFiles = collectFiles('.')
-    expect(allFiles.filter(relativePath => relativePath.toLowerCase().includes(legacyBrand))).toEqual([])
+    expect(allFiles.filter(relativePath =>
+      relativePath.toLowerCase().includes(legacyBrand)
+      && !relativePath.startsWith('packages/')
+      && !relativePath.startsWith('overlays/'),
+    )).toEqual([])
 
     const provenanceFiles = new Set([
+      '__test__/init-project.test.ts',
       '__test__/moluoxixi-source.test.ts',
+      '__test__/professional-agents.test.mjs',
+      '__test__/project-script-parity.test.ts',
       '__test__/runtime-upstream.test.ts',
-      '__test__/upstream-script-sync.test.ts',
-      'role.yaml',
-      'skills/init-project/references/upstream-capability-map.md',
-      'skills/init-project/references/upstream-reconciliation-v0.6.15.json',
+      '__test__/upstream-diff-scan.test.mjs',
+      'skills/init-project/scripts/init-project.mjs',
+      'skills/init-project/scripts/plan.mjs',
+      'skills/init-project/scripts/workflow-project.mjs',
     ])
     for (const relativePath of allFiles) {
+      if (relativePath.startsWith('packages/') || relativePath.startsWith('overlays/'))
+        continue
       const content = fs.readFileSync(resolveRolePath(relativePath), 'utf8')
       if (!content.toLowerCase().includes(legacyBrand))
         continue
-      if (relativePath.startsWith('skills/init-project/assets/runtime/source/')) {
-        expect(content.replaceAll(`@mindfoldhq/${legacyBrand}-core`, '').toLowerCase()).not.toContain(legacyBrand)
-      }
-      else {
-        expect(provenanceFiles.has(relativePath)).toBe(true)
-      }
+      expect(provenanceFiles.has(relativePath)).toBe(true)
     }
   })
 
@@ -312,10 +262,7 @@ describe('moluoxixi curated upstream role assets', () => {
     'examples',
     'marketplace',
     'node_modules',
-    'packages',
-    'package.json',
     'pnpm-lock.yaml',
-    'pnpm-workspace.yaml',
   ])('does not distribute repository-only path %s', (relativePath) => {
     expect(fs.existsSync(resolveRolePath(relativePath))).toBe(false)
   })
@@ -325,6 +272,7 @@ describe('moluoxixi curated upstream role assets', () => {
     expect(manifest).toMatchObject({
       assets: {
         mcp: 'mcp',
+        packages: 'packages',
         skills: 'skills',
       },
       canonical_root: 'roles/moluoxixi',
@@ -334,35 +282,24 @@ describe('moluoxixi curated upstream role assets', () => {
         npm_embedded_source: false,
       },
       entrypoints: {
-        initialize_project_script: 'skills/init-project/scripts/init-project.mjs',
+        initialize_project_script: 'packages/cli/bin/init-project.js',
         initialize_project_skill: 'init-project',
         moluoxixi_runtime: 'skills/init-project/assets/runtime/moluoxixi.mjs',
       },
       role_id: 'moluoxixi',
       role_version: '0.3.0',
     })
-    expect(manifest.third_party.upstream).toEqual({
-      name: upstream.name,
-      paths: [
-        'skills/init-project/assets/hosts',
-        'skills/init-project/assets/project',
-        'skills/init-project/assets/runtime/source',
-        'skills/init-project/assets/runtime/vendor/channel-mem.mjs',
-        'skills/init-project/assets/core',
-      ],
-      reconciliation: 'skills/init-project/references/upstream-reconciliation-v0.6.15.json',
-      revision: upstream.revision,
-      source: upstream.source,
-      version: upstream.version,
-    })
-    expect(manifest.third_party.productivity_skills).toEqual({
-      name: 'Matt Pocock Skills',
-      source: mattSkillsSource,
-      revision: mattSkillsRevision,
-      category: 'skills/productivity',
+    expect(manifest.third_party).toEqual({
+      productivity_skills: {
+        name: 'Matt Pocock Skills',
+        source: mattSkillsSource,
+        revision: mattSkillsRevision,
+        category: 'skills/productivity',
+      },
     })
     expect(fs.statSync(resolveRolePath(manifest.assets.skills)).isDirectory()).toBe(true)
     expect(fs.statSync(resolveRolePath(manifest.assets.mcp)).isDirectory()).toBe(true)
+    expect(fs.statSync(resolveRolePath(manifest.assets.packages)).isDirectory()).toBe(true)
     expect(fs.existsSync(resolveRolePath('skills/init-project/scripts/migrations/manifests'))).toBe(false)
 
     expect(extendsRoles).toEqual([])
@@ -409,19 +346,103 @@ describe('moluoxixi curated upstream role assets', () => {
     expect(selectedFiles()).toHaveLength(selectedIntegrity.files)
     const runtimeFiles = migratedRuntimePaths.flatMap(collectFiles)
     expect(runtimeFiles).toHaveLength(runtimeIntegrity.files)
-    expect(selectedStats(sortPaths(runtimeFiles))).toEqual({
+    // Git may materialize auto-detected text as CRLF on an existing Windows
+    // checkout. Hash the LF-normalized package sources used by clean CI.
+    expect(selectedStats(sortPaths(runtimeFiles), true)).toEqual({
       bytes: runtimeIntegrity.bytes,
       hash: runtimeIntegrity.hash,
     })
     expect(fs.statSync(resolveRolePath('skills/init-project/assets/runtime/moluoxixi.mjs')).isFile()).toBe(true)
   })
 
+  it('keeps complete role-local packages public, collision-resistant, and publication-capable', () => {
+    const workspace = JSON.parse(fs.readFileSync(resolveRolePath('package.json'), 'utf8'))
+    const core = JSON.parse(fs.readFileSync(resolveRolePath('packages/core/package.json'), 'utf8'))
+    const cli = JSON.parse(fs.readFileSync(resolveRolePath('packages/cli/package.json'), 'utf8'))
+
+    expect(workspace).toMatchObject({
+      name: '@moluoxixi/airules-moluoxixi-role',
+      private: true,
+      workspaces: ['packages/*'],
+    })
+    expect(fs.readFileSync(resolveRolePath('pnpm-workspace.yaml'), 'utf8')).toContain('- \'packages/*\'')
+    expect(core).toMatchObject({
+      name: '@moluoxixi/airules-moluoxixi-core',
+      version: publishedPackageVersion,
+      exports: {
+        './task': expect.any(Object),
+        './testing': expect.any(Object),
+      },
+      publishConfig: {
+        access: 'public',
+        provenance: true,
+      },
+      repository: {
+        type: 'git',
+        url: publishedRepository,
+      },
+      scripts: {
+        'build': expect.any(String),
+        'lint:publish': expect.any(String),
+        'test': expect.any(String),
+        'test:publish': expect.any(String),
+        'typecheck': expect.any(String),
+        'prepublishOnly': expect.stringContaining('test:publish'),
+      },
+    })
+    expect(core).not.toHaveProperty('private')
+    expect(cli).toMatchObject({
+      name: '@moluoxixi/airules-moluoxixi-cli',
+      version: publishedPackageVersion,
+      bin: {
+        trellis: './bin/trellis.js',
+        tl: './bin/trellis.js',
+      },
+      dependencies: {
+        '@moluoxixi/airules-moluoxixi-core': 'workspace:*',
+      },
+      publishConfig: {
+        access: 'public',
+        provenance: true,
+      },
+      repository: {
+        type: 'git',
+        url: publishedRepository,
+      },
+      scripts: {
+        'build': expect.any(String),
+        'lint:publish': expect.any(String),
+        'test': expect.any(String),
+        'test:publish': expect.any(String),
+        'typecheck': expect.any(String),
+        'prepublishOnly': expect.stringContaining('test:publish'),
+      },
+    })
+    expect(cli).not.toHaveProperty('private')
+    expect(cli.files).toEqual(['dist', 'bin/trellis.js'])
+    expect(workspace).toMatchObject({
+      packageManager: 'pnpm@10.32.1',
+      scripts: {
+        'build': expect.any(String),
+        'publish:dry-run': expect.any(String),
+        'test': expect.any(String),
+        'test:publish': expect.any(String),
+        'typecheck': expect.any(String),
+        'verify:publish': expect.any(String),
+      },
+    })
+    expect(workspace).not.toHaveProperty('publishConfig')
+    expect(collectFiles('packages/core')).toHaveLength(78)
+    expect(collectFiles('packages/cli')).toHaveLength(558)
+    expect(fs.existsSync(resolveRolePath('skills/init-project/assets/runtime/source'))).toBe(false)
+  })
+
   it('uses Moluoxixi project and channel state roots in the executable runtime', () => {
     const runtimeFiles = [
-      'skills/init-project/assets/runtime/source/packages/cli/src/constants/paths.ts',
-      'skills/init-project/assets/runtime/source/packages/cli/src/commands/channel/agent-loader.ts',
-      'skills/init-project/assets/runtime/source/packages/cli/src/commands/channel/store/paths.ts',
-      'skills/init-project/assets/runtime/source/packages/core/src/channel/internal/store/paths.ts',
+      'packages/cli/src/commands/channel/agent-loader.ts',
+      'packages/cli/src/commands/channel/context-trust.ts',
+      'packages/cli/src/commands/channel/store/paths.ts',
+      'packages/core/src/channel/internal/store/paths.ts',
       'skills/init-project/assets/runtime/vendor/channel-mem.mjs',
     ]
     for (const relativePath of runtimeFiles) {
@@ -429,48 +450,5 @@ describe('moluoxixi curated upstream role assets', () => {
       expect(content).toContain('.moluoxixi')
       expect(content).not.toContain(legacyProjectRoot)
     }
-  })
-
-  it('reconciles every official non-merge commit in the v0.6.7 to v0.6.15 range', () => {
-    const ledger = JSON.parse(fs.readFileSync(
-      resolveRolePath('skills/init-project/references/upstream-reconciliation-v0.6.15.json'),
-      'utf8',
-    ))
-    expect(ledger.upstream).toEqual({
-      name: upstream.name,
-      source: upstream.source,
-      from: { tag: 'v0.6.7', revision: 'e7c5ead4d0dfd717d11a40b6bc0c80d8af94c49a' },
-      to: { tag: 'v0.6.15', revision: upstream.revision },
-      history: { order: 'reverse', excludeMerges: true, commitCount: 122 },
-    })
-    expect(ledger.entries).toHaveLength(122)
-    expect(new Set(ledger.entries.map((entry: { hash: string }) => entry.hash)).size).toBe(122)
-    expect(ledger.entries[0]?.hash).toBe('200365b45a2afa68ff55c66a93d004303332f616')
-    expect(ledger.entries.at(-1)?.hash).toBe(upstream.revision)
-    expect(createHash('sha256').update(
-      ledger.entries.map((entry: { hash: string, subject: string }) => `${entry.hash}\0${entry.subject}\n`).join(''),
-    ).digest('hex')).toBe('7242f63c61794aaede0ab1b94799b2e62730e8910a8ed94b5ef1f9689f781eca')
-
-    const allowedStatuses = new Set(['adapted', 'retained-local', 'reviewed-no-change', 'not-applicable'])
-    const counts: Record<string, number> = {}
-    for (const entry of ledger.entries) {
-      expect(entry.hash).toMatch(/^[a-f0-9]{40}$/u)
-      expect(entry.subject).toEqual(expect.any(String))
-      expect(allowedStatuses.has(entry.status)).toBe(true)
-      counts[entry.status] = (counts[entry.status] ?? 0) + 1
-      if (entry.status === 'adapted' || entry.status === 'retained-local') {
-        expect(entry.localEvidence.length).toBeGreaterThan(0)
-        for (const evidence of entry.localEvidence) {
-          expect(evidence.symbol).toEqual(expect.any(String))
-          expect(fs.statSync(path.resolve(roleRoot, '..', '..', ...evidence.path.split('/'))).isFile()).toBe(true)
-        }
-      }
-    }
-    expect(counts).toEqual({
-      'adapted': 51,
-      'not-applicable': 64,
-      'retained-local': 4,
-      'reviewed-no-change': 3,
-    })
   })
 })
