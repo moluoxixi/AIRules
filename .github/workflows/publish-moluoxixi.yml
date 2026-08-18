@@ -46,7 +46,7 @@ jobs:
 
       - name: Install AIRules repository dependencies
         working-directory: .
-        run: npm install
+        run: pnpm install --frozen-lockfile --config.node-linker=hoisted
 
       - name: Verify the committed project runtime bundle
         working-directory: .
