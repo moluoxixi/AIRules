@@ -123,7 +123,7 @@ async function main() {
 }
 
 function readProjectWorkflow() {
-  return readTemplateFile('trellis/workflow.md')
+  return readTemplateFile('moluoxixi/workflow.md')
 }
 
 function readVersion(projectRoot) {

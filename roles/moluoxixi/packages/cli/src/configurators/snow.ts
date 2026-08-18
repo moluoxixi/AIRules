@@ -7,12 +7,12 @@
  *
  * Output paths:
  * - `.snow/skills/` — workflow + bundled skills (Claude Code Skills layout)
- * - `.snow/commands/trellis-*.json` — custom prompt slash commands (no trellis-start)
+ * - `.snow/commands/moluoxixi-*.json` — custom prompt slash commands (no moluoxixi-start)
  * - `.snow/agents/` — project sub-agents (auto-discovered by Snow; primary path)
  * - `.snow/hooks/` — inject hooks (session / user / beforeSubAgentStart)
  * - `.snow/SNOW.md` — operator guide
  *
- * Modern Snow does NOT ship `.snow/sub-agents.trellis.json` (legacy merge
+ * Modern Snow does NOT ship `.snow/sub-agents.moluoxixi.json` (legacy merge
  * fragment for older hosts without project-agent discovery).
  *
  * hasHooks=true → filterCommands drops `start`; SessionStart injects context.
@@ -36,10 +36,10 @@ import {
 function buildSnowCommandJson(name: string, content: string): string {
   const description =
     name === "continue"
-      ? "Resume the current Trellis task at the right workflow phase."
+      ? "Resume the current Moluoxixi task at the right workflow phase."
       : name === "finish-work"
-        ? "Wrap up the current Trellis session: archive tasks and record journal."
-        : `Trellis: ${name}`;
+        ? "Wrap up the current Moluoxixi session: archive tasks and record journal."
+        : `Moluoxixi: ${name}`;
 
   return (
     JSON.stringify(
@@ -60,19 +60,19 @@ function collectSnowStaticFiles(): Map<string, string> {
   for (const hook of getAllHooks()) {
     files.set(`.snow/hooks/${hook.targetPath}`, hook.content);
   }
-  files.set(".snow/SNOW.md", getSnowGuide());
+  files.set(".snow/SNOW.md", replacePythonCommandLiterals(getSnowGuide()));
   return files;
 }
 
 /**
- * The Snow CLI file set — written at init and diffed by `trellis update`.
+ * The Snow CLI file set — written at init and diffed by `moluoxixi update`.
  */
 export function collectSnowTemplates(): Map<string, string> {
   const config = AI_TOOLS.snow;
   const ctx = config.templateContext;
   const files = new Map<string, string>();
 
-  // hasHooks=true → resolveAllAsSkills drops trellis-start.
+  // hasHooks=true → resolveAllAsSkills drops moluoxixi-start.
   for (const [filePath, content] of collectSkillTemplates(
     ".snow/skills",
     resolveAllAsSkills(ctx),
@@ -84,7 +84,7 @@ export function collectSnowTemplates(): Map<string, string> {
   for (const cmd of resolveCommands(ctx)) {
     const body = replacePythonCommandLiterals(cmd.content);
     files.set(
-      `.snow/commands/trellis-${cmd.name}.json`,
+      `.snow/commands/moluoxixi-${cmd.name}.json`,
       buildSnowCommandJson(cmd.name, body),
     );
   }

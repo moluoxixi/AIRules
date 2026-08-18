@@ -3,7 +3,7 @@ import { existsSync, readFileSync, readdirSync, statSync } from "fs"
 import { join } from "path"
 import { execFileSync } from "child_process"
 import { platform } from "os"
-import { debugLog } from "./trellis-context.js"
+import { debugLog } from "./moluoxixi-context.js"
 
 const PYTHON_CMD = platform() === "win32" ? "python" : "python3"
 

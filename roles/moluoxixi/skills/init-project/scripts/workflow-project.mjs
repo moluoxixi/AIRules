@@ -4,15 +4,12 @@ import { Buffer } from 'node:buffer'
 import fs from 'node:fs'
 import path from 'node:path'
 import process from 'node:process'
-import { MANIFEST_PATH, PROJECT_ROOT_DIR, sha256, UPSTREAM_BRAND } from './constants.mjs'
+import { MANIFEST_PATH, PROJECT_ROOT_DIR, sha256 } from './constants.mjs'
 import { readManifest } from './core/operations.mjs'
 import { runWithEnvProxy } from './core/proxy.mjs'
 import { listWorkflowTemplates, resolveWorkflowTemplate } from './core/registry.mjs'
 import { assertProjectIsNotHome, assertSafeProject, assertSafeTarget } from './core/safety.mjs'
 import { readTemplateFile } from './templates.mjs'
-
-const UPSTREAM_TITLE = `${UPSTREAM_BRAND[0].toUpperCase()}${UPSTREAM_BRAND.slice(1)}`
-const UPSTREAM_UPPER = UPSTREAM_BRAND.toUpperCase()
 
 async function main() {
   const options = parseArgs(process.argv.slice(2))
@@ -30,7 +27,7 @@ async function main() {
   const manifest = readManifest(projectRoot)
   const id = options.template ?? 'native'
   const source = options.marketplace ?? manifest.project?.workflow?.source
-  const nativeContent = readTemplateFile('trellis/workflow.md')
+  const nativeContent = readTemplateFile('moluoxixi/workflow.md')
   const resolved = fs.existsSync(path.resolve(projectRoot, id))
     ? { id, content: fs.readFileSync(path.resolve(projectRoot, id), 'utf8'), source: 'local' }
     : await resolveWorkflowTemplate(id, source, nativeContent)
@@ -67,14 +64,11 @@ async function main() {
 
 function localize(content) {
   return content
-    .replaceAll(`${UPSTREAM_BRAND} channel`, `node ${PROJECT_ROOT_DIR}/runtime/moluoxixi.mjs channel`)
-    .replaceAll(`${UPSTREAM_BRAND} mem`, `node ${PROJECT_ROOT_DIR}/runtime/moluoxixi.mjs mem`)
-    .replaceAll(`${UPSTREAM_BRAND} workflow`, `node ${PROJECT_ROOT_DIR}/runtime/moluoxixi.mjs workflow`)
-    .replaceAll(`${UPSTREAM_BRAND} update`, `node ${PROJECT_ROOT_DIR}/runtime/moluoxixi.mjs update`)
-    .replaceAll(`${UPSTREAM_BRAND}-`, 'moluoxixi-')
-    .replaceAll(`.${UPSTREAM_BRAND}`, '.moluoxixi')
-    .replaceAll(UPSTREAM_TITLE, 'Moluoxixi')
-    .replaceAll(UPSTREAM_UPPER, 'MOLUOXIXI')
+    .replaceAll('moluoxixi channel', `node ${PROJECT_ROOT_DIR}/runtime/moluoxixi.mjs channel`)
+    .replaceAll('moluoxixi mem', `node ${PROJECT_ROOT_DIR}/runtime/moluoxixi.mjs mem`)
+    .replaceAll('moluoxixi --version', `node ${PROJECT_ROOT_DIR}/runtime/moluoxixi.mjs --version`)
+    .replaceAll('moluoxixi workflow', `node ${PROJECT_ROOT_DIR}/runtime/moluoxixi.mjs workflow`)
+    .replaceAll('moluoxixi update', `node ${PROJECT_ROOT_DIR}/runtime/moluoxixi.mjs update`)
 }
 
 function warnMissingAgents(content, projectRoot) {

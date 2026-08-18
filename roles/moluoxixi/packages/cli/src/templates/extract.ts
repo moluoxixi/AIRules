@@ -10,21 +10,21 @@ const __dirname = path.dirname(__filename);
 type TemplateCategory = "scripts" | "markdown" | "commands";
 
 /**
- * Get the path to the trellis templates directory (.trellis/ scaffolding).
+ * Get the path to the moluoxixi templates directory (.moluoxixi/ scaffolding).
  */
-export function getTrellisTemplatePath(): string {
-  const templatePath = path.join(__dirname, "trellis");
+export function getMoluoxixiTemplatePath(): string {
+  const templatePath = path.join(__dirname, "moluoxixi");
   if (fs.existsSync(templatePath)) {
     return templatePath;
   }
   throw new Error(
-    "Could not find trellis templates directory. Expected at templates/trellis/",
+    "Could not find moluoxixi templates directory. Expected at templates/moluoxixi/",
   );
 }
 
-/** @deprecated Use getTrellisTemplatePath() instead. */
-export function getTrellisSourcePath(): string {
-  return getTrellisTemplatePath();
+/** @deprecated Use getMoluoxixiTemplatePath() instead. */
+export function getMoluoxixiSourcePath(): string {
+  return getMoluoxixiTemplatePath();
 }
 
 /**
@@ -72,11 +72,11 @@ export function getPiSourcePath(): string {
 }
 
 /**
- * Read a file from the trellis template directory.
+ * Read a file from the moluoxixi template directory.
  */
-export function readTrellisFile(relativePath: string): string {
-  const trellisPath = getTrellisSourcePath();
-  const filePath = path.join(trellisPath, relativePath);
+export function readMoluoxixiFile(relativePath: string): string {
+  const moluoxixiPath = getMoluoxixiSourcePath();
+  const filePath = path.join(moluoxixiPath, relativePath);
   return fs.readFileSync(filePath, "utf-8");
 }
 
@@ -92,11 +92,11 @@ export function readTemplate(
 }
 
 export function readScript(relativePath: string): string {
-  return readTrellisFile(`scripts/${relativePath}`);
+  return readMoluoxixiFile(`scripts/${relativePath}`);
 }
 
 export function readMarkdown(relativePath: string): string {
-  return readTrellisFile(relativePath);
+  return readMoluoxixiFile(relativePath);
 }
 
 export function readCommand(filename: string): string {
@@ -104,15 +104,15 @@ export function readCommand(filename: string): string {
 }
 
 /**
- * Copy a directory from trellis templates to target, making scripts executable.
+ * Copy a directory from moluoxixi templates to target, making scripts executable.
  */
-export async function copyTrellisDir(
+export async function copyMoluoxixiDir(
   srcRelativePath: string,
   destPath: string,
   options?: { executable?: boolean },
 ): Promise<void> {
-  const trellisPath = getTrellisSourcePath();
-  const srcPath = path.join(trellisPath, srcRelativePath);
+  const moluoxixiPath = getMoluoxixiSourcePath();
+  const srcPath = path.join(moluoxixiPath, srcRelativePath);
   await copyDirRecursive(srcPath, destPath, options);
 }
 

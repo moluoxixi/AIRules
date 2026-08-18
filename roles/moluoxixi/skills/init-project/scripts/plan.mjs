@@ -12,7 +12,6 @@ import {
   RUNTIME_ROOT,
   SKILL_ROOT,
   toPosix,
-  UPSTREAM_BRAND,
 } from './constants.mjs'
 import { sanitizePackageName } from './core/project-detector.mjs'
 import {
@@ -294,17 +293,15 @@ function addTemplateTree(plan, sourceRoot, targetRoot, options = {}) {
 }
 
 function localizeTemplatePath(relativePath) {
-  return relativePath.replaceAll(UPSTREAM_BRAND, 'moluoxixi')
+  return relativePath
 }
 
 export function localizeProjectRuntime(relativePath, content) {
   let localized = content
-    .replaceAll(`${UPSTREAM_BRAND[0].toUpperCase()}${UPSTREAM_BRAND.slice(1)}`, 'Moluoxixi')
-    .replaceAll(UPSTREAM_BRAND.toUpperCase(), 'MOLUOXIXI')
-    .replaceAll(UPSTREAM_BRAND, 'moluoxixi')
     .replaceAll('"run moluoxixi update"', '"run the current init-project skill"')
     .replaceAll('moluoxixi channel', `node ${projectPath('runtime', 'moluoxixi.mjs')} channel`)
     .replaceAll('moluoxixi mem', `node ${projectPath('runtime', 'moluoxixi.mjs')} mem`)
+    .replaceAll('moluoxixi --version', `node ${projectPath('runtime', 'moluoxixi.mjs')} --version`)
     .replaceAll('moluoxixi workflow', `node ${projectPath('runtime', 'moluoxixi.mjs')} workflow`)
     .replaceAll('moluoxixi update', `node ${projectPath('runtime', 'moluoxixi.mjs')} update`)
   for (const [namespacedName, canonicalName] of Object.entries(NAMESPACED_SKILL_RENAMES))
@@ -383,7 +380,7 @@ Do not proceed without a task PRD or equivalent user-confirmed requirements.
 }
 
 function detectPullAgentType(relativePath) {
-  const name = path.basename(relativePath).replace(/(?:\.agent)?\.(?:md|toml|json)$/u, '').replace(/^(?:moluoxixi|trellis)-/u, '')
+  const name = path.basename(relativePath).replace(/(?:\.agent)?\.(?:md|toml|json)$/u, '').replace(/^moluoxixi-/u, '')
   if (['implement', 'frontend', 'backend', 'database'].includes(name))
     return 'implement'
   if (['check', 'test', 'security'].includes(name))
@@ -442,7 +439,7 @@ function mapCopilotTool(tool) {
 }
 
 function addProjectCore(plan, pythonCommand, packages, defaultPackage, projectType, workflow, configSections, specSelection) {
-  addTemplateTree(plan, 'trellis/scripts', projectPath('scripts'), {
+  addTemplateTree(plan, 'moluoxixi/scripts', projectPath('scripts'), {
     python: pythonCommand,
     rename: localizeTemplatePath,
     transform: localizeProjectRuntime,
@@ -452,7 +449,7 @@ function addProjectCore(plan, pythonCommand, packages, defaultPackage, projectTy
     python: pythonCommand,
     transform: localizeProjectRuntime,
   })
-  addTemplateTree(plan, 'trellis/agents', projectPath('agents'), {
+  addTemplateTree(plan, 'moluoxixi/agents', projectPath('agents'), {
     python: pythonCommand,
     rename: localizeTemplatePath,
     transform: localizeProjectRuntime,
@@ -460,15 +457,15 @@ function addProjectCore(plan, pythonCommand, packages, defaultPackage, projectTy
   addTree(plan, RUNTIME_ROOT, projectPath('runtime'), { merge: 'replace' })
   addTree(plan, SKILL_ROOT, projectPath('runtime', 'update', 'init-project'), { merge: 'replace' })
   addTree(plan, PACKAGE_TEMPLATE_ROOT, projectPath('runtime', 'update', 'packages', 'cli', 'src', 'templates'), { merge: 'replace' })
-  const workflowContent = workflow?.content ?? readTemplateFile('trellis/workflow.md')
+  const workflowContent = workflow?.content ?? readTemplateFile('moluoxixi/workflow.md')
   addPlan(plan, projectPath('workflow.md'), resolveTemplate(localizeProjectRuntime('workflow.md', workflowContent), undefined, pythonCommand), {
     managed: workflow?.id === undefined || workflow.id === 'native',
     force: workflow?.force === true,
   })
   addPlan(plan, projectPath('config.yaml'), buildProjectConfig(packages, defaultPackage), { configSections, merge: 'config' })
   addPlan(plan, projectPath('.version'), `${MOLUOXIXI_VERSION}\n`)
-  addPlan(plan, projectPath('.gitignore'), localizeProjectRuntime('gitignore.txt', readTemplateFile('trellis/gitignore.txt')))
-  addPlan(plan, '.gitattributes', localizeProjectRuntime('gitattributes.txt', readTemplateFile('trellis/gitattributes.txt')), { merge: 'block-hash' })
+  addPlan(plan, projectPath('.gitignore'), localizeProjectRuntime('gitignore.txt', readTemplateFile('moluoxixi/gitignore.txt')))
+  addPlan(plan, '.gitattributes', localizeProjectRuntime('gitattributes.txt', readTemplateFile('moluoxixi/gitattributes.txt')), { merge: 'block-hash' })
   addPlan(plan, projectPath('workspace', 'index.md'), resolveTemplate(localizeProjectRuntime('workspace-index.md', readTemplateFile('markdown/workspace-index.md')), undefined, pythonCommand), { managed: false, preserveExisting: true })
   addPlan(plan, projectPath('tasks', '.gitkeep'), '', { managed: false, preserveExisting: true })
   if (!specSelection.hasSingleProjectSpec)
@@ -512,7 +509,7 @@ function addExternalSpec(plan, files, strategy, packageName, projectRoot) {
     plan.specReplacements.add(targetRoot)
   }
   for (const [relativePath, content] of files) {
-    const normalized = relativePath.replace(/\\/gu, '/').replace(new RegExp(`^\\.?(?:moluoxixi|${UPSTREAM_BRAND})/spec/`, 'u'), '').replace(/^spec\//u, '')
+    const normalized = relativePath.replace(/\\/gu, '/').replace(/^\.?moluoxixi\/spec\//u, '').replace(/^spec\//u, '')
     if (!normalized || normalized.startsWith('../') || normalized.includes('\0'))
       throw new Error(`Unsafe registry spec path: ${relativePath}`)
     const source = Buffer.isBuffer(content) ? content : Buffer.from(String(content), 'utf8')
@@ -528,7 +525,7 @@ function addExternalSpec(plan, files, strategy, packageName, projectRoot) {
 }
 
 function buildProjectConfig(packages, defaultPackage) {
-  let content = localizeProjectRuntime('config.yaml', readTemplateFile('trellis/config.yaml'))
+  let content = localizeProjectRuntime('config.yaml', readTemplateFile('moluoxixi/config.yaml'))
   if (packages.length === 0)
     return content
   content = `${content.replace(/\s*$/u, '')}\n\n# Reviewed package map generated by AIRules init-project.\npackages:\n`

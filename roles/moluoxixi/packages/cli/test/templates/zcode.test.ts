@@ -2,9 +2,9 @@ import { describe, expect, it } from "vitest";
 import { getAllAgents, getHooksConfig } from "../../src/templates/zcode/index.js";
 
 const EXPECTED_AGENT_NAMES = [
-  "trellis-check",
-  "trellis-implement",
-  "trellis-research",
+  "moluoxixi-check",
+  "moluoxixi-implement",
+  "moluoxixi-research",
 ];
 
 describe("zcode getAllAgents", () => {
@@ -82,12 +82,12 @@ describe("zcode class-1 agent fallback protocol", () => {
     const agents = getAllAgents();
     for (const agent of agents) {
       if (
-        agent.name === "trellis-implement" ||
-        agent.name === "trellis-check"
+        agent.name === "moluoxixi-implement" ||
+        agent.name === "moluoxixi-check"
       ) {
-        expect(agent.content).not.toContain("Load Trellis Context First");
-        expect(agent.content).toContain("Trellis Context Loading Protocol");
-        expect(agent.content).toContain("<!-- trellis-hook-injected -->");
+        expect(agent.content).not.toContain("Load Moluoxixi Context First");
+        expect(agent.content).toContain("Moluoxixi Context Loading Protocol");
+        expect(agent.content).toContain("<!-- moluoxixi-hook-injected -->");
         expect(agent.content).toContain("Active task:");
       }
     }
@@ -95,11 +95,11 @@ describe("zcode class-1 agent fallback protocol", () => {
 
   it("does not add context fallback instructions to research", () => {
     const agents = getAllAgents();
-    const research = agents.find((agent) => agent.name === "trellis-research");
+    const research = agents.find((agent) => agent.name === "moluoxixi-research");
     expect(research).toBeDefined();
     if (!research) return;
-    expect(research.content).not.toContain("Trellis Context Loading Protocol");
-    expect(research.content).not.toContain("Load Trellis Context First");
+    expect(research.content).not.toContain("Moluoxixi Context Loading Protocol");
+    expect(research.content).not.toContain("Load Moluoxixi Context First");
     expect(research.content).toContain("{TASK_DIR}/research/");
   });
 });

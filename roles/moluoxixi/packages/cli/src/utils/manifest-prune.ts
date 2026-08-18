@@ -9,16 +9,16 @@
  *
  * `pruneOrphanManifestKeys` removes any manifest entry that no current
  * platform configurator owns. The two entry points that consume it are
- * `trellis update` (before migration classification) and `trellis uninstall`
+ * `moluoxixi update` (before migration classification) and `moluoxixi uninstall`
  * (before plan building). Together they ensure existing poisoned manifests
  * self-correct on the next routine command.
  *
  * Rules:
- *   - `.trellis/*` entries are ALWAYS kept. `trellis uninstall` removes
- *     `.trellis/` wholesale via `fs.rmSync(..., { recursive: true })`, so
+ *   - `.moluoxixi/*` entries are ALWAYS kept. `moluoxixi uninstall` removes
+ *     `.moluoxixi/` wholesale via `fs.rmSync(..., { recursive: true })`, so
  *     manifest accuracy there doesn't affect uninstall data-loss. `update`
  *     also relies on these entries to detect user-modified workflow files.
- *   - Root-level `AGENTS.md` is kept only when it still looks Trellis-managed
+ *   - Root-level `AGENTS.md` is kept only when it still looks Moluoxixi-managed
  *     (contains the managed block markers) or is missing on disk. This
  *     self-heals old poisoned manifests for user-owned AGENTS.md files that
  *     predated init and were skipped.
@@ -28,7 +28,7 @@
  *     source/target.
  *   - Everything else: if the path is not in the union of
  *     `collectPlatformTemplates()` for currently-configured platforms, it is
- *     pruned. This matches "files trellis actually wrote during init/update".
+ *     pruned. This matches "files moluoxixi actually wrote during init/update".
  */
 
 import fs from "node:fs";
@@ -42,8 +42,8 @@ import { toPosix } from "./posix.js";
 import type { AITool } from "../types/ai-tools.js";
 import type { TemplateHashes } from "../types/migration.js";
 
-const TRELLIS_BLOCK_START = "<!-- TRELLIS:START -->";
-const TRELLIS_BLOCK_END = "<!-- TRELLIS:END -->";
+const MOLUOXIXI_BLOCK_START = "<!-- MOLUOXIXI:START -->";
+const MOLUOXIXI_BLOCK_END = "<!-- MOLUOXIXI:END -->";
 
 export interface PruneResult {
   /** Manifest keys removed (POSIX-style relative paths). */
@@ -53,9 +53,9 @@ export interface PruneResult {
 }
 
 /**
- * Compute the union of "what trellis writes" across:
+ * Compute the union of "what moluoxixi writes" across:
  *   - every configured platform's collectTemplates() output
- *   - root-level AGENTS.md when it still carries Trellis managed-block markers
+ *   - root-level AGENTS.md when it still carries Moluoxixi managed-block markers
  *   - every migration manifest's from/to path (preserve so legitimate
  *     pending migrations can find their source/target)
  */
@@ -94,8 +94,8 @@ function shouldKeepAgentsMd(cwd: string): boolean {
   try {
     const content = fs.readFileSync(fullPath, "utf-8");
     return (
-      content.includes(TRELLIS_BLOCK_START) &&
-      content.includes(TRELLIS_BLOCK_END)
+      content.includes(MOLUOXIXI_BLOCK_START) &&
+      content.includes(MOLUOXIXI_BLOCK_END)
     );
   } catch {
     return true;
@@ -135,10 +135,10 @@ export function pruneOrphanManifestKeys(
 
   for (const [rawKey, value] of Object.entries(hashes)) {
     const key = toPosix(rawKey);
-    // Always preserve .trellis/ entries — they're for the workflow tree
+    // Always preserve .moluoxixi/ entries — they're for the workflow tree
     // which uninstall removes wholesale and which update needs for
     // modified-file detection.
-    if (key.startsWith(".trellis/") || key === ".trellis") {
+    if (key.startsWith(".moluoxixi/") || key === ".moluoxixi") {
       kept[key] = value;
       continue;
     }

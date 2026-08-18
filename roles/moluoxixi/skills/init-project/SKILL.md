@@ -61,7 +61,7 @@ Preserve any `session-log.mjs` script file as an unreferenced legacy artifact. R
 - Require Python 3.9+ because the migrated project runtime under `.moluoxixi/scripts` is Python.
 - Keep project command coverage mapped to AIRules-owned equivalents when changing an initializer surface.
 - Keep source ownership within the boundaries in [asset-layout.md](references/asset-layout.md) when changing initializer assets or host projections.
-- Follow [upstream-maintenance.md](references/upstream-maintenance.md) for Trellis synchronization: `roles/moluoxixi/.sync/trellis` is read-only, `roles/moluoxixi/.sync/rebuild` is the only adaptation worktree, and finalized packages are written only by a reviewed export.
+- Follow [upstream-maintenance.md](references/upstream-maintenance.md) when refreshing the fixed external baseline: keep the source mirror read-only, use `roles/moluoxixi/.sync/rebuild` as the only adaptation worktree, and write finalized packages only through a reviewed export.
 - Resolve initialization through the installed role-local CLI package; never install or publish its core/CLI workspace packages as part of project initialization.
 
 Use `--platform all` only when the user explicitly wants every supported integration. Use `--python <command>` when the project environment requires a non-default Python executable.

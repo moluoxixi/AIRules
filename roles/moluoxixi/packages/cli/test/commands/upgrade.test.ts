@@ -41,7 +41,7 @@ describe("upgrade command", () => {
       displayCommand: "npm install -g @moluoxixi/airules-moluoxixi-cli@beta",
       target: "@moluoxixi/airules-moluoxixi-cli@beta",
       tag: "beta",
-      binaryCheckCommand: "which trellis",
+      binaryCheckCommand: "which moluoxixi",
     });
   });
 
@@ -60,7 +60,7 @@ describe("upgrade command", () => {
       displayCommand: "npm install -g @moluoxixi/airules-moluoxixi-cli@beta",
       target: "@moluoxixi/airules-moluoxixi-cli@beta",
       tag: "beta",
-      binaryCheckCommand: "where trellis",
+      binaryCheckCommand: "where moluoxixi",
     });
   });
 
@@ -97,7 +97,7 @@ describe("upgrade command", () => {
       expectedCommand.spawnOptions,
     );
     expect(log).toHaveBeenCalledWith(
-      expect.stringContaining("trellis --version"),
+      expect.stringContaining("moluoxixi --version"),
     );
     expect(log).toHaveBeenCalledWith(
       expect.stringContaining(expectedCommand.binaryCheckCommand),
@@ -111,7 +111,7 @@ describe("upgrade command", () => {
     const runner = vi.fn(() => ({ status: 1, signal: null }));
 
     await expect(upgrade({ tag: "latest" }, runner)).rejects.toThrow(
-      /npm install failed with exit code 1\.[\s\S]*Troubleshooting:[\s\S]*Manual command: npm install -g @moluoxixi\/airules-moluoxixi-cli@latest[\s\S]*npm config get prefix[\s\S]*(?:which|where) trellis/,
+      /npm install failed with exit code 1\.[\s\S]*Troubleshooting:[\s\S]*Manual command: npm install -g @moluoxixi\/airules-moluoxixi-cli@latest[\s\S]*npm config get prefix[\s\S]*(?:which|where) moluoxixi/,
     );
 
     log.mockRestore();

@@ -2,7 +2,7 @@
  * Integration test for `add_session.py` auto-commit scope.
  *
  * The python script lives under
- * `src/templates/trellis/scripts/add_session.py`; this test stamps the real
+ * `src/templates/moluoxixi/scripts/add_session.py`; this test stamps the real
  * templates into a fresh git repo and exercises the actual `python3
  * add_session.py` auto-commit path.
  *
@@ -21,7 +21,7 @@ import path from "node:path";
 
 const TEMPLATE_SCRIPTS = path.resolve(
   __dirname,
-  "../../src/templates/trellis/scripts",
+  "../../src/templates/moluoxixi/scripts",
 );
 
 const DEVELOPER = "tester";
@@ -52,13 +52,13 @@ function setupRepo(tmp: string): void {
   git(tmp, "config", "user.name", "Test");
 
   // Stamp the real templates into the test repo.
-  const scriptsDest = path.join(tmp, ".trellis", "scripts");
+  const scriptsDest = path.join(tmp, ".moluoxixi", "scripts");
   fs.mkdirSync(scriptsDest, { recursive: true });
   fs.cpSync(TEMPLATE_SCRIPTS, scriptsDest, { recursive: true });
 
   // session_auto_commit must be enabled for the session to commit.
   fs.writeFileSync(
-    path.join(tmp, ".trellis", "config.yaml"),
+    path.join(tmp, ".moluoxixi", "config.yaml"),
     "session_auto_commit: true\n",
   );
 
@@ -66,7 +66,7 @@ function setupRepo(tmp: string): void {
   // the auto-update markers) via the real init script.
   const r = spawnSync(
     "python3",
-    [".trellis/scripts/init_developer.py", DEVELOPER],
+    [".moluoxixi/scripts/init_developer.py", DEVELOPER],
     { cwd: tmp, encoding: "utf-8" },
   );
   if (r.status !== 0) {
@@ -80,7 +80,7 @@ function makeTask(
   prdBody: string,
   branch?: string,
 ): void {
-  const dir = path.join(repo, ".trellis", "tasks", name);
+  const dir = path.join(repo, ".moluoxixi", "tasks", name);
   fs.mkdirSync(dir, { recursive: true });
   fs.writeFileSync(path.join(dir, "prd.md"), prdBody);
   const taskJson: Record<string, unknown> = {
@@ -112,12 +112,12 @@ function makeTask(
  * `get_current_task` returns this task without needing a platform context.
  */
 function setCurrentTask(repo: string, taskName: string): void {
-  const sessionsDir = path.join(repo, ".trellis", ".runtime", "sessions");
+  const sessionsDir = path.join(repo, ".moluoxixi", ".runtime", "sessions");
   fs.mkdirSync(sessionsDir, { recursive: true });
   fs.writeFileSync(
     path.join(sessionsDir, "session.json"),
     JSON.stringify({
-      current_task: `.trellis/tasks/${taskName}`,
+      current_task: `.moluoxixi/tasks/${taskName}`,
       platform: "session",
     }) + "\n",
   );
@@ -126,7 +126,7 @@ function setCurrentTask(repo: string, taskName: string): void {
 function runAddSession(repo: string, title: string, extraArgs: string[] = []): void {
   const r = spawnSync(
     "python3",
-    [".trellis/scripts/add_session.py", "--title", title, ...extraArgs],
+    [".moluoxixi/scripts/add_session.py", "--title", title, ...extraArgs],
     { cwd: repo, encoding: "utf-8" },
   );
   if (r.status !== 0) {
@@ -138,7 +138,7 @@ describe.skipIf(!hasPython())("add_session.py auto-commit", () => {
   let tmp: string;
 
   beforeEach(() => {
-    tmp = fs.mkdtempSync(path.join(os.tmpdir(), "trellis-session-test-"));
+    tmp = fs.mkdtempSync(path.join(os.tmpdir(), "moluoxixi-session-test-"));
     setupRepo(tmp);
   });
 
@@ -155,7 +155,7 @@ describe.skipIf(!hasPython())("add_session.py auto-commit", () => {
 
     // Dirty edit in task-b BEFORE recording a session in task-a's context.
     fs.appendFileSync(
-      path.join(tmp, ".trellis", "tasks", "task-b", "prd.md"),
+      path.join(tmp, ".moluoxixi", "tasks", "task-b", "prd.md"),
       "DIRTY EDIT IN TASK-B SHOULD NOT BE COMMITTED\n",
     );
 
@@ -179,7 +179,7 @@ describe.skipIf(!hasPython())("add_session.py auto-commit", () => {
 
     // task-b dirty change still in working tree.
     const status = git(tmp, "status", "--porcelain");
-    expect(status).toMatch(/\.trellis\/tasks\/task-b\/prd\.md/);
+    expect(status).toMatch(/\.moluoxixi\/tasks\/task-b\/prd\.md/);
   });
 
   it("omits Main Changes/Testing/Next Steps sections for a legacy call (#394)", () => {
@@ -191,7 +191,7 @@ describe.skipIf(!hasPython())("add_session.py auto-commit", () => {
     runAddSession(tmp, "placeholder-free work");
 
     const journal = fs.readFileSync(
-      path.join(tmp, ".trellis", "workspace", DEVELOPER, "journal-1.md"),
+      path.join(tmp, ".moluoxixi", "workspace", DEVELOPER, "journal-1.md"),
       "utf-8",
     );
 
@@ -224,7 +224,7 @@ describe.skipIf(!hasPython())("add_session.py auto-commit", () => {
     ]);
 
     const journal = fs.readFileSync(
-      path.join(tmp, ".trellis", "workspace", DEVELOPER, "journal-1.md"),
+      path.join(tmp, ".moluoxixi", "workspace", DEVELOPER, "journal-1.md"),
       "utf-8",
     );
 
@@ -246,11 +246,11 @@ describe.skipIf(!hasPython())("add_session.py auto-commit", () => {
     runAddSession(tmp, "stale branch work");
 
     const journal = fs.readFileSync(
-      path.join(tmp, ".trellis", "workspace", DEVELOPER, "journal-1.md"),
+      path.join(tmp, ".moluoxixi", "workspace", DEVELOPER, "journal-1.md"),
       "utf-8",
     );
     const index = fs.readFileSync(
-      path.join(tmp, ".trellis", "workspace", DEVELOPER, "index.md"),
+      path.join(tmp, ".moluoxixi", "workspace", DEVELOPER, "index.md"),
       "utf-8",
     );
 
@@ -267,11 +267,11 @@ describe.skipIf(!hasPython())("add_session.py auto-commit", () => {
     // TWO session files → resolve_active_task refuses to guess and returns
     // None. The guard must stage only journal/index, never the wide scan.
     setCurrentTask(tmp, "task-a");
-    const sessionsDir = path.join(tmp, ".trellis", ".runtime", "sessions");
+    const sessionsDir = path.join(tmp, ".moluoxixi", ".runtime", "sessions");
     fs.writeFileSync(
       path.join(sessionsDir, "session2.json"),
       JSON.stringify({
-        current_task: ".trellis/tasks/task-b",
+        current_task: ".moluoxixi/tasks/task-b",
         platform: "session",
       }) + "\n",
     );
@@ -280,11 +280,11 @@ describe.skipIf(!hasPython())("add_session.py auto-commit", () => {
 
     // Both task dirs dirty.
     fs.appendFileSync(
-      path.join(tmp, ".trellis", "tasks", "task-a", "prd.md"),
+      path.join(tmp, ".moluoxixi", "tasks", "task-a", "prd.md"),
       "DIRTY A\n",
     );
     fs.appendFileSync(
-      path.join(tmp, ".trellis", "tasks", "task-b", "prd.md"),
+      path.join(tmp, ".moluoxixi", "tasks", "task-b", "prd.md"),
       "DIRTY B\n",
     );
 
@@ -307,7 +307,7 @@ describe.skipIf(!hasPython())("add_session.py auto-commit", () => {
 
     // Both task dirty edits remain in the working tree.
     const status = git(tmp, "status", "--porcelain");
-    expect(status).toMatch(/\.trellis\/tasks\/task-a\/prd\.md/);
-    expect(status).toMatch(/\.trellis\/tasks\/task-b\/prd\.md/);
+    expect(status).toMatch(/\.moluoxixi\/tasks\/task-a\/prd\.md/);
+    expect(status).toMatch(/\.moluoxixi\/tasks\/task-b\/prd\.md/);
   });
 });

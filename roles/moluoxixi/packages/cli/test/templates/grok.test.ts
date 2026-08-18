@@ -4,9 +4,9 @@ import { applyPullBasedPreludeMarkdown } from "../../src/configurators/shared.js
 import { collectGrokTemplates } from "../../src/configurators/grok.js";
 
 const EXPECTED_AGENT_NAMES = [
-  "trellis-check",
-  "trellis-implement",
-  "trellis-research",
+  "moluoxixi-check",
+  "moluoxixi-implement",
+  "moluoxixi-research",
 ];
 
 describe("grok getAllAgents", () => {
@@ -34,10 +34,10 @@ describe("grok pull-based prelude injection", () => {
     const agents = applyPullBasedPreludeMarkdown(getAllAgents());
     for (const agent of agents) {
       if (
-        agent.name === "trellis-implement" ||
-        agent.name === "trellis-check"
+        agent.name === "moluoxixi-implement" ||
+        agent.name === "moluoxixi-check"
       ) {
-        expect(agent.content).toContain("Load Trellis Context First");
+        expect(agent.content).toContain("Load Moluoxixi Context First");
         expect(agent.content).toContain("task.py current --source");
       }
     }
@@ -45,31 +45,31 @@ describe("grok pull-based prelude injection", () => {
 
   it("does not inject the pull-based prelude into research", () => {
     const agents = applyPullBasedPreludeMarkdown(getAllAgents());
-    const research = agents.find((agent) => agent.name === "trellis-research");
+    const research = agents.find((agent) => agent.name === "moluoxixi-research");
     expect(research).toBeDefined();
     if (!research) return;
-    expect(research.content).not.toContain("Load Trellis Context First");
+    expect(research.content).not.toContain("Load Moluoxixi Context First");
     expect(research.content).toContain("{TASK_DIR}/research/");
   });
 });
 
 describe("grok collectGrokTemplates", () => {
-  it("writes flat trellis-*.md commands and agents under .grok/", () => {
+  it("writes flat moluoxixi-*.md commands and agents under .grok/", () => {
     const files = collectGrokTemplates();
-    expect(files.has(".grok/commands/trellis-start.md")).toBe(true);
-    expect(files.has(".grok/commands/trellis-continue.md")).toBe(true);
-    expect(files.has(".grok/commands/trellis-finish-work.md")).toBe(true);
+    expect(files.has(".grok/commands/moluoxixi-start.md")).toBe(true);
+    expect(files.has(".grok/commands/moluoxixi-continue.md")).toBe(true);
+    expect(files.has(".grok/commands/moluoxixi-finish-work.md")).toBe(true);
     // Nested ZCode-style layout must not be used
-    expect(files.has(".grok/commands/trellis/start.md")).toBe(false);
+    expect(files.has(".grok/commands/moluoxixi/start.md")).toBe(false);
 
-    expect(files.has(".grok/agents/trellis-implement.md")).toBe(true);
-    expect(files.has(".grok/agents/trellis-check.md")).toBe(true);
-    expect(files.has(".grok/agents/trellis-research.md")).toBe(true);
+    expect(files.has(".grok/agents/moluoxixi-implement.md")).toBe(true);
+    expect(files.has(".grok/agents/moluoxixi-check.md")).toBe(true);
+    expect(files.has(".grok/agents/moluoxixi-research.md")).toBe(true);
 
-    const implement = files.get(".grok/agents/trellis-implement.md");
-    expect(implement).toContain("Load Trellis Context First");
-    const research = files.get(".grok/agents/trellis-research.md");
-    expect(research).not.toContain("Load Trellis Context First");
+    const implement = files.get(".grok/agents/moluoxixi-implement.md");
+    expect(implement).toContain("Load Moluoxixi Context First");
+    const research = files.get(".grok/agents/moluoxixi-research.md");
+    expect(research).not.toContain("Load Moluoxixi Context First");
 
     // No shared .agents/skills/ dual-write
     expect(
@@ -79,7 +79,7 @@ describe("grok collectGrokTemplates", () => {
 
   it("includes private skills under .grok/skills/", () => {
     const files = collectGrokTemplates();
-    expect(files.has(".grok/skills/trellis-check/SKILL.md")).toBe(true);
-    expect(files.has(".grok/skills/trellis-before-dev/SKILL.md")).toBe(true);
+    expect(files.has(".grok/skills/moluoxixi-check/SKILL.md")).toBe(true);
+    expect(files.has(".grok/skills/moluoxixi-before-dev/SKILL.md")).toBe(true);
   });
 });

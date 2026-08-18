@@ -32,9 +32,9 @@ var __toESM = (mod, isNodeMode, target) => (target = mod != null ? __create(__ge
   mod
 ));
 
-// node_modules/.pnpm/commander@12.1.0/node_modules/commander/lib/error.js
+// node_modules/commander/lib/error.js
 var require_error = __commonJS({
-  "node_modules/.pnpm/commander@12.1.0/node_modules/commander/lib/error.js"(exports) {
+  "node_modules/commander/lib/error.js"(exports) {
     var CommanderError2 = class extends Error {
       /**
        * Constructs the CommanderError class
@@ -67,9 +67,9 @@ var require_error = __commonJS({
   }
 });
 
-// node_modules/.pnpm/commander@12.1.0/node_modules/commander/lib/argument.js
+// node_modules/commander/lib/argument.js
 var require_argument = __commonJS({
-  "node_modules/.pnpm/commander@12.1.0/node_modules/commander/lib/argument.js"(exports) {
+  "node_modules/commander/lib/argument.js"(exports) {
     var { InvalidArgumentError: InvalidArgumentError2 } = require_error();
     var Argument2 = class {
       /**
@@ -194,9 +194,9 @@ var require_argument = __commonJS({
   }
 });
 
-// node_modules/.pnpm/commander@12.1.0/node_modules/commander/lib/help.js
+// node_modules/commander/lib/help.js
 var require_help = __commonJS({
-  "node_modules/.pnpm/commander@12.1.0/node_modules/commander/lib/help.js"(exports) {
+  "node_modules/commander/lib/help.js"(exports) {
     var { humanReadableArgName } = require_argument();
     var Help2 = class {
       constructor() {
@@ -608,9 +608,9 @@ var require_help = __commonJS({
   }
 });
 
-// node_modules/.pnpm/commander@12.1.0/node_modules/commander/lib/option.js
+// node_modules/commander/lib/option.js
 var require_option = __commonJS({
-  "node_modules/.pnpm/commander@12.1.0/node_modules/commander/lib/option.js"(exports) {
+  "node_modules/commander/lib/option.js"(exports) {
     var { InvalidArgumentError: InvalidArgumentError2 } = require_error();
     var Option2 = class {
       /**
@@ -880,9 +880,9 @@ var require_option = __commonJS({
   }
 });
 
-// node_modules/.pnpm/commander@12.1.0/node_modules/commander/lib/suggestSimilar.js
+// node_modules/commander/lib/suggestSimilar.js
 var require_suggestSimilar = __commonJS({
-  "node_modules/.pnpm/commander@12.1.0/node_modules/commander/lib/suggestSimilar.js"(exports) {
+  "node_modules/commander/lib/suggestSimilar.js"(exports) {
     var maxDistance = 3;
     function editDistance(a, b) {
       if (Math.abs(a.length - b.length) > maxDistance)
@@ -960,9 +960,9 @@ var require_suggestSimilar = __commonJS({
   }
 });
 
-// node_modules/.pnpm/commander@12.1.0/node_modules/commander/lib/command.js
+// node_modules/commander/lib/command.js
 var require_command = __commonJS({
-  "node_modules/.pnpm/commander@12.1.0/node_modules/commander/lib/command.js"(exports) {
+  "node_modules/commander/lib/command.js"(exports) {
     var EventEmitter = __require("node:events").EventEmitter;
     var childProcess = __require("node:child_process");
     var path23 = __require("node:path");
@@ -3003,9 +3003,9 @@ Expecting one of '${allowedValues.join("', '")}'`);
   }
 });
 
-// node_modules/.pnpm/commander@12.1.0/node_modules/commander/index.js
+// node_modules/commander/index.js
 var require_commander = __commonJS({
-  "node_modules/.pnpm/commander@12.1.0/node_modules/commander/index.js"(exports) {
+  "node_modules/commander/index.js"(exports) {
     var { Argument: Argument2 } = require_argument();
     var { Command: Command2 } = require_command();
     var { CommanderError: CommanderError2, InvalidArgumentError: InvalidArgumentError2 } = require_error();
@@ -3025,7 +3025,7 @@ var require_commander = __commonJS({
   }
 });
 
-// node_modules/.pnpm/commander@12.1.0/node_modules/commander/esm.mjs
+// node_modules/commander/esm.mjs
 var import_index = __toESM(require_commander(), 1);
 var {
   program,
@@ -3042,7 +3042,7 @@ var {
   Help
 } = import_index.default;
 
-// node_modules/.pnpm/chalk@5.6.2/node_modules/chalk/source/vendor/ansi-styles/index.js
+// node_modules/chalk/source/vendor/ansi-styles/index.js
 var ANSI_BACKGROUND_OFFSET = 10;
 var wrapAnsi16 = (offset = 0) => (code) => `\x1B[${code + offset}m`;
 var wrapAnsi256 = (offset = 0) => (code) => `\x1B[${38 + offset};5;${code}m`;
@@ -3228,7 +3228,7 @@ function assembleStyles() {
 var ansiStyles = assembleStyles();
 var ansi_styles_default = ansiStyles;
 
-// node_modules/.pnpm/chalk@5.6.2/node_modules/chalk/source/vendor/supports-color/index.js
+// node_modules/chalk/source/vendor/supports-color/index.js
 import process2 from "node:process";
 import os from "node:os";
 import tty from "node:tty";
@@ -3360,7 +3360,7 @@ var supportsColor = {
 };
 var supports_color_default = supportsColor;
 
-// node_modules/.pnpm/chalk@5.6.2/node_modules/chalk/source/utilities.js
+// node_modules/chalk/source/utilities.js
 function stringReplaceAll(string, substring, replacer) {
   let index = string.indexOf(substring);
   if (index === -1) {
@@ -3390,7 +3390,7 @@ function stringEncaseCRLFWithFirstIndex(string, prefix, postfix, index) {
   return returnValue;
 }
 
-// node_modules/.pnpm/chalk@5.6.2/node_modules/chalk/source/index.js
+// node_modules/chalk/source/index.js
 var { stdout: stdoutColor, stderr: stderrColor } = supports_color_default;
 var GENERATOR = /* @__PURE__ */ Symbol("GENERATOR");
 var STYLER = /* @__PURE__ */ Symbol("STYLER");
@@ -3686,6 +3686,10 @@ function encodeClaudeInterruptMessage(text) {
   ];
   return lines.join("\n") + "\n";
 }
+var INLINE_SYSTEM_PROMPT_MAX_CHARS = 8e3;
+function shouldUseSystemPromptFile(systemPrompt) {
+  return systemPrompt.trim().length > 0 && systemPrompt.length > INLINE_SYSTEM_PROMPT_MAX_CHARS;
+}
 function buildClaudeArgs(opts) {
   const args = [
     "-p",
@@ -3700,7 +3704,9 @@ function buildClaudeArgs(opts) {
   if (opts.verbose !== false) args.push("--verbose");
   if (opts.resumeSessionId) args.push("--resume", opts.resumeSessionId);
   if (opts.model) args.push("--model", opts.model);
-  if (opts.systemPrompt?.trim()) {
+  if (opts.systemPromptFile) {
+    args.push("--append-system-prompt-file", opts.systemPromptFile);
+  } else if (opts.systemPrompt?.trim()) {
     args.push("--append-system-prompt", opts.systemPrompt);
   }
   return args;
@@ -4248,7 +4254,8 @@ var claudeAdapter = {
     return buildClaudeArgs({
       resumeSessionId: view.resume,
       model: view.model,
-      systemPrompt: view.systemPrompt
+      systemPrompt: view.systemPrompt,
+      systemPromptFile: view.systemPromptFile
     });
   },
   createCtx() {
@@ -6618,7 +6625,13 @@ function alive(pid) {
   }
 }
 function cleanupFiles(channelName, worker, project) {
-  for (const suffix of ["pid", "worker-pid", "config", "spawnlock"]) {
+  for (const suffix of [
+    "pid",
+    "worker-pid",
+    "config",
+    "system-prompt.md",
+    "spawnlock"
+  ]) {
     try {
       fs10.unlinkSync(workerFile(channelName, worker, suffix, project));
     } catch {
@@ -8680,11 +8693,29 @@ function createShutdown(args) {
 
 // roles/moluoxixi/packages/cli/src/commands/channel/supervisor/stdout.ts
 import fs21 from "node:fs";
-function pumpStdout(stream, onLine, onError) {
+function createStdoutDrainControl() {
+  let resolveProcessLines;
+  const processLines = new Promise((resolve5) => {
+    resolveProcessLines = resolve5;
+  });
+  const controller = new AbortController();
+  return {
+    processLines,
+    signal: controller.signal,
+    allowProcessing: () => resolveProcessLines(true),
+    discard: () => {
+      resolveProcessLines(false);
+      controller.abort();
+    },
+    abortReading: () => controller.abort()
+  };
+}
+function pumpStdout(stream, onLine, onError, signal) {
   let buf = "";
   let queue = Promise.resolve();
   let pending = 0;
   let paused = false;
+  let finished = false;
   const pauseForBackpressure = () => {
     if (!paused) {
       stream.pause();
@@ -8718,7 +8749,7 @@ function pumpStdout(stream, onLine, onError) {
       }
     }).catch(() => void 0);
   };
-  stream.on("data", (chunk) => {
+  const onData = (chunk) => {
     buf += chunk.toString("utf-8");
     let nl;
     while ((nl = buf.indexOf("\n")) !== -1) {
@@ -8728,7 +8759,32 @@ function pumpStdout(stream, onLine, onError) {
         enqueue(line);
       }
     }
+  };
+  let resolveFinished;
+  const streamFinished = new Promise((resolve5) => {
+    resolveFinished = resolve5;
   });
+  const finish = () => {
+    if (finished) return;
+    finished = true;
+    stream.off("data", onData);
+    stream.off("end", finish);
+    stream.off("close", finish);
+    signal?.removeEventListener("abort", finish);
+    if (buf.trim()) {
+      enqueue(buf);
+    }
+    buf = "";
+    resolveFinished();
+  };
+  stream.on("data", onData);
+  stream.once("end", finish);
+  stream.once("close", finish);
+  signal?.addEventListener("abort", finish, { once: true });
+  if (signal?.aborted || stream.readableEnded || stream.closed || stream.destroyed) {
+    queueMicrotask(finish);
+  }
+  return streamFinished.then(() => queue);
 }
 async function applyParseResult(channelName, workerName, result, child, shutdown, turnTracker) {
   for (const ev of result.events) {
@@ -8788,11 +8844,14 @@ function startStdoutPump(args) {
     adapterCtx,
     log,
     shutdown,
-    turnTracker
+    turnTracker,
+    processLines,
+    signal
   } = args;
-  pumpStdout(
+  const drained = pumpStdout(
     child.stdout,
     async (line) => {
+      if (processLines && !await processLines) return;
       log.write(line + "\n");
       const result = adapter.parseLine(line, adapterCtx);
       await applyParseResult(
@@ -8812,8 +8871,10 @@ function startStdoutPump(args) {
         by: `supervisor:${workerName}`,
         message: `stdout pipeline error: ${err.message}`
       }).catch(() => void 0);
-    }
+    },
+    signal
   );
+  return processLines ? Promise.all([drained, processLines]).then(() => void 0) : drained;
 }
 
 // roles/moluoxixi/packages/cli/src/commands/channel/supervisor/turns.ts
@@ -8896,6 +8957,23 @@ function scheduleSupervisorTimeoutWarning(args) {
 
 // roles/moluoxixi/packages/cli/src/commands/channel/supervisor.ts
 var SHUTDOWN_GRACE_MS = 3e3;
+async function finalizeSupervisorExit(args) {
+  const timer = setTimeout(() => {
+    try {
+      args.onDrainTimeout?.();
+    } catch {
+    }
+    try {
+      args.abortStdoutDrain();
+    } catch {
+    }
+  }, args.drainTimeoutMs);
+  await args.stdoutDrained.catch(() => void 0);
+  clearTimeout(timer);
+  await args.finalizeOnExit().catch(() => void 0);
+  await args.cleanup().catch(() => void 0);
+  args.exit();
+}
 function resolveProviderPath(provider, cwd) {
   const fallback = { command: provider, prefixArgs: [] };
   if (process.platform !== "win32") return fallback;
@@ -8937,10 +9015,21 @@ async function runSupervisor(channelName, workerName, configPath) {
   );
   const adapter = getAdapter(config.provider);
   const adapterCtx = adapter.createCtx();
+  let systemPromptFile;
+  if (shouldUseSystemPromptFile(config.systemPrompt)) {
+    systemPromptFile = workerFile(
+      channelName,
+      workerName,
+      "system-prompt.md",
+      project
+    );
+    fs22.writeFileSync(systemPromptFile, config.systemPrompt);
+  }
   const view = {
     resume: config.resume,
     model: config.model,
     systemPrompt: config.systemPrompt,
+    ...systemPromptFile ? { systemPromptFile } : {},
     cwd: config.cwd,
     sandbox: config.sandbox
   };
@@ -8981,6 +9070,24 @@ async function runSupervisor(channelName, workerName, configPath) {
     timeoutMs: config.timeoutMs,
     ...config.idleTimeoutMs !== void 0 ? { idleTimeoutMs: config.idleTimeoutMs } : {}
   });
+  const stdoutDrain = createStdoutDrainControl();
+  const idleTimerRef = {};
+  const turnTracker = new TurnTracker({
+    onIdleExit: () => idleTimerRef.current?.pause(),
+    onIdleEnter: () => idleTimerRef.current?.reset()
+  });
+  const stdoutDrained = startStdoutPump({
+    channelName,
+    workerName,
+    child,
+    adapter,
+    adapterCtx,
+    log,
+    shutdown,
+    turnTracker,
+    processLines: stdoutDrain.processLines,
+    signal: stdoutDrain.signal
+  });
   let spawnFailed = false;
   let settleSpawn = () => void 0;
   const spawnSettled = new Promise((resolve5) => {
@@ -8997,6 +9104,7 @@ async function runSupervisor(channelName, workerName, configPath) {
     if (!child.pid) {
       spawnFailed = true;
       settleSpawn();
+      stdoutDrain.discard();
       void (async () => {
         try {
           await appendEvent2(
@@ -9035,11 +9143,18 @@ async function runSupervisor(channelName, workerName, configPath) {
     })();
   });
   child.on("exit", (code, sig) => {
-    void (async () => {
-      await shutdown.finalizeOnExit(code, sig).catch(() => void 0);
-      await cleanup(channelName, workerName).catch(() => void 0);
-      process.exit(0);
-    })();
+    void finalizeSupervisorExit({
+      stdoutDrained,
+      drainTimeoutMs: SHUTDOWN_GRACE_MS,
+      abortStdoutDrain: stdoutDrain.abortReading,
+      onDrainTimeout: () => log.write(
+        `[supervisor] stdout did not close within ${SHUTDOWN_GRACE_MS}ms; draining buffered lines and exiting
+`
+      ),
+      finalizeOnExit: () => shutdown.finalizeOnExit(code, sig),
+      cleanup: () => cleanup(channelName, workerName),
+      exit: () => process.exit(0)
+    });
   });
   process.on("SIGTERM", () => {
     void shutdown.request(
@@ -9050,51 +9165,47 @@ async function runSupervisor(channelName, workerName, configPath) {
   process.on("SIGINT", () => void shutdown.request("SIGINT", "explicit-kill"));
   process.on("SIGHUP", () => void shutdown.request("SIGHUP", "explicit-kill"));
   await spawnSettled;
-  if (spawnFailed) return;
+  if (spawnFailed) {
+    stdoutDrain.discard();
+    return;
+  }
   if (shutdown.isShuttingDown()) {
+    stdoutDrain.discard();
     await shutdown.awaitFinalize();
     return;
   }
-  fs22.writeFileSync(
-    workerFile(channelName, workerName, "worker-pid", project),
-    String(child.pid)
-  );
-  await appendEvent2(
-    channelName,
-    {
-      kind: "spawned",
-      by: config.spawnedBy ?? "main",
-      as: workerName,
-      provider: config.provider,
-      pid: child.pid,
-      inboxPolicy: config.inboxPolicy ?? DEFAULT_INBOX_POLICY,
-      ...config.agent ? { agent: config.agent } : {},
-      ...config.contextFiles && config.contextFiles.length > 0 ? { files: config.contextFiles } : {},
-      ...config.contextManifests && config.contextManifests.length > 0 ? { manifests: config.contextManifests } : {}
-    },
-    project
-  );
-  const idleTimer = scheduleSupervisorIdleTimer({
+  try {
+    fs22.writeFileSync(
+      workerFile(channelName, workerName, "worker-pid", project),
+      String(child.pid)
+    );
+    await appendEvent2(
+      channelName,
+      {
+        kind: "spawned",
+        by: config.spawnedBy ?? "main",
+        as: workerName,
+        provider: config.provider,
+        pid: child.pid,
+        inboxPolicy: config.inboxPolicy ?? DEFAULT_INBOX_POLICY,
+        ...config.agent ? { agent: config.agent } : {},
+        ...config.contextFiles && config.contextFiles.length > 0 ? { files: config.contextFiles } : {},
+        ...config.contextManifests && config.contextManifests.length > 0 ? { manifests: config.contextManifests } : {}
+      },
+      project
+    );
+  } catch (err) {
+    stdoutDrain.discard();
+    throw err;
+  }
+  idleTimerRef.current = scheduleSupervisorIdleTimer({
     idleTimeoutMs: config.idleTimeoutMs ?? 0,
     shutdown,
     isChildExited: () => child.exitCode !== null || child.signalCode !== null,
     log
   });
-  const turnTracker = new TurnTracker({
-    onIdleExit: () => idleTimer.pause(),
-    onIdleEnter: () => idleTimer.reset()
-  });
-  process.on("exit", () => idleTimer.cancel());
-  startStdoutPump({
-    channelName,
-    workerName,
-    child,
-    adapter,
-    adapterCtx,
-    log,
-    shutdown,
-    turnTracker
-  });
+  process.on("exit", () => idleTimerRef.current?.cancel());
+  stdoutDrain.allowProcessing();
   if (config.timeoutMs && config.timeoutMs > 0) {
     setTimeout(() => {
       log.write(
@@ -9158,6 +9269,7 @@ async function cleanup(channelName, workerName) {
     "pid",
     "worker-pid",
     "config",
+    "system-prompt.md",
     "spawnlock",
     "shutdown-reason",
     "reservation"
@@ -12933,7 +13045,7 @@ function warnOpencodeUnavailable() {
   if (opencodeWarned) return;
   opencodeWarned = true;
   process.stderr.write(
-    "\u26A0\uFE0F  tl mem: OpenCode platform reader is temporarily unavailable in this build.\n    OpenCode 1.2+ moved to SQLite; the native dependency was reverted in\n    0.6.0-beta.4 due to install failures. Re-enabled in a future release.\n"
+    "\u26A0\uFE0F  moluoxixi mem: OpenCode platform reader is temporarily unavailable in this build.\n    OpenCode 1.2+ moved to SQLite; the native dependency was reverted in\n    0.6.0-beta.4 due to install failures. Re-enabled in a future release.\n"
   );
 }
 function maybeWarnOpencode(f) {
@@ -13285,7 +13397,7 @@ function runMem(args) {
 
 // roles/moluoxixi/packages/cli/src/airules-runtime-entry.ts
 var program2 = new Command();
-program2.name("moluoxixi-runtime").description("AIRules-owned local runtime for bundled Moluoxixi capabilities").version("0.2.0");
+program2.name("moluoxixi-runtime").description("AIRules-owned local runtime for bundled Moluoxixi capabilities").version("0.3.0");
 registerChannelCommand(program2);
 program2.command("mem").allowUnknownOption(true).helpOption(false).argument("[args...]").action((args = []) => runMem(args));
 await program2.parseAsync(process.argv);

@@ -4,15 +4,15 @@
  * `@moluoxixi/airules-moluoxixi-core` task API; this module re-exports them under
  * the legacy `TaskJson` / `emptyTaskJson` names for CLI call sites.
  *
- * New code should prefer `TrellisTaskRecord` / `emptyTaskRecord` from
+ * New code should prefer `MoluoxixiTaskRecord` / `emptyTaskRecord` from
  * `@moluoxixi/airules-moluoxixi-core/task` directly.
  */
 
 import {
   emptyTaskRecord,
-  type TrellisTaskRecord,
+  type MoluoxixiTaskRecord,
 } from "@moluoxixi/airules-moluoxixi-core/task";
 
-export type TaskJson = TrellisTaskRecord;
+export type TaskJson = MoluoxixiTaskRecord;
 
 export const emptyTaskJson = emptyTaskRecord;

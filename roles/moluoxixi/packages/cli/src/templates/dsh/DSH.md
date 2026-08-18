@@ -1,47 +1,47 @@
-# Trellis on DeepSeek Harness (dsh)
+# Moluoxixi on DeepSeek Harness (dsh)
 
-dsh is a **class-2 pull-based** Trellis host: no session-start hook auto-injects
-workflow context, so the agent loads the Trellis skills on demand through its
+dsh is a **class-2 pull-based** Moluoxixi host: no session-start hook auto-injects
+workflow context, so the agent loads the Moluoxixi skills on demand through its
 skill-loader tool.
 
 | Capability | Status |
 | --- | --- |
-| Skills (`.agents/skills/trellis-*/SKILL.md`) | Works — dsh discovers this shared root natively |
-| Entry skills (`.dsh/skills/trellis-*/SKILL.md`) | Works — dsh's own project skill root (highest rank) |
-| Context hooks | None — pull-based: skills read `.trellis/` files directly |
+| Skills (`.agents/skills/moluoxixi-*/SKILL.md`) | Works — dsh discovers this shared root natively |
+| Entry skills (`.dsh/skills/moluoxixi-*/SKILL.md`) | Works — dsh's own project skill root (highest rank) |
+| Context hooks | None — pull-based: skills read `.moluoxixi/` files directly |
 | Sub-agents | None shipped — implement/check/research run inline via the workflow skills |
 
 ## Quick start
 
 ```bash
-trellis init --dsh -u your-name
-dsh web        # or: dsh --profile headless "start a Trellis task for ..."
+moluoxixi init --dsh -u your-name
+dsh web        # or: dsh --profile headless "start a Moluoxixi task for ..."
 ```
 
 In dsh:
 
 1. Open a session in the project root and describe the work in natural
-   language. For a new task the agent should load the `trellis-start` skill,
-   which reads the current task state from `.trellis/` and routes to
-   `trellis-brainstorm` (unclear requirements), `trellis-before-dev` (about to
-   write code), `trellis-check` (done coding), or `trellis-update-spec`
+   language. For a new task the agent should load the `moluoxixi-start` skill,
+   which reads the current task state from `.moluoxixi/` and routes to
+   `moluoxixi-brainstorm` (unclear requirements), `moluoxixi-before-dev` (about to
+   write code), `moluoxixi-check` (done coding), or `moluoxixi-update-spec`
    (learned something worth capturing).
-2. Entry skills are `trellis-start` / `trellis-continue` / `trellis-finish-work`
+2. Entry skills are `moluoxixi-start` / `moluoxixi-continue` / `moluoxixi-finish-work`
    in `.dsh/skills/`. You can also ask for them by name at any time.
-3. Type `/trellis:finish-work` is a slash-command convention from other hosts —
-   dsh has no slash palette, so say "finish the trellis task" instead, and the
-   agent loads `trellis-finish-work`.
+3. Type `/moluoxixi:finish-work` is a slash-command convention from other hosts —
+   dsh has no slash palette, so say "finish the moluoxixi task" instead, and the
+   agent loads `moluoxixi-finish-work`.
 
 ## File map
 
-- `.agents/skills/` — auto-triggered workflow skills (`trellis-before-dev`,
-  `trellis-brainstorm`, `trellis-check`, `trellis-break-loop`,
-  `trellis-update-spec`) plus the bundled `trellis-meta` /
-  `trellis-spec-bootstrap` / `trellis-session-insight` skills. Byte-identical
+- `.agents/skills/` — auto-triggered workflow skills (`moluoxixi-before-dev`,
+  `moluoxixi-brainstorm`, `moluoxixi-check`, `moluoxixi-break-loop`,
+  `moluoxixi-update-spec`) plus the bundled `moluoxixi-meta` /
+  `moluoxixi-spec-bootstrap` / `moluoxixi-session-insight` skills. Byte-identical
   to Codex / Gemini CLI / Pi / Kimi writes into the same shared root.
-- `.dsh/skills/` — dsh-private entry skills (`trellis-start` /
-  `trellis-continue` / `trellis-finish-work`).
-- `.trellis/` — specs, tasks, workspace memory, and the shared scripts the
+- `.dsh/skills/` — dsh-private entry skills (`moluoxixi-start` /
+  `moluoxixi-continue` / `moluoxixi-finish-work`).
+- `.moluoxixi/` — specs, tasks, workspace memory, and the shared scripts the
   skills invoke (`get_context.py`, `task.py`, ...).
 
 ## Notes
@@ -51,6 +51,6 @@ In dsh:
 - The shipped `minimal` agent preset composes only `bash` +
   `str_replace_editor`; the default presets include `web_search` and the
   filesystem/terminal tools the skills assume.
-- dsh has no project-level sub-agent definition surface, so Trellis ships no
-  `trellis-implement` / `trellis-check` / `trellis-research` agent prompts
+- dsh has no project-level sub-agent definition surface, so Moluoxixi ships no
+  `moluoxixi-implement` / `moluoxixi-check` / `moluoxixi-research` agent prompts
   here — the workflow skills run those phases inline in the main session.

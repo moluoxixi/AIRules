@@ -135,8 +135,8 @@ describe('project script adaptations', () => {
     expect(openCodePlugin).toContain('DEFAULT_PROMPT_INJECTION_SKIP_KEYWORD = "no-moluoxixi"')
   })
 
-  it('keeps the upstream small-task creation opt-out contract', () => {
-    const workflow = readTemplateFile('trellis/workflow.md')
+  it('keeps the small-task creation opt-out contract', () => {
+    const workflow = readTemplateFile('moluoxixi/workflow.md')
     const start = readTemplateFile('common/commands/start.md')
     const sessionStart = readTemplateFile('shared-hooks/session-start.py')
     const openCodeSession = readTemplateFile('opencode/lib/session-utils.js')
@@ -199,18 +199,18 @@ describe('project script adaptations', () => {
   }, 20_000)
 
   it('keeps atomic-write cleanup and bounded polyrepo probes in the distributed source', () => {
-    const io = readTemplateFile('trellis/scripts/common/io.py')
+    const io = readTemplateFile('moluoxixi/scripts/common/io.py')
     expect(io).toContain('os.close(fd)')
     expect(io).not.toContain('except BaseException')
 
-    const sessionContext = readTemplateFile('trellis/scripts/common/session_context.py')
+    const sessionContext = readTemplateFile('moluoxixi/scripts/common/session_context.py')
     expect(sessionContext).toContain('_POLYREPO_SCAN_MAX_REPOS = 8')
     expect(sessionContext).toContain('_GIT_PROBE_TIMEOUT_SECONDS = 2.0')
     expect(sessionContext).toContain('timeout=_GIT_PROBE_TIMEOUT_SECONDS')
   })
 
   it('keeps the v0.6.15 Pi model, thinking, and native-session fixes', () => {
-    const pi = readTemplateFile('pi/extensions/trellis/index.ts.txt')
+    const pi = readTemplateFile('pi/extensions/moluoxixi/index.ts.txt')
     expect(pi).toContain('function contextModelRef')
     expect(pi).toContain('const rawModel = inputModel ?? agentModel ?? str(inheritedModel)')
     expect(pi).toContain('"xhigh", "max"')
@@ -230,7 +230,7 @@ describe('project script adaptations', () => {
     }
 
     const workflowHook = readTemplateFile('shared-hooks/inject-workflow-state.py')
-    const metaSkill = readTemplateFile('common/bundled-skills/trellis-meta/SKILL.md')
+    const metaSkill = readTemplateFile('common/bundled-skills/moluoxixi-meta/SKILL.md')
     expect(workflowHook).toContain('``CORE_HOOKS``')
     expect(workflowHook).not.toContain('writeSharedHooks()')
     expect(metaSkill).toContain('`addCoreSkills()`')

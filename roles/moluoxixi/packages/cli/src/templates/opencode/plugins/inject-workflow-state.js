@@ -26,7 +26,7 @@
 import { existsSync, readFileSync } from "fs"
 import { join } from "path"
 import { findUserTextPart, insertSyntheticTextPart } from "../lib/context-visibility.js"
-import { TrellisContext as MoluoxixiContext, debugLog, isTrellisSubagent as isMoluoxixiSubagent } from "../lib/trellis-context.js"
+import { MoluoxixiContext as MoluoxixiContext, debugLog, isMoluoxixiSubagent as isMoluoxixiSubagent } from "../lib/moluoxixi-context.js"
 
 // Supports STATUS values with letters, digits, underscores, hyphens
 // (so "in-review" / "blocked-by-team" work alongside "in_progress").
@@ -186,7 +186,7 @@ export default async ({ directory }) => {
           if (process.env.OPENCODE_NON_INTERACTIVE === "1") {
             return
           }
-          if (!ctx.isTrellisProject()) {
+          if (!ctx.isMoluoxixiProject()) {
             return
           }
           const parts = output?.parts || []

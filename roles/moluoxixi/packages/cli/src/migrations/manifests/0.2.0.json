@@ -4,44 +4,44 @@
   "migrations": [
     {
       "type": "rename-dir",
-      "from": ".trellis/agent-traces",
-      "to": ".trellis/workspace",
+      "from": ".moluoxixi/agent-traces",
+      "to": ".moluoxixi/workspace",
       "description": "Rename agent-traces to workspace (developer work records)"
     },
     {
       "type": "rename-dir",
-      "from": ".trellis/structure",
-      "to": ".trellis/spec",
+      "from": ".moluoxixi/structure",
+      "to": ".moluoxixi/spec",
       "description": "Rename structure to spec (development guidelines)"
     },
     {
       "type": "rename-dir",
-      "from": ".trellis/backlog",
-      "to": ".trellis/tasks",
+      "from": ".moluoxixi/backlog",
+      "to": ".moluoxixi/tasks",
       "description": "Rename backlog to tasks (unified task tracking)"
     },
     {
       "type": "rename",
-      "from": ".trellis/scripts/feature.sh",
-      "to": ".trellis/scripts/task.sh",
+      "from": ".moluoxixi/scripts/feature.sh",
+      "to": ".moluoxixi/scripts/task.sh",
       "description": "Rename feature.sh to task.sh"
     },
     {
       "type": "rename",
-      "from": ".trellis/scripts/common/backlog.sh",
-      "to": ".trellis/scripts/common/task-queue.sh",
+      "from": ".moluoxixi/scripts/common/backlog.sh",
+      "to": ".moluoxixi/scripts/common/task-queue.sh",
       "description": "Rename backlog.sh to task-queue.sh"
     },
     {
       "type": "rename",
-      "from": ".trellis/scripts/common/feature-utils.sh",
-      "to": ".trellis/scripts/common/task-utils.sh",
+      "from": ".moluoxixi/scripts/common/feature-utils.sh",
+      "to": ".moluoxixi/scripts/common/task-utils.sh",
       "description": "Rename feature-utils.sh to task-utils.sh"
     },
     {
       "type": "rename",
-      "from": ".trellis/.current-feature",
-      "to": ".trellis/.current-task",
+      "from": ".moluoxixi/.current-feature",
+      "to": ".moluoxixi/.current-task",
       "description": "Rename .current-feature to .current-task"
     }
   ],

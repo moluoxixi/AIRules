@@ -32,7 +32,7 @@ it.each(['install', 'sync', 'verify'])('%s rejects a missing role', (command) =>
 
 it('rejects duplicate and extra role arguments', () => {
   const duplicate = runCli(['install', 'moluoxixi', '--role', 'moluoxixi'])
-  const extra = runCli(['install', 'moluoxixi', 'trellis'])
+  const extra = runCli(['install', 'moluoxixi', 'matt'])
 
   expect(duplicate.status).toBe(1)
   expect(duplicate.stderr).toContain('received the role twice')

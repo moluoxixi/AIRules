@@ -1,7 +1,7 @@
 {
   "name": "@moluoxixi/airules-moluoxixi-core",
-  "version": "0.6.18",
-  "description": "Trellis core SDK — channel and task domain primitives consumed by the Trellis CLI and downstream Node services",
+  "version": "0.6.19",
+  "description": "Moluoxixi core SDK for channel, memory, and task workflows",
   "type": "module",
   "main": "./dist/index.js",
   "types": "./dist/index.d.ts",
@@ -55,13 +55,13 @@
     "typecheck": "tsc --noEmit"
   },
   "keywords": [
-    "trellis",
+    "moluoxixi",
     "channel",
     "sdk",
     "agent",
     "events"
   ],
-  "author": "Mindfold LLC",
+  "author": "Moluoxixi",
   "license": "AGPL-3.0-only",
   "devDependencies": {
     "@eslint/js": "^9.18.0",

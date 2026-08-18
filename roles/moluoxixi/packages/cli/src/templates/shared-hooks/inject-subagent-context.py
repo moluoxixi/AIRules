@@ -223,7 +223,7 @@ def _read_file_bytes(base_path: str, file_path: str) -> bytes | None:
 
 
 def _truncate_notice(path: str, cap: int) -> str:
-    return f"\n[Moluoxixi: truncated at {cap} bytes; read {path} for full content]"
+    return f"\n[Moluoxixi: truncated at {cap} bytes — read {path} for the full content]"
 
 
 def _is_binary_content(data: bytes) -> bool:
@@ -237,12 +237,12 @@ def _is_binary_content(data: bytes) -> bool:
 
 
 def _binary_notice(path: str, size: int, reason: str) -> str:
-    return f"[Moluoxixi: binary file not inlined; {path} ({size} bytes): {reason}]"
+    return f"[Moluoxixi: not inlined (binary file) — {path} ({size} bytes): {reason}]"
 
 
 def _index_notice(path: str, size: int, reason: str) -> str:
     return (
-        f"[Moluoxixi: total context limit reached; "
+        f"[Moluoxixi: not inlined (total context limit reached) — "
         f"{path} ({size} bytes): {reason}]"
     )
 
@@ -349,11 +349,6 @@ def read_jsonl_entries(base_path: str, jsonl_path: str) -> list[dict[str, str]]:
     entries: list[dict[str, str]] = []
     saw_real_entry = False
     repo_root = os.path.realpath(base_path)
-    task_dir = os.path.dirname(jsonl_path.replace("\\", "/"))
-    allowed_roots = (
-        os.path.realpath(os.path.join(repo_root, ".moluoxixi", "spec")),
-        os.path.realpath(os.path.join(repo_root, task_dir, "research")),
-    )
 
     def safe_context_path(value: object) -> tuple[str, str] | None:
         if not isinstance(value, str) or not value.strip() or "\0" in value:
@@ -374,9 +369,7 @@ def read_jsonl_entries(base_path: str, jsonl_path: str) -> list[dict[str, str]]:
                 return None
         resolved = os.path.realpath(unresolved)
         try:
-            allowed = any(
-                os.path.commonpath((resolved, root)) == root for root in allowed_roots
-            )
+            allowed = os.path.commonpath((resolved, repo_root)) == repo_root
         except ValueError:
             return None
         if not allowed:

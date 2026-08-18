@@ -9,12 +9,12 @@
 import { existsSync, readdirSync } from "fs"
 import { join } from "path"
 import {
-  TrellisContext as MoluoxixiContext,
+  MoluoxixiContext as MoluoxixiContext,
   debugLog,
   readContextInjectionLimits,
   ContextBudget,
   materializeArtifact,
-} from "../lib/trellis-context.js"
+} from "../lib/moluoxixi-context.js"
 
 // Supported subagent types
 const IMPLEMENT_CONTEXT_AGENTS = ["implement", "frontend", "backend", "database"]

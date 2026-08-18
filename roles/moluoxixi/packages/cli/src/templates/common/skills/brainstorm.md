@@ -51,7 +51,7 @@ Use a concise title from the user's request. Use a slug without a date prefix. `
 4. If a user-owned decision remains, ask the single highest-value question with a recommendation and trade-off, then stop without implementation in the same turn.
 5. After each answer, update `prd.md`, recompute the decision inventory, and repeat evidence inspection.
 6. When no user-owned decision remains, create or update `design.md` and `implement.md` for complex tasks.
-7. Run the Requirement Convergence Gate, then the PRD Convergence Pass.
+7. Run the requirement convergence gate, then the PRD convergence pass.
 8. Present the final planning summary and stop. Do not run `task.py start` or edit product code in that turn.
 9. Only a subsequent user message explicitly approving the latest planning summary authorizes `task.py start` and implementation. If artifacts change materially after approval, repeat final review.
 

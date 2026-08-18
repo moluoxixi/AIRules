@@ -5,7 +5,7 @@ import os from 'node:os'
 import path from 'node:path'
 import { gunzipSync } from 'node:zlib'
 
-const DEFAULT_SOURCE = 'gh:mindfold-ai/marketplace'
+const DEFAULT_SOURCE = 'gh:moluoxixi/AIRules/roles/moluoxixi/registry'
 const INDEX_TIMEOUT = 5_000
 const DOWNLOAD_TIMEOUT = 30_000
 const MAX_ARCHIVE_BYTES = 100 * 1024 * 1024

@@ -253,8 +253,8 @@ describe('task review governance', () => {
     const context = injectedImplementContext(root, contextTask)
     expect(context).toContain('a你')
     expect(context).not.toContain('\uFFFD')
-    expect(context).toContain('[Moluoxixi: truncated at 4 bytes;')
-    expect(context).toContain('[Moluoxixi: binary file not inlined;')
+    expect(context).toContain('[Moluoxixi: truncated at 4 bytes — read')
+    expect(context).toContain('[Moluoxixi: not inlined (binary file) —')
     expect(context).not.toContain('A\0B')
 
     fs.appendFileSync(
@@ -262,7 +262,7 @@ describe('task review governance', () => {
       '\ncontext_injection:\n  max_file_bytes: 128\n  max_artifact_bytes: 128\n  max_total_bytes: 8\n',
     )
     expect(injectedImplementContext(root, contextTask)).toContain(
-      '[Moluoxixi: total context limit reached;',
+      '[Moluoxixi: not inlined (total context limit reached) —',
     )
 
     const piEntry = buildPlan(['pi'], pythonCommand).get('.pi/extensions/moluoxixi/index.ts')

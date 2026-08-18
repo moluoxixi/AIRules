@@ -3,7 +3,7 @@
  * Pre-release gate: ensure migration-manifest continuity with npm.
  *
  * Contract: once a version is published to npm, its manifest is part of the
- * public update contract. `trellis update` applies manifests where
+ * public update contract. `moluoxixi update` applies manifests where
  * `v > installed && v <= current` — if any published version is missing a
  * local manifest, users upgrading from that version silently skip their
  * bucket of migrations.
@@ -22,7 +22,7 @@
  *
  * Background:
  *   The beta.10 incident (manifest deleted from repo AFTER being published
- *   to npm) motivated this gate — see .trellis/spec/cli/backend/migrations.md.
+ *   to npm) motivated this gate — see .moluoxixi/spec/cli/backend/migrations.md.
  */
 import { execSync } from "node:child_process";
 import fs from "node:fs";
@@ -109,8 +109,8 @@ function main() {
     newGaps.forEach((v) => console.error(`  - ${v}.json`));
     console.error(
       `\n` +
-      `A version on npm without its local manifest breaks \`trellis update\`\n` +
-      `for users on adjacent versions. See .trellis/spec/cli/backend/migrations.md.\n` +
+      `A version on npm without its local manifest breaks \`moluoxixi update\`\n` +
+      `for users on adjacent versions. See .moluoxixi/spec/cli/backend/migrations.md.\n` +
       `\n` +
       `Fix options:\n` +
       `  1. Restore the manifest from git history\n` +

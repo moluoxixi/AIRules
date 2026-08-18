@@ -5,9 +5,9 @@ import { collectKimiTemplates } from "../../src/configurators/kimi.js";
 import { collectPiTemplates } from "../../src/configurators/pi.js";
 
 const EXPECTED_AGENT_NAMES = [
-  "trellis-check",
-  "trellis-implement",
-  "trellis-research",
+  "moluoxixi-check",
+  "moluoxixi-implement",
+  "moluoxixi-research",
 ];
 
 describe("kimi getAllAgents", () => {
@@ -42,13 +42,13 @@ describe("kimi getAllAgents", () => {
 
   it("dispatches research as a custom sub-agent with write scope limited to research/", () => {
     const research = getAllAgents().find(
-      (agent) => agent.name === "trellis-research",
+      (agent) => agent.name === "moluoxixi-research",
     );
     expect(research).toBeDefined();
     if (!research) return;
 
     expect(research.content).toContain(
-      "dispatches the `trellis-research` sub-agent",
+      "dispatches the `moluoxixi-research` sub-agent",
     );
     expect(research.content).toContain("may write only under");
     expect(research.content).not.toContain("built-in `coder` sub-agent");
@@ -60,10 +60,10 @@ describe("kimi pull-based prelude injection", () => {
     const agents = applyPullBasedPreludeMarkdown(getAllAgents());
     for (const agent of agents) {
       if (
-        agent.name === "trellis-implement" ||
-        agent.name === "trellis-check"
+        agent.name === "moluoxixi-implement" ||
+        agent.name === "moluoxixi-check"
       ) {
-        expect(agent.content).toContain("Load Trellis Context First");
+        expect(agent.content).toContain("Load Moluoxixi Context First");
         expect(agent.content).toContain("task.py current --source");
       }
     }
@@ -71,10 +71,10 @@ describe("kimi pull-based prelude injection", () => {
 
   it("does not inject the pull-based prelude into research", () => {
     const agents = applyPullBasedPreludeMarkdown(getAllAgents());
-    const research = agents.find((agent) => agent.name === "trellis-research");
+    const research = agents.find((agent) => agent.name === "moluoxixi-research");
     expect(research).toBeDefined();
     if (!research) return;
-    expect(research.content).not.toContain("Load Trellis Context First");
+    expect(research.content).not.toContain("Load Moluoxixi Context First");
     expect(research.content).toContain("{TASK_DIR}/research/");
   });
 });
@@ -83,46 +83,46 @@ describe("kimi collectKimiTemplates", () => {
   it("writes commands-as-skills and agent prompts under .kimi-code/skills/", () => {
     const files = collectKimiTemplates();
 
-    // User-invocable entry points (/skill:trellis-<name>)
-    expect(files.has(".kimi-code/skills/trellis-start/SKILL.md")).toBe(true);
-    expect(files.has(".kimi-code/skills/trellis-continue/SKILL.md")).toBe(true);
-    expect(files.has(".kimi-code/skills/trellis-finish-work/SKILL.md")).toBe(
+    // User-invocable entry points (/skill:moluoxixi-<name>)
+    expect(files.has(".kimi-code/skills/moluoxixi-start/SKILL.md")).toBe(true);
+    expect(files.has(".kimi-code/skills/moluoxixi-continue/SKILL.md")).toBe(true);
+    expect(files.has(".kimi-code/skills/moluoxixi-finish-work/SKILL.md")).toBe(
       true,
     );
 
-    // Trellis agent prompts (also installed as `.kimi-code/agents/*.md`)
-    expect(files.has(".kimi-code/skills/trellis-implement/SKILL.md")).toBe(
+    // Moluoxixi agent prompts (also installed as `.kimi-code/agents/*.md`)
+    expect(files.has(".kimi-code/skills/moluoxixi-implement/SKILL.md")).toBe(
       true,
     );
-    expect(files.has(".kimi-code/skills/trellis-check/SKILL.md")).toBe(true);
-    expect(files.has(".kimi-code/skills/trellis-research/SKILL.md")).toBe(true);
+    expect(files.has(".kimi-code/skills/moluoxixi-check/SKILL.md")).toBe(true);
+    expect(files.has(".kimi-code/skills/moluoxixi-research/SKILL.md")).toBe(true);
 
-    const implement = files.get(".kimi-code/skills/trellis-implement/SKILL.md");
-    expect(implement).toContain("Load Trellis Context First");
-    const research = files.get(".kimi-code/skills/trellis-research/SKILL.md");
-    expect(research).not.toContain("Load Trellis Context First");
+    const implement = files.get(".kimi-code/skills/moluoxixi-implement/SKILL.md");
+    expect(implement).toContain("Load Moluoxixi Context First");
+    const research = files.get(".kimi-code/skills/moluoxixi-research/SKILL.md");
+    expect(research).not.toContain("Load Moluoxixi Context First");
 
     // Custom sub-agent definitions under .kimi-code/agents/ mirror the skill
     // copies (pull-based prelude included).
     for (const name of [
-      "trellis-implement",
-      "trellis-check",
-      "trellis-research",
+      "moluoxixi-implement",
+      "moluoxixi-check",
+      "moluoxixi-research",
     ]) {
       const agent = files.get(`.kimi-code/agents/${name}.md`);
       expect(agent, `.kimi-code/agents/${name}.md`).toBeDefined();
       expect(agent).toContain(`name: ${name}`);
       expect(agent).toContain("tools: ");
     }
-    expect(files.get(".kimi-code/agents/trellis-implement.md")).toContain(
-      "Load Trellis Context First",
+    expect(files.get(".kimi-code/agents/moluoxixi-implement.md")).toContain(
+      "Load Moluoxixi Context First",
     );
-    expect(files.get(".kimi-code/agents/trellis-research.md")).not.toContain(
-      "Load Trellis Context First",
+    expect(files.get(".kimi-code/agents/moluoxixi-research.md")).not.toContain(
+      "Load Moluoxixi Context First",
     );
 
     // No hooks/settings/extension files — Kimi has no project-level hook or
-    // settings surface Trellis may write.
+    // settings surface Moluoxixi may write.
     for (const key of files.keys()) {
       expect(key.startsWith(".kimi-code/hooks")).toBe(false);
       expect(key).not.toBe(".kimi-code/settings.json");
@@ -132,13 +132,13 @@ describe("kimi collectKimiTemplates", () => {
 
   it("writes workflow + bundled skills to the shared .agents/skills/ root", () => {
     const files = collectKimiTemplates();
-    expect(files.has(".agents/skills/trellis-check/SKILL.md")).toBe(true);
-    expect(files.has(".agents/skills/trellis-before-dev/SKILL.md")).toBe(true);
-    expect(files.has(".agents/skills/trellis-meta/SKILL.md")).toBe(true);
+    expect(files.has(".agents/skills/moluoxixi-check/SKILL.md")).toBe(true);
+    expect(files.has(".agents/skills/moluoxixi-before-dev/SKILL.md")).toBe(true);
+    expect(files.has(".agents/skills/moluoxixi-meta/SKILL.md")).toBe(true);
     // Command-as-skill files stay Kimi-private (Codex owns the shared
-    // trellis-start/continue/finish-work fallback copies).
-    expect(files.has(".agents/skills/trellis-start/SKILL.md")).toBe(false);
-    expect(files.has(".agents/skills/trellis-finish-work/SKILL.md")).toBe(
+    // moluoxixi-start/continue/finish-work fallback copies).
+    expect(files.has(".agents/skills/moluoxixi-start/SKILL.md")).toBe(false);
+    expect(files.has(".agents/skills/moluoxixi-finish-work/SKILL.md")).toBe(
       false,
     );
   });

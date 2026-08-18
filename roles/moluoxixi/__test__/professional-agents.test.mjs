@@ -7,8 +7,8 @@ import { parseDocument } from 'yaml'
 import { insertSyntheticTextPart } from '../packages/cli/src/templates/opencode/lib/context-visibility.js'
 import {
   ContextBudget,
-  TrellisContext as MoluoxixiContext,
-} from '../packages/cli/src/templates/opencode/lib/trellis-context.js'
+  MoluoxixiContext,
+} from '../packages/cli/src/templates/opencode/lib/moluoxixi-context.js'
 import { PLATFORM_ORDER } from '../skills/init-project/scripts/hosts/catalog.mjs'
 import { buildPlan } from '../skills/init-project/scripts/plan.mjs'
 import { readTemplateFile } from '../skills/init-project/scripts/templates.mjs'
@@ -94,7 +94,7 @@ describe('professional sub-agent distribution', () => {
       .toContain('argument-hint: "[task-name]"')
   })
 
-  it('projects the upstream workflow agents to every capable host', () => {
+  it('projects the workflow agents to every capable host', () => {
     const plan = allPlatformPlan
     for (const platform of Object.keys(projectedRoots)) {
       const expectedAgents = platform === 'reasonix' ? agentNames.slice(1) : agentNames
@@ -183,17 +183,17 @@ describe('professional sub-agent distribution', () => {
     }
   })
 
-  it('keeps Pi-family and OpenCode native context consumers on the upstream budget contract', () => {
-    const piContext = readTemplateFile('pi/extensions/trellis/index.ts.txt')
+  it('keeps Pi-family and OpenCode native context consumers on the shared budget contract', () => {
+    const piContext = readTemplateFile('pi/extensions/moluoxixi/index.ts.txt')
     expect(piContext).toContain('function readContextInjectionLimits')
     expect(piContext).toContain('function truncateUtf8')
     expect(piContext).toContain('function isBinaryContent')
     expect(piContext).toContain('function materializeFile')
-    const ompContext = readTemplateFile('omp/extensions/trellis/index.ts.txt')
+    const ompContext = readTemplateFile('omp/extensions/moluoxixi/index.ts.txt')
     expect(ompContext).toContain('function resolveTrustedRoots')
     expect(ompContext).toContain('function resolveProjectFile')
     expect(ompContext).toContain('lstatSync')
-    const openCodeContext = readTemplateFile('opencode/lib/trellis-context.js')
+    const openCodeContext = readTemplateFile('opencode/lib/moluoxixi-context.js')
     expect(openCodeContext).toContain('function readContextInjectionLimits')
     expect(openCodeContext).toContain('function truncateUtf8')
     expect(openCodeContext).toContain('function materializeFile')
@@ -277,7 +277,7 @@ describe('professional sub-agent distribution', () => {
     }
   })
 
-  it('keeps upstream scope discipline behind Moluoxixi planning and knowledge gates', () => {
+  it('keeps scope discipline behind Moluoxixi planning and knowledge gates', () => {
     const beforeDev = readTemplateFile('common/skills/before-dev.md')
     const check = readTemplateFile('common/skills/check.md')
     const brainstorm = readTemplateFile('common/skills/brainstorm.md')

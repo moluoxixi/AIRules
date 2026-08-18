@@ -7,7 +7,7 @@ on:
   workflow_dispatch:
     inputs:
       tag:
-        description: Existing Moluoxixi release tag, for example moluoxixi-v0.6.18
+        description: Existing Moluoxixi release tag, for example moluoxixi-v0.6.19
         required: true
         type: string
 
@@ -43,6 +43,16 @@ jobs:
         with:
           node-version: 24
           registry-url: https://registry.npmjs.org
+
+      - name: Install AIRules repository dependencies
+        working-directory: .
+        run: npm ci
+
+      - name: Verify the committed project runtime bundle
+        working-directory: .
+        run: |
+          npm run build:moluoxixi-runtime
+          git diff --exit-code -- roles/moluoxixi/skills/init-project/assets/runtime/vendor/channel-mem.mjs
 
       - name: Install role workspace dependencies
         run: pnpm install --include-workspace-root --no-frozen-lockfile

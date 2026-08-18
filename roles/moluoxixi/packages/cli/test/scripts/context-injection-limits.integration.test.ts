@@ -2,11 +2,11 @@
  * Integration tests for sub-agent context injection limits (issue #441).
  *
  * Covers two templates:
- *   - `src/templates/trellis/scripts/common/config.py` — config parsing
+ *   - `src/templates/moluoxixi/scripts/common/config.py` — config parsing
  *     (`get_context_injection_limits`)
  *   - `src/templates/shared-hooks/inject-subagent-context.py` — truncation,
  *     total-budget degradation, UTF-8 safety
- *   - `src/templates/trellis/scripts/common/task_context.py` — `task.py
+ *   - `src/templates/moluoxixi/scripts/common/task_context.py` — `task.py
  *     validate` path resolution and hygiene warnings
  *
  * Scripts are stamped into a fresh temp dir and exercised through the real
@@ -21,7 +21,7 @@ import path from "node:path";
 
 const TEMPLATE_SCRIPTS = path.resolve(
   __dirname,
-  "../../src/templates/trellis/scripts",
+  "../../src/templates/moluoxixi/scripts",
 );
 const TASK_CONTEXT_PATH = path.join(
   TEMPLATE_SCRIPTS,
@@ -52,14 +52,14 @@ function hasPython(): boolean {
 }
 
 function setupRepo(tmp: string): void {
-  fs.mkdirSync(path.join(tmp, ".trellis", "scripts"), { recursive: true });
-  fs.cpSync(TEMPLATE_SCRIPTS, path.join(tmp, ".trellis", "scripts"), {
+  fs.mkdirSync(path.join(tmp, ".moluoxixi", "scripts"), { recursive: true });
+  fs.cpSync(TEMPLATE_SCRIPTS, path.join(tmp, ".moluoxixi", "scripts"), {
     recursive: true,
   });
 }
 
 function writeConfig(tmp: string, yaml: string): void {
-  fs.writeFileSync(path.join(tmp, ".trellis", "config.yaml"), yaml, "utf-8");
+  fs.writeFileSync(path.join(tmp, ".moluoxixi", "config.yaml"), yaml, "utf-8");
 }
 
 /** Run a Python snippet with the hook module preloaded as `mod` and the repo
@@ -84,14 +84,14 @@ ${code}
   if (r.status !== 0) {
     throw new Error(`probe failed (rc=${r.status}): ${r.stderr}`);
   }
-  return r.stdout;
+  return r.stdout.replace(/\r\n/g, "\n");
 }
 
 function runConfigProbe(tmp: string, code: string): string {
   const probePath = path.join(tmp, "config_probe.py");
   const script = `
 import sys
-sys.path.insert(0, ${JSON.stringify(path.join(tmp, ".trellis", "scripts"))})
+sys.path.insert(0, ${JSON.stringify(path.join(tmp, ".moluoxixi", "scripts"))})
 from pathlib import Path
 from common.config import get_context_injection_limits
 REPO_ROOT = Path(${JSON.stringify(tmp)})
@@ -109,7 +109,7 @@ ${code}
 }
 
 function makeTask(tmp: string, dirName: string): string {
-  const taskDir = path.join(tmp, ".trellis", "tasks", dirName);
+  const taskDir = path.join(tmp, ".moluoxixi", "tasks", dirName);
   fs.mkdirSync(taskDir, { recursive: true });
   fs.writeFileSync(
     path.join(taskDir, "task.json"),
@@ -124,7 +124,7 @@ function makeArchivedTask(tmp: string, dirName: string): string {
   const activeTaskDir = makeTask(tmp, dirName);
   const archivedTaskDir = path.join(
     tmp,
-    ".trellis",
+    ".moluoxixi",
     "tasks",
     "archive",
     "2026-08",
@@ -141,7 +141,7 @@ function runTaskValidate(
 ): { status: number | null; stdout: string; stderr: string } {
   const r = spawnSync(
     "python3",
-    [path.join(tmp, ".trellis", "scripts", "task.py"), "validate", taskDir],
+    [path.join(tmp, ".moluoxixi", "scripts", "task.py"), "validate", taskDir],
     { cwd: tmp, encoding: "utf-8" },
   );
   if (r.error) throw r.error;
@@ -155,7 +155,7 @@ describe.skipIf(!hasPython())(
 
     beforeEach(() => {
       tmp = fs.mkdtempSync(
-        path.join(os.tmpdir(), "trellis-context-limits-test-"),
+        path.join(os.tmpdir(), "moluoxixi-context-limits-test-"),
       );
       setupRepo(tmp);
     });
@@ -227,7 +227,7 @@ describe.skipIf(!hasPython())(
           probePath,
           `
 import sys
-sys.path.insert(0, ${JSON.stringify(path.join(tmp, ".trellis", "scripts"))})
+sys.path.insert(0, ${JSON.stringify(path.join(tmp, ".moluoxixi", "scripts"))})
 from pathlib import Path
 from common.config import get_context_injection_limits
 print(get_context_injection_limits(Path(${JSON.stringify(tmp)}))["max_file_bytes"])
@@ -255,7 +255,7 @@ print(get_context_injection_limits(Path(${JSON.stringify(tmp)}))["max_file_bytes
           probePath,
           `
 import sys
-sys.path.insert(0, ${JSON.stringify(path.join(tmp, ".trellis", "scripts"))})
+sys.path.insert(0, ${JSON.stringify(path.join(tmp, ".moluoxixi", "scripts"))})
 from pathlib import Path
 from common.config import get_context_injection_limits
 print(get_context_injection_limits(Path(${JSON.stringify(tmp)}))["max_artifact_bytes"])
@@ -364,8 +364,8 @@ print("all-valid")
         expect(out).toContain(
           `=== ${relTask}/prd.md (Requirements) ===\nprd body`,
         );
-        expect(out).not.toContain("[Trellis: truncated");
-        expect(out).not.toContain("[Trellis: not inlined");
+        expect(out).not.toContain("[Moluoxixi: truncated");
+        expect(out).not.toContain("[Moluoxixi: not inlined");
       });
 
       it("keeps binary jsonl references as notices even when limits are unlimited", () => {
@@ -402,10 +402,10 @@ print("all-valid")
         );
 
         expect(out).toContain(
-          "[Trellis: not inlined (binary file) — design.png (10 bytes): visual baseline]",
+          "[Moluoxixi: not inlined (binary file) — design.png (10 bytes): visual baseline]",
         );
         expect(out).toContain(
-          "[Trellis: not inlined (binary file) — invalid.bin (3 bytes): legacy export]",
+          "[Moluoxixi: not inlined (binary file) — invalid.bin (3 bytes): legacy export]",
         );
         expect(out).not.toContain("=== design.png ===");
         expect(out).not.toContain("=== invalid.bin ===");
@@ -437,7 +437,7 @@ print("all-valid")
         );
 
         expect(out).toContain(`=== multibyte.md ===\n${multiByteContent}`);
-        expect(out).not.toContain("[Trellis: not inlined (binary file)");
+        expect(out).not.toContain("[Moluoxixi: not inlined (binary file)");
       });
 
       it("classifies a file as binary when binary bytes appear only at the end", () => {
@@ -462,7 +462,7 @@ print("all-valid")
         );
 
         expect(out).toContain(
-          `[Trellis: not inlined (binary file) — mixed.dat (${mixed.length} bytes): mixed content]`,
+          `[Moluoxixi: not inlined (binary file) — mixed.dat (${mixed.length} bytes): mixed content]`,
         );
         expect(out).not.toContain("=== mixed.dat ===");
       });
@@ -489,7 +489,7 @@ print("all-valid")
           128 * 1024 + 256, // total cap + slack for the wrapping print()/notices
         );
         expect(out).toContain(
-          "[Trellis: truncated at 32768 bytes — read big.txt for the full content]",
+          "[Moluoxixi: truncated at 32768 bytes — read big.txt for the full content]",
         );
       });
 
@@ -523,10 +523,10 @@ print("all-valid")
         );
         expect(out).toContain("=== f1.txt ===\n" + "1".repeat(50));
         expect(out).toContain(
-          "[Trellis: not inlined (total context limit reached) — f2.txt (50 bytes): second]",
+          "[Moluoxixi: not inlined (total context limit reached) — f2.txt (50 bytes): second]",
         );
         expect(out).toContain(
-          "[Trellis: not inlined (total context limit reached) — f3.txt (50 bytes): third]",
+          "[Moluoxixi: not inlined (total context limit reached) — f3.txt (50 bytes): third]",
         );
         expect(out).not.toContain("=== f2.txt ===");
         expect(out).not.toContain("=== f3.txt ===");
@@ -555,7 +555,7 @@ print("all-valid")
           `print(mod.get_implement_context(REPO_ROOT, ${JSON.stringify(relTask)}))`,
         );
         expect(out).toContain("=== big.txt ===\n" + bigContent);
-        expect(out).not.toContain("[Trellis: not inlined");
+        expect(out).not.toContain("[Moluoxixi: not inlined");
       });
 
       it("directory entries respect the per-file cap and total budget", () => {
@@ -587,10 +587,10 @@ print("all-valid")
           `print(mod.get_implement_context(REPO_ROOT, ${JSON.stringify(relTask)}))`,
         );
         expect(out).toContain(
-          "[Trellis: truncated at 10 bytes — read refdir/a.md for the full content]",
+          "[Moluoxixi: truncated at 10 bytes — read refdir/a.md for the full content]",
         );
         expect(out).toContain(
-          "[Trellis: truncated at 10 bytes — read refdir/b.md for the full content]",
+          "[Moluoxixi: truncated at 10 bytes — read refdir/b.md for the full content]",
         );
       });
 
@@ -618,7 +618,7 @@ print("all-valid")
         expect(out).toContain("P".repeat(20));
         expect(out).not.toContain("P".repeat(21));
         expect(out).toContain(
-          `[Trellis: truncated at 20 bytes — read ${relTask}/prd.md for the full content]`,
+          `[Moluoxixi: truncated at 20 bytes — read ${relTask}/prd.md for the full content]`,
         );
       });
     });
@@ -647,18 +647,18 @@ print("all-valid")
         expect(stdout).toContain("All validations passed");
       });
 
-      it("does not warn about a code-looking path under .trellis/spec/, docs/, or the task's own directory", () => {
+      it("does not warn about a code-looking path under .moluoxixi/spec/, docs/, or the task's own directory", () => {
         const taskDir = makeTask(tmp, "task-code-exempt");
-        fs.mkdirSync(path.join(tmp, ".trellis", "spec"), { recursive: true });
+        fs.mkdirSync(path.join(tmp, ".moluoxixi", "spec"), { recursive: true });
         fs.writeFileSync(
-          path.join(tmp, ".trellis", "spec", "example.py"),
+          path.join(tmp, ".moluoxixi", "spec", "example.py"),
           "# example only\n",
           "utf-8",
         );
         fs.writeFileSync(
           path.join(taskDir, "implement.jsonl"),
           JSON.stringify({
-            file: ".trellis/spec/example.py",
+            file: ".moluoxixi/spec/example.py",
             reason: "spec code sample",
           }) + "\n",
           "utf-8",
@@ -695,16 +695,16 @@ print("all-valid")
 
       it("stays warning-free for a clean, under-cap, spec-only manifest", () => {
         const taskDir = makeTask(tmp, "task-clean");
-        fs.mkdirSync(path.join(tmp, ".trellis", "spec"), { recursive: true });
+        fs.mkdirSync(path.join(tmp, ".moluoxixi", "spec"), { recursive: true });
         fs.writeFileSync(
-          path.join(tmp, ".trellis", "spec", "guide.md"),
+          path.join(tmp, ".moluoxixi", "spec", "guide.md"),
           "spec guide\n",
           "utf-8",
         );
         fs.writeFileSync(
           path.join(taskDir, "implement.jsonl"),
           JSON.stringify({
-            file: ".trellis/spec/guide.md",
+            file: ".moluoxixi/spec/guide.md",
             reason: "guide",
           }) + "\n",
           "utf-8",
@@ -718,7 +718,7 @@ print("all-valid")
 
     describe("task.py validate: archived task paths (#518)", () => {
       const taskName = "08-04-archive-validator-repro";
-      const historicalEvidence = `.trellis/tasks/${taskName}/research/evidence.md`;
+      const historicalEvidence = `.moluoxixi/tasks/${taskName}/research/evidence.md`;
 
       it("#1 resolves a ..-spelled archived task without rewriting", () => {
         const taskDir = makeArchivedTask(tmp, taskName);
@@ -763,7 +763,7 @@ print("all-valid")
         fs.writeFileSync(
           path.join(taskDir, "implement.jsonl"),
           JSON.stringify({
-            file: `.trellis/tasks/${taskName}/research/`,
+            file: `.moluoxixi/tasks/${taskName}/research/`,
             type: "directory",
             reason: "research directory",
           }) + "\n",
@@ -779,7 +779,7 @@ print("all-valid")
       it("#3 keeps an unrelated missing task reference as an error", () => {
         const taskDir = makeArchivedTask(tmp, taskName);
         const missingPath =
-          ".trellis/tasks/another-task/research/missing.md";
+          ".moluoxixi/tasks/another-task/research/missing.md";
         fs.writeFileSync(
           path.join(taskDir, "implement.jsonl"),
           JSON.stringify({ file: missingPath, reason: "other task" }) + "\n",
@@ -824,7 +824,7 @@ print("all-valid")
           "utf-8",
         );
         const traversalPath =
-          `.trellis/tasks/${taskName}/../${taskName}/research/active-only.md`;
+          `.moluoxixi/tasks/${taskName}/../${taskName}/research/active-only.md`;
         fs.writeFileSync(
           path.join(taskDir, "implement.jsonl"),
           JSON.stringify({ file: traversalPath, reason: "traversal" }) + "\n",
@@ -907,7 +907,7 @@ print("all-valid")
         const archivedTaskDir = makeArchivedTask(tmp, taskName);
         const malformedArchiveTaskDir = path.join(
           tmp,
-          ".trellis",
+          ".moluoxixi",
           "tasks",
           "archive",
           "2026-8",

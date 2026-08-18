@@ -43,7 +43,7 @@ import {
   configYamlTemplate,
   gitignoreTemplate,
   workflowMdTemplate,
-} from "../templates/trellis/index.js";
+} from "../templates/moluoxixi/index.js";
 import { agentsMdContent } from "../templates/markdown/index.js";
 import {
   COPILOT_INSTRUCTIONS_BLOCK_END,
@@ -102,11 +102,11 @@ interface ChangeAnalysis {
 type ConflictAction = "overwrite" | "skip" | "create-new";
 
 const CLAUDE_SETTINGS_PATH = ".claude/settings.json";
-export const TRELLIS_BLOCK_START = "<!-- TRELLIS:START -->";
-export const TRELLIS_BLOCK_END = "<!-- TRELLIS:END -->";
+export const MOLUOXIXI_BLOCK_START = "<!-- MOLUOXIXI:START -->";
+export const MOLUOXIXI_BLOCK_END = "<!-- MOLUOXIXI:END -->";
 const LEGACY_UNTRACKED_AGENTS_MD_BLOCK_HASHES = new Set<string>([
   // v0.5.0-beta.17 and earlier wrote AGENTS.md but did not hash-track it.
-  // This hash is the pristine Trellis-managed block before the Subagents
+  // This hash is the pristine Moluoxixi-managed block before the Subagents
   // section was added, so old untouched projects can be updated without a
   // false "modified by you" conflict.
   "c1f511b1cfc1902f2147da159f09cc51f380b0c9e341cdb3ac5dea5233f3e307",
@@ -140,8 +140,8 @@ function getManagedBlock(
   return content.slice(start, end + endMarker.length);
 }
 
-function getTrellisManagedBlock(content: string): string | null {
-  return getManagedBlock(content, TRELLIS_BLOCK_START, TRELLIS_BLOCK_END);
+function getMoluoxixiManagedBlock(content: string): string | null {
+  return getManagedBlock(content, MOLUOXIXI_BLOCK_START, MOLUOXIXI_BLOCK_END);
 }
 
 function replaceManagedBlock(
@@ -231,8 +231,8 @@ function buildAgentsMdTemplate(cwd: string): string {
     cwd,
     FILE_NAMES.AGENTS,
     agentsMdContent,
-    TRELLIS_BLOCK_START,
-    TRELLIS_BLOCK_END,
+    MOLUOXIXI_BLOCK_START,
+    MOLUOXIXI_BLOCK_END,
   );
 }
 
@@ -254,7 +254,7 @@ function isKnownUntrackedTemplate(
     return false;
   }
 
-  const managedBlock = getTrellisManagedBlock(existingContent);
+  const managedBlock = getMoluoxixiManagedBlock(existingContent);
   if (!managedBlock) {
     return false;
   }
@@ -464,7 +464,7 @@ function executeSafeFileDeletes(
 }
 
 /**
- * Load update.skip paths from .trellis/config.yaml
+ * Load update.skip paths from .moluoxixi/config.yaml
  *
  * Parses simple YAML structure:
  *   update:
@@ -648,11 +648,11 @@ export function applyConfigSectionsAdded(
 /**
  * Detect if legacy Codex upgrade is needed.
  *
- * Old Trellis versions used `.agents/skills/` as codex's configDir.
+ * Old Moluoxixi versions used `.agents/skills/` as codex's configDir.
  * New versions use `.codex/` for Codex-specific config and `.agents/skills/`
  * as a shared layer.
  *
- * Detection: Trellis-tracked hashes contain `.agents/skills/` entries
+ * Detection: Moluoxixi-tracked hashes contain `.agents/skills/` entries
  * but `.codex/` does not exist. This avoids misclassifying repos that
  * have `.agents/skills/` from other tools (Kimi CLI, Amp, etc.).
  *
@@ -671,8 +671,8 @@ function needsCodexUpgrade(cwd: string): boolean {
   // the marker paths in its templates.
   const hashes = loadHashes(cwd);
   const legacyMarkers = [
-    ".agents/skills/trellis-continue/SKILL.md",
-    ".agents/skills/trellis-finish-work/SKILL.md",
+    ".agents/skills/moluoxixi-continue/SKILL.md",
+    ".agents/skills/moluoxixi-finish-work/SKILL.md",
   ];
   const hasLegacyMarker = legacyMarkers.some(
     (key) => hashes[key] !== undefined,
@@ -741,7 +741,7 @@ function preserveExistingRegistryConfig(cwd: string, template: string): string {
     "#-------------------------------------------------------------------------------\n" +
     "# Registry\n" +
     "#-------------------------------------------------------------------------------\n\n" +
-    "# Source used to install .trellis/spec. trellis update refreshes this\n" +
+    "# Source used to install .moluoxixi/spec. moluoxixi update refreshes this\n" +
     "# hash-tracked spec template while preserving local edits through the\n" +
     "# normal update conflict flow.\n" +
     "registry:\n" +
@@ -763,7 +763,7 @@ async function collectRegistrySpecTemplates(
   } catch (error) {
     console.log(
       chalk.yellow(
-        `Warning: invalid registry.spec.source in .trellis/config.yaml: ${
+        `Warning: invalid registry.spec.source in .moluoxixi/config.yaml: ${
           error instanceof Error ? error.message : String(error)
         }`,
       ),
@@ -796,7 +796,7 @@ async function collectRegistrySpecTemplates(
       return new Map();
     }
     const tempRoot = await fs.promises.mkdtemp(
-      path.join(os.tmpdir(), "trellis-registry-template-"),
+      path.join(os.tmpdir(), "moluoxixi-registry-template-"),
     );
     try {
       const result = await downloadTemplateById(
@@ -871,7 +871,7 @@ async function collectTemplateFiles(
   }
 
   // Channel runtime agent definitions (single source of truth: getAllAgents()).
-  // Backfilled by `trellis update` if missing so users who installed before the
+  // Backfilled by `moluoxixi update` if missing so users who installed before the
   // bundled agents existed pick them up. Edited files take the standard
   // modified-file prompt path.
   for (const [agentFile, content] of getAllAgents()) {
@@ -1491,9 +1491,9 @@ function isFileSafeToReplace(
  */
 /**
  * Whether the manifest records any file under `dirRelativePath` — i.e. whether
- * Trellis actually created this directory. Used to gate rename-dir migrations:
- * a directory Trellis never wrote (e.g. a user's own `.windsurf/` editor
- * config that merely shares a path with a retired Trellis platform dir) must
+ * Moluoxixi actually created this directory. Used to gate rename-dir migrations:
+ * a directory Moluoxixi never wrote (e.g. a user's own `.windsurf/` editor
+ * config that merely shares a path with a retired Moluoxixi platform dir) must
  * not be auto-moved.
  */
 export function dirHasManifestEntries(
@@ -1531,7 +1531,7 @@ export function classifyMigrations(
       continue;
     }
     // For non-rename types, also block writing TO protected paths
-    // rename/rename-dir are allowed to target protected paths (e.g., 0.2.0 renames into .trellis/workspace)
+    // rename/rename-dir are allowed to target protected paths (e.g., 0.2.0 renames into .moluoxixi/workspace)
     if (
       item.to &&
       isProtectedPath(item.to) &&
@@ -1585,13 +1585,13 @@ export function classifyMigrations(
           result.conflict.push(item);
         }
       } else if (dirHasManifestEntries(item.from, hashes)) {
-        // Trellis created this directory (the manifest tracks files under it),
+        // Moluoxixi created this directory (the manifest tracks files under it),
         // so the rename is ours to make.
         result.auto.push(item);
       } else {
         // Target absent and the source has no manifest record: this is very
         // likely a user-owned directory that merely shares a path with a
-        // retired Trellis platform dir (e.g. a real `.windsurf/` editor
+        // retired Moluoxixi platform dir (e.g. a real `.windsurf/` editor
         // config). Skipping avoids silently moving the user's data out from
         // under their editor — even under --force, since skip never executes.
         result.skip.push(item);
@@ -1670,7 +1670,9 @@ function printMigrationSummary(classified: ClassifiedMigrations): void {
 
   if (classified.skip.length > 0) {
     console.log(
-      chalk.gray("  ○ Skipping (not found, protected, or not Trellis-owned):"),
+      chalk.gray(
+        "  ○ Skipping (not found, protected, or not Moluoxixi-owned):",
+      ),
     );
     for (const item of classified.skip.slice(0, 3)) {
       console.log(chalk.gray(`    ${item.from}`));
@@ -1730,7 +1732,7 @@ async function promptMigrationAction(
           .join("\n"),
       )
     : chalk.gray(
-        `  Why prompted: file content doesn't match the Trellis template hash\n` +
+        `  Why prompted: file content doesn't match the Moluoxixi template hash\n` +
           `  for this path — usually local customization. If unsure, pick [b].`,
       );
 
@@ -1762,7 +1764,7 @@ async function promptMigrationAction(
 
 /**
  * Clean up empty directories after file migration
- * Recursively removes empty parent directories up to .trellis root
+ * Recursively removes empty parent directories up to .moluoxixi root
  */
 /** @internal Exported for testing only */
 export function cleanupEmptyDirs(cwd: string, dirPath: string): void {
@@ -1773,7 +1775,7 @@ export function cleanupEmptyDirs(cwd: string, dirPath: string): void {
     return;
   }
 
-  // Safety: never delete managed root directories themselves (e.g., .claude, .trellis)
+  // Safety: never delete managed root directories themselves (e.g., .claude, .moluoxixi)
   if (isManagedRootDir(dirPath)) {
     return;
   }
@@ -1966,7 +1968,7 @@ export async function executeMigrations(
 
     // For `backup-rename`, leave an inline .backup copy of the user's modified
     // original next to the new location (for rename) or in place (for delete).
-    // This is in addition to the full project snapshot at .trellis/.backup-*/;
+    // This is in addition to the full project snapshot at .moluoxixi/.backup-*/;
     // the inline copy is more discoverable when the user wants to diff or merge
     // their customizations against the new template.
     if (item.type === "rename" && item.to) {
@@ -1997,7 +1999,7 @@ export async function executeMigrations(
 
       if (action === "backup-rename") {
         // Keep a .backup copy in place before deletion so the user can recover
-        // inline without digging through .trellis/.backup-*/.
+        // inline without digging through .moluoxixi/.backup-*/.
         fs.copyFileSync(filePath, filePath + ".backup");
       }
 
@@ -2048,7 +2050,7 @@ function printMigrationResult(result: MigrationResult): void {
  * developer workspace directory.
  *
  * Never overwrites an existing `journal-N.md`: a newer session may already
- * have created it, and `.trellis/workspace/` is excluded from the update
+ * have created it, and `.moluoxixi/workspace/` is excluded from the update
  * backup (see `BACKUP_EXCLUDE_PATTERNS`), so clobbering it would be
  * unrecoverable data loss. Conflicting `traces-N.md` files are left in place
  * and reported instead.
@@ -2086,14 +2088,16 @@ export function renameTracesToJournal(workspaceDir: string): {
 export async function update(options: UpdateOptions): Promise<void> {
   const cwd = process.cwd();
 
-  // Check if Trellis is initialized
+  // Check if Moluoxixi is initialized
   if (!fs.existsSync(path.join(cwd, DIR_NAMES.WORKFLOW))) {
-    console.log(chalk.red("Error: Trellis not initialized in this directory."));
-    console.log(chalk.gray("Run 'trellis init' first."));
+    console.log(
+      chalk.red("Error: Moluoxixi not initialized in this directory."),
+    );
+    console.log(chalk.gray("Run 'moluoxixi init' first."));
     return;
   }
 
-  console.log(chalk.cyan("\nTrellis Update"));
+  console.log(chalk.cyan("\nMoluoxixi Update"));
   console.log(chalk.cyan("══════════════\n"));
 
   // Set up proxy before any network calls (npm version check)
@@ -2127,7 +2131,7 @@ export async function update(options: UpdateOptions): Promise<void> {
         `⚠️  Your CLI (${cliVersion}) is behind npm (${latestNpmVersion}).`,
       ),
     );
-    console.log(chalk.yellow(`   Run: trellis upgrade\n`));
+    console.log(chalk.yellow(`   Run: moluoxixi upgrade\n`));
   }
 
   // Check for downgrade situation
@@ -2141,9 +2145,11 @@ export async function update(options: UpdateOptions): Promise<void> {
 
     if (!options.allowDowngrade) {
       console.log(chalk.gray("Solutions:"));
-      console.log(chalk.gray(`  1. Update your CLI: trellis upgrade`));
+      console.log(chalk.gray(`  1. Update your CLI: moluoxixi upgrade`));
       console.log(
-        chalk.gray(`  2. Force downgrade: trellis update --allow-downgrade\n`),
+        chalk.gray(
+          `  2. Force downgrade: moluoxixi update --allow-downgrade\n`,
+        ),
       );
       return;
     }
@@ -2166,7 +2172,7 @@ export async function update(options: UpdateOptions): Promise<void> {
   if (isUnknownVersion) {
     console.log(
       chalk.yellow(
-        "⚠️  No version file found. Skipping migrations — run trellis init to fix.",
+        "⚠️  No version file found. Skipping migrations — run moluoxixi init to fix.",
       ),
     );
     console.log(chalk.gray("   Template updates will still be applied."));
@@ -2175,7 +2181,7 @@ export async function update(options: UpdateOptions): Promise<void> {
     );
   }
 
-  // Detect legacy Codex (has .agents/skills/ tracked by Trellis but no .codex/)
+  // Detect legacy Codex (has .agents/skills/ tracked by Moluoxixi but no .codex/)
   // NOTE: this MUST happen before pruneOrphanManifestKeys below, since the
   // detector reads the raw manifest looking for .agents/skills/ markers that
   // the prune step would otherwise consider orphans (codex hasn't been added
@@ -2191,7 +2197,7 @@ export async function update(options: UpdateOptions): Promise<void> {
 
   // Self-heal poisoned manifests: prune entries that no current platform
   // configurator owns. This silently removes user-owned paths that early
-  // buggy versions of `trellis init` over-hashed (e.g. .codex/sessions/*).
+  // buggy versions of `moluoxixi init` over-hashed (e.g. .codex/sessions/*).
   // Include codex in known-platforms when codexUpgradeNeeded so legacy Codex
   // markers under .agents/skills/ survive into the upgrade flow.
   {
@@ -2332,7 +2338,7 @@ export async function update(options: UpdateOptions): Promise<void> {
             ),
         );
         console.log("");
-        console.log(chalk.yellow(`  Run: trellis update --migrate`));
+        console.log(chalk.yellow(`  Run: moluoxixi update --migrate`));
         console.log("");
         console.log(
           chalk.gray(
@@ -2505,7 +2511,7 @@ export async function update(options: UpdateOptions): Promise<void> {
           );
           console.log(
             chalk.gray(
-              "  Hash-verified: only files matching known Trellis templates are deleted. Your local customizations (hash mismatch) are still preserved.",
+              "  Hash-verified: only files matching known Moluoxixi templates are deleted. Your local customizations (hash mismatch) are still preserved.",
             ),
           );
         }
@@ -2563,7 +2569,7 @@ export async function update(options: UpdateOptions): Promise<void> {
 
     // Hardcoded: Rename traces-*.md to journal-*.md in workspace directories
     // Why hardcoded: The migration system only supports fixed path renames, not pattern-based.
-    // traces-*.md files are in .trellis/workspace/{developer}/ with variable developer names
+    // traces-*.md files are in .moluoxixi/workspace/{developer}/ with variable developer names
     // and variable file numbers (traces-1.md, traces-2.md, etc.), so we can't enumerate them
     // in the migration manifest. This is a one-time migration for the 0.2.0 naming redesign.
     const workspaceDir = path.join(cwd, PATHS.WORKSPACE);
@@ -2806,7 +2812,7 @@ export async function update(options: UpdateOptions): Promise<void> {
           status: "planning",
           scope: "migration",
           priority: "P1",
-          creator: "trellis-update",
+          creator: "moluoxixi-update",
           assignee: currentDeveloper,
           createdAt: todayStr,
         });
@@ -2821,7 +2827,7 @@ export async function update(options: UpdateOptions): Promise<void> {
         prdContent += `**From Version**: ${projectVersion}\n`;
         prdContent += `**To Version**: ${cliVersion}\n`;
         prdContent += `**Assignee**: ${currentDeveloper}\n\n`;
-        prdContent += `## Status\n\n- [ ] Review migration guide\n- [ ] Update custom files\n- [ ] Run \`trellis update --migrate\`\n- [ ] Test workflows\n\n`;
+        prdContent += `## Status\n\n- [ ] Review migration guide\n- [ ] Update custom files\n- [ ] Run \`moluoxixi update --migrate\`\n- [ ] Test workflows\n\n`;
 
         for (const {
           version,

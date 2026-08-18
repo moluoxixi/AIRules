@@ -14,9 +14,8 @@ export const PACKAGE_TEMPLATE_ROOT = path.join(ROLE_ROOT, 'packages', 'cli', 'sr
 
 export const PROJECT_ROOT_DIR = '.moluoxixi'
 export const MANIFEST_PATH = projectPath('airules-init-manifest.json')
-export const GENERATOR_VERSION = '0.2.0'
-export const MOLUOXIXI_VERSION = '0.2.0'
-export const UPSTREAM_BRAND = ['tre', 'llis'].join('')
+export const GENERATOR_VERSION = '0.3.0'
+export const MOLUOXIXI_VERSION = '0.3.0'
 
 export const NAMESPACED_SKILL_RENAMES = {
   'moluoxixi-before-dev': 'before-dev',

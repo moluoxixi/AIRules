@@ -1,13 +1,12 @@
 {
   "name": "@moluoxixi/airules-moluoxixi-cli",
-  "version": "0.6.18",
-  "description": "AI capabilities grow like ivy — Trellis provides the structure to guide them along a disciplined path",
+  "version": "0.6.19",
+  "description": "Moluoxixi workflow CLI for disciplined AI-assisted software delivery",
   "type": "module",
   "main": "./dist/index.js",
   "types": "./dist/index.d.ts",
   "bin": {
-    "trellis": "./bin/trellis.js",
-    "tl": "./bin/trellis.js"
+    "moluoxixi": "./bin/moluoxixi.js"
   },
   "publishConfig": {
     "access": "public",
@@ -50,9 +49,9 @@
     "developer-tools",
     "agent",
     "memory",
-    "trellis"
+    "moluoxixi"
   ],
-  "author": "Mindfold LLC",
+  "author": "Moluoxixi",
   "license": "AGPL-3.0-only",
   "dependencies": {
     "@moluoxixi/airules-moluoxixi-core": "workspace:*",
@@ -82,7 +81,7 @@
   },
   "files": [
     "dist",
-    "bin/trellis.js"
+    "bin/moluoxixi.js"
   ],
   "repository": {
     "type": "git",

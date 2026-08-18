@@ -9,7 +9,7 @@ const program = new Command();
 program
   .name("moluoxixi-runtime")
   .description("AIRules-owned local runtime for bundled Moluoxixi capabilities")
-  .version("0.2.0");
+  .version("0.3.0");
 
 registerChannelCommand(program);
 

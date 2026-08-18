@@ -33,7 +33,7 @@ function loadOmpExtension(): OmpExtension {
   const moduleObject: { exports: { default?: OmpExtension } } = { exports: {} };
   const sandboxProcess = Object.create(process) as NodeJS.Process;
   const sandboxEnv = { ...process.env };
-  delete sandboxEnv.TRELLIS_CONTEXT_ID;
+  delete sandboxEnv.MOLUOXIXI_CONTEXT_ID;
   Object.defineProperty(sandboxProcess, "env", { value: sandboxEnv });
   const sandbox = vm.createContext({
     Buffer,
@@ -58,12 +58,12 @@ function captureOmpHandlers(): Map<string, OmpEventHandler> {
 }
 
 describe("omp templates", () => {
-  it("provides the three Trellis sub-agent definitions", () => {
+  it("provides the three Moluoxixi sub-agent definitions", () => {
     const agents = getAllAgents();
     expect(agents.map((agent) => agent.name).sort()).toEqual([
-      "trellis-check",
-      "trellis-implement",
-      "trellis-research",
+      "moluoxixi-check",
+      "moluoxixi-implement",
+      "moluoxixi-research",
     ]);
   });
 
@@ -91,7 +91,7 @@ describe("omp templates", () => {
     const extension = getExtensionTemplate();
 
     expect(extension).not.toContain("pi.setLabel(");
-    expect(extension).not.toContain("process.env.TRELLIS_CONTEXT_ID =");
+    expect(extension).not.toContain("process.env.MOLUOXIXI_CONTEXT_ID =");
     expect(extension).toContain('buildContextKey("omp", "session", sessionId)');
     expect(extension).toContain("realpathSync");
     expect(extension).toContain("resolveProjectFile(projectRoot, file, trustedRoots)");
@@ -114,7 +114,7 @@ describe("omp templates", () => {
     const handler = captureOmpHandlers().get("tool_call");
     if (!handler) throw new Error("OMP extension did not register tool_call");
     const params: { command: string; env?: Record<string, string> } = {
-      command: "python3 ./.trellis/scripts/task.py current",
+      command: "python3 ./.moluoxixi/scripts/task.py current",
       env: { EXISTING: "kept" },
     };
 
@@ -123,7 +123,7 @@ describe("omp templates", () => {
       { sessionManager: { getSessionId: () => "session/a" } },
     );
 
-    expect(params.env?.TRELLIS_CONTEXT_ID).toBe("omp_session_a");
+    expect(params.env?.MOLUOXIXI_CONTEXT_ID).toBe("omp_session_a");
     expect(params.env?.EXISTING).toBe("kept");
   });
 
@@ -131,10 +131,10 @@ describe("omp templates", () => {
     const handler = captureOmpHandlers().get("tool_call");
     if (!handler) throw new Error("OMP extension did not register tool_call");
     const command =
-      "TRELLIS_CONTEXT_ID=inline python3 ./.trellis/scripts/task.py current";
+      "MOLUOXIXI_CONTEXT_ID=inline python3 ./.moluoxixi/scripts/task.py current";
     const params: { command: string; env?: Record<string, string> } = {
       command,
-      env: { TRELLIS_CONTEXT_ID: "explicit" },
+      env: { MOLUOXIXI_CONTEXT_ID: "explicit" },
     };
 
     handler(
@@ -143,7 +143,7 @@ describe("omp templates", () => {
     );
 
     expect(params.command).toBe(command);
-    expect(params.env?.TRELLIS_CONTEXT_ID).toBe("explicit");
+    expect(params.env?.MOLUOXIXI_CONTEXT_ID).toBe("explicit");
   });
 
   it("does not mutate non-Bash tool params", () => {
@@ -163,7 +163,7 @@ describe("omp templates", () => {
     const extension = getExtensionTemplate();
     // R1: Session start rich injection via get_context.py
     expect(extension).toContain("buildSessionContext");
-    expect(extension).toContain("trellis-session-context");
+    expect(extension).toContain("moluoxixi-session-context");
     expect(extension).toContain("get_context.py");
     expect(extension).toContain("session-context");
   });
@@ -173,9 +173,9 @@ describe("omp templates", () => {
     // R2: Sub-agent detection via PI_BLOCKED_AGENT
     expect(extension).toContain("PI_BLOCKED_AGENT");
     expect(extension).toContain("detectAgentType");
-    expect(extension).toContain("trellis-implement");
-    expect(extension).toContain("trellis-check");
-    expect(extension).toContain("trellis-research");
+    expect(extension).toContain("moluoxixi-implement");
+    expect(extension).toContain("moluoxixi-check");
+    expect(extension).toContain("moluoxixi-research");
     // Agent-type-specific jsonl selection
     expect(extension).toContain("implement.jsonl");
     expect(extension).toContain("check.jsonl");
@@ -183,19 +183,19 @@ describe("omp templates", () => {
 
   it("deduplicates files referenced by both main-session manifests", async () => {
     const projectRoot = fs.mkdtempSync(
-      path.join(os.tmpdir(), "trellis-omp-dedupe-"),
+      path.join(os.tmpdir(), "moluoxixi-omp-dedupe-"),
     );
-    const taskDir = path.join(projectRoot, ".trellis", "tasks", "demo-task");
+    const taskDir = path.join(projectRoot, ".moluoxixi", "tasks", "demo-task");
     const sessionDir = path.join(
       projectRoot,
-      ".trellis",
+      ".moluoxixi",
       ".runtime",
       "sessions",
     );
     const sharedFile = path.join(projectRoot, "docs", "shared.md");
     const checkOnlyFile = path.join(projectRoot, "docs", "check-only.md");
     const contextKey = "omp_session_dedupe";
-    const taskRef = ".trellis/tasks/demo-task";
+    const taskRef = ".moluoxixi/tasks/demo-task";
     const messages: { customType?: string; content?: string }[] = [];
 
     try {
@@ -244,7 +244,7 @@ describe("omp templates", () => {
       );
 
       const taskContext = messages.find(
-        (message) => message.customType === "trellis-task-context",
+        (message) => message.customType === "moluoxixi-task-context",
       );
       expect(taskContext?.content).toContain("## implement.jsonl");
       expect(taskContext?.content).toContain("## check.jsonl");
@@ -258,9 +258,9 @@ describe("omp templates", () => {
   });
 
   it("refreshes task context when a referenced file changes mid-session", async () => {
-    const projectRoot = fs.mkdtempSync(path.join(os.tmpdir(), "trellis-omp-refresh-"));
-    const taskDir = path.join(projectRoot, ".trellis", "tasks", "demo-task");
-    const sessionsDir = path.join(projectRoot, ".trellis", ".runtime", "sessions");
+    const projectRoot = fs.mkdtempSync(path.join(os.tmpdir(), "moluoxixi-omp-refresh-"));
+    const taskDir = path.join(projectRoot, ".moluoxixi", "tasks", "demo-task");
+    const sessionsDir = path.join(projectRoot, ".moluoxixi", ".runtime", "sessions");
     const referencedFile = path.join(projectRoot, "docs", "changing.md");
     const messages: { customType?: string; content?: string }[] = [];
 
@@ -276,7 +276,7 @@ describe("omp templates", () => {
       );
       fs.writeFileSync(
         path.join(sessionsDir, "omp_session_refresh.json"),
-        JSON.stringify({ current_task: ".trellis/tasks/demo-task" }),
+        JSON.stringify({ current_task: ".moluoxixi/tasks/demo-task" }),
       );
 
       const handlers = new Map<string, OmpEventHandler>();
@@ -294,7 +294,7 @@ describe("omp templates", () => {
       };
 
       await sessionStart({}, ctx);
-      const initial = messages.find((message) => message.customType === "trellis-task-context");
+      const initial = messages.find((message) => message.customType === "moluoxixi-task-context");
       expect(initial?.content).toContain("old context body");
       expect(initial?.content).not.toContain("created later body");
 
@@ -303,15 +303,15 @@ describe("omp templates", () => {
       const result = await context(
         {
           messages: [
-            { role: "custom", customType: "trellis-task-context", content: initial?.content },
-            { role: "custom", customType: "trellis-workflow-state", content: "workflow" },
+            { role: "custom", customType: "moluoxixi-task-context", content: initial?.content },
+            { role: "custom", customType: "moluoxixi-workflow-state", content: "workflow" },
           ],
         },
         ctx,
       ) as { messages?: { customType?: string; content?: string }[] } | undefined;
 
       const refreshed = result?.messages?.filter(
-        (message) => message.customType === "trellis-task-context",
+        (message) => message.customType === "moluoxixi-task-context",
       ) ?? [];
       expect(refreshed).toHaveLength(1);
       expect(refreshed[0]?.content).toContain("new context body with changed size");
@@ -341,8 +341,8 @@ describe("omp templates", () => {
 describe("omp command frontmatter", () => {
   it("collectOmpTemplates produces commands with YAML frontmatter", () => {
     const templates = collectOmpTemplates();
-    const continueCmd = templates.get(".omp/commands/trellis-continue.md");
-    const finishCmd = templates.get(".omp/commands/trellis-finish-work.md");
+    const continueCmd = templates.get(".omp/commands/moluoxixi-continue.md");
+    const finishCmd = templates.get(".omp/commands/moluoxixi-finish-work.md");
 
     expect(continueCmd).toBeDefined();
     expect(finishCmd).toBeDefined();
@@ -360,6 +360,6 @@ describe("omp command frontmatter", () => {
 
   it("collectOmpTemplates does not emit a start command", () => {
     const templates = collectOmpTemplates();
-    expect(templates.has(".omp/commands/trellis-start.md")).toBe(false);
+    expect(templates.has(".omp/commands/moluoxixi-start.md")).toBe(false);
   });
 });

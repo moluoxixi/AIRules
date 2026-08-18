@@ -1,6 +1,6 @@
 # Upstream Maintenance Boundary
 
-This role is maintained from an exact upstream Trellis commit. The finalized
+This role is maintained from an exact external baseline commit. The finalized
 package trees under `roles/moluoxixi/packages/` are the only distributable
 sources. The local `.sync` workspace is ignored and never required by the
 initializer or by an installed role.
@@ -9,14 +9,14 @@ initializer or by an installed role.
 
 ```text
 roles/moluoxixi/.sync/
-  trellis/       pristine upstream clone at the reviewed commit; read-only
+  source mirror  pristine checkout at the reviewed commit; read-only
   rebuild/       linked worktree from that commit; local adaptations only
   history/       reconciliation records and reviewed commit history
   reports/       scan, export, and verification reports
   manifest.json  pinned upstream commit and package mappings
 ```
 
-`trellis/` must remain clean and must never receive local edits or commits.
+The source mirror must remain clean and must never receive local edits or commits.
 All Moluoxixi adaptations, package renames, template changes, and tests that
 belong to the upstream replay happen in `rebuild/`. Do not edit the finalized
 `roles/moluoxixi/packages/core` or `roles/moluoxixi/packages/cli` trees during
@@ -24,7 +24,7 @@ the replay.
 
 There is deliberately no `.sync/work/` layer. The two worktrees and the
 maintenance records are direct siblings so a path always identifies its role:
-`trellis` is upstream input, `rebuild` is the adapted source, and `history` /
+the source mirror is upstream input, `rebuild` is the adapted source, and `history` /
 `reports` are audit output. Do not place reports, manifests, or reconciliation
 notes inside either worktree.
 
@@ -54,5 +54,5 @@ because it existed in an earlier release.
 
 Reports stay beside the worktrees rather than inside `rebuild/`; putting them
 inside the linked worktree makes it dirty and risks exporting maintenance data
-as package source. The same rule applies to `trellis/`: it is an immutable
+as package source. The same rule applies to the source mirror: it is an immutable
 upstream input, not a place for local notes or patches.

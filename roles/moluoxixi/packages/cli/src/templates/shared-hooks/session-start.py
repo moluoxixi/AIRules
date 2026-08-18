@@ -71,8 +71,12 @@ _FIRST_REPLY_NOTICE_HEAD = """<first-reply-notice>
 On the first visible assistant reply in this session, briefly acknowledge that Moluoxixi SessionStart context loaded.
 """
 
-_FIRST_REPLY_NOTICE_TAIL = """Use the language of the user's current request. If it has no clear natural language, use the established project language; otherwise use exactly: `Moluoxixi SessionStart loaded`.
-Continue directly with the request and do not change the language of the rest of the response.
+_FIRST_REPLY_NOTICE_TAIL = """Choose the acknowledgment language in this order:
+1. Use the language of the user's current request (the user message that triggered this reply).
+2. If that request has no clear natural language, use an explicitly established project communication language.
+3. If neither provides a language, output the language-neutral fallback exactly: `Moluoxixi SessionStart ✓`.
+Continue directly with the user's request after the acknowledgment.
+The acknowledgment must not alter the language used for the remainder of the response.
 This notice is one-shot: do not repeat it after the first visible assistant reply in this session.
 </first-reply-notice>"""
 
@@ -281,7 +285,7 @@ def _persist_context_key_for_bash(context_key: str | None) -> None:
     try:
         if _last_context_key_export(env_file) == export_line:
             return
-        with open(env_file, "a", encoding="utf-8") as handle:
+        with open(env_file, "a", encoding="utf-8", newline="\n") as handle:
             handle.write(f"{export_line}\n")
     except OSError:
         pass  # Optional shell bridge; keep session-start non-fatal.
@@ -456,6 +460,8 @@ def _get_task_status(moluoxixi_dir: Path, input_data: dict) -> str:
             next_bits.append(
                 f"complex task must add {', '.join(missing_complex)} before start"
             )
+        elif complexity == "lightweight":
+            next_bits.append("Lightweight task can request start review with PRD-only")
         else:
             next_bits.append("Planning artifacts are present; manual mode asks for review before `task.py start --user-approved`")
         if complexity == "complex" and not jsonl_ready:

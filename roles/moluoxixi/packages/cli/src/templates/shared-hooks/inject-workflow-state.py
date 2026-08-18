@@ -76,14 +76,19 @@ If you have not already loaded Moluoxixi context this session, read the `moluoxi
 # ---------------------------------------------------------------------------
 
 def find_moluoxixi_root(start: Path) -> Optional[Path]:
-    """Walk up from start to find directory containing .moluoxixi/.
+    """Walk up from start to find an initialized Moluoxixi project.
 
     Handles CWD drift: subdirectory launches, monorepo packages, etc.
-    Returns None if no .moluoxixi/ found (silent no-op).
+    A bare user-level ``.moluoxixi`` directory is not a project; requiring the
+    active-task runtime also prevents hooks from importing through an
+    incomplete or unrelated ancestor directory.
     """
     cur = start.resolve()
     while cur != cur.parent:
-        if (cur / ".moluoxixi").is_dir():
+        active_task_runtime = (
+            cur / ".moluoxixi" / "scripts" / "common" / "active_task.py"
+        )
+        if active_task_runtime.is_file():
             return cur
         cur = cur.parent
     return None
@@ -131,6 +136,8 @@ def _detect_platform(input_data: dict) -> str | None:
         return "kiro"
     if ".trae" in script_parts:
         return "trae"
+    if ".zcode" in script_parts:
+        return "zcode"
     return None
 
 
@@ -252,6 +259,24 @@ def prompt_has_skip_keyword(prompt: str, keyword: str) -> bool:
     return re.search(pattern, prompt, re.IGNORECASE) is not None
 
 
+def _resolve_codex_dispatch_mode(config: dict) -> str:
+    """Normalize codex.dispatch_mode to auto or inline exactly once."""
+    mode = "auto"
+    if not isinstance(config, dict):
+        return mode
+    codex_cfg = config.get("codex")
+    if codex_cfg is None:
+        return mode
+    if not isinstance(codex_cfg, dict):
+        return "inline"
+    cfg_mode = str(codex_cfg.get("dispatch_mode", mode)).strip().lower()
+    if cfg_mode == "inline":
+        return "inline"
+    if cfg_mode in ("auto", "sub-agent"):
+        return "auto"
+    return "inline"
+
+
 def _codex_mode_banner(config: dict) -> str:
     """Emit a `<codex-mode>` banner for the additionalContext payload.
 
@@ -262,24 +287,12 @@ def _codex_mode_banner(config: dict) -> str:
     makes the active mode explicit to Codex AI per turn, complementing the
     workflow-state body which is per-status.
     """
-    mode = "auto"
-    if isinstance(config, dict):
-        codex_cfg = config.get("codex")
-        if codex_cfg is not None:
-            if not isinstance(codex_cfg, dict):
-                mode = "inline"
-            else:
-                cfg_mode = str(codex_cfg.get("dispatch_mode", mode)).strip().lower()
-                if cfg_mode == "inline":
-                    mode = "inline"
-                elif cfg_mode in ("auto", "sub-agent"):
-                    mode = "auto"
-                else:
-                    mode = "inline"
+    mode = _resolve_codex_dispatch_mode(config)
     if mode == "auto":
         meaning = (
             "auto: implement/check work defaults to Moluoxixi sub-agents; "
-            "the main session still coordinates, clarifies, updates specs, commits, and finishes."
+            "native Codex context injection is preferred and child-side loading is the fallback. "
+            "The main session still coordinates, clarifies, updates specs, commits, and finishes."
         )
     else:
         meaning = (
@@ -302,20 +315,7 @@ def resolve_breadcrumb_key(
     Non-codex platforms return the plain status unchanged.
     """
     if platform == "codex":
-        mode = "auto"
-        if isinstance(config, dict):
-            codex_cfg = config.get("codex")
-            if codex_cfg is not None:
-                if not isinstance(codex_cfg, dict):
-                    mode = "inline"
-                else:
-                    cfg_mode = str(codex_cfg.get("dispatch_mode", mode)).strip().lower()
-                    if cfg_mode == "inline":
-                        mode = "inline"
-                    elif cfg_mode in ("auto", "sub-agent"):
-                        mode = "auto"
-                    else:
-                        mode = "inline"
+        mode = _resolve_codex_dispatch_mode(config)
         return status if mode == "auto" else f"{status}-inline"
     return status
 

@@ -94,13 +94,13 @@ export type CliFlag =
 export interface TemplateContext {
   /** Prefix for cross-referencing other commands/skills */
   cmdRefPrefix:
-    | "/trellis:"
-    | "/trellis-"
+    | "/moluoxixi:"
+    | "/moluoxixi-"
     | "$"
     | "/"
-    | "/skill trellis-"
-    | "/skill:trellis-"
-    | "trellis-";
+    | "/skill moluoxixi-"
+    | "/skill:moluoxixi-"
+    | "moluoxixi-";
   /** Description of AI executor actions shown in role tables */
   executorAI:
     | "Bash scripts or Task calls"
@@ -177,7 +177,7 @@ export const AI_TOOLS: Record<AITool, AIToolConfig> = {
     defaultChecked: true,
     hasPythonHooks: true,
     templateContext: {
-      cmdRefPrefix: "/trellis:",
+      cmdRefPrefix: "/moluoxixi:",
       executorAI: "Bash scripts or Task calls",
       userActionLabel: "Slash commands",
       agentCapable: true,
@@ -193,7 +193,7 @@ export const AI_TOOLS: Record<AITool, AIToolConfig> = {
     defaultChecked: true,
     hasPythonHooks: true,
     templateContext: {
-      cmdRefPrefix: "/trellis-",
+      cmdRefPrefix: "/moluoxixi-",
       executorAI: "Bash scripts or Task calls",
       userActionLabel: "Slash commands",
       agentCapable: true,
@@ -208,14 +208,14 @@ export const AI_TOOLS: Record<AITool, AIToolConfig> = {
     cliFlag: "opencode",
     defaultChecked: false,
     // hasHooks: false — OpenCode has no session-start hook. The pre-v0.5.0
-    // `.opencode/commands/trellis/start.md` deprecation in
+    // `.opencode/commands/moluoxixi/start.md` deprecation in
     // migrations/manifests/0.5.0-beta.0.json assumed a hook would replace it;
     // that never happened for OpenCode, so `resolveCommands`/`filterCommands`
     // (see configurators/shared.ts) still generate `/start` as the live
     // fallback command for this `agentCapable && !hasHooks` platform.
     hasPythonHooks: false,
     templateContext: {
-      cmdRefPrefix: "/trellis:",
+      cmdRefPrefix: "/moluoxixi:",
       executorAI: "Bash scripts or Task calls",
       userActionLabel: "Slash commands",
       agentCapable: true,
@@ -248,7 +248,7 @@ export const AI_TOOLS: Record<AITool, AIToolConfig> = {
     defaultChecked: false,
     hasPythonHooks: false,
     templateContext: {
-      cmdRefPrefix: "/trellis:",
+      cmdRefPrefix: "/moluoxixi:",
       executorAI: "Bash scripts or file reads",
       userActionLabel: "Workflows",
       agentCapable: false,
@@ -282,7 +282,7 @@ export const AI_TOOLS: Record<AITool, AIToolConfig> = {
     defaultChecked: false,
     hasPythonHooks: true,
     templateContext: {
-      cmdRefPrefix: "/trellis:",
+      cmdRefPrefix: "/moluoxixi:",
       executorAI: "Bash scripts or tool calls",
       userActionLabel: "Slash commands",
       agentCapable: true,
@@ -316,7 +316,7 @@ export const AI_TOOLS: Record<AITool, AIToolConfig> = {
     defaultChecked: false,
     hasPythonHooks: false,
     templateContext: {
-      cmdRefPrefix: "/trellis-",
+      cmdRefPrefix: "/moluoxixi-",
       executorAI: "Bash scripts or file reads",
       userActionLabel: "Workflows",
       agentCapable: false,
@@ -348,7 +348,7 @@ export const AI_TOOLS: Record<AITool, AIToolConfig> = {
     defaultChecked: false,
     hasPythonHooks: true,
     templateContext: {
-      cmdRefPrefix: "/trellis:",
+      cmdRefPrefix: "/moluoxixi:",
       executorAI: "Bash scripts or Task calls",
       userActionLabel: "Slash commands",
       agentCapable: true,
@@ -387,7 +387,7 @@ export const AI_TOOLS: Record<AITool, AIToolConfig> = {
     defaultChecked: false,
     hasPythonHooks: true,
     templateContext: {
-      cmdRefPrefix: "/trellis-",
+      cmdRefPrefix: "/moluoxixi-",
       executorAI: "Bash scripts or Task calls",
       userActionLabel: "Slash commands",
       agentCapable: true,
@@ -401,9 +401,9 @@ export const AI_TOOLS: Record<AITool, AIToolConfig> = {
     // `.dsh/skills/` (rank-100 project root) natively and the agent loads
     // skills by name through its skill-loader tool. No session-start hook
     // ships in the default web/headless profiles, so `hasHooks: false` and
-    // `trellis-start` stays as a user-invocable skill. Entry skills reference
-    // other skills by bare name (`trellis-<name>`), hence `cmdRefPrefix:
-    // "trellis-"`.
+    // `moluoxixi-start` stays as a user-invocable skill. Entry skills reference
+    // other skills by bare name (`moluoxixi-<name>`), hence `cmdRefPrefix:
+    // "moluoxixi-"`.
     name: "DeepSeek Harness (dsh)",
     templateDirs: ["common", "dsh"],
     configDir: ".dsh",
@@ -412,7 +412,7 @@ export const AI_TOOLS: Record<AITool, AIToolConfig> = {
     defaultChecked: false,
     hasPythonHooks: false,
     templateContext: {
-      cmdRefPrefix: "trellis-",
+      cmdRefPrefix: "moluoxixi-",
       executorAI: "Bash scripts or tool calls",
       userActionLabel: "Skills",
       agentCapable: true,
@@ -423,7 +423,7 @@ export const AI_TOOLS: Record<AITool, AIToolConfig> = {
   pi: {
     // Pi also writes .agents/skills/, which is read by Cursor, Gemini CLI,
     // GitHub Copilot, Amp, and Kimi Code. Keep that detail here rather than
-    // in `name` — `name` leaks verbatim into `trellis platforms` output and
+    // in `name` — `name` leaks verbatim into `moluoxixi platforms` output and
     // init checkboxes, where a long parenthetical reads badly.
     name: "Pi Agent",
     templateDirs: ["common", "pi"],
@@ -433,7 +433,7 @@ export const AI_TOOLS: Record<AITool, AIToolConfig> = {
     defaultChecked: false,
     hasPythonHooks: false,
     templateContext: {
-      cmdRefPrefix: "/trellis-",
+      cmdRefPrefix: "/moluoxixi-",
       executorAI: "Bash scripts or tool calls",
       userActionLabel: "Slash commands",
       agentCapable: true,
@@ -449,7 +449,7 @@ export const AI_TOOLS: Record<AITool, AIToolConfig> = {
     defaultChecked: false,
     hasPythonHooks: false,
     templateContext: {
-      cmdRefPrefix: "/skill trellis-",
+      cmdRefPrefix: "/skill moluoxixi-",
       executorAI: "Bash scripts or tool calls",
       userActionLabel: "Skills",
       agentCapable: true,
@@ -462,8 +462,8 @@ export const AI_TOOLS: Record<AITool, AIToolConfig> = {
     templateDirs: ["common", "zcode"],
     configDir: ".zcode",
     // `.zcode/cli/agents` is the pre-ZCode-update discovery path. Kept managed
-    // during the transition so `trellis update --migrate` (rename-dir →
-    // `.zcode/agents/`) and `trellis uninstall` can clean up the now-empty
+    // during the transition so `moluoxixi update --migrate` (rename-dir →
+    // `.zcode/agents/`) and `moluoxixi uninstall` can clean up the now-empty
     // `.zcode/cli/` parent. Drop this entry once the migration has shipped and
     // no project still holds the legacy dir. Only empty dirs are ever removed,
     // so user files are never touched (see cleanupEmptyDirs in update.ts).
@@ -479,7 +479,7 @@ export const AI_TOOLS: Record<AITool, AIToolConfig> = {
     defaultChecked: false,
     hasPythonHooks: true,
     templateContext: {
-      cmdRefPrefix: "/trellis:",
+      cmdRefPrefix: "/moluoxixi:",
       executorAI: "Bash scripts or Agent calls",
       userActionLabel: "Skills",
       agentCapable: true,
@@ -498,7 +498,7 @@ export const AI_TOOLS: Record<AITool, AIToolConfig> = {
     defaultChecked: false,
     hasPythonHooks: true,
     templateContext: {
-      cmdRefPrefix: "/trellis-",
+      cmdRefPrefix: "/moluoxixi-",
       executorAI: "Bash scripts or tool calls",
       userActionLabel: "Commands",
       agentCapable: true,
@@ -514,7 +514,7 @@ export const AI_TOOLS: Record<AITool, AIToolConfig> = {
     defaultChecked: false,
     hasPythonHooks: false,
     templateContext: {
-      cmdRefPrefix: "/trellis:",
+      cmdRefPrefix: "/moluoxixi:",
       executorAI: "Bash scripts or Task calls",
       userActionLabel: "Slash commands",
       agentCapable: true,
@@ -528,7 +528,7 @@ export const AI_TOOLS: Record<AITool, AIToolConfig> = {
    * Phase 0 verified (Grok 0.2.101): skills/agents/AGENTS.md load correctly;
    * Claude-style hook `additionalContext` is NOT injected into the model.
    * Do not set hasHooks/hasPythonHooks true until Grok consumes hook stdout.
-   * Commands are flat under `.grok/commands/trellis-*.md` (Grok slash-command layout).
+   * Commands are flat under `.grok/commands/moluoxixi-*.md` (Grok slash-command layout).
    */
   grok: {
     name: "Grok Build",
@@ -539,7 +539,7 @@ export const AI_TOOLS: Record<AITool, AIToolConfig> = {
     defaultChecked: false,
     hasPythonHooks: false,
     templateContext: {
-      cmdRefPrefix: "/trellis-",
+      cmdRefPrefix: "/moluoxixi-",
       executorAI: "Bash scripts or Agent calls",
       userActionLabel: "Skills",
       agentCapable: true,
@@ -554,16 +554,16 @@ export const AI_TOOLS: Record<AITool, AIToolConfig> = {
    * `.agents/skills/` (agentskills.io standard), so workflow/bundled skills go
    * to the shared root via the neutral resolver (byte-identical to
    * Codex/Gemini/Pi writes) while user-invocable entry points
-   * (`trellis-start` / `trellis-continue` / `trellis-finish-work`, invoked as
-   * `/skill:trellis-<name>`) and the Trellis sub-agent prompts live under
+   * (`moluoxixi-start` / `moluoxixi-continue` / `moluoxixi-finish-work`, invoked as
+   * `/skill:moluoxixi-<name>`) and the Moluoxixi sub-agent prompts live under
    * `.kimi-code/skills/`.
    *
-   * Kimi has no project-level hooks/settings file Trellis may write (hooks are
-   * user-level `~/.kimi-code/config.toml` only), so the Trellis agent prompts
+   * Kimi has no project-level hooks/settings file Moluoxixi may write (hooks are
+   * user-level `~/.kimi-code/config.toml` only), so the Moluoxixi agent prompts
    * keep the pull-based prelude. They ship both as skills and as project-level
    * custom sub-agent definitions under `.kimi-code/agents/` (Claude
    * Code-compatible frontmatter), so the main session can dispatch
-   * `trellis-<name>` sub-agents directly.
+   * `moluoxixi-<name>` sub-agents directly.
    */
   kimi: {
     name: "Kimi Code",
@@ -574,7 +574,7 @@ export const AI_TOOLS: Record<AITool, AIToolConfig> = {
     defaultChecked: false,
     hasPythonHooks: false,
     templateContext: {
-      cmdRefPrefix: "/skill:trellis-",
+      cmdRefPrefix: "/skill:moluoxixi-",
       executorAI: "Bash scripts or Agent calls",
       userActionLabel: "Slash commands",
       agentCapable: true,
@@ -586,16 +586,16 @@ export const AI_TOOLS: Record<AITool, AIToolConfig> = {
    * Snow CLI - class-1 platform.
    *
    * Skills: `.snow/skills/` (Claude Code Skills compatible)
-   * Commands: `.snow/commands/trellis-*.json` (type: prompt)
+   * Commands: `.snow/commands/moluoxixi-*.json` (type: prompt)
    * Agents: `.snow/agents/` (project discovery; no class-2 pull prelude)
    * Hooks: `.snow/hooks/` emit additionalContext JSON (session/user/sub-agent)
    *
-   * hasHooks=true: SessionStart injects context -> trellis-start is filtered out.
-   * hasPythonHooks=true: ships write-trellis-context.py under .snow/hooks/.
+   * hasHooks=true: SessionStart injects context -> moluoxixi-start is filtered out.
+   * hasPythonHooks=true: ships write-moluoxixi-context.py under .snow/hooks/.
    * Primary agent path is `.snow/agents/*.md` only (no legacy JSON fragment).
    *
    * CLI flag: `--snow`.
-   * Detection requires Trellis-owned template hashes under `.snow/skills`, so
+   * Detection requires Moluoxixi-owned template hashes under `.snow/skills`, so
    * native Snow settings, commands, agents, or skills are not false positives.
    */
   snow: {
@@ -612,7 +612,7 @@ export const AI_TOOLS: Record<AITool, AIToolConfig> = {
     defaultChecked: false,
     hasPythonHooks: true,
     templateContext: {
-      cmdRefPrefix: "/trellis-",
+      cmdRefPrefix: "/moluoxixi-",
       executorAI: "Bash scripts or Agent calls",
       userActionLabel: "Skills",
       agentCapable: true,

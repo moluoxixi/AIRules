@@ -30,8 +30,6 @@ const initializer = path.join(skillRoot, 'scripts', 'run-role-cli.mjs')
 const assetRoot = path.join(skillRoot, 'assets')
 const packageTemplateRoot = path.join(roleRoot, 'packages', 'cli', 'src', 'templates')
 const roleRuntime = path.join(skillRoot, 'assets', 'runtime', 'moluoxixi.mjs')
-const legacyBrand = ['tre', 'llis'].join('')
-const legacyProjectRoot = `.${legacyBrand}`
 const projectSkillNames = [
   'before-dev',
   'brainstorm',
@@ -168,7 +166,7 @@ describe('init-project skill', () => {
     expect([...new Set(plannedSkillNames)]).toEqual(expect.arrayContaining(projectSkillNames))
     expect(plannedSkillNames.every(name => !name.startsWith('moluoxixi-'))).toBe(true)
     expect(result.summary?.created).not.toContain('.claude/hooks/statusline.py')
-    expect(result.summary?.created).toContain('.moluoxixi/runtime/update/packages/cli/src/templates/trellis/workflow.md')
+    expect(result.summary?.created).toContain('.moluoxixi/runtime/update/packages/cli/src/templates/moluoxixi/workflow.md')
     expect(result.summary?.created?.some(relativePath => relativePath.startsWith('.moluoxixi/runtime/update/overlays/'))).toBe(false)
     expect(result.summary?.created?.filter(relativePath => relativePath.startsWith('.moluoxixi/runtime/update/init-project/') && relativePath.endsWith('/SKILL.md'))).toEqual([
       '.moluoxixi/runtime/update/init-project/SKILL.md',
@@ -200,19 +198,18 @@ describe('init-project skill', () => {
     expect(fs.existsSync(path.join(projectRoot, '.moluoxixi', 'scripts', 'task.py'))).toBe(true)
     expect(fs.existsSync(path.join(projectRoot, '.moluoxixi', 'scripts', 'spec-proposals.mjs'))).toBe(true)
     expect(fs.existsSync(path.join(projectRoot, '.moluoxixi', 'runtime', 'source'))).toBe(false)
-    expect(fs.existsSync(path.join(projectRoot, '.moluoxixi', 'runtime', 'update', 'packages', 'cli', 'src', 'templates', 'trellis', 'workflow.md'))).toBe(true)
+    expect(fs.existsSync(path.join(projectRoot, '.moluoxixi', 'runtime', 'update', 'packages', 'cli', 'src', 'templates', 'moluoxixi', 'workflow.md'))).toBe(true)
     expect(fs.existsSync(path.join(projectRoot, '.moluoxixi', 'runtime', 'update', 'overlays'))).toBe(false)
     expect(fs.existsSync(path.join(projectRoot, '.moluoxixi', 'runtime', 'update', 'init-project', 'scripts', 'migrations', 'manifests'))).toBe(false)
     expect(fs.existsSync(path.join(projectRoot, '.moluoxixi', 'airules-init-manifest.json'))).toBe(true)
     const initialManifest = JSON.parse(fs.readFileSync(path.join(projectRoot, '.moluoxixi', 'airules-init-manifest.json'), 'utf8'))
     expect(initialManifest).toMatchObject({
-      generatorVersion: '0.2.0',
-      moluoxixiVersion: '0.2.0',
+      generatorVersion: '0.3.0',
+      moluoxixiVersion: '0.3.0',
       schemaVersion: 2,
     })
     expect(initialManifest).not.toHaveProperty('upstreamRevision')
     expect(Object.keys(initialManifest.entries as Record<string, unknown>).some(relativePath => relativePath.startsWith('.moluoxixi/spec-proposals/'))).toBe(false)
-    expect(fs.existsSync(path.join(projectRoot, legacyProjectRoot))).toBe(false)
     expect(fs.existsSync(path.join(projectRoot, '.claude', 'settings.json'))).toBe(true)
     expect(JSON.parse(fs.readFileSync(path.join(projectRoot, '.claude', 'settings.json'), 'utf8'))).not.toHaveProperty('statusLine')
     expect(fs.existsSync(path.join(projectRoot, '.codex', 'config.toml'))).toBe(true)
@@ -246,7 +243,6 @@ describe('init-project skill', () => {
     projectedFiles.push(path.join(projectRoot, '.moluoxixi', 'workflow.md'))
     projectedFiles.push(path.join(projectRoot, '.moluoxixi', 'config.yaml'))
     projectedFiles.push(path.join(projectRoot, 'AGENTS.md'))
-    expect(projectedFiles.filter(file => fs.readFileSync(file, 'utf8').includes(legacyProjectRoot))).toEqual([])
     const projectedSkillFiles = walkFiles(projectRoot).filter((file) => {
       const relativePath = path.relative(projectRoot, file).split(path.sep).join('/')
       return !relativePath.startsWith('.moluoxixi/runtime/update/')
@@ -261,7 +257,7 @@ describe('init-project skill', () => {
     }
     expect([...new Set(projectedSkillFiles.map(file => path.basename(path.dirname(file))))]).toEqual(expect.arrayContaining(projectSkillNames))
     const launcher = path.join(projectRoot, '.moluoxixi', 'runtime', 'moluoxixi.mjs')
-    expect(runRuntime(launcher, ['--version'], projectRoot)).toMatchObject({ status: 0, stderr: '', stdout: '0.2.0\n' })
+    expect(runRuntime(launcher, ['--version'], projectRoot)).toMatchObject({ status: 0, stderr: '', stdout: '0.3.0\n' })
     const initialSnapshot = snapshot(projectRoot)
 
     const second = runInitializer(projectRoot, args)
@@ -277,13 +273,14 @@ describe('init-project skill', () => {
     expect(JSON.parse(update.stdout)).toMatchObject({ conflicts: [], created: [], updated: [] })
     const workflow = runRuntime(projectRuntime, ['workflow', '--force'], projectRoot)
     expect(workflow).toMatchObject({ status: 0, stderr: '' })
-    expect(fs.readFileSync(path.join(projectRoot, '.moluoxixi', 'workflow.md'), 'utf8')).not.toContain(legacyProjectRoot)
+    expect(fs.readFileSync(path.join(projectRoot, '.moluoxixi', 'workflow.md'), 'utf8')).toContain('.moluoxixi')
   })
 
   it('reports a newer synchronized role once per session without a global CLI', () => {
     const projectRoot = temporaryProject()
     const airulesHome = temporaryProject('airules-home-')
     expect(runInitializer(projectRoot, ['--platform', 'codex'])).toMatchObject({ status: 0, stderr: '' })
+    fs.writeFileSync(path.join(projectRoot, '.moluoxixi', '.version'), '0.2.0\n')
 
     const installedRoleRoot = path.join(airulesHome, '.moluoxixi', 'roles', 'moluoxixi')
     fs.mkdirSync(installedRoleRoot, { recursive: true })
@@ -326,6 +323,7 @@ describe('init-project skill', () => {
     const projectRoot = temporaryProject()
     const airulesHome = temporaryProject('airules-home-')
     expect(runInitializer(projectRoot, ['--platform', 'claude'])).toMatchObject({ status: 0, stderr: '' })
+    fs.writeFileSync(path.join(projectRoot, '.moluoxixi', '.version'), '0.2.0\n')
 
     const installedRoleRoot = path.join(airulesHome, '.moluoxixi', 'roles', 'moluoxixi')
     fs.mkdirSync(installedRoleRoot, { recursive: true })
@@ -360,6 +358,7 @@ describe('init-project skill', () => {
     const projectRoot = temporaryProject()
     const airulesHome = temporaryProject('airules-home-')
     expect(runInitializer(projectRoot, ['--platform', 'opencode'])).toMatchObject({ status: 0, stderr: '' })
+    fs.writeFileSync(path.join(projectRoot, '.moluoxixi', '.version'), '0.2.0\n')
 
     const installedRoleRoot = path.join(airulesHome, '.moluoxixi', 'roles', 'moluoxixi')
     fs.mkdirSync(installedRoleRoot, { recursive: true })
@@ -627,21 +626,19 @@ describe('init-project skill', () => {
     expect(fs.readFileSync(workflow, 'utf8')).toContain('# User edit')
   })
 
-  it('provides local channel and memory command surfaces without an upstream package install', () => {
-    expect(runRuntime(roleRuntime, ['--version'], roleRoot)).toMatchObject({ status: 0, stderr: '', stdout: '0.2.0\n' })
-    expect(runRuntime(roleRuntime, ['-v'], roleRoot)).toMatchObject({ status: 0, stderr: '', stdout: '0.2.0\n' })
+  it('provides local channel and memory command surfaces without a registry package install', () => {
+    expect(runRuntime(roleRuntime, ['--version'], roleRoot)).toMatchObject({ status: 0, stderr: '', stdout: '0.3.0\n' })
+    expect(runRuntime(roleRuntime, ['-v'], roleRoot)).toMatchObject({ status: 0, stderr: '', stdout: '0.3.0\n' })
     expect(runRuntime(roleRuntime, ['update', '--help'], roleRoot)).toMatchObject({ status: 0, stderr: '' })
     expect(runRuntime(roleRuntime, ['workflow', '--help'], roleRoot)).toMatchObject({ status: 0, stderr: '' })
     expect(runRuntime(roleRuntime, ['mem', 'help'], roleRoot)).toMatchObject({ status: 0, stderr: '' })
     expect(runRuntime(roleRuntime, ['channel', '--help'], roleRoot)).toMatchObject({ status: 0, stderr: '' })
-    const localSkillFiles = [
-      'common/bundled-skills/trellis-channel/SKILL.md',
-      'common/bundled-skills/trellis-meta/SKILL.md',
-      'common/bundled-skills/trellis-session-insight/SKILL.md',
-    ].map(relativePath => path.join(packageTemplateRoot, ...relativePath.split('/')))
+    const projectRoot = temporaryProject()
+    expect(runInitializer(projectRoot, ['--platform', 'codex'])).toMatchObject({ status: 0, stderr: '' })
+    const localSkillFiles = ['channel', 'meta', 'session-insight']
+      .map(name => path.join(projectRoot, '.agents', 'skills', name, 'SKILL.md'))
     for (const file of localSkillFiles) {
       const content = fs.readFileSync(file, 'utf8')
-      expect(content).not.toContain(`npm install -g @mindfoldhq/${legacyBrand}`)
       expect(content).not.toMatch(/(^|[^\w.-])moluoxixi (?:channel|mem|update|workflow|--version)/mu)
     }
   })
@@ -733,27 +730,26 @@ describe('init-project skill', () => {
     expect(fs.readFileSync(readmePath)).toEqual(utf16Readme)
   })
 
-  it('does not import upstream project roots, hashes, JSON keys, or managed blocks', () => {
+  it('preserves unrelated project roots, hashes, JSON keys, and managed blocks', () => {
     const projectRoot = temporaryProject()
-    const upstreamUpper = legacyBrand.toUpperCase()
-    const upstreamRoot = path.join(projectRoot, legacyProjectRoot)
-    fs.mkdirSync(upstreamRoot, { recursive: true })
-    fs.writeFileSync(path.join(upstreamRoot, 'sentinel.txt'), 'keep upstream state\n')
+    const unrelatedRoot = path.join(projectRoot, '.other-workflow')
+    fs.mkdirSync(unrelatedRoot, { recursive: true })
+    fs.writeFileSync(path.join(unrelatedRoot, 'sentinel.txt'), 'keep unrelated state\n')
     fs.mkdirSync(path.join(projectRoot, '.moluoxixi'), { recursive: true })
     fs.writeFileSync(path.join(projectRoot, '.moluoxixi', '.template-hashes.json'), '{"files":{"old":"hash"}}\n')
     fs.mkdirSync(path.join(projectRoot, '.pi'), { recursive: true })
-    fs.writeFileSync(path.join(projectRoot, '.pi', 'settings.json'), `${JSON.stringify({ [`${legacyBrand}Setting`]: true }, null, 2)}\n`)
-    fs.writeFileSync(path.join(projectRoot, 'AGENTS.md'), `<!-- ${upstreamUpper}:START -->\nupstream block\n<!-- ${upstreamUpper}:END -->\n`)
+    fs.writeFileSync(path.join(projectRoot, '.pi', 'settings.json'), `${JSON.stringify({ unrelatedSetting: true }, null, 2)}\n`)
+    fs.writeFileSync(path.join(projectRoot, 'AGENTS.md'), '<!-- OTHER-WORKFLOW:START -->\nunrelated block\n<!-- OTHER-WORKFLOW:END -->\n')
 
     const initialized = runInitializer(projectRoot, ['--platform', 'pi'])
 
     expect(initialized).toMatchObject({ status: 0, stderr: '' })
     expect(initialized.summary).not.toHaveProperty('legacyRootMigrated')
-    expect(fs.readFileSync(path.join(upstreamRoot, 'sentinel.txt'), 'utf8')).toBe('keep upstream state\n')
+    expect(fs.readFileSync(path.join(unrelatedRoot, 'sentinel.txt'), 'utf8')).toBe('keep unrelated state\n')
     expect(fs.readFileSync(path.join(projectRoot, '.moluoxixi', '.template-hashes.json'), 'utf8')).toContain('"old"')
-    expect(JSON.parse(fs.readFileSync(path.join(projectRoot, '.pi', 'settings.json'), 'utf8'))).toHaveProperty(`${legacyBrand}Setting`, true)
+    expect(JSON.parse(fs.readFileSync(path.join(projectRoot, '.pi', 'settings.json'), 'utf8'))).toHaveProperty('unrelatedSetting', true)
     const agents = fs.readFileSync(path.join(projectRoot, 'AGENTS.md'), 'utf8')
-    expect(agents).toContain(`<!-- ${upstreamUpper}:START -->`)
+    expect(agents).toContain('<!-- OTHER-WORKFLOW:START -->')
     expect(agents).toContain('<!-- MOLUOXIXI:START -->')
   })
 
@@ -821,7 +817,7 @@ describe('init-project skill', () => {
     expect(fs.existsSync(path.join(staged, 'scripts', 'init-project.mjs'))).toBe(true)
     expect(fs.existsSync(path.join(staged, 'references', 'platforms.md'))).toBe(true)
     expect(fs.existsSync(path.join(staged, 'references', 'asset-layout.md'))).toBe(true)
-    expect(fs.existsSync(path.join(installedRole, 'packages', 'cli', 'src', 'templates', 'trellis', 'workflow.md'))).toBe(true)
+    expect(fs.existsSync(path.join(installedRole, 'packages', 'cli', 'src', 'templates', 'moluoxixi', 'workflow.md'))).toBe(true)
     expect(fs.existsSync(path.join(installedRole, 'overlays'))).toBe(false)
     expect(fs.existsSync(path.join(installedRole, '.sync'))).toBe(false)
     expect(fs.existsSync(path.join(staged, 'assets', 'runtime', 'moluoxixi.mjs'))).toBe(true)
@@ -848,7 +844,7 @@ describe('init-project skill', () => {
     expect(fs.readFileSync(path.join(projectRoot, 'README.md'), 'utf8')).toContain('请使用 Moluoxixi 开始处理这个需求：<描述需求>')
     expect(fs.existsSync(path.join(projectRoot, '.agents', 'skills', 'start', 'SKILL.md'))).toBe(true)
     const channelLauncher = path.join(projectRoot, '.moluoxixi', 'runtime', 'moluoxixi.mjs')
-    expect(runRuntime(channelLauncher, ['--version'], projectRoot)).toMatchObject({ status: 0, stderr: '', stdout: '0.2.0\n' })
+    expect(runRuntime(channelLauncher, ['--version'], projectRoot)).toMatchObject({ status: 0, stderr: '', stdout: '0.3.0\n' })
     fs.rmSync(path.join(homeDir, 'roles'), { recursive: true, force: true })
     fs.rmSync(repository, { recursive: true, force: true })
     const projectRuntime = path.join(projectRoot, '.moluoxixi', 'runtime', 'moluoxixi.mjs')

@@ -37,13 +37,11 @@ interface RoleManifest {
 }
 
 const roleRoot = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..')
-const legacyBrand = ['tre', 'llis'].join('')
-const legacyProjectRoot = `.${legacyBrand}`
 const workspaceFolderPlaceholder = '$' + '{workspaceFolder}'
 const mattSkillsSource = 'https://github.com/mattpocock/skills.git'
 const mattSkillsRevision = '8b78b531ab965735c5dc74f6f7a219e1e37326df'
 
-const publishedPackageVersion = '0.6.18'
+const publishedPackageVersion = '0.6.19'
 const publishedRepository = 'https://github.com/moluoxixi/AIRules'
 
 const migratedRuntimePaths = [
@@ -53,9 +51,9 @@ const migratedRuntimePaths = [
 ]
 
 const runtimeIntegrity = {
-  bytes: 4749513,
+  bytes: 4777221,
   files: 644,
-  hash: 'd20ffa1e6430ca6355f2a04320396e1b845bb6d71e97d5ebb5a845d09f05519d',
+  hash: 'c53ccf47c02997e0b2deee97dbfd330dde4b0c2cc5b64ad4381aafe797f98795',
 }
 
 function sortPaths(paths: string[]): string[] {
@@ -138,7 +136,7 @@ function readRoleManifest(): RoleManifest {
   return document.toJS({ maxAliasCount: 0 }) as RoleManifest
 }
 
-describe('moluoxixi curated upstream role assets', () => {
+describe('moluoxixi finalized role assets', () => {
   it('keeps the role root limited to finalized distribution assets', () => {
     const distributedEntries = fs.readdirSync(roleRoot).filter(name => name !== '.sync')
     expect(sortPaths(distributedEntries)).toEqual(sortPaths([
@@ -149,6 +147,7 @@ describe('moluoxixi curated upstream role assets', () => {
       'package.json',
       'packages',
       'pnpm-workspace.yaml',
+      'registry',
       'role.yaml',
       'skills',
     ]))
@@ -165,7 +164,7 @@ describe('moluoxixi curated upstream role assets', () => {
   })
 
   it('keeps Reasonix in the project sub-agent context platform set', () => {
-    const taskStore = fs.readFileSync(resolveRolePath('packages/cli/src/templates/trellis/scripts/common/task_store.py'), 'utf8')
+    const taskStore = fs.readFileSync(resolveRolePath('packages/cli/src/templates/moluoxixi/scripts/common/task_store.py'), 'utf8')
     expect(taskStore).toContain('".reasonix"')
   })
 
@@ -174,40 +173,10 @@ describe('moluoxixi curated upstream role assets', () => {
     expect(fs.existsSync(resolveRolePath('skills/init-project/assets/project/optional'))).toBe(false)
   })
 
-  it('keeps the legacy brand only in the upstream package baseline and immutable provenance', () => {
-    const allFiles = collectFiles('.')
-    expect(allFiles.filter(relativePath =>
-      relativePath.toLowerCase().includes(legacyBrand)
-      && !relativePath.startsWith('packages/'),
-    )).toEqual([])
-
-    const provenanceFiles = new Set([
-      '__test__/init-project.test.ts',
-      '__test__/moluoxixi-source.test.ts',
-      '__test__/professional-agents.test.mjs',
-      '__test__/project-script-parity.test.ts',
-      '__test__/runtime-upstream.test.ts',
-      'skills/init-project/scripts/init-project.mjs',
-      'skills/init-project/scripts/plan.mjs',
-      'skills/init-project/scripts/workflow-project.mjs',
-      'skills/init-project/SKILL.md',
-      'skills/init-project/references/upstream-maintenance.md',
-    ])
-    for (const relativePath of allFiles) {
-      if (relativePath.startsWith('packages/'))
-        continue
-      const content = fs.readFileSync(resolveRolePath(relativePath), 'utf8')
-      if (!content.toLowerCase().includes(legacyBrand))
-        continue
-      expect(provenanceFiles.has(relativePath)).toBe(true)
-    }
-  })
-
   it.each([
     '.git',
     '.github',
     '.husky',
-    legacyProjectRoot,
     '.moluoxixi',
     '.agents/skills/contribute',
     '.claude/commands/moluoxixi/create-manifest.md',
@@ -252,7 +221,7 @@ describe('moluoxixi curated upstream role assets', () => {
         moluoxixi_runtime: 'skills/init-project/assets/runtime/moluoxixi.mjs',
       },
       role_id: 'moluoxixi',
-      role_version: '0.3.1',
+      role_version: '0.4.0',
     })
     expect(manifest.third_party).toEqual({
       productivity_skills: {
@@ -359,8 +328,7 @@ describe('moluoxixi curated upstream role assets', () => {
       name: '@moluoxixi/airules-moluoxixi-cli',
       version: publishedPackageVersion,
       bin: {
-        trellis: './bin/trellis.js',
-        tl: './bin/trellis.js',
+        moluoxixi: './bin/moluoxixi.js',
       },
       dependencies: {
         '@moluoxixi/airules-moluoxixi-core': 'workspace:*',
@@ -383,7 +351,7 @@ describe('moluoxixi curated upstream role assets', () => {
       },
     })
     expect(cli).not.toHaveProperty('private')
-    expect(cli.files).toEqual(['dist', 'bin/trellis.js'])
+    expect(cli.files).toEqual(['dist', 'bin/moluoxixi.js'])
     expect(workspace).toMatchObject({
       packageManager: 'pnpm@10.32.1',
       scripts: {
@@ -412,7 +380,6 @@ describe('moluoxixi curated upstream role assets', () => {
     for (const relativePath of runtimeFiles) {
       const content = fs.readFileSync(resolveRolePath(relativePath), 'utf8')
       expect(content).toContain('.moluoxixi')
-      expect(content).not.toContain(legacyProjectRoot)
     }
   })
 })

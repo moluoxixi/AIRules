@@ -2,16 +2,16 @@ import fs from "node:fs";
 import path from "node:path";
 
 import { DIR_NAMES, PATHS } from "../constants/paths.js";
-import { copyTrellisDir } from "../templates/extract.js";
+import { copyMoluoxixiDir } from "../templates/extract.js";
 
-// Import trellis templates (generic, not project-specific)
+// Import moluoxixi templates (generic, not project-specific)
 import {
   workflowMdTemplate,
   configYamlTemplate,
   gitignoreTemplate,
   gitattributesTemplate,
   getAllAgents,
-} from "../templates/trellis/index.js";
+} from "../templates/moluoxixi/index.js";
 
 // Import markdown templates
 import {
@@ -63,10 +63,10 @@ export interface WorkflowOptions {
   /** Package names that use remote templates (skip blank spec for these) */
   remoteSpecPackages?: Set<string>;
   /**
-   * Optional override for `.trellis/workflow.md` content. When omitted the
+   * Optional override for `.moluoxixi/workflow.md` content. When omitted the
    * bundled native template is written. Set by `init --workflow` (or
    * `--workflow-source`) after the resolver has fetched marketplace content.
-   * Caller is still responsible for removing the `.trellis/workflow.md` hash
+   * Caller is still responsible for removing the `.moluoxixi/workflow.md` hash
    * entry for non-native workflows so update.ts treats them as user-managed.
    */
   workflowMdOverride?: string;
@@ -85,7 +85,7 @@ const JOURNAL_MERGE_UNION_PATTERN = /journal-\*\.md\s+merge=union/;
  *
  * - No `.gitattributes` yet: write the bundled template directly.
  * - Existing file that already has a `journal-*.md merge=union` rule (user's
- *   own or from a previous `trellis init`/`update`): no-op, avoids duplicates.
+ *   own or from a previous `moluoxixi init`/`update`): no-op, avoids duplicates.
  * - Existing file without that rule: append the bundled template content.
  *
  * Intentionally does NOT go through the standard `writeFile` conflict-prompt
@@ -112,7 +112,7 @@ export function ensureGitattributes(cwd: string): void {
 /**
  * Create workflow structure based on project type
  *
- * This function creates the .trellis/ directory structure by:
+ * This function creates the .moluoxixi/ directory structure by:
  * 1. Copying scripts/ directory directly (dogfooding)
  * 2. Copying workflow.md and .gitignore (dogfooding)
  * 3. Creating workspace/ with index.md
@@ -132,11 +132,11 @@ export async function createWorkflowStructure(
   const remoteSpecPackages = options?.remoteSpecPackages;
   const workflowMd = options?.workflowMdOverride ?? workflowMdTemplate;
 
-  // Create base .trellis directory
+  // Create base .moluoxixi directory
   ensureDir(path.join(cwd, DIR_NAMES.WORKFLOW));
 
   // Copy scripts/ directory from templates
-  await copyTrellisDir("scripts", path.join(cwd, PATHS.SCRIPTS), {
+  await copyMoluoxixiDir("scripts", path.join(cwd, PATHS.SCRIPTS), {
     executable: true,
   });
 
@@ -163,10 +163,10 @@ export async function createWorkflowStructure(
   ensureGitattributes(cwd);
 
   // Dispatch channel runtime agent definitions. These are platform-agnostic
-  // Trellis runtime files consumed by `trellis channel spawn --agent <name>`
+  // Moluoxixi runtime files consumed by `moluoxixi channel spawn --agent <name>`
   // through `packages/cli/src/commands/channel/agent-loader.ts`. They are
   // dispatched on every init regardless of selected workflow because the user
-  // can switch to a channel-driven workflow at any time via `trellis workflow
+  // can switch to a channel-driven workflow at any time via `moluoxixi workflow
   // --template`.
   ensureDir(path.join(cwd, PATHS.AGENTS));
   for (const [agentFile, content] of getAllAgents()) {

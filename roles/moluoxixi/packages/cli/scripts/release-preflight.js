@@ -278,8 +278,8 @@ function verifyPublishMetadata() {
   const publicBinNames = Object.keys(cli.bin ?? {}).sort();
   const publicBins = Object.values(cli.bin ?? {});
   if (
-    JSON.stringify(publicBinNames) !== JSON.stringify(["tl", "trellis"]) ||
-    publicBins.some((entry) => entry !== "./bin/trellis.js")
+    JSON.stringify(publicBinNames) !== JSON.stringify(["moluoxixi"]) ||
+    publicBins.some((entry) => entry !== "./bin/moluoxixi.js")
   ) {
     fail(`${cli.name} must expose only the standalone CLI entry; role-local bins require the complete installed role.`);
   }
@@ -328,7 +328,7 @@ function verifyPackedPackages({ smoke = true } = {}) {
     for (const required of ["dist/index.js", "package.json"]) {
       if (!fs.existsSync(path.join(coreRoot, required))) fail(`packed core is missing ${required}.`);
     }
-    for (const required of ["dist/cli/index.js", "bin/trellis.js", "package.json"]) {
+    for (const required of ["dist/cli/index.js", "bin/moluoxixi.js", "package.json"]) {
       if (!fs.existsSync(path.join(cliRoot, required))) fail(`packed CLI is missing ${required}.`);
     }
     for (const roleOnly of ["bin/airules-moluoxixi.js", "bin/init-project.js"]) {
@@ -351,7 +351,7 @@ function verifyPackedPackages({ smoke = true } = {}) {
       "if (!channel || !mem) throw new Error('core subpath imports returned no module');",
     ].join(" ");
     execFileSync(process.execPath, ["--input-type=module", "-e", moduleProbe], { cwd: sandbox, stdio: "ignore" });
-    const cliBin = path.join("node_modules", ...v.cliName.split("/"), "bin", "trellis.js");
+    const cliBin = path.join("node_modules", ...v.cliName.split("/"), "bin", "moluoxixi.js");
     const version = execFileSync(process.execPath, [cliBin, "--version"], { cwd: sandbox, encoding: "utf-8" }).trim();
     if (version !== v.cliVersion) fail(`installed CLI reported ${version}, expected ${v.cliVersion}.`);
     console.log(`${GREEN}ok${RESET} sandbox installation resolves core ESM subpaths and the published CLI version.`);

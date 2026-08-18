@@ -1,12 +1,12 @@
-import type { TrellisTaskRecord } from "./schema.js";
+import type { MoluoxixiTaskRecord } from "./schema.js";
 
 /**
- * Coarse-grained Trellis task phase derived from task status.
+ * Coarse-grained Moluoxixi task phase derived from task status.
  *
- * Phase is a projection of {@link TrellisTaskRecord.status} only. There is
+ * Phase is a projection of {@link MoluoxixiTaskRecord.status} only. There is
  * no separate `current_phase` field stored on disk — `inferTaskPhase`
  * exists so consumers can render the workflow phase without depending on
- * `.trellis/workflow.md` parsing.
+ * `.moluoxixi/workflow.md` parsing.
  *
  * Mapping:
  *
@@ -18,7 +18,7 @@ import type { TrellisTaskRecord } from "./schema.js";
  *   completed | done    | completed
  *   <anything else>     | unknown
  */
-export type TrellisTaskPhase =
+export type MoluoxixiTaskPhase =
   | "plan"
   | "implement"
   | "review"
@@ -31,8 +31,8 @@ export type TrellisTaskPhase =
  * need to re-pluck `status` first.
  */
 export function inferTaskPhase(
-  recordOrStatus: TrellisTaskRecord | string | null | undefined,
-): TrellisTaskPhase {
+  recordOrStatus: MoluoxixiTaskRecord | string | null | undefined,
+): MoluoxixiTaskPhase {
   const status =
     typeof recordOrStatus === "string"
       ? recordOrStatus

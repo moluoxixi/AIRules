@@ -1,2 +1,4 @@
 # Local upstream maintenance workspace
 .sync/
+__pycache__/
+*.pyc

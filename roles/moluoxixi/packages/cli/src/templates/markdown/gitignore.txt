@@ -1,4 +1,4 @@
-# Trellis workflow gitignore
+# Moluoxixi workflow gitignore
 # Runtime files that should not be committed
 
 # Developer identity (local to each developer)

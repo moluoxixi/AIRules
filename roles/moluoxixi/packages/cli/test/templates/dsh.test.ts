@@ -7,33 +7,33 @@ describe("dsh collectDshTemplates", () => {
     const files = collectDshTemplates();
 
     // User-invocable entry points (no slash palette → delivered as skills)
-    expect(files.has(".dsh/skills/trellis-start/SKILL.md")).toBe(true);
-    expect(files.has(".dsh/skills/trellis-continue/SKILL.md")).toBe(true);
-    expect(files.has(".dsh/skills/trellis-finish-work/SKILL.md")).toBe(true);
+    expect(files.has(".dsh/skills/moluoxixi-start/SKILL.md")).toBe(true);
+    expect(files.has(".dsh/skills/moluoxixi-continue/SKILL.md")).toBe(true);
+    expect(files.has(".dsh/skills/moluoxixi-finish-work/SKILL.md")).toBe(true);
 
     // Platform-resolved placeholders: get_context.py calls carry --platform dsh
-    const start = files.get(".dsh/skills/trellis-start/SKILL.md");
+    const start = files.get(".dsh/skills/moluoxixi-start/SKILL.md");
     expect(start).toContain("--platform dsh");
-    expect(start).toContain("name: trellis-start");
+    expect(start).toContain("name: moluoxixi-start");
   });
 
-  it("renders CMD_REF as bare trellis-<name> skill references in entry skills", () => {
+  it("renders CMD_REF as bare moluoxixi-<name> skill references in entry skills", () => {
     const files = collectDshTemplates();
-    const finish = files.get(".dsh/skills/trellis-finish-work/SKILL.md");
-    // `{{CMD_REF:finish-work}}` → `` `trellis-finish-work` `` (dsh loads
+    const finish = files.get(".dsh/skills/moluoxixi-finish-work/SKILL.md");
+    // `{{CMD_REF:finish-work}}` → `` `moluoxixi-finish-work` `` (dsh loads
     // skills by name through its skill-loader tool)
-    expect(finish).toContain("`trellis-finish-work`");
+    expect(finish).toContain("`moluoxixi-finish-work`");
   });
 
   it("writes workflow + bundled skills to the shared .agents/skills/ root only", () => {
     const files = collectDshTemplates();
-    expect(files.has(".agents/skills/trellis-check/SKILL.md")).toBe(true);
-    expect(files.has(".agents/skills/trellis-before-dev/SKILL.md")).toBe(true);
-    expect(files.has(".agents/skills/trellis-meta/SKILL.md")).toBe(true);
+    expect(files.has(".agents/skills/moluoxixi-check/SKILL.md")).toBe(true);
+    expect(files.has(".agents/skills/moluoxixi-before-dev/SKILL.md")).toBe(true);
+    expect(files.has(".agents/skills/moluoxixi-meta/SKILL.md")).toBe(true);
     // Command-as-skill files stay dsh-private (Codex owns the shared
-    // trellis-start/continue/finish-work fallback copies).
-    expect(files.has(".agents/skills/trellis-start/SKILL.md")).toBe(false);
-    expect(files.has(".agents/skills/trellis-finish-work/SKILL.md")).toBe(
+    // moluoxixi-start/continue/finish-work fallback copies).
+    expect(files.has(".agents/skills/moluoxixi-start/SKILL.md")).toBe(false);
+    expect(files.has(".agents/skills/moluoxixi-finish-work/SKILL.md")).toBe(
       false,
     );
   });
