@@ -31,6 +31,7 @@
     "airules": "node bin/airules.js",
     "build": "tsc -p tsconfig.build.json",
     "build:moluoxixi-runtime": "node scripts/build-moluoxixi-runtime.mjs",
+    "verify:moluoxixi-identity": "node scripts/verify-moluoxixi-identity.mjs",
     "prebuild": "node scripts/clean-dist.mjs",
     "prepare": "husky",
     "prepack": "npm run build",

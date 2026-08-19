@@ -13,7 +13,8 @@
     "test:publish": "pnpm --filter @moluoxixi/airules-moluoxixi-core test:publish && pnpm --filter @moluoxixi/airules-moluoxixi-cli test:publish",
     "lint": "pnpm --filter @moluoxixi/airules-moluoxixi-core lint && pnpm --filter @moluoxixi/airules-moluoxixi-cli lint",
     "typecheck": "pnpm --filter @moluoxixi/airules-moluoxixi-core typecheck && pnpm --filter @moluoxixi/airules-moluoxixi-cli typecheck",
-    "verify:publish": "pnpm run test:publish && pnpm run build && node packages/cli/scripts/release-preflight.js verify-publish",
+    "verify:identity": "node ../../scripts/verify-moluoxixi-identity.mjs",
+    "verify:publish": "pnpm run test:publish && pnpm run build && pnpm run verify:identity && node packages/cli/scripts/release-preflight.js verify-publish",
     "publish:dry-run": "pnpm run verify:publish && pnpm --filter @moluoxixi/airules-moluoxixi-core publish --dry-run --no-git-checks --access public && pnpm --filter @moluoxixi/airules-moluoxixi-cli publish --dry-run --no-git-checks --access public"
   },
   "devDependencies": {

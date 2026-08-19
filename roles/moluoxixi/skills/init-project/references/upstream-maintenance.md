@@ -33,11 +33,16 @@ notes inside either worktree.
 1. Fast-forward AIRules and fetch the exact upstream commit.
 2. Create `rebuild/` from that commit and apply only the documented
    preservation contracts there, using local commits for review.
-3. Run the rebuild tests and publication gates.
+3. Run the rebuild tests and review the complete adaptation diff.
 4. Export only `rebuild/packages/core` and `rebuild/packages/cli` to the two
    manifest-declared finalized paths.
-5. Verify file contents, executable modes, package versions, and the export
-   tree/content hashes. Record the source commit and verification result under
+5. From the AIRules root, run `npm run verify:moluoxixi-identity`, then run the
+   publication gates and verify file contents, executable modes, package
+   versions, and the export tree/content hashes. The identity gate scans both
+   current Git-visible role files and the actual npm dry-run entry lists; it
+   does not modify either package tree. Use `--json` for machine-readable output
+   or `--report roles/moluoxixi/.sync/reports/<name>.json` to record a local
+   report. Record the source commit and verification result under
    `.sync/reports/` or `.sync/history/`.
 
 The export is a deliberate reviewed operation. No script may merge upstream
