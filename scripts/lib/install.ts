@@ -19,6 +19,7 @@ import {
 import os from 'node:os'
 import path from 'node:path'
 import { findHostConfig, resolveGlobalAgentSkillsPath, resolveHostPaths } from '../../constants/hosts.js'
+import { areSamePaths, canonicalPath, canonicalPathKey, isPathInside } from './canonical-path.js'
 import { buildLinkPlan } from './links.js'
 import { requireRoleName } from './role-assets.js'
 import { DEFAULT_ROLE, roleOverlayOrder } from './roles.js'
@@ -167,7 +168,7 @@ function setupCommandText(command: SetupCommand): string {
 }
 
 function rememberFlattenedTarget(targets: Map<string, string>, target: string, source: string) {
-  const targetKey = path.resolve(target).toLowerCase()
+  const targetKey = canonicalPathKey(target)
   const previousSource = targets.get(targetKey)
   if (previousSource && !isSamePath(previousSource, source)) {
     throw new Error(`Flattened skill target collision "${target}": ${previousSource} conflicts with ${source}`)
@@ -177,11 +178,7 @@ function rememberFlattenedTarget(targets: Map<string, string>, target: string, s
 }
 
 export function isSamePath(p1: string, p2: string): boolean {
-  if (!p1 || !p2)
-    return false
-  const n1 = path.resolve(p1).toLowerCase().replace(/\\/g, '/').replace(/\/$/, '')
-  const n2 = path.resolve(p2).toLowerCase().replace(/\\/g, '/').replace(/\/$/, '')
-  return n1 === n2
+  return areSamePaths(p1, p2)
 }
 
 function linkTypeForCurrentPlatform(): 'junction' | 'dir' {
@@ -296,12 +293,8 @@ export function syncFlattenedSkills(
         }
 
         const resolvedPath = realpathSync(targetPath)
-        const normalizedResolved = path.resolve(resolvedPath)
-        const normalizedMoluo = path.resolve(moluoHome)
-        const normalizedRepo = path.resolve(process.cwd()) // 仓库根目录
-
-        const isInternal = normalizedResolved.startsWith(normalizedMoluo)
-          || normalizedResolved.startsWith(normalizedRepo)
+        const isInternal = isPathInside(moluoHome, resolvedPath)
+          || isPathInside(process.cwd(), resolvedPath)
 
         // 如果该链接指向我们的项目，但不在当前技能集合中，则视为过时并移除
         if (isInternal && !currentSkills.has(entry.name)) {
@@ -353,8 +346,8 @@ export async function syncFirstPartySkillsToVendor(sourceRoot: string, moluoHome
       const previousSource = seenSkillNames.get(nameKey)
       if (
         previousSource
-        && path.resolve(previousSource.source) !== path.resolve(source)
-        && path.resolve(previousSource.root) === path.resolve(sourceSkillsDir)
+        && !isSamePath(previousSource.source, source)
+        && isSamePath(previousSource.root, sourceSkillsDir)
       ) {
         throw new Error(`First-party skill name collision "${name}": ${previousSource.source} conflicts with ${source}`)
       }
@@ -365,13 +358,13 @@ export async function syncFirstPartySkillsToVendor(sourceRoot: string, moluoHome
 
   const skillSources = [...seenSkillNames.values()].map(({ name, source }) => ({ name, source }))
   const currentSkillNames = new Set(skillSources.map(skill => skill.name))
-  const normalizedSourceSkillRoots = sourceSkillRoots.map(sourceSkillsDir => path.resolve(sourceSkillsDir))
+  const normalizedSourceSkillRoots = sourceSkillRoots.map(canonicalPath)
   const normalizedManagedSkillRoots = existsSync(rolesRoot)
     ? readdirSync(rolesRoot, { withFileTypes: true })
         .filter(entry => entry.isDirectory())
         .map(entry => path.join(rolesRoot, entry.name, 'skills'))
         .filter(existsSync)
-        .map(skillRoot => path.resolve(skillRoot))
+        .map(canonicalPath)
     : normalizedSourceSkillRoots
 
   for (const entry of readdirSync(vendorSkillsDir, { withFileTypes: true })) {
@@ -385,8 +378,8 @@ export async function syncFirstPartySkillsToVendor(sourceRoot: string, moluoHome
       continue
     }
 
-    const resolvedPath = path.resolve(realpathSync(targetPath))
-    if (normalizedManagedSkillRoots.some(sourceSkillsDir => resolvedPath.startsWith(sourceSkillsDir)) && !currentSkillNames.has(entry.name)) {
+    const resolvedPath = realpathSync(targetPath)
+    if (normalizedManagedSkillRoots.some(sourceSkillsDir => isPathInside(sourceSkillsDir, resolvedPath)) && !currentSkillNames.has(entry.name)) {
       removePath(targetPath)
     }
   }

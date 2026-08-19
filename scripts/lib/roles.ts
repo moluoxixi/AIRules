@@ -1,6 +1,7 @@
 import fs from 'node:fs'
 import path from 'node:path'
 import { pathToFileURL } from 'node:url'
+import { isPathInside } from './canonical-path.js'
 import { requireRoleName } from './role-assets.js'
 
 export const DEFAULT_ROLE = ''
@@ -149,8 +150,7 @@ function buildRolePaths(role: string, roleRoot: string): RolePaths {
 }
 
 function requireInsideRoot(root: string, target: string, field: string, rootLabel: string): void {
-  const relative = path.relative(root, target)
-  if (relative === '..' || relative.startsWith(`..${path.sep}`) || path.isAbsolute(relative)) {
+  if (!isPathInside(root, target)) {
     throw new Error(`AIRules ${field} resolves outside ${rootLabel}: ${target}`)
   }
 }

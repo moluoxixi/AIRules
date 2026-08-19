@@ -61,6 +61,24 @@ function writeRoleContract(homeDir: string, vendor: string, role: string): void 
 }
 
 describe('rebuildVendorAssets', () => {
+  it('accepts a home path whose ancestor resolves through a filesystem alias', async () => {
+    const { root } = createFixture()
+    const actualRoot = path.join(root, 'private', 'var')
+    const aliasRoot = path.join(root, 'var')
+    const homeDir = path.join(aliasRoot, 'home')
+    fs.mkdirSync(actualRoot, { recursive: true })
+    fs.symlinkSync(actualRoot, aliasRoot, process.platform === 'win32' ? 'junction' : 'dir')
+    writeFile(repoPath(homeDir, 'remote', 'skills', 'shared', 'SKILL.md'), '# remote\n')
+    const manifestPath = writeManifest(root, 'aliased-home', [
+      vendorDefinition('remote', [{ kind: 'skills', sourceBaseDir: 'skills', skills: ['shared'] }]),
+    ])
+
+    const inventory = await rebuildVendorAssets({ homeDir, role: 'alpha', manifestPath })
+
+    expect(inventory.skills).toEqual(['shared'])
+    expect(fs.readFileSync(path.join(homeDir, 'vendor', 'skills', 'shared', 'SKILL.md'), 'utf8')).toBe('# remote\n')
+  })
+
   it('ignores legacy local skills and stages only configured remote skills', async () => {
     const { root, homeDir } = createFixture()
     writeFile(repoPath(homeDir, 'remote', 'skills', 'shared', 'SKILL.md'), '# remote\n')

@@ -79,6 +79,18 @@ it('resolves only the selected role path and constants file', () => {
   })
 })
 
+it('resolves a repository reached through a filesystem alias', () => {
+  const repoRoot = createRepo()
+  const aliasRoot = `${repoRoot}-alias`
+  temporaryRoots.push(aliasRoot)
+  fs.symlinkSync(repoRoot, aliasRoot, platformDirectoryLinkType())
+
+  expect(requireRolePaths(aliasRoot, 'alpha')).toMatchObject({
+    role: 'alpha',
+    roleRoot: fs.realpathSync(path.join(repoRoot, 'roles', 'alpha')),
+  })
+})
+
 it('rejects a role path escape', () => {
   const repoRoot = createRepo()
 

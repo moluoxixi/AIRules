@@ -3,6 +3,7 @@ import fs from 'node:fs'
 import os from 'node:os'
 import path from 'node:path'
 import { parseDocument } from 'yaml'
+import { isPathInside } from './canonical-path.js'
 import { requireRoleName } from './role-assets.js'
 import { collectFlattenedSkillSources } from './skill-projection.js'
 import { loadVendorManifest } from './vendors.js'
@@ -52,11 +53,6 @@ function portablePath(value: string): string {
   return value.replace(/[\\/]+/gu, path.sep)
 }
 
-function isInsideRoot(root: string, target: string): boolean {
-  const relative = path.relative(root, target)
-  return relative === '' || (!relative.startsWith(`..${path.sep}`) && relative !== '..' && !path.isAbsolute(relative))
-}
-
 function requireSource(
   checkoutRoot: string,
   configuredPath: string,
@@ -64,7 +60,7 @@ function requireSource(
   vendorId: string,
 ): string {
   const requested = path.resolve(checkoutRoot, portablePath(configuredPath))
-  if (!isInsideRoot(checkoutRoot, requested)) {
+  if (!isPathInside(checkoutRoot, requested)) {
     throw new Error(`Vendor "${vendorId}" source resolves outside its checkout: ${configuredPath}`)
   }
   if (!fs.existsSync(requested)) {
@@ -72,7 +68,7 @@ function requireSource(
   }
 
   const resolved = fs.realpathSync(requested)
-  if (!isInsideRoot(checkoutRoot, resolved)) {
+  if (!isPathInside(checkoutRoot, resolved)) {
     throw new Error(`Vendor "${vendorId}" source resolves outside its checkout: ${configuredPath}`)
   }
 
@@ -92,7 +88,7 @@ function validateSourceTree(
   ancestors: Set<string>,
 ): void {
   const resolved = fs.realpathSync(source)
-  if (!isInsideRoot(checkoutRoot, resolved)) {
+  if (!isPathInside(checkoutRoot, resolved)) {
     throw new Error(`Vendor "${vendorId}" source symlink escapes outside its checkout: ${source}`)
   }
 
@@ -149,7 +145,7 @@ function validateRoleSourceTree(source: string, roleRoot: string, vendorId: stri
     throw new Error(`Vendor "${vendorId}" role source must not contain symbolic links: ${source}`)
   }
   const resolved = fs.realpathSync(source)
-  if (!isInsideRoot(roleRoot, resolved)) {
+  if (!isPathInside(roleRoot, resolved)) {
     throw new Error(`Vendor "${vendorId}" role source resolves outside the selected role: ${source}`)
   }
   if (stats.isFile()) {
@@ -237,7 +233,7 @@ function requireManagedTarget(homeDir: string, kind: VendorLink['kind'], configu
   const target = path.resolve(homeDir, portablePath(configuredTarget))
   const skillsRoot = path.join(vendorRoot, 'skills')
   const valid = (kind === 'skill' || kind === 'namespace-dir')
-    && isInsideRoot(skillsRoot, target)
+    && isPathInside(skillsRoot, target)
     && target !== skillsRoot
 
   if (!valid) {
@@ -334,7 +330,7 @@ function resolveRoleChild(
   }
 
   const resolved = fs.realpathSync(requested)
-  if (!isInsideRoot(roleRoot, resolved)) {
+  if (!isPathInside(roleRoot, resolved)) {
     throw new Error(`Role asset resolves outside the selected role: ${relativePath}`)
   }
   const stats = fs.statSync(resolved)
