@@ -1,0 +1,25 @@
+schema_version: 1
+role_id: trellis
+role_version: 0.3.0
+status: stable
+canonical_root: roles/trellis
+description: Installs Trellis, default coding MCP servers, native project initialization, and Matt Pocock productivity skills through AIRules.
+assets:
+  skills: skills
+  mcp: mcp
+distribution:
+  bootstrap_manifest: constants/skills.ts
+  full_role_path_required: true
+  npm_embedded_source: false
+entrypoints:
+  initialize_project_skill: init-project
+third_party:
+  upstream:
+    name: Trellis
+    source: https://github.com/mindfold-ai/Trellis.git
+    package: '@mindfoldhq/trellis@latest'
+  productivity_skills:
+    name: Matt Pocock Skills
+    source: https://github.com/mattpocock/skills.git
+    revision: 8b78b531ab965735c5dc74f6f7a219e1e37326df
+    category: skills/productivity
