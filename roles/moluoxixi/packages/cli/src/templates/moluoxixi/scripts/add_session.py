@@ -45,7 +45,7 @@ from common.log import Colors, colored
 from common.safe_commit import (
     print_gitignore_warning,
     safe_git_add,
-    safe_moluoxixi_paths_to_add,
+    safe_trellis_paths_to_add,
 )
 from common.tasks import load_task
 from common.types import TaskInfo
@@ -461,7 +461,7 @@ def _auto_commit_workspace(repo_root: Path) -> None:
     current = get_current_task(repo_root)
     if current:
         task_name = Path(current).name
-        paths = safe_moluoxixi_paths_to_add(repo_root, task_name=task_name)
+        paths = safe_trellis_paths_to_add(repo_root, task_name=task_name)
     else:
         # Current task unknown (0 or >=2 parallel sessions — exactly the
         # parallel-window case #303 is about). Do NOT fall back to the wide
@@ -470,7 +470,7 @@ def _auto_commit_workspace(repo_root: Path) -> None:
         # index and skip every task dir.
         paths = [
             p
-            for p in safe_moluoxixi_paths_to_add(repo_root, task_name=None)
+            for p in safe_trellis_paths_to_add(repo_root, task_name=None)
             if not p.startswith(f"{DIR_WORKFLOW}/{DIR_TASKS}/")
         ]
     if not paths:

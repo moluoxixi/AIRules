@@ -12,7 +12,7 @@
  * - `.snow/hooks/` — inject hooks (session / user / beforeSubAgentStart)
  * - `.snow/SNOW.md` — operator guide
  *
- * Modern Snow does NOT ship `.snow/sub-agents.moluoxixi.json` (legacy merge
+ * Modern Snow does NOT ship `.snow/sub-agents.trellis.json` (legacy merge
  * fragment for older hosts without project-agent discovery).
  *
  * hasHooks=true → filterCommands drops `start`; SessionStart injects context.
@@ -60,12 +60,12 @@ function collectSnowStaticFiles(): Map<string, string> {
   for (const hook of getAllHooks()) {
     files.set(`.snow/hooks/${hook.targetPath}`, hook.content);
   }
-  files.set(".snow/SNOW.md", replacePythonCommandLiterals(getSnowGuide()));
+  files.set(".snow/SNOW.md", getSnowGuide());
   return files;
 }
 
 /**
- * The Snow CLI file set — written at init and diffed by `moluoxixi update`.
+ * The Snow CLI file set — written at init and diffed by `trellis update`.
  */
 export function collectSnowTemplates(): Map<string, string> {
   const config = AI_TOOLS.snow;

@@ -177,7 +177,7 @@ class CLIAdapter:
 
         Args:
             project_root: Project root directory
-            *parts: Additional path parts (e.g., 'moluoxixi', 'finish-work.md')
+            *parts: Additional path parts (e.g., 'trellis', 'finish-work.md')
 
         Returns:
             Path to commands directory or file
@@ -188,13 +188,13 @@ class CLIAdapter:
             Devin uses workflow directory: .devin/workflows/moluoxixi-<name>.md
             Copilot uses prompt files: .github/prompts/<name>.prompt.md
             Pi uses prompt templates: .pi/prompts/moluoxixi-<name>.md
-            Claude/OpenCode use subdirectory: .claude/commands/moluoxixi/<name>.md
+            Claude/OpenCode use subdirectory: .claude/commands/trellis/<name>.md
         """
         if self.platform == "pi":
             prompts_dir = self.get_config_dir(project_root) / "prompts"
             if not parts:
                 return prompts_dir
-            if len(parts) >= 2 and parts[0] == "moluoxixi":
+            if len(parts) >= 2 and parts[0] == "trellis":
                 filename = parts[-1]
                 if filename.endswith(".md"):
                     filename = filename[:-3]
@@ -205,7 +205,7 @@ class CLIAdapter:
             commands_dir = self.get_config_dir(project_root) / "commands"
             if not parts:
                 return commands_dir
-            if len(parts) >= 2 and parts[0] == "moluoxixi":
+            if len(parts) >= 2 and parts[0] == "trellis":
                 filename = parts[-1]
                 if filename.endswith(".md"):
                     filename = filename[:-3]
@@ -217,7 +217,7 @@ class CLIAdapter:
             skills_dir = self.get_config_dir(project_root) / "skills"
             if not parts:
                 return skills_dir
-            if len(parts) >= 2 and parts[0] == "moluoxixi":
+            if len(parts) >= 2 and parts[0] == "trellis":
                 filename = parts[-1]
                 if filename.endswith(".md"):
                     filename = filename[:-3]
@@ -228,7 +228,7 @@ class CLIAdapter:
             workflow_dir = self.get_config_dir(project_root) / "workflows"
             if not parts:
                 return workflow_dir
-            if len(parts) >= 2 and parts[0] == "moluoxixi":
+            if len(parts) >= 2 and parts[0] == "trellis":
                 filename = parts[-1]
                 return workflow_dir / f"moluoxixi-{filename}"
             return workflow_dir / Path(*parts)
@@ -237,7 +237,7 @@ class CLIAdapter:
             workflow_dir = self.get_config_dir(project_root) / "workflows"
             if not parts:
                 return workflow_dir
-            if len(parts) >= 2 and parts[0] == "moluoxixi":
+            if len(parts) >= 2 and parts[0] == "trellis":
                 filename = parts[-1]
                 return workflow_dir / filename
             return workflow_dir / Path(*parts)
@@ -246,7 +246,7 @@ class CLIAdapter:
             prompts_dir = project_root / ".github" / "prompts"
             if not parts:
                 return prompts_dir
-            if len(parts) >= 2 and parts[0] == "moluoxixi":
+            if len(parts) >= 2 and parts[0] == "trellis":
                 filename = parts[-1]
                 if filename.endswith(".md"):
                     filename = filename[:-3]
@@ -257,8 +257,8 @@ class CLIAdapter:
             return self.get_config_dir(project_root) / "commands"
 
         # Cursor uses prefix naming instead of subdirectory
-        if self.platform == "cursor" and len(parts) >= 2 and parts[0] == "moluoxixi":
-            # Convert moluoxixi/<name>.md to moluoxixi-<name>.md
+        if self.platform == "cursor" and len(parts) >= 2 and parts[0] == "trellis":
+            # Convert trellis/<name>.md to moluoxixi-<name>.md
             filename = parts[-1]
             return (
                 self.get_config_dir(project_root) / "commands" / f"moluoxixi-{filename}"
@@ -266,8 +266,8 @@ class CLIAdapter:
 
         return self.get_config_dir(project_root) / "commands" / Path(*parts)
 
-    def get_moluoxixi_command_path(self, name: str) -> str:
-        """Get relative path to a moluoxixi command file.
+    def get_trellis_command_path(self, name: str) -> str:
+        """Get relative path to a trellis command file.
 
         Args:
             name: Command name without extension (e.g., 'finish-work', 'check')
@@ -279,11 +279,11 @@ class CLIAdapter:
             Cursor: .cursor/commands/moluoxixi-<name>.md
             Codex: .agents/skills/moluoxixi-<name>/SKILL.md
             Kiro: .kiro/skills/moluoxixi-<name>/SKILL.md
-            Gemini: .gemini/commands/moluoxixi/<name>.toml
+            Gemini: .gemini/commands/trellis/<name>.toml
             Antigravity: .agent/workflows/<name>.md
             Devin: .devin/workflows/moluoxixi-<name>.md
             Pi: .pi/prompts/moluoxixi-<name>.md
-            Others: .{platform}/commands/moluoxixi/<name>.md
+            Others: .{platform}/commands/trellis/<name>.md
         """
         if self.platform == "cursor":
             return f".cursor/commands/moluoxixi-{name}.md"
@@ -294,7 +294,7 @@ class CLIAdapter:
         elif self.platform == "kiro":
             return f".kiro/skills/moluoxixi-{name}/SKILL.md"
         elif self.platform == "gemini":
-            return f".gemini/commands/moluoxixi/{name}.toml"
+            return f".gemini/commands/trellis/{name}.toml"
         elif self.platform == "antigravity":
             return f".agent/workflows/{name}.md"
         elif self.platform == "devin":
@@ -304,7 +304,7 @@ class CLIAdapter:
         elif self.platform == "copilot":
             return f".github/prompts/{name}.prompt.md"
         elif self.platform == "droid":
-            return f".factory/commands/moluoxixi/{name}.md"
+            return f".factory/commands/trellis/{name}.md"
         elif self.platform == "pi":
             return f".pi/prompts/moluoxixi-{name}.md"
         elif self.platform in ("omp", "grok"):
@@ -312,7 +312,7 @@ class CLIAdapter:
         elif self.platform == "kimi":
             return f".kimi-code/skills/moluoxixi-{name}/SKILL.md"
         else:
-            return f"{self.config_dir_name}/commands/moluoxixi/{name}.md"
+            return f"{self.config_dir_name}/commands/trellis/{name}.md"
 
     # =========================================================================
     # Environment Variables
@@ -773,7 +773,7 @@ def detect_platform(project_root: Path) -> Platform:
     """Auto-detect platform based on existing config directories.
 
     Detection order:
-    1. MOLUOXIXI_PLATFORM environment variable (if set)
+    1. TRELLIS_PLATFORM environment variable (if set)
     2. .opencode directory exists → opencode
     3. .iflow directory exists → iflow
     4. .cursor directory exists (without .claude) → cursor
@@ -800,7 +800,7 @@ def detect_platform(project_root: Path) -> Platform:
     import os
 
     # Check environment variable first
-    env_platform = os.environ.get("MOLUOXIXI_PLATFORM", "").lower()
+    env_platform = os.environ.get("TRELLIS_PLATFORM", "").lower()
     # Deprecated alias: Windsurf was renamed to Devin.
     if env_platform == "windsurf":
         env_platform = "devin"
@@ -871,7 +871,7 @@ def detect_platform(project_root: Path) -> Platform:
 
     # Check for Devin workflow directory only when no other platform config
     # exists. `.windsurf/workflows` is the legacy pre-rename path (still detected
-    # as devin for back-compat until users migrate via `moluoxixi update --migrate`).
+    # as devin for back-compat until users migrate via `trellis update --migrate`).
     if (
         (project_root / ".devin" / "workflows").is_dir()
         or (project_root / ".windsurf" / "workflows").is_dir()

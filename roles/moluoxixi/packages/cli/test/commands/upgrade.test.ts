@@ -36,12 +36,12 @@ describe("upgrade command", () => {
       buildUpgradeCommand({ tag: "beta" }, "0.5.12", "darwin"),
     ).toMatchObject({
       command: "npm",
-      args: ["install", "-g", "@moluoxixi/airules-moluoxixi-cli@beta"],
+      args: ["install", "-g", "@moluoxixi/airules-moluoxixi@beta"],
       spawnOptions: { stdio: "inherit", shell: false },
-      displayCommand: "npm install -g @moluoxixi/airules-moluoxixi-cli@beta",
-      target: "@moluoxixi/airules-moluoxixi-cli@beta",
+      displayCommand: "npm install -g @moluoxixi/airules-moluoxixi@beta",
+      target: "@moluoxixi/airules-moluoxixi@beta",
       tag: "beta",
-      binaryCheckCommand: "which moluoxixi",
+      binaryCheckCommand: "which trellis",
     });
   });
 
@@ -50,17 +50,12 @@ describe("upgrade command", () => {
       buildUpgradeCommand({ tag: "beta" }, "0.5.12", "win32"),
     ).toMatchObject({
       command: "cmd.exe",
-      args: [
-        "/d",
-        "/s",
-        "/c",
-        "npm install -g @moluoxixi/airules-moluoxixi-cli@beta",
-      ],
+      args: ["/d", "/s", "/c", "npm install -g @moluoxixi/airules-moluoxixi@beta"],
       spawnOptions: { stdio: "inherit", shell: false },
-      displayCommand: "npm install -g @moluoxixi/airules-moluoxixi-cli@beta",
-      target: "@moluoxixi/airules-moluoxixi-cli@beta",
+      displayCommand: "npm install -g @moluoxixi/airules-moluoxixi@beta",
+      target: "@moluoxixi/airules-moluoxixi@beta",
       tag: "beta",
-      binaryCheckCommand: "where moluoxixi",
+      binaryCheckCommand: "where trellis",
     });
   });
 
@@ -72,9 +67,7 @@ describe("upgrade command", () => {
 
     expect(runner).not.toHaveBeenCalled();
     expect(log).toHaveBeenCalledWith(
-      expect.stringContaining(
-        "Run: npm install -g @moluoxixi/airules-moluoxixi-cli@latest",
-      ),
+      expect.stringContaining("Run: npm install -g @moluoxixi/airules-moluoxixi@latest"),
     );
 
     log.mockRestore();
@@ -86,22 +79,15 @@ describe("upgrade command", () => {
 
     await upgrade({ tag: "latest" }, runner);
 
-    const expectedCommand = buildUpgradeCommand(
-      { tag: "latest" },
-      "0.6.15",
-      process.platform,
-    );
     expect(runner).toHaveBeenCalledWith(
-      expectedCommand.command,
-      expectedCommand.args,
-      expectedCommand.spawnOptions,
+      "npm",
+      ["install", "-g", "@moluoxixi/airules-moluoxixi@latest"],
+      { stdio: "inherit", shell: false },
     );
     expect(log).toHaveBeenCalledWith(
-      expect.stringContaining("moluoxixi --version"),
+      expect.stringContaining("trellis --version"),
     );
-    expect(log).toHaveBeenCalledWith(
-      expect.stringContaining(expectedCommand.binaryCheckCommand),
-    );
+    expect(log).toHaveBeenCalledWith(expect.stringContaining("which trellis"));
 
     log.mockRestore();
   });
@@ -111,7 +97,7 @@ describe("upgrade command", () => {
     const runner = vi.fn(() => ({ status: 1, signal: null }));
 
     await expect(upgrade({ tag: "latest" }, runner)).rejects.toThrow(
-      /npm install failed with exit code 1\.[\s\S]*Troubleshooting:[\s\S]*Manual command: npm install -g @moluoxixi\/airules-moluoxixi-cli@latest[\s\S]*npm config get prefix[\s\S]*(?:which|where) moluoxixi/,
+      /npm install failed with exit code 1\.[\s\S]*Troubleshooting:[\s\S]*Manual command: npm install -g @mindfoldhq\/trellis@latest[\s\S]*npm config get prefix[\s\S]*which trellis/,
     );
 
     log.mockRestore();

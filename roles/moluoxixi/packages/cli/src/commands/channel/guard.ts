@@ -21,7 +21,9 @@ import {
   reduceWorkerRegistry,
   type ChannelEvent,
   type WorkerState,
-} from "@moluoxixi/airules-moluoxixi-core/channel";
+} from "@mindfoldhq/moluoxixi-core/channel";
+
+import { DIR_NAMES } from "../../constants/paths.js";
 
 import {
   channelDir,
@@ -33,8 +35,6 @@ import {
 } from "./store/paths.js";
 import { parseDuration } from "./wait.js";
 
-const WORKFLOW_DIR = ".moluoxixi";
-
 /** Built-in default idle-cleanup TTL for spawned workers (5 minutes). */
 export const DEFAULT_IDLE_TTL_MS = 5 * 60 * 1000;
 
@@ -42,10 +42,10 @@ export const DEFAULT_IDLE_TTL_MS = 5 * 60 * 1000;
 export const DEFAULT_MAX_LIVE_WORKERS = 6;
 
 /** Env var override for the idle-cleanup TTL. */
-export const ENV_IDLE_TIMEOUT = "MOLUOXIXI_CHANNEL_WORKER_IDLE_TIMEOUT";
+export const ENV_IDLE_TIMEOUT = "TRELLIS_CHANNEL_WORKER_IDLE_TIMEOUT";
 
 /** Env var override for the live-worker budget. */
-export const ENV_MAX_LIVE_WORKERS = "MOLUOXIXI_CHANNEL_MAX_LIVE_WORKERS";
+export const ENV_MAX_LIVE_WORKERS = "TRELLIS_CHANNEL_MAX_LIVE_WORKERS";
 
 export interface WorkerGuardConfig {
   /** Idle-cleanup TTL in ms. `0` disables idle cleanup for new spawns. */
@@ -69,7 +69,7 @@ export interface ResolveGuardOptions {
  * Resolve the effective guard policy. Precedence:
  *   1. CLI flag (`flag*Ms` / `flagMaxLiveWorkers`)
  *   2. environment variable
- *   3. `.moluoxixi/config.yaml` `channel.worker_guard`
+ *   3. `.trellis/config.yaml` `channel.worker_guard`
  *   4. built-in default constant
  */
 export function resolveWorkerGuardConfig(
@@ -153,14 +153,14 @@ interface ProjectGuardConfig {
 }
 
 /**
- * Parse the `channel.worker_guard` section out of `.moluoxixi/config.yaml`.
+ * Parse the `channel.worker_guard` section out of `.trellis/config.yaml`.
  * Mirrors the lightweight line-scanner used elsewhere in update.ts so we
  * don't pull in a YAML dependency just for this two-field section.
  */
 export function loadWorkerGuardConfig(
   cwd: string,
 ): ProjectGuardConfig | undefined {
-  const configPath = path.join(cwd, WORKFLOW_DIR, "config.yaml");
+  const configPath = path.join(cwd, DIR_NAMES.WORKFLOW, "config.yaml");
   if (!fs.existsSync(configPath)) return undefined;
   let content: string;
   try {
@@ -640,10 +640,10 @@ export function formatBudgetOverflowError(args: {
     .join("\n");
   const hint = [
     "Free a slot before spawning, e.g.:",
-    `  moluoxixi channel kill <channel> --as <worker>`,
+    `  trellis channel kill <channel> --as <worker>`,
     "Or override per spawn:",
-    `  moluoxixi channel spawn ... --max-live-workers ${live.length + 1}`,
-    "Or raise the default in .moluoxixi/config.yaml under channel.worker_guard.max_live_workers.",
+    `  trellis channel spawn ... --max-live-workers ${live.length + 1}`,
+    "Or raise the default in .trellis/config.yaml under channel.worker_guard.max_live_workers.",
   ].join("\n");
   return [header, rows, hint].join("\n");
 }

@@ -3,7 +3,7 @@ import fs from "node:fs";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
 
-import type { InboxPolicy } from "@moluoxixi/airules-moluoxixi-core/channel";
+import type { InboxPolicy } from "@mindfoldhq/moluoxixi-core/channel";
 
 import { loadAgent } from "./agent-loader.js";
 import type { CodexSandboxMode } from "./adapters/codex.js";
@@ -45,7 +45,7 @@ export interface SpawnOptions {
   jsonls?: string[];
   scope?: string;
   /** Identity recorded as the `spawned` event author. Defaults to
-   *  the calling worker (`MOLUOXIXI_CHANNEL_AS` env) or "main". */
+   *  the calling worker (`TRELLIS_CHANNEL_AS` env) or "main". */
   by?: string;
   /** Worker inbox delivery policy (default `explicitOnly`). */
   inboxPolicy?: InboxPolicy;
@@ -128,7 +128,7 @@ function buildSystemPrompt(
   context: string,
 ): string {
   const protocol = [
-    "[MOLUOXIXI CHANNEL PROTOCOL — placeholder]",
+    "[TRELLIS CHANNEL PROTOCOL — placeholder]",
     `You are agent "${safeIdentifier(workerName)}" participating in the channel "${safeIdentifier(channelName)}".`,
     "Other agents (humans and AIs) may also be in this channel.",
     "Messages addressed to you arrive as ordinary user turns.",
@@ -251,9 +251,9 @@ async function spawnLocked(
 
   const spawnedBy =
     opts.by ??
-    (typeof process.env.MOLUOXIXI_CHANNEL_AS === "string" &&
-    process.env.MOLUOXIXI_CHANNEL_AS.length > 0
-      ? process.env.MOLUOXIXI_CHANNEL_AS
+    (typeof process.env.TRELLIS_CHANNEL_AS === "string" &&
+    process.env.TRELLIS_CHANNEL_AS.length > 0
+      ? process.env.TRELLIS_CHANNEL_AS
       : "main");
 
   const configPath = writeSupervisorConfig(
@@ -316,7 +316,7 @@ async function spawnLocked(
       // regardless of where the supervisor's process.cwd() ends up.
       env: {
         ...process.env,
-        MOLUOXIXI_CHANNEL_PROJECT: project,
+        TRELLIS_CHANNEL_PROJECT: project,
       },
     },
   );
@@ -376,11 +376,9 @@ function processAlive(pid: number): boolean {
 }
 
 function resolveCliEntry(): string {
+  // When running from the built bundle, import.meta.url points at
+  // dist/commands/channel/spawn.js. The CLI entry is dist/cli/index.js.
   const here = fileURLToPath(import.meta.url);
-  if (path.basename(here) === "channel-mem.mjs") return here;
-
-  // In the complete package build this module lives under dist/commands;
-  // supervisors must re-enter the full CLI entry rather than this module.
   const distRoot = path.resolve(path.dirname(here), "..", "..");
   return path.join(distRoot, "cli", "index.js");
 }

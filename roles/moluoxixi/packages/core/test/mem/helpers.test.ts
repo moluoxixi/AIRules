@@ -3,7 +3,7 @@
  *
  * These helpers don't touch the filesystem; strings / objects in, strings /
  * objects out. Migrated from the CLI `mem-helpers` suite when the logic moved
- * into `@moluoxixi/airules-moluoxixi-core/mem`.
+ * into `@mindfoldhq/moluoxixi-core/mem`.
  */
 
 import { describe, it, expect } from "vitest";

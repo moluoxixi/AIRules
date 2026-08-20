@@ -1,6 +1,6 @@
 # Local Moluoxixi Architecture Overview
 
-`moluoxixi-meta` is for user projects that have already run `moluoxixi init`. The user's machine usually has only the npm-installed `moluoxixi` command plus the Moluoxixi files generated inside the project; it may not have the Moluoxixi CLI source code.
+`moluoxixi-meta` is for user projects that have already run `trellis init`. The user's machine usually has only the npm-installed `trellis` command plus the Moluoxixi files generated inside the project; it may not have the Moluoxixi CLI source code.
 
 Therefore, when an AI uses this skill, the default customization target is local files inside the user project:
 

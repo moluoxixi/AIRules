@@ -18,53 +18,6 @@ The acknowledgment must not alter the language used for the remainder of the res
 This notice is one-shot: do not repeat it after the first visible assistant reply in this session.
 </first-reply-notice>`
 
-function buildFirstReplyNotice(updateHint) {
-  if (!updateHint) return FIRST_REPLY_NOTICE
-  return FIRST_REPLY_NOTICE.replace(
-    "This notice is one-shot:",
-    `Also relay this Moluoxixi maintenance notice on its own line in that same reply: ${updateHint}\nThis notice is one-shot:`,
-  )
-}
-
-function resolveUpdateHint(directory, contextKey = null) {
-  const scriptsDir = join(directory, ".moluoxixi", "scripts")
-  const sessionContextPath = join(scriptsDir, "common", "session_context.py")
-  if (!existsSync(sessionContextPath)) return null
-
-  const probe = [
-    "import sys",
-    "from pathlib import Path",
-    "sys.path.insert(0, sys.argv[1])",
-    "from common.session_context import get_update_hint",
-    "print(get_update_hint(Path(sys.argv[2]), sys.argv[3] or None) or '')",
-  ].join("\n")
-
-  try {
-    const output = execFileSync(
-      PYTHON_CMD,
-      ["-c", probe, scriptsDir, directory, contextKey || ""],
-      {
-        cwd: directory,
-        timeout: 5000,
-        encoding: "utf-8",
-        stdio: ["pipe", "pipe", "pipe"],
-        env: {
-          ...process.env,
-          ...(contextKey ? { MOLUOXIXI_CONTEXT_ID: contextKey } : {}),
-        },
-      },
-    )
-    return output.trim() || null
-  } catch (error) {
-    debugLog(
-      "session",
-      "resolveUpdateHint error:",
-      error instanceof Error ? error.message : String(error),
-    )
-    return null
-  }
-}
-
 function hasCuratedJsonlEntry(jsonlPath) {
   try {
     const content = readFileSync(jsonlPath, "utf-8")
@@ -118,7 +71,7 @@ function getTaskStatus(ctx, platformInput = null) {
   const taskStatus = taskData.status || "unknown"
 
   if (taskStatus === "completed") {
-    return `Status: COMPLETED\nTask: ${taskTitle}\nNext-Action: Run /moluoxixi:finish-work. If the working tree is dirty, return to Phase 3.4 first.`
+    return `Status: COMPLETED\nTask: ${taskTitle}\nNext-Action: Run /trellis:finish-work. If the working tree is dirty, return to Phase 3.4 first.`
   }
 
   const hasPrd = existsSync(join(taskDir, "prd.md"))
@@ -135,7 +88,7 @@ function getTaskStatus(ctx, platformInput = null) {
     (!existsSync(checkJsonl) || hasCuratedJsonlEntry(checkJsonl))
 
   if (taskStatus === "planning" && !hasPrd) {
-    return `Status: PLANNING\nTask: ${taskTitle}\nPresent: ${presentLine}\nNext-Action: Load brainstorm and write prd.md. Stay in planning.`
+    return `Status: PLANNING\nTask: ${taskTitle}\nPresent: ${presentLine}\nNext-Action: Load moluoxixi-brainstorm and write prd.md. Stay in planning.`
   }
 
   if (taskStatus === "planning") {
@@ -177,7 +130,7 @@ function loadMoluoxixiConfig(directory, contextKey = null) {
       stdio: ["pipe", "pipe", "pipe"],
       env: {
         ...process.env,
-        ...(contextKey ? { MOLUOXIXI_CONTEXT_ID: contextKey } : {}),
+        ...(contextKey ? { TRELLIS_CONTEXT_ID: contextKey } : {}),
       },
     })
     const data = JSON.parse(output)
@@ -425,7 +378,7 @@ export function buildSessionContext(ctx, platformInput = null) {
   parts.push(`<session-context>
 Moluoxixi compact SessionStart context. Use it to orient the session; load details on demand.
 </session-context>`)
-  parts.push(buildFirstReplyNotice(resolveUpdateHint(directory, contextKey)))
+  parts.push(FIRST_REPLY_NOTICE)
 
   const legacyWarning = checkLegacySpec(directory, config)
   if (legacyWarning) {
@@ -508,12 +461,12 @@ function getMoluoxixiMetadata(metadata) {
     return {}
   }
 
-  const moluoxixi = metadata.moluoxixi
-  if (!moluoxixi || typeof moluoxixi !== "object") {
+  const trellis = metadata.moluoxixi
+  if (!trellis || typeof trellis !== "object") {
     return {}
   }
 
-  return moluoxixi
+  return trellis
 }
 
 function markPartAsSessionStart(part) {
@@ -522,7 +475,7 @@ function markPartAsSessionStart(part) {
     : {}
   part.metadata = {
     ...metadata,
-    moluoxixi: {
+    trellis: {
       ...getMoluoxixiMetadata(metadata),
       sessionStart: true,
     },

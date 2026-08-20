@@ -22,8 +22,8 @@ describe("DIR_NAMES", () => {
     expect(DIR_NAMES).toHaveProperty("SCRIPTS");
   });
 
-  it("WORKFLOW is .moluoxixi", () => {
-    expect(DIR_NAMES.WORKFLOW).toBe(".moluoxixi");
+  it("WORKFLOW is .trellis", () => {
+    expect(DIR_NAMES.WORKFLOW).toBe(".trellis");
   });
 
   it("all values are non-empty strings", () => {
@@ -118,15 +118,15 @@ describe("PATHS", () => {
 
 describe("getWorkspaceDir", () => {
   it("returns correct path for developer name", () => {
-    expect(getWorkspaceDir("john")).toBe(".moluoxixi/workspace/john");
+    expect(getWorkspaceDir("john")).toBe(".trellis/workspace/john");
   });
 
   it("handles hyphenated names", () => {
-    expect(getWorkspaceDir("john-doe")).toBe(".moluoxixi/workspace/john-doe");
+    expect(getWorkspaceDir("john-doe")).toBe(".trellis/workspace/john-doe");
   });
 
   it("handles empty string", () => {
-    expect(getWorkspaceDir("")).toBe(".moluoxixi/workspace/");
+    expect(getWorkspaceDir("")).toBe(".trellis/workspace/");
   });
 });
 
@@ -136,15 +136,15 @@ describe("getWorkspaceDir", () => {
 
 describe("getTaskDir", () => {
   it("returns correct path for task name", () => {
-    expect(getTaskDir("01-21-my-task")).toBe(".moluoxixi/tasks/01-21-my-task");
+    expect(getTaskDir("01-21-my-task")).toBe(".trellis/tasks/01-21-my-task");
   });
 
   it("handles nested-looking names", () => {
-    expect(getTaskDir("sub/task")).toBe(".moluoxixi/tasks/sub/task");
+    expect(getTaskDir("sub/task")).toBe(".trellis/tasks/sub/task");
   });
 
   it("handles empty string", () => {
-    expect(getTaskDir("")).toBe(".moluoxixi/tasks/");
+    expect(getTaskDir("")).toBe(".trellis/tasks/");
   });
 });
 
@@ -154,7 +154,7 @@ describe("getTaskDir", () => {
 
 describe("getArchiveDir", () => {
   it("returns correct archive path", () => {
-    expect(getArchiveDir()).toBe(".moluoxixi/tasks/archive");
+    expect(getArchiveDir()).toBe(".trellis/tasks/archive");
   });
 
   it("is under PATHS.TASKS", () => {

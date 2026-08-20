@@ -29,6 +29,16 @@ export const vendors: VendorRepo[] = [
         kind: 'role-assets',
         sourceDir: 'roles/trellis',
       },
+      {
+        kind: 'namespace',
+        sourceDir: 'skills/common',
+        output: 'common',
+      },
+      {
+        kind: 'mcp',
+        sourceFile: 'mcps/code/mcps.json',
+        output: 'mcps/code/mcp.json',
+      },
     ],
   },
   {

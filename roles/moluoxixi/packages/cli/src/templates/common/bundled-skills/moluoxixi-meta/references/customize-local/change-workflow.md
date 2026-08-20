@@ -43,9 +43,9 @@ If the formal Phase 1 flow also needs to change, synchronize the Phase 1 section
 
 If the user wants only one platform to avoid sub-agents, first confirm whether that platform has a separate group in the workflow. Then change Phase 2 routing for that platform group instead of deleting all `moluoxixi-implement` / `moluoxixi-check` instructions across platforms.
 
-## `/moluoxixi:continue` Route Table
+## `/trellis:continue` Route Table
 
-`/moluoxixi:continue` resumes a task by deciding which phase step to load next. The decision combines `task.json.status` with the presence of artifacts inside the task directory. The mapping is fixed in the command itself; forks that add custom statuses must extend both the workflow.md tag block and this table.
+`/trellis:continue` resumes a task by deciding which phase step to load next. The decision combines `task.json.status` with the presence of artifacts inside the task directory. The mapping is fixed in the command itself; forks that add custom statuses must extend both the workflow.md tag block and this table.
 
 | `status` | Artifact state | Resume at |
 | --- | --- | --- |
@@ -56,9 +56,9 @@ If the user wants only one platform to avoid sub-agents, first confirm whether t
 | `in_progress` | no implementation in conversation history | Phase 2.1 (`moluoxixi-implement`) |
 | `in_progress` | implementation done, no `moluoxixi-check` run | Phase 2.2 (`moluoxixi-check`) |
 | `in_progress` | check passed | Phase 3.3 (spec update) → 3.4 (commit) |
-| `completed` | task is still in active tree | Phase 3.5 (run `/moluoxixi:finish-work` to archive) |
+| `completed` | task is still in active tree | Phase 3.5 (run `/trellis:finish-work` to archive) |
 
-When you add a custom status (e.g. `in-review`), add a `[workflow-state:in-review]` block in `.moluoxixi/workflow.md` for the per-turn breadcrumb AND extend this route table — usually by editing the `/moluoxixi:continue` command file (`.{platform}/commands/moluoxixi/continue.md` or equivalent) to add a row that decides where to resume from. Without the route entry, `/moluoxixi:continue` will fall through to a default branch and the user will not land on the step you intended.
+When you add a custom status (e.g. `in-review`), add a `[workflow-state:in-review]` block in `.moluoxixi/workflow.md` for the per-turn breadcrumb AND extend this route table — usually by editing the `/trellis:continue` command file (`.{platform}/commands/trellis/continue.md` or equivalent) to add a row that decides where to resume from. Without the route entry, `/trellis:continue` will fall through to a default branch and the user will not land on the step you intended.
 
 ## Notes
 

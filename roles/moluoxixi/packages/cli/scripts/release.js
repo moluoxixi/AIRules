@@ -135,14 +135,14 @@ function main() {
 
   run("node scripts/check-manifest-continuity.js");
   docsGuard(type);
-  run("pnpm --filter @moluoxixi/airules-moluoxixi-core test:publish");
-  run("pnpm run test:publish");
+  run("pnpm --filter @mindfoldhq/moluoxixi-core test");
+  run("pnpm test");
 
-  // Exclude .moluoxixi/ from the pre-release sweep: dirty task/workspace files
+  // Exclude .trellis/ from the pre-release sweep: dirty task/workspace files
   // (parallel in-progress work, runtime artifacts) must never be swept into
-  // "chore: pre-release updates" (#303). Staging .moluoxixi/ only ever goes
+  // "chore: pre-release updates" (#303). Staging .trellis/ only ever goes
   // through safe_commit.py's precise allowlist, never a blanket `git add -A`.
-  run("git add -A -- ':!docs-site' ':!marketplace' ':!.moluoxixi'");
+  run("git add -A -- ':!docs-site' ':!marketplace' ':!.trellis'");
   if (hasGitDiff()) {
     run("git commit -m 'chore: pre-release updates'");
   }
@@ -151,12 +151,12 @@ function main() {
   run("node scripts/release-preflight.js check-versions");
   run("git add package.json ../core/package.json");
   run(`git commit -m "${version}"`);
-  run(`git tag "moluoxixi-v${version}"`);
+  run(`git tag "v${version}"`);
   // Push HEAD to the branch we are actually on, by name. `HEAD` alone relies
   // on the remote having a same-named branch, and a bare `main` pushes the
   // local main ref regardless of where the release commit lives.
   run(`git push origin "HEAD:${branch}" --tags`);
-  assertPushLanded(branch, `moluoxixi-v${version}`);
+  assertPushLanded(branch, `v${version}`);
 }
 
 main();

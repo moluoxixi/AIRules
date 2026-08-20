@@ -40,7 +40,7 @@ function checkForUpdates(cwd: string): void {
         `\n⚠️  Moluoxixi update available: ${projectVersion} → ${cliVersion}`,
       ),
     );
-    console.log(chalk.gray(`   Run: moluoxixi update\n`));
+    console.log(chalk.gray(`   Run: trellis update\n`));
   } else if (comparison < 0) {
     // CLI is older than project - CLI needs updating
     console.log(
@@ -48,11 +48,11 @@ function checkForUpdates(cwd: string): void {
         `\n⚠️  Your CLI (${cliVersion}) is older than project (${projectVersion})`,
       ),
     );
-    console.log(chalk.gray(`   Run: moluoxixi upgrade\n`));
+    console.log(chalk.gray(`   Run: trellis upgrade\n`));
   }
 }
 
-// Check for updates at CLI startup (only if .moluoxixi exists)
+// Check for updates at CLI startup (only if .trellis exists)
 const cwd = process.cwd();
 if (fs.existsSync(path.join(cwd, DIR_NAMES.WORKFLOW))) {
   checkForUpdates(cwd);
@@ -61,7 +61,7 @@ if (fs.existsSync(path.join(cwd, DIR_NAMES.WORKFLOW))) {
 const program = new Command();
 
 program
-  .name("moluoxixi")
+  .name("trellis")
   .description(
     "AI-assisted development workflow framework for Cursor, Claude Code and more",
   )
@@ -69,7 +69,7 @@ program
 
 program
   .command("init")
-  .description("Initialize moluoxixi in the current project")
+  .description("Initialize trellis in the current project")
   .option("--cursor", "Include Cursor commands")
   .option("--claude", "Include Claude Code commands")
   .option("--opencode", "Include OpenCode commands")
@@ -121,7 +121,7 @@ program
   )
   .option(
     "--workflow <id>",
-    "Workflow template id for .moluoxixi/workflow.md (default: native; e.g., tdd, channel-driven-subagent-dispatch)",
+    "Workflow template id for .trellis/workflow.md (default: native; e.g., tdd, channel-driven-subagent-dispatch)",
   )
   .option(
     "--workflow-source <source>",
@@ -145,7 +145,7 @@ program
         chalk.red("Error:"),
         error instanceof Error ? error.message : error,
       );
-      if (process.env.DEBUG || process.env.MOLUOXIXI_DEBUG) {
+      if (process.env.DEBUG || process.env.TRELLIS_DEBUG) {
         console.error(error instanceof Error ? error.stack : error);
       }
       process.exit(1);
@@ -154,7 +154,7 @@ program
 
 program
   .command("update")
-  .description("Update moluoxixi configuration and commands to latest version")
+  .description("Update trellis configuration and commands to latest version")
   .option("--dry-run", "Preview changes without applying them")
   .option("-f, --force", "Overwrite all changed files without asking")
   .option("-s, --skip-all", "Skip all changed files without asking")
@@ -176,7 +176,7 @@ program
         chalk.red("Error:"),
         error instanceof Error ? error.message : error,
       );
-      if (process.env.DEBUG || process.env.MOLUOXIXI_DEBUG) {
+      if (process.env.DEBUG || process.env.TRELLIS_DEBUG) {
         console.error(error instanceof Error ? error.stack : error);
       }
       process.exit(1);
@@ -202,7 +202,7 @@ program
         chalk.red("Error:"),
         error instanceof Error ? error.message : error,
       );
-      if (process.env.DEBUG || process.env.MOLUOXIXI_DEBUG) {
+      if (process.env.DEBUG || process.env.TRELLIS_DEBUG) {
         console.error(error instanceof Error ? error.stack : error);
       }
       process.exit(1);
@@ -212,7 +212,7 @@ program
 program
   .command("uninstall")
   .description(
-    "Remove all moluoxixi files (managed platform files + .moluoxixi/) from this project",
+    "Remove all trellis files (managed platform files + .trellis/) from this project",
   )
   .option("-y, --yes", "Skip confirmation prompt")
   .option("--dry-run", "List what would be removed without changing anything")
@@ -227,7 +227,7 @@ program
         chalk.red("Error:"),
         error instanceof Error ? error.message : error,
       );
-      if (process.env.DEBUG || process.env.MOLUOXIXI_DEBUG) {
+      if (process.env.DEBUG || process.env.TRELLIS_DEBUG) {
         console.error(error instanceof Error ? error.stack : error);
       }
       process.exit(1);
@@ -237,7 +237,7 @@ program
 program
   .command("mem")
   .description(
-    "Search/recall AI conversation history across Claude Code, Codex, OpenCode, Pi (run 'moluoxixi mem help' for subcommands and flags)",
+    "Search/recall AI conversation history across Claude Code, Codex, OpenCode, Pi (run 'trellis mem help' for subcommands and flags)",
   )
   .allowUnknownOption(true)
   .helpOption(false)
@@ -253,7 +253,7 @@ program
         chalk.red("Error:"),
         error instanceof Error ? error.message : error,
       );
-      if (process.env.DEBUG || process.env.MOLUOXIXI_DEBUG) {
+      if (process.env.DEBUG || process.env.TRELLIS_DEBUG) {
         console.error(error instanceof Error ? error.stack : error);
       }
       process.exit(1);
@@ -263,7 +263,7 @@ program
 program
   .command("workflow")
   .description(
-    "List or switch the project's .moluoxixi/workflow.md template (native, tdd, channel-driven-subagent-dispatch, or marketplace)",
+    "List or switch the project's .trellis/workflow.md template (native, tdd, channel-driven-subagent-dispatch, or marketplace)",
   )
   .option(
     "-t, --template <id>",
@@ -277,7 +277,7 @@ program
   .option("-f, --force", "Overwrite a modified workflow.md without asking")
   .option(
     "-n, --create-new",
-    "Write .moluoxixi/workflow.md.new instead of replacing the active workflow",
+    "Write .trellis/workflow.md.new instead of replacing the active workflow",
   )
   .action(async (options: Record<string, unknown>) => {
     try {
@@ -297,7 +297,7 @@ program
         chalk.red("Error:"),
         error instanceof Error ? error.message : error,
       );
-      if (process.env.DEBUG || process.env.MOLUOXIXI_DEBUG) {
+      if (process.env.DEBUG || process.env.TRELLIS_DEBUG) {
         console.error(error instanceof Error ? error.stack : error);
       }
       process.exit(1);
@@ -338,7 +338,7 @@ program
         chalk.red("Error:"),
         error instanceof Error ? error.message : error,
       );
-      if (process.env.DEBUG || process.env.MOLUOXIXI_DEBUG) {
+      if (process.env.DEBUG || process.env.TRELLIS_DEBUG) {
         console.error(error instanceof Error ? error.stack : error);
       }
       process.exit(1);

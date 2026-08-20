@@ -17,6 +17,7 @@ from __future__ import annotations
 import json
 import os
 import re
+import subprocess
 import sys
 from pathlib import Path
 
@@ -45,7 +46,8 @@ from .paths import (
 # Helpers
 # =============================================================================
 
-_PACKAGE_NAME = "@moluoxixi/airules-moluoxixi-cli"
+_PACKAGE_NAME = "@moluoxixi/airules-moluoxixi"
+_UPDATE_CHECK_TIMEOUT_SECONDS = 1.0
 _VERSION_RE = re.compile(
     r"^\s*(\d+)(?:\.(\d+))?(?:\.(\d+))?(?:-([0-9A-Za-z.-]+))?\s*$"
 )
@@ -326,22 +328,23 @@ def _read_project_version(repo_root: Path) -> str | None:
     return version or None
 
 
-def _fetch_moluoxixi_version_output() -> str | None:
-    role_manifest = (
-        Path.home() / DIR_WORKFLOW / "roles" / "moluoxixi" / "role.yaml"
-    )
+def _fetch_trellis_version_output() -> str | None:
     try:
-        content = role_manifest.read_text(encoding="utf-8")
-    except (OSError, UnicodeError):
+        result = subprocess.run(
+            ["trellis", "--version"],
+            capture_output=True,
+            text=True,
+            encoding="utf-8",
+            errors="replace",
+            timeout=_UPDATE_CHECK_TIMEOUT_SECONDS,
+        )
+    except (OSError, subprocess.SubprocessError, TimeoutError):
         return None
 
-    version_match = re.search(
-        r"(?m)^role_version:\s*"
-        r"(?P<version>\d+(?:\.\d+){0,2}(?:-[0-9A-Za-z.-]+)?)"
-        r"\s*(?:#.*)?$",
-        content,
-    )
-    return version_match.group("version") if version_match else None
+    if result.returncode != 0:
+        return None
+    output = f"{result.stdout}\n{result.stderr}".strip()
+    return output or None
 
 
 def _extract_available_update_version(output: str) -> str | None:
@@ -357,7 +360,7 @@ def _extract_available_update_version(output: str) -> str | None:
 
 
 def _resolve_available_update_version() -> str | None:
-    output = _fetch_moluoxixi_version_output()
+    output = _fetch_trellis_version_output()
     if not output:
         return None
     return _extract_available_update_version(output)
@@ -480,7 +483,7 @@ def get_update_hint(repo_root: Path, context_key: str | None = None) -> str | No
 
     return (
         f"Moluoxixi update available: {current_version} -> {latest_version}, "
-        "run moluoxixi update"
+        "run trellis update"
     )
 
 
@@ -630,14 +633,6 @@ def get_context_text(repo_root: Path | None = None) -> str:
         if ct:
             lines.append(f"Name: {ct.name}")
             lines.append(f"Status: {ct.status}")
-            complexity = ct.raw.get("complexity")
-            approval = ct.raw.get("executionApproval")
-            lines.append(
-                f"Complexity: {complexity.get('level', 'legacy') if isinstance(complexity, dict) else 'legacy'}"
-            )
-            lines.append(
-                f"Execution: {approval.get('mode', 'legacy') if isinstance(approval, dict) else 'legacy'}"
-            )
             lines.append(f"Created: {ct.raw.get('createdAt', 'unknown')}")
             if ct.description:
                 lines.append(f"Description: {ct.description}")
@@ -778,8 +773,6 @@ def get_context_record_json(repo_root: Path | None = None) -> dict:
                 "status": ct.status,
                 "source": source_type,
                 "contextKey": context_key,
-                "complexity": ct.raw.get("complexity", {"level": "legacy"}),
-                "executionApproval": ct.raw.get("executionApproval", {"mode": "legacy"}),
             }
 
     # Package git repos

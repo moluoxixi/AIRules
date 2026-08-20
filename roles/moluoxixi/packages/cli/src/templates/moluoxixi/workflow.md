@@ -8,7 +8,7 @@
 2. **Specs injected, not remembered** — guidelines are injected via hook/skill, not recalled from memory
 3. **Persist everything** — research, decisions, and lessons all go to files; conversations get compacted, files don't
 4. **Incremental development** — one task at a time
-5. **Capture learnings** — after each task, submit knowledge proposals and let a human decide what enters formal specs
+5. **Capture learnings** — after each task, review and write new knowledge back to spec
 
 ---
 
@@ -35,7 +35,7 @@ Creates `.moluoxixi/.developer` (gitignored) + `.moluoxixi/workspace/<your-name>
 python3 ./.moluoxixi/scripts/get_context.py --mode packages   # list packages / layers
 ```
 
-**When to propose spec knowledge**: new pattern/convention found · bug-fix prevention to codify · new technical decision. Formal specs change only after `spec-review` records explicit human approval.
+**When to update spec**: new pattern/convention found · bug-fix prevention to codify · new technical decision.
 
 ### Task System
 
@@ -43,10 +43,8 @@ Every task has its own directory under `.moluoxixi/tasks/{MM-DD-name}/` holding 
 
 ```bash
 # Task lifecycle
-python3 ./.moluoxixi/scripts/task.py create "<title>" [--slug <name>] [--complexity lightweight|complex] [--parent <dir>]
-python3 ./.moluoxixi/scripts/task.py set-complexity <name> lightweight|complex [--signal <name>] [--reason <text>]
-python3 ./.moluoxixi/scripts/task.py set-execution-mode <name> manual|auto [--user-authorized]
-python3 ./.moluoxixi/scripts/task.py start <name> --user-approved  # manual mode after final plan review
+python3 ./.moluoxixi/scripts/task.py create "<title>" [--slug <name>] [--parent <dir>]
+python3 ./.moluoxixi/scripts/task.py start <name>          # set active task (session-scoped when available)
 python3 ./.moluoxixi/scripts/task.py current --source      # show active task and source
 python3 ./.moluoxixi/scripts/task.py finish                # clear active task (triggers after_finish hooks)
 python3 ./.moluoxixi/scripts/task.py archive <name>        # move to archive/{year-month}/
@@ -75,7 +73,7 @@ python3 ./.moluoxixi/scripts/task.py create-pr [name] [--dry-run]
 
 > Run `python3 ./.moluoxixi/scripts/task.py --help` to see the authoritative, up-to-date list.
 
-**Current-task mechanism**: `task.py create` creates the task directory and (when session identity is available) auto-sets the per-session active-task pointer so the planning breadcrumb fires immediately. New tasks persist `complexity.level=unclassified` unless classified at creation and default to manual execution approval. `task.py start` enforces the planning artifacts and approval before flipping `planning` to `in_progress`; an already-started task can be reattached idempotently. State is stored under `.moluoxixi/.runtime/sessions/`. Without session identity, a reviewed task may enter degraded `in_progress` mode but no active pointer is persisted. `task.py finish` deletes the current session file (status unchanged). `task.py archive <task>` writes `status=completed`, moves the directory to `archive/`, and deletes any runtime session files that still point at the archived task.
+**Current-task mechanism**: `task.py create` creates the task directory and (when session identity is available) auto-sets the per-session active-task pointer so the planning breadcrumb fires immediately. `task.py start` writes the same pointer (idempotent if already set) and flips `task.json.status` from `planning` to `in_progress`. State is stored under `.moluoxixi/.runtime/sessions/`. If no context key is available from hook input, `TRELLIS_CONTEXT_ID`, or a platform-native session environment variable, there is no active task and `task.py start` fails with a session identity hint. `task.py finish` deletes the current session file (status unchanged). `task.py archive <task>` writes `status=completed`, moves the directory to `archive/`, and deletes any runtime session files that still point at the archived task.
 
 ### Workspace System
 
@@ -137,7 +135,7 @@ python3 ./.moluoxixi/scripts/get_context.py --mode phase --step <X.Y>  # detaile
   Editing checklist:
     - When you change a [workflow-state:STATUS] block, also check the
       matching phase's `[required · once]` walkthrough steps for sync
-    - Run `moluoxixi update` after editing to push the new bodies to
+    - Run `trellis update` after editing to push the new bodies to
       downstream user projects (block-level managed replacement)
     - Full runtime contract:
       .moluoxixi/spec/cli/backend/workflow-state-contract.md
@@ -148,7 +146,7 @@ python3 ./.moluoxixi/scripts/get_context.py --mode phase --step <X.Y>  # detaile
 ```
 Phase 1: Plan    → classify, get task-creation consent, then write planning artifacts
 Phase 2: Execute → implement only after task status is in_progress
-Phase 3: Finish  → verify, propose/review knowledge, commit code, and wrap up
+Phase 3: Finish  → verify, update spec, commit, and wrap up
 ```
 
 ### Request Triage
@@ -156,15 +154,13 @@ Phase 3: Finish  → verify, propose/review knowledge, commit code, and wrap up
 - Simple conversation or small task: ask only whether this turn should create a Moluoxixi task. If the user says no, skip Moluoxixi for this session.
 - Complex task: ask whether you may create a Moluoxixi task and enter planning. If the user says no, do not do broad inline implementation; explain, clarify scope, or suggest a smaller split.
 - User approval to create a task is not approval to start implementation. Planning still happens first.
-- Persist the result as `complexity.level=lightweight|complex`; do not leave a real implementation task `unclassified`.
-- Treat cross-module work, public contracts, migrations, security-sensitive changes, high uncertainty, or multiple independently verifiable deliverables as complex signals unless repository evidence shows otherwise.
 
 ### Planning Artifacts
 
 - `prd.md` — requirements, constraints, and acceptance criteria. Do not put technical design or execution checklists here.
 - `design.md` — technical design for complex tasks: boundaries, contracts, data flow, tradeoffs, compatibility, rollout / rollback shape.
 - `implement.md` — execution plan for complex tasks: ordered checklist, validation commands, review gates, and rollback points.
-- `implement.jsonl` / `check.jsonl` — spec and research manifests for complex sub-agent work. They do not replace `implement.md`.
+- `implement.jsonl` / `check.jsonl` — spec and research manifests for sub-agent context. They do not replace `implement.md`.
 - Lightweight tasks may be PRD-only. Complex tasks must have `prd.md`, `design.md`, and `implement.md` before `task.py start`.
 
 ### Parent / Child Task Trees
@@ -187,7 +183,7 @@ Complex task: ask the user if you can create a Moluoxixi task and enter the plan
 - 1.0 Create task `[required · once]` (only after task-creation consent)
 - 1.1 Requirement exploration `[required · repeatable]` (`prd.md`; complex tasks also need `design.md` + `implement.md`)
 - 1.2 Research `[optional · repeatable]`
-- 1.3 Configure context `[required · once]` — Claude Code, Cursor, OpenCode, Codex, Kiro, Gemini, Qoder, CodeBuddy, Copilot, Droid, Pi, Oh My Pi, ZCode, Reasonix (sub-agent-dispatch platforms only; inline platforms skip)
+- 1.3 Configure context `[required · once]` — Claude Code, Cursor, OpenCode, Codex, Kiro, Gemini, Qoder, CodeBuddy, Copilot, Droid, Pi, Oh My Pi, ZCode, Snow, Reasonix, Grok, Kimi Code (sub-agent-dispatch platforms only; inline platforms skip)
 - 1.4 Activate task `[required · once]` (review gate, then `task.py start`; status → in_progress)
 - 1.5 Completion criteria
 
@@ -195,10 +191,9 @@ Complex task: ask the user if you can create a Moluoxixi task and enter the plan
 
 [workflow-state:planning]
 Load `moluoxixi-brainstorm`; stay in planning.
-Persist complexity with `task.py set-complexity`. Lightweight: `prd.md` can be enough. Complex: finish `prd.md`, `design.md`, and `implement.md`; ask for review before `task.py start --user-approved`.
+Lightweight: `prd.md` can be enough. Complex: finish `prd.md`, `design.md`, and `implement.md`; ask for review before `task.py start`.
 Multi-deliverable scope: consider a parent task plus independently verifiable child tasks; dependencies must be written in child artifacts, not implied by tree position.
-Complex sub-agent mode: curate `implement.jsonl` and `check.jsonl` as spec/research manifests before start.
-Auto mode is task-local and valid only after an explicit user request recorded by `task.py set-execution-mode <task> auto --user-authorized`; it never approves commit, push, archive, or knowledge promotion.
+Sub-agent mode: curate `implement.jsonl` and `check.jsonl` as spec/research manifests before start.
 [/workflow-state:planning]
 
 <!-- Per-turn breadcrumb: shown throughout Phase 1 when codex.dispatch_mode=inline.
@@ -209,7 +204,7 @@ Auto mode is task-local and valid only after an explicit user request recorded b
 
 [workflow-state:planning-inline]
 Load `moluoxixi-brainstorm`; stay in planning.
-Persist complexity with `task.py set-complexity`. Lightweight: `prd.md` can be enough. Complex: finish `prd.md`, `design.md`, and `implement.md`; ask for review before `task.py start --user-approved`.
+Lightweight: `prd.md` can be enough. Complex: finish `prd.md`, `design.md`, and `implement.md`; ask for review before `task.py start`.
 Multi-deliverable scope: consider a parent task plus independently verifiable child tasks; dependencies must be written in child artifacts, not implied by tree position.
 Inline mode: skip jsonl curation; Phase 2 reads artifacts/specs via `moluoxixi-before-dev`.
 [/workflow-state:planning-inline]
@@ -225,13 +220,12 @@ Inline mode: skip jsonl curation; Phase 2 reads artifacts/specs via `moluoxixi-b
      therefore must cover every required step from implementation through
      commit, including Phase 3.3 spec update and Phase 3.4 commit. -->
 
-Sub-agent dispatch protocol applies to all platforms and all sub-agents, including class-2 Codex/Gemini/Qoder/Copilot/ZCode/Reasonix/Trae and `moluoxixi-research`: every dispatch prompt starts with `Active task: <task path from task.py current>` before role-specific instructions.
+Sub-agent dispatch protocol applies to all platforms and all sub-agents, including native Codex `SubagentStart` context injection with child-side pull fallback, class-2 Gemini/Qoder/Copilot/Reasonix/Trae/Grok/Kimi Code, hook-backed ZCode/Snow, and `moluoxixi-research`: every dispatch prompt starts with `Active task: <task path from task.py current>` before role-specific instructions. On Grok Build, use `spawn_subagent` with `subagent_type` set to the Moluoxixi agent name (e.g. `moluoxixi-implement`). On Kimi Code, dispatch the built-in `coder` / `explore` sub-agent with the matching `.kimi-code/skills/moluoxixi-<role>/SKILL.md` instructions.
 
 [workflow-state:in_progress]
-Tools: `moluoxixi-research`, `moluoxixi-implement`, and the optional `moluoxixi-frontend|backend|database|test|security` specialists are sub-agent types, not skills. `moluoxixi-check` exists as both; prefer the Agent form for independent verification.
-Flow: implement or selected specialist(s) -> `moluoxixi-check` -> `moluoxixi-update-spec` proposal -> commit (Phase 3.4) -> `/moluoxixi:finish-work`.
+Tools: `moluoxixi-implement` / `moluoxixi-research` are sub-agent types only (Task/Agent tool, NOT Skill; there is no skill by these names). `moluoxixi-update-spec` is a skill. `moluoxixi-check` exists as both; prefer the Agent form when verifying after code changes.
+Flow: `moluoxixi-implement` -> `moluoxixi-check` -> `moluoxixi-update-spec` -> commit (Phase 3.4) -> `/trellis:finish-work`.
 Main-session default: dispatch implement/check sub-agents. Sub-agent self-exemption: if already running as `moluoxixi-implement`, do NOT spawn another `moluoxixi-implement` or `moluoxixi-check`; if already running as `moluoxixi-check`, do NOT spawn another `moluoxixi-check` or `moluoxixi-implement`. Dispatch is main session only.
-Use specialists only when task scope warrants them: frontend/backend/database for owned implementation slices; test/security for independent review. Language expertise remains a skill loaded by the selected agent.
 Dispatch prompt starts with `Active task: <task path from task.py current>`. Read context: jsonl entries -> `prd.md` -> `design.md if present` -> `implement.md if present`.
 [/workflow-state:in_progress]
 
@@ -241,7 +235,7 @@ Dispatch prompt starts with `Active task: <task path from task.py current>`. Rea
      instead of dispatching sub-agents. -->
 
 [workflow-state:in_progress-inline]
-Flow: `moluoxixi-before-dev` -> edit -> `moluoxixi-check` -> validation -> `moluoxixi-update-spec` -> commit (Phase 3.4) -> `/moluoxixi:finish-work`.
+Flow: `moluoxixi-before-dev` -> edit -> `moluoxixi-check` -> validation -> `moluoxixi-update-spec` -> commit (Phase 3.4) -> `/trellis:finish-work`.
 Do not dispatch implement/check sub-agents in inline mode.
 Read context: `prd.md` -> `design.md if present` -> `implement.md if present`, plus relevant spec/research loaded by skills.
 [/workflow-state:in_progress-inline]
@@ -263,7 +257,7 @@ Read context: `prd.md` -> `design.md if present` -> `implement.md if present`, p
      channel as the live blocks. -->
 
 [workflow-state:completed]
-Code committed. Run `/moluoxixi:finish-work`; if dirty, return to Phase 3.4 first.
+Code committed. Run `/trellis:finish-work`; if dirty, return to Phase 3.4 first.
 [/workflow-state:completed]
 
 ### Rules
@@ -278,29 +272,27 @@ Code committed. Run `/moluoxixi:finish-work`; if dirty, return to Phase 3.4 firs
 
 When a user request matches one of these intents inside an active task, route first, then load the detailed phase step if needed.
 
-[Claude Code, Cursor, OpenCode, codex-sub-agent, Kiro, Gemini, Qoder, CodeBuddy, Copilot, Droid, Pi, Oh My Pi, ZCode, Reasonix, Trae, DeepSeek Harness, Grok, Kimi Code, Snow]
+[Claude Code, Cursor, OpenCode, codex-sub-agent, Kiro, Gemini, Qoder, CodeBuddy, Copilot, Droid, Pi, Oh My Pi, ZCode, Snow, Reasonix, Trae, Grok, Kimi Code]
 
 - Planning or unclear requirements -> `moluoxixi-brainstorm`.
 - `in_progress` implementation/check -> dispatch `moluoxixi-implement` / `moluoxixi-check`.
 - Repeated debugging -> `moluoxixi-break-loop`; spec updates -> `moluoxixi-update-spec`.
 
-[/Claude Code, Cursor, OpenCode, codex-sub-agent, Kiro, Gemini, Qoder, CodeBuddy, Copilot, Droid, Pi, Oh My Pi, ZCode, Reasonix, Trae, DeepSeek Harness, Grok, Kimi Code, Snow]
+[/Claude Code, Cursor, OpenCode, codex-sub-agent, Kiro, Gemini, Qoder, CodeBuddy, Copilot, Droid, Pi, Oh My Pi, ZCode, Snow, Reasonix, Trae, Grok, Kimi Code]
 
-[codex-inline, Kilo, Antigravity, Devin]
+[codex-inline, Kilo, Antigravity, Devin, DeepSeek Harness]
 
 - Planning or unclear requirements -> `moluoxixi-brainstorm`.
 - Before editing -> `moluoxixi-before-dev`; after editing -> `moluoxixi-check`.
 - Repeated debugging -> `moluoxixi-break-loop`; spec updates -> `moluoxixi-update-spec`.
 
-[/codex-inline, Kilo, Antigravity, Devin]
+[/codex-inline, Kilo, Antigravity, Devin, DeepSeek Harness]
 
 ### Guardrails
 
 - Task creation approval is not implementation approval; implementation waits for `task.py start` after artifact review.
 - PRD-only is valid for lightweight tasks; complex tasks need `design.md` + `implement.md`.
 - Planning must be persisted to task artifacts; checks must run before reporting completion.
-- `executionApproval.mode=auto` is scoped to one task and does not propagate to children or future tasks.
-- Formal knowledge lives only in `.moluoxixi/spec/`; task learnings first enter `.moluoxixi/spec-proposals/` and require human review before promotion.
 
 ### Loading Step Detail
 
@@ -322,7 +314,7 @@ Goal: classify the request, get task-creation consent when a task is needed, and
 Create the task directory only after task-creation consent. The command sets status to `planning`, writes `task.json`, creates a default `prd.md`, and auto-targets the new task when session identity is available:
 
 ```bash
-python3 ./.moluoxixi/scripts/task.py create "<task title>" --slug <name> --complexity lightweight|complex
+python3 ./.moluoxixi/scripts/task.py create "<task title>" --slug <name>
 ```
 
 `--slug` is the human-readable name only. Do **not** include the `MM-DD-` date prefix; `task.py create` adds that prefix automatically.
@@ -361,7 +353,7 @@ Return to this step whenever requirements change and revise the relevant artifac
 
 Research can happen at any time during requirement exploration. It isn't limited to local code — you can use any available tool (MCP servers, skills, web search, etc.) to look up external information, including third-party library docs, industry practices, API references, etc.
 
-[Claude Code, Cursor, OpenCode, codex-sub-agent, Kiro, Gemini, Qoder, CodeBuddy, Copilot, Droid, Pi, Oh My Pi, ZCode, Reasonix, Trae]
+[Claude Code, Cursor, OpenCode, codex-sub-agent, Kiro, Gemini, Qoder, CodeBuddy, Copilot, Droid, Pi, Oh My Pi, ZCode, Snow, Reasonix, Trae, Grok, Kimi Code]
 
 Spawn the research sub-agent:
 
@@ -369,13 +361,13 @@ Spawn the research sub-agent:
 - **Task description**: Research <specific question>
 - **Key requirement**: Research output MUST be persisted to `{TASK_DIR}/research/`
 
-[/Claude Code, Cursor, OpenCode, codex-sub-agent, Kiro, Gemini, Qoder, CodeBuddy, Copilot, Droid, Pi, Oh My Pi, ZCode, Reasonix, Trae]
+[/Claude Code, Cursor, OpenCode, codex-sub-agent, Kiro, Gemini, Qoder, CodeBuddy, Copilot, Droid, Pi, Oh My Pi, ZCode, Snow, Reasonix, Trae, Grok, Kimi Code]
 
-[codex-inline, Kilo, Antigravity, Devin]
+[codex-inline, Kilo, Antigravity, Devin, DeepSeek Harness]
 
-Do the research in the main session directly and write findings into `{TASK_DIR}/research/`. (For `codex-inline` this avoids the `fork_turns="none"` isolation that prevents `moluoxixi-research` sub-agents from resolving the active task path.)
+Do the research in the main session directly and write findings into `{TASK_DIR}/research/`. `codex-inline` is the explicit mode that keeps work in the main session.
 
-[/codex-inline, Kilo, Antigravity, Devin]
+[/codex-inline, Kilo, Antigravity, Devin, DeepSeek Harness]
 
 **Research artifact conventions**:
 - One file per research topic (e.g. `research/auth-library-comparison.md`)
@@ -388,7 +380,7 @@ Brainstorm and research can interleave freely — pause to research a technical 
 
 #### 1.3 Configure context `[required · once]`
 
-[Claude Code, Cursor, OpenCode, codex-sub-agent, Kiro, Gemini, Qoder, CodeBuddy, Copilot, Droid, Pi, Oh My Pi, ZCode, Reasonix, Trae]
+[Claude Code, Cursor, OpenCode, codex-sub-agent, Kiro, Gemini, Qoder, CodeBuddy, Copilot, Droid, Pi, Oh My Pi, ZCode, Snow, Reasonix, Trae, Grok, Kimi Code]
 
 Curate `implement.jsonl` and `check.jsonl` so the Phase 2 sub-agents get the right spec/research context. These files were seeded on `task create` with a single self-describing `_example` line; your job here is to fill in real entries.
 
@@ -420,71 +412,57 @@ Lists every package + its spec layers with paths. Pick the entries that match th
 
 **How to append entries**:
 
-Use the validated task command. Do not edit these manifests directly:
+Either edit the jsonl file directly in your editor, or use:
 
 ```bash
 python3 ./.moluoxixi/scripts/task.py add-context "$TASK_DIR" implement "<path>" "<reason>"
 python3 ./.moluoxixi/scripts/task.py add-context "$TASK_DIR" check "<path>" "<reason>"
 ```
 
-Only existing paths under `.moluoxixi/spec/` or the current task's
-`research/` directory are accepted. Pending `.moluoxixi/spec-proposals/`,
-source files, and another task's research are not approved execution context.
+Delete the seed `_example` line once real entries exist (optional — it's skipped automatically by consumers).
 
-The seed `_example` line may remain; consumers skip it automatically.
-
-For complex sub-agent-dispatch tasks, the planning gate is strict. Ready gate: both `implement.jsonl` and `check.jsonl` must contain at least one real `{"file": "...", "reason": "..."}` entry before `task.py start`. The seed `_example` row alone is not ready. Lightweight tasks stay lightweight and do not need curated JSONL to pass the hard gate.
-
-Runtime consumers tolerate missing or seed-only manifests for compatibility, but that tolerance is not a planning-ready state.
+Ready gate: both `implement.jsonl` and `check.jsonl` must contain at least one real `{"file": "...", "reason": "..."}` entry before `task.py start`. The seed `_example` row alone is not ready.
 
 Skip this step only when both files already have real curated entries.
 
-[/Claude Code, Cursor, OpenCode, codex-sub-agent, Kiro, Gemini, Qoder, CodeBuddy, Copilot, Droid, Pi, Oh My Pi, ZCode, Reasonix, Trae]
+[/Claude Code, Cursor, OpenCode, codex-sub-agent, Kiro, Gemini, Qoder, CodeBuddy, Copilot, Droid, Pi, Oh My Pi, ZCode, Snow, Reasonix, Trae, Grok, Kimi Code]
 
-[codex-inline, Kilo, Antigravity, Devin]
+[codex-inline, Kilo, Antigravity, Devin, DeepSeek Harness]
 
 Skip this step. Context is loaded directly by the `moluoxixi-before-dev` skill in Phase 2.
 
-[/codex-inline, Kilo, Antigravity, Devin]
+[/codex-inline, Kilo, Antigravity, Devin, DeepSeek Harness]
 
 #### 1.4 Activate task `[required · once]`
 
-After artifact review in manual mode, record approval and flip the task status to `in_progress`:
+After artifact review, flip the task status to `in_progress`:
 
 ```bash
-python3 ./.moluoxixi/scripts/task.py start <task-dir> --user-approved
-```
-
-When the user explicitly asks this task to proceed automatically, first record task-local authorization, then start without the manual approval flag:
-
-```bash
-python3 ./.moluoxixi/scripts/task.py set-execution-mode <task-dir> auto --user-authorized --reason "<user request>"
 python3 ./.moluoxixi/scripts/task.py start <task-dir>
 ```
 
-For lightweight tasks, `prd.md` can be enough. For complex tasks, `prd.md`, `design.md`, and `implement.md` must exist and be reviewed or covered by explicit task-local auto authorization before start. On sub-agent-dispatch platforms, complex tasks must also have real curated entries in `implement.jsonl` and `check.jsonl`.
+For lightweight tasks, `prd.md` can be enough. For complex tasks, `prd.md`, `design.md`, and `implement.md` must exist and be reviewed before start. On sub-agent-dispatch platforms, `implement.jsonl` and `check.jsonl` must both have real curated entries before start. Runtime consumers tolerate missing or seed-only manifests for compatibility, but that tolerance is not a planning-ready state.
 
 After this command succeeds, the breadcrumb auto-switches to `[workflow-state:in_progress]`, and the rest of Phase 2 / 3 follows.
 
-If `task.py start` errors with a session-identity message (no context key from hook input, `MOLUOXIXI_CONTEXT_ID`, or platform-native session env), follow the hint in the error to set up session identity, then retry.
+If `task.py start` errors with a session-identity message (no context key from hook input, `TRELLIS_CONTEXT_ID`, or platform-native session env), follow the hint in the error to set up session identity, then retry.
 
 #### 1.5 Completion criteria
 
 | Condition | Required |
 |------|:---:|
 | `prd.md` exists | ✅ |
-| `complexity.level` is `lightweight` or `complex` | ✅ |
-| Manual mode: user confirms the final plan; auto mode: current task contains explicit user authorization | ✅ |
+| User confirms task should enter implementation | ✅ |
 | `task.py start` has been run (status = in_progress) | ✅ |
 | `research/` has artifacts (complex tasks) | recommended |
 | `design.md` exists (complex tasks) | ✅ |
 | `implement.md` exists (complex tasks) | ✅ |
 
-[Claude Code, Cursor, OpenCode, codex-sub-agent, Kiro, Gemini, Qoder, CodeBuddy, Copilot, Droid, Pi, Oh My Pi, ZCode, Reasonix, Trae]
+[Claude Code, Cursor, OpenCode, codex-sub-agent, Kiro, Gemini, Qoder, CodeBuddy, Copilot, Droid, Pi, Oh My Pi, ZCode, Snow, Reasonix, Trae, Grok, Kimi Code]
 
-| Complex task: `implement.jsonl` and `check.jsonl` each contain at least one real curated entry (seed row does not count) | ✅ |
+| `implement.jsonl` and `check.jsonl` each contain at least one real curated entry (seed row does not count) | ✅ |
 
-[/Claude Code, Cursor, OpenCode, codex-sub-agent, Kiro, Gemini, Qoder, CodeBuddy, Copilot, Droid, Pi, Oh My Pi, ZCode, Reasonix, Trae]
+[/Claude Code, Cursor, OpenCode, codex-sub-agent, Kiro, Gemini, Qoder, CodeBuddy, Copilot, Droid, Pi, Oh My Pi, ZCode, Snow, Reasonix, Trae, Grok, Kimi Code]
 
 ---
 
@@ -500,12 +478,12 @@ Spawn the implement sub-agent:
 
 - **Agent type**: `moluoxixi-implement`
 - **Task description**: Implement the reviewed task artifacts, consulting materials under `{TASK_DIR}/research/`; finish by running project lint and type-check
-- **Dispatch prompt guard**: Tell the spawned agent it is already the `moluoxixi-implement` sub-agent and must implement directly, not spawn another `moluoxixi-implement` / `moluoxixi-check`.
+- **Dispatch prompt guard**: The prompt MUST start with `Active task: <task path>`, then tell the spawned agent it is already the `moluoxixi-implement` sub-agent and must implement directly, not spawn another `moluoxixi-implement` / `moluoxixi-check`.
 
 The platform hook/plugin auto-handles:
 - Reads `implement.jsonl` and injects referenced spec/research files into the agent prompt
 - Injects `prd.md`, `design.md` if present, and `implement.md` if present
-- For Codex, `SubagentStart` supplies native context injection. Its generated agent definitions also retain a child-side pull fallback for sessions where project hooks are unavailable or not approved.
+- For Codex, `SubagentStart` supplies native context injection; the agent profile keeps child-side loading as the fallback
 
 [/Claude Code, Cursor, OpenCode, codex-sub-agent, CodeBuddy, Droid, Pi, ZCode, Snow, Oh My Pi]
 
@@ -549,13 +527,13 @@ The platform prelude auto-handles the context load requirement:
 
 #### 2.2 Quality check `[required · repeatable]`
 
-[Claude Code, Cursor, OpenCode, codex-sub-agent, Kiro, Gemini, Qoder, CodeBuddy, Copilot, Droid, Pi, Oh My Pi, ZCode, Reasonix, Trae, Grok, Kimi Code, Snow]
+[Claude Code, Cursor, OpenCode, codex-sub-agent, Kiro, Gemini, Qoder, CodeBuddy, Copilot, Droid, Pi, Oh My Pi, ZCode, Snow, Reasonix, Trae, Grok, Kimi Code]
 
 Spawn the check sub-agent:
 
 - **Agent type**: `moluoxixi-check`
 - **Task description**: Review all code changes against specs and task artifacts; fix any findings directly; ensure lint and type-check pass
-- **Dispatch prompt guard**: Tell the spawned agent it is already the `moluoxixi-check` sub-agent and must review/fix directly, not spawn another `moluoxixi-check` / `moluoxixi-implement`.
+- **Dispatch prompt guard**: The prompt MUST start with `Active task: <task path>`, then tell the spawned agent it is already the `moluoxixi-check` sub-agent and must review/fix directly, not spawn another `moluoxixi-check` / `moluoxixi-implement`.
 
 The check agent's job:
 - Review code changes against specs
@@ -563,7 +541,7 @@ The check agent's job:
 - Auto-fix issues it finds
 - Run lint and typecheck to verify
 
-[/Claude Code, Cursor, OpenCode, codex-sub-agent, Kiro, Gemini, Qoder, CodeBuddy, Copilot, Droid, Pi, Oh My Pi, ZCode, Reasonix, Trae, Grok, Kimi Code, Snow]
+[/Claude Code, Cursor, OpenCode, codex-sub-agent, Kiro, Gemini, Qoder, CodeBuddy, Copilot, Droid, Pi, Oh My Pi, ZCode, Snow, Reasonix, Trae, Grok, Kimi Code]
 
 [codex-inline, Kilo, Antigravity, Devin, DeepSeek Harness]
 
@@ -606,17 +584,11 @@ Load the `moluoxixi-update-spec` skill and review whether this task produced new
 - Pitfalls you hit
 - New technical decisions
 
-Create complete desired-state proposals under `.moluoxixi/spec-proposals/`; do not directly update `.moluoxixi/spec/`. Even if the conclusion is "nothing to propose", walk through the judgment. Run the read-only periodic audit:
-
-```bash
-node ./.moluoxixi/scripts/spec-proposals.mjs audit
-```
-
-If review is due, report the pending count and offer `moluoxixi-spec-review`. Promotion, merge, rejection, and deletion require separate explicit human approval and do not block finishing the current code task.
+Update the docs under `.moluoxixi/spec/` accordingly. Even if the conclusion is "nothing to update", walk through the judgment.
 
 #### 3.4 Commit changes `[required · once]`
 
-**Spec-proposal preamble**: before drafting commits, ask whether this task produced reusable knowledge. If yes, return to Phase 3.3 and create proposals. Pending proposals may be committed as task evidence, but they are not formal guidance until separately reviewed and promoted.
+**Spec-sync preamble**: before drafting commits, ask: did this task fix a bug or surface non-obvious knowledge that should land in `.moluoxixi/spec/` so future-you (or future-AI) doesn't repeat the mistake? If yes, return to Phase 3.3 first — spec writes belong in the same task's commit batch, not as a forgotten follow-up.
 
 The AI drives a batched commit of this task's code changes so `/finish-work` can run cleanly afterwards. Goal: produce work commits FIRST, then bookkeeping (archive + journal) commits land after — never interleaved.
 
@@ -681,7 +653,7 @@ This section is for developers who want to modify the Moluoxixi workflow itself.
 Edit the corresponding step's walkthrough body in the Phase 1 / 2 / 3 sections above. Critical invariants:
 - No active task must triage first and ask for task-creation consent before creating a Moluoxixi task.
 - Planning must distinguish lightweight PRD-only tasks from complex tasks that require `prd.md`, `design.md`, and `implement.md` before start.
-- Every required execution path must keep the Phase 3.4 commit reminder reachable before `/moluoxixi:finish-work`.
+- Every required execution path must keep the Phase 3.4 commit reminder reachable before `/trellis:finish-work`.
 
 All tag blocks live in the `## Phase Index` section above, immediately after each phase summary:
 
@@ -696,7 +668,7 @@ All tag blocks live in the `## Phase Index` section above, immediately after eac
 
 ### Changing the per-turn prompt text
 
-Directly edit the body of the corresponding `[workflow-state:STATUS]` block. After editing, run `moluoxixi update` (if you're a template maintainer) or restart your AI session (if you're customizing your own project) — no script changes required.
+Directly edit the body of the corresponding `[workflow-state:STATUS]` block. After editing, run `trellis update` (if you're a template maintainer) or restart your AI session (if you're customizing your own project) — no script changes required.
 
 ### Adding a custom status
 

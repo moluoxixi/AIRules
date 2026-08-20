@@ -4,6 +4,7 @@ import os from "node:os";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
 import { createRequire } from "node:module";
+import os from "node:os";
 import vm from "node:vm";
 import ts from "typescript";
 import {
@@ -33,7 +34,7 @@ function loadOmpExtension(): OmpExtension {
   const moduleObject: { exports: { default?: OmpExtension } } = { exports: {} };
   const sandboxProcess = Object.create(process) as NodeJS.Process;
   const sandboxEnv = { ...process.env };
-  delete sandboxEnv.MOLUOXIXI_CONTEXT_ID;
+  delete sandboxEnv.TRELLIS_CONTEXT_ID;
   Object.defineProperty(sandboxProcess, "env", { value: sandboxEnv });
   const sandbox = vm.createContext({
     Buffer,
@@ -91,7 +92,7 @@ describe("omp templates", () => {
     const extension = getExtensionTemplate();
 
     expect(extension).not.toContain("pi.setLabel(");
-    expect(extension).not.toContain("process.env.MOLUOXIXI_CONTEXT_ID =");
+    expect(extension).not.toContain("process.env.TRELLIS_CONTEXT_ID =");
     expect(extension).toContain('buildContextKey("omp", "session", sessionId)');
     expect(extension).toContain("realpathSync");
     expect(extension).toContain("resolveProjectFile(projectRoot, file, trustedRoots)");
@@ -114,7 +115,7 @@ describe("omp templates", () => {
     const handler = captureOmpHandlers().get("tool_call");
     if (!handler) throw new Error("OMP extension did not register tool_call");
     const params: { command: string; env?: Record<string, string> } = {
-      command: "python3 ./.moluoxixi/scripts/task.py current",
+      command: "python3 ./.trellis/scripts/task.py current",
       env: { EXISTING: "kept" },
     };
 
@@ -123,7 +124,7 @@ describe("omp templates", () => {
       { sessionManager: { getSessionId: () => "session/a" } },
     );
 
-    expect(params.env?.MOLUOXIXI_CONTEXT_ID).toBe("omp_session_a");
+    expect(params.env?.TRELLIS_CONTEXT_ID).toBe("omp_session_a");
     expect(params.env?.EXISTING).toBe("kept");
   });
 
@@ -131,10 +132,10 @@ describe("omp templates", () => {
     const handler = captureOmpHandlers().get("tool_call");
     if (!handler) throw new Error("OMP extension did not register tool_call");
     const command =
-      "MOLUOXIXI_CONTEXT_ID=inline python3 ./.moluoxixi/scripts/task.py current";
+      "TRELLIS_CONTEXT_ID=inline python3 ./.trellis/scripts/task.py current";
     const params: { command: string; env?: Record<string, string> } = {
       command,
-      env: { MOLUOXIXI_CONTEXT_ID: "explicit" },
+      env: { TRELLIS_CONTEXT_ID: "explicit" },
     };
 
     handler(
@@ -143,7 +144,7 @@ describe("omp templates", () => {
     );
 
     expect(params.command).toBe(command);
-    expect(params.env?.MOLUOXIXI_CONTEXT_ID).toBe("explicit");
+    expect(params.env?.TRELLIS_CONTEXT_ID).toBe("explicit");
   });
 
   it("does not mutate non-Bash tool params", () => {
@@ -185,17 +186,17 @@ describe("omp templates", () => {
     const projectRoot = fs.mkdtempSync(
       path.join(os.tmpdir(), "moluoxixi-omp-dedupe-"),
     );
-    const taskDir = path.join(projectRoot, ".moluoxixi", "tasks", "demo-task");
+    const taskDir = path.join(projectRoot, ".trellis", "tasks", "demo-task");
     const sessionDir = path.join(
       projectRoot,
-      ".moluoxixi",
+      ".trellis",
       ".runtime",
       "sessions",
     );
     const sharedFile = path.join(projectRoot, "docs", "shared.md");
     const checkOnlyFile = path.join(projectRoot, "docs", "check-only.md");
     const contextKey = "omp_session_dedupe";
-    const taskRef = ".moluoxixi/tasks/demo-task";
+    const taskRef = ".trellis/tasks/demo-task";
     const messages: { customType?: string; content?: string }[] = [];
 
     try {
@@ -259,8 +260,8 @@ describe("omp templates", () => {
 
   it("refreshes task context when a referenced file changes mid-session", async () => {
     const projectRoot = fs.mkdtempSync(path.join(os.tmpdir(), "moluoxixi-omp-refresh-"));
-    const taskDir = path.join(projectRoot, ".moluoxixi", "tasks", "demo-task");
-    const sessionsDir = path.join(projectRoot, ".moluoxixi", ".runtime", "sessions");
+    const taskDir = path.join(projectRoot, ".trellis", "tasks", "demo-task");
+    const sessionsDir = path.join(projectRoot, ".trellis", ".runtime", "sessions");
     const referencedFile = path.join(projectRoot, "docs", "changing.md");
     const messages: { customType?: string; content?: string }[] = [];
 
@@ -276,7 +277,7 @@ describe("omp templates", () => {
       );
       fs.writeFileSync(
         path.join(sessionsDir, "omp_session_refresh.json"),
-        JSON.stringify({ current_task: ".moluoxixi/tasks/demo-task" }),
+        JSON.stringify({ current_task: ".trellis/tasks/demo-task" }),
       );
 
       const handlers = new Map<string, OmpEventHandler>();

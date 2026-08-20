@@ -50,11 +50,11 @@ def _load_config() -> dict:
     task_json_path = os.environ.get("TASK_JSON_PATH", "")
     if task_json_path:
         # Walk up from task.json to find .moluoxixi/
-        moluoxixi_dir = Path(task_json_path).parent.parent.parent
+        trellis_dir = Path(task_json_path).parent.parent.parent
     else:
-        moluoxixi_dir = Path(".moluoxixi")
+        trellis_dir = Path(".moluoxixi")
 
-    config_path = moluoxixi_dir / "hooks.local.json"
+    config_path = trellis_dir / "hooks.local.json"
     try:
         with open(config_path, encoding="utf-8") as f:
             return json.load(f)

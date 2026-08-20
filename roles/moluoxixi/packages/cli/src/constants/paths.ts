@@ -8,18 +8,18 @@
 // Directory names (can be renamed)
 export const DIR_NAMES = {
   /** Root workflow directory */
-  WORKFLOW: ".moluoxixi",
-  /** Workspace directory (under .moluoxixi/) - developer work areas */
+  WORKFLOW: ".trellis",
+  /** Workspace directory (under .trellis/) - developer work areas */
   WORKSPACE: "workspace",
-  /** Tasks directory (under .moluoxixi/) - unified task storage */
+  /** Tasks directory (under .trellis/) - unified task storage */
   TASKS: "tasks",
   /** Archive directory (under tasks/) */
   ARCHIVE: "archive",
-  /** Spec/guidelines directory (under .moluoxixi/) */
+  /** Spec/guidelines directory (under .trellis/) */
   SPEC: "spec",
-  /** Scripts directory (under .moluoxixi/) */
+  /** Scripts directory (under .trellis/) */
   SCRIPTS: "scripts",
-  /** Channel runtime agent definitions (under .moluoxixi/) */
+  /** Channel runtime agent definitions (under .trellis/) */
   AGENTS: "agents",
 } as const;
 
@@ -43,29 +43,29 @@ export const FILE_NAMES = {
 
 // Constructed paths (relative to project root)
 export const PATHS = {
-  /** .moluoxixi/ */
+  /** .trellis/ */
   WORKFLOW: DIR_NAMES.WORKFLOW,
-  /** .moluoxixi/workspace/ */
+  /** .trellis/workspace/ */
   WORKSPACE: `${DIR_NAMES.WORKFLOW}/${DIR_NAMES.WORKSPACE}`,
-  /** .moluoxixi/tasks/ */
+  /** .trellis/tasks/ */
   TASKS: `${DIR_NAMES.WORKFLOW}/${DIR_NAMES.TASKS}`,
-  /** .moluoxixi/spec/ */
+  /** .trellis/spec/ */
   SPEC: `${DIR_NAMES.WORKFLOW}/${DIR_NAMES.SPEC}`,
-  /** .moluoxixi/scripts/ */
+  /** .trellis/scripts/ */
   SCRIPTS: `${DIR_NAMES.WORKFLOW}/${DIR_NAMES.SCRIPTS}`,
-  /** .moluoxixi/agents/ */
+  /** .trellis/agents/ */
   AGENTS: `${DIR_NAMES.WORKFLOW}/${DIR_NAMES.AGENTS}`,
-  /** .moluoxixi/.developer */
+  /** .trellis/.developer */
   DEVELOPER_FILE: `${DIR_NAMES.WORKFLOW}/${FILE_NAMES.DEVELOPER}`,
-  /** .moluoxixi/.current-task */
+  /** .trellis/.current-task */
   CURRENT_TASK_FILE: `${DIR_NAMES.WORKFLOW}/${FILE_NAMES.CURRENT_TASK}`,
-  /** .moluoxixi/workflow.md */
+  /** .trellis/workflow.md */
   WORKFLOW_GUIDE_FILE: `${DIR_NAMES.WORKFLOW}/${FILE_NAMES.WORKFLOW_GUIDE}`,
 } as const;
 
 /**
  * Get developer's workspace directory path
- * @example getWorkspaceDir("john") => ".moluoxixi/workspace/john"
+ * @example getWorkspaceDir("john") => ".trellis/workspace/john"
  */
 export function getWorkspaceDir(developer: string): string {
   return `${PATHS.WORKSPACE}/${developer}`;
@@ -73,7 +73,7 @@ export function getWorkspaceDir(developer: string): string {
 
 /**
  * Get task directory path
- * @example getTaskDir("01-21-my-task") => ".moluoxixi/tasks/01-21-my-task"
+ * @example getTaskDir("01-21-my-task") => ".trellis/tasks/01-21-my-task"
  */
 export function getTaskDir(taskName: string): string {
   return `${PATHS.TASKS}/${taskName}`;
@@ -81,7 +81,7 @@ export function getTaskDir(taskName: string): string {
 
 /**
  * Get archive directory path
- * @example getArchiveDir() => ".moluoxixi/tasks/archive"
+ * @example getArchiveDir() => ".trellis/tasks/archive"
  */
 export function getArchiveDir(): string {
   return `${PATHS.TASKS}/${DIR_NAMES.ARCHIVE}`;

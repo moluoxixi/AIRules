@@ -4,7 +4,7 @@ import {
   resolveChannelRef,
   type ChannelScope,
   type ChannelType,
-} from "@moluoxixi/airules-moluoxixi-core/channel";
+} from "@mindfoldhq/moluoxixi-core/channel";
 
 import {
   parseChannelScope,
@@ -31,7 +31,7 @@ export interface CreateOptions {
   ephemeral?: boolean;
   /**
    * Optional mode marker for callers like `channel run` that produce
-   * one-shot channels. Stored as `meta.moluoxixi.createMode` so the
+   * one-shot channels. Stored as `meta.trellis.createMode` so the
    * channel event keeps an `origin: "cli"` write entrypoint while still
    * exposing the mode for downstream consumers.
    */
@@ -66,7 +66,7 @@ export async function createChannel(
     ...(opts.ephemeral ? { ephemeral: true } : {}),
     ...(opts.force ? { force: true } : {}),
     origin: "cli",
-    ...(createMode ? { meta: { moluoxixi: { createMode } } } : {}),
+    ...(createMode ? { meta: { trellis: { createMode } } } : {}),
   });
 
   console.log(

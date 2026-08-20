@@ -55,8 +55,8 @@ What broader problems does this bug reveal?
 
 Solidify insights into the system:
 
-- [ ] Prepare reviewed candidates for relevant thinking guides
-- [ ] Prepare reviewed candidates for relevant code-spec docs
+- [ ] Update `.moluoxixi/spec/guides/` thinking guides
+- [ ] Update relevant `.moluoxixi/spec/` docs
 - [ ] Create issue record (if applicable)
 - [ ] Create feature ticket for root fix
 - [ ] Update check guidelines if needed
@@ -105,6 +105,7 @@ Three levels of insight:
 3. **Philosophical**: How to expand thinking patterns
 
 30 minutes of analysis saves 30 hours of future debugging.
+
 
 ## Thinking Framework: Bayesian Reasoning
 
@@ -168,19 +169,16 @@ Never express binary certainty when evidence is incomplete. Use "most likely", "
 
 ## After Analysis: Immediate Actions
 
-**IMPORTANT**: After completing the analysis above, immediately preserve the
-result without bypassing human review:
+**IMPORTANT**: After completing the analysis above, you MUST immediately:
 
-1. **Prepare complete candidates** under the active task's `research/` directory:
-   - Cross-platform issue -> `cross-platform-thinking-guide.md`
-   - Cross-layer issue -> `cross-layer-thinking-guide.md`
-   - Code reuse issue -> `code-reuse-thinking-guide.md`
-   - Domain-specific issue -> relevant code-spec target
+1. **Update spec/guides** - Don't just list TODOs, actually update the relevant files:
+   - If it's a cross-platform issue → update `cross-platform-thinking-guide.md`
+   - If it's a cross-layer issue → update `cross-layer-thinking-guide.md`
+   - If it's a code reuse issue → update `code-reuse-thinking-guide.md`
+   - If it's domain-specific → update `backend/*.md` or `frontend/*.md`
 
-2. **Run `update-spec`** for each target so it becomes a pending proposal in
-   `.moluoxixi/spec-proposals/`.
+2. **Sync templates** - After updating `.moluoxixi/spec/`, sync to `src/templates/markdown/spec/`
 
-3. **Report proposal IDs and stop**. Do not edit or commit formal specs. A human
-   decides whether `spec-review` promotes, merges, rejects, or deletes them.
+3. **Commit the spec updates** - This is the primary output, not just the analysis text
 
-> **The analysis creates value when it becomes a reviewable proposal and, after human approval, trusted guidance.**
+> **The analysis is worthless if it stays in chat. The value is in the updated specs.**

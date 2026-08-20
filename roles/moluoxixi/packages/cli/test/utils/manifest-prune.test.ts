@@ -1,6 +1,6 @@
 /**
  * Unit tests for pruneOrphanManifestKeys + isCwdHomedir
- * (.moluoxixi/tasks/05-13-uninstall-overdelete-manifest-leak).
+ * (.trellis/tasks/05-13-uninstall-overdelete-manifest-leak).
  */
 
 import { describe, it, expect, beforeEach, afterEach } from "vitest";
@@ -21,18 +21,18 @@ describe("pruneOrphanManifestKeys", () => {
 
   beforeEach(() => {
     tmpDir = fs.mkdtempSync(path.join(os.tmpdir(), "moluoxixi-prune-"));
-    fs.mkdirSync(path.join(tmpDir, ".moluoxixi"), { recursive: true });
+    fs.mkdirSync(path.join(tmpDir, ".trellis"), { recursive: true });
   });
 
   afterEach(() => {
     fs.rmSync(tmpDir, { recursive: true, force: true });
   });
 
-  it("preserves every .moluoxixi/* entry regardless of platform-collect output", () => {
+  it("preserves every .trellis/* entry regardless of platform-collect output", () => {
     const hashes = {
-      ".moluoxixi/workflow.md": "h1",
-      ".moluoxixi/scripts/task.py": "h2",
-      ".moluoxixi/config.yaml": "h3",
+      ".trellis/workflow.md": "h1",
+      ".trellis/scripts/task.py": "h2",
+      ".trellis/config.yaml": "h3",
     };
     saveHashes(tmpDir, hashes);
 
@@ -86,7 +86,7 @@ describe("pruneOrphanManifestKeys", () => {
     const hashes = { "AGENTS.md": "h" };
     fs.writeFileSync(
       path.join(tmpDir, "AGENTS.md"),
-      "<!-- MOLUOXIXI:START -->\nmanaged\n<!-- MOLUOXIXI:END -->\n",
+      "<!-- TRELLIS:START -->\nmanaged\n<!-- TRELLIS:END -->\n",
     );
     saveHashes(tmpDir, hashes);
 
@@ -117,7 +117,7 @@ describe("pruneOrphanManifestKeys", () => {
 
   it("persists pruned manifest to disk by default", () => {
     const hashes = {
-      ".moluoxixi/workflow.md": "h1",
+      ".trellis/workflow.md": "h1",
       ".codex/sessions/user.jsonl": "orphan",
     };
     saveHashes(tmpDir, hashes);
@@ -127,12 +127,12 @@ describe("pruneOrphanManifestKeys", () => {
     expect(pruned).toEqual([".codex/sessions/user.jsonl"]);
     // Disk should reflect the prune.
     expect(loadHashes(tmpDir)).not.toHaveProperty(".codex/sessions/user.jsonl");
-    expect(loadHashes(tmpDir)).toHaveProperty(".moluoxixi/workflow.md");
+    expect(loadHashes(tmpDir)).toHaveProperty(".trellis/workflow.md");
   });
 
   it("does NOT write disk when persist=false", () => {
     const hashes = {
-      ".moluoxixi/workflow.md": "h1",
+      ".trellis/workflow.md": "h1",
       ".codex/sessions/user.jsonl": "orphan",
     };
     saveHashes(tmpDir, hashes);
@@ -144,10 +144,10 @@ describe("pruneOrphanManifestKeys", () => {
   });
 
   it("does NOT rewrite disk when nothing was pruned", () => {
-    const hashes = { ".moluoxixi/workflow.md": "h1" };
+    const hashes = { ".trellis/workflow.md": "h1" };
     saveHashes(tmpDir, hashes);
 
-    const hashFile = path.join(tmpDir, ".moluoxixi", ".template-hashes.json");
+    const hashFile = path.join(tmpDir, ".trellis", ".template-hashes.json");
     const mtimeBefore = fs.statSync(hashFile).mtimeMs;
 
     // Wait a tick so mtime would visibly differ if a write happened.
@@ -201,30 +201,30 @@ describe("isCwdHomedir / homedir guard helpers", () => {
     }
   });
 
-  it("homedirBypassEnabled reflects MOLUOXIXI_ALLOW_HOMEDIR env var", () => {
-    const orig = process.env.MOLUOXIXI_ALLOW_HOMEDIR;
+  it("homedirBypassEnabled reflects TRELLIS_ALLOW_HOMEDIR env var", () => {
+    const orig = process.env.TRELLIS_ALLOW_HOMEDIR;
     try {
-      delete process.env.MOLUOXIXI_ALLOW_HOMEDIR;
+      delete process.env.TRELLIS_ALLOW_HOMEDIR;
       expect(homedirBypassEnabled()).toBe(false);
-      process.env.MOLUOXIXI_ALLOW_HOMEDIR = "1";
+      process.env.TRELLIS_ALLOW_HOMEDIR = "1";
       expect(homedirBypassEnabled()).toBe(true);
       for (const value of ["0", "false", "true", ""]) {
-        process.env.MOLUOXIXI_ALLOW_HOMEDIR = value;
+        process.env.TRELLIS_ALLOW_HOMEDIR = value;
         expect(homedirBypassEnabled()).toBe(false);
       }
     } finally {
-      if (orig === undefined) delete process.env.MOLUOXIXI_ALLOW_HOMEDIR;
-      else process.env.MOLUOXIXI_ALLOW_HOMEDIR = orig;
+      if (orig === undefined) delete process.env.TRELLIS_ALLOW_HOMEDIR;
+      else process.env.TRELLIS_ALLOW_HOMEDIR = orig;
     }
   });
 
   it("homedirGuardMessage mentions the command and the bypass env var", () => {
     const msgInit = homedirGuardMessage("init");
     expect(msgInit).toContain("init");
-    expect(msgInit).toContain("MOLUOXIXI_ALLOW_HOMEDIR=1");
+    expect(msgInit).toContain("TRELLIS_ALLOW_HOMEDIR=1");
 
     const msgUninstall = homedirGuardMessage("uninstall");
     expect(msgUninstall).toContain("uninstall");
-    expect(msgUninstall).toContain("MOLUOXIXI_ALLOW_HOMEDIR=1");
+    expect(msgUninstall).toContain("TRELLIS_ALLOW_HOMEDIR=1");
   });
 });

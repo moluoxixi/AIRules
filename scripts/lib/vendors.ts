@@ -68,6 +68,13 @@ export type VendorProjection
     /** 远程仓库内所选角色根目录，如 roles/example-development。 */
     sourceDir: string
   }
+  | {
+    kind: 'mcp'
+    /** 仓库内单个 MCP 清单文件路径，如 mcps/code/mcps.json。文件格式包含 mcp 配置和 setup 命令。 */
+    sourceFile: string
+    /** 投影到 vendor/ 下的目标路径，如 mcps/code/mcp.json。会从 sourceFile 提取 mcp 配置并生成标准 MCP 格式。 */
+    output: string
+  }
 
 /**
  * 代表一个必须通过 Git remote checkout 获取的供应商仓库。
@@ -106,9 +113,10 @@ export interface VendorLink {
     | 'namespace-dir'
     | 'skill'
     | 'role-assets-dir'
+    | 'mcp-file'
   source: string
   target: string
-  /** 该 skill 的安装前置命令（来自 SkillConfig.setup） */
+  /** 该 skill 或 MCP 的安装前置命令 */
   setup?: SetupCommand[]
 }
 

@@ -8,14 +8,14 @@
 import type { TemplateContext } from "../types/ai-tools.js";
 
 /**
- * Per-platform configure options threaded from `moluoxixi init` flags.
+ * Per-platform configure options threaded from `trellis init` flags.
  * Defined here (not in index.ts) so configurators can reference it without
  * a circular import.
  */
 export interface PlatformConfigureOptions {
   /**
    * Claude Code only: install the opt-in Moluoxixi statusLine
-   * (`moluoxixi init --with-statusline`). Off by default — see
+   * (`trellis init --with-statusline`). Off by default — see
    * `configureClaude` in `claude.ts`.
    */
   withStatusline?: boolean;
@@ -238,13 +238,13 @@ export function resolvePlaceholdersNeutral(
 /** Skill description registry — maps template name to auto-trigger description. */
 const SKILL_DESCRIPTIONS: Record<string, string> = {
   start:
-    "Initializes an AI development session by reading workflow guides, developer identity, git status, active tasks, and project guidelines from .moluoxixi/. Classifies incoming tasks and routes to brainstorm, direct edit, or task workflow. Use when beginning a new coding session, resuming work, starting a new task, or re-establishing project context.",
+    "Initializes an AI development session by reading workflow guides, developer identity, git status, active tasks, and project guidelines from .trellis/. Classifies incoming tasks and routes to brainstorm, direct edit, or task workflow. Use when beginning a new coding session, resuming work, starting a new task, or re-establishing project context.",
   continue:
     "Resume work on the current task. Loads the workflow Phase Index, figures out which phase/step to pick up at, then pulls the step-level detail via get_context.py --mode phase. Use when coming back to an in-progress task and you need to know what to do next.",
   "finish-work":
     "Wrap up the current session: verify quality gate passed, remind user to commit, archive completed tasks, and record session progress to the developer journal. Use when done coding and ready to end the session.",
   "before-dev":
-    "Discovers and injects project-specific coding guidelines from .moluoxixi/spec/ before implementation begins. Reads spec indexes, pre-development checklists, and shared thinking guides for the target package. Use when starting a new coding task, before writing any code, switching to a different package, or needing to refresh project conventions and standards.",
+    "Discovers and injects project-specific coding guidelines from .trellis/spec/ before implementation begins. Reads spec indexes, pre-development checklists, and shared thinking guides for the target package. Use when starting a new coding task, before writing any code, switching to a different package, or needing to refresh project conventions and standards.",
   brainstorm:
     "Guides collaborative requirements discovery before implementation. Creates task directory, seeds PRD, asks high-value questions one at a time, researches technical choices, and converges on MVP scope. Use when requirements are unclear, there are multiple valid approaches, or the user describes a new feature or complex task.",
   check:
@@ -252,9 +252,7 @@ const SKILL_DESCRIPTIONS: Record<string, string> = {
   "break-loop":
     "Deep bug analysis to break the fix-forget-repeat cycle. Analyzes root cause category, why fixes failed, prevention mechanisms, and captures knowledge into specs. Use after fixing a bug to prevent the same class of bugs.",
   "update-spec":
-    "Captures executable contracts and coding conventions into .moluoxixi/spec/ documents. Use when learning something valuable from debugging, implementing, or discussion that should be preserved for future sessions.",
-  "spec-review":
-    "Reviews pending project knowledge proposals with explicit human approval before promoting them into formal specs. Use when inspecting, approving, rejecting, merging, or applying entries from .moluoxixi/spec-proposals/.",
+    "Captures executable contracts and coding conventions into .trellis/spec/ documents. Use when learning something valuable from debugging, implementing, or discussion that should be preserved for future sessions.",
 };
 
 /**
@@ -285,8 +283,6 @@ const COMMAND_DESCRIPTIONS: Record<string, string> = {
   continue: "Resume work on the current task at the correct phase.",
   "finish-work":
     "Wrap up the current session: quality gate, commit reminder, archive, journal.",
-  "spec-review":
-    "Review pending project knowledge proposals before promoting approved changes.",
 };
 
 /** Wrap resolved command content with YAML frontmatter (name + description). */
@@ -532,9 +528,9 @@ export function collectSkillTemplates(
 // Template maps — a platform's file set, described once
 //
 // `collect<Platform>Templates()` returns `Map<relPath, content>`: the single
-// description of what a platform installs. `moluoxixi update` diffs that map and
+// description of what a platform installs. `trellis update` diffs that map and
 // `configure` writes it through `writeTemplateMap`. Nothing else enumerates a
-// platform's files — two descriptions that disagree is how `moluoxixi update`
+// platform's files — two descriptions that disagree is how `trellis update`
 // silently stops managing a file (manifests/0.5.7.json).
 // ---------------------------------------------------------------------------
 
@@ -632,8 +628,8 @@ This platform does NOT auto-inject task context via hook. Before doing anything 
 
 Try in order — stop at the first one that yields a task path:
 
-1. **Look at the dispatch prompt** you received from the main agent. If its first line is \`Active task: <path>\` (e.g. \`Active task: .moluoxixi/tasks/04-17-foo\`), use that path. The main agent is required to include this line on class-2 platforms.
-2. **Run** \`python3 ./.moluoxixi/scripts/task.py current --source\` and read the \`Current task:\` line.
+1. **Look at the dispatch prompt** you received from the main agent. If its first line is \`Active task: <path>\` (e.g. \`Active task: .trellis/tasks/04-17-foo\`), use that path. The main agent is required to include this line on class-2 platforms.
+2. **Run** \`python3 ./.trellis/scripts/task.py current --source\` and read the \`Current task:\` line.
 3. **If both fail** (no \`Active task:\` line in the prompt and \`task.py current\` returns no task), ask the user which task to work on; do NOT guess.
 
 ### Step 2: Load task context from the resolved path
@@ -643,7 +639,7 @@ Try in order — stop at the first one that yields a task path:
    **Skip rows without a \`"file"\` field** (e.g. \`{"_example": "..."}\` seed rows left over from \`task.py create\` before the curator ran).
 3. Read the task's \`prd.md\` (requirements), then \`design.md\` if present (technical design), then \`implement.md\` if present (execution plan).
 
-If \`${jsonl}\` has no curated entries (only a seed row, or the file is missing), fall back to: read the task artifacts, list available specs with \`python3 ./.moluoxixi/scripts/get_context.py --mode packages\`, and pick the specs that match the task domain yourself. Do NOT block on the missing jsonl — lightweight tasks may be PRD-only, while complex tasks may also include \`design.md\` and \`implement.md\`.
+If \`${jsonl}\` has no curated entries (only a seed row, or the file is missing), fall back to: read the task artifacts, list available specs with \`python3 ./.trellis/scripts/get_context.py --mode packages\`, and pick the specs that match the task domain yourself. Do NOT block on the missing jsonl — lightweight tasks may be PRD-only, while complex tasks may also include \`design.md\` and \`implement.md\`.
 
 If the resolved task path has no \`prd.md\`, ask the user what to work on; do NOT proceed without context.
 

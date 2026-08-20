@@ -19,7 +19,7 @@ describe("downloadWithStrategy overwrite: temp-first swap", () => {
 
   beforeEach(() => {
     cwd = fs.mkdtempSync(path.join(os.tmpdir(), "moluoxixi-overwrite-"));
-    destDir = path.join(cwd, ".moluoxixi", "spec");
+    destDir = path.join(cwd, ".trellis", "spec");
     fs.mkdirSync(destDir, { recursive: true });
     // Pre-existing user-authored spec.
     fs.writeFileSync(path.join(destDir, "user.md"), "MY OWN SPEC");

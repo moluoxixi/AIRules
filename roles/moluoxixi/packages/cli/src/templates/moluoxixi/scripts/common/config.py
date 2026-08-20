@@ -337,7 +337,7 @@ def get_context_injection_limits(repo_root: Path | None = None) -> dict[str, int
     return result
 
 
-DEFAULT_PROMPT_INJECTION_SKIP_KEYWORD = "no-moluoxixi"
+DEFAULT_PROMPT_INJECTION_SKIP_KEYWORD = "no-trellis"
 
 
 def get_prompt_injection_config(repo_root: Path | None = None) -> dict[str, str]:
@@ -346,11 +346,11 @@ def get_prompt_injection_config(repo_root: Path | None = None) -> dict[str, str]
     Reads the ``prompt_injection:`` section of ``.moluoxixi/config.yaml``:
 
         prompt_injection:
-          skip_keyword: "no-moluoxixi"   # "" disables the escape hatch entirely
+          skip_keyword: "no-trellis"   # "" disables the escape hatch entirely
 
     ``skip_keyword`` is the word-boundary, case-insensitive keyword that, when
     present in the user's prompt, makes the per-turn workflow-state injection
-    emit nothing for that turn. Defaults to ``"no-moluoxixi"``. A non-string
+    emit nothing for that turn. Defaults to ``"no-trellis"``. A non-string
     value falls back to the default.
     """
     defaults = {"skip_keyword": DEFAULT_PROMPT_INJECTION_SKIP_KEYWORD}

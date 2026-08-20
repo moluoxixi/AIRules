@@ -49,7 +49,7 @@ from .paths import (
 # Paths under .moluoxixi/ that must NEVER be auto-staged. Listed here so the
 # warning to the user can show concrete subpaths to ignore individually
 # instead of ignoring the whole `.moluoxixi/` tree.
-MOLUOXIXI_IGNORED_SUBPATHS = (
+TRELLIS_IGNORED_SUBPATHS = (
     ".moluoxixi/.backup-*",
     ".moluoxixi/worktrees/",
     ".moluoxixi/.template-hashes.json",
@@ -58,7 +58,7 @@ MOLUOXIXI_IGNORED_SUBPATHS = (
 )
 
 
-def safe_moluoxixi_paths_to_add(
+def safe_trellis_paths_to_add(
     repo_root: Path,
     task_name: str | None = None,
 ) -> list[str]:
@@ -281,7 +281,7 @@ def print_gitignore_warning(paths: list[str]) -> None:
         "[WARN] subpaths that should remain ignored, e.g.:",
         file=sys.stderr,
     )
-    for sub in MOLUOXIXI_IGNORED_SUBPATHS:
+    for sub in TRELLIS_IGNORED_SUBPATHS:
         print(f"[WARN]   {sub}", file=sys.stderr)
     print("[WARN]", file=sys.stderr)
     print(

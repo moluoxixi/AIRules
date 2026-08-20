@@ -5,13 +5,13 @@
  * Do NOT use Moluoxixi project's own .moluoxixi/ directory (which may be customized).
  *
  * Directory structure:
- *   moluoxixi/
+ *   trellis/
  *   ├── scripts/
  *   │   ├── __init__.py
  *   │   ├── common/           # Shared utilities (Python)
  *   │   └── *.py              # Main scripts (Python)
  *   ├── agents/                # Channel runtime agent definitions
- *   │   └── *.md               # Loaded by `moluoxixi channel spawn --agent <name>`
+ *   │   └── *.md               # Loaded by `trellis channel spawn --agent <name>`
  *   ├── scripts-shell-archive/ # Archived shell scripts (for reference)
  *   ├── workflow.md           # Workflow guide
  *   ├── config.yaml            # Moluoxixi configuration
@@ -60,7 +60,7 @@ export const commonWorkflowPhase = readTemplate(
   "scripts/common/workflow_phase.py",
 );
 export const commonMoluoxixiConfig = readTemplate(
-  "scripts/common/moluoxixi_config.py",
+  "scripts/common/trellis_config.py",
 );
 export const commonSafeCommit = readTemplate("scripts/common/safe_commit.py");
 
@@ -79,8 +79,8 @@ export const gitattributesTemplate = readTemplate("gitattributes.txt");
 
 // Channel runtime agent definitions (loaded by
 // `packages/cli/src/commands/channel/agent-loader.ts` from `.moluoxixi/agents/`).
-// These are platform-agnostic Moluoxixi runtime files dispatched at `moluoxixi init`
-// and refreshed by `moluoxixi update`.
+// These are platform-agnostic Moluoxixi runtime files dispatched at `trellis init`
+// and refreshed by `trellis update`.
 export const implementAgentTemplate = readTemplate("agents/implement.md");
 export const checkAgentTemplate = readTemplate("agents/check.md");
 
@@ -113,7 +113,7 @@ export function getAllScripts(): Map<string, string> {
   scripts.set("common/session_context.py", commonSessionContext);
   scripts.set("common/packages_context.py", commonPackagesContext);
   scripts.set("common/workflow_phase.py", commonWorkflowPhase);
-  scripts.set("common/moluoxixi_config.py", commonMoluoxixiConfig);
+  scripts.set("common/trellis_config.py", commonMoluoxixiConfig);
   scripts.set("common/safe_commit.py", commonSafeCommit);
 
   // Main
@@ -130,8 +130,8 @@ export function getAllScripts(): Map<string, string> {
  * Get all channel runtime agent definitions as a map of relative path
  * (under `.moluoxixi/agents/`) to content.
  *
- * Consumed by `moluoxixi init` (to dispatch on first install) and by
- * `moluoxixi update` (to backfill missing files and surface conflicts on edited
+ * Consumed by `trellis init` (to dispatch on first install) and by
+ * `trellis update` (to backfill missing files and surface conflicts on edited
  * ones via the standard hash machinery).
  */
 export function getAllAgents(): Map<string, string> {

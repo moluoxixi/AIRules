@@ -6,7 +6,7 @@
  * UserPromptSubmit, and PreToolUse for Agent/Task), so `hasHooks` is true.
  * Four output paths:
  * - `.zcode/skills/` — ZCode-private workflow and bundled skills
- * - `.zcode/commands/moluoxixi/` — slash commands (invoked as /moluoxixi:<name>)
+ * - `.zcode/commands/trellis/` — slash commands (invoked as /trellis:<name>)
  * - `.zcode/agents/` — sub-agent definitions with hook-injection fallback
  * - `.zcode/hooks/` + `.zcode/config.json` — shared Python hook scripts and
  *   the workspace hook registration
@@ -28,7 +28,7 @@ import {
 const ZCODE_HOOKS_DIR = ".zcode/hooks";
 
 /**
- * The ZCode file set — written at init and diffed by `moluoxixi update`.
+ * The ZCode file set — written at init and diffed by `trellis update`.
  */
 export function collectZcodeTemplates(): Map<string, string> {
   const config = AI_TOOLS.zcode;
@@ -44,9 +44,9 @@ export function collectZcodeTemplates(): Map<string, string> {
     files.set(filePath, content);
   }
 
-  // 2. Commands → .zcode/commands/moluoxixi/
+  // 2. Commands → .zcode/commands/trellis/
   for (const cmd of resolveCommands(ctx)) {
-    files.set(`.zcode/commands/moluoxixi/${cmd.name}.md`, cmd.content);
+    files.set(`.zcode/commands/trellis/${cmd.name}.md`, cmd.content);
   }
 
   // 3. Sub-agents → .zcode/agents/ (hook-inject; templates carry fallback).
@@ -79,7 +79,7 @@ export async function configureZcode(cwd: string): Promise<void> {
   // ZCode loads hook config at session start and does NOT hot-reload it, so
   // users must open a new session for these hooks to fire. Mirrors the Codex
   // one-shot hint pattern; silent under test/quiet environments.
-  if (!process.env.VITEST && !process.env.MOLUOXIXI_QUIET) {
+  if (!process.env.VITEST && !process.env.TRELLIS_QUIET) {
     process.stderr.write(
       "ℹ️  ZCode loads hooks at session start (no hot-reload). " +
         "Open a NEW ZCode session for the Moluoxixi SessionStart / " +

@@ -35,8 +35,8 @@ describe("trae shared skills (from common source)", () => {
   it("does not include platform-specific syntax in resolved output", () => {
     const skills = resolveAllAsSkills(AI_TOOLS.trae.templateContext);
     for (const skill of skills) {
-      // Trae uses /moluoxixi- prefix, not /moluoxixi:
-      expect(skill.content).not.toContain("/moluoxixi:");
+      // Trae uses /moluoxixi- prefix, not /trellis:
+      expect(skill.content).not.toContain("/trellis:");
       expect(skill.content).not.toContain(".claude/");
       expect(skill.content).not.toContain(".cursor/");
     }

@@ -9,10 +9,10 @@ import {
 import { getAllAgents, getIdeHooks } from "../templates/kiro/index.js";
 
 /**
- * The Kiro Code file set — written at init and diffed by `moluoxixi update`.
+ * The Kiro Code file set — written at init and diffed by `trellis update`.
  * Kiro's configDir is ".kiro/skills"; agents and hooks go under ".kiro/".
  * - skills/moluoxixi-{name}/SKILL.md — all templates as auto-triggered skills
- * - agents/{name}.json — main `moluoxixi` agent (per-turn workflow-state +
+ * - agents/{name}.json — main `trellis` agent (per-turn workflow-state +
  *   session-start hooks) plus 3 sub-agents (agentSpawn → inject-subagent-context)
  * - hooks/*.py — shared hook scripts (referenced by agent JSON / .kiro.hook)
  * - hooks/*.kiro.hook — IDE hook definitions (promptSubmit → inject-workflow-state)

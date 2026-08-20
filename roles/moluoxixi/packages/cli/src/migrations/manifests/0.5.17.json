@@ -3,7 +3,7 @@
   "description": "Patch: bundle the Moluoxixi spec bootstrap skill and update the marketplace/docs entry for project-specific spec generation.",
   "breaking": false,
   "recommendMigrate": false,
-  "changelog": "**Enhancements:**\n- feat(skills): `moluoxixi-spec-bootstarp` is now a built-in bundled skill installed by `moluoxixi init` and refreshed by `moluoxixi update` for supported AI platforms.\n- feat(skills): the bundled skill helps AI bootstrap `.moluoxixi/spec/` from the real repository with source-backed references for repository analysis, spec task planning, spec writing, and MCP setup.\n- docs(skills): replace the older marketplace-only `cc-codex-spec-bootstrap` docs entry with the built-in `moluoxixi-spec-bootstarp` flow.",
+  "changelog": "**Enhancements:**\n- feat(skills): `moluoxixi-spec-bootstarp` is now a built-in bundled skill installed by `trellis init` and refreshed by `trellis update` for supported AI platforms.\n- feat(skills): the bundled skill helps AI bootstrap `.trellis/spec/` from the real repository with source-backed references for repository analysis, spec task planning, spec writing, and MCP setup.\n- docs(skills): replace the older marketplace-only `cc-codex-spec-bootstrap` docs entry with the built-in `moluoxixi-spec-bootstarp` flow.",
   "migrations": [],
-  "notes": "Run `moluoxixi update` to install or refresh the bundled `moluoxixi-spec-bootstarp` skill. No migration command is required."
+  "notes": "Run `trellis update` to install or refresh the bundled `moluoxixi-spec-bootstarp` skill. No migration command is required."
 }

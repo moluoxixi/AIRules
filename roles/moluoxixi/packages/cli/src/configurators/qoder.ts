@@ -10,7 +10,7 @@ import {
 import { getAllAgents, getSettingsTemplate } from "../templates/qoder/index.js";
 
 /**
- * The Qoder file set — written at init and diffed by `moluoxixi update`.
+ * The Qoder file set — written at init and diffed by `trellis update`.
  *
  * Qoder is a pull-based class-2 platform. Custom Commands require YAML
  * frontmatter with `name` + `description` and use a flat layout, so

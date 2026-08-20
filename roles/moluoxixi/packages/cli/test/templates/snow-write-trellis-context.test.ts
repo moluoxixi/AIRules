@@ -47,21 +47,21 @@ interface HookResult {
 }
 
 function writeFixtureRepo(root: string): void {
-  const taskDir = path.join(root, ".moluoxixi", "tasks", "demo-task");
-  fs.mkdirSync(path.join(root, ".moluoxixi", "scripts"), { recursive: true });
+  const taskDir = path.join(root, ".trellis", "tasks", "demo-task");
+  fs.mkdirSync(path.join(root, ".trellis", "scripts"), { recursive: true });
   fs.mkdirSync(taskDir, { recursive: true });
-  fs.mkdirSync(path.join(root, ".moluoxixi", ".runtime", "sessions"), {
+  fs.mkdirSync(path.join(root, ".trellis", ".runtime", "sessions"), {
     recursive: true,
   });
 
   // Minimal task.py: always reports the fixture active task.
   fs.writeFileSync(
-    path.join(root, ".moluoxixi", "scripts", "task.py"),
+    path.join(root, ".trellis", "scripts", "task.py"),
     [
       "#!/usr/bin/env python3",
       "import sys",
       "if \"current\" in sys.argv:",
-      "    print(\"Current task: .moluoxixi/tasks/demo-task\")",
+      "    print(\"Current task: .trellis/tasks/demo-task\")",
       "    print(\"Source: session\")",
       "    raise SystemExit(0)",
       "print(\"unknown\")",
@@ -102,12 +102,12 @@ function writeFixtureRepo(root: string): void {
     "utf-8",
   );
   fs.writeFileSync(
-    path.join(root, ".moluoxixi", "identity.md"),
+    path.join(root, ".trellis", "identity.md"),
     "# Identity\n\nName: Fixture Dev\n",
     "utf-8",
   );
   fs.writeFileSync(
-    path.join(root, ".moluoxixi", "workflow.md"),
+    path.join(root, ".trellis", "workflow.md"),
     "# Workflow\n\nPhase 1 Plan / Phase 2 Execute\n",
     "utf-8",
   );
@@ -129,7 +129,7 @@ function runHook(
     ...process.env,
     SNOW_CWD: repo,
     // Avoid leaking host Moluoxixi session identity into fixture runs.
-    MOLUOXIXI_CONTEXT_ID: "",
+    TRELLIS_CONTEXT_ID: "",
     SNOW_SESSION_ID: opts.env?.SNOW_SESSION_ID ?? "",
     ...opts.env,
   };
@@ -207,7 +207,7 @@ describe("snow write-moluoxixi-context.py execution", () => {
       );
       expect(res.payload?.additionalContext).toContain("Mode: session");
       expect(res.payload?.additionalContext).toContain(
-        ".moluoxixi/tasks/demo-task",
+        ".trellis/tasks/demo-task",
       );
       expect(res.payload?.additionalContext).toContain("prd.md summary");
       expect(res.payload?.display).toContain("Moluoxixi session context injected");
@@ -263,7 +263,7 @@ describe("snow write-moluoxixi-context.py execution", () => {
           cwd: repo,
           agentId: "moluoxixi-implement",
           agentName: "moluoxixi-implement",
-          prompt: "Active task: .moluoxixi/tasks/demo-task\nImplement feature",
+          prompt: "Active task: .trellis/tasks/demo-task\nImplement feature",
         }),
         env: { SNOW_SESSION_ID: "sess-sub-1" },
       });
@@ -348,7 +348,7 @@ describe("snow write-moluoxixi-context.py execution", () => {
         }),
         env: {
           SNOW_SESSION_ID: "mine-session",
-          MOLUOXIXI_CONTEXT_ID: "snow-mine-session",
+          TRELLIS_CONTEXT_ID: "snow-mine-session",
         },
       });
 
@@ -401,5 +401,5 @@ print(json.dumps({"bytes": len(out.encode("utf-8")), "has_marker": "truncated" i
 });
 
 function rootSessions(repo: string): string {
-  return path.join(repo, ".moluoxixi", ".runtime", "sessions");
+  return path.join(repo, ".trellis", ".runtime", "sessions");
 }

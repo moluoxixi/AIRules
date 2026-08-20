@@ -22,7 +22,7 @@ import {
 } from "./shared.js";
 
 /**
- * The Grok Build file set — written at init and diffed by `moluoxixi update`.
+ * The Grok Build file set — written at init and diffed by `trellis update`.
  */
 export function collectGrokTemplates(): Map<string, string> {
   const config = AI_TOOLS.grok;

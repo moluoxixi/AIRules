@@ -58,11 +58,11 @@ describe("deprecated source path aliases", () => {
 });
 
 // =============================================================================
-// readMoluoxixiFile — reads files from moluoxixi template directory
+// readMoluoxixiFile — reads files from trellis template directory
 // =============================================================================
 
 describe("readMoluoxixiFile", () => {
-  it("reads workflow.md from moluoxixi templates", () => {
+  it("reads workflow.md from trellis templates", () => {
     const content = readMoluoxixiFile("workflow.md");
     expect(typeof content).toBe("string");
     expect(content.length).toBeGreaterThan(0);

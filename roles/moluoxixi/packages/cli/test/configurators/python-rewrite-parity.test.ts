@@ -10,7 +10,7 @@ import path from "node:path";
  * (copilot.ts) and `.reasonix/skills/<agent>/SKILL.md` (reasonix.ts). The two
  * paths agreed only because those four template files happen to contain no
  * `python3` literal — adding one would have produced a permanent phantom
- * `moluoxixi update` diff on Windows and nowhere else.
+ * `trellis update` diff on Windows and nowhere else.
  *
  * Converging `configure` onto `collectTemplates` routes them through the same
  * rewrite. That is a real behavior change, so it gets a test that injects the
@@ -18,7 +18,7 @@ import path from "node:path";
  */
 const { PYTHON3_LINE } = vi.hoisted(() => ({
   PYTHON3_LINE:
-    "\n\nRun `python3 ./.moluoxixi/scripts/task.py current` before starting.\n",
+    "\n\nRun `python3 ./.trellis/scripts/task.py current` before starting.\n",
 }));
 
 vi.mock("../../src/templates/snow/index.js", async (importOriginal) => {
@@ -98,11 +98,10 @@ describe("python3 rewrite reaches the previously-raw write sites", () => {
   it("leaves the literal alone under the default (POSIX) rendering", async () => {
     // Guards the test itself: proves the injected literal really reaches disk,
     // so the Windows case below is measuring the rewrite and not a dead mock.
-    setResolvedPythonCommand("python3");
     for (const [id, relPath] of RAW_WRITE_SITES) {
       const written = await configureInto(id, relPath);
       expect(written, `${id}: ${relPath}`).toContain(
-        "python3 ./.moluoxixi/scripts/task.py",
+        "python3 ./.trellis/scripts/task.py",
       );
     }
   });
@@ -112,7 +111,7 @@ describe("python3 rewrite reaches the previously-raw write sites", () => {
     for (const [id, relPath] of RAW_WRITE_SITES) {
       const written = await configureInto(id, relPath);
       expect(written, `${id}: ${relPath}`).toContain(
-        "python ./.moluoxixi/scripts/task.py",
+        "python ./.trellis/scripts/task.py",
       );
       expect(written, `${id}: ${relPath}`).not.toContain("python3");
       expect(written, `${id}: ${relPath} must match the collected bytes`).toBe(

@@ -1,0 +1,54 @@
+{
+  "mcps": {
+    "codegraph": {
+      "mcp": {
+        "command": "codegraph",
+        "args": [
+          "serve",
+          "--mcp",
+          "--path",
+          "${workspaceFolder}"
+        ]
+      },
+      "setup": [
+        {
+          "command": "npm",
+          "args": ["install", "--global", "@colbymchenry/codegraph"],
+          "skipIfCommandAvailable": "codegraph",
+          "description": "安装 codegraph CLI 工具"
+        },
+        {
+          "command": "codegraph",
+          "args": ["install", "--yes"],
+          "windowsCommandShim": true,
+          "description": "初始化 codegraph 环境"
+        }
+      ],
+      "description": "代码知识图谱服务器，提供代码结构和依赖关系分析"
+    },
+    "context7": {
+      "mcp": {
+        "command": "npx",
+        "args": ["-y", "@upstash/context7-mcp@latest"]
+      },
+      "setup": [],
+      "description": "实时文档服务器，提供库和框架的最新文档"
+    },
+    "sequential-thinking": {
+      "mcp": {
+        "command": "npx",
+        "args": ["-y", "@modelcontextprotocol/server-sequential-thinking@latest"]
+      },
+      "setup": [],
+      "description": "推理增强服务器，支持复杂的逐步思考"
+    },
+    "playwright": {
+      "mcp": {
+        "command": "npx",
+        "args": ["-y", "@playwright/mcp@latest"]
+      },
+      "setup": [],
+      "description": "浏览器自动化服务器，用于 UI 测试和交互"
+    }
+  }
+}

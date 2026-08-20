@@ -1,6 +1,6 @@
 {
   "name": "@moluoxixi/airules-moluoxixi-cli",
-  "version": "0.6.19",
+  "version": "0.6.15",
   "description": "Moluoxixi workflow CLI for disciplined AI-assisted software delivery",
   "type": "module",
   "main": "./dist/index.js",
@@ -9,8 +9,7 @@
     "moluoxixi": "./bin/moluoxixi.js"
   },
   "publishConfig": {
-    "access": "public",
-    "provenance": true
+    "access": "public"
   },
   "scripts": {
     "build": "pnpm run clean && tsc && pnpm run copy-templates",
@@ -19,10 +18,8 @@
     "dev": "tsc --watch",
     "start": "node ./dist/cli/index.js",
     "test": "vitest run",
-    "test:publish": "pnpm --filter @moluoxixi/airules-moluoxixi-core build && vitest run test/commands/channel-claude-adapter.test.ts test/commands/channel-codex-adapter.test.ts test/commands/channel-context-trust.test.ts test/commands/channel-guard.test.ts test/commands/channel-name-safety.test.ts test/commands/channel-supervisor-idle.test.ts test/commands/channel-supervisor-path.test.ts test/commands/channel-wait-warning.test.ts test/commands/channel.test.ts test/commands/mem-helpers.test.ts test/commands/mem-integration.test.ts test/commands/upgrade.test.ts",
     "test:watch": "vitest",
     "test:coverage": "vitest run --coverage",
-    "lint:publish": "publint --strict && attw --pack . --profile esm-only",
     "lint": "eslint src/ test/",
     "lint:fix": "eslint src/ test/ --fix",
     "format": "prettier --write src/",
@@ -30,7 +27,7 @@
     "typecheck": "tsc --noEmit",
     "lint:py": "basedpyright",
     "lint:all": "pnpm lint && pnpm lint:py",
-    "prepublishOnly": "pnpm run test:publish && pnpm run build",
+    "prepublishOnly": "pnpm test && pnpm run build && cp ../../README.md ../../LICENSE .",
     "release": "node scripts/release.js patch",
     "release:minor": "node scripts/release.js minor",
     "release:major": "node scripts/release.js major",
@@ -49,9 +46,9 @@
     "developer-tools",
     "agent",
     "memory",
-    "moluoxixi"
+    "trellis"
   ],
-  "author": "Moluoxixi",
+  "author": "Mindfold LLC",
   "license": "AGPL-3.0-only",
   "dependencies": {
     "@moluoxixi/airules-moluoxixi-core": "workspace:*",
@@ -81,10 +78,12 @@
   },
   "files": [
     "dist",
-    "bin/moluoxixi.js"
+    "bin",
+    "README.md",
+    "LICENSE"
   ],
   "repository": {
     "type": "git",
-    "url": "https://github.com/moluoxixi/AIRules"
+    "url": "https://github.com/mindfold-ai/trellis.git"
   }
 }

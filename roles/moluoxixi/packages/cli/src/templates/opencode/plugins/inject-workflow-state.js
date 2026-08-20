@@ -26,12 +26,16 @@
 import { existsSync, readFileSync } from "fs"
 import { join } from "path"
 import { findUserTextPart, insertSyntheticTextPart } from "../lib/context-visibility.js"
-import { MoluoxixiContext as MoluoxixiContext, debugLog, isMoluoxixiSubagent as isMoluoxixiSubagent } from "../lib/moluoxixi-context.js"
+import { MoluoxixiContext, debugLog, isMoluoxixiSubagent } from "../lib/moluoxixi-context.js"
 
 // Supports STATUS values with letters, digits, underscores, hyphens
 // (so "in-review" / "blocked-by-team" work alongside "in_progress").
 const TAG_RE = /\[workflow-state:([A-Za-z0-9_-]+)\]\s*\n([\s\S]*?)\n\s*\[\/workflow-state:\1\]/g
-const DEFAULT_PROMPT_INJECTION_SKIP_KEYWORD = "no-moluoxixi"
+
+// Escape hatch for the per-turn breadcrumb (issue #427). Mirrors
+// `common.config.get_prompt_injection_config()` / the shared Python hook's
+// `_resolve_skip_keyword()` + `prompt_has_skip_keyword()`.
+const DEFAULT_PROMPT_INJECTION_SKIP_KEYWORD = "no-trellis"
 
 function stripInlineComment(value) {
   let inQuote = null
@@ -45,27 +49,32 @@ function stripInlineComment(value) {
       inQuote = ch
       continue
     }
-    if (ch === "#" && (idx === 0 || /\s/.test(value[idx - 1])))
-      return value.slice(0, idx)
+    if (ch === "#" && (idx === 0 || /\s/.test(value[idx - 1]))) return value.slice(0, idx)
   }
   return value
 }
 
-function unquoteYaml(value) {
-  if (value.length >= 2 && value[0] === value[value.length - 1] && (value[0] === '"' || value[0] === "'"))
-    return value.slice(1, -1)
-  return value
+function unquoteYaml(s) {
+  if (s.length >= 2 && s[0] === s[s.length - 1] && (s[0] === '"' || s[0] === "'")) return s.slice(1, -1)
+  return s
 }
 
+/**
+ * Line-based parser for ONLY the `prompt_injection:` block of
+ * `.moluoxixi/config.yaml`. Not a general YAML parser — mirrors
+ * `common.config.get_prompt_injection_config()` semantics for this section
+ * only (missing key keeps the default; non-string value keeps the default).
+ */
 function readSkipKeyword(directory) {
-  const configPath = join(directory, ".moluoxixi", "config.yaml")
-  if (!existsSync(configPath)) return DEFAULT_PROMPT_INJECTION_SKIP_KEYWORD
+  const path = join(directory, ".moluoxixi", "config.yaml")
+  if (!existsSync(path)) return DEFAULT_PROMPT_INJECTION_SKIP_KEYWORD
   let text
   try {
-    text = readFileSync(configPath, "utf-8")
+    text = readFileSync(path, "utf-8")
   } catch {
     return DEFAULT_PROMPT_INJECTION_SKIP_KEYWORD
   }
+
   let inSection = false
   let sectionIndent = -1
   for (const rawLine of text.split(/\r?\n/)) {
@@ -80,17 +89,23 @@ function readSkipKeyword(directory) {
     if (!trimmed || trimmed.startsWith("#")) continue
     const indent = rawLine.length - rawLine.trimStart().length
     if (indent <= sectionIndent) break
-    const match = trimmed.match(/^skip_keyword\s*:\s*(.*)$/)
-    if (match)
-      return unquoteYaml(stripInlineComment(match[1]).trim())
+    const m = trimmed.match(/^skip_keyword\s*:\s*(.*)$/)
+    if (!m) continue
+    return unquoteYaml(stripInlineComment(m[1]).trim())
   }
   return DEFAULT_PROMPT_INJECTION_SKIP_KEYWORD
 }
 
+/**
+ * Case-insensitive, word-boundary match of `keyword` in `text`. Hyphen
+ * counts as a word char so "no-trellisx" / "xno-trellis" don't match, but
+ * punctuation/whitespace boundaries do. Empty keyword never matches.
+ */
 function promptHasSkipKeyword(text, keyword) {
   if (!keyword || typeof text !== "string") return false
   const escaped = keyword.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")
-  return new RegExp(`(?<![\\w-])${escaped}(?![\\w-])`, "i").test(text)
+  const pattern = new RegExp(`(?<![\\w-])${escaped}(?![\\w-])`, "i")
+  return pattern.test(text)
 }
 
 /**
@@ -129,7 +144,7 @@ function getActiveTask(ctx, platformInput = null) {
   if (!taskRef) return null
   const taskDir = ctx.resolveTaskDir(taskRef)
   if (active.stale || !taskDir || !existsSync(taskDir)) {
-    return { id: taskRef.split("/").pop(), status: "stale", source: active.source, complexity: "unknown", executionMode: "manual" }
+    return { id: taskRef.split("/").pop(), status: "stale", source: active.source }
   }
   const taskJsonPath = join(taskDir, "task.json")
   if (!existsSync(taskJsonPath)) return null
@@ -138,9 +153,7 @@ function getActiveTask(ctx, platformInput = null) {
     const status = typeof data.status === "string" ? data.status : ""
     if (!status) return null
     const id = data.id || taskRef.split("/").pop()
-    const complexity = data.complexity && typeof data.complexity === "object" ? data.complexity.level || "unclassified" : "legacy"
-    const executionMode = data.executionApproval && typeof data.executionApproval === "object" ? data.executionApproval.mode || "manual" : "legacy"
-    return { id, status, source: active.source, complexity, executionMode }
+    return { id, status, source: active.source }
   } catch {
     return null
   }
@@ -153,14 +166,12 @@ function getActiveTask(ctx, platformInput = null) {
  *   "Refer to workflow.md for current step." line
  * - no_task pseudo-status (id === null) → header omits task info
  */
-function buildBreadcrumb(id, status, templates, complexity = null, executionMode = null) {
+function buildBreadcrumb(id, status, templates) {
   let body = templates[status]
   if (body === undefined) {
     body = "Refer to workflow.md for current step."
   }
   let header = id === null ? `Status: ${status}` : `Task: ${id} (${status})`
-  if (id !== null && complexity && executionMode)
-    header += `; complexity=${complexity}; execution=${executionMode}`
   return `<workflow-state>\n${header}\n${body}\n</workflow-state>`
 }
 
@@ -170,17 +181,18 @@ export default async ({ directory }) => {
   debugLog("workflow-state", "Plugin loaded, directory:", directory)
 
   return {
-      // Persist a synthetic breadcrumb without changing the user prompt.
+      // chat.message fires on every user message. Insert a complete synthetic
+      // breadcrumb part so it persists without changing the user prompt.
       "chat.message": async (input, output) => {
         try {
           // Skip Moluoxixi sub-agent turns — the per-turn breadcrumb is for the
           // main session only; sub-agent context comes from the parent's
           // tool.execute.before injection.
           if (isMoluoxixiSubagent(input)) {
-            debugLog("workflow-state", "Skipping moluoxixi subagent turn:", input?.agent)
+            debugLog("workflow-state", "Skipping trellis subagent turn:", input?.agent)
             return
           }
-          if (process.env.MOLUOXIXI_HOOKS === "0" || process.env.MOLUOXIXI_DISABLE_HOOKS === "1") {
+          if (process.env.TRELLIS_HOOKS === "0" || process.env.TRELLIS_DISABLE_HOOKS === "1") {
             return
           }
           if (process.env.OPENCODE_NON_INTERACTIVE === "1") {
@@ -189,16 +201,22 @@ export default async ({ directory }) => {
           if (!ctx.isMoluoxixiProject()) {
             return
           }
+
           const parts = output?.parts || []
-          const originalText = findUserTextPart(parts)?.text || ""
+          const userTextPart = findUserTextPart(parts)
+          const originalText = userTextPart?.text || ""
+
+          // Escape hatch (issue #427): user prompt contains the skip keyword
+          // as a standalone word — emit nothing for this turn only.
           if (promptHasSkipKeyword(originalText, readSkipKeyword(directory))) {
             debugLog("workflow-state", "Skipping turn: skip keyword present in prompt")
             return
           }
+
           const templates = loadBreadcrumbs(directory)
           const task = getActiveTask(ctx, input)
           const breadcrumb = task
-            ? buildBreadcrumb(task.id, task.status, templates, task.complexity, task.executionMode)
+            ? buildBreadcrumb(task.id, task.status, templates, task.source)
             : buildBreadcrumb(null, "no_task", templates)
 
           insertSyntheticTextPart(parts, breadcrumb, "workflowState")

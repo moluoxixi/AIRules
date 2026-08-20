@@ -15,13 +15,12 @@ import { AI_TOOLS } from "../types/ai-tools.js";
 import { getAllAgents } from "../templates/reasonix/index.js";
 import {
   collectSkillTemplates,
-  replacePythonCommandLiterals,
   resolveAllAsSkills,
   resolveBundledSkills,
 } from "./shared.js";
 
 /**
- * The Reasonix file set — written at init and diffed by `moluoxixi update`.
+ * The Reasonix file set — written at init and diffed by `trellis update`.
  */
 export function collectReasonixTemplates(): Map<string, string> {
   const config = AI_TOOLS.reasonix;
@@ -45,10 +44,7 @@ export function collectReasonixTemplates(): Map<string, string> {
   // Subagent skills (moluoxixi-implement, moluoxixi-check) — written with
   // runAs: subagent frontmatter for isolated subagent loops.
   for (const agent of getAllAgents()) {
-    files.set(
-      `.reasonix/skills/${agent.name}/SKILL.md`,
-      replacePythonCommandLiterals(agent.content),
-    );
+    files.set(`.reasonix/skills/${agent.name}/SKILL.md`, agent.content);
   }
 
   return files;

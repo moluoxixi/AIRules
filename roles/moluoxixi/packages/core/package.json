@@ -1,7 +1,7 @@
 {
   "name": "@moluoxixi/airules-moluoxixi-core",
-  "version": "0.6.19",
-  "description": "Moluoxixi core SDK for channel, memory, and task workflows",
+  "version": "0.6.15",
+  "description": "Moluoxixi core SDK — channel and task domain primitives consumed by the Moluoxixi CLI and downstream Node services",
   "type": "module",
   "main": "./dist/index.js",
   "types": "./dist/index.d.ts",
@@ -46,22 +46,19 @@
     "clean": "node -e \"require('node:fs').rmSync('dist', { recursive: true, force: true })\"",
     "dev": "tsc --watch",
     "test": "vitest run",
-    "test:publish": "pnpm test",
     "test:watch": "vitest",
-    "lint:publish": "publint --strict && attw --pack . --profile esm-only",
-    "prepublishOnly": "pnpm run test:publish && pnpm run build",
     "lint": "eslint src/ test/",
     "lint:fix": "eslint src/ test/ --fix",
     "typecheck": "tsc --noEmit"
   },
   "keywords": [
-    "moluoxixi",
+    "trellis",
     "channel",
     "sdk",
     "agent",
     "events"
   ],
-  "author": "Moluoxixi",
+  "author": "Mindfold LLC",
   "license": "AGPL-3.0-only",
   "devDependencies": {
     "@eslint/js": "^9.18.0",
@@ -76,6 +73,6 @@
   },
   "repository": {
     "type": "git",
-    "url": "https://github.com/moluoxixi/AIRules"
+    "url": "https://github.com/mindfold-ai/trellis.git"
   }
 }

@@ -75,17 +75,17 @@ def _normalize_task_ref(task_ref: str) -> str:
     return normalized
 
 
-def _resolve_task_dir(moluoxixi_dir: Path, task_ref: str) -> Path:
+def _resolve_task_dir(trellis_dir: Path, task_ref: str) -> Path:
     normalized = _normalize_task_ref(task_ref)
     path_obj = Path(normalized)
     if path_obj.is_absolute():
         return path_obj
     if normalized.startswith(".moluoxixi/"):
-        return moluoxixi_dir.parent / path_obj
-    return moluoxixi_dir / "tasks" / path_obj
+        return trellis_dir.parent / path_obj
+    return trellis_dir / "tasks" / path_obj
 
 
-def _find_moluoxixi_dir() -> Path | None:
+def _find_trellis_dir() -> Path | None:
     """Walk up from cwd to find .moluoxixi/ directory."""
     current = Path.cwd()
     for parent in [current, *current.parents]:
@@ -95,14 +95,14 @@ def _find_moluoxixi_dir() -> Path | None:
     return None
 
 
-def _get_current_task(moluoxixi_dir: Path) -> dict | None:
+def _get_current_task(trellis_dir: Path) -> dict | None:
     """Load current task info through Moluoxixi' active task resolver."""
-    return _get_current_task_for_input(moluoxixi_dir, {})
+    return _get_current_task_for_input(trellis_dir, {})
 
 
-def _get_current_task_for_input(moluoxixi_dir: Path, cc_data: dict) -> dict | None:
+def _get_current_task_for_input(trellis_dir: Path, cc_data: dict) -> dict | None:
     """Load current task info for the Claude Code session JSON."""
-    scripts_dir = moluoxixi_dir / "scripts"
+    scripts_dir = trellis_dir / "scripts"
     if str(scripts_dir) not in sys.path:
         sys.path.insert(0, str(scripts_dir))
     try:
@@ -110,11 +110,11 @@ def _get_current_task_for_input(moluoxixi_dir: Path, cc_data: dict) -> dict | No
     except Exception:
         return None
 
-    active = resolve_active_task(moluoxixi_dir.parent, cc_data, platform="claude")
+    active = resolve_active_task(trellis_dir.parent, cc_data, platform="claude")
     if not active.task_path:
         return None
 
-    task_path = _resolve_task_dir(moluoxixi_dir, active.task_path)
+    task_path = _resolve_task_dir(trellis_dir, active.task_path)
     if active.stale:
         return {
             "title": task_path.name,
@@ -135,9 +135,9 @@ def _get_current_task_for_input(moluoxixi_dir: Path, cc_data: dict) -> dict | No
     }
 
 
-def _count_active_tasks(moluoxixi_dir: Path) -> int:
+def _count_active_tasks(trellis_dir: Path) -> int:
     """Count non-archived task directories with valid task.json."""
-    tasks_dir = moluoxixi_dir / "tasks"
+    tasks_dir = trellis_dir / "tasks"
     if not tasks_dir.is_dir():
         return 0
     count = 0
@@ -147,8 +147,8 @@ def _count_active_tasks(moluoxixi_dir: Path) -> int:
     return count
 
 
-def _get_developer(moluoxixi_dir: Path) -> str:
-    content = _read_text(moluoxixi_dir / ".developer")
+def _get_developer(trellis_dir: Path) -> str:
+    content = _read_text(trellis_dir / ".developer")
     if not content:
         return "unknown"
     for line in content.splitlines():
@@ -257,13 +257,13 @@ def main() -> None:
     except (json.JSONDecodeError, ValueError):
         cc_data = {}
 
-    moluoxixi_dir = _find_moluoxixi_dir()
+    trellis_dir = _find_trellis_dir()
     SEP = " \033[90m·\033[0m "
 
     # --- Moluoxixi data ---
-    task = _get_current_task_for_input(moluoxixi_dir, cc_data) if moluoxixi_dir else None
-    dev = _get_developer(moluoxixi_dir) if moluoxixi_dir else ""
-    task_count = _count_active_tasks(moluoxixi_dir) if moluoxixi_dir else 0
+    task = _get_current_task_for_input(trellis_dir, cc_data) if trellis_dir else None
+    dev = _get_developer(trellis_dir) if trellis_dir else ""
+    task_count = _count_active_tasks(trellis_dir) if trellis_dir else 0
 
     # --- CC session data ---
     model = cc_data.get("model", {}).get("display_name", "?")

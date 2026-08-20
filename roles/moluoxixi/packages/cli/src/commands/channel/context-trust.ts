@@ -2,11 +2,11 @@
  * Trusted-root resolution for the context-loading containment checks
  * (`context-loader.ts` `jailedRealpath`, `agent-loader.ts` `findAgentFile`).
  *
- * Users who persist `.moluoxixi/tasks` / `.moluoxixi/workspace` as symlinks to
+ * Users who persist `.trellis/tasks` / `.trellis/workspace` as symlinks to
  * an external directory get legitimate context files rejected by the
  * cwd-only jail. This module resolves an additional set of trusted realpath
- * roots — from `.moluoxixi/config.yaml` `channel.trusted_context_dirs`, plus a
- * narrow auto-trust of `.moluoxixi/tasks` / `.moluoxixi/workspace` when either is
+ * roots — from `.trellis/config.yaml` `channel.trusted_context_dirs`, plus a
+ * narrow auto-trust of `.trellis/tasks` / `.trellis/workspace` when either is
  * itself a top-level symlink — so those roots can be accepted alongside cwd
  * without weakening the containment check to lexical matching (see
  * spec/cli/backend/filesystem-safety.md §2).
@@ -15,8 +15,9 @@
 import fs from "node:fs";
 import path from "node:path";
 
-/** Top-level `.moluoxixi/*` entries eligible for symlink auto-trust. */
-const WORKFLOW_DIR = ".moluoxixi";
+import { DIR_NAMES } from "../../constants/paths.js";
+
+/** Top-level `.trellis/*` entries eligible for symlink auto-trust. */
 const AUTO_TRUST_ENTRIES = ["tasks", "workspace"] as const;
 
 interface ChannelTrustConfig {
@@ -26,8 +27,8 @@ interface ChannelTrustConfig {
 
 /**
  * Parse the `channel.trusted_context_dirs` (list) and
- * `channel.auto_trust_moluoxixi_symlinks` (bool) keys out of
- * `.moluoxixi/config.yaml`. Mirrors the lightweight line-scanner used by
+ * `channel.auto_trust_trellis_symlinks` (bool) keys out of
+ * `.trellis/config.yaml`. Mirrors the lightweight line-scanner used by
  * `loadWorkerGuardConfig` in guard.ts — no YAML dependency.
  */
 export function parseChannelTrustSection(content: string): ChannelTrustConfig {
@@ -77,7 +78,7 @@ export function parseChannelTrustSection(content: string): ChannelTrustConfig {
     }
 
     const boolMatch = trimmed.match(
-      /^ {2}auto_trust_moluoxixi_symlinks:\s*(.+)$/,
+      /^ {2}auto_trust_trellis_symlinks:\s*(.+)$/,
     );
     if (boolMatch) {
       const val = stripTrustValue(boolMatch[1]).toLowerCase();
@@ -85,7 +86,7 @@ export function parseChannelTrustSection(content: string): ChannelTrustConfig {
       else if (val === "true") autoTrustSymlinks = true;
       else {
         process.stderr.write(
-          `[channel] channel.auto_trust_moluoxixi_symlinks: invalid value '${val}', ignoring\n`,
+          `[channel] channel.auto_trust_trellis_symlinks: invalid value '${val}', ignoring\n`,
         );
       }
       continue;
@@ -104,7 +105,7 @@ function stripTrustValue(s: string): string {
 }
 
 function loadChannelTrustConfig(cwd: string): ChannelTrustConfig {
-  const configPath = path.join(cwd, WORKFLOW_DIR, "config.yaml");
+  const configPath = path.join(cwd, DIR_NAMES.WORKFLOW, "config.yaml");
   if (!fs.existsSync(configPath)) return { trustedDirs: [] };
   let content: string;
   try {
@@ -136,7 +137,7 @@ export function resolveTrustedRoots(cwd: string): string[] {
 
   if (config.autoTrustSymlinks !== false) {
     for (const entryName of AUTO_TRUST_ENTRIES) {
-      const entryPath = path.join(cwd, WORKFLOW_DIR, entryName);
+      const entryPath = path.join(cwd, DIR_NAMES.WORKFLOW, entryName);
       let lstat: fs.Stats;
       try {
         lstat = fs.lstatSync(entryPath);

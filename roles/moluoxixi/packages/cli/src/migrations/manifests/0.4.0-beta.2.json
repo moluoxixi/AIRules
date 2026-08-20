@@ -3,7 +3,7 @@
   "description": "Fix scoped npm package names in monorepo spec directory paths",
   "breaking": false,
   "recommendMigrate": false,
-  "changelog": "**Bug Fixes:**\n- fix(init): strip npm scope prefix (@scope/name → name) from monorepo package directory names — prevents nested @scope/ directories in .moluoxixi/spec/ and config.yaml",
+  "changelog": "**Bug Fixes:**\n- fix(init): strip npm scope prefix (@scope/name → name) from monorepo package directory names — prevents nested @scope/ directories in .trellis/spec/ and config.yaml",
   "migrations": [],
-  "notes": "Run `moluoxixi update` to sync. If you ran `moluoxixi init` on a monorepo with scoped packages (e.g. @scope/name), you may need to manually rename existing `.moluoxixi/spec/@scope/name/` directories to `.moluoxixi/spec/name/` and update the keys in `.moluoxixi/config.yaml`."
+  "notes": "Run `trellis update` to sync. If you ran `trellis init` on a monorepo with scoped packages (e.g. @scope/name), you may need to manually rename existing `.trellis/spec/@scope/name/` directories to `.trellis/spec/name/` and update the keys in `.trellis/config.yaml`."
 }

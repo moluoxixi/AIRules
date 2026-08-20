@@ -22,7 +22,7 @@ Both types share the same scope model (`--scope project` is the default;
 ## Create A Forum Channel
 
 ```bash
-moluoxixi channel create design-feedback \
+trellis channel create design-feedback \
   --type forum \
   --scope global \
   --description "Cross-project design feedback board." \
@@ -40,7 +40,7 @@ Threads live inside a forum channel. Each thread is identified by a stable
 a thread is `opened`; everything afterwards uses the same `--thread` key.
 
 ```bash
-moluoxixi channel post design-feedback opened \
+trellis channel post design-feedback opened \
   --scope global \
   --as main \
   --thread login-empty-state \
@@ -50,23 +50,23 @@ moluoxixi channel post design-feedback opened \
   --context-raw "Spotted during the 0.4 release review." \
   --text-file /tmp/thread-open.md
 
-moluoxixi channel post design-feedback comment \
+trellis channel post design-feedback comment \
   --scope global \
   --as reviewer \
   --thread login-empty-state \
   --text-file /tmp/review.md
 
-moluoxixi channel post design-feedback status \
+trellis channel post design-feedback status \
   --scope global \
   --as main \
   --thread login-empty-state \
   --status closed
 
-moluoxixi channel post design-feedback summary \
+trellis channel post design-feedback summary \
   --scope global \
   --as main \
   --thread login-empty-state \
-  --summary "Adopted the option-B layout; ticket MOLUOXIXI-123 owns the fix."
+  --summary "Adopted the option-B layout; ticket TRELLIS-123 owns the fix."
 ```
 
 Key distinctions:
@@ -87,10 +87,10 @@ required in practice — there is no anonymous thread).
 ## Read A Forum
 
 ```bash
-moluoxixi channel messages design-feedback --scope global
-moluoxixi channel forum design-feedback --scope global --status open
-moluoxixi channel thread design-feedback login-empty-state --scope global
-moluoxixi channel messages design-feedback --scope global --raw --thread login-empty-state
+trellis channel messages design-feedback --scope global
+trellis channel forum design-feedback --scope global --status open
+trellis channel thread design-feedback login-empty-state --scope global
+trellis channel messages design-feedback --scope global --raw --thread login-empty-state
 ```
 
 If a peer says "I commented on the forum", run `channel forum` first to see
@@ -111,12 +111,12 @@ that fold into the canonical `--context-file` / `--context-raw`.
 
 ```bash
 # Channel-level context (whole forum)
-moluoxixi channel context add design-feedback \
+trellis channel context add design-feedback \
   --scope global \
   --raw "Upstream feedback board; please link tasks before opening threads."
 
 # Thread-level context (one thread)
-moluoxixi channel context add design-feedback \
+trellis channel context add design-feedback \
   --scope global \
   --thread login-empty-state \
   --file "$PWD/.moluoxixi/tasks/05-13-login-redesign/design.md"
@@ -131,8 +131,8 @@ moluoxixi channel context add design-feedback \
 ### List Context
 
 ```bash
-moluoxixi channel context list design-feedback --scope global
-moluoxixi channel context list design-feedback --scope global --thread login-empty-state --raw
+trellis channel context list design-feedback --scope global
+trellis channel context list design-feedback --scope global --thread login-empty-state --raw
 ```
 
 `--raw` on `list` emits one JSON entry per line (useful for piping); without
@@ -142,7 +142,7 @@ An empty store prints `(no context)`.
 ### Delete Context
 
 ```bash
-moluoxixi channel context delete design-feedback \
+trellis channel context delete design-feedback \
   --scope global \
   --thread login-empty-state \
   --raw "stale note"
@@ -168,11 +168,11 @@ continue with the remaining data — do not fabricate the content.
 storage address. The channel `name` you pass to every command stays the same.
 
 ```bash
-moluoxixi channel title set design-feedback \
+trellis channel title set design-feedback \
   --scope global \
   --title "Design feedback board"
 
-moluoxixi channel title clear design-feedback --scope global
+trellis channel title clear design-feedback --scope global
 ```
 
 - `title set` requires `--title`.
@@ -187,7 +187,7 @@ wrong key (typo, wrong slug convention, etc.). Threads do not support hard
 deletion — rename is the supported corrective action.
 
 ```bash
-moluoxixi channel thread rename design-feedback old-key new-key \
+trellis channel thread rename design-feedback old-key new-key \
   --scope global \
   --as main
 ```
@@ -212,14 +212,14 @@ A common use of a global forum channel is an internal release / runtime
 changelog. One thread per notable change keeps history searchable:
 
 ```bash
-moluoxixi channel create release-notes \
+trellis channel create release-notes \
   --type forum \
   --scope global \
   --description "Internal release and runtime changelog." \
   --context-raw "One thread per notable change; close when shipped." \
   --by main
 
-moluoxixi channel post release-notes opened \
+trellis channel post release-notes opened \
   --scope global \
   --as main \
   --thread release-2026-q1 \

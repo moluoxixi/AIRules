@@ -2,14 +2,14 @@ export {
   reduceThreads,
   buildThreadAliasResolver,
   collectThreadTimeline,
-} from "@moluoxixi/airules-moluoxixi-core/channel";
+} from "@mindfoldhq/moluoxixi-core/channel";
 
 export type {
   ThreadState,
   ThreadAliasResolver,
-} from "@moluoxixi/airules-moluoxixi-core/channel";
+} from "@mindfoldhq/moluoxixi-core/channel";
 
-import type { ThreadState } from "@moluoxixi/airules-moluoxixi-core/channel";
+import type { ThreadState } from "@mindfoldhq/moluoxixi-core/channel";
 
 export function formatThreadBoard(states: ThreadState[]): string[] {
   if (states.length === 0) return ["(no threads)"];

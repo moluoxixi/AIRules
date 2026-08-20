@@ -1,9 +1,9 @@
 /**
- * Integration test for #396 — `moluoxixi platforms [--json]`.
+ * Integration test for #396 — `trellis platforms [--json]`.
  *
  * Exposes which platforms are configured in a repo in a machine-readable
  * way, so downstream tooling doesn't have to hand-maintain marker-file
- * tables per platform. Spawns the real built CLI binary (`bin/moluoxixi.js`)
+ * tables per platform. Spawns the real built CLI binary (`bin/trellis.js`)
  * since the subcommand is wired up in `src/cli/index.ts`, which has
  * import-time side effects that make direct unit import brittle.
  */
@@ -17,7 +17,7 @@ import { fileURLToPath } from "node:url";
 
 const CLI_BIN = path.resolve(
   path.dirname(fileURLToPath(import.meta.url)),
-  "../../bin/moluoxixi.js",
+  "../../bin/trellis.js",
 );
 
 function runCli(cwd: string, args: string[]) {
@@ -31,10 +31,10 @@ function writeTrackedPlatforms(
   cwd: string,
   relativePaths: string[],
 ): void {
-  const moluoxixiDir = path.join(cwd, ".moluoxixi");
-  fs.mkdirSync(moluoxixiDir, { recursive: true });
+  const trellisDir = path.join(cwd, ".trellis");
+  fs.mkdirSync(trellisDir, { recursive: true });
   fs.writeFileSync(
-    path.join(moluoxixiDir, ".template-hashes.json"),
+    path.join(trellisDir, ".template-hashes.json"),
     JSON.stringify({
       __version: 2,
       hashes: Object.fromEntries(relativePaths.map((item) => [item, "hash"])),
@@ -42,7 +42,7 @@ function writeTrackedPlatforms(
   );
 }
 
-describe("moluoxixi platforms (#396)", () => {
+describe("trellis platforms (#396)", () => {
   let tmpDir: string;
 
   beforeEach(() => {
@@ -57,7 +57,7 @@ describe("moluoxixi platforms (#396)", () => {
     fs.mkdirSync(path.join(tmpDir, ".claude"), { recursive: true });
     fs.mkdirSync(path.join(tmpDir, ".cursor"), { recursive: true });
     writeTrackedPlatforms(tmpDir, [
-      ".claude/commands/moluoxixi/continue.md",
+      ".claude/commands/trellis/continue.md",
       ".cursor/commands/moluoxixi-continue.md",
     ]);
 
@@ -89,7 +89,7 @@ describe("moluoxixi platforms (#396)", () => {
   it("human output lists configured platforms without --json", () => {
     fs.mkdirSync(path.join(tmpDir, ".claude"), { recursive: true });
     writeTrackedPlatforms(tmpDir, [
-      ".claude/commands/moluoxixi/continue.md",
+      ".claude/commands/trellis/continue.md",
     ]);
 
     const result = runCli(tmpDir, ["platforms"]);

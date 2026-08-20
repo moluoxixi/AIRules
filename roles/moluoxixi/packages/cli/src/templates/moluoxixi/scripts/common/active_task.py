@@ -63,7 +63,7 @@ _KNOWN_PLATFORMS = {
 # declared names had never existed anywhere — they were pattern-guessed from a
 # `<PLATFORM>_SESSION_ID` shape no vendor agreed to, and the uniformity was the
 # only "evidence" behind them. A platform with no verified name belongs in no
-# table; it resolves through MOLUOXIXI_CONTEXT_ID or its hook/plugin bridge.
+# table; it resolves through TRELLIS_CONTEXT_ID or its hook/plugin bridge.
 _ENV_SESSION_KEYS: tuple[tuple[str, tuple[str, ...]], ...] = (
     # REAL (reported 2026-08-13 against DSH 0.1.0-rc.6 by @SajoLuo, from a live
     # run: DSH exports DSH_SESSION_ID plus DSH_SHELL=1 into its managed shell).
@@ -114,7 +114,7 @@ _ENV_SESSION_KEYS: tuple[tuple[str, tuple[str, ...]], ...] = (
     ("zcode", ("CLAUDE_CODE_SESSION_ID", "CLAUDE_SESSION_ID")),
     # REAL by vendor design (verified 2026-08-05): Snow's sessionIdentityEnv.ts
     # exports SNOW_SESSION_ID into hook/terminal/sub-agent children and names
-    # Moluoxixi in its source header. MOLUOXIXI_CONTEXT_ID stays the preferred
+    # Moluoxixi in its source header. TRELLIS_CONTEXT_ID stays the preferred
     # override — Snow sets that too.
     ("snow", ("SNOW_SESSION_ID",)),
 )
@@ -280,7 +280,7 @@ def _detect_platform(platform_input: dict[str, Any] | None, platform: str | None
     if platform:
         return _sanitize_key(platform) or "session"
     if platform_input:
-        for key in ("_moluoxixi_platform", "moluoxixi_platform", "platform", "source"):
+        for key in ("_trellis_platform", "trellis_platform", "platform", "source"):
             value = _string_value(platform_input.get(key))
             if value:
                 return _sanitize_key(value) or "session"
@@ -324,7 +324,7 @@ def _env_platform_name(platform_name: str | None) -> str | None:
 def _lookup_env_context_key(platform_name: str | None) -> str | None:
     """Resolve a context key from platform-provided environment variables.
 
-    Hooks pass `MOLUOXIXI_CONTEXT_ID` to subprocesses they launch, but an AI-run
+    Hooks pass `TRELLIS_CONTEXT_ID` to subprocesses they launch, but an AI-run
     shell command can only see session identity if the host platform exports it
     in the command environment. These names are best-effort adapters; if none
     are present, there is no session-scoped active task.
@@ -503,11 +503,11 @@ def resolve_context_key(
 ) -> str | None:
     """Resolve a stable session/window context key, if one is available.
 
-    `MOLUOXIXI_CONTEXT_ID` is an explicit context-key override used by CLI
+    `TRELLIS_CONTEXT_ID` is an explicit context-key override used by CLI
     scripts and subprocesses. It does not store the task itself.
     """
     if allow_environment_context:
-        override = _string_value(os.environ.get("MOLUOXIXI_CONTEXT_ID"))
+        override = _string_value(os.environ.get("TRELLIS_CONTEXT_ID"))
         if override:
             return _sanitize_key(override) or _hash_value(override)
 

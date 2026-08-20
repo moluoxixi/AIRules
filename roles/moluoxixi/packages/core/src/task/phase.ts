@@ -6,7 +6,7 @@ import type { MoluoxixiTaskRecord } from "./schema.js";
  * Phase is a projection of {@link MoluoxixiTaskRecord.status} only. There is
  * no separate `current_phase` field stored on disk — `inferTaskPhase`
  * exists so consumers can render the workflow phase without depending on
- * `.moluoxixi/workflow.md` parsing.
+ * `.trellis/workflow.md` parsing.
  *
  * Mapping:
  *

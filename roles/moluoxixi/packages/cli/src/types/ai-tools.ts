@@ -94,7 +94,7 @@ export type CliFlag =
 export interface TemplateContext {
   /** Prefix for cross-referencing other commands/skills */
   cmdRefPrefix:
-    | "/moluoxixi:"
+    | "/trellis:"
     | "/moluoxixi-"
     | "$"
     | "/"
@@ -177,7 +177,7 @@ export const AI_TOOLS: Record<AITool, AIToolConfig> = {
     defaultChecked: true,
     hasPythonHooks: true,
     templateContext: {
-      cmdRefPrefix: "/moluoxixi:",
+      cmdRefPrefix: "/trellis:",
       executorAI: "Bash scripts or Task calls",
       userActionLabel: "Slash commands",
       agentCapable: true,
@@ -208,14 +208,14 @@ export const AI_TOOLS: Record<AITool, AIToolConfig> = {
     cliFlag: "opencode",
     defaultChecked: false,
     // hasHooks: false — OpenCode has no session-start hook. The pre-v0.5.0
-    // `.opencode/commands/moluoxixi/start.md` deprecation in
+    // `.opencode/commands/trellis/start.md` deprecation in
     // migrations/manifests/0.5.0-beta.0.json assumed a hook would replace it;
     // that never happened for OpenCode, so `resolveCommands`/`filterCommands`
     // (see configurators/shared.ts) still generate `/start` as the live
     // fallback command for this `agentCapable && !hasHooks` platform.
     hasPythonHooks: false,
     templateContext: {
-      cmdRefPrefix: "/moluoxixi:",
+      cmdRefPrefix: "/trellis:",
       executorAI: "Bash scripts or Task calls",
       userActionLabel: "Slash commands",
       agentCapable: true,
@@ -248,7 +248,7 @@ export const AI_TOOLS: Record<AITool, AIToolConfig> = {
     defaultChecked: false,
     hasPythonHooks: false,
     templateContext: {
-      cmdRefPrefix: "/moluoxixi:",
+      cmdRefPrefix: "/trellis:",
       executorAI: "Bash scripts or file reads",
       userActionLabel: "Workflows",
       agentCapable: false,
@@ -282,7 +282,7 @@ export const AI_TOOLS: Record<AITool, AIToolConfig> = {
     defaultChecked: false,
     hasPythonHooks: true,
     templateContext: {
-      cmdRefPrefix: "/moluoxixi:",
+      cmdRefPrefix: "/trellis:",
       executorAI: "Bash scripts or tool calls",
       userActionLabel: "Slash commands",
       agentCapable: true,
@@ -348,7 +348,7 @@ export const AI_TOOLS: Record<AITool, AIToolConfig> = {
     defaultChecked: false,
     hasPythonHooks: true,
     templateContext: {
-      cmdRefPrefix: "/moluoxixi:",
+      cmdRefPrefix: "/trellis:",
       executorAI: "Bash scripts or Task calls",
       userActionLabel: "Slash commands",
       agentCapable: true,
@@ -423,7 +423,7 @@ export const AI_TOOLS: Record<AITool, AIToolConfig> = {
   pi: {
     // Pi also writes .agents/skills/, which is read by Cursor, Gemini CLI,
     // GitHub Copilot, Amp, and Kimi Code. Keep that detail here rather than
-    // in `name` — `name` leaks verbatim into `moluoxixi platforms` output and
+    // in `name` — `name` leaks verbatim into `trellis platforms` output and
     // init checkboxes, where a long parenthetical reads badly.
     name: "Pi Agent",
     templateDirs: ["common", "pi"],
@@ -462,8 +462,8 @@ export const AI_TOOLS: Record<AITool, AIToolConfig> = {
     templateDirs: ["common", "zcode"],
     configDir: ".zcode",
     // `.zcode/cli/agents` is the pre-ZCode-update discovery path. Kept managed
-    // during the transition so `moluoxixi update --migrate` (rename-dir →
-    // `.zcode/agents/`) and `moluoxixi uninstall` can clean up the now-empty
+    // during the transition so `trellis update --migrate` (rename-dir →
+    // `.zcode/agents/`) and `trellis uninstall` can clean up the now-empty
     // `.zcode/cli/` parent. Drop this entry once the migration has shipped and
     // no project still holds the legacy dir. Only empty dirs are ever removed,
     // so user files are never touched (see cleanupEmptyDirs in update.ts).
@@ -479,7 +479,7 @@ export const AI_TOOLS: Record<AITool, AIToolConfig> = {
     defaultChecked: false,
     hasPythonHooks: true,
     templateContext: {
-      cmdRefPrefix: "/moluoxixi:",
+      cmdRefPrefix: "/trellis:",
       executorAI: "Bash scripts or Agent calls",
       userActionLabel: "Skills",
       agentCapable: true,
@@ -514,7 +514,7 @@ export const AI_TOOLS: Record<AITool, AIToolConfig> = {
     defaultChecked: false,
     hasPythonHooks: false,
     templateContext: {
-      cmdRefPrefix: "/moluoxixi:",
+      cmdRefPrefix: "/trellis:",
       executorAI: "Bash scripts or Task calls",
       userActionLabel: "Slash commands",
       agentCapable: true,

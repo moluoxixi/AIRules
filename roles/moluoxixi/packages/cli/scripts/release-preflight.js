@@ -3,8 +3,8 @@
  * Shared release / publish preflight.
  *
  * One source of truth for:
- *   1. Version match between `@moluoxixi/airules-moluoxixi-cli` and
- *      `@moluoxixi/airules-moluoxixi-core` (and the current git tag when checked from
+ *   1. Version match between `@moluoxixi/airules-moluoxixi` and
+ *      `@mindfoldhq/moluoxixi-core` (and the current git tag when checked from
  *      a tag context).
  *   2. The npm dist-tag derived from the shared version (`beta`, `rc`,
  *      `alpha`, or `latest`).
@@ -12,7 +12,7 @@
  *      and reports whether a fresh publish is needed.
  *
  * Used by both `packages/cli` release scripts (humans) and
- * `.github/workflows/publish-moluoxixi.yml` (CI) so the rules cannot drift.
+ * `.github/workflows/publish.yml` (CI) so the rules cannot drift.
  *
  * Commands:
  *   check-versions [--require-tag]   Verify core/cli (and optional GITHUB_REF
@@ -24,7 +24,7 @@
  *                                    skipped (but version mismatches still
  *                                    fail loudly).
  *   verify-packed-cli                Pack the CLI and assert its dependency
- *                                    on @moluoxixi/airules-moluoxixi-core resolves
+ *                                    on @mindfoldhq/moluoxixi-core resolves
  *                                    to the exact shared version (not
  *                                    "workspace:*" or a loose range).
  *   verify-npm [--package all|core|cli]
@@ -40,7 +40,7 @@
  * version/tag mismatch. Version equality is checked first; npm existence
  * decides per-package skip.
  */
-import { execFileSync, execSync } from "node:child_process";
+import { execSync } from "node:child_process";
 import fs from "node:fs";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
@@ -72,11 +72,10 @@ function readVersions() {
 }
 
 function tagVersionFromEnv() {
-  // Role releases use a namespaced tag so they cannot trigger the repository
-  // root package workflow: `moluoxixi-v0.6.0-beta.12`.
+  // GITHUB_REF for `push: tags: v*` looks like `refs/tags/v0.6.0-beta.12`.
   // GITHUB_REF_NAME on `release.published` is the tag name.
   const ref = process.env.GITHUB_REF_NAME || process.env.GITHUB_REF || "";
-  const m = ref.match(/(?:refs\/tags\/)?(?:moluoxixi-)?v(\d+\.\d+\.\d+(?:-[A-Za-z0-9.+-]+)?)$/);
+  const m = ref.match(/(?:refs\/tags\/)?v(\d+\.\d+\.\d+(?:-[A-Za-z0-9.+-]+)?)$/);
   return m ? m[1] : null;
 }
 
@@ -156,7 +155,7 @@ function checkVersions({ requireTag, quiet = false }) {
   if (requireTag) {
     if (!tagVersion) {
       fail(
-        `Expected a git tag like moluoxixi-v${v.cliVersion} via GITHUB_REF / GITHUB_REF_NAME but found "${
+        `Expected a git tag like v${v.cliVersion} via GITHUB_REF / GITHUB_REF_NAME but found "${
           process.env.GITHUB_REF_NAME || process.env.GITHUB_REF || ""
         }".`,
       );
@@ -175,7 +174,7 @@ function checkVersions({ requireTag, quiet = false }) {
   if (!quiet) {
     console.log(
       `${GREEN}ok${RESET} versions match: ${v.coreName}@${v.coreVersion} = ${v.cliName}@${v.cliVersion}` +
-        (tagVersion ? ` = git tag moluoxixi-v${tagVersion}` : ""),
+        (tagVersion ? ` = git tag v${tagVersion}` : ""),
     );
   }
   return { ...v, tagVersion };
@@ -223,155 +222,47 @@ function publishPlan({ output }) {
   return plan;
 }
 
-const PNPM = process.platform === "win32" ? "pnpm.cmd" : "pnpm";
-const NPM = process.platform === "win32" ? "npm.cmd" : "npm";
-const NODE_TAR = process.platform === "win32" ? "tar.exe" : "tar";
-const NODE_BIN_DIR = path.dirname(process.execPath);
-const PNPM_PREFIX = process.platform === "win32"
-  ? [path.join(NODE_BIN_DIR, "node_modules", "corepack", "dist", "pnpm.js")]
-  : [];
-const NPM_PREFIX = process.platform === "win32"
-  ? [path.join(NODE_BIN_DIR, "node_modules", "npm", "bin", "npm-cli.js")]
-  : [];
-
-function packageDir(name) {
-  return path.join(REPO_ROOT, "packages", name);
-}
-
-function runPnpm(args, cwd, options = {}) {
-  return execFileSync(PNPM_PREFIX.length > 0 ? process.execPath : PNPM, [...PNPM_PREFIX, ...args], {
-    cwd,
-    encoding: "utf-8",
-    stdio: options.stdio ?? ["pipe", "pipe", "pipe"],
-    env: process.env,
-  });
-}
-
-function packageManifest(name) {
-  return readJSON(path.join(packageDir(name), "package.json"));
-}
-
-function verifyPublishMetadata() {
-  const v = checkVersions({ requireTag: false });
-  const core = packageManifest("core");
-  const cli = packageManifest("cli");
-  for (const pkg of [core, cli]) {
-    if (pkg.private === true) {
-      fail(`${pkg.name} is still private and cannot be published.`);
-    }
-    if (pkg.publishConfig?.access !== "public") {
-      fail(`${pkg.name} must set publishConfig.access to public.`);
-    }
-    if (!pkg.files?.includes("dist")) {
-      fail(`${pkg.name} must publish its dist directory.`);
-    }
-    if (!pkg.scripts?.prepublishOnly) {
-      fail(`${pkg.name} must run a prepublishOnly build/test gate.`);
-    }
-  }
-  if (core.publishConfig?.provenance !== true || cli.publishConfig?.provenance !== true) {
-    fail("Both packages must opt into npm provenance.");
-  }
-  if (cli.dependencies?.[v.coreName] !== "workspace:*") {
-    fail(`${cli.name} must use workspace:* for its local core dependency before packing.`);
-  }
-  const publicBinNames = Object.keys(cli.bin ?? {}).sort();
-  const publicBins = Object.values(cli.bin ?? {});
-  if (
-    JSON.stringify(publicBinNames) !== JSON.stringify(["moluoxixi"]) ||
-    publicBins.some((entry) => entry !== "./bin/moluoxixi.js")
-  ) {
-    fail(`${cli.name} must expose only the standalone CLI entry; role-local bins require the complete installed role.`);
-  }
-  console.log(`${GREEN}ok${RESET} package manifests are public, provenance-enabled, and workspace-safe.`);
-  return v;
-}
-
-function packPackage(name, destination) {
-  runPnpm(["pack", "--pack-destination", destination], packageDir(name), { stdio: "inherit" });
-  const tarballs = fs.readdirSync(destination)
-    .filter((entry) => entry.endsWith(".tgz"))
-    .map((entry) => path.join(destination, entry));
-  const prefix = packageManifest(name).name.replace(/^@/, "").replace(/\//g, "-");
-  const match = tarballs.find((entry) => path.basename(entry).startsWith(`${prefix}-`));
-  if (!match) fail(`pnpm pack did not produce a tarball for ${name} in ${destination}.`);
-  return match;
-}
-
-function extractPackage(tarball, destination) {
-  const extractDir = path.join(destination, `${path.basename(tarball, ".tgz")}-extract`);
-  fs.mkdirSync(extractDir);
-  execFileSync(NODE_TAR, ["-xzf", tarball, "-C", extractDir], { stdio: "ignore" });
-  return path.join(extractDir, "package");
-}
-
-function verifyPackedPackages({ smoke = true } = {}) {
+function verifyPackedCli() {
   const v = checkVersions({ requireTag: false });
   const tmp = fs.mkdtempSync(path.join(REPO_ROOT, ".pack-verify-"));
+  let packed;
   try {
-    const coreTarball = packPackage("core", tmp);
-    const cliTarball = packPackage("cli", tmp);
-    const coreRoot = extractPackage(coreTarball, tmp);
-    const cliRoot = extractPackage(cliTarball, tmp);
-    const packedCore = readJSON(path.join(coreRoot, "package.json"));
-    const packedCli = readJSON(path.join(cliRoot, "package.json"));
-    if (packedCore.private === true || packedCli.private === true) {
-      fail("A packed role package is still private.");
+    const out = execSync(`pnpm pack --pack-destination ${tmp}`, {
+      cwd: path.join(REPO_ROOT, "packages/cli"),
+      encoding: "utf-8",
+      stdio: ["pipe", "pipe", "pipe"],
+    });
+    // pnpm prints the resulting tarball path on its last non-empty line.
+    const last = out.trim().split("\n").filter(Boolean).pop() || "";
+    packed = last.startsWith("/") ? last : path.join(tmp, last);
+    if (!fs.existsSync(packed)) {
+      // Fall back to scanning the tmp dir.
+      const tgz = fs.readdirSync(tmp).find((f) => f.endsWith(".tgz"));
+      if (!tgz) fail(`pnpm pack did not produce a tarball in ${tmp}`);
+      packed = path.join(tmp, tgz);
     }
-    const dependency = packedCli.dependencies?.[v.coreName];
-    if (dependency !== v.cliVersion) {
+    const extractDir = path.join(tmp, "extract");
+    fs.mkdirSync(extractDir);
+    execSync(`tar -xzf ${packed} -C ${extractDir} package/package.json`, {
+      stdio: ["pipe", "pipe", "pipe"],
+    });
+    const packedPkg = readJSON(path.join(extractDir, "package/package.json"));
+    const dep = packedPkg.dependencies?.["@mindfoldhq/moluoxixi-core"];
+    if (!dep) {
+      fail(`packed CLI is missing dependency on @mindfoldhq/moluoxixi-core.`);
+    }
+    if (dep !== v.cliVersion) {
       fail(
-        `packed CLI depends on ${v.coreName}@"${dependency}" but expected exact "${v.cliVersion}". ` +
-        "pnpm must rewrite workspace:* before publication.",
+        `packed CLI depends on @mindfoldhq/moluoxixi-core@"${dep}" but expected exact "${v.cliVersion}".\n` +
+          `pnpm should rewrite workspace:* to the exact published version; got "${dep}" instead.`,
       );
     }
-    for (const required of ["dist/index.js", "package.json"]) {
-      if (!fs.existsSync(path.join(coreRoot, required))) fail(`packed core is missing ${required}.`);
-    }
-    for (const required of ["dist/cli/index.js", "bin/moluoxixi.js", "package.json"]) {
-      if (!fs.existsSync(path.join(cliRoot, required))) fail(`packed CLI is missing ${required}.`);
-    }
-    for (const roleOnly of ["bin/airules-moluoxixi.js", "bin/init-project.js"]) {
-      if (fs.existsSync(path.join(cliRoot, roleOnly))) fail(`packed CLI must not contain role-only entry ${roleOnly}.`);
-    }
-    console.log(`${GREEN}ok${RESET} packed core/CLI tarballs contain publishable outputs and an exact core dependency.`);
-    if (!smoke) return;
-
-    const sandbox = path.join(tmp, "sandbox");
-    fs.mkdirSync(sandbox);
-    fs.writeFileSync(path.join(sandbox, "package.json"), '{"private":true}\n');
-    execFileSync(NPM_PREFIX.length > 0 ? process.execPath : NPM, [...NPM_PREFIX, "install", "--ignore-scripts", "--no-save", coreTarball, cliTarball], {
-      cwd: sandbox,
-      stdio: "inherit",
-      env: process.env,
-    });
-    const moduleProbe = [
-      `const channel = await import(${JSON.stringify(v.coreName + "/channel")});`,
-      `const mem = await import(${JSON.stringify(v.coreName + "/mem")});`,
-      "if (!channel || !mem) throw new Error('core subpath imports returned no module');",
-    ].join(" ");
-    execFileSync(process.execPath, ["--input-type=module", "-e", moduleProbe], { cwd: sandbox, stdio: "ignore" });
-    const cliBin = path.join("node_modules", ...v.cliName.split("/"), "bin", "moluoxixi.js");
-    const version = execFileSync(process.execPath, [cliBin, "--version"], { cwd: sandbox, encoding: "utf-8" }).trim();
-    if (version !== v.cliVersion) fail(`installed CLI reported ${version}, expected ${v.cliVersion}.`);
-    console.log(`${GREEN}ok${RESET} sandbox installation resolves core ESM subpaths and the published CLI version.`);
+    console.log(
+      `${GREEN}ok${RESET} packed CLI pins @mindfoldhq/moluoxixi-core to exact ${v.cliVersion}.`,
+    );
   } finally {
     fs.rmSync(tmp, { recursive: true, force: true });
   }
-}
-
-function verifyPackedCli() {
-  verifyPublishMetadata();
-  verifyPackedPackages({ smoke: false });
-}
-
-function verifyPublish({ skipSmoke }) {
-  verifyPublishMetadata();
-  for (const name of ["core", "cli"]) {
-    runPnpm(["exec", "publint", "--strict"], packageDir(name), { stdio: "inherit" });
-    runPnpm(["exec", "attw", "--pack", ".", "--profile", "esm-only"], packageDir(name), { stdio: "inherit" });
-  }
-  verifyPackedPackages({ smoke: !skipSmoke });
 }
 
 async function verifyNpm({ packageFilter }) {
@@ -413,7 +304,6 @@ async function main() {
         `  npm-tag\n` +
         `  publish-plan [--json|--github]\n` +
         `  verify-packed-cli\n` +
-        `  verify-publish [--skip-smoke]\n` +
         `  verify-npm [--package all|core|cli]\n`,
     );
     return;
@@ -438,10 +328,6 @@ async function main() {
   }
   if (cmd === "verify-packed-cli") {
     verifyPackedCli();
-    return;
-  }
-  if (cmd === "verify-publish") {
-    verifyPublish({ skipSmoke: rest.includes("--skip-smoke") });
     return;
   }
   if (cmd === "verify-npm") {

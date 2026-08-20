@@ -65,7 +65,7 @@ def _string_value(value: Any) -> str | None:
     return None
 
 
-def _resolve_moluoxixi_root(hook_input: dict[str, Any]) -> Path | None:
+def _resolve_trellis_root(hook_input: dict[str, Any]) -> Path | None:
     """Locate the project root, trying the payload cwd and then our own.
 
     Hosts disagree about what `cwd` means. CodeBuddy IDE 4.10.4 sends `"/"` for
@@ -90,13 +90,13 @@ def _resolve_moluoxixi_root(hook_input: dict[str, Any]) -> Path | None:
         pass
 
     for candidate in candidates:
-        root = _find_moluoxixi_root(candidate)
+        root = _find_trellis_root(candidate)
         if root is not None:
             return root
     return None
 
 
-def _find_moluoxixi_root(start: Path) -> Path | None:
+def _find_trellis_root(start: Path) -> Path | None:
     current = start.resolve()
     while True:
         if (current / DIR_WORKFLOW).is_dir():
@@ -250,7 +250,7 @@ def _write_ticket(
 
 
 def main() -> int:
-    if os.environ.get("MOLUOXIXI_HOOKS") == "0" or os.environ.get("MOLUOXIXI_DISABLE_HOOKS") == "1":
+    if os.environ.get("TRELLIS_HOOKS") == "0" or os.environ.get("TRELLIS_DISABLE_HOOKS") == "1":
         return 0
 
     try:
@@ -265,7 +265,7 @@ def main() -> int:
     if not subcommands:
         return 0
 
-    root = _resolve_moluoxixi_root(hook_input)
+    root = _resolve_trellis_root(hook_input)
     if root is None:
         return 0
 

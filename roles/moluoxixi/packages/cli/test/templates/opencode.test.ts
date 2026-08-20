@@ -136,7 +136,7 @@ describe("opencode session-start history detection", () => {
         type: string;
         text: string;
         synthetic?: boolean;
-        metadata?: { moluoxixi?: { sessionStart?: boolean } };
+        metadata?: { trellis?: { sessionStart?: boolean } };
       }[];
     }
 
@@ -191,7 +191,7 @@ describe("opencode session-start history detection", () => {
     expect(firstOutput.parts[0].text).toContain("<first-reply-notice>");
     expect(firstOutput.parts[0].text).toContain("Moluoxixi SessionStart ✓");
     expect(firstOutput.parts[0].metadata).toEqual({
-      moluoxixi: { sessionStart: true },
+      trellis: { sessionStart: true },
     });
     expect(firstOutput.parts[1]).toEqual({
       id: "prt_000000000010abcdefghijklmn",
@@ -248,7 +248,7 @@ describe("opencode session-start history detection", () => {
             type: "text",
             text: "hello",
             metadata: {
-              moluoxixi: {
+              trellis: {
                 sessionStart: true,
               },
             },
@@ -278,11 +278,11 @@ describe("opencode session-start history detection", () => {
 });
 
 describe("opencode bash session context", () => {
-  it("injects MOLUOXIXI_CONTEXT_ID into Bash commands from plugin sessionID", async () => {
+  it("injects TRELLIS_CONTEXT_ID into Bash commands from plugin sessionID", async () => {
     const hooks = await createOpenCodeInjectHooks();
     const output = {
       args: {
-        command: "python3 ./.moluoxixi/scripts/task.py start .moluoxixi/tasks/demo",
+        command: "python3 ./.trellis/scripts/task.py start .trellis/tasks/demo",
       },
     };
 
@@ -292,7 +292,7 @@ describe("opencode bash session context", () => {
     );
 
     expect(output.args.command).toBe(
-      "export MOLUOXIXI_CONTEXT_ID='opencode_oc-a'; python3 ./.moluoxixi/scripts/task.py start .moluoxixi/tasks/demo",
+      "export TRELLIS_CONTEXT_ID='opencode_oc-a'; python3 ./.trellis/scripts/task.py start .trellis/tasks/demo",
     );
   });
 
@@ -300,7 +300,7 @@ describe("opencode bash session context", () => {
     const hooks = await createOpenCodeInjectHooks("win32");
     const output = {
       args: {
-        command: "python ./.moluoxixi/scripts/task.py start .moluoxixi/tasks/demo",
+        command: "python ./.trellis/scripts/task.py start .trellis/tasks/demo",
       },
     };
 
@@ -310,7 +310,7 @@ describe("opencode bash session context", () => {
     );
 
     expect(output.args.command).toBe(
-      "$env:MOLUOXIXI_CONTEXT_ID = 'opencode_oc-a'; python ./.moluoxixi/scripts/task.py start .moluoxixi/tasks/demo",
+      "$env:TRELLIS_CONTEXT_ID = 'opencode_oc-a'; python ./.trellis/scripts/task.py start .trellis/tasks/demo",
     );
   });
 
@@ -330,7 +330,7 @@ describe("opencode bash session context", () => {
     );
 
     expect(output.args.command).toBe(
-      "export MOLUOXIXI_CONTEXT_ID='opencode_oc-a'; git diff --name-only",
+      "export TRELLIS_CONTEXT_ID='opencode_oc-a'; git diff --name-only",
     );
   });
 
@@ -350,7 +350,7 @@ describe("opencode bash session context", () => {
     );
 
     expect(output.args.command).toBe(
-      "export MOLUOXIXI_CONTEXT_ID='opencode_oc-a'; git status --short",
+      "export TRELLIS_CONTEXT_ID='opencode_oc-a'; git status --short",
     );
   });
 
@@ -370,7 +370,7 @@ describe("opencode bash session context", () => {
     );
 
     expect(output.args.command).toBe(
-      "export MOLUOXIXI_CONTEXT_ID='opencode_oc-a'; git log --oneline -1",
+      "export TRELLIS_CONTEXT_ID='opencode_oc-a'; git log --oneline -1",
     );
   });
 
@@ -390,7 +390,7 @@ describe("opencode bash session context", () => {
     );
 
     expect(output.args.command).toBe(
-      "export MOLUOXIXI_CONTEXT_ID='opencode_oc-a'; git branch --show-current",
+      "export TRELLIS_CONTEXT_ID='opencode_oc-a'; git branch --show-current",
     );
   });
 
@@ -410,16 +410,16 @@ describe("opencode bash session context", () => {
     );
 
     expect(output.args.command).toBe(
-      "export MOLUOXIXI_CONTEXT_ID='opencode_oc-a'; git rev-parse --show-toplevel",
+      "export TRELLIS_CONTEXT_ID='opencode_oc-a'; git rev-parse --show-toplevel",
     );
   });
 
-  it("does not duplicate an explicit MOLUOXIXI_CONTEXT_ID assignment", async () => {
+  it("does not duplicate an explicit TRELLIS_CONTEXT_ID assignment", async () => {
     const hooks = await createOpenCodeInjectHooks();
     const output = {
       args: {
         command:
-          "MOLUOXIXI_CONTEXT_ID=manual python3 ./.moluoxixi/scripts/task.py current",
+          "TRELLIS_CONTEXT_ID=manual python3 ./.trellis/scripts/task.py current",
       },
     };
 
@@ -429,16 +429,16 @@ describe("opencode bash session context", () => {
     );
 
     expect(output.args.command).toBe(
-      "MOLUOXIXI_CONTEXT_ID=manual python3 ./.moluoxixi/scripts/task.py current",
+      "TRELLIS_CONTEXT_ID=manual python3 ./.trellis/scripts/task.py current",
     );
   });
 
-  it("does not duplicate an explicit exported MOLUOXIXI_CONTEXT_ID", async () => {
+  it("does not duplicate an explicit exported TRELLIS_CONTEXT_ID", async () => {
     const hooks = await createOpenCodeInjectHooks();
     const output = {
       args: {
         command:
-          "export MOLUOXIXI_CONTEXT_ID=manual; python3 ./.moluoxixi/scripts/task.py current",
+          "export TRELLIS_CONTEXT_ID=manual; python3 ./.trellis/scripts/task.py current",
       },
     };
 
@@ -448,16 +448,16 @@ describe("opencode bash session context", () => {
     );
 
     expect(output.args.command).toBe(
-      "export MOLUOXIXI_CONTEXT_ID=manual; python3 ./.moluoxixi/scripts/task.py current",
+      "export TRELLIS_CONTEXT_ID=manual; python3 ./.trellis/scripts/task.py current",
     );
   });
 
-  it("does not duplicate an explicit env MOLUOXIXI_CONTEXT_ID assignment", async () => {
+  it("does not duplicate an explicit env TRELLIS_CONTEXT_ID assignment", async () => {
     const hooks = await createOpenCodeInjectHooks();
     const output = {
       args: {
         command:
-          "env FOO=bar MOLUOXIXI_CONTEXT_ID=manual python3 ./.moluoxixi/scripts/task.py current",
+          "env FOO=bar TRELLIS_CONTEXT_ID=manual python3 ./.trellis/scripts/task.py current",
       },
     };
 
@@ -467,16 +467,16 @@ describe("opencode bash session context", () => {
     );
 
     expect(output.args.command).toBe(
-      "env FOO=bar MOLUOXIXI_CONTEXT_ID=manual python3 ./.moluoxixi/scripts/task.py current",
+      "env FOO=bar TRELLIS_CONTEXT_ID=manual python3 ./.trellis/scripts/task.py current",
     );
   });
 
-  it("does not duplicate an explicit PowerShell MOLUOXIXI_CONTEXT_ID assignment", async () => {
+  it("does not duplicate an explicit PowerShell TRELLIS_CONTEXT_ID assignment", async () => {
     const hooks = await createOpenCodeInjectHooks("win32");
     const output = {
       args: {
         command:
-          "$env:MOLUOXIXI_CONTEXT_ID = 'manual'; python ./.moluoxixi/scripts/task.py current",
+          "$env:TRELLIS_CONTEXT_ID = 'manual'; python ./.trellis/scripts/task.py current",
       },
     };
 
@@ -486,15 +486,15 @@ describe("opencode bash session context", () => {
     );
 
     expect(output.args.command).toBe(
-      "$env:MOLUOXIXI_CONTEXT_ID = 'manual'; python ./.moluoxixi/scripts/task.py current",
+      "$env:TRELLIS_CONTEXT_ID = 'manual'; python ./.trellis/scripts/task.py current",
     );
   });
 
-  it("does not treat a grep pattern as an explicit MOLUOXIXI_CONTEXT_ID assignment", async () => {
+  it("does not treat a grep pattern as an explicit TRELLIS_CONTEXT_ID assignment", async () => {
     const hooks = await createOpenCodeInjectHooks();
     const output = {
       args: {
-        command: "env | sort | grep '^MOLUOXIXI_CONTEXT_ID='",
+        command: "env | sort | grep '^TRELLIS_CONTEXT_ID='",
       },
     };
 
@@ -504,7 +504,7 @@ describe("opencode bash session context", () => {
     );
 
     expect(output.args.command).toBe(
-      "export MOLUOXIXI_CONTEXT_ID='opencode_oc-a'; env | sort | grep '^MOLUOXIXI_CONTEXT_ID='",
+      "export TRELLIS_CONTEXT_ID='opencode_oc-a'; env | sort | grep '^TRELLIS_CONTEXT_ID='",
     );
   });
 });
@@ -774,14 +774,14 @@ describe("opencode persisted synthetic context parts", () => {
 
 function setupMoluoxixiProject(): string {
   const dir = mkdtempSync(join(tmpdir(), "moluoxixi-opencode-264-"));
-  const taskDir = join(dir, ".moluoxixi", "tasks", "demo-task");
+  const taskDir = join(dir, ".trellis", "tasks", "demo-task");
   mkdirSync(taskDir, { recursive: true });
-  mkdirSync(join(dir, ".moluoxixi", ".runtime", "sessions"), { recursive: true });
+  mkdirSync(join(dir, ".trellis", ".runtime", "sessions"), { recursive: true });
   writeFileSync(join(taskDir, "prd.md"), "# Demo PRD\n\nGoal: verify injection.");
   writeFileSync(join(taskDir, "implement.jsonl"), "");
   writeFileSync(join(taskDir, "check.jsonl"), "");
   writeFileSync(
-    join(dir, ".moluoxixi", "workflow.md"),
+    join(dir, ".trellis", "workflow.md"),
     [
       "# Workflow",
       "",
@@ -795,12 +795,12 @@ function setupMoluoxixiProject(): string {
 }
 
 function writeSessionFile(dir: string, key: string, taskRef: string): void {
-  const file = join(dir, ".moluoxixi", ".runtime", "sessions", `${key}.json`);
+  const file = join(dir, ".trellis", ".runtime", "sessions", `${key}.json`);
   writeFileSync(file, JSON.stringify({ current_task: taskRef }, null, 2));
 }
 
 describe("opencode subagent helper", () => {
-  it("isMoluoxixiSubagent matches the three moluoxixi sub-agent names", () => {
+  it("isMoluoxixiSubagent matches the three trellis sub-agent names", () => {
     expect(isMoluoxixiSubagent({ agent: "moluoxixi-implement" })).toBe(true);
     expect(isMoluoxixiSubagent({ agent: "moluoxixi-check" })).toBe(true);
     expect(isMoluoxixiSubagent({ agent: "moluoxixi-research" })).toBe(true);
@@ -827,18 +827,18 @@ describe("opencode MoluoxixiContext single-session fallback", () => {
   });
 
   it("returns the only session file when exactly one exists", () => {
-    writeSessionFile(dir, "opencode_sole", ".moluoxixi/tasks/demo-task");
+    writeSessionFile(dir, "opencode_sole", ".trellis/tasks/demo-task");
     const ctx = new MoluoxixiContext(dir);
     const active = ctx.getActiveTask({ sessionID: "missing-key" });
 
-    expect(active.taskPath).toBe(".moluoxixi/tasks/demo-task");
+    expect(active.taskPath).toBe(".trellis/tasks/demo-task");
     expect(active.source).toBe("session-fallback:opencode_sole");
     expect(active.stale).toBe(false);
   });
 
   it("refuses to guess when two or more session files exist", () => {
-    writeSessionFile(dir, "opencode_a", ".moluoxixi/tasks/demo-task");
-    writeSessionFile(dir, "opencode_b", ".moluoxixi/tasks/demo-task");
+    writeSessionFile(dir, "opencode_a", ".trellis/tasks/demo-task");
+    writeSessionFile(dir, "opencode_b", ".trellis/tasks/demo-task");
     const ctx = new MoluoxixiContext(dir);
     const active = ctx.getActiveTask({ sessionID: "missing-key" });
 
@@ -856,8 +856,8 @@ describe("opencode MoluoxixiContext single-session fallback", () => {
   });
 
   it("prefers an exact context-key match over the fallback", () => {
-    writeSessionFile(dir, "opencode_session_exact", ".moluoxixi/tasks/demo-task");
-    writeSessionFile(dir, "opencode_other", ".moluoxixi/tasks/demo-task");
+    writeSessionFile(dir, "opencode_session_exact", ".trellis/tasks/demo-task");
+    writeSessionFile(dir, "opencode_other", ".trellis/tasks/demo-task");
     const ctx = new MoluoxixiContext(dir);
     const active = ctx.getActiveTask({ sessionID: "exact" });
 
@@ -887,7 +887,7 @@ describe("opencode inject-subagent-context (issue #264)", () => {
   });
 
   it("mutates implement prompt using single-session fallback when sessionID misses", async () => {
-    writeSessionFile(dir, "opencode_sole", ".moluoxixi/tasks/demo-task");
+    writeSessionFile(dir, "opencode_sole", ".trellis/tasks/demo-task");
     const output: TaskToolOutput = {
       args: {
         subagent_type: "moluoxixi-implement",
@@ -914,14 +914,14 @@ describe("opencode inject-subagent-context (issue #264)", () => {
   it("inlines JSONL-referenced spec content into the implement prompt", async () => {
     // Cover AC #1: "JSONL-referenced context" — the seed-only jsonl path
     // is exercised above; this one verifies a curated entry is inlined.
-    const specPath = join(dir, ".moluoxixi", "spec", "demo.md");
-    mkdirSync(join(dir, ".moluoxixi", "spec"), { recursive: true });
+    const specPath = join(dir, ".trellis", "spec", "demo.md");
+    mkdirSync(join(dir, ".trellis", "spec"), { recursive: true });
     writeFileSync(specPath, "# Demo Spec\n\nUNIQUE_SPEC_MARKER_42");
     writeFileSync(
-      join(dir, ".moluoxixi", "tasks", "demo-task", "implement.jsonl"),
-      JSON.stringify({ file: ".moluoxixi/spec/demo.md", reason: "test" }) + "\n",
+      join(dir, ".trellis", "tasks", "demo-task", "implement.jsonl"),
+      JSON.stringify({ file: ".trellis/spec/demo.md", reason: "test" }) + "\n",
     );
-    writeSessionFile(dir, "opencode_sole", ".moluoxixi/tasks/demo-task");
+    writeSessionFile(dir, "opencode_sole", ".trellis/tasks/demo-task");
 
     const output: TaskToolOutput = {
       args: {
@@ -936,7 +936,7 @@ describe("opencode inject-subagent-context (issue #264)", () => {
     );
 
     expect(output.args.prompt).toContain("<!-- moluoxixi-hook-injected -->");
-    expect(output.args.prompt).toContain("=== .moluoxixi/spec/demo.md ===");
+    expect(output.args.prompt).toContain("=== .trellis/spec/demo.md ===");
     expect(output.args.prompt).toContain("UNIQUE_SPEC_MARKER_42");
     expect(output.args.prompt).toContain("Demo PRD");
   });
@@ -947,7 +947,7 @@ describe("opencode inject-subagent-context (issue #264)", () => {
     const output: TaskToolOutput = {
       args: {
         subagent_type: "moluoxixi-check",
-        prompt: "Active task: .moluoxixi/tasks/demo-task\n\nplease check",
+        prompt: "Active task: .trellis/tasks/demo-task\n\nplease check",
       },
     };
 
@@ -964,8 +964,8 @@ describe("opencode inject-subagent-context (issue #264)", () => {
   it("Active task hint takes precedence over single-session fallback", async () => {
     // Set up TWO matches: a session file pointing at demo-task AND a hint
     // pointing at a different task path. Hint should win.
-    writeSessionFile(dir, "opencode_sole", ".moluoxixi/tasks/another-task");
-    const hintTask = join(dir, ".moluoxixi", "tasks", "hint-task");
+    writeSessionFile(dir, "opencode_sole", ".trellis/tasks/another-task");
+    const hintTask = join(dir, ".trellis", "tasks", "hint-task");
     mkdirSync(hintTask, { recursive: true });
     writeFileSync(join(hintTask, "prd.md"), "# Hint PRD\n\nfrom hint");
     writeFileSync(join(hintTask, "implement.jsonl"), "");
@@ -973,7 +973,7 @@ describe("opencode inject-subagent-context (issue #264)", () => {
     const output: TaskToolOutput = {
       args: {
         subagent_type: "moluoxixi-implement",
-        prompt: "Active task: .moluoxixi/tasks/hint-task\n\ngo",
+        prompt: "Active task: .trellis/tasks/hint-task\n\ngo",
       },
     };
 
@@ -1071,7 +1071,7 @@ describe("opencode chat.message subagent skip (issue #264)", () => {
         messageID: `message-order-${index}`,
         type: "text",
         synthetic: true,
-        metadata: { moluoxixi: { sessionStart: true } },
+        metadata: { trellis: { sessionStart: true } },
       });
       expect(parts[0].text).toMatch(/^<session-context>/);
       expect(parts[1]).toMatchObject({
@@ -1163,7 +1163,7 @@ describe("opencode chat.message subagent skip (issue #264)", () => {
     const parts = [structuredClone(ordinary)];
     insertSyntheticTextPart(
       parts,
-      "machine context containing no-moluoxixi",
+      "machine context containing no-trellis",
       "sessionStart",
     );
 
@@ -1186,8 +1186,8 @@ describe("opencode chat.message subagent skip (issue #264)", () => {
       directory: dir,
     })) as ChatMessageHooks;
     const cases = [
-      ["MOLUOXIXI_HOOKS", "0"],
-      ["MOLUOXIXI_DISABLE_HOOKS", "1"],
+      ["TRELLIS_HOOKS", "0"],
+      ["TRELLIS_DISABLE_HOOKS", "1"],
       ["OPENCODE_NON_INTERACTIVE", "1"],
     ] as const;
 
@@ -1216,7 +1216,7 @@ describe("opencode chat.message subagent skip (issue #264)", () => {
     }
   });
 
-  it("session-start.js early-returns when input.agent is a moluoxixi sub-agent", async () => {
+  it("session-start.js early-returns when input.agent is a trellis sub-agent", async () => {
     const hooks = (await sessionStartPlugin({
       directory: dir,
       client: undefined,
@@ -1249,7 +1249,7 @@ describe("opencode chat.message subagent skip (issue #264)", () => {
     }
   });
 
-  it("inject-workflow-state.js early-returns when input.agent is a moluoxixi sub-agent", async () => {
+  it("inject-workflow-state.js early-returns when input.agent is a trellis sub-agent", async () => {
     const hooks = (await injectWorkflowStatePlugin({
       directory: dir,
     })) as ChatMessageHooks;
@@ -1287,7 +1287,7 @@ describe("opencode chat.message subagent skip (issue #264)", () => {
       directory: dir,
     })) as ChatMessageHooks;
     const parts: ChatMessagePart[] = [
-      createUserTextPart("no-moluoxixi what does this regex do"),
+      createUserTextPart("no-trellis what does this regex do"),
     ];
 
     await hooks["chat.message"](
@@ -1296,15 +1296,15 @@ describe("opencode chat.message subagent skip (issue #264)", () => {
     );
 
     expect(parts).toHaveLength(1);
-    expect(parts[0].text).toBe("no-moluoxixi what does this regex do");
+    expect(parts[0].text).toBe("no-trellis what does this regex do");
   });
 
-  it("inject-workflow-state.js does not skip on 'no-moluoxixifoo' (word-boundary negative)", async () => {
+  it("inject-workflow-state.js does not skip on 'no-trellisfoo' (word-boundary negative)", async () => {
     const hooks = (await injectWorkflowStatePlugin({
       directory: dir,
     })) as ChatMessageHooks;
     const parts: ChatMessagePart[] = [
-      createUserTextPart("no-moluoxixifoo is a strange word"),
+      createUserTextPart("no-trellisfoo is a strange word"),
     ];
 
     await hooks["chat.message"](
@@ -1317,7 +1317,7 @@ describe("opencode chat.message subagent skip (issue #264)", () => {
 
   it("inject-workflow-state.js honors a custom prompt_injection.skip_keyword", async () => {
     writeFileSync(
-      join(dir, ".moluoxixi", "config.yaml"),
+      join(dir, ".trellis", "config.yaml"),
       ["prompt_injection:", '  skip_keyword: "off-topic"'].join("\n"),
     );
     const hooks = (await injectWorkflowStatePlugin({
@@ -1335,7 +1335,7 @@ describe("opencode chat.message subagent skip (issue #264)", () => {
 
     const notSkipped: ChatMessagePart[] = [
       createUserTextPart(
-        "no-moluoxixi question",
+        "no-trellis question",
         "main-session-2",
         "message-custom-keyword",
       ),
@@ -1349,14 +1349,14 @@ describe("opencode chat.message subagent skip (issue #264)", () => {
 
   it("inject-workflow-state.js disables the escape hatch with skip_keyword: \"\"", async () => {
     writeFileSync(
-      join(dir, ".moluoxixi", "config.yaml"),
+      join(dir, ".trellis", "config.yaml"),
       ["prompt_injection:", '  skip_keyword: ""'].join("\n"),
     );
     const hooks = (await injectWorkflowStatePlugin({
       directory: dir,
     })) as ChatMessageHooks;
     const parts: ChatMessagePart[] = [
-      createUserTextPart("no-moluoxixi question"),
+      createUserTextPart("no-trellis question"),
     ];
 
     await hooks["chat.message"](
@@ -1384,19 +1384,19 @@ describe("opencode context injection limits (issue #441)", () => {
   });
 
   function writeConfig(yaml: string): void {
-    writeFileSync(join(dir, ".moluoxixi", "config.yaml"), yaml, "utf-8");
+    writeFileSync(join(dir, ".trellis", "config.yaml"), yaml, "utf-8");
   }
 
   function writeJsonlEntries(entries: Record<string, string>[]): void {
     writeFileSync(
-      join(dir, ".moluoxixi", "tasks", "demo-task", "implement.jsonl"),
+      join(dir, ".trellis", "tasks", "demo-task", "implement.jsonl"),
       entries.map(e => JSON.stringify(e)).join("\n") + "\n",
       "utf-8",
     );
   }
 
   async function runImplementHook(): Promise<string> {
-    writeSessionFile(dir, "opencode_sole", ".moluoxixi/tasks/demo-task");
+    writeSessionFile(dir, "opencode_sole", ".trellis/tasks/demo-task");
     const hooks = (await injectSubagentContextPlugin({
       directory: dir,
       platform: "linux",
@@ -1511,7 +1511,7 @@ describe("opencode context injection limits (issue #441)", () => {
 
       expect(prompt).toContain("=== small.md ===\nsmall spec content");
       expect(prompt).toContain(
-        "=== .moluoxixi/tasks/demo-task/prd.md (Requirements) ===\n# Demo PRD",
+        "=== .trellis/tasks/demo-task/prd.md (Requirements) ===\n# Demo PRD",
       );
       expect(prompt).not.toContain("[Moluoxixi: truncated");
       expect(prompt).not.toContain("[Moluoxixi: not inlined");
@@ -1612,7 +1612,7 @@ describe("opencode context injection limits (issue #441)", () => {
 
     it("truncates an oversized artifact (prd.md) at max_artifact_bytes", async () => {
       writeFileSync(
-        join(dir, ".moluoxixi", "tasks", "demo-task", "prd.md"),
+        join(dir, ".trellis", "tasks", "demo-task", "prd.md"),
         "P".repeat(100000),
         "utf-8",
       );
@@ -1622,7 +1622,7 @@ describe("opencode context injection limits (issue #441)", () => {
       expect(prompt).toContain("P".repeat(65536));
       expect(prompt).not.toContain("P".repeat(65537));
       expect(prompt).toContain(
-        "[Moluoxixi: truncated at 65536 bytes — read .moluoxixi/tasks/demo-task/prd.md for the full content]",
+        "[Moluoxixi: truncated at 65536 bytes — read .trellis/tasks/demo-task/prd.md for the full content]",
       );
     });
 
@@ -1657,7 +1657,7 @@ describe("opencode context injection limits (issue #441)", () => {
       expect(prompt).not.toContain("=== f3.txt ===");
     });
 
-    it("honors a max_file_bytes override from .moluoxixi/config.yaml", async () => {
+    it("honors a max_file_bytes override from .trellis/config.yaml", async () => {
       writeFileSync(join(dir, "ref.md"), "R".repeat(100), "utf-8");
       writeJsonlEntries([{ file: "ref.md", reason: "ref" }]);
       writeConfig(["context_injection:", "  max_file_bytes: 10"].join("\n"));

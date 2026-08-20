@@ -1,6 +1,6 @@
 # Local Customization Overview
 
-This directory is for local AI working in a user project where Moluoxixi was installed through npm and `moluoxixi init` has already been run. The AI should modify generated `.moluoxixi/` and platform directories inside the project, not Moluoxixi CLI upstream source code.
+This directory is for local AI working in a user project where Moluoxixi was installed through npm and `trellis init` has already been run. The AI should modify generated `.moluoxixi/` and platform directories inside the project, not Moluoxixi CLI upstream source code.
 
 ## First Determine What The User Actually Wants To Change
 
@@ -38,7 +38,7 @@ This directory is for local AI working in a user project where Moluoxixi was ins
 ## Things Not To Do By Default
 
 - Do not edit the global npm install directory.
-- Do not edit `node_modules/@moluoxixi/airules-moluoxixi-cli`.
+- Do not edit `node_modules/@moluoxixi/airules-moluoxixi`.
 - Do not assume the user has the Moluoxixi GitHub repository.
 - Do not overwrite local files already modified by the user with default templates.
 - Do not put team project rules into public `moluoxixi-meta`; project rules belong in `.moluoxixi/spec/` or a local skill.
@@ -50,6 +50,6 @@ Switch to an upstream source-code perspective only when the user explicitly expr
 - "I want to open a PR to Moluoxixi"
 - "I want to change npm package publish contents"
 - "I want to fork Moluoxixi"
-- "I want to modify the generation logic for `moluoxixi init/update`"
+- "I want to modify the generation logic for `trellis init/update`"
 
 Otherwise, default to modifying local Moluoxixi files inside the user project.

@@ -434,7 +434,7 @@ describe("detectMonorepo", () => {
       path.join(tmpDir, ".gitmodules"),
       '[submodule "docs-site"]\n\tpath = docs-site\n\turl = https://example.com\n',
     );
-    mkPkg("packages/cli", "@moluoxixi/cli");
+    mkPkg("packages/cli", "@trellis/cli");
     mkPkg("docs-site", "docs-site");
 
     const result = assertPackages(detectMonorepo(tmpDir));

@@ -64,11 +64,11 @@ export function getSettingsTemplate(): SettingsTemplate {
 }
 
 /**
- * Opt-in statusLine hook, installed only via `moluoxixi init --with-statusline`.
+ * Opt-in statusLine hook, installed only via `trellis init --with-statusline`.
  *
  * Lives under claude/hooks/ (not shared-hooks/) because `statusLine` is a
  * Claude-only event, and is intentionally NOT part of `collectTemplates` —
- * `moluoxixi update` must never force-install it on opted-out projects.
+ * `trellis update` must never force-install it on opted-out projects.
  */
 export function getStatuslineHook(): string {
   return readTemplate("hooks/statusline.py");

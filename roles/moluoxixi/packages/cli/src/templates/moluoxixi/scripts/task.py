@@ -27,7 +27,6 @@ from __future__ import annotations
 import argparse
 import json
 import sys
-from datetime import datetime, timezone
 
 from common.log import Colors, colored
 from common.paths import (
@@ -46,7 +45,7 @@ from common.active_task import (
     set_active_task,
 )
 from common.io import read_json, write_json
-from common.task_utils import is_within_tasks_dir, resolve_task_dir, run_task_hooks
+from common.task_utils import resolve_task_dir, run_task_hooks
 from common.tasks import iter_active_tasks, children_progress
 
 # Import command handlers from split modules (also re-exports for plan.py compatibility)
@@ -59,166 +58,17 @@ from common.task_store import (
     cmd_set_meta,
     cmd_add_subtask,
     cmd_remove_subtask,
-    has_subagent_platform,
 )
 from common.task_context import (
     cmd_add_context,
     cmd_validate,
     cmd_list_context,
-    planning_readiness_errors,
 )
 
 
 # =============================================================================
 # Command: start / finish
 # =============================================================================
-
-def _utc_now() -> str:
-    return datetime.now(timezone.utc).isoformat().replace("+00:00", "Z")
-
-
-def _load_task_for_update(task_input: str):
-    repo_root = get_repo_root()
-    task_dir = resolve_task_dir(task_input, repo_root)
-    if task_dir is None:
-        print(colored(f"Error: Task not found or invalid: {task_input}", Colors.RED))
-        return repo_root, None, None, None
-    task_json_path = task_dir / FILE_TASK_JSON
-    task_data = read_json(task_json_path) if task_json_path.is_file() else None
-    if not task_dir.is_dir() or not isinstance(task_data, dict):
-        print(colored(f"Error: Task not found or invalid: {task_input}", Colors.RED))
-        return repo_root, task_dir, task_json_path, None
-    return repo_root, task_dir, task_json_path, task_data
-
-
-def cmd_set_complexity(args: argparse.Namespace) -> int:
-    """Persist the planning complexity classification for one task."""
-    _, _, task_json_path, task_data = _load_task_for_update(args.dir)
-    if task_data is None:
-        return 1
-    if task_data.get("status") != "planning":
-        print(colored("Error: complexity can only be changed while planning", Colors.RED))
-        return 1
-    task_data["complexity"] = {
-        "level": args.level,
-        "signals": list(dict.fromkeys(args.signal or [])),
-        "reason": args.reason or "",
-    }
-    if not write_json(task_json_path, task_data):
-        print(colored("Error: failed to update task complexity", Colors.RED))
-        return 1
-    print(colored(f"✓ Complexity: {args.level}", Colors.GREEN))
-    return 0
-
-
-def cmd_set_execution_mode(args: argparse.Namespace) -> int:
-    """Set task-local manual/auto execution after explicit user authorization."""
-    _, _, task_json_path, task_data = _load_task_for_update(args.dir)
-    if task_data is None:
-        return 1
-    if task_data.get("status") == "completed":
-        print(colored("Error: completed tasks cannot change execution mode", Colors.RED))
-        return 1
-    if args.mode == "auto" and not args.user_authorized:
-        print(colored(
-            "Error: auto mode requires --user-authorized after an explicit user request",
-            Colors.RED,
-        ))
-        return 1
-    task_data["executionApproval"] = {
-        "mode": args.mode,
-        "granted": args.mode == "auto",
-        "source": "explicit_user" if args.mode == "auto" else None,
-        "grantedAt": _utc_now() if args.mode == "auto" else None,
-        "reason": args.reason or "",
-    }
-    if not write_json(task_json_path, task_data):
-        print(colored("Error: failed to update execution mode", Colors.RED))
-        return 1
-    print(colored(f"✓ Execution mode: {args.mode}", Colors.GREEN))
-    return 0
-
-
-def _prepare_planning_transition(
-    args: argparse.Namespace,
-    task_dir,
-    task_json_path,
-    task_data: dict,
-    repo_root,
-) -> bool:
-    status = task_data.get("status")
-    # Tasks created before planning review metadata existed must remain
-    # runnable after migration. New tasks opt into the strict gate below.
-    legacy_task = "complexity" not in task_data and "executionApproval" not in task_data
-    if legacy_task:
-        if status == "planning":
-            task_data["status"] = "in_progress"
-            if not write_json(task_json_path, task_data):
-                print(colored("Error: failed to update legacy task status", Colors.RED))
-                return False
-            print(colored("✓ Status: planning → in_progress (legacy task)", Colors.GREEN))
-            return True
-        return status == "in_progress"
-
-    if status != "planning":
-        approval = task_data.get("executionApproval")
-        if status != "in_progress":
-            print(colored(f"Error: task status cannot be started: {status}", Colors.RED))
-            return False
-        if not (
-            isinstance(approval, dict)
-            and approval.get("granted") is True
-            and approval.get("source") == "explicit_user"
-            and approval.get("mode") in ("manual", "auto")
-        ):
-            print(colored(
-                "Error: in-progress task is missing its explicit execution approval record",
-                Colors.RED,
-            ))
-            return False
-        return True
-
-    errors = planning_readiness_errors(
-        task_dir,
-        repo_root,
-        task_data,
-        require_context=has_subagent_platform(repo_root),
-    )
-    if errors:
-        print(colored("Error: planning review gate failed", Colors.RED))
-        for error in errors:
-            print(f"  - {error}")
-        return False
-
-    approval = task_data.get("executionApproval")
-    if not isinstance(approval, dict):
-        approval = {}
-    auto_granted = (
-        approval.get("mode") == "auto"
-        and approval.get("granted") is True
-        and approval.get("source") == "explicit_user"
-    )
-    if not auto_granted and not args.user_approved:
-        print(colored(
-            "Error: manual review required; rerun with --user-approved only after the user approves the final plan",
-            Colors.RED,
-        ))
-        return False
-
-    if not auto_granted:
-        task_data["executionApproval"] = {
-            "mode": "manual",
-            "granted": True,
-            "source": "explicit_user",
-            "grantedAt": _utc_now(),
-            "reason": "Final planning artifacts approved before start",
-        }
-    task_data["status"] = "in_progress"
-    if not write_json(task_json_path, task_data):
-        print(colored("Error: failed to persist planning approval", Colors.RED))
-        return False
-    print(colored("✓ Status: planning → in_progress (planning review gate passed)", Colors.GREEN))
-    return True
 
 def cmd_start(args: argparse.Namespace) -> int:
     """Set active task."""
@@ -229,40 +79,35 @@ def cmd_start(args: argparse.Namespace) -> int:
         print(colored("Error: task directory or name required", Colors.RED))
         return 1
 
-    # Resolve task directory, then enforce the project task ownership boundary.
+    # Resolve task directory (supports task name, relative path, or absolute path)
     full_path = resolve_task_dir(task_input, repo_root)
 
     if not full_path or not full_path.is_dir():
         print(colored(f"Error: Task not found: {task_input}", Colors.RED))
         print("Hint: Use task name (e.g., 'my-task') or full path (e.g., '.moluoxixi/tasks/01-31-my-task')")
         return 1
-    if not is_within_tasks_dir(full_path, repo_root):
-        print(colored(
-            "Error: Task must be a direct child of .moluoxixi/tasks/",
-            Colors.RED,
-        ))
-        return 1
 
-    task_json_path = full_path / FILE_TASK_JSON
-    task_data = read_json(task_json_path) if task_json_path.is_file() else None
-    if not isinstance(task_data, dict):
-        print(colored(f"Error: Missing or invalid task.json: {task_input}", Colors.RED))
-        return 1
-    if not _prepare_planning_transition(
-        args, full_path, task_json_path, task_data, repo_root
-    ):
-        return 1
-
-    # Convert to relative path for storage
+    # Convert to relative path for storage. repo_root is resolved because
+    # full_path already is (resolve_task_dir only returns paths inside the
+    # resolved root), so an unresolved repo_root would mismatch under a
+    # symlink (e.g. /tmp on macOS) and reject a perfectly normal task.
     try:
         task_dir = full_path.relative_to(repo_root.resolve()).as_posix()
     except ValueError:
+        # resolve_task_dir already refused everything outside the repo, so
+        # this is unreachable in practice. Refuse rather than fall back to
+        # str(full_path) — that fallback (a lexical relative_to() paired with
+        # an absolute-path fallback) is exactly the pattern that let a `..`
+        # ref escape into storage before this fix.
         print(colored(f"Error: Task not found: {task_input}", Colors.RED))
+        print("Hint: Use task name (e.g., 'my-task') or full path (e.g., '.moluoxixi/tasks/01-31-my-task')")
         return 1
+
+    task_json_path = full_path / FILE_TASK_JSON
 
     if not resolve_context_key():
         # Degraded mode: no session identity available.
-        # Hook didn't inject MOLUOXIXI_CONTEXT_ID (common on Windows + Claude Code,
+        # Hook didn't inject TRELLIS_CONTEXT_ID (common on Windows + Claude Code,
         # --continue resume path, fork distribution, hooks disabled, etc.). Skip
         # per-session pointer write; AI continues based on conversation context.
         print(colored(
@@ -272,12 +117,17 @@ def cmd_start(args: argparse.Namespace) -> int:
         ))
         print(colored(
             "Hint: run inside an AI IDE/session that exposes session identity, "
-            "or set MOLUOXIXI_CONTEXT_ID before running task.py start.",
+            "or set TRELLIS_CONTEXT_ID before running task.py start.",
             Colors.YELLOW,
         ))
 
-        # The review gate above has already persisted planning → in_progress.
+        # Still flip task.json status: planning → in_progress so downstream phases proceed.
         if task_json_path.is_file():
+            data = read_json(task_json_path)
+            if data and data.get("status") == "planning":
+                data["status"] = "in_progress"
+                if write_json(task_json_path, data):
+                    print(colored("✓ Status: planning → in_progress (degraded)", Colors.GREEN))
             run_task_hooks("after_start", task_json_path, repo_root)
         return 0
 
@@ -285,6 +135,13 @@ def cmd_start(args: argparse.Namespace) -> int:
     if active:
         print(colored(f"✓ Current task set to: {task_dir}", Colors.GREEN))
         print(f"Source: {active.source}")
+
+        if task_json_path.is_file():
+            data = read_json(task_json_path)
+            if data and data.get("status") == "planning":
+                data["status"] = "in_progress"
+                if write_json(task_json_path, data):
+                    print(colored("✓ Status: planning → in_progress", Colors.GREEN))
 
         print()
         print(colored("The hook will now inject context from this task's jsonl files.", Colors.BLUE))
@@ -361,12 +218,22 @@ def cmd_current(args: argparse.Namespace) -> int:
 # Command: list
 # =============================================================================
 
-def _display_status(task_info, all_statuses: dict[str, str]) -> str:
-    """Show a planning parent as active while any child is in flight."""
-    if task_info.status == "planning" and task_info.children:
-        if any(all_statuses.get(child) not in (None, "planning") for child in task_info.children):
+def _display_status(t, all_statuses: dict) -> str:
+    """Return the status label to show for a task in `list` output.
+
+    A parent task's stored status stays "planning" until someone runs
+    `task.py start` on the parent directly, even while its children are
+    actively being worked — a misleading label for anyone scanning the
+    list (#399 item 3). Show "active" instead when at least one child is
+    past planning; the stored status.json value is left untouched.
+    """
+    if t.status == "planning" and t.children:
+        child_in_flight = any(
+            all_statuses.get(c) not in (None, "planning") for c in t.children
+        )
+        if child_in_flight:
             return "active"
-    return task_info.status
+    return t.status
 
 
 def cmd_list(args: argparse.Namespace) -> int:
@@ -379,6 +246,7 @@ def cmd_list(args: argparse.Namespace) -> int:
     filter_status = args.status
     as_json = getattr(args, "json", False)
 
+    # Single pass: collect all tasks via shared iterator
     all_tasks = {t.dir_name: t for t in iter_active_tasks(tasks_dir)}
     all_statuses = {name: t.status for name, t in all_tasks.items()}
 
@@ -386,24 +254,25 @@ def cmd_list(args: argparse.Namespace) -> int:
         if filter_mine and not developer:
             print(json.dumps({"error": "No developer set"}), file=sys.stderr)
             return 1
+
         items = []
-        for dir_name in sorted(all_tasks):
-            task_info = all_tasks[dir_name]
-            if filter_mine and (task_info.assignee or "-") != developer:
+        for dir_name in sorted(all_tasks.keys()):
+            t = all_tasks[dir_name]
+            if filter_mine and (t.assignee or "-") != developer:
                 continue
-            if filter_status and task_info.status != filter_status:
+            if filter_status and t.status != filter_status:
                 continue
             items.append({
                 "dir": f"{DIR_WORKFLOW}/{DIR_TASKS}/{dir_name}",
-                "id": task_info.raw.get("id") or dir_name,
-                "title": task_info.title,
-                "status": task_info.status,
-                "display_status": _display_status(task_info, all_statuses),
-                "priority": task_info.priority,
-                "assignee": task_info.assignee or None,
-                "parent": task_info.parent,
-                "children": list(task_info.children),
-                "package": task_info.package,
+                "id": t.raw.get("id") or dir_name,
+                "title": t.title,
+                "status": t.status,
+                "display_status": _display_status(t, all_statuses),
+                "priority": t.priority,
+                "assignee": t.assignee or None,
+                "parent": t.parent,
+                "children": list(t.children),
+                "package": t.package,
             })
         print(json.dumps({"tasks": items}, ensure_ascii=False))
         return 0
@@ -457,7 +326,9 @@ def cmd_list(args: argparse.Namespace) -> int:
             if child_name in all_tasks:
                 _print_task(child_name, indent + 1)
 
-    # Display top-level tasks plus orphans whose recorded parent disappeared.
+    # Display only top-level tasks: those without a parent, plus orphans
+    # whose recorded parent is not (or no longer) in the active set — a
+    # dangling parent ref must still render flat instead of disappearing.
     for dir_name in sorted(all_tasks.keys()):
         parent = all_tasks[dir_name].parent
         if not parent or parent not in all_tasks:
@@ -530,10 +401,11 @@ Usage:
   python3 task.py set-branch <dir> <branch>          Set git branch
   python3 task.py set-base-branch <dir> <branch>     Set PR target branch
   python3 task.py set-scope <dir> <scope>            Set scope for PR title
+  python3 task.py set-meta <dir> <key> <value>       Set/overwrite a task metadata key
   python3 task.py archive <task-dir>                 Archive completed task
   python3 task.py add-subtask <parent> <child>       Link child task to parent
   python3 task.py remove-subtask <parent> <child>    Unlink child from parent
-  python3 task.py list [--mine] [--status <status>]  List tasks
+  python3 task.py list [--mine] [--status <status>] [--json]  List tasks
   python3 task.py list-archive [YYYY-MM]             List archived tasks
 
 Monorepo options:
@@ -542,10 +414,12 @@ Monorepo options:
 List options:
   --mine, -m           Show only tasks assigned to current developer
   --status, -s <s>     Filter by status (planning, in_progress, review, completed)
+  --json               Output machine-readable JSON (also available on `current`)
 
 Examples:
   python3 task.py create "Add login feature" --slug add-login
   python3 task.py create "Add login feature" --slug add-login --package cli
+  python3 task.py create "Add login feature" --meta linear=ENG-123 --meta epic=auth
   python3 task.py create "Child task" --slug child --parent .moluoxixi/tasks/01-21-parent
   python3 task.py add-context <dir> implement .moluoxixi/spec/cli/backend/auth.md "Auth guidelines"
   python3 task.py set-branch <dir> task/add-login
@@ -616,11 +490,10 @@ def main() -> int:
         "--base-branch",
         help="PR target branch (overrides origin/HEAD detection and the checked-out-branch fallback)",
     )
-    p_create.add_argument("--meta", action="append", help="Task metadata key=value (repeatable)")
     p_create.add_argument(
-        "--complexity",
-        choices=("lightweight", "complex"),
-        help="Persist the initial task complexity classification",
+        "--meta",
+        action="append",
+        help="Task metadata key=value (repeatable)",
     )
     p_create.add_argument(
         "--no-start",
@@ -646,27 +519,6 @@ def main() -> int:
     # start
     p_start = subparsers.add_parser("start", help="Set active task")
     p_start.add_argument("dir", help="Task directory")
-    p_start.add_argument(
-        "--user-approved",
-        action="store_true",
-        help="Record explicit user approval of the final planning artifacts",
-    )
-
-    p_complexity = subparsers.add_parser("set-complexity", help="Classify a planning task")
-    p_complexity.add_argument("dir", help="Task directory")
-    p_complexity.add_argument("level", choices=("lightweight", "complex"))
-    p_complexity.add_argument("--signal", action="append", default=[], help="Complexity signal (repeatable)")
-    p_complexity.add_argument("--reason", help="Short classification rationale")
-
-    p_execution = subparsers.add_parser("set-execution-mode", help="Set task-local manual or auto execution")
-    p_execution.add_argument("dir", help="Task directory")
-    p_execution.add_argument("mode", choices=("manual", "auto"))
-    p_execution.add_argument(
-        "--user-authorized",
-        action="store_true",
-        help="Confirm the user explicitly requested auto execution for this task",
-    )
-    p_execution.add_argument("--reason", help="Short authorization rationale")
 
     # current
     p_current = subparsers.add_parser("current", help="Show active task")
@@ -693,6 +545,7 @@ def main() -> int:
     p_scope.add_argument("dir", help="Task directory")
     p_scope.add_argument("scope", help="Scope name")
 
+    # set-meta
     p_setmeta = subparsers.add_parser("set-meta", help="Set/overwrite a task metadata key")
     p_setmeta.add_argument("dir", help="Task directory")
     p_setmeta.add_argument("key", help="Metadata key")
@@ -735,8 +588,6 @@ def main() -> int:
         "validate": cmd_validate,
         "list-context": cmd_list_context,
         "start": cmd_start,
-        "set-complexity": cmd_set_complexity,
-        "set-execution-mode": cmd_set_execution_mode,
         "current": cmd_current,
         "finish": cmd_finish,
         "set-branch": cmd_set_branch,

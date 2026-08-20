@@ -4,7 +4,7 @@
 # Usage: ./migrate-features-to-tasks.sh [--dry-run] [project-dir]
 #
 # This script converts the old features structure to the new unified tasks system:
-# - .moluoxixi/workspace/{developer}/features/{name}/ -> .moluoxixi/tasks/{MM}-{DD}-{name}-{developer}/
+# - .trellis/workspace/{developer}/features/{name}/ -> .trellis/tasks/{MM}-{DD}-{name}-{developer}/
 # - feature.json -> task.json (with field conversions)
 #
 # Note: This script expects the project to have already been updated to 0.2.0+
@@ -31,20 +31,20 @@ done
 
 # Resolve absolute path
 PROJECT_DIR=$(cd "$PROJECT_DIR" && pwd)
-MOLUOXIXI_DIR="$PROJECT_DIR/.moluoxixi"
+TRELLIS_DIR="$PROJECT_DIR/.trellis"
 
-# Check if .moluoxixi exists
-if [[ ! -d "$MOLUOXIXI_DIR" ]]; then
-    echo "Error: .moluoxixi directory not found in $PROJECT_DIR"
+# Check if .trellis exists
+if [[ ! -d "$TRELLIS_DIR" ]]; then
+    echo "Error: .trellis directory not found in $PROJECT_DIR"
     exit 1
 fi
 
 # Determine the workspace directory (could be workspace or agent-traces if not yet updated)
-if [[ -d "$MOLUOXIXI_DIR/workspace" ]]; then
-    WORKSPACE_DIR="$MOLUOXIXI_DIR/workspace"
-elif [[ -d "$MOLUOXIXI_DIR/agent-traces" ]]; then
-    WORKSPACE_DIR="$MOLUOXIXI_DIR/agent-traces"
-    echo "Warning: Found agent-traces instead of workspace. Run 'moluoxixi update' first."
+if [[ -d "$TRELLIS_DIR/workspace" ]]; then
+    WORKSPACE_DIR="$TRELLIS_DIR/workspace"
+elif [[ -d "$TRELLIS_DIR/agent-traces" ]]; then
+    WORKSPACE_DIR="$TRELLIS_DIR/agent-traces"
+    echo "Warning: Found agent-traces instead of workspace. Run 'trellis update' first."
     echo "Continuing anyway..."
 else
     echo "Error: Neither workspace nor agent-traces directory found"
@@ -52,7 +52,7 @@ else
 fi
 
 # Ensure tasks directory exists
-TASKS_DIR="$MOLUOXIXI_DIR/tasks"
+TASKS_DIR="$TRELLIS_DIR/tasks"
 if [[ "$DRY_RUN" == "false" ]]; then
     mkdir -p "$TASKS_DIR"
 fi

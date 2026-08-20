@@ -2,8 +2,6 @@
 
 `.moluoxixi/spec/` is the user's project-specific engineering spec library. Moluoxixi is not about making AI memorize conventions; it injects relevant specs or requires the AI to read them at the right time.
 
-Only reviewed knowledge belongs in this library. AI-discovered conventions first enter `.moluoxixi/spec-proposals/`; proposal files are not injected as active guidance.
-
 ## Directory Model
 
 A common single-repository structure:
@@ -87,9 +85,7 @@ Specs should contain executable engineering conventions for the project, not gen
 - Cases that require tests.
 - Project-specific pitfalls and how to avoid them.
 
-When the AI learns a new rule during implementation or debugging, it should use `moluoxixi-update-spec` to submit a complete desired-state candidate under `.moluoxixi/spec-proposals/`. A human reviews promote, merge, reject, deduplicate, and delete decisions through `moluoxixi-spec-review`; only approved application changes `.moluoxixi/spec/`.
-
-The review audit is event-driven and read-only by default. It becomes due after 30 days without a reviewed audit or when at least 10 proposals are pending. The queue and formal spec are both user data and are preserved by project updates and uninstall.
+When the AI learns a new rule during implementation or debugging, it should update `.moluoxixi/spec/` rather than only summarizing it in chat.
 
 ## Local Customization Points
 
@@ -99,8 +95,8 @@ The review audit is event-driven and read-only by default. It becomes due after 
 | Change monorepo spec mapping | `packages` / `default_package` / `spec_scope` in `.moluoxixi/config.yaml`. |
 | Change which specs AI reads before implementation | The task's `implement.jsonl`. |
 | Change which specs AI reads during checking | The task's `check.jsonl`. |
-| Change knowledge proposal or review timing | Phase 3.3 in `.moluoxixi/workflow.md`, `update-spec`, and `spec-review`. |
+| Change when specs should be updated | Phase 3.3 in `.moluoxixi/workflow.md` and the `moluoxixi-update-spec` skill. |
 
 ## Boundaries
 
-`.moluoxixi/spec/` is the user's reviewed project specification, not a permanent copy of Moluoxixi built-in templates. `.moluoxixi/spec-proposals/` is the auditable pending layer. Neither directory belongs to the initializer manifest.
+`.moluoxixi/spec/` is the user's project specification, not a permanent copy of Moluoxixi built-in templates. The AI should encourage the user to update it according to the actual project code instead of treating Moluoxixi default templates as immutable documents.

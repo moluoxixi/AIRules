@@ -22,7 +22,7 @@ copy:
   # - .env
   # - .env.local
   # Workflow config
-  - .moluoxixi/.developer
+  - .trellis/.developer
 
 #-------------------------------------------------------------------------------
 # Post-Create Hooks

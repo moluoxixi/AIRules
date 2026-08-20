@@ -15,17 +15,16 @@ import {
   collectSharedHooks,
   applyPullBasedPreludeMarkdown,
   normalizeCopilotMarkdownAgents,
-  replacePythonCommandLiterals,
 } from "./shared.js";
 
 /**
- * The GitHub Copilot file set — written at init and diffed by `moluoxixi update`.
+ * The GitHub Copilot file set — written at init and diffed by `trellis update`.
  * - prompts/ — start + finish-work as prompt files
  * - skills/moluoxixi-{name}/SKILL.md — auto-triggered skills from `common/skills/`
  * - agents/{name}.agent.md — sub-agent definitions (note .agent.md suffix)
  * - copilot/hooks/ — platform-specific + shared hook scripts
  * - hooks config — hooks.json
- * - copilot-instructions.md — repository-wide review guidance. `moluoxixi update`
+ * - copilot-instructions.md — repository-wide review guidance. `trellis update`
  *   replaces this entry with a managed-block merge over the user's file
  *   (`buildCopilotInstructionsTemplate`); on a fresh project the merge returns
  *   the template verbatim, so init and update agree.
@@ -59,12 +58,9 @@ export function collectCopilotTemplates(): Map<string, string> {
   )) {
     files.set(`.github/agents/${agent.name}.agent.md`, agent.content);
   }
-  files.set(
-    COPILOT_INSTRUCTIONS_PATH,
-    replacePythonCommandLiterals(getCopilotInstructions()),
-  );
+  files.set(COPILOT_INSTRUCTIONS_PATH, getCopilotInstructions());
   const hooksConfig = resolvePlaceholders(getHooksConfig());
   files.set(".github/copilot/hooks.json", hooksConfig);
-  files.set(".github/hooks/moluoxixi.json", hooksConfig);
+  files.set(".github/hooks/trellis.json", hooksConfig);
   return files;
 }

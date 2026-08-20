@@ -14,7 +14,7 @@ import inquirer from "inquirer";
 // === External dependency mocks (hoisted by vitest) ===
 
 vi.mock("figlet", () => ({
-  default: { textSync: vi.fn(() => "MOLUOXIXI") },
+  default: { textSync: vi.fn(() => "TRELLIS") },
 }));
 
 vi.mock("inquirer", () => ({
@@ -59,7 +59,7 @@ import {
 import { VERSION } from "../../src/constants/version.js";
 import { DIR_NAMES, FILE_NAMES, PATHS } from "../../src/constants/paths.js";
 import { computeHash } from "../../src/utils/template-hash.js";
-import { workflowMdTemplate } from "../../src/templates/moluoxixi/index.js";
+import { workflowMdTemplate } from "../../src/templates/trellis/index.js";
 import {
   COPILOT_INSTRUCTIONS_BLOCK_END,
   COPILOT_INSTRUCTIONS_BLOCK_START,
@@ -259,7 +259,7 @@ describe("update() integration", () => {
   });
 
   it("#1b current OpenCode templates are not classified as deprecated", async () => {
-    const startPath = ".opencode/commands/moluoxixi/start.md";
+    const startPath = ".opencode/commands/trellis/start.md";
     await init({ yes: true, force: true, opencode: true });
     expect(fs.existsSync(projectFile(startPath))).toBe(true);
 
@@ -272,7 +272,7 @@ describe("update() integration", () => {
   it("[issue-zcode-codex-upgrade] zcode private skills do not trigger legacy Codex backfill", async () => {
     await init({ yes: true, force: true, zcode: true });
 
-    expect(fs.existsSync(projectFile(".zcode/commands/moluoxixi/start.md"))).toBe(
+    expect(fs.existsSync(projectFile(".zcode/commands/trellis/start.md"))).toBe(
       false,
     );
     expect(
@@ -338,15 +338,10 @@ describe("update() integration", () => {
       resolveBundledSkills(piCtx),
     );
 
-    const resolvedLegacyContent = legacyPiSkillFiles.get(
+    const legacyContent = legacyPiSkillFiles.get(
       ".pi/skills/moluoxixi-update-spec/SKILL.md",
     );
-    expect(resolvedLegacyContent).toBeDefined();
-    const legacyContent = `${resolvedLegacyContent}\n<!-- legacy Pi-specific fixture -->\n`;
-    legacyPiSkillFiles.set(
-      ".pi/skills/moluoxixi-update-spec/SKILL.md",
-      legacyContent,
-    );
+    expect(legacyContent).toBeDefined();
     // Sanity: the Pi-flavored bytes actually differ from the shared neutral
     // bytes already on disk (otherwise this test wouldn't be exercising the
     // reported bug at all).
@@ -540,14 +535,14 @@ describe("update() integration", () => {
     expect(fs.readFileSync(targetFull, "utf-8")).toBe(modifiedOldContent);
   });
 
-  it("#4d preserves user AGENTS.md without MOLUOXIXI markers by appending the managed block", async () => {
+  it("#4d preserves user AGENTS.md without TRELLIS markers by appending the managed block", async () => {
     await setupProject();
 
     const targetRelative = FILE_NAMES.AGENTS;
     const targetFull = path.join(tmpDir, targetRelative);
     const templateContent = fs.readFileSync(targetFull, "utf-8");
 
-    // User has a hand-written AGENTS.md with no MOLUOXIXI:START/END markers at
+    // User has a hand-written AGENTS.md with no TRELLIS:START/END markers at
     // all (predates 0.5.0-beta.18 or was authored by hand). Pre-fix behavior
     // would clobber this content; post-fix should append the managed block.
     const userContent = "# Project notes\n\nThings the team agreed on.\n";
@@ -558,11 +553,11 @@ describe("update() integration", () => {
     const result = fs.readFileSync(targetFull, "utf-8");
     expect(result).toContain("# Project notes");
     expect(result).toContain("Things the team agreed on.");
-    expect(result).toContain("<!-- MOLUOXIXI:START -->");
-    expect(result).toContain("<!-- MOLUOXIXI:END -->");
+    expect(result).toContain("<!-- TRELLIS:START -->");
+    expect(result).toContain("<!-- TRELLIS:END -->");
     // Managed block should sit AFTER the user content, not replace it.
     expect(result.indexOf("# Project notes")).toBeLessThan(
-      result.indexOf("<!-- MOLUOXIXI:START -->"),
+      result.indexOf("<!-- TRELLIS:START -->"),
     );
     // Tail equals the canonical template (force-applied managed block).
     expect(result.endsWith(templateContent.trimEnd() + "\n")).toBe(true);
@@ -1037,7 +1032,7 @@ describe("update() integration", () => {
     await update({ force: true });
 
     const content = fs.readFileSync(gitattributesPath, "utf-8");
-    expect(content).toContain(".moluoxixi/workspace/*/journal-*.md merge=union");
+    expect(content).toContain(".trellis/workspace/*/journal-*.md merge=union");
   });
 
   it("#15b does not duplicate an existing user journal merge=union rule (#415)", async () => {
@@ -1045,7 +1040,7 @@ describe("update() integration", () => {
 
     const gitattributesPath = path.join(tmpDir, ".gitattributes");
     const userContent =
-      "# my own rules\n*.png binary\n.moluoxixi/workspace/*/journal-*.md merge=union\n";
+      "# my own rules\n*.png binary\n.trellis/workspace/*/journal-*.md merge=union\n";
     fs.writeFileSync(gitattributesPath, userContent);
 
     await update({ force: true });
@@ -1108,7 +1103,7 @@ describe("update() integration", () => {
 
     // Create a deprecated file that exists in the 0.4.0-beta.1 safe-file-delete manifest
     // but with user-modified content (hash won't match allowed_hashes)
-    const deprecatedDir = path.join(tmpDir, ".claude", "commands", "moluoxixi");
+    const deprecatedDir = path.join(tmpDir, ".claude", "commands", "trellis");
     fs.mkdirSync(deprecatedDir, { recursive: true });
     const deprecatedFile = path.join(deprecatedDir, "before-backend-dev.md");
     const userContent =
@@ -1126,7 +1121,7 @@ describe("update() integration", () => {
     await setupProject();
 
     // Simulate upgrading from an old version — deprecated files don't exist
-    // The manifest has safe-file-delete entries for .claude/commands/moluoxixi/before-backend-dev.md etc.
+    // The manifest has safe-file-delete entries for .claude/commands/trellis/before-backend-dev.md etc.
     // but init() doesn't create them (templates removed). update() should not crash.
     const versionPath = path.join(tmpDir, DIR_NAMES.WORKFLOW, ".version");
     fs.writeFileSync(versionPath, "0.3.7");
@@ -1139,19 +1134,19 @@ describe("update() integration", () => {
   });
 
   // Original template content for check-backend.md (deleted in 0.4.0-beta.1).
-  // Hash: 96761eb71178f9fd1cdc8b6f62fb54290b6d37c5f1055f43683e0cea47b2b857
+  // Hash: 4e81a28d681ea770f780df55a212fd504ce21ee49b44ba16023b74b5c243cef3
   const ORIGINAL_CHECK_BACKEND_CONTENT = [
     "Check if the code you just wrote follows the backend development guidelines.",
     "",
     "Execute these steps:",
     "1. Run `git status` to see modified files",
-    "2. Read `.moluoxixi/spec/backend/index.md` to understand which guidelines apply",
+    "2. Read `.trellis/spec/backend/index.md` to understand which guidelines apply",
     "3. Based on what you changed, read the relevant guideline files:",
-    "   - Database changes → `.moluoxixi/spec/backend/database-guidelines.md`",
-    "   - Error handling → `.moluoxixi/spec/backend/error-handling.md`",
-    "   - Logging changes → `.moluoxixi/spec/backend/logging-guidelines.md`",
-    "   - Type changes → `.moluoxixi/spec/backend/type-safety.md`",
-    "   - Any changes → `.moluoxixi/spec/backend/quality-guidelines.md`",
+    "   - Database changes → `.trellis/spec/backend/database-guidelines.md`",
+    "   - Error handling → `.trellis/spec/backend/error-handling.md`",
+    "   - Logging changes → `.trellis/spec/backend/logging-guidelines.md`",
+    "   - Type changes → `.trellis/spec/backend/type-safety.md`",
+    "   - Any changes → `.trellis/spec/backend/quality-guidelines.md`",
     "4. Review your code against the guidelines",
     "5. Report any violations and fix them if found",
     "",
@@ -1162,12 +1157,12 @@ describe("update() integration", () => {
 
     // Sanity: content hash must match the manifest's allowed_hashes
     expect(computeHash(ORIGINAL_CHECK_BACKEND_CONTENT)).toBe(
-      "96761eb71178f9fd1cdc8b6f62fb54290b6d37c5f1055f43683e0cea47b2b857",
+      "4e81a28d681ea770f780df55a212fd504ce21ee49b44ba16023b74b5c243cef3",
     );
 
     // Create a deprecated file with original content (hash matches allowed_hashes)
     // Without update.skip, collectSafeFileDeletes() would delete this file.
-    const deprecatedDir = path.join(tmpDir, ".claude", "commands", "moluoxixi");
+    const deprecatedDir = path.join(tmpDir, ".claude", "commands", "trellis");
     fs.mkdirSync(deprecatedDir, { recursive: true });
     const deprecatedFile = path.join(deprecatedDir, "check-backend.md");
     fs.writeFileSync(deprecatedFile, ORIGINAL_CHECK_BACKEND_CONTENT);
@@ -1177,7 +1172,7 @@ describe("update() integration", () => {
     const configContent = fs.readFileSync(configPath, "utf-8");
     fs.writeFileSync(
       configPath,
-      configContent + `\nupdate:\n  skip:\n    - .claude/commands/moluoxixi/\n`,
+      configContent + `\nupdate:\n  skip:\n    - .claude/commands/trellis/\n`,
     );
 
     await update({ force: true });
@@ -1194,11 +1189,11 @@ describe("update() integration", () => {
 
     // Sanity: content hash must match the manifest's allowed_hashes
     expect(computeHash(ORIGINAL_CHECK_BACKEND_CONTENT)).toBe(
-      "96761eb71178f9fd1cdc8b6f62fb54290b6d37c5f1055f43683e0cea47b2b857",
+      "4e81a28d681ea770f780df55a212fd504ce21ee49b44ba16023b74b5c243cef3",
     );
 
     // Create deprecated file with original content (hash matches allowed_hashes)
-    const deprecatedDir = path.join(tmpDir, ".claude", "commands", "moluoxixi");
+    const deprecatedDir = path.join(tmpDir, ".claude", "commands", "trellis");
     fs.mkdirSync(deprecatedDir, { recursive: true });
     const deprecatedFile = path.join(deprecatedDir, "check-backend.md");
     fs.writeFileSync(deprecatedFile, ORIGINAL_CHECK_BACKEND_CONTENT);
@@ -1304,7 +1299,7 @@ describe("update() integration", () => {
     fs.writeFileSync(versionPath, "0.4.0");
     // Create one legacy file that matches a `rename` entry in 0.5.0-beta.0 manifest.
     // Without this, classifyMigrations finds no work → early-exit before gate.
-    const legacyDir = path.join(tmpDir, ".claude", "commands", "moluoxixi");
+    const legacyDir = path.join(tmpDir, ".claude", "commands", "trellis");
     fs.mkdirSync(legacyDir, { recursive: true });
     fs.writeFileSync(path.join(legacyDir, "before-dev.md"), "legacy content");
   }
@@ -1365,7 +1360,7 @@ describe("update() integration", () => {
   // The [b] Backup-rename path in the confirm prompt promises "keeps a .backup
   // copy". Previously it was identical to [r] (both relied on the full project
   // snapshot). We now write an INLINE .backup next to the new path so users can
-  // diff/merge their customizations without digging through .moluoxixi/.backup-*/.
+  // diff/merge their customizations without digging through .trellis/.backup-*/.
   /** Install a mock that returns a specific migration choice for the per-file prompt
    *  and {proceed: true} for the top-level confirm. Resolves the flakiness of
    *  matching on `name` field in the dynamic import path. */
@@ -1384,7 +1379,7 @@ describe("update() integration", () => {
   // The [b] Backup-rename path in the confirm prompt promises "keeps a .backup
   // copy". Previously it was identical to [r] (both relied on the full project
   // snapshot). We now write an INLINE .backup next to the new path so users can
-  // diff/merge their customizations without digging through .moluoxixi/.backup-*/.
+  // diff/merge their customizations without digging through .trellis/.backup-*/.
   it("#25 backup-rename leaves inline <new-path>.backup with original content", async () => {
     await setupProject();
     stageLegacy040Project();
@@ -1393,7 +1388,7 @@ describe("update() integration", () => {
     // User-modified content that differs from the 0.5 template (forces confirm)
     const legacyPath = path.join(
       tmpDir,
-      ".claude/commands/moluoxixi/before-dev.md",
+      ".claude/commands/trellis/before-dev.md",
     );
     const userContent = "## My custom before-dev notes\nEdited by user.\n";
     fs.writeFileSync(legacyPath, userContent);
@@ -1423,7 +1418,7 @@ describe("update() integration", () => {
 
     const legacyPath = path.join(
       tmpDir,
-      ".claude/commands/moluoxixi/before-dev.md",
+      ".claude/commands/trellis/before-dev.md",
     );
     fs.writeFileSync(legacyPath, "## user edits\n");
 
@@ -1436,7 +1431,7 @@ describe("update() integration", () => {
       ".claude/skills/moluoxixi-before-dev/SKILL.md",
     );
     expect(fs.existsSync(newPath)).toBe(true);
-    // No inline .backup — the full-project snapshot under .moluoxixi/.backup-*
+    // No inline .backup — the full-project snapshot under .trellis/.backup-*
     // is the single source of recovery for this mode.
     expect(fs.existsSync(newPath + ".backup")).toBe(false);
   });

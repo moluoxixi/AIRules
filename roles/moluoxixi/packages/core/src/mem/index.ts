@@ -1,12 +1,12 @@
 /**
- * Public surface for `@moluoxixi/airules-moluoxixi-core/mem` — reusable retrieval and
+ * Public surface for `@mindfoldhq/moluoxixi-core/mem` — reusable retrieval and
  * dialogue-context extraction over persisted Claude Code / Codex / OpenCode
  * sessions.
  *
  * This subpackage is intentionally NOT re-exported from the root
- * `@moluoxixi/airules-moluoxixi-core` barrel. Import it explicitly:
+ * `@mindfoldhq/moluoxixi-core` barrel. Import it explicitly:
  *
- *   import { searchMemSessions } from "@moluoxixi/airules-moluoxixi-core/mem";
+ *   import { searchMemSessions } from "@mindfoldhq/moluoxixi-core/mem";
  *
  * v1 scope: persisted-session search and context extraction only. It does not
  * read channel / forum / thread event logs and has no cursor / pagination.

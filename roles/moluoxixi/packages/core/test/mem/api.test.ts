@@ -1,5 +1,5 @@
 /**
- * End-to-end tests for the public `@moluoxixi/airules-moluoxixi-core/mem` API against a
+ * End-to-end tests for the public `@mindfoldhq/moluoxixi-core/mem` API against a
  * small Claude fixture tree under a mocked $HOME.
  */
 
@@ -143,7 +143,7 @@ function seedPiPhaseSession(id: string, cwd: string): void {
       timestamp: "2026-06-18T11:00:04.000Z",
       message: {
         role: "bashExecution",
-        command: "task.py start .moluoxixi/tasks/06-18-pi-api",
+        command: "task.py start .trellis/tasks/06-18-pi-api",
         output: "",
       },
     },

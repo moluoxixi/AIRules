@@ -1,4 +1,6 @@
 import { describe, expect, it } from "vitest";
+import fs from "node:fs";
+import path from "node:path";
 import {
   collectPlatformTemplates,
   PLATFORM_IDS,
@@ -26,13 +28,13 @@ import {
   implementAgentTemplate,
   checkAgentTemplate,
   configYamlTemplate,
-} from "../../src/templates/moluoxixi/index.js";
+} from "../../src/templates/trellis/index.js";
 
 // =============================================================================
 // Template Constants — module-level string exports
 // =============================================================================
 
-describe("moluoxixi template constants", () => {
+describe("trellis template constants", () => {
   const allTemplates = {
     scriptsInit,
     commonInit,
@@ -53,10 +55,9 @@ describe("moluoxixi template constants", () => {
   };
 
   function inProgressBreadcrumb(): string {
-    const inProgressMatch =
-      /\[workflow-state:in_progress\]([\s\S]*?)\[\/workflow-state:in_progress\]/.exec(
-        workflowMdTemplate,
-      );
+    const inProgressMatch = /\[workflow-state:in_progress\]([\s\S]*?)\[\/workflow-state:in_progress\]/.exec(
+      workflowMdTemplate,
+    );
     if (!inProgressMatch) {
       throw new Error("in_progress breadcrumb block must exist in workflow.md");
     }
@@ -115,9 +116,9 @@ describe("moluoxixi template constants", () => {
     for (const script of pyScripts) {
       expect(
         script.includes("import") ||
-          script.includes("def ") ||
-          script.includes("class ") ||
-          script.includes("#"),
+        script.includes("def ") ||
+        script.includes("class ") ||
+        script.includes("#"),
       ).toBe(true);
     }
   });
@@ -130,6 +131,39 @@ describe("moluoxixi template constants", () => {
     expect(workflowMdTemplate).toContain("#");
   });
 
+  it("marketplace native workflow mirror matches the bundled workflow", () => {
+    const repoRoot = fs.existsSync(path.join(process.cwd(), "marketplace"))
+      ? process.cwd()
+      : path.resolve(process.cwd(), "../..");
+    const marketplaceNative = fs.readFileSync(
+      path.join(repoRoot, "marketplace/workflows/native/workflow.md"),
+      "utf-8",
+    );
+    expect(marketplaceNative).toBe(workflowMdTemplate);
+  });
+
+  it("marketplace TDD workflow planning breadcrumbs include behavior gates", () => {
+    const repoRoot = fs.existsSync(path.join(process.cwd(), "marketplace"))
+      ? process.cwd()
+      : path.resolve(process.cwd(), "../..");
+    const tddWorkflow = fs.readFileSync(
+      path.join(repoRoot, "marketplace/workflows/tdd/workflow.md"),
+      "utf-8",
+    );
+    const planning = /\[workflow-state:planning\]([\s\S]*?)\[\/workflow-state:planning\]/.exec(
+      tddWorkflow,
+    )?.[1];
+    const planningInline = /\[workflow-state:planning-inline\]([\s\S]*?)\[\/workflow-state:planning-inline\]/.exec(
+      tddWorkflow,
+    )?.[1];
+
+    for (const block of [planning, planningInline]) {
+      expect(block).toContain("observable behavior slices");
+      expect(block).toContain("public interface under test");
+      expect(block).toContain("mock boundaries");
+    }
+  });
+
   it("[codex-native-subagents] workflow.md preserves the dispatch prompt for Codex native fallback", () => {
     // The in_progress breadcrumb instructs the main agent to prefix
     // dispatch prompts with "Active task: <path>". Codex uses native
@@ -137,9 +171,7 @@ describe("moluoxixi template constants", () => {
     // whenever a project hook is unavailable or untrusted.
     const block = inProgressBreadcrumb();
     expect(block).toContain("Active task:");
-    expect(workflowMdTemplate).toContain(
-      "For Codex, `SubagentStart` supplies native context injection",
-    );
+    expect(workflowMdTemplate).toContain("native Codex `SubagentStart`");
     expect(workflowMdTemplate).toContain("child-side pull fallback");
   });
 
@@ -195,10 +227,9 @@ describe("moluoxixi template constants", () => {
 
     const pullBasedLabels = [...generatedPullBasedLabels, "Reasonix"];
     for (const label of pullBasedLabels) {
-      expect(
-        pullBasedBlock,
-        `${label} must use pull-based 2.1 guidance`,
-      ).toContain(label);
+      expect(pullBasedBlock, `${label} must use pull-based 2.1 guidance`).toContain(
+        label,
+      );
       expect(
         hookAutoBlock,
         `${label} must not use hook/plugin auto-handles 2.1 guidance`,
@@ -222,9 +253,7 @@ describe("moluoxixi template constants", () => {
     expect(config).toContain('return "auto"');
     expect(config).toContain("using inline");
     expect(workflowPhase).toContain('mode = "auto"');
-    expect(workflowPhase).toContain(
-      'return "codex-sub-agent" if mode == "auto" else "codex-inline"',
-    );
+    expect(workflowPhase).toContain('return "codex-sub-agent" if mode == "auto" else "codex-inline"');
     expect(taskStore).toContain('get_codex_dispatch_mode(repo_root) == "auto"');
   });
 
@@ -267,9 +296,7 @@ describe("moluoxixi template constants", () => {
       "Parent/child structure is not a dependency system",
     );
     expect(workflowMdTemplate).toContain("--parent <parent-dir>");
-    expect(workflowMdTemplate).toContain(
-      "task.py add-subtask <parent> <child>",
-    );
+    expect(workflowMdTemplate).toContain("task.py add-subtask <parent> <child>");
     expect(workflowMdTemplate).toContain(
       "start the child that owns the next independently verifiable deliverable",
     );
@@ -280,7 +307,9 @@ describe("moluoxixi template constants", () => {
     expect(step).toContain("When considering a parent/child split");
     expect(step).toContain("Parent tasks own source requirements");
     expect(step).toContain("Child tasks own actual deliverables");
-    expect(step).toContain("Parent/child structure is not a dependency system");
+    expect(step).toContain(
+      "Parent/child structure is not a dependency system",
+    );
     expect(step).toContain("Do not start the parent unless");
   });
 
@@ -289,9 +318,7 @@ describe("moluoxixi template constants", () => {
     const planningInline = workflowStateBreadcrumb("planning-inline");
     for (const block of [planning, planningInline]) {
       expect(block).toContain("Multi-deliverable scope");
-      expect(block).toContain(
-        "parent task plus independently verifiable child tasks",
-      );
+      expect(block).toContain("parent task plus independently verifiable child tasks");
       expect(block).toContain("not implied by tree position");
     }
   });
@@ -344,16 +371,14 @@ describe("getAllScripts", () => {
   it("does not contain multi_agent entries", () => {
     const scripts = getAllScripts();
     for (const [key] of scripts) {
-      expect(key, `${key} should not be a multi_agent script`).not.toContain(
-        "multi_agent",
-      );
+      expect(key, `${key} should not be a multi_agent script`).not.toContain("multi_agent");
     }
   });
 });
 
 // =============================================================================
 // getAllAgents — channel runtime agent definitions dispatched at init/update.
-// agent-loader.ts loads `.moluoxixi/agents/<name>.md` and requires `---` YAML
+// agent-loader.ts loads `.trellis/agents/<name>.md` and requires `---` YAML
 // frontmatter at the top with a flat `name: <name>` field. These tests pin the
 // contract so a future template edit can't silently break channel spawn.
 // =============================================================================
@@ -374,19 +399,13 @@ describe("getAllAgents", () => {
   it("each agent body starts with `---` frontmatter and a matching name field", () => {
     const agents = getAllAgents();
     for (const [file, content] of agents) {
-      expect(
-        content.startsWith("---\n"),
-        `${file} must start with --- frontmatter`,
-      ).toBe(true);
+      expect(content.startsWith("---\n"), `${file} must start with --- frontmatter`).toBe(true);
       // Frontmatter must close on a `---\n` line.
       const frontmatterClose = content.indexOf("\n---\n", 4);
-      expect(
-        frontmatterClose,
-        `${file} must have a closing --- frontmatter line`,
-      ).toBeGreaterThan(0);
+      expect(frontmatterClose, `${file} must have a closing --- frontmatter line`).toBeGreaterThan(0);
       const frontmatter = content.slice(4, frontmatterClose);
       // The agent's `name:` field must match the file basename so
-      // `moluoxixi channel spawn --agent <name>` resolves correctly.
+      // `trellis channel spawn --agent <name>` resolves correctly.
       const expectedName = file.replace(/\.md$/, "");
       const nameLine = frontmatter
         .split("\n")

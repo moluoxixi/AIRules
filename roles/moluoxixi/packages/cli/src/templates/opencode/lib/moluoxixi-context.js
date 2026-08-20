@@ -66,7 +66,7 @@ function buildContextKey(platformName, kind, value) {
 
 // Matches `moluoxixi-implement`, `moluoxixi-check`, `moluoxixi-research` exactly.
 // Used by chat.message plugins to skip injection inside Moluoxixi sub-agent turns.
-const MOLUOXIXI_SUBAGENT_RE = /^moluoxixi-(implement|check|research)$/
+const TRELLIS_SUBAGENT_RE = /^moluoxixi-(implement|check|research)$/
 
 /**
  * Return true when the OpenCode `chat.message` input represents a Moluoxixi
@@ -76,7 +76,7 @@ const MOLUOXIXI_SUBAGENT_RE = /^moluoxixi-(implement|check|research)$/
 export function isMoluoxixiSubagent(input) {
   if (!input || typeof input !== "object") return false
   const agent = typeof input.agent === "string" ? input.agent.trim() : ""
-  return MOLUOXIXI_SUBAGENT_RE.test(agent)
+  return TRELLIS_SUBAGENT_RE.test(agent)
 }
 
 // ============================================================
@@ -251,29 +251,23 @@ function readFileBytes(basePath, filePath) {
   }
 }
 
-function displayPath(basePath, filePath) {
-  const projectPath = isAbsolute(filePath) ? relative(basePath, filePath) : filePath
-  return projectPath.replaceAll("\\", "/")
-}
-
 /** Read a JSONL-referenced file, apply the per-file cap, then budget it. */
 function materializeFile(basePath, filePath, reason, limits, budget) {
   const data = readFileBytes(basePath, filePath)
   if (data === null) return null
 
-  const plainPath = displayPath(basePath, filePath)
   const size = data.length
   if (isBinaryContent(data)) {
-    const notice = binaryNotice(plainPath, size, reason)
+    const notice = binaryNotice(filePath, size, reason)
     budget.add(Buffer.byteLength(notice, "utf-8"))
     return notice
   }
   const cap = limits.max_file_bytes
   const truncated = truncateUtf8(data, cap)
   let content = truncated.toString("utf-8")
-  if (truncated.length < size) content += truncateNotice(plainPath, cap)
+  if (truncated.length < size) content += truncateNotice(filePath, cap)
 
-  return budgetedBlock(budget, plainPath, plainPath, content, reason, size)
+  return budgetedBlock(budget, filePath, filePath, content, reason, size)
 }
 
 /**
@@ -310,14 +304,13 @@ function materializeArtifact(basePath, filePath, headerLabel, reason, limits, bu
   const data = readFileBytes(basePath, filePath)
   if (data === null) return null
 
-  const plainPath = displayPath(basePath, filePath)
   const size = data.length
   const cap = limits.max_artifact_bytes
   const truncated = truncateUtf8(data, cap)
   let content = truncated.toString("utf-8")
-  if (truncated.length < size) content += truncateNotice(plainPath, cap)
+  if (truncated.length < size) content += truncateNotice(filePath, cap)
 
-  return budgetedBlock(budget, headerLabel, plainPath, content, reason, size)
+  return budgetedBlock(budget, headerLabel, filePath, content, reason, size)
 }
 
 /**
@@ -339,13 +332,13 @@ export class MoluoxixiContext {
 
   // OpenCode exports no session identity into the environment: no OPENCODE_*
   // name in the 1.17.18 binary or the 1.18.13 source carries one. The plugin
-  // hook input is the only source, and the `export MOLUOXIXI_CONTEXT_ID=` prefix
+  // hook input is the only source, and the `export TRELLIS_CONTEXT_ID=` prefix
   // this plugin adds to Bash commands is the only way that identity reaches a
-  // child process. MOLUOXIXI_CONTEXT_ID is honored here so a nested Moluoxixi run
+  // child process. TRELLIS_CONTEXT_ID is honored here so a nested Moluoxixi run
   // inherits its parent's key; do not add platform-native env names next to it
   // without evidence a vendor sets them.
   getContextKey(platformInput = null) {
-    const override = stringValue(process.env.MOLUOXIXI_CONTEXT_ID)
+    const override = stringValue(process.env.TRELLIS_CONTEXT_ID)
     if (override) {
       return sanitizeKey(override) || hashValue(override)
     }
@@ -475,7 +468,7 @@ export class MoluoxixiContext {
    *
    * A task ref is not always something the user typed. `task.py` now refuses
    * to store one that leaves the project, but a session file written before
-   * that fix can still hold one, and `moluoxixi update` does not rewrite session
+   * that fix can still hold one, and `trellis update` does not rewrite session
    * files — so a poisoned pointer outlives the upgrade that closed the writer.
    * Both sides are resolved so a task directory symlinked outside is refused
    * too, but the original `candidate` is returned on success: callers build
@@ -537,7 +530,7 @@ export class MoluoxixiContext {
         stdio: ["pipe", "pipe", "pipe"],
         env: {
           ...process.env,
-          ...(contextKey ? { MOLUOXIXI_CONTEXT_ID: contextKey } : {}),
+          ...(contextKey ? { TRELLIS_CONTEXT_ID: contextKey } : {}),
         },
       })
       return result || ""
