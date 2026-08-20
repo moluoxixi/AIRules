@@ -103,9 +103,9 @@ warnings.filterwarnings("ignore")
 
 
 def should_skip_injection() -> bool:
-    if os.environ.get("TRELLIS_HOOKS") == "0":
+    if os.environ.get("MOLUOXIXI_HOOKS") == "0":
         return True
-    if os.environ.get("TRELLIS_DISABLE_HOOKS") == "1":
+    if os.environ.get("MOLUOXIXI_DISABLE_HOOKS") == "1":
         return True
     return os.environ.get("COPILOT_NON_INTERACTIVE") == "1"
 
@@ -165,13 +165,13 @@ def _resolve_context_key(project_dir: Path, hook_input: dict) -> str | None:
     return resolve_context_key(hook_input, platform="copilot")
 
 
-def _resolve_active_task(trellis_dir: Path, hook_input: dict):
-    scripts_dir = trellis_dir / "scripts"
+def _resolve_active_task(moluoxixi_dir: Path, hook_input: dict):
+    scripts_dir = moluoxixi_dir / "scripts"
     if str(scripts_dir) not in sys.path:
         sys.path.insert(0, str(scripts_dir))
     from common.active_task import resolve_active_task  # type: ignore[import-not-found]
 
-    return resolve_active_task(trellis_dir.parent, hook_input, platform="copilot")
+    return resolve_active_task(moluoxixi_dir.parent, hook_input, platform="copilot")
 
 
 def run_script(script_path: Path, context_key: str | None = None) -> str:
@@ -179,7 +179,7 @@ def run_script(script_path: Path, context_key: str | None = None) -> str:
         env = os.environ.copy()
         env["PYTHONIOENCODING"] = "utf-8"
         if context_key:
-            env["TRELLIS_CONTEXT_ID"] = context_key
+            env["MOLUOXIXI_CONTEXT_ID"] = context_key
         cmd = [sys.executable, "-W", "ignore", str(script_path)]
         result = subprocess.run(
             cmd,
@@ -215,18 +215,18 @@ def _normalize_task_ref(task_ref: str) -> str:
     return normalized
 
 
-def _resolve_task_dir(trellis_dir: Path, task_ref: str) -> Path:
+def _resolve_task_dir(moluoxixi_dir: Path, task_ref: str) -> Path:
     normalized = _normalize_task_ref(task_ref)
     path_obj = Path(normalized)
     if path_obj.is_absolute():
         return path_obj
     if normalized.startswith(".moluoxixi/"):
-        return trellis_dir.parent / path_obj
-    return trellis_dir / "tasks" / path_obj
+        return moluoxixi_dir.parent / path_obj
+    return moluoxixi_dir / "tasks" / path_obj
 
 
-def _get_task_status(trellis_dir: Path, hook_input: dict) -> str:
-    active = _resolve_active_task(trellis_dir, hook_input)
+def _get_task_status(moluoxixi_dir: Path, hook_input: dict) -> str:
+    active = _resolve_active_task(moluoxixi_dir, hook_input)
     if not active.task_path:
         return (
             "Status: NO ACTIVE TASK\n"
@@ -235,7 +235,7 @@ def _get_task_status(trellis_dir: Path, hook_input: dict) -> str:
         )
 
     task_ref = active.task_path
-    task_dir = _resolve_task_dir(trellis_dir, task_ref)
+    task_dir = _resolve_task_dir(moluoxixi_dir, task_ref)
     if active.stale or not task_dir.is_dir():
         return (
             f"Status: STALE POINTER\nTask: {task_ref}\n"
@@ -331,13 +331,13 @@ def _repo_relative(repo_root: Path, path: Path) -> str:
         return str(path)
 
 
-def _collect_spec_index_paths(trellis_dir: Path) -> list[str]:
+def _collect_spec_index_paths(moluoxixi_dir: Path) -> list[str]:
     paths: list[str] = []
-    guides_index = trellis_dir / "spec" / "guides" / "index.md"
+    guides_index = moluoxixi_dir / "spec" / "guides" / "index.md"
     if guides_index.is_file():
         paths.append(".moluoxixi/spec/guides/index.md")
 
-    spec_dir = trellis_dir / "spec"
+    spec_dir = moluoxixi_dir / "spec"
     if not spec_dir.is_dir():
         return paths
 
@@ -359,11 +359,11 @@ def _collect_spec_index_paths(trellis_dir: Path) -> list[str]:
 
 
 def _build_compact_current_state(
-    trellis_dir: Path,
+    moluoxixi_dir: Path,
     hook_input: dict,
     spec_index_paths: list[str],
 ) -> str:
-    repo_root = trellis_dir.parent
+    repo_root = moluoxixi_dir.parent
     lines: list[str] = []
 
     try:
@@ -380,9 +380,9 @@ def _build_compact_current_state(
     lines.append(f"Developer: {developer or '(not initialized)'}")
     lines.append(_format_git_state(repo_root))
 
-    active = _resolve_active_task(trellis_dir, hook_input)
+    active = _resolve_active_task(moluoxixi_dir, hook_input)
     if active.task_path:
-        task_dir = _resolve_task_dir(trellis_dir, active.task_path)
+        task_dir = _resolve_task_dir(moluoxixi_dir, active.task_path)
         status = "unknown"
         task_json = task_dir / "task.json"
         if task_json.is_file():
@@ -486,8 +486,8 @@ def main() -> None:
 
     configure_project_encoding(project_dir)
 
-    trellis_dir = project_dir / ".moluoxixi"
-    spec_index_paths = _collect_spec_index_paths(trellis_dir)
+    moluoxixi_dir = project_dir / ".moluoxixi"
+    spec_index_paths = _collect_spec_index_paths(moluoxixi_dir)
 
     output = StringIO()
 
@@ -498,11 +498,11 @@ Moluoxixi compact SessionStart context. Use it to orient the session; load detai
 """)
 
     output.write("<current-state>\n")
-    output.write(_build_compact_current_state(trellis_dir, hook_input, spec_index_paths))
+    output.write(_build_compact_current_state(moluoxixi_dir, hook_input, spec_index_paths))
     output.write("\n</current-state>\n\n")
 
     output.write("<moluoxixi-workflow>\n")
-    output.write(_build_workflow_toc(trellis_dir / "workflow.md"))
+    output.write(_build_workflow_toc(moluoxixi_dir / "workflow.md"))
     output.write("\n</moluoxixi-workflow>\n\n")
 
     output.write("<guidelines>\n")
@@ -524,7 +524,7 @@ Moluoxixi compact SessionStart context. Use it to orient the session; load detai
     )
     output.write("</guidelines>\n\n")
 
-    task_status = _get_task_status(trellis_dir, hook_input)
+    task_status = _get_task_status(moluoxixi_dir, hook_input)
     output.write(f"<task-status>\n{task_status}\n</task-status>\n\n")
 
     output.write("""<ready>

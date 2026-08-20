@@ -28,7 +28,7 @@ function resolvePiCommands(): ReturnType<typeof resolveCommands> {
 }
 
 /**
- * The Pi file set — written at init and diffed by `trellis update`.
+ * The Pi file set — written at init and diffed by `moluoxixi update`.
  */
 export function collectPiTemplates(): Map<string, string> {
   const files = new Map<string, string>();
@@ -54,7 +54,7 @@ export function collectPiTemplates(): Map<string, string> {
     files.set(`.pi/agents/${agent.name}.md`, agent.content);
   }
 
-  files.set(".pi/extensions/trellis/index.ts", getExtensionTemplate());
+  files.set(".pi/extensions/moluoxixi/index.ts", getExtensionTemplate());
 
   const settings = getSettingsTemplate();
   files.set(

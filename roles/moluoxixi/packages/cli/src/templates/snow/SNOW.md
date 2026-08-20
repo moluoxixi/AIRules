@@ -15,7 +15,7 @@ Snow is a **class-1** Moluoxixi host: auto context inject + project agent discov
 ## Quick start
 
 ```bash
-trellis init --snow -u your-name
+moluoxixi init --snow -u your-name
 snow
 ```
 
@@ -75,12 +75,12 @@ Snow injects these env vars into hook commands, `terminal-execute`, bash mode, a
 | Variable             | Example             | Purpose                                   |
 | -------------------- | ------------------- | ----------------------------------------- |
 | `SNOW_SESSION_ID`    | `c2343752-...`      | Native Snow session uuid                  |
-| `TRELLIS_CONTEXT_ID` | `snow-c2343752-...` | Preferred Moluoxixi active-task context key |
+| `MOLUOXIXI_CONTEXT_ID` | `snow-c2343752-...` | Preferred Moluoxixi active-task context key |
 | `SNOW_CWD`           | project root        | Working directory for hooks/tools         |
 | `SNOW_PLATFORM`      | `snow`              | Platform tag                              |
 
 Notes:
 
-- `TRELLIS_CONTEXT_ID` wins when already set (explicit override).
+- `MOLUOXIXI_CONTEXT_ID` wins when already set (explicit override).
 - Otherwise Moluoxixi resolves `SNOW_SESSION_ID` via `active_task.py` as platform `snow`.
 - Hook stdin may also include dual keys: `sessionId` / `session_id`.

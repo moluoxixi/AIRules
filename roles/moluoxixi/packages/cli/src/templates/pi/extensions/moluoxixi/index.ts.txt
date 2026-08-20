@@ -79,7 +79,7 @@ function trunc(s: string, w: number) {
 }
 
 // ── Constants ─────────────────────────────────────────────────────────
-const TRELLIS_AGENT_JSONL: Record<string, string> = {
+const MOLUOXIXI_AGENT_JSONL: Record<string, string> = {
   "moluoxixi-implement": "implement.jsonl",
   implement: "implement.jsonl",
   "moluoxixi-check": "check.jsonl",
@@ -465,9 +465,9 @@ function lookupStr(data: unknown, keys: string[]): string | null {
 function cmdHasMoluoxixiCtx(cmd: string) {
   const t = cmd.trimStart();
   return (
-    /^export\s+TRELLIS_CONTEXT_ID=/.test(t) ||
-    /^TRELLIS_CONTEXT_ID=/.test(t) ||
-    /^env\s+.*TRELLIS_CONTEXT_ID=/.test(t)
+    /^export\s+MOLUOXIXI_CONTEXT_ID=/.test(t) ||
+    /^MOLUOXIXI_CONTEXT_ID=/.test(t) ||
+    /^env\s+.*MOLUOXIXI_CONTEXT_ID=/.test(t)
   );
 }
 function fmtDur(ms: number) {
@@ -623,10 +623,10 @@ const PI_CLI_SEGMENTS = [
 ];
 
 function resolvePiCli(): { command: string; args: string[] } {
-  const envCli = str(process.env.TRELLIS_PI_CLI_JS);
+  const envCli = str(process.env.MOLUOXIXI_PI_CLI_JS);
   if (envCli) {
     const p = resolve(envCli);
-    if (!exists(p)) throw new Error(`TRELLIS_PI_CLI_JS missing: ${p}`);
+    if (!exists(p)) throw new Error(`MOLUOXIXI_PI_CLI_JS missing: ${p}`);
     return { command: process.execPath, args: [p] };
   }
   const candidates: string[] = [];
@@ -802,13 +802,13 @@ function unquoteYaml(s: string): string {
 }
 
 /** Line-based parser for ONLY the `context_injection:` block of
- * `.trellis/config.yaml`. Not a general YAML parser — mirrors
+ * `.moluoxixi/config.yaml`. Not a general YAML parser — mirrors
  * `common.config.get_context_injection_limits()` semantics for this
  * section only (missing keys keep the default; invalid/negative values
  * fall back to the default for that key). */
 function readContextInjectionLimits(repoRoot: string): ContextInjectionLimits {
   const limits: ContextInjectionLimits = { ...DEFAULT_CONTEXT_INJECTION_LIMITS };
-  const text = readText(join(repoRoot, ".trellis", "config.yaml"));
+  const text = readText(join(repoRoot, ".moluoxixi", "config.yaml"));
   if (!text) return limits;
 
   let inSection = false;
@@ -964,7 +964,7 @@ function readJsonlEntries(basePath: string, jsonlPath: string): JsonlEntry[] {
 function findRoot(start: string): string {
   let c = resolve(start);
   while (true) {
-    if (existsSync(join(c, ".trellis")) || existsSync(join(c, ".pi"))) return c;
+    if (existsSync(join(c, ".moluoxixi")) || existsSync(join(c, ".pi"))) return c;
     const p = dirname(c);
     if (p === c) return resolve(start);
     c = p;
@@ -1052,7 +1052,7 @@ function contextKey(input?: unknown, ctx?: PiExtensionContext): string | null {
  *
  * A session pointer is not always something the user typed. `task.py` now
  * refuses to store a ref that leaves the project, but a session file written
- * before that fix can still hold one, and `trellis update` does not rewrite
+ * before that fix can still hold one, and `moluoxixi update` does not rewrite
  * session files — so a poisoned pointer outlives the upgrade that closed the
  * writer. Both sides are resolved so a task directory symlinked outside is
  * refused too, but the original `candidate` is returned on success: callers do
@@ -1073,18 +1073,18 @@ function readTaskDir(root: string, key: string | null): string | null {
   if (!key) return null;
   try {
     const ctx = JSON.parse(
-      readText(join(root, ".trellis", ".runtime", "sessions", `${key}.json`)),
+      readText(join(root, ".moluoxixi", ".runtime", "sessions", `${key}.json`)),
     ) as JsonObject;
     let ref = str(ctx.current_task);
     if (!ref) return null;
     ref = ref;
     ref = ref.replace(/\\/g, "/").replace(/^\.\//, "");
-    if (ref.startsWith("tasks/")) ref = `.trellis/${ref}`;
-    const candidate = ref.startsWith(".trellis/")
+    if (ref.startsWith("tasks/")) ref = `.moluoxixi/${ref}`;
+    const candidate = ref.startsWith(".moluoxixi/")
       ? join(root, ref)
       : isAbsolute(ref)
         ? ref
-        : join(root, ".trellis", "tasks", ref);
+        : join(root, ".moluoxixi", "tasks", ref);
     return containInRoot(root, candidate);
   } catch {
     return null;
@@ -1095,7 +1095,7 @@ function readTaskDir(root: string, key: string | null): string | null {
 const WF_RE =
   /\[workflow-state:([A-Za-z0-9_-]+)\]\s*\n([\s\S]*?)\n\s*\[\/workflow-state:\1\]/g;
 function workflowBreadcrumb(root: string, key: string | null): string {
-  const wf = readText(join(root, ".trellis", "workflow.md"));
+  const wf = readText(join(root, ".moluoxixi", "workflow.md"));
   if (!wf) return "";
   const templates: Record<string, string> = {};
   for (const m of wf.matchAll(WF_RE)) {
@@ -1123,13 +1123,13 @@ function workflowBreadcrumb(root: string, key: string | null): string {
 
 // ── Session Overview ───────────────────────────────────────────────────
 function runContextScript(root: string, key: string | null, args: string[]): string {
-  const script = join(root, ".trellis", "scripts", "get_context.py");
+  const script = join(root, ".moluoxixi", "scripts", "get_context.py");
   if (!exists(script)) return "";
   try {
     const py = process.platform === "win32" ? "python" : "python3";
     const result = spawnSync(py, [script, ...args], {
       cwd: root,
-      env: key ? { ...process.env, TRELLIS_CONTEXT_ID: key } : process.env,
+      env: key ? { ...process.env, MOLUOXIXI_CONTEXT_ID: key } : process.env,
       encoding: "utf-8",
       timeout: SESSION_OVERVIEW_TIMEOUT_MS,
       windowsHide: true,
@@ -1177,14 +1177,14 @@ function buildStartupContext(
 function buildContext(root: string, agent: string, key: string | null): string {
   const dir = readTaskDir(root, key);
   if (!dir)
-    return "No active Moluoxixi task found. Read .trellis/ before proceeding.";
+    return "No active Moluoxixi task found. Read .moluoxixi/ before proceeding.";
   const relTaskDir = relative(root, dir).replace(/\\/g, "/");
   const limits = readContextInjectionLimits(root);
   const budget = new ContextBudget(limits.max_total_bytes);
 
   // 1. Curated spec/research files from {agent}.jsonl (same order, budget
   //    processed first, matching Python's get_agent_context()).
-  const jsonlName = TRELLIS_AGENT_JSONL[agent] ?? "";
+  const jsonlName = MOLUOXIXI_AGENT_JSONL[agent] ?? "";
   const specBlocks: string[] = [];
   if (jsonlName) {
     for (const entry of readJsonlEntries(dir, jsonlName)) {
@@ -1412,8 +1412,8 @@ function runPi(
     const inv = resolvePiCli();
     const childEnv = {
       ...process.env,
-      TRELLIS_SUBAGENT_CHILD: "1",
-      ...(key ? { TRELLIS_CONTEXT_ID: key } : {}),
+      MOLUOXIXI_SUBAGENT_CHILD: "1",
+      ...(key ? { MOLUOXIXI_CONTEXT_ID: key } : {}),
     };
     const cli = spawn(inv.command, [...inv.args, ...buildPiArgs(cfg)], {
       cwd: root,
@@ -1649,7 +1649,7 @@ async function runSubagent(
 }
 
 // ── Extension ──────────────────────────────────────────────────────────
-export default function trellisExtension(pi: {
+export default function moluoxixiExtension(pi: {
   registerTool?: (tool: JsonObject) => void;
   registerShortcut?: (
     key: string,
@@ -1664,7 +1664,7 @@ export default function trellisExtension(pi: {
   ) => void;
   getThinkingLevel?: () => string;
 }): void {
-  if (process.env.TRELLIS_SUBAGENT_CHILD === "1") return;
+  if (process.env.MOLUOXIXI_SUBAGENT_CHILD === "1") return;
   const root = findRoot(process.cwd());
   const procKey = `pi_process_${hash([root, process.pid, Date.now(), randomBytes(8).toString("hex")].join(":"))}`;
   let curKey: string | null = null;
@@ -1734,7 +1734,7 @@ export default function trellisExtension(pi: {
 
   // Tool registration
   pi.registerTool?.({
-    name: "trellis_subagent",
+    name: "moluoxixi_subagent",
     label: "Moluoxixi Subagent",
     description: "Run a Moluoxixi project sub-agent with active task context.",
     promptSnippet:
@@ -1788,7 +1788,7 @@ export default function trellisExtension(pi: {
             {
               type: "text",
               text:
-                "`trellis_subagent` is only for Moluoxixi workflow agents with a definition file in .pi/agents/.\n\n" +
+                "`moluoxixi_subagent` is only for Moluoxixi workflow agents with a definition file in .pi/agents/.\n\n" +
                 `No definition found for: ${agentName}\n\n` +
                 "For general-purpose sub-agents, use one of these community tools:\n" +
                 "- `subagent` tool from npm:pi-subagents (nicobailon/pi-subagents)\n" +
@@ -1798,7 +1798,7 @@ export default function trellisExtension(pi: {
                 "- Install a community subagent package: pi install -l npm:@tintinweb/pi-subagents",
             },
           ],
-          details: { agent: agentName, error: "not a trellis workflow agent" },
+          details: { agent: agentName, error: "not a moluoxixi workflow agent" },
         };
       }
       const mode = input.mode ?? "single";
@@ -1911,14 +1911,14 @@ export default function trellisExtension(pi: {
       typeof ev.input.command === "string" &&
       !cmdHasMoluoxixiCtx(ev.input.command)
     )
-      ev.input.command = `export TRELLIS_CONTEXT_ID=${shellQuote(k)}; ${ev.input.command}`;
+      ev.input.command = `export MOLUOXIXI_CONTEXT_ID=${shellQuote(k)}; ${ev.input.command}`;
   });
   // Preserve progress details from execute(); mark failed subagent results through
   // the official tool_result patch hook instead of throwing away renderer details.
   pi.on?.("tool_result", (event) => {
     const ev = event as { toolName?: string; details?: unknown };
     if (
-      ev.toolName === "trellis_subagent" &&
+      ev.toolName === "moluoxixi_subagent" &&
       isObj(ev.details) &&
       ev.details.kind === "moluoxixi-subagent-progress" &&
       Array.isArray(ev.details.runs) &&

@@ -3,12 +3,12 @@ name: check
 description: |
   Code quality auditor for the Moluoxixi channel runtime. Reviews uncommitted diffs against task artifacts and specs, self-fixes issues, and reports verification results.
 provider: claude
-labels: [trellis, check]
+labels: [moluoxixi, check]
 ---
 
 # Check Agent (channel runtime)
 
-You are the Check Agent spawned by `trellis channel spawn --agent check` inside the Moluoxixi channel runtime. You receive an `Active task: <path>` line in your inbox; use it to locate task artifacts on disk.
+You are the Check Agent spawned by `moluoxixi channel spawn --agent check` inside the Moluoxixi channel runtime. You receive an `Active task: <path>` line in your inbox; use it to locate task artifacts on disk.
 
 ## Context
 

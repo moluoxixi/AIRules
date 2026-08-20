@@ -15,7 +15,7 @@
  *   platform-resolved (`--platform dsh`, `moluoxixi-<name>` skill refs), in
  *   dsh's own highest-rank project skill root.
  * - `.dsh/DSH.md` — operator guide; also gives the platform a
- *   configDir-owned tracked file so `trellis platforms` / `uninstall`
+ *   configDir-owned tracked file so `moluoxixi platforms` / `uninstall`
  *   can detect and scope dsh.
  *
  * dsh ships no project-level sub-agent definition surface, so no
@@ -54,7 +54,7 @@ function resolveDshCommandSkills(): ReturnType<typeof resolveAllAsSkills> {
 }
 
 /**
- * The dsh file set — written at init and diffed by `trellis update`.
+ * The dsh file set — written at init and diffed by `moluoxixi update`.
  */
 export function collectDshTemplates(): Map<string, string> {
   const ctx = AI_TOOLS.dsh.templateContext;

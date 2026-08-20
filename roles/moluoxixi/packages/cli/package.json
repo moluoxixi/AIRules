@@ -1,12 +1,13 @@
 {
-  "name": "@moluoxixi/airules-moluoxixi-cli",
+  "name": "@moluoxixi/airules-moluoxixi",
   "version": "0.6.15",
-  "description": "Moluoxixi workflow CLI for disciplined AI-assisted software delivery",
+  "description": "AI capabilities grow like ivy — Moluoxixi provides the structure to guide them along a disciplined path",
   "type": "module",
   "main": "./dist/index.js",
   "types": "./dist/index.d.ts",
   "bin": {
-    "moluoxixi": "./bin/moluoxixi.js"
+    "moluoxixi": "./bin/moluoxixi.js",
+    "tl": "./bin/moluoxixi.js"
   },
   "publishConfig": {
     "access": "public"
@@ -46,7 +47,7 @@
     "developer-tools",
     "agent",
     "memory",
-    "trellis"
+    "moluoxixi"
   ],
   "author": "Mindfold LLC",
   "license": "AGPL-3.0-only",
@@ -84,6 +85,6 @@
   ],
   "repository": {
     "type": "git",
-    "url": "https://github.com/mindfold-ai/trellis.git"
+    "url": "https://github.com/mindfold-ai/moluoxixi.git"
   }
 }

@@ -120,7 +120,7 @@ function seedPiPhaseSession(): string {
         timestamp: "2026-06-18T11:00:04.000Z",
         message: {
           role: "bashExecution",
-          command: "task.py start .trellis/tasks/06-18-pi-cli",
+          command: "task.py start .moluoxixi/tasks/06-18-pi-cli",
           output: "",
         },
       },
@@ -429,7 +429,7 @@ describe("runMem subcommand integration", () => {
               name: "Bash",
               input: {
                 command:
-                  "python3 ./.trellis/scripts/task.py create --slug demo",
+                  "python3 ./.moluoxixi/scripts/task.py create --slug demo",
               },
             },
           ],
@@ -454,7 +454,7 @@ describe("runMem subcommand integration", () => {
               name: "Bash",
               input: {
                 command:
-                  "python3 ./.trellis/scripts/task.py start .trellis/tasks/demo",
+                  "python3 ./.moluoxixi/scripts/task.py start .moluoxixi/tasks/demo",
               },
             },
           ],
@@ -667,7 +667,7 @@ describe("runMem subcommand integration", () => {
   it("help command prints usage", () => {
     runMem(["help"]);
     const joined = logs.join("\n");
-    expect(joined).toContain("trellis mem");
+    expect(joined).toContain("moluoxixi mem");
     expect(joined).toContain("claude|codex|grok|opencode|pi|zcode|all");
   });
 

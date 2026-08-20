@@ -32,12 +32,12 @@ export default async ({ directory, client }) => {
         // `inject-subagent-context.js` on the parent's tool.execute.before;
         // re-injecting the main-session SessionStart here would drown that.
         if (isMoluoxixiSubagent(input)) {
-          debugLog("session", "Skipping trellis subagent turn:", agent)
+          debugLog("session", "Skipping moluoxixi subagent turn:", agent)
           return
         }
 
-        if (process.env.TRELLIS_HOOKS === "0" || process.env.TRELLIS_DISABLE_HOOKS === "1") {
-          debugLog("session", "Skipping - TRELLIS_HOOKS disabled")
+        if (process.env.MOLUOXIXI_HOOKS === "0" || process.env.MOLUOXIXI_DISABLE_HOOKS === "1") {
+          debugLog("session", "Skipping - MOLUOXIXI_HOOKS disabled")
           return
         }
 

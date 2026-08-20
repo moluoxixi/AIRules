@@ -12,7 +12,7 @@
  *   extract <session-id>          dump cleaned dialogue (use --grep KW to filter turns)
  *   projects                      list active project cwds (AI-routing entry point)
  *
- * Run `trellis mem help` for the full flag reference.
+ * Run `moluoxixi mem help` for the full flag reference.
  */
 
 import * as os from "node:os";
@@ -481,7 +481,7 @@ function cmdExtract(argv: Argv): void {
 }
 
 function cmdHelp(): void {
-  console.log(`trellis mem — list/search Claude/Codex/Grok/OpenCode/Pi/ZCode sessions
+  console.log(`moluoxixi mem — list/search Claude/Codex/Grok/OpenCode/Pi/ZCode sessions
 
 commands:
   list                          list sessions (default if no command)
@@ -511,11 +511,11 @@ flags:
   --help, -h                             show this help
 
 examples:
-  trellis mem list
-  trellis mem list --global --platform claude --since 2026-04-01
-  trellis mem search "session insight" --global
-  trellis mem extract 5842592d --grep memory
-  trellis mem extract 5842592d --phase brainstorm
+  moluoxixi mem list
+  moluoxixi mem list --global --platform claude --since 2026-04-01
+  moluoxixi mem search "session insight" --global
+  moluoxixi mem extract 5842592d --grep memory
+  moluoxixi mem extract 5842592d --phase brainstorm
 `);
 }
 

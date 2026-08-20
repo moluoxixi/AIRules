@@ -71,7 +71,7 @@ function getTaskStatus(ctx, platformInput = null) {
   const taskStatus = taskData.status || "unknown"
 
   if (taskStatus === "completed") {
-    return `Status: COMPLETED\nTask: ${taskTitle}\nNext-Action: Run /trellis:finish-work. If the working tree is dirty, return to Phase 3.4 first.`
+    return `Status: COMPLETED\nTask: ${taskTitle}\nNext-Action: Run /moluoxixi:finish-work. If the working tree is dirty, return to Phase 3.4 first.`
   }
 
   const hasPrd = existsSync(join(taskDir, "prd.md"))
@@ -130,7 +130,7 @@ function loadMoluoxixiConfig(directory, contextKey = null) {
       stdio: ["pipe", "pipe", "pipe"],
       env: {
         ...process.env,
-        ...(contextKey ? { TRELLIS_CONTEXT_ID: contextKey } : {}),
+        ...(contextKey ? { MOLUOXIXI_CONTEXT_ID: contextKey } : {}),
       },
     })
     const data = JSON.parse(output)
@@ -461,12 +461,12 @@ function getMoluoxixiMetadata(metadata) {
     return {}
   }
 
-  const trellis = metadata.moluoxixi
-  if (!trellis || typeof trellis !== "object") {
+  const moluoxixi = metadata.moluoxixi
+  if (!moluoxixi || typeof moluoxixi !== "object") {
     return {}
   }
 
-  return trellis
+  return moluoxixi
 }
 
 function markPartAsSessionStart(part) {
@@ -475,7 +475,7 @@ function markPartAsSessionStart(part) {
     : {}
   part.metadata = {
     ...metadata,
-    trellis: {
+    moluoxixi: {
       ...getMoluoxixiMetadata(metadata),
       sessionStart: true,
     },

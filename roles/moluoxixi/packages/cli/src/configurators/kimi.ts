@@ -58,7 +58,7 @@ function resolveKimiAgentSkills(): AgentContent[] {
 }
 
 /**
- * The Kimi Code file set — written at init and diffed by `trellis update`.
+ * The Kimi Code file set — written at init and diffed by `moluoxixi update`.
  */
 export function collectKimiTemplates(): Map<string, string> {
   const ctx = AI_TOOLS.kimi.templateContext;

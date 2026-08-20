@@ -35,8 +35,8 @@ describe("codex shared skills (from common source)", () => {
   it("does not include platform-specific syntax in resolved output", () => {
     const skills = resolveAllAsSkills(AI_TOOLS.codex.templateContext);
     for (const skill of skills) {
-      // Codex uses $ prefix, not /trellis:
-      expect(skill.content).not.toContain("/trellis:");
+      // Codex uses $ prefix, not /moluoxixi:
+      expect(skill.content).not.toContain("/moluoxixi:");
       expect(skill.content).not.toContain(".claude/");
       expect(skill.content).not.toContain(".cursor/");
     }
@@ -210,7 +210,7 @@ describe("codex two-channel sub-agent context (native SubagentStart)", () => {
 
     expect(content).toContain("Do not load `implement.jsonl` or `check.jsonl`");
     expect(content).not.toContain(
-      "Run `python3 ./.trellis/scripts/task.py current --source`",
+      "Run `python3 ./.moluoxixi/scripts/task.py current --source`",
     );
   });
 });

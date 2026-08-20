@@ -1,4 +1,4 @@
-<!-- TRELLIS:COPILOT-GUIDANCE:START -->
+<!-- MOLUOXIXI:COPILOT-GUIDANCE:START -->
 # Moluoxixi Review Guidance
 
 When reviewing a Moluoxixi-enabled repository:
@@ -8,4 +8,4 @@ When reviewing a Moluoxixi-enabled repository:
 - If a Moluoxixi-generated file needs a behavior change, leave one handoff comment asking for an upstream Moluoxixi fix. Include the affected path, expected behavior, observed evidence or reproduction steps, and why the fix belongs upstream.
 - Continue reviewing repo-owned `.moluoxixi/spec/**`, `.moluoxixi/tasks/**`, application code, migrations, tests, docs, and non-Moluoxixi scripts normally.
 - Group duplicate root-cause findings into one comment and point to a deterministic local check when one already covers the issue class.
-<!-- TRELLIS:COPILOT-GUIDANCE:END -->
+<!-- MOLUOXIXI:COPILOT-GUIDANCE:END -->

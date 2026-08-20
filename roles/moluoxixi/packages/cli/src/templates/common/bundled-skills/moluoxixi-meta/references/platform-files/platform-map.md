@@ -1,6 +1,6 @@
 # Platform File Map
 
-This page lists common Moluoxixi file locations in a user project by platform. Whether a platform directory exists in an actual project depends on which `trellis init --<platform>` commands the user ran.
+This page lists common Moluoxixi file locations in a user project by platform. Whether a platform directory exists in an actual project depends on which `moluoxixi init --<platform>` commands the user ran.
 
 ## Matrix
 
@@ -20,7 +20,7 @@ This page lists common Moluoxixi file locations in a user project by platform. W
 | GitHub Copilot | `--copilot` | `.github/` | `.github/skills/` | `.github/agents/` | `.github/copilot/hooks/` + prompts |
 | Factory Droid | `--droid` | `.factory/` | `.factory/skills/` | `.factory/droids/` | `.factory/hooks/` + settings |
 | DeepSeek Harness (dsh) | `--dsh` | `.dsh/` | `.agents/skills/` (shared) + `.dsh/skills/` (entry skills) | None (workflow skills run implement/check inline) | None (class-2 pull-based; no project hooks/settings) |
-| Pi Agent | `--pi` | `.pi/` | `.agents/skills/` | `.pi/agents/` | `.pi/extensions/trellis/` (native `trellis_subagent` tool) + `.pi/settings.json` |
+| Pi Agent | `--pi` | `.pi/` | `.agents/skills/` | `.pi/agents/` | `.pi/extensions/moluoxixi/` (native `moluoxixi_subagent` tool) + `.pi/settings.json` |
 | Trae IDE | `--trae` | `.trae/` | `.trae/skills/` | `.trae/agents/` | `.trae/hooks/` + `.trae/hooks.json` |
 | Reasonix | `--reasonix` | `.reasonix/` | `.reasonix/skills/` | None — sub-agents are skills with `runAs: subagent` frontmatter | None |
 | ZCode | `--zcode` | `.zcode/` | `.zcode/skills/` | `.zcode/agents/` | `.zcode/hooks/` + `.zcode/config.json` (SessionStart + UserPromptSubmit + PreToolUse Agent/Task); sub-agents use hook-injected context |
@@ -58,7 +58,7 @@ When changing implementation/check/research behavior, look for the corresponding
 
 Some platforms expose a first-class tool that the host runtime understands. The model calls it like any other tool and the host renders progress cards, validates the agent name against `.<platform>/agents/`, and enforces dispatch modes.
 
-- Pi Agent — `trellis_subagent` tool, defined in `.pi/extensions/trellis/index.ts`. Supports `single` / `parallel` / `chain` dispatch modes and emits live `moluoxixi-subagent-progress` events.
+- Pi Agent — `moluoxixi_subagent` tool, defined in `.pi/extensions/moluoxixi/index.ts`. Supports `single` / `parallel` / `chain` dispatch modes and emits live `moluoxixi-subagent-progress` events.
 
 When changing sub-agent dispatch behavior on these platforms, edit the extension file, **not** the agent markdown — the agent markdown defines responsibilities, but the host extension owns dispatch, validation, and progress rendering.
 
@@ -104,7 +104,7 @@ Extension-backed platform. OMP native provider auto-discovers all subdirectories
 ├── skills/            # Auto-triggered skills (SKILL.md per dir)
 ├── agents/            # Agent definitions (.md)
 └── extensions/
-    └── trellis/
+    └── moluoxixi/
         └── index.ts   # Moluoxixi extension (context injection)
 ```
 

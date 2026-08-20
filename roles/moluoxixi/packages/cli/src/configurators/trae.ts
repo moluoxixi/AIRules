@@ -10,7 +10,7 @@ import {
 import { getAllAgents, getSettingsTemplate } from "../templates/trae/index.js";
 
 /**
- * The Trae IDE file set — written at init and diffed by `trellis update`.
+ * The Trae IDE file set — written at init and diffed by `moluoxixi update`.
  *
  * Trae is a class-2 platform: hooks fire on SessionStart + UserPromptSubmit in
  * the main session, but cannot inject sub-agent prompts. Sub-agents use a

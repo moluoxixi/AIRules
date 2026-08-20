@@ -1,5 +1,5 @@
 /**
- * Tier-1 unit tests for the `trellis mem` CLI-layer helpers.
+ * Tier-1 unit tests for the `moluoxixi mem` CLI-layer helpers.
  *
  * The reusable retrieval / search / cleaning primitives moved to
  * `@moluoxixi/airules-moluoxixi-core/mem` and are covered by `packages/core/test/mem/*`.

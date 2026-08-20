@@ -13,7 +13,7 @@ import path from "node:path";
 // === External dependency mocks (hoisted by vitest) ===
 
 vi.mock("figlet", () => ({
-  default: { textSync: vi.fn(() => "TRELLIS") },
+  default: { textSync: vi.fn(() => "MOLUOXIXI") },
 }));
 
 vi.mock("inquirer", () => ({
@@ -155,7 +155,7 @@ describe("init() integration", () => {
       "utf-8",
     );
     expect(gitattributes).toContain(
-      ".trellis/workspace/*/journal-*.md merge=union",
+      ".moluoxixi/workspace/*/journal-*.md merge=union",
     );
     expect(gitattributes).not.toContain("index.md merge=union");
   });
@@ -396,16 +396,16 @@ describe("init() integration", () => {
     expect(fs.existsSync(path.join(tmpDir, ".cursor"))).toBe(false);
   });
 
-  it("#3h codebuddy platform creates .codebuddy/commands/trellis", async () => {
+  it("#3h codebuddy platform creates .codebuddy/commands/moluoxixi", async () => {
     await init({ yes: true, codebuddy: true });
 
     expect(
-      fs.existsSync(path.join(tmpDir, ".codebuddy", "commands", "trellis")),
+      fs.existsSync(path.join(tmpDir, ".codebuddy", "commands", "moluoxixi")),
     ).toBe(true);
     // CodeBuddy is agent-capable → start.md not emitted.
     expect(
       fs.existsSync(
-        path.join(tmpDir, ".codebuddy", "commands", "trellis", "start.md"),
+        path.join(tmpDir, ".codebuddy", "commands", "moluoxixi", "start.md"),
       ),
     ).toBe(false);
     expect(
@@ -414,14 +414,14 @@ describe("init() integration", () => {
           tmpDir,
           ".codebuddy",
           "commands",
-          "trellis",
+          "moluoxixi",
           "finish-work.md",
         ),
       ),
     ).toBe(true);
     expect(
       fs.existsSync(
-        path.join(tmpDir, ".codebuddy", "commands", "trellis", "continue.md"),
+        path.join(tmpDir, ".codebuddy", "commands", "moluoxixi", "continue.md"),
       ),
     ).toBe(true);
     expect(fs.existsSync(path.join(tmpDir, ".claude"))).toBe(false);
@@ -459,7 +459,7 @@ describe("init() integration", () => {
       fs.existsSync(path.join(tmpDir, ".github", "copilot", "hooks.json")),
     ).toBe(true);
     expect(
-      fs.existsSync(path.join(tmpDir, ".github", "hooks", "trellis.json")),
+      fs.existsSync(path.join(tmpDir, ".github", "hooks", "moluoxixi.json")),
     ).toBe(true);
     const copilotInstructionsPath = path.join(
       tmpDir,
@@ -486,31 +486,31 @@ describe("init() integration", () => {
     expect(trackedPaths).toContain(".github/prompts/continue.prompt.md");
     expect(trackedPaths).toContain(COPILOT_INSTRUCTIONS_PATH);
     expect(trackedPaths).toContain(".github/copilot/hooks.json");
-    expect(trackedPaths).toContain(".github/hooks/trellis.json");
+    expect(trackedPaths).toContain(".github/hooks/moluoxixi.json");
 
     expect(fs.existsSync(path.join(tmpDir, ".claude"))).toBe(false);
     expect(fs.existsSync(path.join(tmpDir, ".cursor"))).toBe(false);
   });
 
-  it("#3e gemini platform creates .gemini/commands/trellis", async () => {
+  it("#3e gemini platform creates .gemini/commands/moluoxixi", async () => {
     await init({ yes: true, gemini: true });
     expect(
-      fs.existsSync(path.join(tmpDir, ".gemini", "commands", "trellis")),
+      fs.existsSync(path.join(tmpDir, ".gemini", "commands", "moluoxixi")),
     ).toBe(true);
     // Gemini is agent-capable → start.toml not emitted.
     expect(
       fs.existsSync(
-        path.join(tmpDir, ".gemini", "commands", "trellis", "start.toml"),
+        path.join(tmpDir, ".gemini", "commands", "moluoxixi", "start.toml"),
       ),
     ).toBe(false);
     expect(
       fs.existsSync(
-        path.join(tmpDir, ".gemini", "commands", "trellis", "finish-work.toml"),
+        path.join(tmpDir, ".gemini", "commands", "moluoxixi", "finish-work.toml"),
       ),
     ).toBe(true);
     expect(
       fs.existsSync(
-        path.join(tmpDir, ".gemini", "commands", "trellis", "continue.toml"),
+        path.join(tmpDir, ".gemini", "commands", "moluoxixi", "continue.toml"),
       ),
     ).toBe(true);
     expect(fs.existsSync(path.join(tmpDir, ".claude"))).toBe(false);
@@ -522,17 +522,17 @@ describe("init() integration", () => {
     // Droid is agent-capable → start.md not emitted.
     expect(
       fs.existsSync(
-        path.join(tmpDir, ".factory", "commands", "trellis", "start.md"),
+        path.join(tmpDir, ".factory", "commands", "moluoxixi", "start.md"),
       ),
     ).toBe(false);
     expect(
       fs.existsSync(
-        path.join(tmpDir, ".factory", "commands", "trellis", "finish-work.md"),
+        path.join(tmpDir, ".factory", "commands", "moluoxixi", "finish-work.md"),
       ),
     ).toBe(true);
     expect(
       fs.existsSync(
-        path.join(tmpDir, ".factory", "commands", "trellis", "continue.md"),
+        path.join(tmpDir, ".factory", "commands", "moluoxixi", "continue.md"),
       ),
     ).toBe(true);
     // Skills (moluoxixi- prefix)
@@ -570,7 +570,7 @@ describe("init() integration", () => {
     ).toBe(true);
     expect(
       fs.existsSync(
-        path.join(tmpDir, ".pi", "extensions", "trellis", "index.ts"),
+        path.join(tmpDir, ".pi", "extensions", "moluoxixi", "index.ts"),
       ),
     ).toBe(true);
     expect(fs.existsSync(path.join(tmpDir, ".pi", "hooks"))).toBe(false);
@@ -762,7 +762,7 @@ describe("init() integration", () => {
     ).toBe(false);
     expect(
       fs.existsSync(
-        path.join(tmpDir, ".zcode", "commands", "trellis", "start.md"),
+        path.join(tmpDir, ".zcode", "commands", "moluoxixi", "start.md"),
       ),
     ).toBe(false);
     expect(
@@ -810,16 +810,16 @@ describe("init() integration", () => {
     await init({ yes: true, opencode: true });
 
     // OpenCode is agentCapable && !hasHooks per registry (plugins/session-start.js
-    // provides equivalent injection, but the user-invocable /trellis:start is
+    // provides equivalent injection, but the user-invocable /moluoxixi:start is
     // still emitted as fallback for plugin failures / manual reload).
     expect(
       fs.existsSync(
-        path.join(tmpDir, ".opencode", "commands", "trellis", "start.md"),
+        path.join(tmpDir, ".opencode", "commands", "moluoxixi", "start.md"),
       ),
     ).toBe(true);
     expect(
       fs.existsSync(
-        path.join(tmpDir, ".opencode", "commands", "trellis", "finish-work.md"),
+        path.join(tmpDir, ".opencode", "commands", "moluoxixi", "finish-work.md"),
       ),
     ).toBe(true);
   });
@@ -1093,8 +1093,8 @@ describe("init() integration", () => {
 
   it("#14 monorepo: writes packages section to config.yaml", async () => {
     setupPnpmWorkspace(tmpDir, [
-      { rel: "packages/cli", name: "@trellis/cli" },
-      { rel: "packages/docs", name: "@trellis/docs" },
+      { rel: "packages/cli", name: "@moluoxixi/cli" },
+      { rel: "packages/docs", name: "@moluoxixi/docs" },
     ]);
 
     await init({ yes: true });
@@ -1136,8 +1136,8 @@ describe("init() integration", () => {
     expect(taskJson.next_action).toBeUndefined();
 
     // relatedFiles point to spec/<name>/
-    expect(taskJson.relatedFiles).toContain(".trellis/spec/core/");
-    expect(taskJson.relatedFiles).toContain(".trellis/spec/ui/");
+    expect(taskJson.relatedFiles).toContain(".moluoxixi/spec/core/");
+    expect(taskJson.relatedFiles).toContain(".moluoxixi/spec/ui/");
 
     // prd.md mentions packages + renders per-package checklist items
     const prd = fs.readFileSync(path.join(taskDir, "prd.md"), "utf-8");
@@ -1149,10 +1149,10 @@ describe("init() integration", () => {
     expect(prd).toContain("- [ ] Fill guidelines for core");
     expect(prd).toContain("- [ ] Fill guidelines for ui");
     expect(prd).toContain(
-      `${expectedPythonCmd} ./.trellis/scripts/task.py finish`,
+      `${expectedPythonCmd} ./.moluoxixi/scripts/task.py finish`,
     );
     expect(prd).toContain(
-      `${expectedPythonCmd} ./.trellis/scripts/task.py archive 00-bootstrap-guidelines`,
+      `${expectedPythonCmd} ./.moluoxixi/scripts/task.py archive 00-bootstrap-guidelines`,
     );
   });
 
@@ -1197,7 +1197,7 @@ describe("init() integration", () => {
     );
     expect(guideCall).toBeDefined();
 
-    // Should NOT create .trellis/ (early return)
+    // Should NOT create .moluoxixi/ (early return)
     expect(fs.existsSync(path.join(tmpDir, DIR_NAMES.WORKFLOW))).toBe(false);
   });
 
@@ -1249,7 +1249,7 @@ describe("init() integration", () => {
         "utf-8",
       ),
     ) as { hashes?: Record<string, string> };
-    expect(hashFile.hashes?.[".trellis/spec/index.md"]).toBe(
+    expect(hashFile.hashes?.[".moluoxixi/spec/index.md"]).toBe(
       computeHash("# remote spec\n"),
     );
   });
@@ -1297,7 +1297,7 @@ describe("init() integration", () => {
         "utf-8",
       ),
     ) as { hashes?: Record<string, string> };
-    expect(hashFile.hashes?.[".trellis/spec/index.md"]).toBe(
+    expect(hashFile.hashes?.[".moluoxixi/spec/index.md"]).toBe(
       computeHash("# golang spec\n"),
     );
   });
@@ -1349,7 +1349,7 @@ describe("init() integration", () => {
         "utf-8",
       ),
     ) as { hashes?: Record<string, string> };
-    expect(hashFile.hashes?.[".trellis/spec/index.md"]).toBe(
+    expect(hashFile.hashes?.[".moluoxixi/spec/index.md"]).toBe(
       computeHash("# refreshed golang spec\n"),
     );
   });

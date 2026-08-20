@@ -1,8 +1,8 @@
 {
   "version": "1.0.0",
   "enabled": true,
-  "name": "trellis-workflow-state",
-  "description": "Inject Trellis workflow state on each prompt",
+  "name": "moluoxixi-workflow-state",
+  "description": "Inject Moluoxixi workflow state on each prompt",
   "when": {
     "type": "promptSubmit"
   },

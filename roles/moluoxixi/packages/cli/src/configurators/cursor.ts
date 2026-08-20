@@ -7,7 +7,7 @@ import {
 import { getAllAgents, getHooksConfig } from "../templates/cursor/index.js";
 
 /**
- * The Cursor file set — written at init and diffed by `trellis update`.
+ * The Cursor file set — written at init and diffed by `moluoxixi update`.
  * - commands/ — start + finish-work as slash commands (moluoxixi- prefix, flat)
  * - skills/moluoxixi-{name}/SKILL.md — auto-triggered skills from `common/skills/`
  * - agents/{name}.md — sub-agent definitions

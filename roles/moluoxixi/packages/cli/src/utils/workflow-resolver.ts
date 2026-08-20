@@ -1,7 +1,7 @@
 /**
  * Workflow template resolver.
  *
- * Centralizes how `trellis init --workflow` and `trellis workflow` discover and
+ * Centralizes how `moluoxixi init --workflow` and `moluoxixi workflow` discover and
  * fetch workflow.md content. Reuses `template-fetcher` helpers for registry
  * parsing, index probing, and git/http transport. The `native` workflow is a
  * virtual entry resolved directly from the bundled `workflowMdTemplate` to
@@ -32,7 +32,7 @@ import {
  * The id used to refer to the bundled native workflow.
  *
  * Treated as Moluoxixi-managed for hash-tracking: when this id is selected by
- * `init --workflow` or `trellis workflow`, `.trellis/workflow.md` stays in
+ * `init --workflow` or `moluoxixi workflow`, `.moluoxixi/workflow.md` stays in
  * `.template-hashes.json`. Any other id is user-managed local workflow and
  * must be removed from the hash file (the durable-state contract in
  * design.md "Durable-state contract").
@@ -44,7 +44,7 @@ export const NATIVE_WORKFLOW_ID = "native";
  *
  * `content` is the workflow.md body bytes (LF-normalized in storage).
  * `path` is the marketplace-relative path for remote entries, or
- *   `bundled:trellis/workflow.md` for the native virtual entry.
+ *   `bundled:moluoxixi/workflow.md` for the native virtual entry.
  */
 export interface ResolvedWorkflowTemplate {
   id: string;
@@ -94,7 +94,7 @@ function nativeListingEntry(): WorkflowTemplateListing {
     name: "Native Moluoxixi Workflow",
     description:
       "Default Moluoxixi Plan / Execute / Finish workflow bundled with the CLI",
-    path: "bundled:trellis/workflow.md",
+    path: "bundled:moluoxixi/workflow.md",
     source: "bundled",
   };
 }

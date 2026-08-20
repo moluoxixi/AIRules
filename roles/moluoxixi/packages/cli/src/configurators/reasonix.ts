@@ -20,7 +20,7 @@ import {
 } from "./shared.js";
 
 /**
- * The Reasonix file set — written at init and diffed by `trellis update`.
+ * The Reasonix file set — written at init and diffed by `moluoxixi update`.
  */
 export function collectReasonixTemplates(): Map<string, string> {
   const config = AI_TOOLS.reasonix;

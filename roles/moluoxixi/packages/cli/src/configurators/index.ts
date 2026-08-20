@@ -66,7 +66,7 @@ interface PlatformFunctions {
 /**
  * Registry entry for a platform whose configuration is exactly "write these
  * files": `configure` is derived from `collectTemplates`, so the file set is
- * described once and `trellis init` and `trellis update` cannot disagree
+ * described once and `moluoxixi init` and `moluoxixi update` cannot disagree
  * about it.
  *
  * The three platforms that also do something a `Map<path, content>` cannot
@@ -125,8 +125,8 @@ export const PLATFORM_MANAGED_DIRS = PLATFORM_IDS.flatMap((id) =>
   getManagedPaths(id),
 );
 
-/** All directories managed by Moluoxixi (including .trellis itself) */
-export const ALL_MANAGED_DIRS = [".trellis", ...new Set(PLATFORM_MANAGED_DIRS)];
+/** All directories managed by Moluoxixi (including .moluoxixi itself) */
+export const ALL_MANAGED_DIRS = [".moluoxixi", ...new Set(PLATFORM_MANAGED_DIRS)];
 
 /**
  * Detect platforms from Moluoxixi-owned templates, not native config directories.

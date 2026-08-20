@@ -5,5 +5,5 @@
   "recommendMigrate": false,
   "changelog": "**Bug Fixes:**\n- fix(channel): add `detail.kind`, `detail.stream_id`, and `detail.phase` to Codex `item/agentMessage/delta` progress events so consumers can split interleaved output and commentary streams.\n\n**Internal:**\n- chore(release): verify `@moluoxixi/airules-moluoxixi` and `@moluoxixi/airules-moluoxixi-core` are visible on the public npm registry after CI publish.",
   "migrations": [],
-  "notes": "Run `npm install -g @moluoxixi/airules-moluoxixi@beta` and `trellis update` to use the Codex channel stream metadata fix. No file migration is required."
+  "notes": "Run `npm install -g @moluoxixi/airules-moluoxixi@beta` and `moluoxixi update` to use the Codex channel stream metadata fix. No file migration is required."
 }

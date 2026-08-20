@@ -78,7 +78,7 @@ function readConfiguredFile(root: string, relativePath: string): string {
 // ("every collected file is on disk") used to be asserted — which is how
 // 0.5.5 shipped `.agents/skills/moluoxixi-start/SKILL.md` from `configureCodex`
 // with no matching `collectTemplates` entry, leaving upgraders without the
-// file after `trellis update` (see manifests/0.5.7.json).
+// file after `moluoxixi update` (see manifests/0.5.7.json).
 // =============================================================================
 
 /**
@@ -86,19 +86,19 @@ function readConfiguredFile(root: string, relativePath: string): string {
  * describe. Exactly one, and it is deliberate.
  *
  * `.claude/hooks/statusline.py` is written only by
- * `trellis init --with-statusline`. Keeping it out of `collectTemplates` is
+ * `moluoxixi init --with-statusline`. Keeping it out of `collectTemplates` is
  * intentional and separately locked by regression.test.ts
  * "[statusline-opt-in] statusline.py is not in claude's collected templates":
  * `analyzeChanges()` classifies a collected-but-absent file as a new file and
  * would force-install the statusline onto projects that opted out.
  *
  * Known consequence, documented but deliberately NOT fixed here (see
- * `.trellis/tasks/08-06-converge-platform-templates/research/configure-vs-collect-inventory.md`):
+ * `.moluoxixi/tasks/08-06-converge-platform-templates/research/configure-vs-collect-inventory.md`):
  * init records the file in `.template-hashes.json`, then
  * `pruneOrphanManifestKeys` drops it as an orphan because it is in neither
  * `collectTemplates` nor a migration — so an opted-in user's `statusline.py`
- * is frozen after their first `trellis update` and is left behind by
- * `trellis uninstall`.
+ * is frozen after their first `moluoxixi update` and is left behind by
+ * `moluoxixi uninstall`.
  */
 const CONFIGURE_ONLY_PATHS = new Set([".claude/hooks/statusline.py"]);
 
@@ -210,7 +210,7 @@ describe("getConfiguredPlatforms", () => {
       } finally {
         stopRecordingWrites();
       }
-      fs.mkdirSync(path.join(platformRoot, ".trellis"), { recursive: true });
+      fs.mkdirSync(path.join(platformRoot, ".moluoxixi"), { recursive: true });
       initializeHashes(platformRoot, { trackedPaths: written });
 
       expect([...getConfiguredPlatforms(platformRoot)]).toEqual([id]);
@@ -527,23 +527,23 @@ describe("configurePlatform", () => {
       expect(fs.existsSync(path.join(hooksDir, script))).toBe(true);
     }
 
-    // Main `trellis` agent wires per-turn + session-start hooks; PYTHON_CMD
+    // Main `moluoxixi` agent wires per-turn + session-start hooks; PYTHON_CMD
     // resolved.
-    const trellisPath = path.join(tmpDir, ".kiro", "agents", "trellis.json");
-    expect(fs.existsSync(trellisPath)).toBe(true);
-    const trellisRaw = fs.readFileSync(trellisPath, "utf-8");
-    expect(trellisRaw).not.toContain("{{PYTHON_CMD}}");
-    const trellis = JSON.parse(trellisRaw) as {
+    const moluoxixiPath = path.join(tmpDir, ".kiro", "agents", "moluoxixi.json");
+    expect(fs.existsSync(moluoxixiPath)).toBe(true);
+    const moluoxixiRaw = fs.readFileSync(moluoxixiPath, "utf-8");
+    expect(moluoxixiRaw).not.toContain("{{PYTHON_CMD}}");
+    const moluoxixi = JSON.parse(moluoxixiRaw) as {
       resources?: string[];
       hooks?: Record<string, { command: string }[]>;
     };
-    expect(trellis.hooks?.userPromptSubmit?.[0].command).toBe(
+    expect(moluoxixi.hooks?.userPromptSubmit?.[0].command).toBe(
       `${expectedPythonCmd} .kiro/hooks/inject-workflow-state.py`,
     );
-    expect(trellis.hooks?.agentSpawn?.[0].command).toBe(
+    expect(moluoxixi.hooks?.agentSpawn?.[0].command).toBe(
       `${expectedPythonCmd} .kiro/hooks/session-start.py`,
     );
-    expect(trellis.resources).toContain("file://.trellis/workflow.md");
+    expect(moluoxixi.resources).toContain("file://.moluoxixi/workflow.md");
 
     // 3 sub-agents keep their inject-subagent-context.py spawn hook.
     for (const name of [
@@ -587,7 +587,7 @@ describe("configurePlatform", () => {
     await configurePlatform("gemini", tmpDir);
 
     // Commands as TOML
-    const commandsDir = path.join(tmpDir, ".gemini", "commands", "trellis");
+    const commandsDir = path.join(tmpDir, ".gemini", "commands", "moluoxixi");
     expect(fs.existsSync(commandsDir)).toBe(true);
     const tomlFiles = fs
       .readdirSync(commandsDir)
@@ -782,7 +782,7 @@ describe("configurePlatform", () => {
     ).toBe(true);
     expect(
       fs.existsSync(
-        path.join(tmpDir, ".grok", "commands", "trellis", "start.md"),
+        path.join(tmpDir, ".grok", "commands", "moluoxixi", "start.md"),
       ),
     ).toBe(false);
     expect(fs.existsSync(path.join(tmpDir, ".agents", "skills"))).toBe(false);
@@ -819,7 +819,7 @@ describe("configurePlatform", () => {
 
     const templates = collectPlatformTemplates("grok");
     expect(templates?.has(".grok/commands/moluoxixi-start.md")).toBe(true);
-    expect(templates?.has(".grok/commands/trellis/start.md")).toBe(false);
+    expect(templates?.has(".grok/commands/moluoxixi/start.md")).toBe(false);
     expect(
       [...(templates?.keys() ?? [])].some((key) =>
         key.startsWith(".agents/skills/"),
@@ -867,7 +867,7 @@ describe("configurePlatform", () => {
     ) as { type: string; command: string; location: string };
     expect(continueCmd.type).toBe("prompt");
     expect(continueCmd.location).toBe("project");
-    expect(continueCmd.command).toContain(".trellis");
+    expect(continueCmd.command).toContain(".moluoxixi");
 
     expect(
       fs.existsSync(
@@ -932,7 +932,7 @@ describe("configurePlatform", () => {
     expect(templates?.has(".snow/commands/moluoxixi-continue.json")).toBe(true);
     expect(templates?.has(".snow/agents/moluoxixi-implement.md")).toBe(true);
     expect(templates?.has(".snow/agents/moluoxixi-research.md")).toBe(true);
-    expect(templates?.has(".snow/sub-agents.trellis.json")).toBe(false);
+    expect(templates?.has(".snow/sub-agents.moluoxixi.json")).toBe(false);
     expect(templates?.has(".snow/hooks/onSessionStart.json")).toBe(true);
     expect(templates?.has(".snow/hooks/onUserMessage.json")).toBe(true);
     expect(templates?.has(".snow/hooks/beforeSubAgentStart.json")).toBe(true);
@@ -959,7 +959,7 @@ describe("configurePlatform", () => {
       path.join(tmpDir, ".snow", "hooks", "write-moluoxixi-context.py"),
       "utf-8",
     );
-    expect(hookPy).toContain("TRELLIS_SNOW_HOOK_MODE");
+    expect(hookPy).toContain("MOLUOXIXI_SNOW_HOOK_MODE");
     expect(hookPy).toContain("agentKind");
     expect(hookPy).toContain("implement.jsonl");
     expect(hookPy).toContain("COMPACT_MAX_BYTES");
@@ -982,10 +982,10 @@ describe("configurePlatform", () => {
     expect(snowGuide).toContain("class-1 hook inject");
     expect(snowGuide.toLowerCase()).not.toContain("snocli");
     expect(snowGuide.toLowerCase()).not.toContain("snow-cli");
-    expect(snowGuide).not.toContain("sub-agents.trellis.json");
+    expect(snowGuide).not.toContain("sub-agents.moluoxixi.json");
     expect(snowGuide).toContain("Session identity");
     expect(snowGuide).toContain("SNOW_SESSION_ID");
-    expect(snowGuide).toContain("TRELLIS_CONTEXT_ID");
+    expect(snowGuide).toContain("MOLUOXIXI_CONTEXT_ID");
 
     const implementAgent = fs.readFileSync(
       path.join(tmpDir, ".snow", "agents", "moluoxixi-implement.md"),
@@ -1003,7 +1003,7 @@ describe("configurePlatform", () => {
     expect(implementAgent).toContain("terminal-execute");
 
     expect(
-      fs.existsSync(path.join(tmpDir, ".snow", "sub-agents.trellis.json")),
+      fs.existsSync(path.join(tmpDir, ".snow", "sub-agents.moluoxixi.json")),
     ).toBe(false);
     expect(
       fs.existsSync(path.join(tmpDir, ".snow", "hooks", "onSessionStart.json")),
@@ -1026,7 +1026,7 @@ describe("configurePlatform", () => {
     expect(AI_TOOLS.snow.templateContext.hasHooks).toBe(true);
     expect(AI_TOOLS.snow.hasPythonHooks).toBe(true);
     expect(AI_TOOLS.snow.extraManagedPaths ?? []).not.toContain(
-      ".snow/sub-agents.trellis.json",
+      ".snow/sub-agents.moluoxixi.json",
     );
   });
 
@@ -1097,7 +1097,7 @@ describe("configurePlatform", () => {
 
     expect(
       fs.existsSync(
-        path.join(tmpDir, ".zcode", "commands", "trellis", "start.md"),
+        path.join(tmpDir, ".zcode", "commands", "moluoxixi", "start.md"),
       ),
     ).toBe(false);
     expect(fs.existsSync(path.join(tmpDir, ".agents", "skills"))).toBe(false);
@@ -1183,7 +1183,7 @@ describe("configurePlatform", () => {
 
     const templates = collectPlatformTemplates("zcode");
     expect(templates?.get(".zcode/config.json")).toBe(generatedConfig);
-    expect(templates?.has(".zcode/commands/trellis/start.md")).toBe(false);
+    expect(templates?.has(".zcode/commands/moluoxixi/start.md")).toBe(false);
     expect(
       [...(templates?.keys() ?? [])].some((key) =>
         key.startsWith(".agents/skills/"),
@@ -1226,7 +1226,7 @@ describe("configurePlatform", () => {
     await configurePlatform("codebuddy", tmpDir);
 
     const expected = resolveCommands(AI_TOOLS.codebuddy.templateContext);
-    const commandsDir = path.join(tmpDir, ".codebuddy", "commands", "trellis");
+    const commandsDir = path.join(tmpDir, ".codebuddy", "commands", "moluoxixi");
     expect(fs.existsSync(commandsDir)).toBe(true);
 
     const actualFiles = fs
@@ -1324,7 +1324,7 @@ describe("configurePlatform", () => {
 
     const expected = resolvePlaceholders(getCopilotHooksConfig());
     const tracked = path.join(tmpDir, ".github", "copilot", "hooks.json");
-    const discovery = path.join(tmpDir, ".github", "hooks", "trellis.json");
+    const discovery = path.join(tmpDir, ".github", "hooks", "moluoxixi.json");
 
     expect(fs.existsSync(tracked)).toBe(true);
     expect(fs.existsSync(discovery)).toBe(true);
@@ -1433,10 +1433,10 @@ describe("configurePlatform", () => {
     expect(fs.existsSync(path.join(tmpDir, ".cursor", "commands"))).toBe(true);
   });
 
-  it("configurePlatform('droid') creates .factory/commands/trellis directory", async () => {
+  it("configurePlatform('droid') creates .factory/commands/moluoxixi directory", async () => {
     await configurePlatform("droid", tmpDir);
     expect(
-      fs.existsSync(path.join(tmpDir, ".factory", "commands", "trellis")),
+      fs.existsSync(path.join(tmpDir, ".factory", "commands", "moluoxixi")),
     ).toBe(true);
   });
 
@@ -1447,7 +1447,7 @@ describe("configurePlatform", () => {
       tmpDir,
       ".factory",
       "commands",
-      "trellis",
+      "moluoxixi",
       "start.md",
     );
     expect(fs.existsSync(startPath)).toBe(false);
@@ -1455,7 +1455,7 @@ describe("configurePlatform", () => {
       tmpDir,
       ".factory",
       "commands",
-      "trellis",
+      "moluoxixi",
       "finish-work.md",
     );
     expect(fs.existsSync(finishPath)).toBe(true);
@@ -1463,7 +1463,7 @@ describe("configurePlatform", () => {
       tmpDir,
       ".factory",
       "commands",
-      "trellis",
+      "moluoxixi",
       "continue.md",
     );
     expect(fs.existsSync(continuePath)).toBe(true);
@@ -1520,21 +1520,21 @@ describe("configurePlatform", () => {
     ).toBe(true);
     expect(
       fs.existsSync(
-        path.join(tmpDir, ".pi", "extensions", "trellis", "index.ts"),
+        path.join(tmpDir, ".pi", "extensions", "moluoxixi", "index.ts"),
       ),
     ).toBe(true);
     expect(fs.existsSync(path.join(tmpDir, ".pi", "hooks"))).toBe(false);
 
     const extension = fs.readFileSync(
-      path.join(tmpDir, ".pi", "extensions", "trellis", "index.ts"),
+      path.join(tmpDir, ".pi", "extensions", "moluoxixi", "index.ts"),
       "utf-8",
     );
     expect(extension).toContain("registerTool?.({");
-    expect(extension).toContain('name: "trellis_subagent"');
+    expect(extension).toContain('name: "moluoxixi_subagent"');
     expect(extension).toContain('pi.on?.("session_start"');
     expect(extension).toContain('pi.on?.("tool_call"');
     expect(extension).toContain("ctx?.sessionManager?.getSessionId");
-    expect(extension).toContain("TRELLIS_PI_CLI_JS");
+    expect(extension).toContain("MOLUOXIXI_PI_CLI_JS");
     expect(extension).toContain("function formatPiOutput");
     expect(extension).toContain('"## Moluoxixi Agent Definition"');
     expect(extension).toContain("ctx?.ui?.notify?.(");
@@ -1553,7 +1553,7 @@ describe("configurePlatform", () => {
     expect(extension).not.toContain("inject-workflow-state.py");
     expect(extension).not.toContain("inject-subagent-context.py");
     expect(extension).not.toContain("session-start.py");
-    // get_context.py is allowed: it lives in .trellis/scripts/ and is the
+    // get_context.py is allowed: it lives in .moluoxixi/scripts/ and is the
     // shared session-overview script invoked by every platform's hook.
 
     const settings = JSON.parse(
@@ -1584,7 +1584,7 @@ describe("configurePlatform", () => {
 
     expect(
       fs.readFileSync(
-        path.join(tmpDir, ".pi", "extensions", "trellis", "index.ts"),
+        path.join(tmpDir, ".pi", "extensions", "moluoxixi", "index.ts"),
         "utf-8",
       ),
     ).toBe(replacePythonCommandLiterals(getPiExtensionTemplate()));
@@ -1624,7 +1624,7 @@ describe("configurePlatform", () => {
     expect(templates?.get(".pi/agents/moluoxixi-implement.md")).toContain(
       "Required: Load Moluoxixi Context First",
     );
-    expect(templates?.get(".pi/extensions/trellis/index.ts")).toBe(
+    expect(templates?.get(".pi/extensions/moluoxixi/index.ts")).toBe(
       replacePythonCommandLiterals(getPiExtensionTemplate()),
     );
     expect(templates?.get(".pi/settings.json")).toBe(
@@ -1632,18 +1632,18 @@ describe("configurePlatform", () => {
     );
   });
 
-  it("collectPlatformTemplates('droid') maps commands under .factory/commands/trellis/", () => {
+  it("collectPlatformTemplates('droid') maps commands under .factory/commands/moluoxixi/", () => {
     const templates = collectPlatformTemplates("droid");
     expect(templates).toBeInstanceOf(Map);
     // Droid is agent-capable → start.md not emitted.
     expect(
-      templates?.get(".factory/commands/trellis/start.md"),
+      templates?.get(".factory/commands/moluoxixi/start.md"),
     ).toBeUndefined();
     expect(
-      templates?.get(".factory/commands/trellis/finish-work.md"),
+      templates?.get(".factory/commands/moluoxixi/finish-work.md"),
     ).toBeDefined();
     expect(
-      templates?.get(".factory/commands/trellis/continue.md"),
+      templates?.get(".factory/commands/moluoxixi/continue.md"),
     ).toBeDefined();
   });
 
@@ -1696,7 +1696,7 @@ describe("configurePlatform", () => {
     expect(templates?.get(".github/copilot/hooks.json")).toBe(
       resolvePlaceholders(getCopilotHooksConfig()),
     );
-    expect(templates?.get(".github/hooks/trellis.json")).toBe(
+    expect(templates?.get(".github/hooks/moluoxixi.json")).toBe(
       resolvePlaceholders(getCopilotHooksConfig()),
     );
   });

@@ -117,7 +117,7 @@ def parse_simple_yaml(content: str) -> dict:
     return result
 
 
-def read_trellis_config(repo_root: Optional[Path] = None) -> dict:
+def read_moluoxixi_config(repo_root: Optional[Path] = None) -> dict:
     """Read .moluoxixi/config.yaml. Returns {} on missing or malformed file."""
     root = repo_root or Path.cwd()
     config_file = root / CONFIG_REL_PATH

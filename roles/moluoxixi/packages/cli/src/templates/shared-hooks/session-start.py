@@ -152,11 +152,11 @@ def _has_curated_jsonl_entry(jsonl_path: Path) -> bool:
 
 def should_skip_injection() -> bool:
     """Check if any platform's non-interactive flag is set, or if Moluoxixi
-    hooks are explicitly disabled via TRELLIS_HOOKS=0 / TRELLIS_DISABLE_HOOKS=1.
+    hooks are explicitly disabled via MOLUOXIXI_HOOKS=0 / MOLUOXIXI_DISABLE_HOOKS=1.
     """
-    if os.environ.get("TRELLIS_HOOKS") == "0":
+    if os.environ.get("MOLUOXIXI_HOOKS") == "0":
         return True
-    if os.environ.get("TRELLIS_DISABLE_HOOKS") == "1":
+    if os.environ.get("MOLUOXIXI_DISABLE_HOOKS") == "1":
         return True
     non_interactive_vars = [
         "CLAUDE_NON_INTERACTIVE",
@@ -266,8 +266,8 @@ def _detect_platform(input_data: dict) -> str | None:
     return None
 
 
-def _resolve_context_key(trellis_dir: Path, input_data: dict) -> str | None:
-    scripts_dir = trellis_dir / "scripts"
+def _resolve_context_key(moluoxixi_dir: Path, input_data: dict) -> str | None:
+    scripts_dir = moluoxixi_dir / "scripts"
     if str(scripts_dir) not in sys.path:
         sys.path.insert(0, str(scripts_dir))
     from common.active_task import resolve_context_key  # type: ignore[import-not-found]
@@ -286,7 +286,7 @@ def _persist_context_key_for_bash(context_key: str | None) -> None:
     CLAUDE_ENV_FILE is user-owned (conda init, proxy settings, ...) and the host
     shell sources it for every command, so an unconditional append grows it
     without bound — one line per SessionStart forever. Skip the write when the
-    *last* existing TRELLIS_CONTEXT_ID export already assigns this value. Last
+    *last* existing MOLUOXIXI_CONTEXT_ID export already assigns this value. Last
     wins in shell, so only the final assignment describes the effective state:
     "the value appears somewhere in the file" would wrongly skip after a switch
     A -> B -> A, leaving the shell on B.
@@ -296,7 +296,7 @@ def _persist_context_key_for_bash(context_key: str | None) -> None:
     env_file = os.environ.get("CLAUDE_ENV_FILE")
     if not env_file:
         return
-    export_line = f"export TRELLIS_CONTEXT_ID={shlex.quote(context_key)}"
+    export_line = f"export MOLUOXIXI_CONTEXT_ID={shlex.quote(context_key)}"
     try:
         if _last_context_key_export(env_file) == export_line:
             return
@@ -307,7 +307,7 @@ def _persist_context_key_for_bash(context_key: str | None) -> None:
 
 
 def _last_context_key_export(env_file: str) -> str | None:
-    """Return the last `export TRELLIS_CONTEXT_ID=` line in env_file, if any.
+    """Return the last `export MOLUOXIXI_CONTEXT_ID=` line in env_file, if any.
 
     A missing file means "no previous export" (the caller then creates it).
     `errors="replace"` matters: a user env file with non-UTF-8 bytes would
@@ -319,44 +319,44 @@ def _last_context_key_export(env_file: str) -> str | None:
         with open(env_file, "r", encoding="utf-8", errors="replace") as handle:
             for raw_line in handle:
                 stripped = raw_line.strip()
-                if stripped.startswith("export TRELLIS_CONTEXT_ID="):
+                if stripped.startswith("export MOLUOXIXI_CONTEXT_ID="):
                     last_export = stripped
     except FileNotFoundError:
         return None
     return last_export
 
 
-def _resolve_update_hint(trellis_dir: Path, context_key: str | None) -> str | None:
+def _resolve_update_hint(moluoxixi_dir: Path, context_key: str | None) -> str | None:
     """Ask common.session_context whether a Moluoxixi update is available.
 
     Throttling lives there: the first SessionStart of a session writes a marker
     under `.moluoxixi/.runtime/`, and later ones (clear, compact) return without
-    spawning `trellis --version`. The resolved `context_key` is passed through so
+    spawning `moluoxixi --version`. The resolved `context_key` is passed through so
     the marker is scoped to the same session identity the rest of the hook uses,
     rather than session_context's environment-only fallback.
 
     Best-effort: a missing scripts dir, an import error, or anything raised while
     probing versions leaves the rest of the payload untouched.
     """
-    scripts_dir = trellis_dir / "scripts"
+    scripts_dir = moluoxixi_dir / "scripts"
     if str(scripts_dir) not in sys.path:
         sys.path.insert(0, str(scripts_dir))
     try:
         from common.session_context import get_update_hint  # type: ignore[import-not-found]
 
-        return get_update_hint(trellis_dir.parent, context_key)
+        return get_update_hint(moluoxixi_dir.parent, context_key)
     except Exception:
         return None  # Optional reminder; keep session-start non-fatal.
 
 
-def _resolve_active_task(trellis_dir: Path, input_data: dict):
-    scripts_dir = trellis_dir / "scripts"
+def _resolve_active_task(moluoxixi_dir: Path, input_data: dict):
+    scripts_dir = moluoxixi_dir / "scripts"
     if str(scripts_dir) not in sys.path:
         sys.path.insert(0, str(scripts_dir))
     from common.active_task import resolve_active_task  # type: ignore[import-not-found]
 
     return resolve_active_task(
-        trellis_dir.parent,
+        moluoxixi_dir.parent,
         input_data,
         platform=_detect_platform(input_data),
     )
@@ -369,12 +369,12 @@ def run_script(script_path: Path, context_key: str | None = None) -> str:
             env = os.environ.copy()
             env["PYTHONIOENCODING"] = "utf-8"
             if context_key:
-                env["TRELLIS_CONTEXT_ID"] = context_key
+                env["MOLUOXIXI_CONTEXT_ID"] = context_key
             cmd = [sys.executable, "-W", "ignore", str(script_path)]
         else:
             env = os.environ.copy()
             if context_key:
-                env["TRELLIS_CONTEXT_ID"] = context_key
+                env["MOLUOXIXI_CONTEXT_ID"] = context_key
             cmd = [str(script_path)]
 
         result = subprocess.run(
@@ -411,19 +411,19 @@ def _normalize_task_ref(task_ref: str) -> str:
     return normalized
 
 
-def _resolve_task_dir(trellis_dir: Path, task_ref: str) -> Path:
+def _resolve_task_dir(moluoxixi_dir: Path, task_ref: str) -> Path:
     normalized = _normalize_task_ref(task_ref)
     path_obj = Path(normalized)
     if path_obj.is_absolute():
         return path_obj
     if normalized.startswith(".moluoxixi/"):
-        return trellis_dir.parent / path_obj
-    return trellis_dir / "tasks" / path_obj
+        return moluoxixi_dir.parent / path_obj
+    return moluoxixi_dir / "tasks" / path_obj
 
 
-def _get_task_status(trellis_dir: Path, input_data: dict) -> str:
+def _get_task_status(moluoxixi_dir: Path, input_data: dict) -> str:
     """Return compact active-task status, artifact presence, and next action."""
-    active = _resolve_active_task(trellis_dir, input_data)
+    active = _resolve_active_task(moluoxixi_dir, input_data)
 
     if not active.task_path:
         return (
@@ -434,7 +434,7 @@ def _get_task_status(trellis_dir: Path, input_data: dict) -> str:
         )
 
     task_ref = active.task_path
-    task_dir = _resolve_task_dir(trellis_dir, task_ref)
+    task_dir = _resolve_task_dir(moluoxixi_dir, task_ref)
     if active.stale or not task_dir.is_dir():
         return (
             f"Status: STALE POINTER\nTask: {task_ref}\n"
@@ -462,7 +462,7 @@ def _get_task_status(trellis_dir: Path, input_data: dict) -> str:
         return (
             f"Status: COMPLETED\nTask: {task_title}\n"
             f"Present: {present_line}\n"
-            "Next-Action: Run `/trellis:finish-work`. If the working tree is dirty, return to Phase 3.4 first."
+            "Next-Action: Run `/moluoxixi:finish-work`. If the working tree is dirty, return to Phase 3.4 first."
         )
 
     has_prd = (task_dir / "prd.md").is_file()
@@ -514,13 +514,13 @@ def _get_task_status(trellis_dir: Path, input_data: dict) -> str:
     )
 
 
-def _load_trellis_config(trellis_dir: Path, input_data: dict) -> tuple:
+def _load_moluoxixi_config(moluoxixi_dir: Path, input_data: dict) -> tuple:
     """Load Moluoxixi config for session-start decisions.
 
     Returns:
         (is_mono, packages_dict, spec_scope, task_pkg, default_pkg)
     """
-    scripts_dir = trellis_dir / "scripts"
+    scripts_dir = moluoxixi_dir / "scripts"
     if str(scripts_dir) not in sys.path:
         sys.path.insert(0, str(scripts_dir))
 
@@ -528,7 +528,7 @@ def _load_trellis_config(trellis_dir: Path, input_data: dict) -> tuple:
         from common.config import get_default_package, get_packages, get_spec_scope, is_monorepo  # type: ignore[import-not-found]
         from common.paths import get_current_task  # type: ignore[import-not-found]
 
-        repo_root = trellis_dir.parent
+        repo_root = moluoxixi_dir.parent
         is_mono = is_monorepo(repo_root)
         packages = get_packages(repo_root) or {}
         scope = get_spec_scope(repo_root)
@@ -558,7 +558,7 @@ def _load_trellis_config(trellis_dir: Path, input_data: dict) -> tuple:
         return False, {}, None, None, None
 
 
-def _check_legacy_spec(trellis_dir: Path, is_mono: bool, packages: dict) -> str | None:
+def _check_legacy_spec(moluoxixi_dir: Path, is_mono: bool, packages: dict) -> str | None:
     """Check for legacy spec directory structure in monorepo.
 
     Returns warning message if legacy structure detected, None otherwise.
@@ -566,7 +566,7 @@ def _check_legacy_spec(trellis_dir: Path, is_mono: bool, packages: dict) -> str 
     if not is_mono or not packages:
         return None
 
-    spec_dir = trellis_dir / "spec"
+    spec_dir = moluoxixi_dir / "spec"
     if not spec_dir.is_dir():
         return None
 
@@ -663,13 +663,13 @@ def _resolve_spec_scope(
     return None  # Unknown scope type: full scan
 
 
-def _collect_spec_index_paths(trellis_dir: Path, allowed_pkgs: set | None) -> list[str]:
+def _collect_spec_index_paths(moluoxixi_dir: Path, allowed_pkgs: set | None) -> list[str]:
     paths: list[str] = []
-    guides_index = trellis_dir / "spec" / "guides" / "index.md"
+    guides_index = moluoxixi_dir / "spec" / "guides" / "index.md"
     if guides_index.is_file():
         paths.append(".moluoxixi/spec/guides/index.md")
 
-    spec_dir = trellis_dir / "spec"
+    spec_dir = moluoxixi_dir / "spec"
     if not spec_dir.is_dir():
         return paths
 
@@ -695,11 +695,11 @@ def _collect_spec_index_paths(trellis_dir: Path, allowed_pkgs: set | None) -> li
 
 
 def _build_compact_current_state(
-    trellis_dir: Path,
+    moluoxixi_dir: Path,
     input_data: dict,
     spec_index_paths: list[str],
 ) -> str:
-    repo_root = trellis_dir.parent
+    repo_root = moluoxixi_dir.parent
     lines: list[str] = []
 
     try:
@@ -716,9 +716,9 @@ def _build_compact_current_state(
     lines.append(f"Developer: {developer or '(not initialized)'}")
     lines.append(_format_git_state(repo_root))
 
-    active = _resolve_active_task(trellis_dir, input_data)
+    active = _resolve_active_task(moluoxixi_dir, input_data)
     if active.task_path:
-        task_dir = _resolve_task_dir(trellis_dir, active.task_path)
+        task_dir = _resolve_task_dir(moluoxixi_dir, active.task_path)
         status = "unknown"
         task_json = task_dir / "task.json"
         if task_json.is_file():
@@ -852,40 +852,40 @@ def main():
     if project_dir is None:
         project_dir = Path(_normalize_windows_shell_path(hook_input.get("cwd", "."))).resolve()
 
-    trellis_dir = project_dir / ".moluoxixi"
-    context_key = _resolve_context_key(trellis_dir, hook_input)
+    moluoxixi_dir = project_dir / ".moluoxixi"
+    context_key = _resolve_context_key(moluoxixi_dir, hook_input)
     _persist_context_key_for_bash(context_key)
 
     # Load config for scope filtering and legacy detection
-    is_mono, packages, scope_config, task_pkg, default_pkg = _load_trellis_config(
-        trellis_dir,
+    is_mono, packages, scope_config, task_pkg, default_pkg = _load_moluoxixi_config(
+        moluoxixi_dir,
         hook_input,
     )
     allowed_pkgs = _resolve_spec_scope(is_mono, packages, scope_config, task_pkg, default_pkg)
 
     output = StringIO()
 
-    spec_index_paths = _collect_spec_index_paths(trellis_dir, allowed_pkgs)
+    spec_index_paths = _collect_spec_index_paths(moluoxixi_dir, allowed_pkgs)
 
     output.write("""<session-context>
 Moluoxixi compact SessionStart context. Use it to orient the session; load details on demand.
 </session-context>
 
 """)
-    output.write(_build_first_reply_notice(_resolve_update_hint(trellis_dir, context_key)))
+    output.write(_build_first_reply_notice(_resolve_update_hint(moluoxixi_dir, context_key)))
     output.write("\n\n")
 
     # Legacy migration warning
-    legacy_warning = _check_legacy_spec(trellis_dir, is_mono, packages)
+    legacy_warning = _check_legacy_spec(moluoxixi_dir, is_mono, packages)
     if legacy_warning:
         output.write(f"<migration-warning>\n{legacy_warning}\n</migration-warning>\n\n")
 
     output.write("<current-state>\n")
-    output.write(_build_compact_current_state(trellis_dir, hook_input, spec_index_paths))
+    output.write(_build_compact_current_state(moluoxixi_dir, hook_input, spec_index_paths))
     output.write("\n</current-state>\n\n")
 
     output.write("<moluoxixi-workflow>\n")
-    output.write(_build_workflow_overview(trellis_dir / "workflow.md"))
+    output.write(_build_workflow_overview(moluoxixi_dir / "workflow.md"))
     output.write("\n</moluoxixi-workflow>\n\n")
 
     output.write("<guidelines>\n")
@@ -908,7 +908,7 @@ Moluoxixi compact SessionStart context. Use it to orient the session; load detai
     output.write("</guidelines>\n\n")
 
     # Check task status and inject structured tag
-    task_status = _get_task_status(trellis_dir, hook_input)
+    task_status = _get_task_status(moluoxixi_dir, hook_input)
     output.write(f"<task-status>\n{task_status}\n</task-status>\n\n")
 
     output.write("""<ready>
@@ -917,7 +917,7 @@ Context loaded. Follow <task-status>. Load workflow/spec/task details only when 
 
     context_text = output.getvalue()
 
-    # Kiro (CLI trellis agent agentSpawn) adds a hook's stdout directly to the
+    # Kiro (CLI moluoxixi agent agentSpawn) adds a hook's stdout directly to the
     # conversation context — no JSON envelope. Emit the bare overview text.
     # Conditionally isolated: all other platforms keep the JSON path below.
     if _detect_platform(hook_input) == "kiro":

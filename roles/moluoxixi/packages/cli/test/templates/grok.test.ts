@@ -60,7 +60,7 @@ describe("grok collectGrokTemplates", () => {
     expect(files.has(".grok/commands/moluoxixi-continue.md")).toBe(true);
     expect(files.has(".grok/commands/moluoxixi-finish-work.md")).toBe(true);
     // Nested ZCode-style layout must not be used
-    expect(files.has(".grok/commands/trellis/start.md")).toBe(false);
+    expect(files.has(".grok/commands/moluoxixi/start.md")).toBe(false);
 
     expect(files.has(".grok/agents/moluoxixi-implement.md")).toBe(true);
     expect(files.has(".grok/agents/moluoxixi-check.md")).toBe(true);

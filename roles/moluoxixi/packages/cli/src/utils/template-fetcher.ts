@@ -23,7 +23,7 @@ const TEMPLATE_REPO = "gh:mindfold-ai/marketplace";
 
 /** Map template type to installation path */
 const INSTALL_PATHS: Record<string, string> = {
-  spec: ".trellis/spec",
+  spec: ".moluoxixi/spec",
   skill: ".agents/skills",
   command: ".claude/commands",
   full: ".", // Entire project root
@@ -1363,7 +1363,7 @@ export function collectDirectoryFiles(
 
 /**
  * Download a direct registry spec into a temporary directory and return its
- * files as update-template entries under `.trellis/spec/**`.
+ * files as update-template entries under `.moluoxixi/spec/**`.
  */
 export async function fetchRegistrySpecTemplates(
   registry: RegistrySource,
@@ -1386,8 +1386,8 @@ export async function fetchRegistrySpecTemplates(
     return {
       success: true,
       files: collectDirectoryFiles(
-        path.join(tempRoot, ".trellis", "spec"),
-        ".trellis/spec",
+        path.join(tempRoot, ".moluoxixi", "spec"),
+        ".moluoxixi/spec",
       ),
     };
   } finally {

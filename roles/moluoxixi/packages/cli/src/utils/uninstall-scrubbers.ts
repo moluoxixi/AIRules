@@ -1,5 +1,5 @@
 /**
- * Scrubbers for structured config files during `trellis uninstall`.
+ * Scrubbers for structured config files during `moluoxixi uninstall`.
  *
  * Each scrubber takes the file content (and any context it needs) and returns
  * `{ content, fullyEmpty }`:
@@ -121,7 +121,7 @@ export function scrubHooksJson(
       if (mode === "flat") {
         const cmd = getEntryCommand(entry);
         if (cmd !== null && commandMatchesDeletedPath(cmd, deletedPaths)) {
-          continue; // drop trellis entry
+          continue; // drop moluoxixi entry
         }
         filteredEvent.push(entry);
       } else {
@@ -224,9 +224,9 @@ export function scrubOpencodePackageJson(content: string): ScrubResult {
  * The `extensions`/`skills`/`prompts` arrays are paths relative to `.pi/`. We
  * remove the exact entries that the Pi configurator emits.
  */
-const PI_TRELLIS_EXTENSION = "./extensions/trellis/index.ts";
-const PI_TRELLIS_SKILLS = "./skills";
-const PI_TRELLIS_PROMPTS = "./prompts";
+const PI_MOLUOXIXI_EXTENSION = "./extensions/moluoxixi/index.ts";
+const PI_MOLUOXIXI_SKILLS = "./skills";
+const PI_MOLUOXIXI_PROMPTS = "./prompts";
 const PI_SUBAGENTS_PACKAGE = "npm:pi-subagents";
 
 function isMoluoxixiPiEntry(value: unknown, target: string): boolean {
@@ -236,7 +236,7 @@ function isMoluoxixiPiEntry(value: unknown, target: string): boolean {
 /**
  * Scrub `.pi/settings.json`:
  * - drop `enableSkillCommands` (moluoxixi-flagged)
- * - remove trellis entries from `extensions`/`skills`/`prompts` arrays
+ * - remove moluoxixi entries from `extensions`/`skills`/`prompts` arrays
  * - remove moluoxixi-managed `packages["npm:pi-subagents"]` isolation override
  * - drop arrays that become empty
  */
@@ -258,9 +258,9 @@ export function scrubPiSettings(content: string): ScrubResult {
   }
 
   const arrayCleanups: [string, string][] = [
-    ["extensions", PI_TRELLIS_EXTENSION],
-    ["skills", PI_TRELLIS_SKILLS],
-    ["prompts", PI_TRELLIS_PROMPTS],
+    ["extensions", PI_MOLUOXIXI_EXTENSION],
+    ["skills", PI_MOLUOXIXI_SKILLS],
+    ["prompts", PI_MOLUOXIXI_PROMPTS],
   ];
   for (const [key, target] of arrayCleanups) {
     const arr = root[key];
@@ -315,15 +315,15 @@ export function scrubPiSettings(content: string): ScrubResult {
  *
  * Strategy: line-based removal. We strip:
  *  - the `project_doc_fallback_filenames = ...` line
- *  - any line that is *only* a comment introduced by trellis (the entire file
+ *  - any line that is *only* a comment introduced by moluoxixi (the entire file
  *    as shipped is comments + that one assignment)
  *  - blank lines that surrounded those removals
  *
- * If the user added their own non-trellis lines, they are preserved as-is.
+ * If the user added their own non-moluoxixi lines, they are preserved as-is.
  * "Fully empty" = post-scrub content has no non-whitespace characters.
  */
 export function scrubCodexConfigToml(content: string): ScrubResult {
-  const trellisCommentMarkers = [
+  const moluoxixiCommentMarkers = [
     "Project-scoped Codex defaults for Moluoxixi workflows.",
     "Codex loads this after ~/.codex/config.toml when you work in this project.",
     "Keep AGENTS.md as the primary project instruction file.",
@@ -343,8 +343,8 @@ export function scrubCodexConfigToml(content: string): ScrubResult {
     const trimmed = line.trim();
     if (!trimmed.startsWith("#")) return false;
     const inner = trimmed.replace(/^#+\s?/, "").trim();
-    if (inner.length === 0) return true; // bare `#` line inside trellis block
-    return trellisCommentMarkers.some((m) => inner === m);
+    if (inner.length === 0) return true; // bare `#` line inside moluoxixi block
+    return moluoxixiCommentMarkers.some((m) => inner === m);
   }
 
   function isMoluoxixiAssignment(line: string): boolean {

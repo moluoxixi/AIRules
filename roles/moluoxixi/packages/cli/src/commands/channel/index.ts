@@ -280,7 +280,7 @@ export function registerChannelCommand(program: Command): void {
     .option("--scope <scope>", "channel scope: project | global")
     .option(
       "--agent <agent-name>",
-      "load .trellis/agents/<name>.md (sets default --provider / --model / system prompt)",
+      "load .moluoxixi/agents/<name>.md (sets default --provider / --model / system prompt)",
     )
     .option(
       "--provider <provider>",
@@ -319,7 +319,7 @@ export function registerChannelCommand(program: Command): void {
     )
     .option(
       "--by <agent>",
-      "identity recorded as the spawn author (defaults to TRELLIS_CHANNEL_AS env or 'main')",
+      "identity recorded as the spawn author (defaults to MOLUOXIXI_CHANNEL_AS env or 'main')",
     )
     .option(
       "--inbox-policy <policy>",
@@ -396,7 +396,7 @@ export function registerChannelCommand(program: Command): void {
     )
     .option(
       "--agent <agent-name>",
-      "load .trellis/agents/<name>.md (sets default --provider / --as / system prompt)",
+      "load .moluoxixi/agents/<name>.md (sets default --provider / --as / system prompt)",
     )
     .option(
       "--provider <provider>",
@@ -541,7 +541,7 @@ export function registerChannelCommand(program: Command): void {
   channel
     .command("list")
     .description(
-      "List channels in ~/.trellis/channels/ with worker / activity summary",
+      "List channels in ~/.moluoxixi/channels/ with worker / activity summary",
     )
     .option("--scope <scope>", "channel scope: project | global")
     .option("--json", "emit JSON instead of a formatted table")

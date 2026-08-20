@@ -28,13 +28,13 @@ import {
   implementAgentTemplate,
   checkAgentTemplate,
   configYamlTemplate,
-} from "../../src/templates/trellis/index.js";
+} from "../../src/templates/moluoxixi/index.js";
 
 // =============================================================================
 // Template Constants — module-level string exports
 // =============================================================================
 
-describe("trellis template constants", () => {
+describe("moluoxixi template constants", () => {
   const allTemplates = {
     scriptsInit,
     commonInit,
@@ -378,7 +378,7 @@ describe("getAllScripts", () => {
 
 // =============================================================================
 // getAllAgents — channel runtime agent definitions dispatched at init/update.
-// agent-loader.ts loads `.trellis/agents/<name>.md` and requires `---` YAML
+// agent-loader.ts loads `.moluoxixi/agents/<name>.md` and requires `---` YAML
 // frontmatter at the top with a flat `name: <name>` field. These tests pin the
 // contract so a future template edit can't silently break channel spawn.
 // =============================================================================
@@ -405,7 +405,7 @@ describe("getAllAgents", () => {
       expect(frontmatterClose, `${file} must have a closing --- frontmatter line`).toBeGreaterThan(0);
       const frontmatter = content.slice(4, frontmatterClose);
       // The agent's `name:` field must match the file basename so
-      // `trellis channel spawn --agent <name>` resolves correctly.
+      // `moluoxixi channel spawn --agent <name>` resolves correctly.
       const expectedName = file.replace(/\.md$/, "");
       const nameLine = frontmatter
         .split("\n")

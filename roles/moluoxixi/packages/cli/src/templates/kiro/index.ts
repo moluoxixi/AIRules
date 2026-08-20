@@ -8,7 +8,7 @@
  *
  * Directory structure:
  *   kiro/
- *   ├── agents/      # Agent definitions (JSON) — main `trellis` + 3 sub-agents
+ *   ├── agents/      # Agent definitions (JSON) — main `moluoxixi` + 3 sub-agents
  *   └── hooks/       # IDE `.kiro.hook` definitions (JSON)
  */
 

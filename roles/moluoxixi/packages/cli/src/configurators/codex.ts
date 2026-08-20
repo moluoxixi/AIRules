@@ -22,7 +22,7 @@ import {
  * User-set `model` / `model_reasoning_effort` top-level keys on a generated
  * `moluoxixi-*.toml` agent profile. Users configure sub-agent models by
  * editing these files directly (matches Codex's own docs) — there is no
- * `.trellis/config.yaml` indirection.
+ * `.moluoxixi/config.yaml` indirection.
  */
 export interface CodexAgentModelKeys {
   model?: string;
@@ -143,7 +143,7 @@ export function preserveCodexAgentModelKeys(
 }
 
 /**
- * The Codex file set — written at init and diffed by `trellis update`.
+ * The Codex file set — written at init and diffed by `moluoxixi update`.
  * - .agents/skills/ — shared skills from common source, rendered with the
  *   neutral placeholder resolver so the auto-triggered skill templates from
  *   `common/skills/` are byte-identical regardless of which platform writes
@@ -190,7 +190,7 @@ export function collectCodexTemplates(): Map<string, string> {
  */
 export async function configureCodex(cwd: string): Promise<void> {
   // Build map → post-process map → write. Rendered up front so the preserved
-  // user keys are grafted onto exactly the bytes `trellis update` compares
+  // user keys are grafted onto exactly the bytes `moluoxixi update` compares
   // against — update.ts runs preserveCodexAgentModelKeys over its already
   // rendered map too, and the two must agree. writeTemplateMap re-renders,
   // which is a no-op (replacePythonCommandLiterals is idempotent).
@@ -214,7 +214,7 @@ export async function configureCodex(cwd: string): Promise<void> {
   // it the workflow breadcrumb won't auto-inject (the moluoxixi-bootstrap
   // fallback in inject-workflow-state.py covers this case). Documented in
   // spec/cli/backend/platform-integration.md.
-  if (!process.env.VITEST && !process.env.TRELLIS_QUIET) {
+  if (!process.env.VITEST && !process.env.MOLUOXIXI_QUIET) {
     process.stderr.write(
       "⚠️  Codex hooks require `features.hooks = true` in your " +
         "~/.codex/config.toml (Codex 0.129+; older versions: `codex_hooks = true`). " +

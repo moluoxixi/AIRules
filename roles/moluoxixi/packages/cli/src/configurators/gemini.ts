@@ -14,9 +14,9 @@ import {
 } from "../templates/gemini/index.js";
 
 /**
- * The Gemini CLI file set — written at init and diffed by `trellis update`.
+ * The Gemini CLI file set — written at init and diffed by `moluoxixi update`.
  * Gemini is a pull-based class-2 platform.
- * - commands/trellis/ — start + finish-work as TOML slash commands
+ * - commands/moluoxixi/ — start + finish-work as TOML slash commands
  * - .agents/skills/moluoxixi-{name}/SKILL.md — auto-triggered shared skills
  *   written to the cross-platform `.agents/skills/` workspace alias (Gemini
  *   CLI 0.40+ reads it natively; previously `.gemini/skills/` was used,
@@ -34,7 +34,7 @@ export function collectGeminiTemplates(): Map<string, string> {
   const files = new Map<string, string>();
   for (const cmd of resolveCommands(ctx)) {
     const toml = `description = "Moluoxixi: ${cmd.name}"\n\nprompt = """\n${cmd.content}\n"""\n`;
-    files.set(`.gemini/commands/trellis/${cmd.name}.toml`, toml);
+    files.set(`.gemini/commands/moluoxixi/${cmd.name}.toml`, toml);
   }
   for (const [filePath, content] of collectSkillTemplates(
     ".agents/skills",

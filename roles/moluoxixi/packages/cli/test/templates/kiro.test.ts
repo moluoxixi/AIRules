@@ -18,12 +18,12 @@ function parseAgent(name: string): KiroAgentJson {
 }
 
 describe("kiro templates", () => {
-  it("ships the main `trellis` agent plus 3 sub-agents", () => {
+  it("ships the main `moluoxixi` agent plus 3 sub-agents", () => {
     const names = getAllAgents()
       .map((a) => a.name)
       .sort();
     expect(names).toEqual([
-      "trellis",
+      "moluoxixi",
       "moluoxixi-check",
       "moluoxixi-implement",
       "moluoxixi-research",
@@ -36,18 +36,18 @@ describe("kiro templates", () => {
     }
   });
 
-  it("main `trellis` agent wires per-turn + session-start hooks and resources", () => {
-    const trellis = parseAgent("trellis");
+  it("main `moluoxixi` agent wires per-turn + session-start hooks and resources", () => {
+    const moluoxixi = parseAgent("moluoxixi");
 
-    expect(trellis.hooks?.userPromptSubmit?.[0].command).toContain(
+    expect(moluoxixi.hooks?.userPromptSubmit?.[0].command).toContain(
       ".kiro/hooks/inject-workflow-state.py",
     );
-    expect(trellis.hooks?.agentSpawn?.[0].command).toContain(
+    expect(moluoxixi.hooks?.agentSpawn?.[0].command).toContain(
       ".kiro/hooks/session-start.py",
     );
-    expect(trellis.resources).toContain("file://.trellis/workflow.md");
+    expect(moluoxixi.resources).toContain("file://.moluoxixi/workflow.md");
     // The main agent must NOT inject sub-agent context (that's the sub-agents' job).
-    expect(JSON.stringify(trellis.hooks)).not.toContain(
+    expect(JSON.stringify(moluoxixi.hooks)).not.toContain(
       "inject-subagent-context.py",
     );
   });

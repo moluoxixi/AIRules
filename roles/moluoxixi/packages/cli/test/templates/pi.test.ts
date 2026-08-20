@@ -62,7 +62,7 @@ interface PiExtensionInternals {
   }) => string | undefined;
   cmdHasMoluoxixiCtx: (cmd: string) => boolean;
   shellQuote: (v: string) => string;
-  trellisExtension: (pi: {
+  moluoxixiExtension: (pi: {
     registerTool?: (tool: unknown) => void;
     registerShortcut?: (key: string, opts: unknown) => void;
     getThinkingLevel?: () => string;
@@ -101,7 +101,7 @@ function evaluateExtension<T>(
   const moduleObject: { exports: Record<string, unknown> } = { exports: {} };
   const sandboxProcess = Object.create(process) as NodeJS.Process;
   const sandboxEnv = { ...process.env, ...env };
-  delete sandboxEnv.TRELLIS_SUBAGENT_CHILD;
+  delete sandboxEnv.MOLUOXIXI_SUBAGENT_CHILD;
   Object.defineProperty(sandboxProcess, "cwd", { value: () => cwd });
   Object.defineProperty(sandboxProcess, "env", { value: sandboxEnv });
   const sandbox = vm.createContext({
@@ -132,7 +132,7 @@ export {
   contextModelRef,
   cmdHasMoluoxixiCtx,
   shellQuote,
-  trellisExtension,
+  moluoxixiExtension,
   truncateUtf8,
   readContextInjectionLimits,
   buildContext as buildContextForTest,
@@ -158,9 +158,9 @@ export { buildPiArgs, resolveRunCfg, splitModelThinking };
 function createMinimalMoluoxixiRoot(): string {
   const root = mkdtempSync(join(tmpdir(), "moluoxixi-pi-355-"));
   mkdirSync(join(root, ".pi"), { recursive: true });
-  mkdirSync(join(root, ".trellis", "scripts"), { recursive: true });
+  mkdirSync(join(root, ".moluoxixi", "scripts"), { recursive: true });
   writeFileSync(
-    join(root, ".trellis", "workflow.md"),
+    join(root, ".moluoxixi", "workflow.md"),
     [
       "[workflow-state:no_task]",
       "No active task. First classify the current turn and ask for task-creation consent before creating any Moluoxixi task.",
@@ -169,7 +169,7 @@ function createMinimalMoluoxixiRoot(): string {
     ].join("\n"),
   );
   writeFileSync(
-    join(root, ".trellis", "scripts", "get_context.py"),
+    join(root, ".moluoxixi", "scripts", "get_context.py"),
     [
       "#!/usr/bin/env python3",
       "import sys",
@@ -208,7 +208,7 @@ describe("pi templates", () => {
     };
 
     expect(settings.enableSkillCommands).toBe(true);
-    expect(settings.extensions).toEqual(["./extensions/trellis/index.ts"]);
+    expect(settings.extensions).toEqual(["./extensions/moluoxixi/index.ts"]);
     expect(settings.skills).toBeUndefined();
     expect(settings.prompts).toEqual(["./prompts"]);
     expect(settings.packages).toBeUndefined();
@@ -239,11 +239,11 @@ describe("pi templates", () => {
     );
   });
 
-  it("extension registers the trellis_subagent tool with mode+thinking schema", () => {
+  it("extension registers the moluoxixi_subagent tool with mode+thinking schema", () => {
     const extension = getExtensionTemplate();
 
     // Tool name + label avoid collision with community subagent packages.
-    expect(extension).toContain('name: "trellis_subagent"');
+    expect(extension).toContain('name: "moluoxixi_subagent"');
     expect(extension).toContain('label: "Moluoxixi Subagent"');
 
     // Schema must declare the three dispatch modes and the thinking enum so the LLM
@@ -270,7 +270,7 @@ describe("pi templates", () => {
     expect(extension).toContain('pi.on?.("before_agent_start"');
     // context: preserves the existing context-key establishment behavior only
     expect(extension).toContain('pi.on?.("context"');
-    // tool_call: inject TRELLIS_CONTEXT_ID into bash commands
+    // tool_call: inject MOLUOXIXI_CONTEXT_ID into bash commands
     expect(extension).toContain('pi.on?.("tool_call"');
     // tool_result: mark failed/cancelled subagent runs as errors
     expect(extension).toContain('pi.on?.("tool_result"');
@@ -278,13 +278,13 @@ describe("pi templates", () => {
 
   it("keeps user input clean while persisting hidden runtime context", () => {
     const root = createMinimalMoluoxixiRoot();
-    const { trellisExtension } = loadExtensionInternals(root);
+    const { moluoxixiExtension } = loadExtensionInternals(root);
     const handlers = new Map<
       string,
       (event: unknown, ctx?: unknown) => unknown
     >();
 
-    trellisExtension({
+    moluoxixiExtension({
       registerTool: vi.fn(),
       registerShortcut: vi.fn(),
       on(event, handler) {
@@ -387,13 +387,13 @@ describe("pi templates", () => {
 
   it("delivers task context changes as persisted messages, not systemPrompt churn", () => {
     const root = createMinimalMoluoxixiRoot();
-    const { trellisExtension } = loadExtensionInternals(root);
+    const { moluoxixiExtension } = loadExtensionInternals(root);
     const handlers = new Map<
       string,
       (event: unknown, ctx?: unknown) => unknown
     >();
 
-    trellisExtension({
+    moluoxixiExtension({
       registerTool: vi.fn(),
       registerShortcut: vi.fn(),
       on(event, handler) {
@@ -424,18 +424,18 @@ describe("pi templates", () => {
     expect(first.systemPrompt).toContain("No active Moluoxixi task found");
 
     // A task is created and activated mid-session.
-    const taskDir = join(root, ".trellis", "tasks", "07-07-cache-fix");
+    const taskDir = join(root, ".moluoxixi", "tasks", "07-07-cache-fix");
     mkdirSync(taskDir, { recursive: true });
     writeFileSync(join(taskDir, "prd.md"), "# PRD\nStable prefix matters.");
     writeFileSync(
       join(taskDir, "task.json"),
       JSON.stringify({ id: "07-07-cache-fix", status: "in_progress" }),
     );
-    mkdirSync(join(root, ".trellis", ".runtime", "sessions"), {
+    mkdirSync(join(root, ".moluoxixi", ".runtime", "sessions"), {
       recursive: true,
     });
     writeFileSync(
-      join(root, ".trellis", ".runtime", "sessions", "pi_pi-unit-task-update.json"),
+      join(root, ".moluoxixi", ".runtime", "sessions", "pi_pi-unit-task-update.json"),
       JSON.stringify({ current_task: "tasks/07-07-cache-fix" }),
     );
 
@@ -455,8 +455,8 @@ describe("pi templates", () => {
 
   it("keeps a native Pi session isolated from a foreign context key (#512)", () => {
     const root = createMinimalMoluoxixiRoot();
-    const taskDir = join(root, ".trellis", "tasks", "foreign-task");
-    const sessionsDir = join(root, ".trellis", ".runtime", "sessions");
+    const taskDir = join(root, ".moluoxixi", "tasks", "foreign-task");
+    const sessionsDir = join(root, ".moluoxixi", ".runtime", "sessions");
     mkdirSync(taskDir, { recursive: true });
     mkdirSync(sessionsDir, { recursive: true });
     writeFileSync(join(taskDir, "prd.md"), "FOREIGN TASK CONTENT");
@@ -470,14 +470,14 @@ describe("pi templates", () => {
     );
 
     try {
-      const { trellisExtension } = loadExtensionInternals(root, {
-        TRELLIS_CONTEXT_ID: "pi_process_foreign",
+      const { moluoxixiExtension } = loadExtensionInternals(root, {
+        MOLUOXIXI_CONTEXT_ID: "pi_process_foreign",
       });
       const handlers = new Map<
         string,
         (event: unknown, ctx?: unknown) => unknown
       >();
-      trellisExtension({
+      moluoxixiExtension({
         registerTool: vi.fn(),
         registerShortcut: vi.fn(),
         on(event, handler) {
@@ -501,7 +501,7 @@ describe("pi templates", () => {
       };
       handlers.get("tool_call")?.(bashEvent, ctx);
       expect(bashEvent.input.command).toBe(
-        "export TRELLIS_CONTEXT_ID='pi_native-window-b'; printf safe",
+        "export MOLUOXIXI_CONTEXT_ID='pi_native-window-b'; printf safe",
       );
 
       const collisionKeys = ["native/window", "native:window"].map(
@@ -510,7 +510,7 @@ describe("pi templates", () => {
             string,
             (event: unknown, ctx?: unknown) => unknown
           >();
-          loadExtensionInternals(root).trellisExtension({
+          loadExtensionInternals(root).moluoxixiExtension({
             on(event, handler) {
               collisionHandlers.set(event, handler);
             },
@@ -523,7 +523,7 @@ describe("pi templates", () => {
             sessionManager: { getSessionId: () => sessionId },
           });
           return event.input.command.match(
-            /^export TRELLIS_CONTEXT_ID='([^']+)'/,
+            /^export MOLUOXIXI_CONTEXT_ID='([^']+)'/,
           )?.[1];
         },
       );
@@ -545,8 +545,8 @@ describe("pi templates", () => {
         (event: unknown, ctx?: unknown) => unknown
       >();
       loadExtensionInternals(root, {
-        TRELLIS_CONTEXT_ID: "pi_process_foreign",
-      }).trellisExtension({
+        MOLUOXIXI_CONTEXT_ID: "pi_process_foreign",
+      }).moluoxixiExtension({
         on(event, handler) {
           fallbackHandlers.set(event, handler);
         },
@@ -562,12 +562,12 @@ describe("pi templates", () => {
       fallbackHandlers.get("tool_call")?.(firstFallback);
       fallbackHandlers.get("tool_call")?.(secondFallback);
       const fallbackKey = firstFallback.input.command.match(
-        /^export TRELLIS_CONTEXT_ID='([^']+)'/,
+        /^export MOLUOXIXI_CONTEXT_ID='([^']+)'/,
       )?.[1];
       expect(fallbackKey).toMatch(/^pi_process_[a-f0-9]{24}$/);
       expect(fallbackKey).not.toBe("pi_process_foreign");
       expect(secondFallback.input.command).toContain(
-        `TRELLIS_CONTEXT_ID='${fallbackKey}'`,
+        `MOLUOXIXI_CONTEXT_ID='${fallbackKey}'`,
       );
     } finally {
       rmSync(root, { recursive: true, force: true });
@@ -577,7 +577,7 @@ describe("pi templates", () => {
   it("extension tool_result handler marks failed/cancelled subagent runs as errors", () => {
     const extension = getExtensionTemplate();
 
-    expect(extension).toContain('ev.toolName === "trellis_subagent"');
+    expect(extension).toContain('ev.toolName === "moluoxixi_subagent"');
     expect(extension).toContain('r.status === "failed"');
     expect(extension).toContain('r.status === "cancelled"');
     expect(extension).toContain("isError: true");
@@ -702,7 +702,7 @@ fallbackModels:
       fallbackModels: [],
     };
     const dogfoodExtension = readFileSync(
-      join(process.cwd(), "..", "..", ".pi", "extensions", "trellis", "index.ts"),
+      join(process.cwd(), "..", "..", ".pi", "extensions", "moluoxixi", "index.ts"),
       "utf-8",
     );
 
@@ -813,11 +813,11 @@ fallbackModels:
     );
 
     try {
-      const { trellisExtension } = loadExtensionInternals(root, {
-        TRELLIS_PI_CLI_JS: fakeCli,
+      const { moluoxixiExtension } = loadExtensionInternals(root, {
+        MOLUOXIXI_PI_CLI_JS: fakeCli,
       });
       let registeredTool: RegisteredPiTool | undefined;
-      trellisExtension({
+      moluoxixiExtension({
         registerTool(tool) {
           registeredTool = tool as RegisteredPiTool;
         },
@@ -825,7 +825,7 @@ fallbackModels:
       });
       expect(registeredTool).toBeDefined();
       if (!registeredTool)
-        throw new Error("trellis_subagent was not registered");
+        throw new Error("moluoxixi_subagent was not registered");
 
       const result = await registeredTool.execute(
         "model-inheritance-test",
@@ -852,9 +852,9 @@ fallbackModels:
   it("cmdHasMoluoxixiCtx detects already-prefixed bash commands", () => {
     const { cmdHasMoluoxixiCtx } = loadExtensionInternals();
 
-    expect(cmdHasMoluoxixiCtx("export TRELLIS_CONTEXT_ID=foo; ls")).toBe(true);
-    expect(cmdHasMoluoxixiCtx("TRELLIS_CONTEXT_ID=foo ls")).toBe(true);
-    expect(cmdHasMoluoxixiCtx("env TRELLIS_CONTEXT_ID=foo ls")).toBe(true);
+    expect(cmdHasMoluoxixiCtx("export MOLUOXIXI_CONTEXT_ID=foo; ls")).toBe(true);
+    expect(cmdHasMoluoxixiCtx("MOLUOXIXI_CONTEXT_ID=foo ls")).toBe(true);
+    expect(cmdHasMoluoxixiCtx("env MOLUOXIXI_CONTEXT_ID=foo ls")).toBe(true);
     expect(cmdHasMoluoxixiCtx("ls -la")).toBe(false);
     expect(cmdHasMoluoxixiCtx("")).toBe(false);
   });
@@ -867,12 +867,12 @@ fallbackModels:
     expect(shellQuote("with 'quote'")).toBe("'with '\\''quote'\\'''");
   });
 
-  it("extension forwards TRELLIS_CONTEXT_ID into spawned Pi child env", () => {
+  it("extension forwards MOLUOXIXI_CONTEXT_ID into spawned Pi child env", () => {
     const extension = getExtensionTemplate();
 
-    // The child pi process must inherit TRELLIS_CONTEXT_ID so sub-agent
+    // The child pi process must inherit MOLUOXIXI_CONTEXT_ID so sub-agent
     // task.py current resolves to the same task.
-    expect(extension).toContain("TRELLIS_CONTEXT_ID:");
+    expect(extension).toContain("MOLUOXIXI_CONTEXT_ID:");
     expect(extension).toContain("...process.env");
   });
 
@@ -902,20 +902,20 @@ describe("pi extension: context injection limits (issue #441)", () => {
   }
 
   function activateTask(root: string, taskDirName: string): string {
-    const taskDir = join(root, ".trellis", "tasks", taskDirName);
+    const taskDir = join(root, ".moluoxixi", "tasks", taskDirName);
     mkdirSync(taskDir, { recursive: true });
-    mkdirSync(join(root, ".trellis", ".runtime", "sessions"), {
+    mkdirSync(join(root, ".moluoxixi", ".runtime", "sessions"), {
       recursive: true,
     });
     writeFileSync(
-      join(root, ".trellis", ".runtime", "sessions", `${SESSION_KEY}.json`),
+      join(root, ".moluoxixi", ".runtime", "sessions", `${SESSION_KEY}.json`),
       JSON.stringify({ current_task: `tasks/${taskDirName}` }),
     );
     return taskDir;
   }
 
   function writeConfig(root: string, yaml: string): void {
-    writeFileSync(join(root, ".trellis", "config.yaml"), yaml, "utf-8");
+    writeFileSync(join(root, ".moluoxixi", "config.yaml"), yaml, "utf-8");
   }
 
   describe("truncateUtf8", () => {
@@ -966,7 +966,7 @@ describe("pi extension: context injection limits (issue #441)", () => {
   describe("readContextInjectionLimits", () => {
     it("returns built-in defaults when config.yaml has no context_injection section", () => {
       const root = createRoot();
-      mkdirSync(join(root, ".trellis"), { recursive: true });
+      mkdirSync(join(root, ".moluoxixi"), { recursive: true });
       writeConfig(root, "session_auto_commit: true\n");
       const { readContextInjectionLimits } = loadExtensionInternals();
       expect(readContextInjectionLimits(root)).toEqual({
@@ -988,7 +988,7 @@ describe("pi extension: context injection limits (issue #441)", () => {
 
     it("applies explicit overrides for all three keys", () => {
       const root = createRoot();
-      mkdirSync(join(root, ".trellis"), { recursive: true });
+      mkdirSync(join(root, ".moluoxixi"), { recursive: true });
       writeConfig(
         root,
         [
@@ -1008,7 +1008,7 @@ describe("pi extension: context injection limits (issue #441)", () => {
 
     it("0 means unlimited and is preserved as-is (not replaced by default)", () => {
       const root = createRoot();
-      mkdirSync(join(root, ".trellis"), { recursive: true });
+      mkdirSync(join(root, ".moluoxixi"), { recursive: true });
       writeConfig(
         root,
         ["context_injection:", "  max_total_bytes: 0"].join("\n"),
@@ -1019,7 +1019,7 @@ describe("pi extension: context injection limits (issue #441)", () => {
 
     it("falls back to default for a negative value", () => {
       const root = createRoot();
-      mkdirSync(join(root, ".trellis"), { recursive: true });
+      mkdirSync(join(root, ".moluoxixi"), { recursive: true });
       writeConfig(
         root,
         ["context_injection:", "  max_file_bytes: -5"].join("\n"),
@@ -1030,7 +1030,7 @@ describe("pi extension: context injection limits (issue #441)", () => {
 
     it("falls back to default for a non-integer value", () => {
       const root = createRoot();
-      mkdirSync(join(root, ".trellis"), { recursive: true });
+      mkdirSync(join(root, ".moluoxixi"), { recursive: true });
       writeConfig(
         root,
         ["context_injection:", "  max_artifact_bytes: not-a-number"].join(
@@ -1180,7 +1180,7 @@ describe("pi extension: context injection limits (issue #441)", () => {
         ].join("\n") + "\n",
         "utf-8",
       );
-      mkdirSync(join(root, ".trellis"), { recursive: true });
+      mkdirSync(join(root, ".moluoxixi"), { recursive: true });
       writeConfig(
         root,
         [
@@ -1213,7 +1213,7 @@ describe("pi extension: context injection limits (issue #441)", () => {
         JSON.stringify({ file: "big.txt", reason: "big" }) + "\n",
         "utf-8",
       );
-      mkdirSync(join(root, ".trellis"), { recursive: true });
+      mkdirSync(join(root, ".moluoxixi"), { recursive: true });
       writeConfig(
         root,
         [
@@ -1232,7 +1232,7 @@ describe("pi extension: context injection limits (issue #441)", () => {
       const root = createRoot();
       const taskDir = activateTask(root, "task-artifact-cap");
       writeFileSync(join(taskDir, "prd.md"), "P".repeat(1000), "utf-8");
-      mkdirSync(join(root, ".trellis"), { recursive: true });
+      mkdirSync(join(root, ".moluoxixi"), { recursive: true });
       writeConfig(
         root,
         [
@@ -1246,7 +1246,7 @@ describe("pi extension: context injection limits (issue #441)", () => {
       const out = buildContextForTest(root, "moluoxixi-implement", SESSION_KEY);
       const relTaskDir = "tasks/task-artifact-cap".replace(
         "tasks/",
-        ".trellis/tasks/",
+        ".moluoxixi/tasks/",
       );
       expect(out).toContain("P".repeat(20));
       expect(out).not.toContain("P".repeat(21));

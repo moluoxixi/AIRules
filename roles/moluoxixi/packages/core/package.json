@@ -52,7 +52,7 @@
     "typecheck": "tsc --noEmit"
   },
   "keywords": [
-    "trellis",
+    "moluoxixi",
     "channel",
     "sdk",
     "agent",
@@ -73,6 +73,6 @@
   },
   "repository": {
     "type": "git",
-    "url": "https://github.com/mindfold-ai/trellis.git"
+    "url": "https://github.com/mindfold-ai/moluoxixi.git"
   }
 }

@@ -126,8 +126,8 @@ function detectPythonVersion(command: string): PythonProbe {
 export function requireSupportedPython(command: string): string {
   // Final escape hatch — set when the user knows python3 is on PATH but
   // the probe keeps failing for environment-specific reasons.
-  if (process.env.TRELLIS_SKIP_PYTHON_CHECK === "1") {
-    return `version check skipped (TRELLIS_SKIP_PYTHON_CHECK=1)`;
+  if (process.env.MOLUOXIXI_SKIP_PYTHON_CHECK === "1") {
+    return `version check skipped (MOLUOXIXI_SKIP_PYTHON_CHECK=1)`;
   }
 
   const versionOutput = detectPythonVersion(command);
@@ -138,7 +138,7 @@ export function requireSupportedPython(command: string): string {
         `⚠ Python version check skipped — sandboxed environment blocked ` +
           `child_process spawn (EPERM/EACCES). Assuming "${command}" is on ` +
           `PATH. If init fails later, re-run on the host or set ` +
-          `TRELLIS_SKIP_PYTHON_CHECK=1.`,
+          `MOLUOXIXI_SKIP_PYTHON_CHECK=1.`,
       ),
     );
     return `version unknown (sandbox-restricted)`;
@@ -165,7 +165,7 @@ export function requireSupportedPython(command: string): string {
  * Windows: `python` is the usual python.org installer choice, but Microsoft
  * Store ships `python3`, and the `py` launcher is `py -3`. We try all three
  * before giving up — fixes #236 where users with only `python3` (not
- * `python`) had `trellis init` fail outright.
+ * `python`) had `moluoxixi init` fail outright.
  *
  * Non-Windows: `python3` is canonical; `python` is a fallback for systems
  * where Python 3 is the only Python and is named `python` (some Arch
@@ -179,8 +179,8 @@ const PYTHON_CANDIDATES: Record<"win32" | "other", readonly string[]> = {
 /**
  * Detect a working Python ≥ 3.9 command on the host platform.
  *
- * Honors `TRELLIS_PYTHON_CMD` (explicit override, no probe) and
- * `TRELLIS_SKIP_PYTHON_CHECK=1` (skip probe, trust platform default).
+ * Honors `MOLUOXIXI_PYTHON_CMD` (explicit override, no probe) and
+ * `MOLUOXIXI_SKIP_PYTHON_CHECK=1` (skip probe, trust platform default).
  *
  * Otherwise tries each candidate in `PYTHON_CANDIDATES` in order and returns
  * the first whose `--version` matches `Python ≥ 3.9`. Caches the result via
@@ -194,19 +194,19 @@ export function resolveSupportedPython(): {
   version: string;
 } {
   // Explicit override — user knows their environment.
-  const override = process.env.TRELLIS_PYTHON_CMD?.trim();
+  const override = process.env.MOLUOXIXI_PYTHON_CMD?.trim();
   if (override) {
     setResolvedPythonCommand(override);
-    return { command: override, version: "set via TRELLIS_PYTHON_CMD" };
+    return { command: override, version: "set via MOLUOXIXI_PYTHON_CMD" };
   }
 
   // Skip probe entirely.
-  if (process.env.TRELLIS_SKIP_PYTHON_CHECK === "1") {
+  if (process.env.MOLUOXIXI_SKIP_PYTHON_CHECK === "1") {
     const fallback = getPythonCommandForPlatform();
     setResolvedPythonCommand(fallback);
     return {
       command: fallback,
-      version: "version check skipped (TRELLIS_SKIP_PYTHON_CHECK=1)",
+      version: "version check skipped (MOLUOXIXI_SKIP_PYTHON_CHECK=1)",
     };
   }
 
@@ -224,7 +224,7 @@ export function resolveSupportedPython(): {
           `⚠ Python version check skipped — sandboxed environment blocked ` +
             `child_process spawn (EPERM/EACCES). Assuming "${candidate}" is ` +
             `on PATH. If init fails later, re-run on the host or set ` +
-            `TRELLIS_SKIP_PYTHON_CHECK=1.`,
+            `MOLUOXIXI_SKIP_PYTHON_CHECK=1.`,
         ),
       );
       setResolvedPythonCommand(candidate);
@@ -249,16 +249,16 @@ export function resolveSupportedPython(): {
   const installHint = isWindows
     ? `Install Python ≥ 3.9 from https://www.python.org/downloads/windows/ — make sure ` +
       `"Add Python to PATH" is checked in the installer. Or, if Python is ` +
-      `installed under a different name, set TRELLIS_PYTHON_CMD=<your-cmd> ` +
-      `before re-running init (e.g. \`set TRELLIS_PYTHON_CMD=py -3\`).`
+      `installed under a different name, set MOLUOXIXI_PYTHON_CMD=<your-cmd> ` +
+      `before re-running init (e.g. \`set MOLUOXIXI_PYTHON_CMD=py -3\`).`
     : `Install Python ≥ 3.9 from https://www.python.org/downloads/ or via your ` +
-      `package manager. Or set TRELLIS_PYTHON_CMD=<your-cmd> before re-running.`;
+      `package manager. Or set MOLUOXIXI_PYTHON_CMD=<your-cmd> before re-running.`;
 
   throw new Error(
     `No supported Python command found. Tried: ${candidates.join(", ")}.\n` +
       `Probe results:\n  ${probeFailures.join("\n  ")}\n\n` +
       `Moluoxixi init requires Python ≥ 3.9. ${installHint}\n` +
-      `Last-resort escape hatch: set TRELLIS_SKIP_PYTHON_CHECK=1 to skip the probe entirely.`,
+      `Last-resort escape hatch: set MOLUOXIXI_SKIP_PYTHON_CHECK=1 to skip the probe entirely.`,
   );
 }
 
@@ -373,15 +373,15 @@ function getBootstrapRelatedFiles(
   packages?: DetectedPackage[],
 ): string[] {
   if (packages && packages.length > 0) {
-    return packages.map((pkg) => `.trellis/spec/${sanitizePkgName(pkg.name)}/`);
+    return packages.map((pkg) => `.moluoxixi/spec/${sanitizePkgName(pkg.name)}/`);
   }
   if (projectType === "frontend") {
-    return [".trellis/spec/frontend/"];
+    return [".moluoxixi/spec/frontend/"];
   }
   if (projectType === "backend") {
-    return [".trellis/spec/backend/"];
+    return [".moluoxixi/spec/backend/"];
   }
-  return [".trellis/spec/backend/", ".trellis/spec/frontend/"];
+  return [".moluoxixi/spec/backend/", ".moluoxixi/spec/frontend/"];
 }
 
 function getBootstrapPrdContent(
@@ -398,12 +398,12 @@ function getBootstrapPrdContent(
 
 **You (the AI) are running this task. The developer does not read this file.**
 
-The developer just ran \`trellis init\` on this project for the first time.
-\`.trellis/\` now exists with empty spec scaffolding, and this bootstrap task
-exists under \`.trellis/tasks/\`. When they want to work on it, they should start
+The developer just ran \`moluoxixi init\` on this project for the first time.
+\`.moluoxixi/\` now exists with empty spec scaffolding, and this bootstrap task
+exists under \`.moluoxixi/tasks/\`. When they want to work on it, they should start
 this task from a session that provides Moluoxixi session identity.
 
-**Your job**: help them populate \`.trellis/spec/\` with the team's real
+**Your job**: help them populate \`.moluoxixi/spec/\` with the team's real
 coding conventions. Every future AI session — this project's
 \`moluoxixi-implement\` and \`moluoxixi-check\` sub-agents — auto-loads spec files
 listed in per-task jsonl manifests. Empty spec = sub-agents write generic
@@ -430,11 +430,11 @@ ${checklistMarkdown}
 
 | File | What to document |
 |------|------------------|
-| \`.trellis/spec/backend/directory-structure.md\` | Where different file types go (routes, services, utils) |
-| \`.trellis/spec/backend/database-guidelines.md\` | ORM, migrations, query patterns, naming conventions |
-| \`.trellis/spec/backend/error-handling.md\` | How errors are caught, logged, and returned |
-| \`.trellis/spec/backend/logging-guidelines.md\` | Log levels, format, what to log |
-| \`.trellis/spec/backend/quality-guidelines.md\` | Code review standards, testing requirements |
+| \`.moluoxixi/spec/backend/directory-structure.md\` | Where different file types go (routes, services, utils) |
+| \`.moluoxixi/spec/backend/database-guidelines.md\` | ORM, migrations, query patterns, naming conventions |
+| \`.moluoxixi/spec/backend/error-handling.md\` | How errors are caught, logged, and returned |
+| \`.moluoxixi/spec/backend/logging-guidelines.md\` | Log levels, format, what to log |
+| \`.moluoxixi/spec/backend/quality-guidelines.md\` | Code review standards, testing requirements |
 `;
 
   const frontendSection = `
@@ -443,19 +443,19 @@ ${checklistMarkdown}
 
 | File | What to document |
 |------|------------------|
-| \`.trellis/spec/frontend/directory-structure.md\` | Component/page/hook organization |
-| \`.trellis/spec/frontend/component-guidelines.md\` | Component patterns, props conventions |
-| \`.trellis/spec/frontend/hook-guidelines.md\` | Custom hook naming, patterns |
-| \`.trellis/spec/frontend/state-management.md\` | State library, patterns, what goes where |
-| \`.trellis/spec/frontend/type-safety.md\` | TypeScript conventions, type organization |
-| \`.trellis/spec/frontend/quality-guidelines.md\` | Linting, testing, accessibility |
+| \`.moluoxixi/spec/frontend/directory-structure.md\` | Component/page/hook organization |
+| \`.moluoxixi/spec/frontend/component-guidelines.md\` | Component patterns, props conventions |
+| \`.moluoxixi/spec/frontend/hook-guidelines.md\` | Custom hook naming, patterns |
+| \`.moluoxixi/spec/frontend/state-management.md\` | State library, patterns, what goes where |
+| \`.moluoxixi/spec/frontend/type-safety.md\` | TypeScript conventions, type organization |
+| \`.moluoxixi/spec/frontend/quality-guidelines.md\` | Linting, testing, accessibility |
 `;
 
   const footer = `
 
 ### Thinking guides (already populated)
 
-\`.trellis/spec/guides/\` contains general thinking guides pre-filled with
+\`.moluoxixi/spec/guides/\` contains general thinking guides pre-filled with
 best practices. Customize only if something clearly doesn't fit this project.
 
 ---
@@ -465,7 +465,7 @@ best practices. Customize only if something clearly doesn't fit this project.
 ### Step 1: Import from existing convention files first (preferred)
 
 Search the repo for existing convention docs. If any exist, read them and
-extract the relevant rules into the matching \`.trellis/spec/\` files —
+extract the relevant rules into the matching \`.moluoxixi/spec/\` files —
 usually much faster than documenting from scratch.
 
 | File / Directory | Tool |
@@ -510,7 +510,7 @@ is a separate conversation, not a bootstrap concern.
 - The platform hook auto-injects those spec files + the task's \`prd.md\`
   into every sub-agent prompt, so the sub-agent codes/reviews per team
   conventions without anyone pasting them manually.
-- Source of truth: \`.trellis/spec/\`. That's why filling it well now pays
+- Source of truth: \`.moluoxixi/spec/\`. That's why filling it well now pays
   off forever.
 
 ---
@@ -521,8 +521,8 @@ When the developer confirms the checklist items above are done with real
 examples (not placeholders), guide them to run:
 
 \`\`\`bash
-${pythonCmd} ./.trellis/scripts/task.py finish
-${pythonCmd} ./.trellis/scripts/task.py archive 00-bootstrap-guidelines
+${pythonCmd} ./.moluoxixi/scripts/task.py finish
+${pythonCmd} ./.moluoxixi/scripts/task.py archive 00-bootstrap-guidelines
 \`\`\`
 
 After archive, every new developer who joins this project will get a
@@ -548,10 +548,10 @@ etc.) I can pull from, or should I scan the codebase from scratch?"
       const specName = sanitizePkgName(pkg.name);
       content += `\n### Package: ${pkg.name} (\`spec/${specName}/\`)\n`;
       if (pkgType !== "frontend") {
-        content += `\n- Backend guidelines: \`.trellis/spec/${specName}/backend/\`\n`;
+        content += `\n- Backend guidelines: \`.moluoxixi/spec/${specName}/backend/\`\n`;
       }
       if (pkgType !== "backend") {
-        content += `\n- Frontend guidelines: \`.trellis/spec/${specName}/frontend/\`\n`;
+        content += `\n- Frontend guidelines: \`.moluoxixi/spec/${specName}/frontend/\`\n`;
       }
     }
   } else if (projectType === "frontend") {
@@ -592,7 +592,7 @@ function getBootstrapTaskJson(
     assignee: developer,
     createdAt: today,
     relatedFiles,
-    notes: `First-time setup task created by trellis init (${projectType} project)`,
+    notes: `First-time setup task created by moluoxixi init (${projectType} project)`,
   });
 }
 
@@ -635,7 +635,7 @@ function getJoinerTaskJson(developer: string, taskName: string): TaskJson {
     assignee: developer,
     createdAt: today,
     notes:
-      "Generated by trellis init for a new developer joining an existing Moluoxixi project",
+      "Generated by moluoxixi init for a new developer joining an existing Moluoxixi project",
   });
 }
 
@@ -649,9 +649,9 @@ function getJoinerPrdContent(developer: string, pythonCmd: string): string {
 
 **You (the AI) are running this task. The developer does not read this file.**
 
-\`${developer}\` just ran \`trellis init\` on a fresh clone, saw "Developer
+\`${developer}\` just ran \`moluoxixi init\` on a fresh clone, saw "Developer
 initialized", and will now start asking you questions in chat. This joiner task
-exists under \`.trellis/tasks/\`; when they want to work on it, they should
+exists under \`.moluoxixi/tasks/\`; when they want to work on it, they should
 start it from a session that provides Moluoxixi session identity.
 
 Your job is to orient them to Moluoxixi. Don't dump all of this at them — open
@@ -669,13 +669,13 @@ agents consistent with project-specific conventions instead of writing generic
 code every session.
 
 - **Three phases**: Plan (brainstorm → \`prd.md\`) → Execute (code + check) →
-  Finish (capture + wrap). Full reference: \`.trellis/workflow.md\`.
+  Finish (capture + wrap). Full reference: \`.moluoxixi/workflow.md\`.
 - **Task lifecycle**: planning → in_progress → done → archive, under
-  \`.trellis/tasks/\`.
+  \`.moluoxixi/tasks/\`.
 - **Core slash commands**:
-  - \`/trellis:continue\` — resume the current session's active task
-  - \`/trellis:finish-work\` — wrap up a finished task
-  - \`/trellis:start\` — session boot from scratch (not needed here; the
+  - \`/moluoxixi:continue\` — resume the current session's active task
+  - \`/moluoxixi:finish-work\` — wrap up a finished task
+  - \`/moluoxixi:start\` — session boot from scratch (not needed here; the
     SessionStart hook does its job automatically)
 
 ### 2. Runtime mechanics (explain when they ask "how does it know what to do")
@@ -685,7 +685,7 @@ code every session.
   conversation at every session start.
 - **\`<workflow-state>\` tag** is auto-injected with every user message,
   carrying the current task + phase hint.
-- **\`/trellis:continue\`** loads the Phase Index, reads \`prd.md\` + recent
+- **\`/moluoxixi:continue\`** loads the Phase Index, reads \`prd.md\` + recent
   activity, and routes to the right skill (\`moluoxixi-brainstorm\` for planning,
   \`moluoxixi-implement\` for coding, \`moluoxixi-check\` for verification).
 - **\`moluoxixi-implement\` sub-agent** is spawned when code needs to be written.
@@ -696,17 +696,17 @@ code every session.
   — reviews changes against specs, auto-fixes issues, runs lint/typecheck.
 
 File layout (mention when they ask "where does what live"):
-- \`.trellis/.runtime/sessions/<session>.json\` — session active-task state, gitignored
-- \`.trellis/tasks/<task>/{implement,check}.jsonl\` — per-task context manifests
-- \`.trellis/spec/\` — project-wide conventions (source of truth)
-- \`.trellis/workspace/${developer}/journal-*.md\` — their session log,
+- \`.moluoxixi/.runtime/sessions/<session>.json\` — session active-task state, gitignored
+- \`.moluoxixi/tasks/<task>/{implement,check}.jsonl\` — per-task context manifests
+- \`.moluoxixi/spec/\` — project-wide conventions (source of truth)
+- \`.moluoxixi/workspace/${developer}/journal-*.md\` — their session log,
   rotated at ~2000 lines
 
 ### 3. This project's actual conventions
 
-- Summarize \`.trellis/spec/\` for them — what coding conventions this
+- Summarize \`.moluoxixi/spec/\` for them — what coding conventions this
   specific team enforces.
-- Point at the last 5 entries in \`.trellis/tasks/archive/\` as a rhythm
+- Point at the last 5 entries in \`.moluoxixi/tasks/archive/\` as a rhythm
   example of how people actually work here. **If archive is empty** (the
   project just started), skip this — don't invent examples.
 - Not your job in this onboarding to teach them the business code itself —
@@ -714,9 +714,9 @@ File layout (mention when they ask "where does what live"):
 
 ### 4. Their assigned work
 
-- Check if \`.trellis/workspace/${developer}/\` already exists — if yes, it's
+- Check if \`.moluoxixi/workspace/${developer}/\` already exists — if yes, it's
   their journal from another machine and worth mentioning.
-- Run \`${pythonCmd} ./.trellis/scripts/task.py list --assignee ${developer}\` to
+- Run \`${pythonCmd} ./.moluoxixi/scripts/task.py list --assignee ${developer}\` to
   show tasks assigned to them. (Quote the name if it contains spaces.)
 - Remind them that the "My Tasks" section appears in the SessionStart context
   on every new session.
@@ -726,8 +726,8 @@ File layout (mention when they ask "where does what live"):
 ## Optional: walk through a small task end-to-end
 
 If they want to practice before touching real work, offer to pick a tiny
-P3 task or a typo fix and run the full cycle together: \`/trellis:continue\`
-→ you implement via sub-agents → \`/trellis:finish-work\`.
+P3 task or a typo fix and run the full cycle together: \`/moluoxixi:continue\`
+→ you implement via sub-agents → \`/moluoxixi:finish-work\`.
 
 ---
 
@@ -737,15 +737,15 @@ When they feel oriented (or after you've covered the four topics with
 reasonable back-and-forth), guide them to run:
 
 \`\`\`bash
-${pythonCmd} ./.trellis/scripts/task.py finish
-${pythonCmd} ./.trellis/scripts/task.py archive 00-join-${slug}
+${pythonCmd} ./.moluoxixi/scripts/task.py finish
+${pythonCmd} ./.moluoxixi/scripts/task.py archive 00-join-${slug}
 \`\`\`
 
 ---
 
 ## Suggested opening line
 
-"Welcome! Your \`trellis init\` set me up to onboard you to this project. I
+"Welcome! Your \`moluoxixi init\` set me up to onboard you to this project. I
 can walk you through the workflow, show you the runtime mechanics under the
 hood, summarize the team's spec, or jump to what you're already curious about
 — which would you prefer?"
@@ -770,7 +770,7 @@ function createJoinerOnboardingTask(
 }
 
 /**
- * Handle re-init when .trellis/ already exists.
+ * Handle re-init when .moluoxixi/ already exists.
  * Returns true if handled (caller should return), false if user chose full re-init.
  */
 async function handleReinit(
@@ -948,7 +948,7 @@ async function handleReinit(
       );
       console.log(
         chalk.gray(
-          `  ${pythonCmd} .trellis/scripts/init_developer.py ${devName}`,
+          `  ${pythonCmd} .moluoxixi/scripts/init_developer.py ${devName}`,
         ),
       );
     }
@@ -1102,8 +1102,8 @@ interface InitAnswers {
 
 export async function init(options: InitOptions): Promise<void> {
   // Refuse to run in $HOME — running here would scoop platform runtime data
-  // (Claude/Codex/OpenCode session histories etc.) into the trellis hash
-  // manifest, and a subsequent `trellis uninstall` would wipe it.
+  // (Claude/Codex/OpenCode session histories etc.) into the moluoxixi hash
+  // manifest, and a subsequent `moluoxixi uninstall` would wipe it.
   if (isCwdHomedir() && !homedirBypassEnabled()) {
     console.error(chalk.red(homedirGuardMessage("init")));
     process.exit(1);
@@ -1121,7 +1121,7 @@ export async function init(options: InitOptions): Promise<void> {
   const isFirstInit = !fs.existsSync(path.join(cwd, DIR_NAMES.WORKFLOW));
   // Captured here (before createWorkflowStructure + init_developer run) so
   // the three-branch dispatch at the bottom can tell "fresh clone joiner"
-  // (.trellis/ exists, .developer missing) apart from "creator first init".
+  // (.moluoxixi/ exists, .developer missing) apart from "creator first init".
   const hadDeveloperFileAtStart = fs.existsSync(
     path.join(cwd, DIR_NAMES.WORKFLOW, FILE_NAMES.DEVELOPER),
   );
@@ -1181,10 +1181,10 @@ export async function init(options: InitOptions): Promise<void> {
   const { command: pythonCmd } = resolveSupportedPython();
 
   // ==========================================================================
-  // Re-init fast path: skip full flow when .trellis/ already exists
+  // Re-init fast path: skip full flow when .moluoxixi/ already exists
   // ==========================================================================
 
-  // Aborted-init recovery (issue #204): if .trellis/ exists but tasks/ is
+  // Aborted-init recovery (issue #204): if .moluoxixi/ exists but tasks/ is
   // empty, the previous init never reached bootstrap creation. Fall through
   // to the full flow so the main-dispatch tasksEmpty fallback fires —
   // handleReinit's joiner branch would otherwise mis-route the recovery.
@@ -1282,7 +1282,7 @@ export async function init(options: InitOptions): Promise<void> {
       console.log(chalk.gray("  ✗ .gitmodules"));
       console.log(chalk.gray("  ✗ sibling .git directories (need ≥ 2)"));
       console.log("");
-      console.log("To configure manually, add to .trellis/config.yaml:");
+      console.log("To configure manually, add to .moluoxixi/config.yaml:");
       console.log("");
       console.log(chalk.cyan("  packages:"));
       console.log(chalk.cyan("    frontend:"));
@@ -1816,8 +1816,8 @@ export async function init(options: InitOptions): Promise<void> {
       console.log(chalk.yellow(`   ${result.message}`));
       console.log(chalk.gray("   Falling back to blank templates..."));
       const retryCmd = registry
-        ? `trellis init --registry ${registry.gigetSource} --template ${selectedTemplate}`
-        : `trellis init --template ${selectedTemplate}`;
+        ? `moluoxixi init --registry ${registry.gigetSource} --template ${selectedTemplate}`
+        : `moluoxixi init --template ${selectedTemplate}`;
       console.log(chalk.gray(`   You can retry later: ${retryCmd}`));
     }
   } else if (registry && fetchedTemplates.length === 0) {
@@ -1873,7 +1873,7 @@ export async function init(options: InitOptions): Promise<void> {
       console.log(chalk.gray("   Falling back to blank templates..."));
       console.log(
         chalk.gray(
-          `   You can retry later: trellis init --registry ${registry.gigetSource}`,
+          `   You can retry later: moluoxixi init --registry ${registry.gigetSource}`,
         ),
       );
     }
@@ -1987,7 +1987,7 @@ export async function init(options: InitOptions): Promise<void> {
   }
 
   // Non-native workflow is user-managed local content. Drop the
-  // `.trellis/workflow.md` hash entry so `trellis update` classifies it as
+  // `.moluoxixi/workflow.md` hash entry so `moluoxixi update` classifies it as
   // modified and does not silently restore native bytes. See design.md
   // "Durable-state contract".
   if (workflowMdOverride !== undefined && workflowId !== NATIVE_WORKFLOW_ID) {
@@ -2013,7 +2013,7 @@ export async function init(options: InitOptions): Promise<void> {
     //   isFirstInit=false + no .developer file → joiner onboarding (fresh clone)
     //   isFirstInit=false + .developer exists  → same-dev re-init, no task
     //
-    // Tasks-empty fallback (issue #204): if .trellis/ exists but tasks dir is
+    // Tasks-empty fallback (issue #204): if .moluoxixi/ exists but tasks dir is
     // empty, the previous init aborted before creating the bootstrap task. Run
     // bootstrap creation regardless of isFirstInit. writeTaskSkeleton is
     // idempotent so repeated triggers are safe.

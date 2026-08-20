@@ -378,10 +378,10 @@ function isWindowsPosixShell(env = process.env) {
 
 function buildMoluoxixiContextPrefix(contextKey, hostPlatform = process.platform, env = process.env) {
   if (hostPlatform === "win32" && !isWindowsPosixShell(env)) {
-    return `$env:TRELLIS_CONTEXT_ID = ${powershellQuote(contextKey)}; `
+    return `$env:MOLUOXIXI_CONTEXT_ID = ${powershellQuote(contextKey)}; `
   }
 
-  return `export TRELLIS_CONTEXT_ID=${shellQuote(contextKey)}; `
+  return `export MOLUOXIXI_CONTEXT_ID=${shellQuote(contextKey)}; `
 }
 
 function getBashCommandKey(args) {
@@ -394,10 +394,10 @@ function getBashCommandKey(args) {
 function commandStartsWithMoluoxixiContext(command) {
   const firstCommand = command.trimStart().split(/[;&|]/, 1)[0].trimStart()
   return (
-    /^TRELLIS_CONTEXT_ID\s*=/.test(firstCommand) ||
-    /^export\s+TRELLIS_CONTEXT_ID\s*=/.test(firstCommand) ||
-    /^env\s+(?:(?:-\S+|[A-Za-z_][A-Za-z0-9_]*=\S*)\s+)*TRELLIS_CONTEXT_ID\s*=/.test(firstCommand) ||
-    /^\$env:TRELLIS_CONTEXT_ID\s*=/i.test(firstCommand)
+    /^MOLUOXIXI_CONTEXT_ID\s*=/.test(firstCommand) ||
+    /^export\s+MOLUOXIXI_CONTEXT_ID\s*=/.test(firstCommand) ||
+    /^env\s+(?:(?:-\S+|[A-Za-z_][A-Za-z0-9_]*=\S*)\s+)*MOLUOXIXI_CONTEXT_ID\s*=/.test(firstCommand) ||
+    /^\$env:MOLUOXIXI_CONTEXT_ID\s*=/i.test(firstCommand)
   )
 }
 
@@ -435,7 +435,7 @@ export default async ({ directory, platform: hostPlatform = process.platform, en
   return {
       "tool.execute.before": async (input, output) => {
         try {
-          if (process.env.TRELLIS_HOOKS === "0" || process.env.TRELLIS_DISABLE_HOOKS === "1") {
+          if (process.env.MOLUOXIXI_HOOKS === "0" || process.env.MOLUOXIXI_DISABLE_HOOKS === "1") {
             return
           }
           debugLog("inject", "tool.execute.before called, tool:", input?.tool)
@@ -443,7 +443,7 @@ export default async ({ directory, platform: hostPlatform = process.platform, en
           const toolName = input?.tool?.toLowerCase()
           if (toolName === "bash") {
             if (injectMoluoxixiContextIntoBash(ctx, input, output, hostPlatform, env)) {
-              debugLog("inject", "Injected TRELLIS_CONTEXT_ID into Bash command")
+              debugLog("inject", "Injected MOLUOXIXI_CONTEXT_ID into Bash command")
             }
             return
           }

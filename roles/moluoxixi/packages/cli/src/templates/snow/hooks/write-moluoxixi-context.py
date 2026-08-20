@@ -11,7 +11,7 @@ Used by onSessionStart / onUserMessage / beforeSubAgentStart hooks.
 
 Modes (compact vs full):
 - argv: session | user | subagent  (preferred)
-- env:  TRELLIS_SNOW_HOOK_MODE
+- env:  MOLUOXIXI_SNOW_HOOK_MODE
 - stdin JSON from Snow may include agentId/agentName/prompt/cwd/sessionId
 
 Non-JSON hosts ignore stdout; Snow injects it into model context.
@@ -239,7 +239,7 @@ def _resolve_mode(
             if a == "compact":
                 return "user"
             return a
-    env_mode = (env.get("TRELLIS_SNOW_HOOK_MODE") or "").strip().lower()
+    env_mode = (env.get("MOLUOXIXI_SNOW_HOOK_MODE") or "").strip().lower()
     if env_mode in {"session", "user", "subagent"}:
         return env_mode
     # Infer from Snow stdin context shape.
@@ -365,7 +365,7 @@ def _current_session_ids(stdin_ctx: dict[str, Any] | None = None) -> list[str]:
     # Prefer explicit Moluoxixi context, then Snow session identity.
     ids: list[str] = []
     candidates = [
-        os.environ.get("TRELLIS_CONTEXT_ID"),
+        os.environ.get("MOLUOXIXI_CONTEXT_ID"),
         os.environ.get("SNOW_SESSION_ID"),
     ]
     if stdin_ctx:
@@ -381,7 +381,7 @@ def _current_session_ids(stdin_ctx: dict[str, Any] | None = None) -> list[str]:
         key = _sanitize_session_key(raw)
         if key and key not in ids:
             ids.append(key)
-        # Snow injects TRELLIS_CONTEXT_ID=snow-<sessionId>
+        # Snow injects MOLUOXIXI_CONTEXT_ID=snow-<sessionId>
         if key.startswith("snow_"):
             bare = key[5:]
             if bare and bare not in ids:
@@ -484,7 +484,7 @@ def build_context(
         lines.extend(["## task.py current --source", "```", current, "```", ""])
         task_dir = _parse_active_task_path(current, repo)
     else:
-        lines.append("(no .moluoxixi/scripts/task.py — run trellis init first)")
+        lines.append("(no .moluoxixi/scripts/task.py — run moluoxixi init first)")
         lines.append("")
 
     if task_dir and task_dir.exists():

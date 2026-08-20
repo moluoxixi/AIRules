@@ -1,6 +1,6 @@
 # Local Files Generated After Init
 
-`trellis init` writes the Moluoxixi runtime into the user project. Later, `trellis update` tries to update Moluoxixi-managed template files, but it uses `.moluoxixi/.template-hashes.json` to determine which files have already been modified by the user.
+`moluoxixi init` writes the Moluoxixi runtime into the user project. Later, `moluoxixi update` tries to update Moluoxixi-managed template files, but it uses `.moluoxixi/.template-hashes.json` to determine which files have already been modified by the user.
 
 This page only describes files that are visible and editable inside the user project.
 
@@ -49,7 +49,7 @@ When modifying a platform directory, also confirm whether `.moluoxixi/workflow.m
 
 ## Meaning Of Template Hashes
 
-`.moluoxixi/.template-hashes.json` records the content hash from the last time Moluoxixi wrote a template file. `trellis update` uses it to distinguish three cases:
+`.moluoxixi/.template-hashes.json` records the content hash from the last time Moluoxixi wrote a template file. `moluoxixi update` uses it to distinguish three cases:
 
 | Case | Update behavior |
 | --- | --- |

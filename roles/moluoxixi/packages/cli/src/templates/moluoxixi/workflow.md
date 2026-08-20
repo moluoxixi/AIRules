@@ -73,7 +73,7 @@ python3 ./.moluoxixi/scripts/task.py create-pr [name] [--dry-run]
 
 > Run `python3 ./.moluoxixi/scripts/task.py --help` to see the authoritative, up-to-date list.
 
-**Current-task mechanism**: `task.py create` creates the task directory and (when session identity is available) auto-sets the per-session active-task pointer so the planning breadcrumb fires immediately. `task.py start` writes the same pointer (idempotent if already set) and flips `task.json.status` from `planning` to `in_progress`. State is stored under `.moluoxixi/.runtime/sessions/`. If no context key is available from hook input, `TRELLIS_CONTEXT_ID`, or a platform-native session environment variable, there is no active task and `task.py start` fails with a session identity hint. `task.py finish` deletes the current session file (status unchanged). `task.py archive <task>` writes `status=completed`, moves the directory to `archive/`, and deletes any runtime session files that still point at the archived task.
+**Current-task mechanism**: `task.py create` creates the task directory and (when session identity is available) auto-sets the per-session active-task pointer so the planning breadcrumb fires immediately. `task.py start` writes the same pointer (idempotent if already set) and flips `task.json.status` from `planning` to `in_progress`. State is stored under `.moluoxixi/.runtime/sessions/`. If no context key is available from hook input, `MOLUOXIXI_CONTEXT_ID`, or a platform-native session environment variable, there is no active task and `task.py start` fails with a session identity hint. `task.py finish` deletes the current session file (status unchanged). `task.py archive <task>` writes `status=completed`, moves the directory to `archive/`, and deletes any runtime session files that still point at the archived task.
 
 ### Workspace System
 
@@ -135,7 +135,7 @@ python3 ./.moluoxixi/scripts/get_context.py --mode phase --step <X.Y>  # detaile
   Editing checklist:
     - When you change a [workflow-state:STATUS] block, also check the
       matching phase's `[required · once]` walkthrough steps for sync
-    - Run `trellis update` after editing to push the new bodies to
+    - Run `moluoxixi update` after editing to push the new bodies to
       downstream user projects (block-level managed replacement)
     - Full runtime contract:
       .moluoxixi/spec/cli/backend/workflow-state-contract.md
@@ -224,7 +224,7 @@ Sub-agent dispatch protocol applies to all platforms and all sub-agents, includi
 
 [workflow-state:in_progress]
 Tools: `moluoxixi-implement` / `moluoxixi-research` are sub-agent types only (Task/Agent tool, NOT Skill; there is no skill by these names). `moluoxixi-update-spec` is a skill. `moluoxixi-check` exists as both; prefer the Agent form when verifying after code changes.
-Flow: `moluoxixi-implement` -> `moluoxixi-check` -> `moluoxixi-update-spec` -> commit (Phase 3.4) -> `/trellis:finish-work`.
+Flow: `moluoxixi-implement` -> `moluoxixi-check` -> `moluoxixi-update-spec` -> commit (Phase 3.4) -> `/moluoxixi:finish-work`.
 Main-session default: dispatch implement/check sub-agents. Sub-agent self-exemption: if already running as `moluoxixi-implement`, do NOT spawn another `moluoxixi-implement` or `moluoxixi-check`; if already running as `moluoxixi-check`, do NOT spawn another `moluoxixi-check` or `moluoxixi-implement`. Dispatch is main session only.
 Dispatch prompt starts with `Active task: <task path from task.py current>`. Read context: jsonl entries -> `prd.md` -> `design.md if present` -> `implement.md if present`.
 [/workflow-state:in_progress]
@@ -235,7 +235,7 @@ Dispatch prompt starts with `Active task: <task path from task.py current>`. Rea
      instead of dispatching sub-agents. -->
 
 [workflow-state:in_progress-inline]
-Flow: `moluoxixi-before-dev` -> edit -> `moluoxixi-check` -> validation -> `moluoxixi-update-spec` -> commit (Phase 3.4) -> `/trellis:finish-work`.
+Flow: `moluoxixi-before-dev` -> edit -> `moluoxixi-check` -> validation -> `moluoxixi-update-spec` -> commit (Phase 3.4) -> `/moluoxixi:finish-work`.
 Do not dispatch implement/check sub-agents in inline mode.
 Read context: `prd.md` -> `design.md if present` -> `implement.md if present`, plus relevant spec/research loaded by skills.
 [/workflow-state:in_progress-inline]
@@ -257,7 +257,7 @@ Read context: `prd.md` -> `design.md if present` -> `implement.md if present`, p
      channel as the live blocks. -->
 
 [workflow-state:completed]
-Code committed. Run `/trellis:finish-work`; if dirty, return to Phase 3.4 first.
+Code committed. Run `/moluoxixi:finish-work`; if dirty, return to Phase 3.4 first.
 [/workflow-state:completed]
 
 ### Rules
@@ -445,7 +445,7 @@ For lightweight tasks, `prd.md` can be enough. For complex tasks, `prd.md`, `des
 
 After this command succeeds, the breadcrumb auto-switches to `[workflow-state:in_progress]`, and the rest of Phase 2 / 3 follows.
 
-If `task.py start` errors with a session-identity message (no context key from hook input, `TRELLIS_CONTEXT_ID`, or platform-native session env), follow the hint in the error to set up session identity, then retry.
+If `task.py start` errors with a session-identity message (no context key from hook input, `MOLUOXIXI_CONTEXT_ID`, or platform-native session env), follow the hint in the error to set up session identity, then retry.
 
 #### 1.5 Completion criteria
 
@@ -653,7 +653,7 @@ This section is for developers who want to modify the Moluoxixi workflow itself.
 Edit the corresponding step's walkthrough body in the Phase 1 / 2 / 3 sections above. Critical invariants:
 - No active task must triage first and ask for task-creation consent before creating a Moluoxixi task.
 - Planning must distinguish lightweight PRD-only tasks from complex tasks that require `prd.md`, `design.md`, and `implement.md` before start.
-- Every required execution path must keep the Phase 3.4 commit reminder reachable before `/trellis:finish-work`.
+- Every required execution path must keep the Phase 3.4 commit reminder reachable before `/moluoxixi:finish-work`.
 
 All tag blocks live in the `## Phase Index` section above, immediately after each phase summary:
 
@@ -668,7 +668,7 @@ All tag blocks live in the `## Phase Index` section above, immediately after eac
 
 ### Changing the per-turn prompt text
 
-Directly edit the body of the corresponding `[workflow-state:STATUS]` block. After editing, run `trellis update` (if you're a template maintainer) or restart your AI session (if you're customizing your own project) — no script changes required.
+Directly edit the body of the corresponding `[workflow-state:STATUS]` block. After editing, run `moluoxixi update` (if you're a template maintainer) or restart your AI session (if you're customizing your own project) — no script changes required.
 
 ### Adding a custom status
 

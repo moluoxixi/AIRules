@@ -14,7 +14,7 @@ skill-loader tool.
 ## Quick start
 
 ```bash
-trellis init --dsh -u your-name
+moluoxixi init --dsh -u your-name
 dsh web        # or: dsh --profile headless "start a Moluoxixi task for ..."
 ```
 
@@ -28,8 +28,8 @@ In dsh:
    (learned something worth capturing).
 2. Entry skills are `moluoxixi-start` / `moluoxixi-continue` / `moluoxixi-finish-work`
    in `.dsh/skills/`. You can also ask for them by name at any time.
-3. Type `/trellis:finish-work` is a slash-command convention from other hosts —
-   dsh has no slash palette, so say "finish the trellis task" instead, and the
+3. Type `/moluoxixi:finish-work` is a slash-command convention from other hosts —
+   dsh has no slash palette, so say "finish the moluoxixi task" instead, and the
    agent loads `moluoxixi-finish-work`.
 
 ## File map

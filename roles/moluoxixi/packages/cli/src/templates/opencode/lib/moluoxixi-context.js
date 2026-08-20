@@ -66,7 +66,7 @@ function buildContextKey(platformName, kind, value) {
 
 // Matches `moluoxixi-implement`, `moluoxixi-check`, `moluoxixi-research` exactly.
 // Used by chat.message plugins to skip injection inside Moluoxixi sub-agent turns.
-const TRELLIS_SUBAGENT_RE = /^moluoxixi-(implement|check|research)$/
+const MOLUOXIXI_SUBAGENT_RE = /^moluoxixi-(implement|check|research)$/
 
 /**
  * Return true when the OpenCode `chat.message` input represents a Moluoxixi
@@ -76,7 +76,7 @@ const TRELLIS_SUBAGENT_RE = /^moluoxixi-(implement|check|research)$/
 export function isMoluoxixiSubagent(input) {
   if (!input || typeof input !== "object") return false
   const agent = typeof input.agent === "string" ? input.agent.trim() : ""
-  return TRELLIS_SUBAGENT_RE.test(agent)
+  return MOLUOXIXI_SUBAGENT_RE.test(agent)
 }
 
 // ============================================================
@@ -332,13 +332,13 @@ export class MoluoxixiContext {
 
   // OpenCode exports no session identity into the environment: no OPENCODE_*
   // name in the 1.17.18 binary or the 1.18.13 source carries one. The plugin
-  // hook input is the only source, and the `export TRELLIS_CONTEXT_ID=` prefix
+  // hook input is the only source, and the `export MOLUOXIXI_CONTEXT_ID=` prefix
   // this plugin adds to Bash commands is the only way that identity reaches a
-  // child process. TRELLIS_CONTEXT_ID is honored here so a nested Moluoxixi run
+  // child process. MOLUOXIXI_CONTEXT_ID is honored here so a nested Moluoxixi run
   // inherits its parent's key; do not add platform-native env names next to it
   // without evidence a vendor sets them.
   getContextKey(platformInput = null) {
-    const override = stringValue(process.env.TRELLIS_CONTEXT_ID)
+    const override = stringValue(process.env.MOLUOXIXI_CONTEXT_ID)
     if (override) {
       return sanitizeKey(override) || hashValue(override)
     }
@@ -468,7 +468,7 @@ export class MoluoxixiContext {
    *
    * A task ref is not always something the user typed. `task.py` now refuses
    * to store one that leaves the project, but a session file written before
-   * that fix can still hold one, and `trellis update` does not rewrite session
+   * that fix can still hold one, and `moluoxixi update` does not rewrite session
    * files — so a poisoned pointer outlives the upgrade that closed the writer.
    * Both sides are resolved so a task directory symlinked outside is refused
    * too, but the original `candidate` is returned on success: callers build
@@ -530,7 +530,7 @@ export class MoluoxixiContext {
         stdio: ["pipe", "pipe", "pipe"],
         env: {
           ...process.env,
-          ...(contextKey ? { TRELLIS_CONTEXT_ID: contextKey } : {}),
+          ...(contextKey ? { MOLUOXIXI_CONTEXT_ID: contextKey } : {}),
         },
       })
       return result || ""

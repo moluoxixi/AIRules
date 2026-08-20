@@ -8,13 +8,13 @@ and translates its output back into channel events.
 ## Spawn
 
 ```bash
-trellis channel create impl-task --by dispatcher --cwd /path/to/repo
-trellis channel spawn impl-task --provider codex --as codex-impl --timeout 30m
+moluoxixi channel create impl-task --by dispatcher --cwd /path/to/repo
+moluoxixi channel spawn impl-task --provider codex --as codex-impl --timeout 30m
 
 echo "Implement the schema for table X per .moluoxixi/.../prd.md" \
-  | trellis channel send impl-task --as dispatcher --to codex-impl --stdin
+  | moluoxixi channel send impl-task --as dispatcher --to codex-impl --stdin
 
-trellis channel wait impl-task --as dispatcher --from codex-impl --kind done --timeout 30m
+moluoxixi channel wait impl-task --as dispatcher --from codex-impl --kind done --timeout 30m
 ```
 
 `spawn` forks a `channel __supervisor` worker that emits `spawned`, streams
@@ -34,7 +34,7 @@ Key `spawn` flags:
 - `--warn-before <duration>` — supervisor_warning lead time (default `5m`; `0ms` disables).
 - `--file <path>` (repeatable, glob-supported) — inject file content into the system prompt.
 - `--jsonl <path>` (repeatable) — Moluoxixi jsonl manifest (`{file, reason}` per line).
-- `--by <agent>` — author of the `spawned` event (defaults to `$TRELLIS_CHANNEL_AS` or `main`).
+- `--by <agent>` — author of the `spawned` event (defaults to `$MOLUOXIXI_CHANNEL_AS` or `main`).
 - `--inbox-policy <explicitOnly|broadcastAndExplicit>` — default `explicitOnly`.
 - `--idle-timeout <duration>` — OOM guard idle TTL (default `5m`; `0` disables).
 - `--max-live-workers <n>` — spawn-time live-worker budget (default `6`; `0` disables).
@@ -92,7 +92,7 @@ Example spawning a check agent against a task directory:
 
 ```bash
 TASK=.moluoxixi/tasks/05-13-example
-trellis channel spawn cr-example --agent check --provider codex --as check-cx \
+moluoxixi channel spawn cr-example --agent check --provider codex --as check-cx \
   --file "$TASK/prd.md" \
   --file "$TASK/design.md" \
   --file "$TASK/implement.md" \
@@ -115,10 +115,10 @@ Use explicit names when multiple workers or providers participate in one
 channel:
 
 ```bash
-trellis channel spawn cr-feature --agent check --as check-claude
-trellis channel spawn cr-feature --agent check --provider codex --as check-cx
+moluoxixi channel spawn cr-feature --agent check --as check-claude
+moluoxixi channel spawn cr-feature --agent check --provider codex --as check-cx
 
-trellis channel wait cr-feature --as main \
+moluoxixi channel wait cr-feature --as main \
   --from check-claude,check-cx --kind done --all --timeout 15m
 ```
 
@@ -136,7 +136,7 @@ losing its session.
 
 ```bash
 echo "Stop refactoring the parser — switch to fixing the failing test in src/foo.ts" \
-  | trellis channel interrupt impl-task --as dispatcher --to codex-impl --stdin
+  | moluoxixi channel interrupt impl-task --as dispatcher --to codex-impl --stdin
 ```
 
 Flags:
@@ -156,7 +156,7 @@ plain tagged message instead:
 
 ```bash
 echo "Check this when you reach the next turn." \
-  | trellis channel send impl-task --as dispatcher --to codex-impl \
+  | moluoxixi channel send impl-task --as dispatcher --to codex-impl \
       --stdin --tag question
 ```
 
@@ -169,12 +169,12 @@ writes a `killed` event when SIGKILL is needed so the event log stays
 truthful.
 
 ```bash
-trellis channel kill impl-task --as codex-impl
-trellis channel spawn impl-task --as codex-impl --provider codex \
+moluoxixi channel kill impl-task --as codex-impl
+moluoxixi channel spawn impl-task --as codex-impl --provider codex \
   --resume "$(cat ~/.moluoxixi/channels/<bucket>/impl-task/worker.session-id)"
 
 echo "STOP — new instructions: ..." \
-  | trellis channel send impl-task --as dispatcher --to codex-impl --stdin
+  | moluoxixi channel send impl-task --as dispatcher --to codex-impl --stdin
 ```
 
 `kill` flags:
@@ -203,8 +203,8 @@ project bucket:
 Precedence (highest first):
 
 1. CLI flags: `--idle-timeout`, `--max-live-workers` on `spawn`.
-2. Environment variables: `TRELLIS_CHANNEL_WORKER_IDLE_TIMEOUT`,
-   `TRELLIS_CHANNEL_MAX_LIVE_WORKERS`.
+2. Environment variables: `MOLUOXIXI_CHANNEL_WORKER_IDLE_TIMEOUT`,
+   `MOLUOXIXI_CHANNEL_MAX_LIVE_WORKERS`.
 3. `.moluoxixi/config.yaml` under `channel.worker_guard`.
 4. Built-in defaults (`5m`, `6`).
 
@@ -260,15 +260,15 @@ A typical dispatcher loop:
 ```bash
 # 1. Wake the worker.
 echo "Run the failing test and report." \
-  | trellis channel send impl-task --as dispatcher --to codex-impl --stdin \
+  | moluoxixi channel send impl-task --as dispatcher --to codex-impl --stdin \
       --delivery-mode requireRunningWorker
 
 # 2. Block until it finishes.
-trellis channel wait impl-task --as dispatcher \
+moluoxixi channel wait impl-task --as dispatcher \
   --from codex-impl --kind done,error --timeout 30m
 
 # 3. Read the final answer.
-trellis channel messages impl-task --from codex-impl --last 1 --raw
+moluoxixi channel messages impl-task --from codex-impl --last 1 --raw
 ```
 
 All event-emitting subcommands (`send`, `interrupt`, `post`, `context add` /

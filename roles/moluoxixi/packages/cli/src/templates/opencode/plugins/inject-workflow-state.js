@@ -35,7 +35,7 @@ const TAG_RE = /\[workflow-state:([A-Za-z0-9_-]+)\]\s*\n([\s\S]*?)\n\s*\[\/workf
 // Escape hatch for the per-turn breadcrumb (issue #427). Mirrors
 // `common.config.get_prompt_injection_config()` / the shared Python hook's
 // `_resolve_skip_keyword()` + `prompt_has_skip_keyword()`.
-const DEFAULT_PROMPT_INJECTION_SKIP_KEYWORD = "no-trellis"
+const DEFAULT_PROMPT_INJECTION_SKIP_KEYWORD = "no-moluoxixi"
 
 function stripInlineComment(value) {
   let inQuote = null
@@ -98,7 +98,7 @@ function readSkipKeyword(directory) {
 
 /**
  * Case-insensitive, word-boundary match of `keyword` in `text`. Hyphen
- * counts as a word char so "no-trellisx" / "xno-trellis" don't match, but
+ * counts as a word char so "no-moluoxixix" / "xno-moluoxixi" don't match, but
  * punctuation/whitespace boundaries do. Empty keyword never matches.
  */
 function promptHasSkipKeyword(text, keyword) {
@@ -189,10 +189,10 @@ export default async ({ directory }) => {
           // main session only; sub-agent context comes from the parent's
           // tool.execute.before injection.
           if (isMoluoxixiSubagent(input)) {
-            debugLog("workflow-state", "Skipping trellis subagent turn:", input?.agent)
+            debugLog("workflow-state", "Skipping moluoxixi subagent turn:", input?.agent)
             return
           }
-          if (process.env.TRELLIS_HOOKS === "0" || process.env.TRELLIS_DISABLE_HOOKS === "1") {
+          if (process.env.MOLUOXIXI_HOOKS === "0" || process.env.MOLUOXIXI_DISABLE_HOOKS === "1") {
             return
           }
           if (process.env.OPENCODE_NON_INTERACTIVE === "1") {

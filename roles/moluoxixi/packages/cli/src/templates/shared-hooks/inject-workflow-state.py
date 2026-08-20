@@ -77,7 +77,7 @@ If you have not already loaded Moluoxixi context this session, read the `moluoxi
 # CWD-robust Moluoxixi root discovery (fixes hook-path-robustness for this hook)
 # ---------------------------------------------------------------------------
 
-def find_trellis_root(start: Path) -> Optional[Path]:
+def find_moluoxixi_root(start: Path) -> Optional[Path]:
     """Walk up from start to find directory containing .moluoxixi/.
 
     Handles CWD drift: subdirectory launches, monorepo packages, etc.
@@ -219,8 +219,8 @@ def load_breadcrumbs(root: Path) -> dict[str, str]:
     return result
 
 
-def _read_trellis_config(root: Path) -> dict:
-    """Load .moluoxixi/config.yaml via the bundled trellis_config helper.
+def _read_moluoxixi_config(root: Path) -> dict:
+    """Load .moluoxixi/config.yaml via the bundled moluoxixi_config helper.
 
     The helper lives in .moluoxixi/scripts/common; the hook lives outside the
     scripts tree, so we extend sys.path before importing.
@@ -229,23 +229,23 @@ def _read_trellis_config(root: Path) -> dict:
     if str(scripts_dir) not in sys.path:
         sys.path.insert(0, str(scripts_dir))
     try:
-        from common.moluoxixi_config import read_trellis_config  # type: ignore[import-not-found]
+        from common.moluoxixi_config import read_moluoxixi_config  # type: ignore[import-not-found]
     except Exception:
         return {}
     try:
-        return read_trellis_config(root)
+        return read_moluoxixi_config(root)
     except Exception:
         return {}
 
 
-DEFAULT_PROMPT_INJECTION_SKIP_KEYWORD = "no-trellis"
+DEFAULT_PROMPT_INJECTION_SKIP_KEYWORD = "no-moluoxixi"
 
 
 def _resolve_skip_keyword(config: dict) -> str:
     """Read `prompt_injection.skip_keyword` from parsed .moluoxixi/config.yaml.
 
     Mirrors `common.config.get_prompt_injection_config()`. Defaults to
-    "no-trellis"; "" disables the escape hatch entirely. A non-string value
+    "no-moluoxixi"; "" disables the escape hatch entirely. A non-string value
     falls back to the default.
     """
     if isinstance(config, dict):
@@ -260,8 +260,8 @@ def _resolve_skip_keyword(config: dict) -> str:
 def prompt_has_skip_keyword(prompt: str, keyword: str) -> bool:
     """Case-insensitive, word-boundary match of `keyword` in `prompt`.
 
-    Hyphen counts as a word char so "no-trellisx" / "xno-trellis" /
-    "foo-no-trellis" don't match, but punctuation/whitespace boundaries do.
+    Hyphen counts as a word char so "no-moluoxixix" / "xno-moluoxixi" /
+    "foo-no-moluoxixi" don't match, but punctuation/whitespace boundaries do.
     Empty keyword never matches (disables the escape hatch).
     """
     if not keyword or not isinstance(prompt, str):
@@ -405,7 +405,7 @@ def _load_hook_input() -> dict:
 
 
 def main() -> int:
-    if os.environ.get("TRELLIS_HOOKS") == "0" or os.environ.get("TRELLIS_DISABLE_HOOKS") == "1":
+    if os.environ.get("MOLUOXIXI_HOOKS") == "0" or os.environ.get("MOLUOXIXI_DISABLE_HOOKS") == "1":
         return 0
 
     data = _load_hook_input()
@@ -413,11 +413,11 @@ def main() -> int:
     cwd_str = data.get("cwd") or os.getcwd()
     cwd = Path(cwd_str)
 
-    root = find_trellis_root(cwd)
+    root = find_moluoxixi_root(cwd)
     if root is None:
         return 0  # not a Moluoxixi project
 
-    config = _read_trellis_config(root)
+    config = _read_moluoxixi_config(root)
     if prompt_has_skip_keyword(data.get("prompt", ""), _resolve_skip_keyword(config)):
         return 0  # user opted out of the per-turn breadcrumb for this turn
 

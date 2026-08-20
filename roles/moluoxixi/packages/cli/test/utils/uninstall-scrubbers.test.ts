@@ -2,7 +2,7 @@
  * Unit tests for uninstall-scrubbers.
  *
  * Each scrubber gets coverage for:
- *  - Strips trellis content
+ *  - Strips moluoxixi content
  *  - Preserves user-added content
  *  - Reports `fullyEmpty: true` when nothing meaningful remains
  */
@@ -29,11 +29,11 @@ const CURSOR_DELETE_PATHS = [
   ".cursor/hooks/inject-shell-session-context.py",
 ];
 
-const TEST_BLOCK_START = "<!-- TRELLIS:TEST:START -->";
-const TEST_BLOCK_END = "<!-- TRELLIS:TEST:END -->";
+const TEST_BLOCK_START = "<!-- MOLUOXIXI:TEST:START -->";
+const TEST_BLOCK_END = "<!-- MOLUOXIXI:TEST:END -->";
 
 describe("scrubHooksJson — nested schema", () => {
-  it("strips trellis hook entries from a Claude-style file", () => {
+  it("strips moluoxixi hook entries from a Claude-style file", () => {
     const input = {
       env: { CLAUDE_BASH_MAINTAIN_PROJECT_WORKING_DIR: "1" },
       hooks: {
@@ -113,7 +113,7 @@ describe("scrubHooksJson — nested schema", () => {
     expect(fullyEmpty).toBe(false);
   });
 
-  it("reports fullyEmpty when only trellis hooks existed", () => {
+  it("reports fullyEmpty when only moluoxixi hooks existed", () => {
     const input = {
       hooks: {
         SessionStart: [
@@ -206,7 +206,7 @@ describe("scrubHooksJson — nested schema", () => {
 });
 
 describe("scrubHooksJson — flat schema", () => {
-  it("strips trellis hook entries from a Cursor-style file", () => {
+  it("strips moluoxixi hook entries from a Cursor-style file", () => {
     const input = {
       version: 1,
       hooks: {
@@ -290,7 +290,7 @@ describe("scrubHooksJson — flat schema", () => {
     expect(JSON.parse(content)).toEqual({});
   });
 
-  it("reports fullyEmpty when only trellis hooks existed", () => {
+  it("reports fullyEmpty when only moluoxixi hooks existed", () => {
     const input = {
       hooks: {
         sessionStart: [
@@ -393,10 +393,10 @@ Also keep this.
 });
 
 describe("scrubPiSettings", () => {
-  it("strips trellis entries and reports fullyEmpty", () => {
+  it("strips moluoxixi entries and reports fullyEmpty", () => {
     const input = {
       enableSkillCommands: true,
-      extensions: ["./extensions/trellis/index.ts"],
+      extensions: ["./extensions/moluoxixi/index.ts"],
       skills: ["./skills"],
       prompts: ["./prompts"],
       packages: [
@@ -419,7 +419,7 @@ describe("scrubPiSettings", () => {
   it("preserves user-added array entries", () => {
     const input = {
       enableSkillCommands: true,
-      extensions: ["./extensions/trellis/index.ts", "./extensions/my-ext"],
+      extensions: ["./extensions/moluoxixi/index.ts", "./extensions/my-ext"],
       skills: ["./skills", "./other-skills"],
       prompts: ["./prompts"],
       packages: [
