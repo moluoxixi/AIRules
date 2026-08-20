@@ -2,7 +2,7 @@
  * Tier-1 unit tests for the `trellis mem` CLI-layer helpers.
  *
  * The reusable retrieval / search / cleaning primitives moved to
- * `@mindfoldhq/moluoxixi-core/mem` and are covered by `packages/core/test/mem/*`.
+ * `@moluoxixi/airules-moluoxixi-core/mem` and are covered by `packages/core/test/mem/*`.
  * What remains here is CLI-only: argv parsing, flag → core-filter translation,
  * and terminal formatting.
  */

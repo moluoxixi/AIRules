@@ -2,7 +2,7 @@ import {
   clearChannelTitle,
   setChannelTitle,
   type ChannelScope,
-} from "@mindfoldhq/moluoxixi-core/channel";
+} from "@moluoxixi/airules-moluoxixi-core/channel";
 
 import { parseChannelScope } from "./store/schema.js";
 

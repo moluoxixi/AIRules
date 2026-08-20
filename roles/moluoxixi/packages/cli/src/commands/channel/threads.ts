@@ -8,7 +8,7 @@ import {
   type ChannelScope,
   type ContextChannelEvent,
   type ThreadChannelEvent,
-} from "@mindfoldhq/moluoxixi-core/channel";
+} from "@moluoxixi/airules-moluoxixi-core/channel";
 
 import {
   parseChannelScope,

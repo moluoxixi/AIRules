@@ -21,7 +21,7 @@ import {
   reduceWorkerRegistry,
   type ChannelEvent,
   type WorkerState,
-} from "@mindfoldhq/moluoxixi-core/channel";
+} from "@moluoxixi/airules-moluoxixi-core/channel";
 
 import { DIR_NAMES } from "../../constants/paths.js";
 

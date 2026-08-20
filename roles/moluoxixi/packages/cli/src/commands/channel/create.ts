@@ -4,7 +4,7 @@ import {
   resolveChannelRef,
   type ChannelScope,
   type ChannelType,
-} from "@mindfoldhq/moluoxixi-core/channel";
+} from "@moluoxixi/airules-moluoxixi-core/channel";
 
 import {
   parseChannelScope,

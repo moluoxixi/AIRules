@@ -1,5 +1,5 @@
 /**
- * mem.ts — CLI wrapper over `@mindfoldhq/moluoxixi-core/mem`.
+ * mem.ts — CLI wrapper over `@moluoxixi/airules-moluoxixi-core/mem`.
  *
  * The reusable retrieval / context-extraction logic lives in core; this file
  * owns only CLI concerns: argument parsing, terminal rendering, the OpenCode
@@ -25,14 +25,14 @@ import {
   MemSessionNotFoundError,
   readMemContext,
   searchMemSessions,
-} from "@mindfoldhq/moluoxixi-core/mem";
+} from "@moluoxixi/airules-moluoxixi-core/mem";
 import type {
   MemFilter,
   MemPhase,
   MemSessionInfo,
   MemSourceFilter,
   MemSourceKind,
-} from "@mindfoldhq/moluoxixi-core/mem";
+} from "@moluoxixi/airules-moluoxixi-core/mem";
 
 // ---------- argv ----------
 
