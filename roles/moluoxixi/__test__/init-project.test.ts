@@ -53,7 +53,7 @@ describe('init-project skill', () => {
     expect(skillBody).toContain('moluoxixi --version')
     expect(skillBody).toContain('moluoxixi init --<宿主> --yes')
     expect(skillBody).toContain('命令不存在或执行失败时，报告错误并停止')
-    expect(skillBody).not.toMatch(/npx|@moluoxixi\/airules-moluoxixi-(?:cli|core)/iu)
+    expect(skillBody).not.toMatch(/npx|@moluoxixi\/airules-moluoxixi-(?:cli|core)|run-role-cli|适配脚本|等价于/iu)
 
     const adapterSource = fs.readFileSync(initializer, 'utf8')
     expect(adapterSource).toContain('未找到 moluoxixi 命令')

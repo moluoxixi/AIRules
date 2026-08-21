@@ -19,13 +19,7 @@ description: Initialize or extend a project with the Moluoxixi workflow runtime 
 
 1. 确定项目根目录，并确认解析后的目录不是符号链接。
 2. 根据用户要求选择宿主；请求不明确时先询问。可用宿主以 `moluoxixi init --help` 的当前输出为准。
-3. 从本技能目录执行适配脚本：
-
-   ```bash
-   node "<技能目录>/scripts/run-role-cli.mjs" --project "<项目根目录>" --platform "<宿主>" --yes
-   ```
-
-   该脚本会进入项目根目录并调用已安装的命令，等价于：
+3. 进入项目根目录并执行：
 
    ```bash
    cd "<项目根目录>"
