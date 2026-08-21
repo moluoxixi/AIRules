@@ -144,12 +144,12 @@ it('resolves the source or compiled empty-role manifest without requiring a role
   fs.mkdirSync(path.dirname(sourceManifest), { recursive: true })
   fs.writeFileSync(sourceManifest, 'export const vendors = []\n', 'utf8')
 
-  expect(resolveRoleManifestPath(repoRoot, '')).toBe(sourceManifest)
-  expect(resolveRoleManifestPath(repoRoot, '', { preferDist: true })).toBe(sourceManifest)
+  expect(resolveRoleManifestPath(repoRoot, '')).toBe(fs.realpathSync(sourceManifest))
+  expect(resolveRoleManifestPath(repoRoot, '', { preferDist: true })).toBe(fs.realpathSync(sourceManifest))
 
   fs.mkdirSync(path.dirname(distManifest), { recursive: true })
   fs.writeFileSync(distManifest, 'export const vendors = []\n', 'utf8')
-  expect(resolveRoleManifestPath(repoRoot, '', { preferDist: true })).toBe(distManifest)
+  expect(resolveRoleManifestPath(repoRoot, '', { preferDist: true })).toBe(fs.realpathSync(distManifest))
 })
 
 it('rejects missing and non-file role manifest candidates', () => {

@@ -62,7 +62,7 @@ it('tool - source execution prefers the TypeScript role manifest', () => withTem
 
   const paths = resolveToolPaths(repoRoot, moluoHome, os.homedir(), 'demo')
 
-  assert.equal(paths.manifestPath, path.resolve(repoRoot, 'roles', 'demo', 'constants', 'skills.ts'))
+  assert.equal(paths.manifestPath, fs.realpathSync(path.resolve(repoRoot, 'roles', 'demo', 'constants', 'skills.ts')))
 }))
 
 it('tool - requires an explicit role', () => withTempDir('airules-tool-required-role-', (tmpDir) => {
