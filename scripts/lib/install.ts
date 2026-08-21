@@ -21,6 +21,7 @@ import path from 'node:path'
 import { findHostConfig, resolveGlobalAgentSkillsPath, resolveHostPaths } from '../../constants/hosts.js'
 import { areSamePaths, canonicalPath, canonicalPathKey, isPathInside } from './canonical-path.js'
 import { buildLinkPlan } from './links.js'
+import { loadMcpCatalog, validateMcpServerNames } from './mcp-catalog.js'
 import { requireRoleName } from './role-assets.js'
 import { DEFAULT_ROLE, roleOverlayOrder } from './roles.js'
 import { collectFlattenedSkillSources, discoverSkillDirectories, flattenedSkillName } from './skill-projection.js'
@@ -111,7 +112,7 @@ function isSetupCommandAvailable(command: string): boolean {
  * 任一命令失败都会抛出错误，避免安装流程伪装成功。
  * @param manifest 已解析的 VendorManifest
  */
-export function runSkillSetupCommands(manifest: VendorManifest): void {
+export function runSkillSetupCommands(manifest: VendorManifest, homeDir?: string): void {
   for (const [vendorName, vendor] of Object.entries(manifest.vendors)) {
     if (vendor.setup && vendor.setup.length > 0) {
       console.log(`\n[setup] 执行 ${vendorName} 的安装前置命令...`)
@@ -136,12 +137,28 @@ export function runSkillSetupCommands(manifest: VendorManifest): void {
     }
 
     for (const link of vendor.links) {
-      if (!link.setup || link.setup.length === 0)
+      const setupCommands = [...(link.setup ?? [])]
+      if (link.kind === 'mcp-file') {
+        if (!homeDir) {
+          throw new Error(`[setup] ${vendorName} MCP setup requires the AIRules home directory`)
+        }
+        const checkoutRoot = path.resolve(homeDir, vendor.cloneDir)
+        const sourceFile = path.resolve(checkoutRoot, link.source)
+        if (!isPathInside(checkoutRoot, sourceFile)) {
+          throw new Error(`[setup] ${vendorName} MCP catalog resolves outside its checkout: ${link.source}`)
+        }
+        const stats = lstatSync(sourceFile, { throwIfNoEntry: false })
+        if (!stats?.isFile() || stats.isSymbolicLink() || !isPathInside(checkoutRoot, realpathSync(sourceFile))) {
+          throw new Error(`[setup] ${vendorName} MCP catalog must be a plain file inside its checkout: ${link.source}`)
+        }
+        setupCommands.push(...loadMcpCatalog(sourceFile).setup)
+      }
+      if (setupCommands.length === 0)
         continue
 
-      const skillName = path.basename(link.target)
-      console.log(`\n[setup] 执行 ${vendorName}/${skillName} 的安装前置命令...`)
-      for (const command of link.setup) {
+      const assetName = link.kind === 'mcp-file' ? 'mcp' : path.basename(link.target)
+      console.log(`\n[setup] 执行 ${vendorName}/${assetName} 的安装前置命令...`)
+      for (const command of setupCommands) {
         const commandText = setupCommandText(command)
         if (command.skipIfCommandAvailable && isSetupCommandAvailable(command.skipIfCommandAvailable)) {
           console.log(`[setup] 跳过 ${commandText}，已检测到 ${command.skipIfCommandAvailable}`)
@@ -156,7 +173,7 @@ export function runSkillSetupCommands(manifest: VendorManifest): void {
           })
         }
         catch (error) {
-          throw new Error(`[setup] ${vendorName}/${skillName} 安装前置命令失败: ${commandText}\n${String(error)}`)
+          throw new Error(`[setup] ${vendorName}/${assetName} 安装前置命令失败: ${commandText}\n${String(error)}`)
         }
       }
     }
@@ -482,26 +499,76 @@ function tomlKey(key: string): string {
   return /^[\w-]+$/u.test(key) ? key : `"${escapeTomlString(key)}"`
 }
 
-function readRoleMcpServers(moluoHome: string, role: string): Record<string, unknown> | undefined {
-  if (!role)
-    return undefined
-  const sourceFile = path.join(moluoHome, 'roles', requireRoleName(role), 'mcp', 'mcp.json')
-  if (!existsSync(sourceFile))
-    return undefined
+function readMcpServerFile(sourceFile: string): Record<string, unknown> {
   const stats = lstatSync(sourceFile)
   if (!stats.isFile() || stats.isSymbolicLink())
-    throw new Error(`Role MCP source must be a plain file: ${sourceFile}`)
+    throw new Error(`MCP source must be a plain file: ${sourceFile}`)
   const raw = readFileSync(sourceFile, 'utf8').trim()
   if (!raw)
-    return undefined
-  let parsed: { mcpServers?: Record<string, unknown> }
+    return {}
+  let parsed: unknown
   try {
-    parsed = JSON.parse(raw) as { mcpServers?: Record<string, unknown> }
+    parsed = JSON.parse(raw) as unknown
   }
   catch (error) {
-    throw new Error(`Role MCP source is invalid JSON: ${sourceFile}`, { cause: error })
+    throw new Error(`MCP source is invalid JSON: ${sourceFile}`, { cause: error })
   }
-  return parsed.mcpServers && Object.keys(parsed.mcpServers).length > 0 ? parsed.mcpServers : undefined
+  if (parsed === null || typeof parsed !== 'object' || Array.isArray(parsed))
+    throw new Error(`MCP source must contain an "mcpServers" object: ${sourceFile}`)
+  const servers = (parsed as { mcpServers?: unknown }).mcpServers
+  if (servers === undefined)
+    return {}
+  if (servers === null || typeof servers !== 'object' || Array.isArray(servers))
+    throw new Error(`MCP source must contain an "mcpServers" object: ${sourceFile}`)
+  const serverRecord = servers as Record<string, unknown>
+  validateMcpServerNames(serverRecord, sourceFile)
+  return serverRecord
+}
+
+function readVendorMcpServers(moluoHome: string): Record<string, unknown> {
+  const root = path.join(moluoHome, 'vendor', 'mcps')
+  if (!existsSync(root))
+    return {}
+  const servers = Object.create(null) as Record<string, unknown>
+  const sources = new Map<string, string>()
+
+  function visit(directory: string): void {
+    const stats = lstatSync(directory)
+    if (!stats.isDirectory() || stats.isSymbolicLink())
+      throw new Error(`Managed MCP path must be a plain directory: ${directory}`)
+    for (const entry of readdirSync(directory, { withFileTypes: true }).sort((left, right) => left.name.localeCompare(right.name))) {
+      const entryPath = path.join(directory, entry.name)
+      if (entry.isSymbolicLink())
+        throw new Error(`Managed MCP path must not be a symbolic link: ${entryPath}`)
+      if (entry.isDirectory()) {
+        visit(entryPath)
+      }
+      else if (entry.isFile() && entry.name === 'mcp.json') {
+        const fileServers = readMcpServerFile(entryPath)
+        for (const [name, server] of Object.entries(fileServers)) {
+          const previous = sources.get(name)
+          if (previous) {
+            throw new Error(`Duplicate shared MCP server "${name}": ${previous} conflicts with ${entryPath}`)
+          }
+          servers[name] = server
+          sources.set(name, entryPath)
+        }
+      }
+    }
+  }
+
+  visit(root)
+  return servers
+}
+
+export function readInstalledMcpServers(moluoHome: string, role: string): Record<string, unknown> | undefined {
+  const servers = readVendorMcpServers(moluoHome)
+  if (role) {
+    const roleSource = path.join(moluoHome, 'roles', requireRoleName(role), 'mcp', 'mcp.json')
+    if (existsSync(roleSource))
+      Object.assign(servers, readMcpServerFile(roleSource))
+  }
+  return Object.keys(servers).length > 0 ? servers : undefined
 }
 
 function readHostConfigForMerge(targetFile: string): string {
@@ -512,7 +579,7 @@ function readHostConfigForMerge(targetFile: string): string {
   return existsSync(targetFile) ? readFileSync(targetFile, 'utf8').replace(/^\uFEFF/u, '') : ''
 }
 
-function applyMcpServerProjection(
+export function applyMcpServerProjection(
   servers: Record<string, unknown>,
   mcp: Pick<McpProjection, 'serverCommandFormat' | 'serverDefaults' | 'serverOverrides'>,
 ): Record<string, unknown> {
@@ -535,7 +602,7 @@ function applyMcpServerProjection(
 }
 
 function projectMcpToHost(moluoHome: string, role: string, mcpHome: string, mcp: McpProjection): void {
-  const servers = readRoleMcpServers(moluoHome, role)
+  const servers = readInstalledMcpServers(moluoHome, role)
   if (!servers)
     return
   const projectedServers = applyMcpServerProjection(servers, mcp)
@@ -565,11 +632,7 @@ function projectMcpToHost(moluoHome: string, role: string, mcpHome: string, mcp:
 
   const previous = readHostConfigForMerge(targetFile)
   const cleaned = previous.replace(/\n*# >>> AIRULES MCP >>>[\s\S]*?(?:# <<< AIRULES MCP <<<|$)\n*/gu, '\n').trimEnd()
-  const serversKeyPattern = mcp.serversKey.replace(/[.*+?^${}()|[\]\\]/gu, '\\$&')
-  const userDeclared = new Set<string>()
-  const tablePattern = new RegExp(`^\\s*\\[${serversKeyPattern}\\.(?:"([^"]+)"|([\\w-]+))\\]`, 'gmu')
-  for (const match of cleaned.matchAll(tablePattern))
-    userDeclared.add(match[1] ?? match[2])
+  const userDeclared = readTomlMcpServerNames(cleaned, mcp.serversKey)
 
   const lines: string[] = []
   for (const [name, value] of Object.entries(projectedServers)) {
@@ -596,6 +659,45 @@ function projectMcpToHost(moluoHome: string, role: string, mcpHome: string, mcp:
   }
   const block = `# >>> AIRULES MCP >>>\n${lines.join('\n')}# <<< AIRULES MCP <<<\n`
   writeFileSync(targetFile, cleaned ? `${cleaned}\n\n${block}` : block, 'utf8')
+}
+
+function decodeTomlBasicKey(value: string): string | undefined {
+  const escapePattern = /\\(?:([btnfr"\\])|u([\dA-Fa-f]{4})|U([\dA-Fa-f]{8}))/gu
+  let valid = true
+  const decoded = value.replace(escapePattern, (_match, simple: string | undefined, shortHex: string | undefined, longHex: string | undefined) => {
+    if (simple) {
+      return {
+        'b': '\b',
+        't': '\t',
+        'n': '\n',
+        'f': '\f',
+        'r': '\r',
+        '"': '"',
+        '\\': '\\',
+      }[simple] ?? simple
+    }
+    const codePoint = Number.parseInt(shortHex ?? longHex ?? '', 16)
+    if (codePoint > 0x10FFFF || (codePoint >= 0xD800 && codePoint <= 0xDFFF)) {
+      valid = false
+      return ''
+    }
+    return String.fromCodePoint(codePoint)
+  })
+  return valid ? decoded : undefined
+}
+
+export function readTomlMcpServerNames(content: string, serversKey: string): Set<string> {
+  const names = new Set<string>()
+  const escapedServersKey = serversKey.replace(/[.*+?^${}()|[\]\\]/gu, '\\$&')
+  const basicKey = '"((?:[^"\\\\\\r\\n]|\\\\(?:[btnfr"\\\\]|u[\\dA-Fa-f]{4}|U[\\dA-Fa-f]{8}))*)"'
+  const literalKey = `'([^'\\r\\n]*)'`
+  const tablePattern = new RegExp(`^\\s*\\[${escapedServersKey}\\.(?:${basicKey}|${literalKey}|([\\w-]+))\\]\\s*(?:#.*)?$`, 'gmu')
+  for (const match of content.matchAll(tablePattern)) {
+    const name = match[1] === undefined ? (match[2] ?? match[3]) : decodeTomlBasicKey(match[1])
+    if (name !== undefined)
+      names.add(name)
+  }
+  return names
 }
 
 export function projectToHost({
@@ -649,8 +751,7 @@ export function projectHostById(
   const hostHomePath = path.resolve(hostHome)
   const hasHostHome = existsSync(hostHomePath)
   const hasMcpHome = Boolean(
-    role
-    && mcp
+    mcp
     && existsSync(path.resolve(mcpHome))
     && (mcp.requireHostHome !== true || hasHostHome),
   )

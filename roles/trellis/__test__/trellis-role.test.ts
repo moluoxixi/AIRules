@@ -37,21 +37,21 @@ describe('native Trellis role', () => {
             command: 'npm',
             args: ['install', '--global', '@mindfoldhq/trellis@latest'],
           },
-          {
-            command: 'npm',
-            args: ['install', '--global', '@colbymchenry/codegraph'],
-            skipIfCommandAvailable: 'codegraph',
-          },
-          {
-            command: 'codegraph',
-            args: ['install', '--yes'],
-            windowsCommandShim: true,
-          },
         ],
         projections: [
           {
             kind: 'role-assets',
             sourceDir: 'roles/trellis',
+          },
+          {
+            kind: 'namespace',
+            sourceDir: 'skills/common',
+            output: 'common',
+          },
+          {
+            kind: 'mcp',
+            sourceFile: 'mcps/code/mcps.json',
+            output: 'mcps/code/mcp.json',
           },
         ],
       },
@@ -73,30 +73,30 @@ describe('native Trellis role', () => {
     expect(loaded.hosts).toEqual(HOST_IDS)
     expect(loaded.vendors.trellis).toMatchObject({
       repo: 'https://github.com/moluoxixi/AIRules.git',
-      links: [
-        {
-          kind: 'role-assets-dir',
-          source: 'roles/trellis',
-          target: 'vendor',
-        },
-      ],
       setup: [
         {
           command: 'npm',
           args: ['install', '--global', '@mindfoldhq/trellis@latest'],
         },
-        {
-          command: 'npm',
-          args: ['install', '--global', '@colbymchenry/codegraph'],
-          skipIfCommandAvailable: 'codegraph',
-        },
-        {
-          command: 'codegraph',
-          args: ['install', '--yes'],
-          windowsCommandShim: true,
-        },
       ],
     })
+    expect(loaded.vendors.trellis?.links).toEqual([
+      {
+        kind: 'role-assets-dir',
+        source: 'roles/trellis',
+        target: 'vendor',
+      },
+      {
+        kind: 'namespace-dir',
+        source: 'skills/common',
+        target: 'vendor/skills/common',
+      },
+      {
+        kind: 'mcp-file',
+        source: 'mcps/code/mcps.json',
+        target: 'vendor/mcps/code/mcp.json',
+      },
+    ])
     expect(loaded.vendors.mattpocock).toMatchObject({
       repo: mattSkillsSource,
       revision: mattSkillsRevision,
@@ -108,7 +108,7 @@ describe('native Trellis role', () => {
     })
   })
 
-  it('ships the native initialization entry and default coding MCP servers', () => {
+  it('ships the native initialization entry and declares shared coding MCP servers', () => {
     expect(fs.readdirSync(roleRoot).sort()).toEqual(['__test__', 'constants', 'mcp', 'role.yaml', 'skills'])
     expect(fs.readdirSync(path.join(roleRoot, 'skills')).sort()).toEqual(['init-project'])
     expect(fs.statSync(path.join(roleRoot, 'skills', 'init-project', 'scripts', 'inject-readme.mjs')).isFile()).toBe(true)
@@ -120,26 +120,12 @@ describe('native Trellis role', () => {
     expect(skill).toContain('scripts/inject-readme.mjs')
     expect(skill).toContain('Do not stage or commit generated files')
 
-    expect(JSON.parse(fs.readFileSync(path.join(roleRoot, 'mcp', 'mcp.json'), 'utf8'))).toEqual({
-      mcpServers: {
-        'codegraph': {
-          command: 'codegraph',
-          args: ['serve', '--mcp', '--path', workspaceFolderPlaceholder],
-        },
-        'context7': {
-          command: 'npx',
-          args: ['-y', '@upstash/context7-mcp@latest'],
-        },
-        'sequential-thinking': {
-          command: 'npx',
-          args: ['-y', '@modelcontextprotocol/server-sequential-thinking@latest'],
-        },
-        'playwright': {
-          command: 'npx',
-          args: ['-y', '@playwright/mcp@latest'],
-        },
-      },
-    })
+    expect(JSON.parse(fs.readFileSync(path.join(roleRoot, 'mcp', 'mcp.json'), 'utf8'))).toEqual({ mcpServers: {} })
+    const catalog = JSON.parse(fs.readFileSync(path.resolve(roleRoot, '..', '..', 'mcps', 'code', 'mcps.json'), 'utf8')) as {
+      mcps: Record<string, { mcp: { args: string[], command: string } }>
+    }
+    expect(Object.keys(catalog.mcps).sort()).toEqual(['codegraph', 'context7', 'playwright', 'sequential-thinking'])
+    expect(catalog.mcps.codegraph.mcp.args).toEqual(['serve', '--mcp', '--path', workspaceFolderPlaceholder])
 
     const document = parseDocument(fs.readFileSync(path.join(roleRoot, 'role.yaml'), 'utf8'), {
       merge: false,

@@ -260,6 +260,14 @@ function buildLinksForEntry(entry: any): VendorLink[] {
       }]
     }
 
+    if (projection.kind === 'mcp') {
+      return [{
+        kind: 'mcp-file',
+        source: projection.sourceFile,
+        target: path.posix.join('vendor', projection.output),
+      }]
+    }
+
     throw new Error(`供应商 "${entry.name}" 存在未知 projection 类型: ${projection.kind}`)
   })
 }

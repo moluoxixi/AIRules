@@ -53,10 +53,10 @@
 
 ```typescript
 // roles/<role>/constants/skills.ts
-{
+const projection = {
   kind: 'mcp',
   sourceFile: 'mcps/code/mcps.json',
-  output: 'mcps/code/mcps.json',
+  output: 'mcps/code/mcp.json',
 }
 ```
 

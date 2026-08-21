@@ -13,6 +13,7 @@ import {
   projectHostById,
   projectSkillsToHost,
   projectToHost,
+  readInstalledMcpServers,
   rebuildVendorSkillLinks,
   replaceWithSymlink,
   resolveSetupCommandExecutable,
@@ -576,6 +577,63 @@ it('install - runSkillSetupCommands 执行 setup 成功命令', () => {
   assert.doesNotThrow(() => runSkillSetupCommands(manifest))
 })
 
+it('install - runSkillSetupCommands 从 MCP catalog 执行 setup', () => withTempDir('airules-mcp-setup-', (tmpDir) => {
+  const marker = path.join(tmpDir, 'mcp-setup-ran.txt')
+  const catalogPath = path.join(tmpDir, 'vendor', 'repos', 'demo', 'mcps', 'code', 'mcps.json')
+  writeFile(catalogPath, JSON.stringify({
+    mcps: {
+      demo: {
+        mcp: { command: 'demo' },
+        setup: [{
+          command: process.execPath,
+          args: ['-e', 'require("node:fs").writeFileSync(process.argv[1], "ran")', marker],
+        }],
+      },
+    },
+  }))
+  const manifest: VendorManifest = {
+    version: 1,
+    vendors: {
+      demo: {
+        repo: 'https://example.test/demo.git',
+        cloneDir: 'vendor/repos/demo',
+        links: [{
+          kind: 'mcp-file',
+          source: 'mcps/code/mcps.json',
+          target: 'vendor/mcps/code/mcp.json',
+        }],
+      },
+    },
+  }
+
+  runSkillSetupCommands(manifest, tmpDir)
+
+  assert.equal(fs.readFileSync(marker, 'utf8'), 'ran')
+}))
+
+it('install - 拒绝空 MCP server 名称', () => withTempDir('airules-empty-mcp-name-', (tmpDir) => {
+  const sourceFile = path.join(tmpDir, 'vendor', 'mcps', 'invalid', 'mcp.json')
+  writeFile(sourceFile, '{"mcpServers":{"":{"command":"invalid"}}}\n')
+
+  assert.throws(
+    () => readInstalledMcpServers(tmpDir, ''),
+    /MCP server name must be non-empty/u,
+  )
+}))
+
+it('install - 拒绝共享 MCP 重名并允许角色覆盖共享配置', () => withTempDir('airules-mcp-overrides-', (tmpDir) => {
+  writeFile(path.join(tmpDir, 'vendor', 'mcps', 'one', 'mcp.json'), '{"mcpServers":{"demo":{"command":"shared"}}}\n')
+  writeFile(path.join(tmpDir, 'roles', 'alpha', 'mcp', 'mcp.json'), '{"mcpServers":{"demo":{"command":"role"}}}\n')
+
+  assert.deepEqual(readInstalledMcpServers(tmpDir, 'alpha')?.demo, { command: 'role' })
+
+  writeFile(path.join(tmpDir, 'vendor', 'mcps', 'two', 'mcp.json'), '{"mcpServers":{"demo":{"command":"duplicate"}}}\n')
+  assert.throws(
+    () => readInstalledMcpServers(tmpDir, 'alpha'),
+    /Duplicate shared MCP server "demo"/u,
+  )
+}))
+
 it('install - runSkillSetupCommands 支持已存在命令时跳过 setup', () => {
   const manifest: VendorManifest = {
     version: 1,
@@ -695,6 +753,18 @@ export default {
     assert.deepEqual(manifest.hosts, ['claude', 'codex'])
     assert.equal(Object.hasOwn(manifest.vendors.demo, 'official'), false)
     assert.equal(manifest.vendors.demo.links[0].kind, 'namespace-dir')
+
+    const mcpManifest = path.join(tmpDir, 'mcp.mjs')
+    writeFile(mcpManifest, `export const vendors = [{
+      name: 'demo',
+      source: 'https://example.test/demo.git',
+      projections: [{ kind: 'mcp', sourceFile: 'mcps/code/mcps.json', output: 'mcps/code/mcp.json' }],
+    }]\n`)
+    assert.deepEqual((await loadVendorManifest(mcpManifest)).vendors.demo.links, [{
+      kind: 'mcp-file',
+      source: 'mcps/code/mcps.json',
+      target: 'vendor/mcps/code/mcp.json',
+    }])
 
     await assert.rejects(
       () => loadVendorManifest(invalidManifest),

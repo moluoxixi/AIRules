@@ -30,9 +30,8 @@ jobs:
         with:
           node-version: 22
 
-      # 本仓库不跟踪 lockfile，CI 始终从 package.json 解析依赖。
       - name: Install dependencies
-        run: pnpm install --no-frozen-lockfile
+        run: pnpm install --frozen-lockfile
 
       - name: Lint
         run: pnpm run lint:check
@@ -40,8 +39,54 @@ jobs:
       - name: Typecheck
         run: pnpm run typecheck
 
+      - name: Build
+        run: pnpm run build
+
       - name: Test
         run: pnpm test
+
+  platform-install:
+    name: Platform install (${{ matrix.os }})
+    runs-on: ${{ matrix.os }}
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [windows-latest, macos-latest]
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up pnpm
+        uses: pnpm/action-setup@v4
+        with:
+          version: 10.32.1
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: pnpm
+          cache-dependency-path: pnpm-lock.yaml
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
+      - name: Build and smoke test the CLI
+        run: |
+          pnpm run build
+          node bin/airules.js --version
+
+      - name: Test native install paths
+        run: >-
+          pnpm exec vitest run
+          scripts/lib/__test__/canonical-path.test.ts
+          scripts/lib/__test__/roles.test.ts
+          scripts/lib/__test__/install-coverage.test.ts
+          scripts/lib/__test__/tool.test.ts
+          scripts/lib/__test__/install-cli.test.ts
+          scripts/lib/__test__/vendor-staging.test.ts
+          roles/trellis/__test__/trellis-mcp-projection.test.ts
 
   verify-moluoxixi-packages:
     name: Verify Moluoxixi package publication

@@ -2,17 +2,23 @@ import eslintConfig from '@antfu/eslint-config'
 
 export default eslintConfig({
   ignores: [
-    'public',
+    // ai agents
+    '.codex',
+    '.claude',
+    // ideas
     '.zed',
+    // project
+    'public',
+    '.codegraph',
+    'roles/**/.sync/**',
+    'roles/**/packages/**',
+    'vendor',
+
+    // other
     '.cache-git',
     'coverage',
     'docs',
     'dist',
-    'roles/**/skills/**/*.md',
-    'roles/**/skills/**/assets/**',
-    'roles/**/.sync/**',
-    'roles/**/packages/**',
-    'vendor',
   ],
   rules: {
     // user

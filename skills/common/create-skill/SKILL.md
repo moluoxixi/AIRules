@@ -27,7 +27,7 @@ mkdir -p roles/<role>/skills/<skill-name>
 
 创建 `README.md` 包含：
 
-```markdown
+````markdown
 # <Skill Name>
 
 简短描述（1-2 句话）
@@ -63,10 +63,10 @@ mkdir -p roles/<role>/skills/<skill-name>
 
 ### 1. 第一步标题
 
-\`\`\`bash
+```bash
 # 具体命令
 command --flag value
-\`\`\`
+```
 
 具体操作说明。
 
@@ -82,13 +82,13 @@ command --flag value
 
 ## 命令参考
 
-\`\`\`bash
+```bash
 # 常用命令 1
 command1
 
-# 常用命令 2  
+# 常用命令 2
 command2
-\`\`\`
+```
 
 ## 检查清单
 
@@ -100,7 +100,7 @@ command2
 
 - 警告 1
 - 警告 2
-```
+````
 
 ### 5. 添加引用文档（可选）
 

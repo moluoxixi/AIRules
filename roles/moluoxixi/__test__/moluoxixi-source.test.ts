@@ -57,7 +57,8 @@ function collectFiles(relativeRoot: string): string[] {
   const files: string[] = []
 
   function visit(relativePath: string): void {
-    if (relativePath === '.sync' || relativePath.startsWith('.sync/'))
+    const segments = relativePath.split('/')
+    if (relativePath === '.sync' || relativePath.startsWith('.sync/') || segments.includes('node_modules'))
       return
     const absolutePath = resolveRolePath(relativePath)
     const stats = fs.lstatSync(absolutePath)
@@ -197,18 +198,7 @@ describe('moluoxixi finalized role assets', () => {
         { kind: 'mcp', sourceFile: 'mcps/code/mcps.json', output: 'mcps/code/mcp.json' },
       ],
     })
-    expect(vendors[0]?.setup).toEqual([
-      {
-        args: ['install', '--global', '@colbymchenry/codegraph'],
-        command: 'npm',
-        skipIfCommandAvailable: 'codegraph',
-      },
-      {
-        args: ['install', '--yes'],
-        command: 'codegraph',
-        windowsCommandShim: true,
-      },
-    ])
+    expect(vendors[0]?.setup).toBeUndefined()
     expect(vendors[1]).toEqual({
       name: 'mattpocock',
       source: mattSkillsSource,

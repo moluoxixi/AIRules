@@ -4,6 +4,7 @@ import os from 'node:os'
 import path from 'node:path'
 import { parseDocument } from 'yaml'
 import { isPathInside } from './canonical-path.js'
+import { loadMcpCatalog } from './mcp-catalog.js'
 import { requireRoleName } from './role-assets.js'
 import { collectFlattenedSkillSources } from './skill-projection.js'
 import { loadVendorManifest } from './vendors.js'
@@ -232,9 +233,12 @@ function requireManagedTarget(homeDir: string, kind: VendorLink['kind'], configu
   const vendorRoot = path.resolve(homeDir, 'vendor')
   const target = path.resolve(homeDir, portablePath(configuredTarget))
   const skillsRoot = path.join(vendorRoot, 'skills')
-  const valid = (kind === 'skill' || kind === 'namespace-dir')
-    && isPathInside(skillsRoot, target)
-    && target !== skillsRoot
+  const mcpsRoot = path.join(vendorRoot, 'mcps')
+  const validSkillTarget = (kind === 'skill' || kind === 'namespace-dir')
+    && isPathInside(skillsRoot, target) && target !== skillsRoot
+  const validMcpTarget = kind === 'mcp-file'
+    && isPathInside(mcpsRoot, target) && target !== mcpsRoot && path.basename(target) === 'mcp.json'
+  const valid = validSkillTarget || validMcpTarget
 
   if (!valid) {
     throw new Error(`Vendor target resolves outside its managed staging root: ${configuredTarget}`)
@@ -287,6 +291,15 @@ function expandOrdinaryLink(
 
   if (link.kind === 'role-assets-dir') {
     throw new Error('role-assets must be expanded through the canonical role staging path')
+  }
+
+  if (link.kind === 'mcp-file') {
+    return [{
+      vendorId,
+      kind: link.kind,
+      source: requireSource(checkoutRoot, link.source, 'file', vendorId),
+      target: requireManagedTarget(homeDir, link.kind, link.target),
+    }]
   }
 
   const source = requireSource(checkoutRoot, link.source, 'directory', vendorId)
@@ -413,12 +426,22 @@ function buildStagingPlan(
   }
 }
 
-function copyPlannedAsset(stagingRoot: string, asset: PlannedAsset, replace: boolean): void {
+function copyPlannedAsset(
+  stagingRoot: string,
+  asset: PlannedAsset,
+  replace: boolean,
+  mcpCatalog?: ReturnType<typeof loadMcpCatalog>,
+): void {
   const target = path.join(stagingRoot, asset.target)
   if (replace) {
     fs.rmSync(target, { recursive: true, force: true })
   }
   fs.mkdirSync(path.dirname(target), { recursive: true })
+  if (asset.kind === 'mcp-file') {
+    const catalog = mcpCatalog ?? loadMcpCatalog(asset.source)
+    fs.writeFileSync(target, `${JSON.stringify({ mcpServers: catalog.servers }, null, 2)}\n`, 'utf8')
+    return
+  }
   fs.cpSync(asset.source, target, { recursive: true, dereference: true })
 }
 
@@ -428,8 +451,19 @@ function materializePlan(plan: VendorStagingPlan, role: string): MaterializedPla
   fs.mkdirSync(stagingRoot)
 
   try {
+    const mcpServerOwners = new Map<string, PlannedAsset>()
     for (const asset of plan.ordinary) {
-      copyPlannedAsset(stagingRoot, asset, false)
+      const mcpCatalog = asset.kind === 'mcp-file' ? loadMcpCatalog(asset.source) : undefined
+      for (const serverName of Object.keys(mcpCatalog?.servers ?? {})) {
+        const previous = mcpServerOwners.get(serverName)
+        if (previous) {
+          throw new Error(
+            `Shared MCP server "${serverName}" is declared by both ${previous.vendorId} (${previous.source}) and ${asset.vendorId} (${asset.source})`,
+          )
+        }
+        mcpServerOwners.set(serverName, asset)
+      }
+      copyPlannedAsset(stagingRoot, asset, false, mcpCatalog)
     }
     let roleStagingRoot: string | undefined
     if (plan.roleSource !== undefined && plan.roleVendorId !== undefined) {
@@ -502,7 +536,7 @@ function validateInventory(
   }
 }
 
-const managedEntryNames = ['skills'] as const
+const managedEntryNames = ['skills', 'mcps'] as const
 
 interface ManagedEntryCommit {
   current: string

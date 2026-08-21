@@ -60,7 +60,7 @@ mcps/
 在 `constants/skills.ts` 中配置：
 
 ```typescript
-{
+const projection = {
   kind: 'mcp',
   sourceFile: 'mcps/code/mcps.json',
   output: 'mcps/code/mcp.json',

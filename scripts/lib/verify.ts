@@ -1,8 +1,11 @@
-import { existsSync, lstatSync, readdirSync } from 'node:fs'
+import type { McpProjection } from '../../constants/hosts.js'
+import { existsSync, lstatSync, readdirSync, readFileSync } from 'node:fs'
 import os from 'node:os'
 import path from 'node:path'
 import kleur from 'kleur'
 import { findHostConfig, resolveGlobalAgentSkillsPath, resolveHostPaths } from '../../constants/hosts.js'
+import { applyMcpServerProjection, readInstalledMcpServers, readTomlMcpServerNames } from './install.js'
+import { DEFAULT_ROLE } from './roles.js'
 
 /** Verify the mandatory canonical skills layer shared by every role and host. */
 export async function verifyGlobalAgentSkills(
@@ -23,6 +26,7 @@ export async function verifyHost(
   host: string,
   moluoHome: string,
   userHome = os.homedir(),
+  role = DEFAULT_ROLE,
 ): Promise<boolean> {
   console.log(`\n--- 正在验证宿主: ${host} ---`)
 
@@ -30,24 +34,80 @@ export async function verifyHost(
   if (!config)
     return false
 
-  const { hostHome, skillsDirName, excludedSkills, projectSkills } = resolveHostPaths(config, userHome)
+  const { hostHome, skillsDirName, excludedSkills, projectSkills, mcpHome, mcp } = resolveHostPaths(config, userHome)
   const resolvedHostHome = path.resolve(hostHome)
-  if (!existsSync(resolvedHostHome)) {
+  const hasHostHome = existsSync(resolvedHostHome)
+  const hasMcpHome = Boolean(
+    mcp
+    && existsSync(path.resolve(mcpHome))
+    && (mcp.requireHostHome !== true || hasHostHome),
+  )
+  if (!hasHostHome && !hasMcpHome) {
     console.warn(`[SKIP] 宿主目录不存在: ${resolvedHostHome}`)
     return true
   }
-  if (!projectSkills) {
+  let skillsValid = true
+  if (projectSkills && hasHostHome) {
+    const targetSkillsDir = path.join(resolvedHostHome, skillsDirName)
+    if (!existsSync(targetSkillsDir)) {
+      console.error(`[FAIL] 技能目录缺失: ${targetSkillsDir}`)
+      skillsValid = false
+    }
+    else {
+      skillsValid = verifyProjectedSkills(host, moluoHome, targetSkillsDir, excludedSkills)
+    }
+  }
+  else {
     console.log('[info] 宿主未启用 skills 投影，跳过 skills 链接校验')
-    return true
   }
 
-  const targetSkillsDir = path.join(resolvedHostHome, skillsDirName)
-  if (!existsSync(targetSkillsDir)) {
-    console.error(`[FAIL] 技能目录缺失: ${targetSkillsDir}`)
+  const mcpValid = hasMcpHome && mcp ? verifyProjectedMcp(host, moluoHome, role, mcpHome, mcp) : true
+  return skillsValid && mcpValid
+}
+
+function verifyProjectedMcp(
+  host: string,
+  moluoHome: string,
+  role: string,
+  mcpHome: string,
+  mcp: McpProjection,
+): boolean {
+  const installed = readInstalledMcpServers(moluoHome, role)
+  if (!installed)
+    return true
+  const expected = applyMcpServerProjection(installed, mcp)
+  const targetDir = mcp.relDir === '.' ? mcpHome : path.join(mcpHome, mcp.relDir)
+  const targetFile = path.join(targetDir, mcp.fileName)
+  if (!existsSync(targetFile)) {
+    console.error(`[FAIL] MCP 配置缺失: ${targetFile}`)
     return false
   }
 
-  return verifyProjectedSkills(host, moluoHome, targetSkillsDir, excludedSkills)
+  try {
+    const content = readFileSync(targetFile, 'utf8').replace(/^\uFEFF/u, '')
+    let actualNames: Set<string>
+    if (mcp.format === 'json') {
+      const parsed = JSON.parse(content) as Record<string, unknown>
+      const servers = parsed[mcp.serversKey]
+      if (servers === null || typeof servers !== 'object' || Array.isArray(servers))
+        throw new Error(`missing "${mcp.serversKey}" object`)
+      actualNames = new Set(Object.keys(servers))
+    }
+    else {
+      actualNames = readTomlMcpServerNames(content, mcp.serversKey)
+    }
+    const missing = Object.keys(expected).filter(name => !actualNames.has(name))
+    if (missing.length > 0) {
+      console.error(`[FAIL] 缺失 MCP server: ${missing.join(', ')}`)
+      return false
+    }
+    console.log(`[info] ${host} MCP servers 验证通过: ${Object.keys(expected).length}`)
+    return true
+  }
+  catch (error) {
+    console.error(`[FAIL] MCP 配置无效: ${targetFile}\n${String(error)}`)
+    return false
+  }
 }
 
 function verifyProjectedSkills(label: string, moluoHome: string, targetSkillsDir: string, excludedSkills: string[]): boolean {

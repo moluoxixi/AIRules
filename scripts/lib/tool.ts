@@ -100,7 +100,7 @@ async function syncVendorsIfNeeded(paths: ToolPaths, skipVendors: boolean, manif
       ensureVendorRepo(paths.moluoHome, vendor)
     }
 
-    runSkillSetupCommands(manifest)
+    runSkillSetupCommands(manifest, paths.moluoHome)
   }
   else {
     for (const vendor of Object.values(manifest.vendors)) {
@@ -162,6 +162,7 @@ export async function syncToHosts(options: SyncOptions): Promise<SyncResult> {
         host,
         paths.moluoHome,
         paths.userHome,
+        paths.role,
       )
       if (!verified) {
         failedHosts.push(host)
@@ -196,6 +197,7 @@ export async function verifyHosts(options: VerifyOptions): Promise<string[]> {
       host,
       paths.moluoHome,
       paths.userHome,
+      paths.role,
     )
     if (!verified) {
       failedHosts.push(host)

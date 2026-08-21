@@ -95,6 +95,101 @@ describe('rebuildVendorAssets', () => {
     expect(fs.existsSync(path.join(homeDir, 'vendor', 'skills', 'local-only'))).toBe(false)
   })
 
+  it('generates and manages the shared MCP projection from a catalog', async () => {
+    const { root, homeDir } = createFixture()
+    const catalogPath = repoPath(homeDir, 'remote', 'mcps', 'code', 'mcps.json')
+    writeFile(catalogPath, `${JSON.stringify({
+      mcps: {
+        codegraph: {
+          mcp: { command: 'codegraph', args: ['serve', '--mcp'] },
+          setup: [{ command: 'node', args: ['--version'] }],
+          description: 'ignored in generated host configuration',
+        },
+        context7: {
+          mcp: { command: 'npx', args: ['-y', '@upstash/context7-mcp@latest'] },
+          setup: [],
+        },
+      },
+    })}\n`)
+    writeFile(path.join(homeDir, 'vendor', 'mcps', 'stale', 'mcp.json'), validMcp('stale'))
+    const manifestPath = writeManifest(root, 'mcp-catalog', [
+      vendorDefinition('remote', [{
+        kind: 'mcp',
+        sourceFile: 'mcps/code/mcps.json',
+        output: 'mcps/code/mcp.json',
+      }]),
+    ])
+
+    await rebuildVendorAssets({ homeDir, role: 'alpha', manifestPath })
+
+    expect(JSON.parse(fs.readFileSync(path.join(homeDir, 'vendor', 'mcps', 'code', 'mcp.json'), 'utf8'))).toEqual({
+      mcpServers: {
+        codegraph: { command: 'codegraph', args: ['serve', '--mcp'] },
+        context7: { command: 'npx', args: ['-y', '@upstash/context7-mcp@latest'] },
+      },
+    })
+    expect(fs.existsSync(path.join(homeDir, 'vendor', 'mcps', 'stale'))).toBe(false)
+    expect(fs.readFileSync(catalogPath, 'utf8')).toContain('description')
+  })
+
+  it('rejects malformed MCP catalogs before replacing managed output', async () => {
+    const { root, homeDir } = createFixture()
+    writeFile(path.join(homeDir, 'vendor', 'mcps', 'stable', 'mcp.json'), validMcp('stable'))
+    writeFile(repoPath(homeDir, 'remote', 'mcps.json'), '{"mcps":{"broken":{"setup":[]}}}\n')
+    const manifestPath = writeManifest(root, 'invalid-mcp-catalog', [
+      vendorDefinition('remote', [{ kind: 'mcp', sourceFile: 'mcps.json', output: 'mcps/code/mcp.json' }]),
+    ])
+
+    await expect(rebuildVendorAssets({ homeDir, role: 'alpha', manifestPath })).rejects.toMatchObject({
+      message: 'Failed to materialize vendor staging',
+      cause: expect.objectContaining({
+        message: expect.stringMatching(/entry.*mcp.*object/i),
+      }),
+    })
+
+    expect(JSON.parse(fs.readFileSync(path.join(homeDir, 'vendor', 'mcps', 'stable', 'mcp.json'), 'utf8'))).toHaveProperty('mcpServers.demo.command', 'stable')
+  })
+
+  it('rejects duplicate server names across shared MCP catalogs', async () => {
+    const { root, homeDir } = createFixture()
+    writeFile(path.join(homeDir, 'vendor', 'mcps', 'stable', 'mcp.json'), validMcp('stable'))
+    for (const vendor of ['one', 'two']) {
+      writeFile(repoPath(homeDir, vendor, 'mcps.json'), JSON.stringify({
+        mcps: { shared: { mcp: { command: vendor } } },
+      }))
+    }
+    const manifestPath = writeManifest(root, 'duplicate-mcp-server', [
+      vendorDefinition('one', [{ kind: 'mcp', sourceFile: 'mcps.json', output: 'mcps/one/mcp.json' }]),
+      vendorDefinition('two', [{ kind: 'mcp', sourceFile: 'mcps.json', output: 'mcps/two/mcp.json' }]),
+    ])
+
+    await expect(rebuildVendorAssets({ homeDir, role: 'alpha', manifestPath })).rejects.toMatchObject({
+      message: 'Failed to materialize vendor staging',
+      cause: expect.objectContaining({
+        message: expect.stringMatching(/shared MCP server "shared".*one.*two/i),
+      }),
+    })
+
+    expect(JSON.parse(fs.readFileSync(path.join(homeDir, 'vendor', 'mcps', 'stable', 'mcp.json'), 'utf8'))).toHaveProperty('mcpServers.demo.command', 'stable')
+  })
+
+  it('rejects prototype-sensitive MCP server names', async () => {
+    const { root, homeDir } = createFixture()
+    writeFile(
+      repoPath(homeDir, 'remote', 'mcps.json'),
+      '{"mcps":{"__proto__":{"mcp":{"command":"unsafe"}}}}\n',
+    )
+    const manifestPath = writeManifest(root, 'reserved-mcp-name', [
+      vendorDefinition('remote', [{ kind: 'mcp', sourceFile: 'mcps.json', output: 'mcps/code/mcp.json' }]),
+    ])
+
+    await expect(rebuildVendorAssets({ homeDir, role: 'alpha', manifestPath })).rejects.toMatchObject({
+      cause: expect.objectContaining({
+        message: expect.stringMatching(/server name is reserved.*__proto__/i),
+      }),
+    })
+  })
+
   it('copies every distributable asset from only the selected moluoxixi role', async () => {
     const { root, homeDir } = createFixture()
     writeFile(repoPath(homeDir, 'moluoxixi', 'roles', 'alpha', 'skills', 'workflow', 'alpha-skill', 'SKILL.md'), '# alpha\n')

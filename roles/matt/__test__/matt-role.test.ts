@@ -87,7 +87,8 @@ describe('matt role', () => {
   })
 
   it('ships a canonical remote role contract', () => {
-    expect(fs.readdirSync(roleRoot).sort()).toEqual(['__test__', 'constants', 'role.yaml', 'skills'])
+    expect(fs.readdirSync(roleRoot).sort()).toEqual(['__test__', 'constants', 'mcp', 'role.yaml', 'skills'])
+    expect(JSON.parse(fs.readFileSync(path.join(roleRoot, 'mcp', 'mcp.json'), 'utf8'))).toEqual({ mcpServers: {} })
 
     const document = parseDocument(fs.readFileSync(path.join(roleRoot, 'role.yaml'), 'utf8'), {
       merge: false,

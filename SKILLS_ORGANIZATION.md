@@ -97,7 +97,7 @@ vendor/
 
 1. **多个角色都需要** → `skills/common/`
    - 添加后需要在每个使用该 skill 的角色的 `constants/skills.ts` 中添加 namespace projection
-   
+
 2. **只有一个角色需要** → `roles/<role>/skills/`
    - 该角色的 `role-assets` projection 会自动包含
 
@@ -114,7 +114,7 @@ projections: [
   },
   {
     kind: 'namespace',
-    sourceDir: 'skills/common',  // 已存在，无需重复添加
+    sourceDir: 'skills/common', // 已存在，无需重复添加
     output: 'common',
   },
 ]
