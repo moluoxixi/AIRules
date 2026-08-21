@@ -1,230 +1,90 @@
+---
+name: create-skill
+description: Create or revise reusable agent skills with a standards-compliant SKILL.md, focused instructions, and optional scripts, references, assets, or UI metadata. Use when creating, scaffolding, restructuring, or validating a skill.
+---
+
 # Create Skill
 
-创建新的 skill 的操作指南。
+创建或更新一个自包含、可发现且可验证的 skill。
 
-## 操作步骤
+## 工作流
 
-### 1. 确定 skill 范围
+### 1. 明确使用方式
 
-询问用户：
-- 这个 skill 要解决什么问题？
-- 谁会使用这个 skill？
-- 适用于哪些角色？（moluoxixi、trellis 或通用）
+收集能够代表真实用法的用户请求，确认：
 
-### 2. 确定 skill 分类和创建目录
+- skill 要完成的任务和不处理的边界；
+- 哪些请求应触发它；
+- 预期产物和验收方式；
+- skill 的目标目录。用户未指定时，存在项目上下文则使用项目根目录下的 `.agents/skills`；没有项目上下文时使用 `~/.agents/skills`。
 
-根据适用范围选择分类：
+只有会显著改变实现方向的信息缺失时才向用户追问。完成本步时，至少应有两个具体使用示例和明确的目标目录。
 
-```bash
-# 多个角色共享的通用 skill
-mkdir -p skills/common/<skill-name>
+### 2. 规划可复用内容
 
-# 角色专属 skill
-mkdir -p roles/<role>/skills/<skill-name>
-```
+逐个分析使用示例，识别每次执行都会重复获取或重写的内容：
 
-### 3. 创建 README.md（说明文档）
+- `SKILL.md`：必需，保存核心工作流和必要规则；
+- `scripts/`：保存需要确定性执行或反复编写的程序；
+- `references/`：保存仅在特定分支需要加载的详细资料；
+- `assets/`：保存会被复制、转换或嵌入最终产物的文件；
+- `agents/openai.yaml`：宿主支持时，用于展示名称、简短说明和默认提示词。
 
-创建 `README.md` 包含：
+只创建任务实际需要的资源。不要添加 `README.md`、`CHANGELOG.md`、安装指南或其它过程性文档。
 
-````markdown
-# <Skill Name>
+### 3. 命名并初始化
 
-简短描述（1-2 句话）
+使用小写字母、数字和连字符命名，名称不超过 64 个字符，并让目录名与 frontmatter 的 `name` 完全一致。优先使用简短、以动词开头的名称。
 
-## 功能
-
-此技能帮助：
-- 功能点 1
-- 功能点 2
-- 功能点 3
-
-## 适用范围
-
-- 适用场景 1
-- 适用场景 2
-
-## 使用场景
-
-- 何时使用这个 skill
-- 典型的使用案例
-```
-
-### 4. 创建 SKILL.md（操作手册）
-
-创建 `SKILL.md` 包含**可执行的操作步骤**：
-
-```markdown
-# <Skill Name>
-
-简短描述操作目标。
-
-## 操作步骤
-
-### 1. 第一步标题
+如果当前环境提供 `skill-creator` 的初始化脚本，先查看其 `--help`，再用它创建结构：
 
 ```bash
-# 具体命令
-command --flag value
+python <skill-creator-dir>/scripts/init_skill.py <skill-name> --path <parent-directory> [--resources scripts,references,assets]
 ```
 
-具体操作说明。
+若该脚本不可用，手动创建目录和必需的 `SKILL.md`。不要为了填满模板而创建空目录或占位文件。
 
-### 2. 第二步标题
+### 4. 编写 frontmatter
 
-询问用户：
-- 需要确认的问题？
-- 需要选择的选项？
+让 `SKILL.md` 以 YAML frontmatter 开头，并只写 `name` 和 `description`：
 
-### 3. 后续步骤
+```yaml
+---
+name: <skill-name>
+description: <skill 做什么>. Use when <应触发该 skill 的具体请求或场景>.
+---
+```
 
-继续详细的操作指导...
+把所有触发条件写进 `description`，因为正文只会在 skill 被触发后加载。避免只写抽象摘要，也不要在正文另设“何时使用”章节。
 
-## 命令参考
+### 5. 编写执行说明
+
+使用祈使句组织代理实际要执行的步骤，并为关键步骤写出可检查的完成条件。正文应：
+
+- 只保留会改变代理行为且无法从环境直接查到的信息；
+- 先写所有任务分支都会执行的主流程；
+- 把特定分支的细节放入 `references/`，并在 `SKILL.md` 中明确何时读取；
+- 让引用文件与 `SKILL.md` 最多相隔一层，长引用文件提供目录；
+- 让命令和路径可参数化，不嵌入无关仓库的目录布局或分发机制；
+- 将 `SKILL.md` 控制在 500 行以内，并确保同一规则只有一个权威来源。
+
+脚本必须说明输入、输出和调用方式；复杂或易错的操作优先固化为脚本，而不是在正文重复生成代码。
+
+### 6. 验证
+
+如果当前环境提供 `skill-creator` 的校验脚本，运行：
 
 ```bash
-# 常用命令 1
-command1
-
-# 常用命令 2
-command2
+python <skill-creator-dir>/scripts/quick_validate.py <path-to-skill>
 ```
 
-## 检查清单
+随后完成以下检查：
 
-- [ ] 检查项 1
-- [ ] 检查项 2
-- [ ] 检查项 3
+- frontmatter 可解析，且 `name` 与目录名一致；
+- `description` 同时说明能力与触发场景；
+- 所有正文链接和资源路径有效；
+- 每个新增脚本至少执行一个代表性用例；
+- 没有未使用的目录、占位内容或重复文档；
+- 用一个真实请求试运行复杂 skill，并根据结果收紧说明。
 
-## 注意事项
-
-- 警告 1
-- 警告 2
-````
-
-### 5. 添加引用文档（可选）
-
-如果 skill 复杂，创建 `references/` 目录：
-
-```bash
-mkdir -p roles/<role>/skills/<skill-name>/references
-```
-
-添加详细参考文档：
-- `references/commands.md` - 命令参考
-- `references/examples.md` - 示例
-- `references/troubleshooting.md` - 故障排查
-
-### 6. 文件命名规范
-
-```
-skill-name/
-├── README.md          # 说明：功能、适用范围、使用场景
-├── SKILL.md          # 操作：步骤、命令、检查清单
-└── references/       # 可选：详细参考文档
-    ├── commands.md
-    ├── examples.md
-    └── troubleshooting.md
-```
-
-### 7. 验证 skill 结构
-
-```bash
-# 检查文件是否存在
-ls -la roles/<role>/skills/<skill-name>/
-
-# 验证 Markdown 格式
-cat roles/<role>/skills/<skill-name>/SKILL.md
-```
-
-### 8. 配置 vendor projection（共享 skill）
-
-对于 `skills/common/` 中的共享 skill，需要在使用它的角色的 `constants/skills.ts` 中配置 projection：
-
-```typescript
-// roles/<role>/constants/skills.ts
-projections: [
-  {
-    kind: 'role-assets',
-    sourceDir: 'roles/<role>',
-  },
-  {
-    kind: 'namespace',
-    sourceDir: 'skills/common',
-    output: 'common',
-  },
-]
-```
-
-这样当项目 clone 下来后，运行同步命令会自动将 `skills/common/` 下的所有 skills 投影到 `vendor/skills/` 目录。
-
-## 文件职责
-
-| 文件 | 职责 | 内容特点 |
-|------|------|---------|
-| `README.md` | 说明文档 | 功能介绍、适用范围、使用场景 |
-| `SKILL.md` | 操作手册 | 步骤、命令、检查清单、可执行 |
-| `references/*.md` | 参考文档 | 详细技术信息、示例、故障排查 |
-
-## SKILL.md 写作原则
-
-1. **可执行**：每个步骤都应该清晰、可操作
-2. **结构化**：使用编号步骤和清晰的标题
-3. **命令优先**：提供实际可运行的命令示例
-4. **交互式**：包含需要询问用户的决策点
-5. **检查清单**：提供验证步骤的清单
-
-## README.md 写作原则
-
-1. **简洁**：快速了解 skill 的作用
-2. **场景驱动**：说明何时使用
-3. **功能清单**：列举核心功能点
-4. **适用范围**：明确边界
-
-## 命名约定
-
-```bash
-# ✅ 正确
-create-skill/
-spec-organization/
-debug-workflow/
-
-# ❌ 错误
-CreateSkill/
-specOrganization/
-Debug_Workflow/
-```
-
-## 示例结构
-
-```
-skills/
-└── common/
-    ├── spec-organization/
-    │   ├── README.md
-    │   └── SKILL.md
-    └── create-skill/
-        ├── README.md
-        └── SKILL.md
-
-roles/moluoxixi/skills/
-└── init-project/
-    ├── README.md
-    └── SKILL.md
-
-roles/trellis/skills/
-└── init-project/
-    ├── README.md
-    ├── SKILL.md
-    └── assets/
-```
-
-## 检查清单
-
-- [ ] 创建目录结构
-- [ ] 编写 README.md（说明文档）
-- [ ] 编写 SKILL.md（操作手册）
-- [ ] 添加 references/（如需要）
-- [ ] 对于共享 skill，复制到两个角色
-- [ ] 验证文件格式和结构
-- [ ] 测试操作步骤可执行性
+完成条件是结构校验通过、资源可用，并且真实请求可以仅依赖该 skill 的内容走完整个工作流。

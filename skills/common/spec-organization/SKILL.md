@@ -1,17 +1,24 @@
+---
+name: spec-organization
+description: Organize and refactor project specification documents into a navigable structure with clear categories, naming, indexes, and repaired links. Use when a spec directory is difficult to navigate, when adding or relocating specifications, or when reorganizing `.moluoxixi/spec`, `.trellis/spec`, or a similar documentation tree.
+---
+
 # Spec Organization
 
-整理 `.moluoxixi/spec/` 或 `.trellis/spec/` 目录中的规范文件。
+整理项目中的规范文档目录，使文件易于定位、引用和维护。
 
 ## 操作步骤
 
-### 1. 审计当前结构
+### 1. 确定并审计目标目录
+
+优先使用用户指定的目录。用户未指定时，检查 `.moluoxixi/spec/`、`.trellis/spec/` 或项目中用途相同的目录，并在存在多个候选时让用户确认。将选定目录记为 `<spec-root>`，后续操作始终使用同一路径。
 
 ```bash
-# 列出所有 spec 文件
-find .moluoxixi/spec -name "*.md" -type f
+SPEC_ROOT="<spec-root>"
 
-# 查看目录结构
-tree .moluoxixi/spec
+# 列出所有 spec 文件并查看目录结构
+find "$SPEC_ROOT" -type f -name "*.md"
+tree "$SPEC_ROOT"
 ```
 
 ### 2. 分析和分类
@@ -53,10 +60,10 @@ spec/
 
 ```bash
 # 创建新目录结构
-mkdir -p .moluoxixi/spec/{category1,category2,category3}
+mkdir -p "$SPEC_ROOT"/{category1,category2,category3}
 
 # 移动文件
-mv .moluoxixi/spec/old-file.md .moluoxixi/spec/category1/new-name.md
+mv "$SPEC_ROOT/old-file.md" "$SPEC_ROOT/category1/new-name.md"
 ```
 
 ### 5. 更新链接
@@ -82,13 +89,15 @@ mv .moluoxixi/spec/old-file.md .moluoxixi/spec/category1/new-name.md
 
 ### 7. 验证完整性
 
-```bash
-# 检查断链
-grep -r "\[.*\](.*.md)" .moluoxixi/spec
+优先运行项目已有的 Markdown link checker。项目没有现成工具时，使用可用的 Markdown 解析器提取本地链接，逐个解析相对路径并检查目标文件或锚点是否存在；不要把搜索到链接文本等同于断链校验。
 
-# 验证所有文件都已移动
-git status
+```bash
+# 检查变更范围和移动结果
+git status --short
+git diff -- "$SPEC_ROOT"
 ```
+
+确认没有遗漏文档、重复副本或无效链接，并确保所有索引都覆盖当前文件。完成条件是目标结构清晰、所有移动可追踪且每个本地链接都能解析到有效目标。
 
 ## 命名规则
 
@@ -141,6 +150,7 @@ spec/
 
 ## 迁移清单
 
+- [ ] 确定唯一的目标 spec 目录
 - [ ] 审计所有现有 spec
 - [ ] 选择组织模式
 - [ ] 设计目标结构
@@ -149,4 +159,4 @@ spec/
 - [ ] 更新所有内部链接
 - [ ] 创建索引文件
 - [ ] 验证没有断链
-- [ ] 提交更改
+- [ ] 检查变更范围并向用户交付结果

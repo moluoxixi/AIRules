@@ -126,5 +126,5 @@ projections: [
 
 1. **避免重复**：相同功能只在一处维护
 2. **明确边界**：清晰划分通用、框架特定和角色专属
-3. **文档完整**：每个 skill 必须包含 README.md 和 SKILL.md
+3. **结构完整**：每个 skill 必须包含带 `name` 和 `description` frontmatter 的 `SKILL.md`；`scripts/`、`references/`、`assets/` 等资源按需添加
 4. **版本兼容**：共享 skills 的变更需考虑所有使用者
