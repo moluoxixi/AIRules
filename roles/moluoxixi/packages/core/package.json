@@ -1,6 +1,6 @@
 {
   "name": "@moluoxixi/airules-moluoxixi-core",
-  "version": "0.6.20",
+  "version": "0.6.21",
   "description": "Moluoxixi core SDK — channel and task domain primitives consumed by the Moluoxixi CLI and downstream Node services",
   "type": "module",
   "main": "./dist/index.js",

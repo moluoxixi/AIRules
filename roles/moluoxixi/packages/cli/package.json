@@ -1,6 +1,6 @@
 {
   "name": "@moluoxixi/airules-moluoxixi-cli",
-  "version": "0.6.20",
+  "version": "0.6.21",
   "description": "AI capabilities grow like ivy — Moluoxixi provides the structure to guide them along a disciplined path",
   "type": "module",
   "main": "./dist/index.js",
@@ -31,7 +31,7 @@
     "typecheck": "tsc --noEmit",
     "lint:py": "basedpyright",
     "lint:all": "pnpm lint && pnpm lint:py",
-    "prepublishOnly": "pnpm run test:publish && pnpm run build && cp ../../README.md ../../LICENSE .",
+    "prepublishOnly": "pnpm run test:publish && pnpm run build",
     "release": "node scripts/release.js patch",
     "release:minor": "node scripts/release.js minor",
     "release:major": "node scripts/release.js major",

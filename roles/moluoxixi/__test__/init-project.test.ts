@@ -60,7 +60,7 @@ describe('init-project skill', () => {
       'fs.writeFileSync(path.join(process.cwd(), \'cli-invocation.json\'), JSON.stringify(process.argv.slice(2)))',
       'fs.mkdirSync(path.join(process.cwd(), \'.moluoxixi\'), { recursive: true })',
       'fs.writeFileSync(path.join(process.cwd(), \'.moluoxixi\', \'workflow.md\'), \'# workflow\\n\')',
-      'fs.writeFileSync(path.join(process.cwd(), \'.moluoxixi\', \'.version\'), \'0.6.20\\n\')',
+      'fs.writeFileSync(path.join(process.cwd(), \'.moluoxixi\', \'.version\'), \'0.6.21\\n\')',
       'fs.mkdirSync(path.join(process.cwd(), \'.codex\'), { recursive: true })',
       'fs.mkdirSync(path.join(process.cwd(), \'.agents\', \'skills\'), { recursive: true })',
     ].join('\n'))

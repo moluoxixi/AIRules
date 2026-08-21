@@ -37,7 +37,7 @@ const roleRoot = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..'
 const mattSkillsSource = 'https://github.com/mattpocock/skills.git'
 const mattSkillsRevision = '8b78b531ab965735c5dc74f6f7a219e1e37326df'
 
-const publishedPackageVersion = '0.6.20'
+const publishedPackageVersion = '0.6.21'
 const publishedRepository = 'https://github.com/moluoxixi/AIRules'
 
 const migratedRuntimePaths = [
