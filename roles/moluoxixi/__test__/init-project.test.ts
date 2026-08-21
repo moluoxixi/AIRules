@@ -47,7 +47,7 @@ describe('init-project skill', () => {
     expect(fs.existsSync(path.join(skillRoot, 'assets'))).toBe(false)
     expect(fs.existsSync(path.join(skillRoot, 'references'))).toBe(false)
     const adapterSource = fs.readFileSync(initializer, 'utf8')
-    expect(adapterSource).toContain('@moluoxixi/airules-moluoxixi')
+    expect(adapterSource).toContain('@moluoxixi/airules-moluoxixi-cli')
     expect(adapterSource).not.toMatch(/pnpm|npm\s+link|install.*workspace|build.*(?:core|cli)/iu)
   })
 
@@ -60,7 +60,7 @@ describe('init-project skill', () => {
       'fs.writeFileSync(path.join(process.cwd(), \'cli-invocation.json\'), JSON.stringify(process.argv.slice(2)))',
       'fs.mkdirSync(path.join(process.cwd(), \'.moluoxixi\'), { recursive: true })',
       'fs.writeFileSync(path.join(process.cwd(), \'.moluoxixi\', \'workflow.md\'), \'# workflow\\n\')',
-      'fs.writeFileSync(path.join(process.cwd(), \'.moluoxixi\', \'.version\'), \'0.6.15\\n\')',
+      'fs.writeFileSync(path.join(process.cwd(), \'.moluoxixi\', \'.version\'), \'0.6.20\\n\')',
       'fs.mkdirSync(path.join(process.cwd(), \'.codex\'), { recursive: true })',
       'fs.mkdirSync(path.join(process.cwd(), \'.agents\', \'skills\'), { recursive: true })',
     ].join('\n'))
@@ -128,5 +128,5 @@ describe('init-project skill', () => {
     expect(fs.existsSync(path.join(installedRole, 'packages', 'cli', 'bin', 'moluoxixi.js'))).toBe(true)
     expect(fs.existsSync(path.join(installedRole, 'packages', 'cli', 'src', 'templates'))).toBe(true)
     expect(fs.existsSync(path.join(installedRole, '.sync'))).toBe(false)
-  })
+  }, 120_000)
 })

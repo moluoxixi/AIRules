@@ -3,7 +3,7 @@ import path from 'node:path'
 import { fileURLToPath } from 'node:url'
 import { describe, expect, it } from 'vitest'
 import { parseDocument } from 'yaml'
-import { extendsRoles, hosts, vendors } from '../constants/skills.js'
+import { extendsRoles, hosts, packages, vendors } from '../constants/skills.js'
 
 interface RoleManifest {
   assets: {
@@ -37,7 +37,7 @@ const roleRoot = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..'
 const mattSkillsSource = 'https://github.com/mattpocock/skills.git'
 const mattSkillsRevision = '8b78b531ab965735c5dc74f6f7a219e1e37326df'
 
-const publishedPackageVersion = '0.6.15'
+const publishedPackageVersion = '0.6.20'
 const publishedRepository = 'https://github.com/moluoxixi/AIRules'
 
 const migratedRuntimePaths = [
@@ -189,6 +189,17 @@ describe('moluoxixi finalized role assets', () => {
 
     expect(extendsRoles).toEqual([])
     expect(hosts).toBe('all')
+    expect(packages).toEqual([
+      {
+        name: '@moluoxixi/airules-moluoxixi-core',
+        path: 'packages/core',
+      },
+      {
+        name: '@moluoxixi/airules-moluoxixi-cli',
+        path: 'packages/cli',
+        install: { kind: 'npm-global', version: 'latest' },
+      },
+    ])
     expect(vendors).toHaveLength(2)
     expect(vendors[0]).toMatchObject({
       name: 'moluoxixi',
@@ -256,7 +267,7 @@ describe('moluoxixi finalized role assets', () => {
     })
     expect(core).not.toHaveProperty('private')
     expect(cli).toMatchObject({
-      name: '@moluoxixi/airules-moluoxixi',
+      name: '@moluoxixi/airules-moluoxixi-cli',
       version: publishedPackageVersion,
       bin: {
         moluoxixi: './bin/moluoxixi.js',

@@ -110,6 +110,46 @@ export const vendors = []
   })
 })
 
+it('tool - skip-vendors also skips role package and vendor setup commands', async () => {
+  await withTempDirAsync('airules-tool-skip-setup-', async (tmpDir) => {
+    const repoRoot = path.join(tmpDir, 'repo')
+    const userHome = path.join(tmpDir, 'user')
+    const moluoHome = path.join(userHome, '.moluoxixi')
+    writeFile(path.join(repoRoot, 'package.json'), '{"type":"module"}\n')
+    writeFile(path.join(repoRoot, 'roles', 'demo', 'constants', 'skills.ts'), `
+export const hosts = ['codex']
+export const packages = [{
+  name: '@scope/must-not-install',
+  path: 'packages/cli',
+  install: { kind: 'npm-global', version: 'latest' },
+}]
+export const vendors = []
+`)
+    fs.mkdirSync(path.join(userHome, '.codex'), { recursive: true })
+
+    const previousPath = process.env.PATH
+    process.env.PATH = path.join(tmpDir, 'empty-bin')
+    try {
+      const result = await syncToHosts({
+        repoRoot,
+        home: moluoHome,
+        userHome,
+        host: 'codex',
+        role: 'demo',
+        skipVendors: true,
+        verify: false,
+      })
+      assert.deepEqual(result.projectedHosts, ['codex'])
+    }
+    finally {
+      if (previousPath === undefined)
+        delete process.env.PATH
+      else
+        process.env.PATH = previousPath
+    }
+  })
+})
+
 it('tool - verify fails closed for an unknown host', async () => {
   await withTempDirAsync('airules-tool-verify-unknown-', async (tmpDir) => {
     const repoRoot = path.join(tmpDir, 'repo')

@@ -4,7 +4,7 @@ import { spawnSync } from 'node:child_process'
 import path from 'node:path'
 import process from 'node:process'
 
-const packageName = '@moluoxixi/airules-moluoxixi'
+const packageName = '@moluoxixi/airules-moluoxixi-cli'
 
 const platformFlags = new Set([
   'claude',

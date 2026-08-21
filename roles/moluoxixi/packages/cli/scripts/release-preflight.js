@@ -3,7 +3,7 @@
  * Shared release / publish preflight.
  *
  * One source of truth for:
- *   1. Version match between `@moluoxixi/airules-moluoxixi` and
+ *   1. Version match between `@moluoxixi/airules-moluoxixi-cli` and
  *      `@moluoxixi/airules-moluoxixi-core` (and the current git tag when checked from
  *      a tag context).
  *   2. The npm dist-tag derived from the shared version (`beta`, `rc`,
@@ -72,10 +72,10 @@ function readVersions() {
 }
 
 function tagVersionFromEnv() {
-  // GITHUB_REF for `push: tags: v*` looks like `refs/tags/v0.6.0-beta.12`.
+  // Role releases use `moluoxixi-v<semver>` so they cannot trigger the root package workflow.
   // GITHUB_REF_NAME on `release.published` is the tag name.
   const ref = process.env.GITHUB_REF_NAME || process.env.GITHUB_REF || "";
-  const m = ref.match(/(?:refs\/tags\/)?v(\d+\.\d+\.\d+(?:-[A-Za-z0-9.+-]+)?)$/);
+  const m = ref.match(/(?:refs\/tags\/)?moluoxixi-v(\d+\.\d+\.\d+(?:-[A-Za-z0-9.+-]+)?)$/);
   return m ? m[1] : null;
 }
 
@@ -155,7 +155,7 @@ function checkVersions({ requireTag, quiet = false }) {
   if (requireTag) {
     if (!tagVersion) {
       fail(
-        `Expected a git tag like v${v.cliVersion} via GITHUB_REF / GITHUB_REF_NAME but found "${
+        `Expected a git tag like moluoxixi-v${v.cliVersion} via GITHUB_REF / GITHUB_REF_NAME but found "${
           process.env.GITHUB_REF_NAME || process.env.GITHUB_REF || ""
         }".`,
       );
@@ -174,7 +174,7 @@ function checkVersions({ requireTag, quiet = false }) {
   if (!quiet) {
     console.log(
       `${GREEN}ok${RESET} versions match: ${v.coreName}@${v.coreVersion} = ${v.cliName}@${v.cliVersion}` +
-        (tagVersion ? ` = git tag v${tagVersion}` : ""),
+        (tagVersion ? ` = git tag moluoxixi-v${tagVersion}` : ""),
     );
   }
   return { ...v, tagVersion };

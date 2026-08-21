@@ -1,7 +1,7 @@
 {
   "name": "moluoxixi-ai-rules",
   "type": "module",
-  "version": "0.2.2",
+  "version": "0.2.3",
   "description": "Remote AI role asset distribution for supported hosts.",
   "license": "MIT",
   "repository": "https://github.com/moluoxixi/AIRules",
@@ -30,6 +30,7 @@
   "scripts": {
     "airules": "node bin/airules.js",
     "build": "tsc -p tsconfig.build.json",
+    "verify:packed-airules": "node scripts/verify-packed-airules.mjs",
     "verify:moluoxixi-identity": "node scripts/verify-moluoxixi-identity.mjs",
     "prebuild": "node scripts/clean-dist.mjs",
     "prepare": "husky",

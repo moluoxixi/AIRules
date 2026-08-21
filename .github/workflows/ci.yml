@@ -76,6 +76,7 @@ jobs:
         run: |
           pnpm run build
           node bin/airules.js --version
+          pnpm run verify:packed-airules
 
       - name: Test native install paths
         run: >-
@@ -85,15 +86,17 @@ jobs:
           scripts/lib/__test__/install-coverage.test.ts
           scripts/lib/__test__/tool.test.ts
           scripts/lib/__test__/install-cli.test.ts
+          scripts/lib/__test__/role-packages.test.ts
           scripts/lib/__test__/vendor-staging.test.ts
+          roles/moluoxixi/__test__/init-project.test.ts
+          roles/moluoxixi/__test__/moluoxixi-source.test.ts
           roles/trellis/__test__/trellis-mcp-projection.test.ts
 
-  verify-moluoxixi-packages:
-    name: Verify Moluoxixi package publication
+  discover-role-packages:
+    name: Discover role package workspaces
     runs-on: ubuntu-latest
-    defaults:
-      run:
-        working-directory: roles/moluoxixi
+    outputs:
+      matrix: ${{ steps.packages.outputs.matrix }}
 
     steps:
       - name: Checkout
@@ -109,8 +112,45 @@ jobs:
         with:
           node-version: 22
 
+      - name: Install AIRules dependencies
+        run: pnpm install --frozen-lockfile
+
+      - name: Build role package matrix
+        id: packages
+        run: echo "matrix=$(pnpm exec tsx scripts/role-packages.ts matrix)" >> "$GITHUB_OUTPUT"
+
+  verify-role-packages:
+    name: Verify role packages (${{ matrix.role }})
+    needs: discover-role-packages
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix: ${{ fromJSON(needs.discover-role-packages.outputs.matrix) }}
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up pnpm
+        uses: pnpm/action-setup@v4
+        with:
+          version: 10.32.1
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+
+      - name: Install AIRules dependencies
+        run: pnpm install --frozen-lockfile
+
+      - name: Validate role package configuration
+        run: pnpm exec tsx scripts/role-packages.ts verify --role "${{ matrix.role }}"
+
       - name: Install role workspace dependencies
+        working-directory: roles/${{ matrix.role }}
         run: pnpm install --include-workspace-root --no-frozen-lockfile
 
       - name: Test, typecheck, and verify publish tarballs
+        working-directory: roles/${{ matrix.role }}
         run: pnpm run verify:publish && pnpm run typecheck

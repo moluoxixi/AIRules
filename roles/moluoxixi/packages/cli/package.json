@@ -1,6 +1,6 @@
 {
-  "name": "@moluoxixi/airules-moluoxixi",
-  "version": "0.6.15",
+  "name": "@moluoxixi/airules-moluoxixi-cli",
+  "version": "0.6.20",
   "description": "AI capabilities grow like ivy — Moluoxixi provides the structure to guide them along a disciplined path",
   "type": "module",
   "main": "./dist/index.js",

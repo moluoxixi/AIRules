@@ -72,7 +72,7 @@ Editable by default:
 Do not edit by default:
 
 - Global npm install directory
-- `node_modules/@moluoxixi/airules-moluoxixi`
+- `node_modules/@moluoxixi/airules-moluoxixi-cli`
 - Moluoxixi GitHub repository source code
 - Concrete state files under `.moluoxixi/.runtime/**`
 - Hash contents inside `.moluoxixi/.template-hashes.json`

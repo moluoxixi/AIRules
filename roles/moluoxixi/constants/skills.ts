@@ -1,8 +1,23 @@
-import type { VendorRepo } from '../../../scripts/lib/vendors.js'
+import type { RolePackageConfig, VendorRepo } from '../../../scripts/lib/vendors.js'
 
 export const extendsRoles: string[] = []
 
 export const hosts = 'all'
+
+export const packages: RolePackageConfig[] = [
+  {
+    name: '@moluoxixi/airules-moluoxixi-core',
+    path: 'packages/core',
+  },
+  {
+    name: '@moluoxixi/airules-moluoxixi-cli',
+    path: 'packages/cli',
+    install: {
+      kind: 'npm-global',
+      version: 'latest',
+    },
+  },
+]
 
 export const vendors: VendorRepo[] = [
   {

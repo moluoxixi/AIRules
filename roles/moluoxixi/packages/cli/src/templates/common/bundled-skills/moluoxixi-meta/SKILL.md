@@ -7,7 +7,7 @@ description: "Understand and customize the local Moluoxixi architecture inside a
 
 This skill is for local Moluoxixi users who have already run `moluoxixi init` in a project. After reading it, an AI should understand the Moluoxixi architecture, operating model, and customization entry points inside that user project, then modify the generated `.moluoxixi/` and platform directory files according to the user's request.
 
-Moluoxixi v0.6 adds three architectural surfaces on top of the pre-v0.6 workflow / persistence / platform model. First, a multi-agent collaboration runtime: `moluoxixi channel` coordinates multiple AI worker processes through project-scoped JSONL event logs at `~/.moluoxixi/channels/<project>/<channel>/events.jsonl`, with worker OOM guard, forum/thread channels, durable idempotency keys, and bundled `.moluoxixi/agents/{check,implement}.md` runtime definitions. Second, cross-session memory: `moluoxixi mem list | search | context | extract | projects` reads raw Claude Code, Codex, and Pi Agent JSONL already on disk, slices by `--phase brainstorm|implement|all`, and never uploads anything. Third, a dual-package npm release: `@moluoxixi/airules-moluoxixi` (CLI) and `@moluoxixi/airules-moluoxixi-core` (SDK with `/channel`, `/task`, `/mem`, `/testing` subpaths) ship in lockstep on one version. Treat these as first-class customization surfaces alongside the per-platform integration files.
+Moluoxixi v0.6 adds three architectural surfaces on top of the pre-v0.6 workflow / persistence / platform model. First, a multi-agent collaboration runtime: `moluoxixi channel` coordinates multiple AI worker processes through project-scoped JSONL event logs at `~/.moluoxixi/channels/<project>/<channel>/events.jsonl`, with worker OOM guard, forum/thread channels, durable idempotency keys, and bundled `.moluoxixi/agents/{check,implement}.md` runtime definitions. Second, cross-session memory: `moluoxixi mem list | search | context | extract | projects` reads raw Claude Code, Codex, and Pi Agent JSONL already on disk, slices by `--phase brainstorm|implement|all`, and never uploads anything. Third, a dual-package npm release: `@moluoxixi/airules-moluoxixi-cli` (CLI) and `@moluoxixi/airules-moluoxixi-core` (SDK with `/channel`, `/task`, `/mem`, `/testing` subpaths) ship in lockstep on one version. Treat these as first-class customization surfaces alongside the per-platform integration files.
 
 The default operating scope is local files in the user project:
 
@@ -17,7 +17,7 @@ The default operating scope is local files in the user project:
 - User-owned channel store outside the project tree: `~/.moluoxixi/channels/<project>/<channel>/events.jsonl`.
 - Raw platform conversation logs queryable via `moluoxixi mem`: `~/.claude/projects/`, `~/.codex/sessions/`, and `~/.pi/agent/sessions/` (OpenCode adapter degraded for the v0.6 line).
 
-Do not assume the user has the Moluoxixi source repository. Do not default to modifying the global npm install directory or `node_modules` — both `@moluoxixi/airules-moluoxixi` and `@moluoxixi/airules-moluoxixi-core` ship as published packages sharing one version and one git tag per release.
+Do not assume the user has the Moluoxixi source repository. Do not default to modifying the global npm install directory or `node_modules` — both `@moluoxixi/airules-moluoxixi-cli` and `@moluoxixi/airules-moluoxixi-core` ship as published packages sharing one version and one git tag per release.
 
 ## How To Use
 
@@ -77,7 +77,7 @@ Do not assume the user has the Moluoxixi source repository. Do not default to mo
 ## Do Not
 
 - Do not treat Moluoxixi upstream source code as the default target for local customization.
-- Do not modify the global npm install directory or `node_modules/@moluoxixi/airules-moluoxixi` or `node_modules/@moluoxixi/airules-moluoxixi-core` to implement project needs; both packages ship in lockstep.
+- Do not modify the global npm install directory or `node_modules/@moluoxixi/airules-moluoxixi-cli` or `node_modules/@moluoxixi/airules-moluoxixi-core` to implement project needs; both packages ship in lockstep.
 - Do not overwrite user-modified local files with default templates; check `.moluoxixi/.template-hashes.json` first and prefer `.new` sidecar files over destructive overwrites.
 - Do not put team-private project rules into any public bundled skill (`moluoxixi-meta`, `moluoxixi-spec-bootstrap`, `moluoxixi-session-insight`, `moluoxixi-channel`); put project rules in `.moluoxixi/spec/`, a project-local skill, the current task, or the workspace journal — `moluoxixi update` will overwrite anything inside a bundled skill directory.
 - Do not hand-edit `~/.moluoxixi/channels/<project>/<channel>/events.jsonl`; sequence numbers are assigned under a file lock and replay-safe writes go through the `moluoxixi channel` CLI or the `@moluoxixi/airules-moluoxixi-core/channel` SDK.

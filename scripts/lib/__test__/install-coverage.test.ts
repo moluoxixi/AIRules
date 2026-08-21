@@ -23,7 +23,14 @@ import {
 } from '../install.js'
 import { buildLinkPlan } from '../links.js'
 import { roleOverlayOrder } from '../roles.js'
-import { getRepoRoot, loadVendorManifest, normalizePath, resolveHomePath, walkVendorTree } from '../vendors.js'
+import {
+  getRepoRoot,
+  loadVendorManifest,
+  normalizePath,
+  resolveHomePath,
+  rolePackageSetupCommands,
+  walkVendorTree,
+} from '../vendors.js'
 
 /**
  * 创建临时目录并保证用例结束后彻底清理。
@@ -692,6 +699,60 @@ it('install - runSkillSetupCommands 保留供应商级 setup 失败语义', () =
   )
 })
 
+it('install - 角色 npm package setup 使用结构化跨平台 argv', () => {
+  withTempDir('airules-role-package-setup-', (tmpDir) => {
+    const binDir = path.join(tmpDir, 'bin')
+    const marker = path.join(tmpDir, 'npm-args.txt')
+    fs.mkdirSync(binDir, { recursive: true })
+    if (process.platform === 'win32') {
+      writeFile(path.join(binDir, 'npm.cmd'), [
+        '@echo off',
+        'node -e "require(\'node:fs\').writeFileSync(process.env.AIRULES_SETUP_MARKER, JSON.stringify(process.argv.slice(1)))" %*',
+      ].join('\r\n'))
+    }
+    else {
+      const fakeNpm = path.join(binDir, 'npm')
+      writeFile(fakeNpm, [
+        '#!/usr/bin/env node',
+        'require(\'node:fs\').writeFileSync(process.env.AIRULES_SETUP_MARKER, JSON.stringify(process.argv.slice(2)))',
+      ].join('\n'))
+      fs.chmodSync(fakeNpm, 0o755)
+    }
+
+    const previousPath = process.env.PATH
+    const previousMarker = process.env.AIRULES_SETUP_MARKER
+    process.env.PATH = `${binDir}${path.delimiter}${previousPath ?? ''}`
+    process.env.AIRULES_SETUP_MARKER = marker
+    try {
+      runSkillSetupCommands({
+        packages: [{
+          name: '@scope/demo-cli',
+          path: 'packages/cli',
+          install: { kind: 'npm-global', version: 'next' },
+        }],
+        version: 1,
+        vendors: {},
+      })
+    }
+    finally {
+      if (previousPath === undefined)
+        delete process.env.PATH
+      else
+        process.env.PATH = previousPath
+      if (previousMarker === undefined)
+        delete process.env.AIRULES_SETUP_MARKER
+      else
+        process.env.AIRULES_SETUP_MARKER = previousMarker
+    }
+
+    assert.deepEqual(JSON.parse(fs.readFileSync(marker, 'utf8')), [
+      'install',
+      '--global',
+      '@scope/demo-cli@next',
+    ])
+  })
+})
+
 it('install - runSkillSetupCommands 保留 setup 失败语义', () => {
   const manifest: VendorManifest = {
     version: 1,
@@ -786,6 +847,43 @@ export default {
       const reservedManifest = path.join(tmpDir, `${reservedHost.replaceAll(' ', '-')}.mjs`)
       writeFile(reservedManifest, `export const hosts = [${JSON.stringify(reservedHost)}]\nexport const vendors = []\n`)
       await assert.rejects(() => loadVendorManifest(reservedManifest), /unknown host/i)
+    }
+  })
+})
+
+it('vendors - 角色 package 配置归一化并拒绝非法声明', async () => {
+  await withTempDirAsync('airules-package-manifest-', async (tmpDir) => {
+    const validManifest = path.join(tmpDir, 'valid.mjs')
+    writeFile(validManifest, `
+export const vendors = []
+export const packages = [
+  { name: '@scope/core', path: 'packages/core' },
+  { name: '@scope/cli', path: 'packages/cli', install: { kind: 'npm-global' } },
+]
+`)
+    const manifest = await loadVendorManifest(validManifest)
+    assert.deepEqual(manifest.packages, [
+      { name: '@scope/core', path: 'packages/core' },
+      { name: '@scope/cli', path: 'packages/cli', install: { kind: 'npm-global' } },
+    ])
+    assert.deepEqual(rolePackageSetupCommands(manifest.packages), [{
+      command: 'npm',
+      args: ['install', '--global', '@scope/cli@latest'],
+    }])
+
+    const invalidCases = [
+      `export const vendors = []\nexport const packages = {}`,
+      `export const vendors = []\nexport const packages = [{ name: 'Bad Name', path: 'packages/core' }]`,
+      `export const vendors = []\nexport const packages = [{ name: '@scope/core', path: '../core' }]`,
+      `export const vendors = []\nexport const packages = [{ name: '@scope/core', path: 'C:\\\\outside' }]`,
+      `export const vendors = []\nexport const packages = [{ name: '@scope/core', path: 'core', install: { kind: 'shell' } }]`,
+      `export const vendors = []\nexport const packages = [{ name: '@scope/core', path: 'core', install: { kind: 'npm-global', version: 'latest & whoami' } }]`,
+      `export const vendors = []\nexport const packages = [{ name: '@scope/core', path: 'one' }, { name: '@scope/core', path: 'two' }]`,
+    ]
+    for (const [index, source] of invalidCases.entries()) {
+      const manifestPath = path.join(tmpDir, `invalid-${index}.mjs`)
+      writeFile(manifestPath, source)
+      await assert.rejects(() => loadVendorManifest(manifestPath))
     }
   })
 })

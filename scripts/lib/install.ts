@@ -25,7 +25,7 @@ import { loadMcpCatalog, validateMcpServerNames } from './mcp-catalog.js'
 import { requireRoleName } from './role-assets.js'
 import { DEFAULT_ROLE, roleOverlayOrder } from './roles.js'
 import { collectFlattenedSkillSources, discoverSkillDirectories, flattenedSkillName } from './skill-projection.js'
-import { loadVendorManifest } from './vendors.js'
+import { loadVendorManifest, rolePackageSetupCommands } from './vendors.js'
 
 /** 获取 vendor 技能目录的绝对路径 */
 function vendorSkillsPath(homeDir: string): string {
@@ -113,27 +113,16 @@ function isSetupCommandAvailable(command: string): boolean {
  * @param manifest 已解析的 VendorManifest
  */
 export function runSkillSetupCommands(manifest: VendorManifest, homeDir?: string): void {
+  const rolePackageCommands = rolePackageSetupCommands(manifest.packages)
+  if (rolePackageCommands.length > 0) {
+    console.log('\n[setup] 安装角色声明的 npm packages...')
+    runSetupCommandGroup('role packages', rolePackageCommands)
+  }
+
   for (const [vendorName, vendor] of Object.entries(manifest.vendors)) {
     if (vendor.setup && vendor.setup.length > 0) {
       console.log(`\n[setup] 执行 ${vendorName} 的安装前置命令...`)
-      for (const command of vendor.setup) {
-        const commandText = setupCommandText(command)
-        if (command.skipIfCommandAvailable && isSetupCommandAvailable(command.skipIfCommandAvailable)) {
-          console.log(`[setup] 跳过 ${commandText}，已检测到 ${command.skipIfCommandAvailable}`)
-          continue
-        }
-
-        console.log(`[setup] > ${commandText}`)
-        try {
-          execFileSync(resolveSetupCommandExecutable(command.command, command.windowsCommandShim), command.args ?? [], {
-            shell: shouldUseShellForSetupCommand(command.command, command.windowsCommandShim),
-            stdio: 'inherit',
-          })
-        }
-        catch (error) {
-          throw new Error(`[setup] ${vendorName} 安装前置命令失败: ${commandText}\n${String(error)}`)
-        }
-      }
+      runSetupCommandGroup(vendorName, vendor.setup)
     }
 
     for (const link of vendor.links) {
@@ -158,24 +147,28 @@ export function runSkillSetupCommands(manifest: VendorManifest, homeDir?: string
 
       const assetName = link.kind === 'mcp-file' ? 'mcp' : path.basename(link.target)
       console.log(`\n[setup] 执行 ${vendorName}/${assetName} 的安装前置命令...`)
-      for (const command of setupCommands) {
-        const commandText = setupCommandText(command)
-        if (command.skipIfCommandAvailable && isSetupCommandAvailable(command.skipIfCommandAvailable)) {
-          console.log(`[setup] 跳过 ${commandText}，已检测到 ${command.skipIfCommandAvailable}`)
-          continue
-        }
+      runSetupCommandGroup(`${vendorName}/${assetName}`, setupCommands)
+    }
+  }
+}
 
-        console.log(`[setup] > ${commandText}`)
-        try {
-          execFileSync(resolveSetupCommandExecutable(command.command, command.windowsCommandShim), command.args ?? [], {
-            shell: shouldUseShellForSetupCommand(command.command, command.windowsCommandShim),
-            stdio: 'inherit',
-          })
-        }
-        catch (error) {
-          throw new Error(`[setup] ${vendorName}/${assetName} 安装前置命令失败: ${commandText}\n${String(error)}`)
-        }
-      }
+function runSetupCommandGroup(owner: string, commands: SetupCommand[]): void {
+  for (const command of commands) {
+    const commandText = setupCommandText(command)
+    if (command.skipIfCommandAvailable && isSetupCommandAvailable(command.skipIfCommandAvailable)) {
+      console.log(`[setup] 跳过 ${commandText}，已检测到 ${command.skipIfCommandAvailable}`)
+      continue
+    }
+
+    console.log(`[setup] > ${commandText}`)
+    try {
+      execFileSync(resolveSetupCommandExecutable(command.command, command.windowsCommandShim), command.args ?? [], {
+        shell: shouldUseShellForSetupCommand(command.command, command.windowsCommandShim),
+        stdio: 'inherit',
+      })
+    }
+    catch (error) {
+      throw new Error(`[setup] ${owner} 安装前置命令失败: ${commandText}\n${String(error)}`)
     }
   }
 }

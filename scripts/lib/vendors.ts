@@ -4,6 +4,8 @@ import { HOST_IDS } from '../../constants/hosts.js'
 import { flattenedSkillName, flattenedVendorSkillTarget } from './skill-projection.js'
 
 const vendorNamePattern = /^[A-Za-z0-9][\w-]*$/u
+const npmPackageNamePattern = /^(?:@[a-z0-9][a-z0-9._-]*\/)?[a-z0-9][a-z0-9._-]*$/u
+const npmInstallVersionPattern = /^(?:(?:0|[1-9]\d*)\.(?:0|[1-9]\d*)\.(?:0|[1-9]\d*)(?:-[0-9A-Za-z-]+(?:\.[0-9A-Za-z-]+)*)?(?:\+[0-9A-Za-z-]+(?:\.[0-9A-Za-z-]+)*)?|[a-z][a-z0-9._-]*)$/u
 const gitCommitPattern = /^[a-f0-9]{40}$/u
 const remoteGitProtocols = new Set(['https:', 'http:', 'ssh:', 'git:', 'git+ssh:'])
 const scpStyleRemotePattern = /^[^@\s/:]+@[^@\s/:]+:\S+$/u
@@ -21,6 +23,22 @@ export interface SetupCommand {
    * 适用于全局工具已安装后不应重复覆盖正在运行二进制的场景。
    */
   skipIfCommandAvailable?: string
+}
+
+/** A published role package may optionally provide a global CLI for role setup. */
+export interface RolePackageInstall {
+  kind: 'npm-global'
+  /** npm version or dist-tag. Defaults to `latest`. */
+  version?: string
+}
+
+/** Role-owned npm package declaration. Array order is the publication order. */
+export interface RolePackageConfig {
+  name: string
+  /** Package directory relative to `roles/<role>`. */
+  path: string
+  /** Packages without this field are published but not globally installed. */
+  install?: RolePackageInstall
 }
 
 /**
@@ -130,8 +148,21 @@ export interface Vendor {
 
 export interface VendorManifest {
   hosts?: string[]
+  packages?: RolePackageConfig[]
   version: number
   vendors: Record<string, Vendor>
+}
+
+export function rolePackageSetupCommands(packages: RolePackageConfig[] = []): SetupCommand[] {
+  return packages.flatMap((rolePackage) => {
+    if (!rolePackage.install)
+      return []
+    const version = rolePackage.install.version ?? 'latest'
+    return [{
+      command: 'npm',
+      args: ['install', '--global', `${rolePackage.name}@${version}`],
+    }]
+  })
 }
 
 /**
@@ -355,12 +386,70 @@ export async function loadVendorManifest(manifestPath: string): Promise<VendorMa
   const vendors: Record<string, Vendor> = {}
   walkVendorTree(vendorTree, [], vendors)
   const hosts = normalizeRoleHosts(module.hosts ?? module.default?.hosts, manifestPath)
+  const packages = normalizeRolePackages(module.packages ?? module.default?.packages, manifestPath)
 
   return {
     ...(hosts === undefined ? {} : { hosts }),
+    packages,
     version: 1,
     vendors,
   }
+}
+
+function normalizeRolePackages(value: unknown, manifestPath: string): RolePackageConfig[] {
+  if (value === undefined)
+    return []
+  if (!Array.isArray(value))
+    throw new TypeError(`Vendor manifest "${manifestPath}" export "packages" must be an array`)
+
+  const packageNames = new Set<string>()
+  const packagePaths = new Set<string>()
+  return value.map((entry, index) => {
+    const location = `Vendor manifest "${manifestPath}" package at index ${index}`
+    if (!entry || typeof entry !== 'object' || Array.isArray(entry))
+      throw new TypeError(`${location} must be an object`)
+
+    const candidate = entry as Record<string, unknown>
+    if (typeof candidate.name !== 'string' || !npmPackageNamePattern.test(candidate.name))
+      throw new Error(`${location} has invalid npm package name "${String(candidate.name)}"`)
+    if (packageNames.has(candidate.name))
+      throw new Error(`Vendor manifest "${manifestPath}" contains duplicate package "${candidate.name}"`)
+    packageNames.add(candidate.name)
+
+    if (typeof candidate.path !== 'string' || candidate.path.length === 0)
+      throw new Error(`${location} must declare a non-empty relative path`)
+    const packagePath = normalizePath(candidate.path)
+    const pathParts = packagePath.split('/')
+    if (
+      path.posix.isAbsolute(packagePath)
+      || path.win32.isAbsolute(packagePath)
+      || pathParts.some(part => part === '' || part === '.' || part === '..')
+    ) {
+      throw new Error(`${location} path must stay inside the role directory: ${candidate.path}`)
+    }
+    if (packagePaths.has(packagePath))
+      throw new Error(`Vendor manifest "${manifestPath}" contains duplicate package path "${packagePath}"`)
+    packagePaths.add(packagePath)
+
+    if (candidate.install === undefined)
+      return { name: candidate.name, path: packagePath }
+    if (!candidate.install || typeof candidate.install !== 'object' || Array.isArray(candidate.install))
+      throw new TypeError(`${location} install must be an object`)
+    const install = candidate.install as Record<string, unknown>
+    if (install.kind !== 'npm-global')
+      throw new Error(`${location} install.kind must be "npm-global"`)
+    if (install.version !== undefined && (typeof install.version !== 'string' || !npmInstallVersionPattern.test(install.version)))
+      throw new Error(`${location} install.version must be an exact semver or safe npm dist-tag`)
+
+    return {
+      name: candidate.name,
+      path: packagePath,
+      install: {
+        kind: 'npm-global',
+        ...(install.version === undefined ? {} : { version: install.version as string }),
+      },
+    }
+  })
 }
 
 function normalizeRoleHosts(value: unknown, manifestPath: string): string[] | undefined {

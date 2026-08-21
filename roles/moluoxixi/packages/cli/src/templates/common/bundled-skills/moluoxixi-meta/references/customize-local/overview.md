@@ -38,7 +38,7 @@ This directory is for local AI working in a user project where Moluoxixi was ins
 ## Things Not To Do By Default
 
 - Do not edit the global npm install directory.
-- Do not edit `node_modules/@moluoxixi/airules-moluoxixi`.
+- Do not edit `node_modules/@moluoxixi/airules-moluoxixi-cli`.
 - Do not assume the user has the Moluoxixi GitHub repository.
 - Do not overwrite local files already modified by the user with default templates.
 - Do not put team project rules into public `moluoxixi-meta`; project rules belong in `.moluoxixi/spec/` or a local skill.

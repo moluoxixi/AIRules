@@ -1,0 +1,81 @@
+name: Publish role packages
+
+on:
+  push:
+    tags:
+      - '*-v*.*.*'
+  workflow_dispatch:
+    inputs:
+      tag:
+        description: Existing role release tag, for example moluoxixi-v0.6.20
+        required: true
+        type: string
+
+permissions:
+  contents: read
+  id-token: write
+
+concurrency:
+  group: publish-role-${{ github.event_name == 'workflow_dispatch' && inputs.tag || github.ref_name }}
+  cancel-in-progress: false
+
+jobs:
+  publish:
+    name: Verify and publish configured role packages
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout release tag
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event_name == 'workflow_dispatch' && inputs.tag || github.ref }}
+          fetch-depth: 0
+
+      - name: Verify checkout is the requested immutable tag
+        env:
+          RELEASE_TAG: ${{ github.event_name == 'workflow_dispatch' && inputs.tag || github.ref_name }}
+        run: |
+          tag_name="${RELEASE_TAG#refs/tags/}"
+          tag_commit="$(git rev-parse --verify "refs/tags/${tag_name}^{commit}")"
+          head_commit="$(git rev-parse HEAD)"
+          if [ "$tag_commit" != "$head_commit" ]; then
+            echo "Checked out commit $head_commit does not match tag $tag_name at $tag_commit." >&2
+            exit 1
+          fi
+
+      - name: Set up pnpm
+        uses: pnpm/action-setup@v4
+        with:
+          version: 10.32.1
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          registry-url: https://registry.npmjs.org
+
+      - name: Install AIRules dependencies
+        run: pnpm install --frozen-lockfile --config.node-linker=hoisted
+
+      - name: Resolve and validate release tag
+        id: release
+        env:
+          RELEASE_TAG: ${{ github.event_name == 'workflow_dispatch' && inputs.tag || github.ref_name }}
+        run: pnpm exec tsx scripts/role-packages.ts prepare-release --tag "$RELEASE_TAG" --github
+
+      - name: Install role workspace dependencies
+        working-directory: roles/${{ steps.release.outputs.role }}
+        run: pnpm install --include-workspace-root --no-frozen-lockfile
+
+      - name: Validate role package configuration
+        run: pnpm exec tsx scripts/role-packages.ts verify --role "${{ steps.release.outputs.role }}"
+
+      - name: Run role publish gates and tarball verification
+        working-directory: roles/${{ steps.release.outputs.role }}
+        run: pnpm run verify:publish && pnpm run typecheck
+
+      - name: Publish packages in configured order and verify npm visibility
+        env:
+          NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
+          RELEASE_TAG: ${{ github.event_name == 'workflow_dispatch' && inputs.tag || github.ref_name }}
+        run: pnpm exec tsx scripts/role-packages.ts publish --tag "$RELEASE_TAG"
