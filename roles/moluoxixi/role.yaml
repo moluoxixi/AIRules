@@ -14,7 +14,7 @@ distribution:
   npm_embedded_source: false
 entrypoints:
   initialize_project_skill: init-project
-  initialize_project_script: packages/cli/bin/moluoxixi.js
+  initialize_project_script: skills/init-project/scripts/run-role-cli.mjs
 third_party:
   productivity_skills:
     name: Matt Pocock Skills

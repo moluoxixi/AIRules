@@ -115,15 +115,18 @@ describe('moluoxixi finalized role assets', () => {
     expect(distributedSkills.map(entry => entry.name)).toEqual(['init-project'])
     expect(collectFiles('skills/init-project').filter(file => path.posix.basename(file) === 'SKILL.md')).toEqual([
       'skills/init-project/SKILL.md',
+      'skills/init-project/assets/project-extension/skill/SKILL.md',
     ])
 
     expect(fs.readFileSync(resolveRolePath('.gitignore'), 'utf8')).toContain('.sync/')
     expect(fs.existsSync(resolveRolePath('overlays'))).toBe(false)
   })
 
-  it('keeps the init skill free of duplicated package assets and references', () => {
-    expect(fs.existsSync(resolveRolePath('skills/init-project/assets'))).toBe(false)
-    expect(fs.existsSync(resolveRolePath('skills/init-project/references'))).toBe(false)
+  it('keeps the AIRules extension separate from synchronized package assets', () => {
+    expect(fs.existsSync(resolveRolePath('skills/init-project/assets/project-extension'))).toBe(true)
+    expect(fs.existsSync(resolveRolePath('skills/init-project/references/asset-layout.md'))).toBe(true)
+    expect(fs.existsSync(resolveRolePath('skills/init-project/assets/runtime'))).toBe(false)
+    expect(fs.existsSync(resolveRolePath('skills/init-project/assets/project'))).toBe(false)
     expect(fs.existsSync(resolveRolePath('references'))).toBe(false)
   })
 
@@ -168,7 +171,7 @@ describe('moluoxixi finalized role assets', () => {
         npm_embedded_source: false,
       },
       entrypoints: {
-        initialize_project_script: 'packages/cli/bin/moluoxixi.js',
+        initialize_project_script: 'skills/init-project/scripts/run-role-cli.mjs',
         initialize_project_skill: 'init-project',
       },
       role_id: 'moluoxixi',
@@ -185,6 +188,7 @@ describe('moluoxixi finalized role assets', () => {
     expect(fs.statSync(resolveRolePath(manifest.assets.skills)).isDirectory()).toBe(true)
     expect(fs.statSync(resolveRolePath(manifest.assets.mcp)).isDirectory()).toBe(true)
     expect(fs.statSync(resolveRolePath(manifest.assets.packages)).isDirectory()).toBe(true)
+    expect(fs.statSync(resolveRolePath(manifest.entrypoints.initialize_project_script)).isFile()).toBe(true)
     expect(fs.existsSync(resolveRolePath('skills/init-project/scripts/migrations/manifests'))).toBe(false)
 
     expect(extendsRoles).toEqual([])
@@ -313,7 +317,10 @@ describe('moluoxixi finalized role assets', () => {
     expect(workspace).not.toHaveProperty('publishConfig')
     expect(collectFiles('packages/core').length).toBeGreaterThan(0)
     expect(collectFiles('packages/cli').length).toBeGreaterThan(0)
-    expect(fs.existsSync(resolveRolePath('skills/init-project/assets'))).toBe(false)
+    expect(fs.existsSync(resolveRolePath('skills/init-project/assets/project-extension'))).toBe(true)
+    expect(fs.existsSync(resolveRolePath('packages/cli/src/templates/moluoxixi/knowledge'))).toBe(false)
+    expect(fs.existsSync(resolveRolePath('packages/cli/src/templates/common/bundled-skills/moluoxixi-knowledge'))).toBe(false)
+    expect(fs.existsSync(resolveRolePath('packages/cli/src/templates/moluoxixi/scripts/common/knowledge.py'))).toBe(false)
   })
 
   it('uses Moluoxixi project and channel state roots in the executable runtime', () => {

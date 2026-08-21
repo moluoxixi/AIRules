@@ -36,24 +36,37 @@ function walkFiles(root: string): string[] {
 }
 
 describe('init-project skill', () => {
-  it('keeps a Chinese manual for the installed command', () => {
+  it('ships the role-owned extension and its Chinese initialization manual', () => {
     expect(walkFiles(skillRoot)).toEqual([
       'SKILL.md',
       'agents/openai.yaml',
+      'assets/project-extension/AGENTS.md',
+      'assets/project-extension/hosts/opencode/moluoxixi-knowledge.js',
+      'assets/project-extension/hosts/pi/moluoxixi-knowledge.ts',
+      'assets/project-extension/knowledge/gitignore.txt',
+      'assets/project-extension/knowledge/index.md',
+      'assets/project-extension/runtime/common/knowledge.py',
+      'assets/project-extension/runtime/knowledge-hook.py',
+      'assets/project-extension/runtime/knowledge.py',
+      'assets/project-extension/skill/SKILL.md',
+      'assets/project-extension/skill/references/organization.md',
+      'references/asset-layout.md',
+      'references/platforms.md',
+      'scripts/core/extension-transaction.mjs',
+      'scripts/install-extension.mjs',
+      'scripts/run-role-cli.mjs',
     ])
-    expect(fs.existsSync(path.join(skillRoot, 'assets'))).toBe(false)
-    expect(fs.existsSync(path.join(skillRoot, 'references'))).toBe(false)
     const skillSource = fs.readFileSync(path.join(skillRoot, 'SKILL.md'), 'utf8')
     const skillBody = skillSource.replace(/^---\r?\n[\s\S]*?\r?\n---\r?\n/u, '')
     expect(skillBody).toContain('# 初始化 Moluoxixi 项目')
-    expect(skillBody).toContain('npm install --global moluoxixi-ai-rules')
-    expect(skillBody).toContain('moluoxixi --version')
-    expect(skillBody).toContain('moluoxixi init --<宿主> --yes')
+    expect(skillBody).toContain('scripts/run-role-cli.mjs')
+    expect(skillBody).toContain('.moluoxixi/knowledge/index.md')
+    expect(skillBody).toContain('.moluoxixi/airules-init-manifest.json')
     expect(skillBody).toContain('命令不存在或执行失败时，报告错误并停止')
-    expect(skillBody).not.toMatch(/npx|@moluoxixi\/airules-moluoxixi-(?:cli|core)|run-role-cli|适配脚本|等价于/iu)
+    expect(skillBody).not.toMatch(/npx|npm install --global/iu)
   })
 
-  it('stages the thin skill and complete local package workspace', async () => {
+  it('stages the self-contained extension beside the untouched package workspace', async () => {
     const root = temporaryDirectory('airules-package-staging-')
     const homeDir = path.join(root, 'home')
     const repository = path.join(homeDir, 'vendor', 'repos', 'moluoxixi')
@@ -75,10 +88,9 @@ describe('init-project skill', () => {
     const installedRole = path.join(homeDir, 'roles', 'moluoxixi')
 
     expect(inventory.skills).toEqual(['init-project'])
-    expect(walkFiles(stagedSkill)).toEqual([
-      'SKILL.md',
-      'agents/openai.yaml',
-    ])
+    expect(walkFiles(stagedSkill)).toEqual(walkFiles(skillRoot))
+    expect(fs.existsSync(path.join(stagedSkill, 'scripts', 'install-extension.mjs'))).toBe(true)
+    expect(fs.existsSync(path.join(stagedSkill, 'assets', 'project-extension', 'skill', 'SKILL.md'))).toBe(true)
     expect(fs.existsSync(path.join(installedRole, 'packages', 'core', 'package.json'))).toBe(true)
     expect(fs.existsSync(path.join(installedRole, 'packages', 'cli', 'bin', 'moluoxixi.js'))).toBe(true)
     expect(fs.existsSync(path.join(installedRole, 'packages', 'cli', 'src', 'templates'))).toBe(true)

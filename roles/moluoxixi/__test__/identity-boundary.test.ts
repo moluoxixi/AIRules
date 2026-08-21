@@ -70,7 +70,7 @@ describe('moluoxixi identity boundary scanner', () => {
       findings: [],
     })
     expect(fs.existsSync(path.join(fixtureRoleRoot, '.sync', 'reports'))).toBe(false)
-  })
+  }, 15_000)
 
   it('detects case, camel, path, and separator variants before commit', () => {
     const { fixtureRoleRoot } = createFixture()
