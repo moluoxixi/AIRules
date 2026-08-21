@@ -4,8 +4,6 @@ import { spawnSync } from 'node:child_process'
 import path from 'node:path'
 import process from 'node:process'
 
-const packageName = '@moluoxixi/airules-moluoxixi-cli'
-
 const platformFlags = new Set([
   'claude',
   'cursor',
@@ -143,14 +141,7 @@ else if (process.env.MOLUOXIXI_CLI || commandAvailable(installedExecutable)) {
   result = spawnSync(executable, cliArgs, spawnOptions)
 }
 else {
-  const npx = process.platform === 'win32' ? 'npx.cmd' : 'npx'
-  result = spawnSync(npx, ['--yes', `--package=${packageName}`, 'moluoxixi', ...cliArgs], {
-    cwd: projectRoot,
-    env: process.env,
-    stdio: 'inherit',
-    windowsHide: true,
-    ...(process.platform === 'win32' ? { shell: true } : {}),
-  })
+  throw new Error('未找到 moluoxixi 命令。请先完成 Moluoxixi 角色安装，并确认该命令已加入 PATH。')
 }
 if (result.error)
   throw result.error

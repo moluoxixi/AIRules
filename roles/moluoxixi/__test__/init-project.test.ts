@@ -38,7 +38,7 @@ function walkFiles(root: string): string[] {
 }
 
 describe('init-project skill', () => {
-  it('keeps the discoverable skill as a package CLI adapter only', () => {
+  it('keeps a Chinese manual and an installed-command-only adapter', () => {
     expect(walkFiles(skillRoot)).toEqual([
       'SKILL.md',
       'agents/openai.yaml',
@@ -46,10 +46,42 @@ describe('init-project skill', () => {
     ])
     expect(fs.existsSync(path.join(skillRoot, 'assets'))).toBe(false)
     expect(fs.existsSync(path.join(skillRoot, 'references'))).toBe(false)
+    const skillSource = fs.readFileSync(path.join(skillRoot, 'SKILL.md'), 'utf8')
+    const skillBody = skillSource.replace(/^---\r?\n[\s\S]*?\r?\n---\r?\n/u, '')
+    expect(skillBody).toContain('# 初始化 Moluoxixi 项目')
+    expect(skillBody).toContain('npm install --global moluoxixi-ai-rules')
+    expect(skillBody).toContain('moluoxixi --version')
+    expect(skillBody).toContain('moluoxixi init --<宿主> --yes')
+    expect(skillBody).toContain('命令不存在或执行失败时，报告错误并停止')
+    expect(skillBody).not.toMatch(/npx|@moluoxixi\/airules-moluoxixi-(?:cli|core)/iu)
+
     const adapterSource = fs.readFileSync(initializer, 'utf8')
-    expect(adapterSource).toContain('@moluoxixi/airules-moluoxixi-cli')
+    expect(adapterSource).toContain('未找到 moluoxixi 命令')
+    expect(adapterSource).not.toMatch(/npx|@moluoxixi\/airules-moluoxixi-cli/iu)
     expect(adapterSource).not.toMatch(/pnpm|npm\s+link|install.*workspace|build.*(?:core|cli)/iu)
   })
+
+  it('fails instead of downloading a fallback when moluoxixi is unavailable', () => {
+    const projectRoot = temporaryDirectory('airules-package-init-missing-cli-')
+    const emptyPath = temporaryDirectory('airules-package-init-empty-path-')
+    const result = spawnSync(process.execPath, [
+      initializer,
+      '--project',
+      projectRoot,
+      '--platform',
+      'codex',
+      '--yes',
+    ], {
+      cwd: roleRoot,
+      encoding: 'utf8',
+      env: { ...process.env, NO_COLOR: '1', PATH: emptyPath, Path: emptyPath },
+      timeout: 120_000,
+    })
+
+    expect(result.status).not.toBe(0)
+    expect(result.stderr).toContain('未找到 moluoxixi 命令')
+    expect(fs.readdirSync(projectRoot)).toEqual([])
+  }, 120_000)
 
   it('initializes an isolated project through the published package CLI contract', () => {
     const projectRoot = temporaryDirectory('airules-package-init-')

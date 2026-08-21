@@ -3,30 +3,34 @@ name: init-project
 description: Initialize or extend a project with the Moluoxixi workflow runtime and supported AI coding platform integrations. Use after installing the Moluoxixi AIRules role, when adding Moluoxixi to a repository, or when replacing a direct `moluoxixi init` invocation.
 ---
 
-# Initialize Moluoxixi
+# 初始化 Moluoxixi 项目
 
-`airules install moluoxixi` installs `@moluoxixi/airules-moluoxixi-cli@latest` globally. That CLI has an exact dependency on `@moluoxixi/airules-moluoxixi-core`, so npm installs the core package with it. The core package is an SDK without a `bin` or project templates; the CLI owns project initialization.
+## 前置条件
 
-## Procedure
-
-1. Resolve the project root and confirm the resolved directory is not a symlink.
-2. Determine the requested platforms. Use the active host when the request is singular and unambiguous; otherwise ask which platforms to configure. Supported values are `claude`, `cursor`, `opencode`, `codex`, `kilo`, `kiro`, `gemini`, `antigravity`, `devin`, `qoder`, `codebuddy`, `copilot`, `droid`, `dsh`, `pi`, `reasonix`, `zcode`, `trae`, `omp`, `grok`, `kimi`, and `snow`. `claude-code` aliases `claude`, `windsurf` aliases `devin`, and `all` selects every supported platform.
-3. Run the adapter from this skill directory:
+1. 尚未安装 AIRules 时，执行：
 
    ```bash
-   node "<skill-root>/scripts/run-role-cli.mjs" --project "<project-root>" --platform "<comma-separated-platforms>" --yes
+   npm install --global moluoxixi-ai-rules
    ```
 
-   The adapter uses the installed `moluoxixi` command. If it is unavailable, it runs this published-package fallback:
+2. 执行 `moluoxixi --version`，确认当前环境可以直接调用 `moluoxixi`。命令不存在或执行失败时，报告错误并停止；不得自动安装缺失命令，也不得使用临时包回退。
+
+## 操作步骤
+
+1. 确定项目根目录，并确认解析后的目录不是符号链接。
+2. 根据用户要求选择宿主；请求不明确时先询问。可用宿主以 `moluoxixi init --help` 的当前输出为准。
+3. 从本技能目录执行适配脚本：
 
    ```bash
-   npx --yes --package=@moluoxixi/airules-moluoxixi-cli moluoxixi init
+   node "<技能目录>/scripts/run-role-cli.mjs" --project "<项目根目录>" --platform "<宿主>" --yes
    ```
 
-4. Add `--user <name>` when developer identity initialization is requested. Add `--force` only with explicit authorization to overwrite files; use `--skip-existing` to preserve existing files without prompting.
-5. For an explicitly requested workflow or spec template, pass `--workflow <id> --workflow-source <source>` or `--template <id> --registry <source>`, together with `--overwrite` or `--append` when requested.
-6. Confirm the command exits successfully, `.moluoxixi/workflow.md` exists, and each requested platform integration was created. Report preserved or skipped files.
+   该脚本会进入项目根目录并调用已安装的命令，等价于：
 
-For direct CLI use after role installation, run `moluoxixi init --<platform> --yes` from the target project. Install `@moluoxixi/airules-moluoxixi-core` in a project's dependencies only when project code imports its SDK exports; installing core alone does not initialize Moluoxixi.
+   ```bash
+   cd "<项目根目录>"
+   moluoxixi init --<宿主> --yes
+   ```
 
-The package CLI is the single implementation for templates, platform configuration, version tracking, update, workflow, channel, memory, and uninstall behavior. Keep package and project writes inside the resolved role or project root. The `.sync` maintenance workspace is never copied into a project.
+4. 仅在用户明确要求时添加其他参数。覆盖现有文件需要用户明确授权后添加 `--force`；保留现有文件时添加 `--skip-existing`。
+5. 确认命令成功退出、`.moluoxixi/workflow.md` 已生成，并确认目标宿主的集成目录已生成。报告保留或跳过的文件。
