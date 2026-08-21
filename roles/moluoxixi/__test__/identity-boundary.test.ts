@@ -60,8 +60,7 @@ afterEach(() => {
 describe('moluoxixi identity boundary scanner', () => {
   it('ignores the local maintenance workspace and passes clean role files', () => {
     const { fixtureRoleRoot } = createFixture()
-    const reportPath = path.join(fixtureRoleRoot, '.sync', 'reports', 'identity-boundary.json')
-    const result = runSourceScan(fixtureRoleRoot, ['--report', reportPath])
+    const result = runSourceScan(fixtureRoleRoot)
 
     expect(result.status).toBe(0)
     expect(result.stderr).toBe('')
@@ -70,7 +69,7 @@ describe('moluoxixi identity boundary scanner', () => {
       scanned: { source: { files: 2 } },
       findings: [],
     })
-    expect(JSON.parse(fs.readFileSync(reportPath, 'utf8'))).toEqual(result.report)
+    expect(fs.existsSync(path.join(fixtureRoleRoot, '.sync', 'reports'))).toBe(false)
   })
 
   it('detects case, camel, path, and separator variants before commit', () => {
@@ -99,26 +98,6 @@ describe('moluoxixi identity boundary scanner', () => {
       expect.objectContaining({ kind: 'content', signature: 'legacy-product-common-misspelling', line: 3 }),
       expect.objectContaining({ kind: 'content', signature: 'legacy-organization', line: 4 }),
     ]))
-  })
-
-  it('rejects report paths that traverse a symbolic link', () => {
-    const { repositoryRoot, fixtureRoleRoot } = createFixture()
-    const outside = path.join(repositoryRoot, 'outside-reports')
-    const reportsRoot = path.join(fixtureRoleRoot, '.sync', 'reports')
-    const linkedDirectory = path.join(reportsRoot, 'linked')
-    fs.mkdirSync(outside)
-    fs.mkdirSync(reportsRoot)
-    fs.symlinkSync(outside, linkedDirectory, process.platform === 'win32' ? 'junction' : 'dir')
-
-    const reportPath = path.join(linkedDirectory, 'identity-boundary.json')
-    const result = runSourceScan(fixtureRoleRoot, ['--report', reportPath])
-
-    expect(result.status).toBe(2)
-    expect(result.report).toMatchObject({
-      status: 'error',
-      error: expect.stringContaining('symbolic link'),
-    })
-    expect(fs.existsSync(path.join(outside, 'identity-boundary.json'))).toBe(false)
   })
 
   it('passes the current tracked and untracked role source boundary', () => {

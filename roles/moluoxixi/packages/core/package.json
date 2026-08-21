@@ -46,9 +46,12 @@
     "clean": "node -e \"require('node:fs').rmSync('dist', { recursive: true, force: true })\"",
     "dev": "tsc --watch",
     "test": "vitest run",
+    "test:publish": "pnpm test",
     "test:watch": "vitest",
+    "lint:publish": "publint --strict && attw --pack . --profile esm-only",
     "lint": "eslint src/ test/",
     "lint:fix": "eslint src/ test/ --fix",
+    "prepublishOnly": "pnpm run test:publish && pnpm run build",
     "typecheck": "tsc --noEmit"
   },
   "keywords": [
@@ -58,7 +61,7 @@
     "agent",
     "events"
   ],
-  "author": "Mindfold LLC",
+  "author": "Moluoxixi LLC",
   "license": "AGPL-3.0-only",
   "devDependencies": {
     "@eslint/js": "^9.18.0",
@@ -73,6 +76,6 @@
   },
   "repository": {
     "type": "git",
-    "url": "https://github.com/mindfold-ai/moluoxixi.git"
+    "url": "https://github.com/moluoxixi/AIRules"
   }
 }

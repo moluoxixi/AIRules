@@ -2,7 +2,7 @@
  * Remote template fetcher for Moluoxixi CLI
  *
  * Fetches spec templates from the official marketplace:
- * https://github.com/mindfold-ai/marketplace
+ * https://github.com/moluoxixi/marketplace
  */
 
 import { randomUUID } from "node:crypto";
@@ -17,9 +17,9 @@ import { toPosix } from "./posix.js";
 // =============================================================================
 
 export const TEMPLATE_INDEX_URL =
-  "https://raw.githubusercontent.com/mindfold-ai/marketplace/main/index.json";
+  "https://raw.githubusercontent.com/moluoxixi/marketplace/main/index.json";
 
-const TEMPLATE_REPO = "gh:mindfold-ai/marketplace";
+const TEMPLATE_REPO = "gh:moluoxixi/marketplace";
 
 /** Map template type to installation path */
 const INSTALL_PATHS: Record<string, string> = {

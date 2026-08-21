@@ -22,7 +22,7 @@
  * because those may be customized for the Moluoxixi project itself.
  */
 
-import { cpSync, readdirSync, statSync, mkdirSync } from "node:fs";
+import { cpSync, readdirSync, statSync, mkdirSync, existsSync } from "node:fs";
 import { join, extname } from "node:path";
 
 const EXCLUDED_TEMPLATE_ENTRIES = new Set(["__pycache__", ".DS_Store"]);
@@ -68,8 +68,13 @@ function copyDir(src, dest) {
 copyDir("src/templates", "dist/templates");
 console.log("Copied src/templates/ to dist/templates/");
 
-// Copy src/migrations/manifests to dist/migrations/manifests
-copyDir("src/migrations/manifests", "dist/migrations/manifests");
-console.log("Copied src/migrations/manifests/ to dist/migrations/manifests/");
+// Migration history is intentionally omitted from the finalized role package.
+// Keep builds valid when the sync transform removes the upstream manifests.
+if (existsSync("src/migrations/manifests")) {
+  copyDir("src/migrations/manifests", "dist/migrations/manifests");
+  console.log("Copied src/migrations/manifests/ to dist/migrations/manifests/");
+} else {
+  console.log("No migration manifests found; skipping migration history copy.");
+}
 
 console.log("Template copy complete.");

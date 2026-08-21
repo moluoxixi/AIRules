@@ -48,12 +48,6 @@ jobs:
         working-directory: .
         run: pnpm install --frozen-lockfile --config.node-linker=hoisted
 
-      - name: Verify the committed project runtime bundle
-        working-directory: .
-        run: |
-          npm run build:moluoxixi-runtime
-          git diff --exit-code -- roles/moluoxixi/skills/init-project/assets/runtime/vendor/channel-mem.mjs
-
       - name: Install role workspace dependencies
         run: pnpm install --include-workspace-root --no-frozen-lockfile
 
@@ -79,7 +73,7 @@ jobs:
         if: steps.publish-plan.outputs.cli_publish == 'true'
         env:
           NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
-        run: pnpm --filter @moluoxixi/airules-moluoxixi-cli publish --no-git-checks --provenance --access public --tag "$(pnpm exec node packages/cli/scripts/release-preflight.js npm-tag)"
+        run: pnpm --filter @moluoxixi/airules-moluoxixi publish --no-git-checks --provenance --access public --tag "$(pnpm exec node packages/cli/scripts/release-preflight.js npm-tag)"
 
       - name: Verify public registry visibility
         run: pnpm exec node packages/cli/scripts/release-preflight.js verify-npm --package all

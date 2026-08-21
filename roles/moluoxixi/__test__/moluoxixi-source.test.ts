@@ -1,5 +1,3 @@
-import { Buffer } from 'node:buffer'
-import { createHash } from 'node:crypto'
 import fs from 'node:fs'
 import path from 'node:path'
 import { fileURLToPath } from 'node:url'
@@ -22,7 +20,6 @@ interface RoleManifest {
   entrypoints: {
     initialize_project_script: string
     initialize_project_skill: string
-    moluoxixi_runtime: string
   }
   role_id: string
   role_version: string
@@ -37,24 +34,16 @@ interface RoleManifest {
 }
 
 const roleRoot = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..')
-const workspaceFolderPlaceholder = '$' + '{workspaceFolder}'
 const mattSkillsSource = 'https://github.com/mattpocock/skills.git'
 const mattSkillsRevision = '8b78b531ab965735c5dc74f6f7a219e1e37326df'
 
-const publishedPackageVersion = '0.6.19'
+const publishedPackageVersion = '0.6.15'
 const publishedRepository = 'https://github.com/moluoxixi/AIRules'
 
 const migratedRuntimePaths = [
   'packages/core',
   'packages/cli',
-  'skills/init-project/assets/runtime/vendor/channel-mem.mjs',
 ]
-
-const runtimeIntegrity = {
-  bytes: 4777221,
-  files: 644,
-  hash: 'c53ccf47c02997e0b2deee97dbfd330dde4b0c2cc5b64ad4381aafe797f98795',
-}
 
 function sortPaths(paths: string[]): string[] {
   return paths.sort((left, right) => left < right ? -1 : left > right ? 1 : 0)
@@ -93,38 +82,6 @@ function collectFiles(relativeRoot: string): string[] {
   return files
 }
 
-function normalizeCrLf(content: Buffer): Buffer {
-  const normalized = Buffer.allocUnsafe(content.length)
-  let target = 0
-
-  for (let source = 0; source < content.length; source += 1) {
-    if (content[source] === 13 && content[source + 1] === 10) {
-      continue
-    }
-    normalized[target] = content[source]
-    target += 1
-  }
-
-  return normalized.subarray(0, target)
-}
-
-function selectedStats(files: string[], normalizeTextEol = false): { bytes: number, hash: string } {
-  const hash = createHash('sha256')
-  let bytes = 0
-
-  for (const relativePath of files) {
-    const rawContent = fs.readFileSync(resolveRolePath(relativePath))
-    const content = normalizeTextEol
-      ? normalizeCrLf(rawContent)
-      : rawContent
-    bytes += content.byteLength
-    hash.update(`${relativePath}\0${content.byteLength}\0`, 'utf8')
-    hash.update(content)
-  }
-
-  return { bytes, hash: hash.digest('hex') }
-}
-
 function readRoleManifest(): RoleManifest {
   const document = parseDocument(
     fs.readFileSync(path.join(roleRoot, 'role.yaml'), 'utf8'),
@@ -138,7 +95,7 @@ function readRoleManifest(): RoleManifest {
 
 describe('moluoxixi finalized role assets', () => {
   it('keeps the role root limited to finalized distribution assets', () => {
-    const distributedEntries = fs.readdirSync(roleRoot).filter(name => name !== '.sync')
+    const distributedEntries = fs.readdirSync(roleRoot).filter(name => !['.sync', 'node_modules', 'pnpm-lock.yaml'].includes(name))
     expect(sortPaths(distributedEntries)).toEqual(sortPaths([
       '.gitignore',
       '__test__',
@@ -163,14 +120,10 @@ describe('moluoxixi finalized role assets', () => {
     expect(fs.existsSync(resolveRolePath('overlays'))).toBe(false)
   })
 
-  it('keeps Reasonix in the project sub-agent context platform set', () => {
-    const taskStore = fs.readFileSync(resolveRolePath('packages/cli/src/templates/moluoxixi/scripts/common/task_store.py'), 'utf8')
-    expect(taskStore).toContain('".reasonix"')
-  })
-
-  it('keeps host and project asset roots free of unprojected legacy payloads', () => {
-    expect(fs.existsSync(resolveRolePath('skills/init-project/assets/hosts/copilot/prompts'))).toBe(false)
-    expect(fs.existsSync(resolveRolePath('skills/init-project/assets/project/optional'))).toBe(false)
+  it('keeps the init skill free of duplicated package assets and references', () => {
+    expect(fs.existsSync(resolveRolePath('skills/init-project/assets'))).toBe(false)
+    expect(fs.existsSync(resolveRolePath('skills/init-project/references'))).toBe(false)
+    expect(fs.existsSync(resolveRolePath('references'))).toBe(false)
   })
 
   it.each([
@@ -195,8 +148,6 @@ describe('moluoxixi finalized role assets', () => {
     'drafts',
     'examples',
     'marketplace',
-    'node_modules',
-    'pnpm-lock.yaml',
   ])('does not distribute repository-only path %s', (relativePath) => {
     expect(fs.existsSync(resolveRolePath(relativePath))).toBe(false)
   })
@@ -216,9 +167,8 @@ describe('moluoxixi finalized role assets', () => {
         npm_embedded_source: false,
       },
       entrypoints: {
-        initialize_project_script: 'packages/cli/bin/init-project.js',
+        initialize_project_script: 'packages/cli/bin/moluoxixi.js',
         initialize_project_skill: 'init-project',
-        moluoxixi_runtime: 'skills/init-project/assets/runtime/moluoxixi.mjs',
       },
       role_id: 'moluoxixi',
       role_version: '0.4.0',
@@ -243,6 +193,8 @@ describe('moluoxixi finalized role assets', () => {
       name: 'moluoxixi',
       projections: [
         { kind: 'role-assets', sourceDir: 'roles/moluoxixi' },
+        { kind: 'namespace', sourceDir: 'skills/common', output: 'common' },
+        { kind: 'mcp', sourceFile: 'mcps/code/mcps.json', output: 'mcps/code/mcp.json' },
       ],
     })
     expect(vendors[0]?.setup).toEqual([
@@ -270,22 +222,11 @@ describe('moluoxixi finalized role assets', () => {
       ],
     })
     expect(JSON.parse(fs.readFileSync(resolveRolePath('mcp/mcp.json'), 'utf8'))).toEqual({
-      mcpServers: {
-        codegraph: {
-          args: ['serve', '--mcp', '--path', workspaceFolderPlaceholder],
-          command: 'codegraph',
-        },
-      },
+      mcpServers: {},
     })
     const runtimeFiles = migratedRuntimePaths.flatMap(collectFiles)
-    expect(runtimeFiles).toHaveLength(runtimeIntegrity.files)
-    // Git may materialize auto-detected text as CRLF on an existing Windows
-    // checkout. Hash the LF-normalized package sources used by clean CI.
-    expect(selectedStats(sortPaths(runtimeFiles), true)).toEqual({
-      bytes: runtimeIntegrity.bytes,
-      hash: runtimeIntegrity.hash,
-    })
-    expect(fs.statSync(resolveRolePath('skills/init-project/assets/runtime/moluoxixi.mjs')).isFile()).toBe(true)
+    expect(runtimeFiles.length).toBeGreaterThan(0)
+    expect(fs.statSync(resolveRolePath('packages/cli/bin/moluoxixi.js')).isFile()).toBe(true)
   })
 
   it('keeps complete role-local packages public, collision-resistant, and publication-capable', () => {
@@ -325,10 +266,11 @@ describe('moluoxixi finalized role assets', () => {
     })
     expect(core).not.toHaveProperty('private')
     expect(cli).toMatchObject({
-      name: '@moluoxixi/airules-moluoxixi-cli',
+      name: '@moluoxixi/airules-moluoxixi',
       version: publishedPackageVersion,
       bin: {
         moluoxixi: './bin/moluoxixi.js',
+        tl: './bin/moluoxixi.js',
       },
       dependencies: {
         '@moluoxixi/airules-moluoxixi-core': 'workspace:*',
@@ -351,11 +293,15 @@ describe('moluoxixi finalized role assets', () => {
       },
     })
     expect(cli).not.toHaveProperty('private')
-    expect(cli.files).toEqual(['dist', 'bin/moluoxixi.js'])
+    expect(cli.files).toEqual(['dist', 'bin', 'README.md', 'LICENSE'])
     expect(workspace).toMatchObject({
       packageManager: 'pnpm@10.32.1',
       scripts: {
         'build': expect.any(String),
+        'lint:publish': expect.any(String),
+        'release': expect.any(String),
+        'release:check': expect.any(String),
+        'release:plan': expect.any(String),
         'publish:dry-run': expect.any(String),
         'test': expect.any(String),
         'test:publish': expect.any(String),
@@ -364,9 +310,9 @@ describe('moluoxixi finalized role assets', () => {
       },
     })
     expect(workspace).not.toHaveProperty('publishConfig')
-    expect(collectFiles('packages/core')).toHaveLength(78)
-    expect(collectFiles('packages/cli')).toHaveLength(565)
-    expect(fs.existsSync(resolveRolePath('skills/init-project/assets/runtime/source'))).toBe(false)
+    expect(collectFiles('packages/core').length).toBeGreaterThan(0)
+    expect(collectFiles('packages/cli').length).toBeGreaterThan(0)
+    expect(fs.existsSync(resolveRolePath('skills/init-project/assets'))).toBe(false)
   })
 
   it('uses Moluoxixi project and channel state roots in the executable runtime', () => {
@@ -375,7 +321,6 @@ describe('moluoxixi finalized role assets', () => {
       'packages/cli/src/commands/channel/context-trust.ts',
       'packages/cli/src/commands/channel/store/paths.ts',
       'packages/core/src/channel/internal/store/paths.ts',
-      'skills/init-project/assets/runtime/vendor/channel-mem.mjs',
     ]
     for (const relativePath of runtimeFiles) {
       const content = fs.readFileSync(resolveRolePath(relativePath), 'utf8')

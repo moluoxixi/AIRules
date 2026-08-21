@@ -8,14 +8,23 @@
     "packages/*"
   ],
   "scripts": {
-    "build": "pnpm --filter @moluoxixi/airules-moluoxixi-core build && pnpm --filter @moluoxixi/airules-moluoxixi-cli build",
-    "test": "pnpm --filter @moluoxixi/airules-moluoxixi-core test && pnpm --filter @moluoxixi/airules-moluoxixi-cli test",
-    "test:publish": "pnpm --filter @moluoxixi/airules-moluoxixi-core test:publish && pnpm --filter @moluoxixi/airules-moluoxixi-cli test:publish",
-    "lint": "pnpm --filter @moluoxixi/airules-moluoxixi-core lint && pnpm --filter @moluoxixi/airules-moluoxixi-cli lint",
-    "typecheck": "pnpm --filter @moluoxixi/airules-moluoxixi-core typecheck && pnpm --filter @moluoxixi/airules-moluoxixi-cli typecheck",
+    "build": "pnpm --filter @moluoxixi/airules-moluoxixi-core build && pnpm --filter @moluoxixi/airules-moluoxixi build",
+    "test": "pnpm --filter @moluoxixi/airules-moluoxixi-core test && pnpm --filter @moluoxixi/airules-moluoxixi test",
+    "test:publish": "pnpm --filter @moluoxixi/airules-moluoxixi-core test:publish && pnpm --filter @moluoxixi/airules-moluoxixi test:publish",
+    "lint": "pnpm --filter @moluoxixi/airules-moluoxixi-core lint && pnpm --filter @moluoxixi/airules-moluoxixi lint",
+    "lint:publish": "pnpm --filter @moluoxixi/airules-moluoxixi-core lint:publish && pnpm --filter @moluoxixi/airules-moluoxixi lint:publish",
+    "typecheck": "pnpm --filter @moluoxixi/airules-moluoxixi-core typecheck && pnpm --filter @moluoxixi/airules-moluoxixi typecheck",
+    "release": "pnpm --filter @moluoxixi/airules-moluoxixi release",
+    "release:minor": "pnpm --filter @moluoxixi/airules-moluoxixi release:minor",
+    "release:major": "pnpm --filter @moluoxixi/airules-moluoxixi release:major",
+    "release:beta": "pnpm --filter @moluoxixi/airules-moluoxixi release:beta",
+    "release:rc": "pnpm --filter @moluoxixi/airules-moluoxixi release:rc",
+    "release:promote": "pnpm --filter @moluoxixi/airules-moluoxixi release:promote",
+    "release:check": "node packages/cli/scripts/release-preflight.js check-versions",
+    "release:plan": "node packages/cli/scripts/release-preflight.js publish-plan",
     "verify:identity": "node ../../scripts/verify-moluoxixi-identity.mjs",
-    "verify:publish": "pnpm run test:publish && pnpm run build && pnpm run verify:identity && node packages/cli/scripts/release-preflight.js verify-publish",
-    "publish:dry-run": "pnpm run verify:publish && pnpm --filter @moluoxixi/airules-moluoxixi-core publish --dry-run --no-git-checks --access public && pnpm --filter @moluoxixi/airules-moluoxixi-cli publish --dry-run --no-git-checks --access public"
+    "verify:publish": "pnpm run test:publish && pnpm run build && pnpm run typecheck && node packages/cli/scripts/release-preflight.js verify-packed-cli && pnpm run verify:identity",
+    "publish:dry-run": "pnpm run verify:publish && pnpm --filter @moluoxixi/airules-moluoxixi-core publish --dry-run --no-git-checks --access public && pnpm --filter @moluoxixi/airules-moluoxixi publish --dry-run --no-git-checks --access public"
   },
   "devDependencies": {
     "@arethetypeswrong/cli": "0.18.5",

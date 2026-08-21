@@ -3,14 +3,13 @@
 
 ## Moluoxixi 外部基线维护边界
 
-同步固定外部基线必须遵守 `roles/moluoxixi/skills/init-project/references/upstream-maintenance.md`：
+同步固定外部基线时：
 
 * `roles/moluoxixi/.sync` 内的源码镜像是指定 commit 的只读、干净输入，禁止在其中修改或提交。
 * `roles/moluoxixi/.sync/rebuild` 是从该 commit 创建的唯一适配 worktree；所有本地改造、包名调整、模板改造和同步测试都在这里完成并用本地 commit 记录。
-* `.sync` 不使用额外的 `work/` 容器；源码镜像、`rebuild`、`history` 和 `reports` 直接作为同级边界，避免路径歧义。
-* `roles/moluoxixi/packages/core` 与 `roles/moluoxixi/packages/cli` 只能作为 rebuild 验证通过后的导出目标，禁止在同步决策过程中直接编辑。
-* `.sync/reports` 与 `.sync/history` 保存精确的扫描、导出和验证记录；报告不得放进 rebuild，避免被误当成包源。
-* 不再创建或依赖 `roles/moluoxixi/overlays`，也不得把 `.sync`、历史记录或报告复制进安装项目和 npm 包。
+* `.sync` 不使用额外的 `work/`、`history/` 或 `reports/` 容器；源码镜像、`rebuild`、`scripts` 和清单直接作为同级边界。
+* `roles/moluoxixi/packages` 只能作为 rebuild 验证通过后的导出目标；导出时先清空整个目录，再完整复制 `.sync/rebuild/packages`，禁止在同步决策过程中直接编辑。
+* 不再创建或依赖 `roles/moluoxixi/overlays`，也不得把 `.sync` 复制进安装项目和 npm 包。
 
 外部基线的来源、固定 commit 和本地维护分支只记录在 ignored `.sync` 中；AIRules 仓库远端明确称为 `origin`。
 

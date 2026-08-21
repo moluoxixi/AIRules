@@ -277,7 +277,6 @@ function parseArgs(argv) {
     scanSource: true,
     scanPackages: true,
     json: false,
-    report: null,
     help: false,
   }
   for (let index = 0; index < argv.length; index += 1) {
@@ -291,16 +290,13 @@ function parseArgs(argv) {
     else if (argument === '--json') {
       options.json = true
     }
-    else if (argument === '--role-root' || argument === '--report') {
+    else if (argument === '--role-root') {
       const value = argv[index + 1]
       if (!value) {
         throw new Error(`${argument} requires a path`)
       }
       index += 1
-      if (argument === '--role-root')
-        options.roleRoot = path.resolve(value)
-      else
-        options.report = path.resolve(value)
+      options.roleRoot = path.resolve(value)
     }
     else if (argument === '--help' || argument === '-h') {
       options.help = true
@@ -325,60 +321,10 @@ function printHelp() {
     '  --source-only       Scan Git tracked and untracked role files, excluding ignored files',
     '  --packages-only     Scan only the core and CLI npm dry-run package entries',
     '  --json              Print the complete machine-readable result',
-    '  --report <path>     Write JSON under the role-local .sync/reports directory',
     '  --role-root <path>  Override the role root (primarily for verification tests)',
     '  -h, --help          Show this help',
     '',
   ].join('\n'))
-}
-
-function assertNoSymbolicLinkComponents(root, target) {
-  if (!isContained(root, target)) {
-    throw new Error(`Refusing report path outside role root: ${target}`)
-  }
-  const rootStats = fs.lstatSync(root)
-  if (rootStats.isSymbolicLink() || !rootStats.isDirectory()) {
-    throw new Error(`Role root must be a regular directory: ${root}`)
-  }
-  let current = root
-  const relativePath = path.relative(root, target)
-  for (const segment of relativePath.split(path.sep).filter(Boolean)) {
-    current = path.join(current, segment)
-    if (!fs.existsSync(current))
-      continue
-    const stats = fs.lstatSync(current)
-    if (stats.isSymbolicLink()) {
-      throw new Error(`Report path must not contain a symbolic link: ${current}`)
-    }
-    if (!stats.isDirectory()) {
-      throw new Error(`Report directory component is not a directory: ${current}`)
-    }
-  }
-}
-
-function writeReport(result, roleRoot, reportPath) {
-  const reportsRoot = path.resolve(roleRoot, '.sync', 'reports')
-  if (!isContained(reportsRoot, reportPath)) {
-    throw new Error(`Reports must stay under ${reportsRoot}`)
-  }
-  const reportDirectory = path.dirname(reportPath)
-  assertNoSymbolicLinkComponents(roleRoot, reportDirectory)
-  fs.mkdirSync(reportDirectory, { recursive: true })
-  assertNoSymbolicLinkComponents(roleRoot, reportDirectory)
-  if (fs.existsSync(reportPath)) {
-    const reportStats = fs.lstatSync(reportPath)
-    if (reportStats.isSymbolicLink() || !reportStats.isFile()) {
-      throw new Error(`Report target must be a regular file: ${reportPath}`)
-    }
-  }
-  const temporaryPath = `${reportPath}.${process.pid}.tmp`
-  try {
-    fs.writeFileSync(temporaryPath, `${JSON.stringify(result, null, 2)}\n`, { encoding: 'utf8', flag: 'wx' })
-    fs.renameSync(temporaryPath, reportPath)
-  }
-  finally {
-    fs.rmSync(temporaryPath, { force: true })
-  }
 }
 
 function printHumanResult(result) {
@@ -417,8 +363,6 @@ if (isMainModule()) {
     }
     else {
       const result = runIdentityBoundaryScan(options)
-      if (options.report)
-        writeReport(result, options.roleRoot, options.report)
       if (options.json)
         process.stdout.write(`${JSON.stringify(result, null, 2)}\n`)
       else

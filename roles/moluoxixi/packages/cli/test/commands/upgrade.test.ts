@@ -79,15 +79,20 @@ describe("upgrade command", () => {
 
     await upgrade({ tag: "latest" }, runner);
 
+    const expectedCommand: [string, string[]] = process.platform === "win32"
+      ? ["cmd.exe", ["/d", "/s", "/c", "npm install -g @moluoxixi/airules-moluoxixi@latest"]]
+      : ["npm", ["install", "-g", "@moluoxixi/airules-moluoxixi@latest"]]
     expect(runner).toHaveBeenCalledWith(
-      "npm",
-      ["install", "-g", "@moluoxixi/airules-moluoxixi@latest"],
+      expectedCommand[0],
+      expectedCommand[1],
       { stdio: "inherit", shell: false },
     );
     expect(log).toHaveBeenCalledWith(
       expect.stringContaining("moluoxixi --version"),
     );
-    expect(log).toHaveBeenCalledWith(expect.stringContaining("which moluoxixi"));
+    expect(log).toHaveBeenCalledWith(expect.stringContaining(
+      process.platform === "win32" ? "where moluoxixi" : "which moluoxixi",
+    ));
 
     log.mockRestore();
   });
@@ -97,7 +102,7 @@ describe("upgrade command", () => {
     const runner = vi.fn(() => ({ status: 1, signal: null }));
 
     await expect(upgrade({ tag: "latest" }, runner)).rejects.toThrow(
-      /npm install failed with exit code 1\.[\s\S]*Troubleshooting:[\s\S]*Manual command: npm install -g @moluoxixi/airules-moluoxixi@latest[\s\S]*npm config get prefix[\s\S]*which moluoxixi/,
+      /npm install failed with exit code 1\.[\s\S]*Troubleshooting:[\s\S]*Manual command: npm install -g @moluoxixi\/airules-moluoxixi@latest[\s\S]*npm config get prefix[\s\S]*(?:which|where) moluoxixi/,
     );
 
     log.mockRestore();
