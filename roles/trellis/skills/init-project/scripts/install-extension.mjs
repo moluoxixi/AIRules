@@ -10,11 +10,11 @@ import { assertProjectRoot, commitExtension, safeTarget } from './core/extension
 
 const SKILL_ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..')
 const ASSET_ROOT = path.join(SKILL_ROOT, 'assets', 'project-extension')
-const MANIFEST_PATH = '.moluoxixi/airules-init-manifest.json'
+const MANIFEST_PATH = '.trellis/airules-init-manifest.json'
 const GENERATOR_VERSION = '1.0.0'
-const BLOCK_START = '<!-- MOLUOXIXI KNOWLEDGE:START -->'
-const BLOCK_END = '<!-- MOLUOXIXI KNOWLEDGE:END -->'
-const HOOK_MARKER = '--airules-knowledge-hook'
+const BLOCK_START = '<!-- AIRULES:TRELLIS-EXTENSION:START -->'
+const BLOCK_END = '<!-- AIRULES:TRELLIS-EXTENSION:END -->'
+const HOOK_MARKER = '--airules-trellis-knowledge-hook'
 
 export const PLATFORM_ORDER = [
   'claude',
@@ -70,27 +70,27 @@ export function installExtension({ project, platforms, force = false, dryRun = f
   const projectRoot = assertProjectRoot(project ?? process.cwd())
   const selected = normalizePlatforms(platforms ?? [])
   const python = pythonCommand()
-  if (!fs.statSync(path.join(projectRoot, '.moluoxixi'), { throwIfNoEntry: false })?.isDirectory())
-    throw new Error('Run the Moluoxixi project initializer before installing the AIRules extension')
+  if (!fs.statSync(path.join(projectRoot, '.trellis'), { throwIfNoEntry: false })?.isDirectory())
+    throw new Error('Run the Trellis project initializer before installing the AIRules extension')
 
   const manifest = readManifest(projectRoot)
   const plan = new Map()
-  addStatic(plan, '.moluoxixi/scripts/common/knowledge.py', 'runtime/common/knowledge.py')
-  addStatic(plan, '.moluoxixi/scripts/knowledge.py', 'runtime/knowledge.py')
-  addStatic(plan, '.moluoxixi/scripts/knowledge-hook.py', 'runtime/knowledge-hook.py')
-  addStatic(plan, '.moluoxixi/knowledge/.gitignore', 'knowledge/gitignore.txt')
+  addStatic(plan, '.trellis/scripts/common/knowledge.py', 'runtime/common/knowledge.py')
+  addStatic(plan, '.trellis/scripts/knowledge.py', 'runtime/knowledge.py')
+  addStatic(plan, '.trellis/scripts/knowledge-hook.py', 'runtime/knowledge-hook.py')
+  addStatic(plan, '.trellis/knowledge/.gitignore', 'knowledge/gitignore.txt')
   if (selected.includes('opencode'))
-    addStatic(plan, '.opencode/plugins/moluoxixi-knowledge.js', 'hosts/opencode/moluoxixi-knowledge.js')
+    addStatic(plan, '.opencode/plugins/trellis-knowledge.js', 'hosts/opencode/trellis-knowledge.js')
   if (selected.includes('pi'))
-    addStatic(plan, '.pi/extensions/moluoxixi-knowledge.ts', 'hosts/pi/moluoxixi-knowledge.ts')
+    addStatic(plan, '.pi/extensions/trellis-knowledge.ts', 'hosts/pi/trellis-knowledge.ts')
   if (selected.includes('omp'))
-    addStatic(plan, '.omp/extensions/moluoxixi-knowledge.ts', 'hosts/pi/moluoxixi-knowledge.ts')
+    addStatic(plan, '.omp/extensions/trellis-knowledge.ts', 'hosts/pi/trellis-knowledge.ts')
 
   for (const skillRoot of new Set(selected.map(platform => SKILL_ROOTS[platform]))) {
-    addStatic(plan, `${skillRoot}/moluoxixi-knowledge/SKILL.md`, 'skill/SKILL.md', {
+    addStatic(plan, `${skillRoot}/trellis-knowledge/SKILL.md`, 'skill/SKILL.md', {
       '{{PYTHON_COMMAND}}': python,
     })
-    addStatic(plan, `${skillRoot}/moluoxixi-knowledge/references/organization.md`, 'skill/references/organization.md')
+    addStatic(plan, `${skillRoot}/trellis-knowledge/references/organization.md`, 'skill/references/organization.md')
   }
   addBlock(plan, 'AGENTS.md', renderAsset('AGENTS.md', { '{{PYTHON_COMMAND}}': python }))
   for (const hook of hooksFor(selected, python))
@@ -135,7 +135,7 @@ export function installExtension({ project, platforms, force = false, dryRun = f
       projectRoot,
       operations,
       manifestOperation,
-      ['.moluoxixi/knowledge/sources', '.moluoxixi/knowledge/library'],
+      ['.trellis/knowledge/sources', '.trellis/knowledge/library'],
       { failAfter },
     )
   }
@@ -143,7 +143,7 @@ export function installExtension({ project, platforms, force = false, dryRun = f
 }
 
 function prepareKnowledgeData(projectRoot, operations, result) {
-  const relativePath = '.moluoxixi/knowledge/index.md'
+  const relativePath = '.trellis/knowledge/index.md'
   const target = safeTarget(projectRoot, relativePath)
   if (fs.existsSync(target)) {
     result.preserved.push(relativePath)
@@ -281,7 +281,7 @@ function hasHookMarker(value) {
 }
 
 function hooksFor(platforms, python) {
-  const command = (platform, event = 'prompt') => `${python} -X utf8 .moluoxixi/scripts/knowledge-hook.py --platform ${platform} --event ${event} ${HOOK_MARKER}`
+  const command = (platform, event = 'prompt') => `${python} -X utf8 .trellis/scripts/knowledge-hook.py --platform ${platform} --event ${event} ${HOOK_MARKER}`
   const grouped = (platform, event = 'prompt') => ({ hooks: [{ type: 'command', command: command(platform, event), timeout: 15 }] })
   const hooks = []
   const add = (platform, relativePath, objectPath, hook) => {
@@ -295,7 +295,7 @@ function hooksFor(platforms, python) {
   add('qoder', '.qoder/settings.json', ['hooks', 'UserPromptSubmit'], grouped('qoder'))
   add('codebuddy', '.codebuddy/settings.json', ['hooks', 'UserPromptSubmit'], grouped('codebuddy'))
   add('droid', '.factory/settings.json', ['hooks', 'UserPromptSubmit'], grouped('droid'))
-  add('kiro', '.kiro/agents/moluoxixi.json', ['hooks', 'userPromptSubmit'], { command: command('kiro') })
+  add('kiro', '.kiro/agents/trellis.json', ['hooks', 'userPromptSubmit'], { command: command('kiro') })
   add('trae', '.trae/hooks.json', ['hooks', 'UserPromptSubmit'], grouped('trae'))
   add('zcode', '.zcode/config.json', ['hooks', 'events', 'UserPromptSubmit'], grouped('zcode'))
   add('snow', '.snow/hooks/onUserMessage.json', ['onUserMessage'], {
@@ -315,7 +315,7 @@ function hooksFor(platforms, python) {
       timeoutSec: 15,
     }
     hooks.push({ platform: 'copilot', relativePath: '.github/copilot/hooks.json', objectPath: ['hooks', 'userPromptSubmitted'], hook })
-    hooks.push({ platform: 'copilot', relativePath: '.github/hooks/moluoxixi.json', objectPath: ['hooks', 'userPromptSubmitted'], hook })
+    hooks.push({ platform: 'copilot', relativePath: '.github/hooks/trellis-knowledge.json', objectPath: ['hooks', 'userPromptSubmitted'], hook })
   }
   return hooks
 }

@@ -1,46 +1,68 @@
 ---
 name: init-project
-description: Initialize or reconfigure a repository with official native Trellis project assets by running the installed Trellis CLI. Use when a user asks to initialize Trellis, install Trellis into a project, add Trellis support for coding platforms, or run the project-level step after installing the AIRules trellis role.
+description: Initialize or reconfigure a repository with official native Trellis project assets, then install the AIRules-owned knowledge workflow and temporary Simplified Chinese task conventions. Use when a user asks to initialize Trellis, install Trellis into a project, add Trellis support for coding platforms, or run the project-level step after installing the AIRules trellis role.
 ---
 
 # Initialize Native Trellis
 
-Run the official `trellis init` command in the target project. Trellis owns every native generated project asset; do not copy, rename, or recreate those assets from AIRules. AIRules owns only the managed Trellis usage block injected into the project `README.md` after native initialization succeeds.
+Run the role-local wrapper so the official `trellis init` completes before the
+AIRules extension is installed. Trellis owns its native generated project
+assets. AIRules owns only the knowledge workflow, managed project instruction
+block, and README usage block installed after native initialization succeeds.
 
 ## Workflow
 
-1. Resolve the intended project root. Prefer the repository root when the request refers to the current repository. If the location is ambiguous, ask the user. Never initialize the user home directory.
-2. Inspect `git status --short` and whether `.trellis` already exists. Preserve unrelated work. If Trellis is already initialized, explain that the command will reconfigure or update it and obtain confirmation unless the user explicitly requested that operation.
-3. Verify `trellis --version` succeeds. If it does not, stop and tell the user to install this role with:
+1. Resolve the intended project root. Prefer the repository root when the
+   request refers to the current repository. If the location is ambiguous, ask
+   the user. Never initialize the user home directory.
+2. Inspect `git status --short` and whether `.trellis` already exists. Preserve
+   unrelated work. If Trellis is already initialized, explain that the command
+   will reconfigure or update it and obtain confirmation unless the user
+   explicitly requested that operation.
+3. Verify `trellis --version` succeeds. If it does not, stop and tell the user
+   to install this role with:
 
    ```bash
    airules install trellis --host all
    ```
 
-4. Obtain the developer identifier used by Trellis. Use a value supplied or confirmed by the user; never silently invent one. A detected Git user name may be offered as a suggestion, but requires confirmation.
-5. Run `trellis init --help` from the installed version before constructing platform arguments. When the user selects platforms, use only the corresponding native flags shown by that help output. Do not pass AIRules host names through an invented generic option.
-6. Show the resolved project root and exact command before execution. An explicit request to initialize that root is sufficient approval; otherwise ask for confirmation.
-7. Execute the native command with the project root as the working directory:
+4. Obtain the developer identifier used by Trellis. Use a value supplied or
+   confirmed by the user; never silently invent one. A detected Git user name
+   may be offered as a suggestion, but requires confirmation.
+5. Run `trellis init --help` from the installed version. Confirm each requested
+   platform is supported by that version. Pass platforms to the wrapper with
+   repeatable `--platform` options; use `claude` for Trellis's `--claude` flag.
+6. Show the resolved project root and exact wrapper command before execution.
+   An explicit request to initialize that root is sufficient approval;
+   otherwise ask for confirmation.
+7. Execute from any directory using the absolute Skill path:
 
    ```bash
-   trellis init <confirmed-platform-flags> -u <confirmed-developer>
+   node "<skill-root>/scripts/run-role-cli.mjs" --project "<project-root>" --platform <platform> --developer <confirmed-developer> <confirmed-native-options>
    ```
 
-   If the user intentionally wants Trellis's native default or interactive platform selection, omit platform flags instead of guessing them.
-
-8. After `trellis init` succeeds, inject or update the Chinese Trellis usage block without replacing existing project documentation:
-
-   ```bash
-   node "<skill-root>/scripts/inject-readme.mjs" --project "<project-root>"
-   ```
-
-   Exit code `2` means `README.md` was preserved because its encoding, type, or managed markers are unsafe to modify. Report that conflict without retrying with an overwrite.
-9. Report the Trellis CLI and README injection results, then summarize changed paths using `git status --short`. Do not stage or commit generated files unless the user explicitly requests it.
+   The wrapper runs `trellis init` in the project root, then installs the
+   knowledge workflow and README block. It requires at least one platform so
+   the knowledge Skill and supported Hook can be projected to the right host.
+8. Treat exit code `2` as an AIRules managed-file or README conflict. Preserve
+   the affected user file and report it; do not retry with `--force` unless the
+   user explicitly authorizes overwriting the managed portion. Propagate every
+   other CLI failure without claiming initialization succeeded.
+9. Report the native Trellis and AIRules extension results. Point out
+   `.trellis/knowledge/sources/` as the document inbox and summarize changed
+   paths using `git status --short`. Do not stage or commit generated files
+   unless the user explicitly requests it.
 
 ## Native Boundary
 
-- Use the CLI installed by the `trellis` role. Do not install a second copy with `npx` or a project dependency.
-- Let the installed CLI define supported platforms and output paths. Do not hard-code a stale platform catalog.
-- Do not translate `.trellis`, commands, skills, agents, hooks, or other generated assets into Moluoxixi equivalents.
-- Keep the AIRules-owned `README.md` block separate from Trellis-native assets; preserve all content outside its markers.
-- Propagate CLI failures without masking them or claiming partial initialization succeeded.
+- Use the CLI installed by the `trellis` role. Do not install a second copy
+  with `npx` or a project dependency.
+- Let the installed CLI own `.trellis` workflow, commands, skills, agents, and
+  native hooks. Do not copy or translate those assets in AIRules.
+- Keep AIRules assets under this role-local Skill. Never depend on another role
+  or modify an upstream Trellis package during project initialization.
+- Preserve `.trellis/knowledge/index.md`, `sources/`, `library/`, and
+  `.state.json` across re-initialization and `--force`.
+- The temporary Simplified Chinese task convention is isolated between
+  `AIRULES:TRELLIS-ZH-COMPAT` markers in the managed `AGENTS.md` block. Remove
+  only that inner block after upstream Trellis provides equivalent localization.

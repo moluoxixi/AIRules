@@ -43,6 +43,11 @@ Moluoxixi CLI，再独立注入 AIRules 扩展；不要直接编辑或复制角�
 清单；AI 通过 `moluoxixi-knowledge` Skill 整理 `library/` 和 `index.md`，遇到
 实质歧义再询问。没有可靠 Hook 的宿主使用项目 `AGENTS.md` 中的同等 fallback。
 
+初始化还会在受管 `AGENTS.md` 块中注入临时简体中文约定：新任务标题、
+`task.json` 面向人的字段以及 `prd.md`、`design.md`、`implement.md` 默认使用
+简体中文；中文标题显式配套 ASCII slug。该约定位于独立的
+`AIRULES:MOLUOXIXI-ZH-COMPAT` 标记内，上游提供正式汉化后只删除这个内层块。
+
 ## 边界
 
 - `roles/moluoxixi/packages` 是外部基线，不承载 AIRules 扩展。源资产边界见
