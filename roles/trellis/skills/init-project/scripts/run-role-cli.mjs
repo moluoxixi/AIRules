@@ -7,6 +7,7 @@ import path from 'node:path'
 import process from 'node:process'
 import { fileURLToPath } from 'node:url'
 import { installExtension, normalizePlatforms, PLATFORM_ORDER } from './install-extension.mjs'
+import { localizeBootstrapTask } from './localize-bootstrap.mjs'
 
 const SKILL_ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..')
 
@@ -15,6 +16,7 @@ function main() {
   const projectRoot = resolveProjectRoot(options.project ?? process.cwd())
   const platforms = normalizePlatforms(options.platforms)
   const cli = resolveRoleCli()
+  const bootstrapTaskExisted = fs.existsSync(path.join(projectRoot, '.trellis', 'tasks', '00-bootstrap-guidelines', 'task.json'))
   const cliArgs = [
     'init',
     ...platforms.map(nativePlatformFlag),
@@ -37,13 +39,17 @@ function main() {
   if (!fs.statSync(path.join(projectRoot, '.trellis'), { throwIfNoEntry: false })?.isDirectory())
     throw new Error('Trellis initialization exited successfully but did not create .trellis')
 
+  const bootstrapLocalization = localizeBootstrapTask({
+    project: projectRoot,
+    enabled: !bootstrapTaskExisted,
+  })
   const extension = installExtension({
     project: projectRoot,
     platforms,
     force: options.force,
   })
   const readme = injectReadme(projectRoot)
-  process.stdout.write(`${JSON.stringify({ extension, readme }, null, 2)}\n`)
+  process.stdout.write(`${JSON.stringify({ bootstrapLocalization, extension, readme }, null, 2)}\n`)
   if (extension.conflicts.length > 0 || readme.status === 'conflict')
     process.exitCode = 2
 }

@@ -5,6 +5,8 @@ export default eslintConfig({
     // ai agents
     '.codex',
     '.claude',
+    '.agents',
+    '.trellis',
     // ideas
     '.zed',
     // project

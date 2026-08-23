@@ -143,7 +143,7 @@ describe('native Trellis role', () => {
     expect(document.toJS({ maxAliasCount: 0 })).toMatchObject({
       schema_version: 1,
       role_id: 'trellis',
-      role_version: '0.4.0',
+      role_version: '0.4.1',
       status: 'stable',
       canonical_root: 'roles/trellis',
       assets: {
@@ -204,6 +204,16 @@ describe('native Trellis role', () => {
     expect(created).toMatchObject({ status: 0, stderr: '' })
     expect(JSON.parse(created.stdout)).toEqual({ readme: 'README.md', status: 'created' })
     expect(fs.readFileSync(path.join(emptyProject, 'README.md'), 'utf8')).toContain('请使用 Trellis 完成本次工作。')
+
+    const crlfProject = fs.mkdtempSync(path.join(os.tmpdir(), 'airules-trellis-readme-'))
+    temporaryRoots.push(crlfProject)
+    const crlfReadme = path.join(crlfProject, 'README.md')
+    fs.writeFileSync(crlfReadme, '# CRLF project\r\n\r\nProject documentation.\r\n')
+    const crlf = spawnSync(process.execPath, [injector, '--project', crlfProject], { encoding: 'utf8' })
+    expect(crlf).toMatchObject({ status: 0, stderr: '' })
+    const crlfInjected = fs.readFileSync(crlfReadme, 'utf8')
+    expect(crlfInjected).toContain('<!-- AIRULES:TRELLIS:START -->\r\n')
+    expect(crlfInjected).not.toMatch(/(?<!\r)\n/u)
   })
 
   it('preserves a non-UTF-8 README during Trellis usage injection', () => {

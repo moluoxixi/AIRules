@@ -60,15 +60,21 @@ function decodeUtf8(content) {
 }
 
 function upsertManagedBlock(current, template) {
-  const managed = `${START}\n${template.trim()}\n${END}`
-  const starts = occurrences(current, START)
-  const ends = occurrences(current, END)
+  const newline = current.includes('\r\n') ? '\r\n' : '\n'
+  const normalizedCurrent = normalizeNewlines(current, newline)
+  const managed = `${START}${newline}${newline}${normalizeNewlines(template, newline).trim()}${newline}${newline}${END}`
+  const starts = occurrences(normalizedCurrent, START)
+  const ends = occurrences(normalizedCurrent, END)
   if (starts.length !== ends.length || starts.length > 1 || (starts.length === 1 && ends[0] < starts[0]))
     throw new Error('README.md contains malformed or duplicate AIRules Trellis markers')
   if (starts.length === 0)
-    return current.trim() ? `${trimTrailingBoundary(current)}\n\n${managed}\n` : `${managed}\n`
-  const updated = `${current.slice(0, starts[0])}${managed}${current.slice(ends[0] + END.length)}`
-  return /\r?\n$/u.test(updated) ? updated : `${updated}\n`
+    return normalizedCurrent.trim() ? `${trimTrailingBoundary(normalizedCurrent)}${newline}${newline}${managed}${newline}` : `${managed}${newline}`
+  const updated = `${normalizedCurrent.slice(0, starts[0])}${managed}${normalizedCurrent.slice(ends[0] + END.length)}`
+  return /\r?\n$/u.test(updated) ? updated : `${updated}${newline}`
+}
+
+function normalizeNewlines(content, newline) {
+  return content.replace(/\r\n|\r|\n/gu, newline)
 }
 
 function occurrences(content, marker) {

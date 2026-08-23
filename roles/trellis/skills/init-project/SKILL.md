@@ -41,9 +41,10 @@ block, and README usage block installed after native initialization succeeds.
    node "<skill-root>/scripts/run-role-cli.mjs" --project "<project-root>" --platform <platform> --developer <confirmed-developer> <confirmed-native-options>
    ```
 
-   The wrapper runs `trellis init` in the project root, then installs the
-   knowledge workflow and README block. It requires at least one platform so
-   the knowledge Skill and supported Hook can be projected to the right host.
+   The wrapper runs `trellis init` in the project root, localizes a newly
+   generated default bootstrap task, then installs the knowledge workflow and
+   README block. It requires at least one platform so the knowledge Skill and
+   supported Hook can be projected to the right host.
 8. Treat exit code `2` as an AIRules managed-file or README conflict. Preserve
    the affected user file and report it; do not retry with `--force` unless the
    user explicitly authorizes overwriting the managed portion. Propagate every
@@ -58,7 +59,8 @@ block, and README usage block installed after native initialization succeeds.
 - Use the CLI installed by the `trellis` role. Do not install a second copy
   with `npx` or a project dependency.
 - Let the installed CLI own `.trellis` workflow, commands, skills, agents, and
-  native hooks. Do not copy or translate those assets in AIRules.
+  native hooks. AIRules only localizes the default bootstrap task created during
+  first initialization; it preserves pre-existing or customized task content.
 - Keep AIRules assets under this role-local Skill. Never depend on another role
   or modify an upstream Trellis package during project initialization.
 - Preserve `.trellis/knowledge/index.md`, `sources/`, `library/`, and

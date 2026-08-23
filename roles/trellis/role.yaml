@@ -1,6 +1,6 @@
 schema_version: 1
 role_id: trellis
-role_version: 0.4.0
+role_version: 0.4.1
 status: stable
 canonical_root: roles/trellis
 description: Installs Trellis, default coding MCP servers, native project initialization, and Matt Pocock productivity skills through AIRules.
