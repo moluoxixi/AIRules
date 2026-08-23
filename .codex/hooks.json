@@ -1,0 +1,36 @@
+{
+  "hooks": {
+    "UserPromptSubmit": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "python -X utf8 .codex/hooks/inject-workflow-state.py",
+            "timeout": 15
+          }
+        ]
+      },
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "python -X utf8 .trellis/scripts/knowledge-hook.py --platform codex --event prompt --airules-trellis-knowledge-hook",
+            "timeout": 15
+          }
+        ]
+      }
+    ],
+    "SubagentStart": [
+      {
+        "matcher": "^(?:trellis-implement|trellis-check|trellis-research)$",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "python -X utf8 .codex/hooks/inject-subagent-context.py",
+            "timeout": 15
+          }
+        ]
+      }
+    ]
+  }
+}

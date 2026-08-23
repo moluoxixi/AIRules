@@ -1,0 +1,78 @@
+{
+  "schemaVersion": 1,
+  "generatorVersion": "1.0.0",
+  "platforms": [
+    "codex"
+  ],
+  "entries": {
+    ".agents/skills/trellis-knowledge/references/organization.md": {
+      "kind": "file",
+      "installedHash": "2b6a85b2163a447050f4a0fc7f89007c045d69385cef347a4bea4e48a4d134cc",
+      "ownership": {
+        "type": "created"
+      },
+      "sourceHash": "2b6a85b2163a447050f4a0fc7f89007c045d69385cef347a4bea4e48a4d134cc"
+    },
+    ".agents/skills/trellis-knowledge/SKILL.md": {
+      "kind": "file",
+      "installedHash": "dae063bb153daa805c668c297d18ad8caf8e53ffa99475ec6da3b3b0c3e65752",
+      "ownership": {
+        "type": "created"
+      },
+      "sourceHash": "dae063bb153daa805c668c297d18ad8caf8e53ffa99475ec6da3b3b0c3e65752"
+    },
+    ".codex/hooks.json": {
+      "kind": "json-hook",
+      "installedHash": "fe39534533e393c0817f27d30736ff4accc1ad5af95a0534c822e1190cd49b33",
+      "ownership": {
+        "type": "modified",
+        "originalContent": "ewogICJob29rcyI6IHsKICAgICJVc2VyUHJvbXB0U3VibWl0IjogWwogICAgICB7CiAgICAgICAgImhvb2tzIjogWwogICAgICAgICAgewogICAgICAgICAgICAidHlwZSI6ICJjb21tYW5kIiwKICAgICAgICAgICAgImNvbW1hbmQiOiAicHl0aG9uIC1YIHV0ZjggLmNvZGV4L2hvb2tzL2luamVjdC13b3JrZmxvdy1zdGF0ZS5weSIsCiAgICAgICAgICAgICJ0aW1lb3V0IjogMTUKICAgICAgICAgIH0KICAgICAgICBdCiAgICAgIH0KICAgIF0sCiAgICAiU3ViYWdlbnRTdGFydCI6IFsKICAgICAgewogICAgICAgICJtYXRjaGVyIjogIl4oPzp0cmVsbGlzLWltcGxlbWVudHx0cmVsbGlzLWNoZWNrfHRyZWxsaXMtcmVzZWFyY2gpJCIsCiAgICAgICAgImhvb2tzIjogWwogICAgICAgICAgewogICAgICAgICAgICAidHlwZSI6ICJjb21tYW5kIiwKICAgICAgICAgICAgImNvbW1hbmQiOiAicHl0aG9uIC1YIHV0ZjggLmNvZGV4L2hvb2tzL2luamVjdC1zdWJhZ2VudC1jb250ZXh0LnB5IiwKICAgICAgICAgICAgInRpbWVvdXQiOiAxNQogICAgICAgICAgfQogICAgICAgIF0KICAgICAgfQogICAgXQogIH0KfQo=",
+        "originalHash": "c7c638e0982599b0692ad97bc835651c9fa83af5310be5d86a58c59132eb2dec"
+      },
+      "sourceHash": "2c507c04b6415eef2402ef555d640f83f6d1a77d73e0b148418c23f591cd4a20"
+    },
+    ".trellis/knowledge/.gitignore": {
+      "kind": "file",
+      "installedHash": "1ec7c05e6ad0cdb53b6702cfbf73809933e484fbc0fc5260dc8dfe87d9b6ec72",
+      "ownership": {
+        "type": "created"
+      },
+      "sourceHash": "1ec7c05e6ad0cdb53b6702cfbf73809933e484fbc0fc5260dc8dfe87d9b6ec72"
+    },
+    ".trellis/scripts/common/knowledge.py": {
+      "kind": "file",
+      "installedHash": "1e837867527eaf1fb4bf99c74cee33f87b32153da4195e359f43e44b40fb8384",
+      "ownership": {
+        "type": "created"
+      },
+      "sourceHash": "1e837867527eaf1fb4bf99c74cee33f87b32153da4195e359f43e44b40fb8384"
+    },
+    ".trellis/scripts/knowledge-hook.py": {
+      "kind": "file",
+      "installedHash": "9092c7c3c051fe1b3bf2da4f5e973287196535ad7c4392a81e27a522ab890c3c",
+      "ownership": {
+        "type": "created"
+      },
+      "sourceHash": "9092c7c3c051fe1b3bf2da4f5e973287196535ad7c4392a81e27a522ab890c3c"
+    },
+    ".trellis/scripts/knowledge.py": {
+      "kind": "file",
+      "installedHash": "87364c1fcab42e3d835294db70bbaac3bdfa8fbc6b0d781b6b16dbb0b1307c8f",
+      "ownership": {
+        "type": "created"
+      },
+      "sourceHash": "87364c1fcab42e3d835294db70bbaac3bdfa8fbc6b0d781b6b16dbb0b1307c8f"
+    },
+    "AGENTS.md": {
+      "kind": "block",
+      "installedHash": "38221a426b37ab3888a4ea3374572e690152156b267ed78cda3f08a749c155ba",
+      "installedBlockHash": "0ac7042df3247aac707495c102b116905e298cc7e67c508513cb78bc2640115f",
+      "ownership": {
+        "type": "modified",
+        "originalContent": "5pys6aG555uu55qEc2tpbGxz77yMYWdlbnRz77yMaG9va3PvvIxydWxlc+Wdh+mHh+eUqOi/nOeoi+WQjOatpeaWueW8jw0K5pys6aG555uu5a+55bqU6L+c56iL55qEbW9sdW94aXhpIGhvc3TvvIzku6Vyb2xlIHBhdGjlhajph4/lkIzmraUNCg0K6KeS6Imy5LiT5bGe5rWL6K+V5b+F6aG75pS+5Zyo5a+55bqU55qEIGByb2xlcy88cm9sZT4vX190ZXN0X18vYCDkuK3vvJtgc2NyaXB0cy9saWIvX190ZXN0X18vYCDlj6rlhYHorrjlrZjmlL7kuI3kvp3otZblhbfkvZPop5LoibLotYTkuqfnmoTlhazlhbHog73lipvmtYvor5XjgIINCmBjb21tb25gIOWIhuaUr+WPquaJv+i9veWFrOWFseWIhuWPkeOAgeaKleW9seOAgeagoemqjOS4jui/kOihjOaXtuiDveWKm++8jGBjb21tb25gIOWIhuaUr+eahGByb2xlcy9gIOW/hemhu+S4uuepuuOAgg0K",
+        "originalHash": "3d7d59e624e5f3d01715a5a79f9ae6d6d23592b6bcb1b8766f52cddd0567bed2"
+      },
+      "sourceHash": "54773c990354ab9c28fdedfe336b4616983cc5b64fc7ac7305409399c3e24627"
+    }
+  }
+}
