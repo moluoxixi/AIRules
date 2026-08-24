@@ -1,144 +1,60 @@
 # Moluoxixi AIRules
 
-AIRules 为支持的 AI 编程宿主安装 skills 与角色资产。
+AIRules 为受支持的 AI 编程宿主分发 skills、MCP 配置和角色资产。
 
-> npm 的 `latest` 版本可能落后于仓库。下面的提示词会从源码安装当前版本。
+## 安装 package
 
-## 从源码安装
-
-首次执行以下命令即可安装最新的 Moluoxixi 角色，并注册 `airules` 命令：
+全局安装已发布的 package：
 
 ```bash
-git clone https://github.com/moluoxixi/AIRules.git
-cd AIRules
-npm install
-npm run build
-npm link
-airules install moluoxixi --host all
+npm install --global moluoxixi-ai-rules
 ```
 
-安装其他角色时，将 `moluoxixi` 替换为 `trellis` 或 `matt`。后续更新只需执行 `airules install <role> --host all`；安装和验证角色前会先快进更新干净的源码 checkout。
+检查已安装的 CLI：
 
-## Moluoxixi 角色
-
-Moluoxixi 角色用于安装 `init-project` skill、CodeGraph、相关 MCP 配置，以及 Matt Pocock 的生产率 skills。
-
-### 使用 AI 安装
-
-将下面的提示词复制给你的 AI 编程助手：
-
-```text
-请在这台机器上通过 AIRules 安装 Moluoxixi 角色。
-
-1. 检查 Node.js 22 或更高版本、npm 和 Git 是否可用。
-2. 确定我的用户根目录，将 https://github.com/moluoxixi/AIRules.git 克隆到 `<用户根目录>/AIRules`。不要克隆到业务项目中，也不要克隆为 `<用户根目录>/.moluoxixi`。
-3. 进入 `<用户根目录>/AIRules`。
-4. 依次执行 `npm install`、`npm run build` 和 `npm link`。
-5. 执行 `airules --version`，确认安装的版本为 0.2.0 或更高版本。
-6. 安装前，先告知我 AIRules 会先对干净的 Git checkout 执行 `git pull --ff-only`，再把 Moluoxixi 资产和 Matt Pocock 生产率 skills 写入 `<用户根目录>/.moluoxixi`、`<用户根目录>/.agents/skills` 以及受支持的 AI 宿主配置目录。角色安装是用户级操作，不需要在业务项目中执行。
-7. 得到我确认后，执行 `airules install moluoxixi --host all`。
-8. 安装命令会自动验证结果；请报告安装版本、已更新的宿主、实际写入目录和所有错误。
-
-不要使用 sudo，不要传入 `--skip-vendors` 或 `--no-verify`，不要删除或覆盖不由 AIRules 管理的文件。
+```bash
+airules --version
 ```
 
-### 用法
+## 安装角色
 
-安装或更新角色：
+为所有受支持的宿主安装或更新角色：
 
 ```bash
 airules install moluoxixi --host all
 ```
 
-不重新安装，仅再次验证：
+其他角色使用相同的 package 命令：
+
+```bash
+airules install trellis --host all
+airules install matt --host all
+```
+
+不修改安装内容，仅验证已安装的角色：
 
 ```bash
 airules verify moluoxixi --host all
 ```
 
-角色安装是用户级操作，可以在 `<用户根目录>/AIRules` 中执行。初始化项目时，先进入目标业务项目，再在 AI 编程宿主中调用 `init-project` skill。
+安装是用户级操作。角色安装完成后，在目标项目中执行项目初始化命令。
 
-## Trellis 角色
+## Moluoxixi package CLI
 
-Trellis 角色用于安装官方 Trellis CLI、`init-project` skill、默认的 CodeGraph、Context7、Sequential Thinking 和 Playwright MCP 服务，以及 Matt Pocock 的生产率 skills。
-
-### 使用 AI 安装
-
-将下面的提示词复制给你的 AI 编程助手：
-
-```text
-请在这台机器上通过 AIRules 安装 Trellis 角色。
-
-1. 检查 Node.js 22 或更高版本、npm、Git 和 Python 3.9 或更高版本是否可用。
-2. 确定我的用户根目录，将 https://github.com/moluoxixi/AIRules.git 克隆到 `<用户根目录>/AIRules`。不要克隆到业务项目中，也不要克隆为 `<用户根目录>/.moluoxixi`。
-3. 进入 `<用户根目录>/AIRules`。
-4. 依次执行 `npm install`、`npm run build` 和 `npm link`。
-5. 执行 `airules --version`，确认安装的版本为 0.2.0 或更高版本。
-6. 安装前，先告知我 AIRules 会先对干净的 Git checkout 执行 `git pull --ff-only`，再安装官方 Trellis 和 CodeGraph CLI、将初始化和 Matt 生产率 skills 写入受支持的 AI 宿主目录，并把默认 MCP 服务合并到受支持的宿主配置。角色安装是用户级操作，不需要在业务项目中执行。
-7. 得到我确认后，执行 `airules install trellis --host all`。
-8. 安装命令会自动验证结果；请报告安装版本、已更新的宿主、实际写入目录和所有错误。
-
-不要使用 sudo，不要传入 `--skip-vendors` 或 `--no-verify`，不要删除或覆盖不由 AIRules 管理的文件。
-```
-
-### 用法
-
-安装或更新角色：
+Moluoxixi 角色还发布了独立 CLI package `@moluoxixi/airules-moluoxixi-cli`：
 
 ```bash
-airules install trellis --host all
+npm install --global @moluoxixi/airules-moluoxixi-cli
+moluoxixi --version
 ```
 
-不重新安装，仅再次验证：
+使用 `moluoxixi --help` 查看已安装 package 提供的命令。
 
-```bash
-airules verify trellis --host all
-```
+## 共享 skills
 
-角色安装是用户级操作，可以在 `<用户根目录>/AIRules` 中执行。初始化项目时，先进入目标业务项目，再调用 `init-project` skill，或直接执行：
+AIRules 将 canonical skills 维护在 `~/.agents/skills`。Codex、Cursor、Qoder 和 OpenCode 会直接发现该目录，因此 AIRules 不会再向这些宿主的私有目录创建重复 skills。MCP 配置仍按宿主分别管理。
 
-```bash
-trellis init -u <你的名字>
-```
-
-## Matt 角色
-
-Matt 角色用于安装 `mattpocock/skills` 中的全部工程化与生产率 skills，并固定到角色清单记录的上游 revision。
-
-### 使用 AI 安装
-
-将下面的提示词复制给你的 AI 编程助手：
-
-```text
-请在这台机器上通过 AIRules 安装 Matt 角色。
-
-1. 检查 Node.js 22 或更高版本、npm 和 Git 是否可用。
-2. 确定我的用户根目录，将 https://github.com/moluoxixi/AIRules.git 克隆到 `<用户根目录>/AIRules`。不要克隆到业务项目中，也不要克隆为 `<用户根目录>/.moluoxixi`。
-3. 进入 `<用户根目录>/AIRules`。
-4. 依次执行 `npm install`、`npm run build` 和 `npm link`。
-5. 执行 `airules --version`，确认安装的版本为 0.2.0 或更高版本。
-6. 安装前，先告知我 AIRules 会先对干净的 Git checkout 执行 `git pull --ff-only`，再克隆固定 revision 的 Matt Pocock skills，并将工程化与生产率 skills 写入 `<用户根目录>/.moluoxixi`、`<用户根目录>/.agents/skills` 以及受支持的 AI 宿主目录。
-7. 得到我确认后，执行 `airules install matt --host all`。
-8. 安装命令会自动验证结果；请报告安装版本、已更新的宿主、实际写入目录和所有错误。
-
-不要使用 sudo，不要传入 `--skip-vendors` 或 `--no-verify`，不要删除或覆盖不由 AIRules 管理的文件。
-```
-
-### 用法
-
-安装或更新角色：
-
-```bash
-airules install matt --host all
-```
-
-不重新安装，仅再次验证：
-
-```bash
-airules verify matt --host all
-```
-
-## 查看版本
+## 版本
 
 ```bash
 airules --version
@@ -149,3 +65,20 @@ English documentation: [README.md](README.md)
 ## 许可证
 
 MIT
+
+<!-- AIRULES:TRELLIS:START -->
+
+## Trellis 工作流
+
+本项目使用 Trellis 管理 AI 辅助开发流程。在 AI 编程助手中可以发送：
+
+```text
+请使用 Trellis 开始处理这个需求：<描述需求>
+请使用 Trellis 继续当前任务。
+请使用 Trellis 检查当前改动。
+请使用 Trellis 完成本次工作。
+```
+
+项目的工作流、任务和规范状态位于 `.trellis/`。
+
+<!-- AIRULES:TRELLIS:END -->
