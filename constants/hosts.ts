@@ -62,6 +62,7 @@ export const HOST_CONFIGS: HostConfig[] = [
   {
     id: 'codex',
     homeRelPath: '.codex',
+    projectSkills: false,
     mcp: {
       relDir: '.',
       fileName: 'config.toml',
@@ -75,6 +76,7 @@ export const HOST_CONFIGS: HostConfig[] = [
     id: 'cursor',
     homeRelPath: '.cursor',
     skillsDirName: 'skills-cursor',
+    projectSkills: false,
     mcp: {
       relDir: '.',
       fileName: 'mcp.json',
@@ -88,10 +90,11 @@ export const HOST_CONFIGS: HostConfig[] = [
   { id: 'trae-cn', homeRelPath: '.trae-cn', mcp: { homeRelPath: path.join('AppData', 'Roaming', 'Trae CN', 'User'), relDir: '.', fileName: 'mcp.json', serversKey: 'mcpServers', format: 'json', defaultTopLevel: { inputs: [] } } },
   { id: 'trae-solo', homeRelPath: '.trae-solo', projectSkills: false, mcp: { homeRelPath: path.join('AppData', 'Roaming', 'TRAE SOLO', 'User'), relDir: '.', fileName: 'mcp.json', serversKey: 'mcpServers', format: 'json', defaultTopLevel: { inputs: [] } } },
   { id: 'trae-solo-cn', homeRelPath: '.trae-solo-cn', projectSkills: false, mcp: { homeRelPath: path.join('AppData', 'Roaming', 'TRAE SOLO CN', 'User'), relDir: '.', fileName: 'mcp.json', serversKey: 'mcpServers', format: 'json', defaultTopLevel: { inputs: [] } } },
-  { id: 'qoder', homeRelPath: '.qoder', mcp: { homeRelPath: path.join('AppData', 'Roaming', 'Qoder', 'SharedClientCache'), relDir: '.', fileName: 'mcp.json', serversKey: 'mcpServers', format: 'json', serverDefaults: { type: 'stdio' } } },
+  { id: 'qoder', homeRelPath: '.qoder', projectSkills: false, mcp: { homeRelPath: path.join('AppData', 'Roaming', 'Qoder', 'SharedClientCache'), relDir: '.', fileName: 'mcp.json', serversKey: 'mcpServers', format: 'json', serverDefaults: { type: 'stdio' } } },
   {
     id: 'opencode',
     homeRelPath: path.join('.config', 'opencode'),
+    projectSkills: false,
     mcp: {
       relDir: '.',
       fileName: 'opencode.json',

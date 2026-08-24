@@ -48,8 +48,26 @@ it('verifyHost validates only the projected skill set', async () => {
   assert.equal(projectHostById('codex', userHome, moluoHome).success, true)
   assert.equal(await verifyHost('codex', moluoHome, userHome), true)
 
-  fs.rmSync(path.join(userHome, '.codex', 'skills', 'demo'), { recursive: true, force: true })
-  assert.equal(await verifyHost('codex', moluoHome, userHome), false)
+  fs.rmSync(path.join(userHome, '.agents', 'skills', 'demo'), { recursive: true, force: true })
+  assert.equal(await verifyHost('codex', moluoHome, userHome), true)
+})
+
+it.each([
+  ['codex', '.codex', 'skills', '.codex/config.toml'],
+  ['cursor', '.cursor', 'skills-cursor', '.cursor/mcp.json'],
+  ['qoder', '.qoder', 'skills', 'AppData/Roaming/Qoder/SharedClientCache/mcp.json'],
+  ['opencode', '.config/opencode', 'skills', '.config/opencode/opencode.json'],
+])('%s reuses canonical skills while retaining host MCP projection', async (host, hostHomePath, skillsDirName, mcpFilePath) => {
+  const { moluoHome, userHome } = fixture()
+  writeSharedMcp(moluoHome)
+  fs.mkdirSync(path.join(userHome, ...hostHomePath.split('/')), { recursive: true })
+  fs.mkdirSync(path.dirname(path.join(userHome, ...mcpFilePath.split('/'))), { recursive: true })
+
+  assert.equal(projectHostById(host, userHome, moluoHome).success, true)
+  assert.equal(await verifyHost(host, moluoHome, userHome), true)
+  assert.ok(fs.existsSync(path.join(userHome, '.agents', 'skills', 'demo', 'SKILL.md')))
+  assert.equal(fs.existsSync(path.join(userHome, ...hostHomePath.split('/'), skillsDirName, 'demo')), false)
+  assert.ok(fs.statSync(path.join(userHome, ...mcpFilePath.split('/'))).isFile())
 })
 
 it('verifyHost validates JSON and TOML MCP server presence while preserving user servers', async () => {

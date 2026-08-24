@@ -9,6 +9,7 @@ import {
   mkdirSync,
   readdirSync,
   readFileSync,
+  readlinkSync,
   realpathSync,
   rmSync,
   symlinkSync,
@@ -258,6 +259,12 @@ export function ensureInstallRoot(paths: InstallPaths) {
  * 链路固定为 vendor/skills → ~/.agents/skills。
  * 遵循层级自愈同步逻辑。
  */
+function syncCanonicalSkills(userHome: string, moluoHome: string) {
+  const agentsSkillsDir = agentsSkillsPath(userHome)
+  mkdirSync(path.dirname(agentsSkillsDir), { recursive: true })
+  syncFlattenedSkills(vendorSkillsPath(moluoHome), agentsSkillsDir, moluoHome)
+}
+
 export function ensureGlobalSkillLink(paths: InstallPaths) {
   syncFlattenedSkills(vendorSkillsPath(paths.moluoHome), paths.globalAgentSkillsHome, paths.moluoHome)
 }
@@ -466,15 +473,44 @@ export function projectSkillsToHost(
   hostSkillsHome: string,
   options: SyncFlattenedSkillsOptions = {},
 ) {
-  const vendorSourceSkillsDir = vendorSkillsPath(moluoHome)
   const agentsSkillsDir = agentsSkillsPath(userHome)
 
   // 1. vendor/skills → ~/.agents/skills
-  mkdirSync(path.dirname(agentsSkillsDir), { recursive: true })
-  syncFlattenedSkills(vendorSourceSkillsDir, agentsSkillsDir, moluoHome)
+  syncCanonicalSkills(userHome, moluoHome)
 
   // 2. ~/.agents/skills → 宿主 skills 目录
   syncFlattenedSkills(agentsSkillsDir, hostSkillsHome, moluoHome, options)
+}
+
+/**
+ * Remove only legacy AIRules skill links from a host that now reads the
+ * canonical ~/.agents/skills layer itself. User files, real directories, and
+ * links to unrelated locations remain untouched.
+ */
+export function cleanupLegacyHostSkillLinks(
+  hostSkillsHome: string,
+  userHome: string,
+  moluoHome: string,
+) {
+  const hostSkillsStats = lstatSync(hostSkillsHome, { throwIfNoEntry: false })
+  // Never traverse a user-managed skills-directory symlink (or a non-directory
+  // placeholder). The cleanup is limited to entries inside a real host skills
+  // directory; replacing/removing the directory itself is outside its scope.
+  if (!hostSkillsStats?.isDirectory() || hostSkillsStats.isSymbolicLink())
+    return
+
+  const canonicalSkillsHome = agentsSkillsPath(userHome)
+  for (const entry of readdirSync(hostSkillsHome, { withFileTypes: true })) {
+    if (!entry.isSymbolicLink())
+      continue
+
+    const linkPath = path.join(hostSkillsHome, entry.name)
+    const linkTarget = path.resolve(path.dirname(linkPath), readlinkSync(linkPath))
+    const isLegacyLink = isPathInside(moluoHome, linkTarget)
+      || isPathInside(canonicalSkillsHome, linkTarget)
+    if (isLegacyLink)
+      unlinkSync(linkPath)
+  }
 }
 
 function escapeTomlString(value: string): string {
@@ -721,6 +757,10 @@ export function projectToHost({
       path.join(hostHome, customSkillsDirName),
       { excludedSkills },
     )
+  }
+  else {
+    syncCanonicalSkills(userHome, moluoHome)
+    cleanupLegacyHostSkillLinks(path.join(hostHome, customSkillsDirName), userHome, moluoHome)
   }
   if (mcp)
     projectMcpToHost(moluoHome, role, mcpHome, mcp)

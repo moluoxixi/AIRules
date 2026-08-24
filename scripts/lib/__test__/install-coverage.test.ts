@@ -6,6 +6,7 @@ import path from 'node:path'
 import { it } from 'vitest'
 import { findHostConfig, HOST_IDS, resolveGlobalAgentSkillsPath, resolveHostId, resolveHostPaths } from '../../../constants/hosts.js'
 import {
+  cleanupLegacyHostSkillLinks,
   ensureGlobalSkillLink,
   ensureInstallRoot,
   getDefaultInstallPaths,
@@ -105,6 +106,7 @@ it('hosts - 解析默认和自定义宿主路径', () => {
   const cursorPaths = resolveHostPaths(cursor, 'C:/Users/example')
   assert.equal(normalizePath(cursorPaths.hostHome), 'C:/Users/example/.cursor')
   assert.equal(cursorPaths.skillsDirName, 'skills-cursor')
+  assert.equal(cursorPaths.projectSkills, false)
 
   const claudePaths = resolveHostPaths(claude, 'C:/Users/example')
   assert.equal(normalizePath(claudePaths.hostHome), 'C:/Users/example/.claude')
@@ -112,6 +114,9 @@ it('hosts - 解析默认和自定义宿主路径', () => {
   assert.equal(claudePaths.skillsDirName, 'skills')
   assert.equal(claudePaths.mcp?.fileName, '.claude.json')
   assert.equal(claudePaths.mcp?.requireHostHome, true)
+
+  const codexPaths = resolveHostPaths(findHostConfig('codex')!, 'C:/Users/example')
+  assert.equal(codexPaths.projectSkills, false)
 
   const hermesPaths = resolveHostPaths(hermes, 'C:/Users/example')
   assert.equal(normalizePath(hermesPaths.hostHome), 'C:/Users/example/AppData/Local/hermes')
@@ -129,12 +134,13 @@ it('hosts - 解析默认和自定义宿主路径', () => {
 
   const qoderPaths = resolveHostPaths(qoder, 'C:/Users/example')
   assert.equal(normalizePath(qoderPaths.hostHome), 'C:/Users/example/.qoder')
-  assert.equal(qoderPaths.projectSkills, true)
+  assert.equal(qoderPaths.projectSkills, false)
 
   const qoderworkPaths = resolveHostPaths(qoderwork, 'C:/Users/example')
   assert.equal(qoderworkPaths.projectSkills, true)
 
   const openCodePaths = resolveHostPaths(opencode, 'C:/Users/example')
+  assert.equal(openCodePaths.projectSkills, false)
   assert.equal(openCodePaths.mcp?.serverCommandFormat, 'command-array')
   assert.deepEqual(openCodePaths.mcp?.defaultTopLevel, { $schema: 'https://opencode.ai/config.json' })
 })
@@ -213,6 +219,21 @@ it('install - 全局技能链接从嵌套源目录展平到叶子 skill 名', ()
   assert.ok(fs.lstatSync(globalSkill).isSymbolicLink())
   assert.equal(realLinkPath(globalSkill), realLinkPath(nestedSkill))
   assert.equal(fs.existsSync(path.join(paths.globalAgentSkillsHome, 'workflow')), false)
+}))
+
+it('install - 全局技能链接尊重调用方提供的 canonical 目标目录', () => withTempDir('airules-global-custom-', (tmpDir) => {
+  const userHome = path.join(tmpDir, 'user')
+  const paths = {
+    ...getDefaultInstallPaths(userHome),
+    globalAgentSkillsHome: path.join(tmpDir, 'custom-agents', 'skills'),
+  }
+  const sourceSkill = path.join(paths.moluoHome, 'vendor', 'skills', 'skill-one')
+  fs.mkdirSync(sourceSkill, { recursive: true })
+
+  ensureGlobalSkillLink(paths)
+
+  assert.ok(fs.lstatSync(path.join(paths.globalAgentSkillsHome, 'skill-one')).isSymbolicLink())
+  assert.equal(fs.existsSync(path.join(userHome, '.agents', 'skills', 'skill-one')), false)
 }))
 
 it('install - replaceWithSymlink 跳过同路径、复用正确链接并替换错误目标', () => withTempDir('airules-link-', (tmpDir) => {
@@ -310,7 +331,8 @@ it('install - projectHostById 跳过缺失宿主并处理未知宿主错误', ()
   fs.mkdirSync(path.join(userHome, '.codex'), { recursive: true })
   const projected = projectHostById('codex', userHome, moluoHome)
   assert.equal(projected.success, true)
-  assert.ok(fs.lstatSync(path.join(userHome, '.codex', 'skills', 'skill-one')).isSymbolicLink())
+  assert.equal(fs.existsSync(path.join(userHome, '.codex', 'skills', 'skill-one')), false)
+  assert.ok(fs.lstatSync(path.join(userHome, '.agents', 'skills', 'skill-one')).isSymbolicLink())
 
   assert.throws(
     () => projectHostById('unknown', userHome, moluoHome),
@@ -616,6 +638,46 @@ it('install - runSkillSetupCommands 从 MCP catalog 执行 setup', () => withTem
   runSkillSetupCommands(manifest, tmpDir)
 
   assert.equal(fs.readFileSync(marker, 'utf8'), 'ran')
+}))
+
+it('install - canonical skills 宿主只清理 AIRules 旧链接并保留用户内容', () => withTempDir('airules-canonical-host-', (tmpDir) => {
+  const userHome = path.join(tmpDir, 'user')
+  const moluoHome = path.join(userHome, '.moluoxixi')
+  const hostSkills = path.join(userHome, '.codex', 'skills')
+  const vendorSkill = path.join(moluoHome, 'vendor', 'skills', 'managed')
+  const externalSkill = path.join(tmpDir, 'external', 'custom')
+  fs.mkdirSync(vendorSkill, { recursive: true })
+  fs.mkdirSync(externalSkill, { recursive: true })
+  writeFile(path.join(hostSkills, 'user-file', 'SKILL.md'), 'user\n')
+  fs.symlinkSync(vendorSkill, path.join(hostSkills, 'legacy-managed'), 'junction')
+  fs.symlinkSync(externalSkill, path.join(hostSkills, 'user-link'), 'junction')
+  fs.mkdirSync(path.join(userHome, '.agents', 'skills', 'canonical'), { recursive: true })
+  fs.symlinkSync(path.join(userHome, '.agents', 'skills', 'canonical'), path.join(hostSkills, 'legacy-canonical'), 'junction')
+
+  cleanupLegacyHostSkillLinks(hostSkills, userHome, moluoHome)
+
+  assert.equal(fs.existsSync(path.join(hostSkills, 'legacy-managed')), false)
+  assert.equal(fs.existsSync(path.join(hostSkills, 'legacy-canonical')), false)
+  assert.ok(fs.existsSync(path.join(hostSkills, 'user-file', 'SKILL.md')))
+  assert.ok(fs.lstatSync(path.join(hostSkills, 'user-link')).isSymbolicLink())
+}))
+
+it('install - 旧链接清理不遍历用户自有的宿主 skills 目录软链接', () => withTempDir('airules-canonical-host-link-', (tmpDir) => {
+  const userHome = path.join(tmpDir, 'user')
+  const moluoHome = path.join(userHome, '.moluoxixi')
+  const externalSkills = path.join(tmpDir, 'external', 'skills')
+  const hostSkills = path.join(userHome, '.codex', 'skills')
+  const managedTarget = path.join(moluoHome, 'vendor', 'skills', 'managed')
+  fs.mkdirSync(managedTarget, { recursive: true })
+  fs.mkdirSync(externalSkills, { recursive: true })
+  fs.symlinkSync(managedTarget, path.join(externalSkills, 'legacy-managed'), 'junction')
+  fs.mkdirSync(path.dirname(hostSkills), { recursive: true })
+  fs.symlinkSync(externalSkills, hostSkills, 'junction')
+
+  cleanupLegacyHostSkillLinks(hostSkills, userHome, moluoHome)
+
+  assert.ok(fs.lstatSync(hostSkills).isSymbolicLink())
+  assert.ok(fs.lstatSync(path.join(externalSkills, 'legacy-managed')).isSymbolicLink())
 }))
 
 it('install - 拒绝空 MCP server 名称', () => withTempDir('airules-empty-mcp-name-', (tmpDir) => {

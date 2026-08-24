@@ -39,6 +39,20 @@ it('documents role-first install and verify commands', () => {
   expect(result.stdout).toContain('airules verify <role>')
 })
 
+it('documents package installation without a source-link workflow', () => {
+  for (const readmeName of ['README.md', 'README-zh.md']) {
+    const readme = fs.readFileSync(path.join(repoRoot, readmeName), 'utf8')
+    expect(readme).toContain('npm install --global moluoxixi-ai-rules')
+    expect(readme).toContain('npm install --global @moluoxixi/airules-moluoxixi-cli')
+    expect(readme).not.toMatch(/npm link|git clone/u)
+  }
+
+  const manifest = JSON.parse(fs.readFileSync(path.join(repoRoot, 'package.json'), 'utf8')) as {
+    scripts?: Record<string, string>
+  }
+  expect(manifest.scripts).not.toHaveProperty('verify:moluoxixi-identity')
+})
+
 it.each(['install', 'sync', 'verify'])('%s rejects a missing role', (command) => {
   const result = runCli([command])
 
@@ -115,7 +129,7 @@ export const vendors = [{
     expect(result.stdout).toContain('[install] smoke 完成: codex')
     expect(fs.existsSync(path.join(homeDir, 'roles', 'smoke', 'skills', 'smoke-skill', 'SKILL.md'))).toBe(true)
     expect(fs.existsSync(path.join(userHome, '.agents', 'skills', 'smoke-skill', 'SKILL.md'))).toBe(true)
-    expect(fs.existsSync(path.join(userHome, '.codex', 'skills', 'smoke-skill', 'SKILL.md'))).toBe(true)
+    expect(fs.existsSync(path.join(userHome, '.codex', 'skills', 'smoke-skill', 'SKILL.md'))).toBe(false)
   }
   finally {
     fs.rmSync(root, { recursive: true, force: true })
