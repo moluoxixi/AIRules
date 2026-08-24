@@ -1,0 +1,3 @@
+{"_example": "Fill with {\"file\": \"<path>\", \"reason\": \"<why>\"}. Put spec/research files only — no code paths. Run `python .trellis/scripts/get_context.py --mode packages` to list available specs. Delete this line once real entries are added."}
+{"file": ".trellis/tasks/08-24-moluoxixi-sync-package-boundary/research.md", "reason": "平台 .agents skills/MCP 能力矩阵与采用四个平台复用 canonical skills 的决策依据"}
+{"file": ".trellis/spec/frontend/index.md", "reason": "遵循仓库前端层文件结构与质量检查索引"}
