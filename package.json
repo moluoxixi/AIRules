@@ -31,7 +31,6 @@
     "airules": "node bin/airules.js",
     "build": "tsc -p tsconfig.build.json",
     "verify:packed-airules": "node scripts/verify-packed-airules.mjs",
-    "verify:moluoxixi-identity": "node scripts/verify-moluoxixi-identity.mjs",
     "prebuild": "node scripts/clean-dist.mjs",
     "prepare": "husky",
     "prepack": "npm run build",

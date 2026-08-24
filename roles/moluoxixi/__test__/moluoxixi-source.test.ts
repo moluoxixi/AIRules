@@ -314,6 +314,7 @@ describe('moluoxixi finalized role assets', () => {
         'verify:publish': expect.any(String),
       },
     })
+    expect(workspace.scripts).not.toHaveProperty('verify:identity')
     expect(workspace).not.toHaveProperty('publishConfig')
     expect(collectFiles('packages/core').length).toBeGreaterThan(0)
     expect(collectFiles('packages/cli').length).toBeGreaterThan(0)
