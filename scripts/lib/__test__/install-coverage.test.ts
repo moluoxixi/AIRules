@@ -80,6 +80,8 @@ it('hosts - 解析默认和自定义宿主路径', () => {
   const cursor = findHostConfig('cursor')
   const claude = findHostConfig('claude')
   const hermes = findHostConfig('hermes')
+  const trae = findHostConfig('trae')
+  const traeCn = findHostConfig('trae-cn')
   const traeSolo = findHostConfig('trae-solo')
   const traeSoloCn = findHostConfig('trae-solo-cn')
   const qoder = findHostConfig('qoder')
@@ -90,6 +92,8 @@ it('hosts - 解析默认和自定义宿主路径', () => {
   assert.ok(cursor)
   assert.ok(claude)
   assert.ok(hermes)
+  assert.ok(trae)
+  assert.ok(traeCn)
   assert.ok(traeSolo)
   assert.ok(traeSoloCn)
   assert.ok(qoder)
@@ -121,8 +125,16 @@ it('hosts - 解析默认和自定义宿主路径', () => {
   const hermesPaths = resolveHostPaths(hermes, 'C:/Users/example')
   assert.equal(normalizePath(hermesPaths.hostHome), 'C:/Users/example/AppData/Local/hermes')
   assert.equal(hermesPaths.skillsDirName, 'skills')
-  assert.equal(hermesPaths.projectSkills, true)
+  assert.equal(hermesPaths.projectSkills, false)
   assert.deepEqual(hermesPaths.excludedSkills, [])
+
+  const traePaths = resolveHostPaths(trae, 'C:/Users/example')
+  assert.equal(normalizePath(traePaths.hostHome), 'C:/Users/example/.trae')
+  assert.equal(traePaths.projectSkills, false)
+
+  const traeCnPaths = resolveHostPaths(traeCn, 'C:/Users/example')
+  assert.equal(normalizePath(traeCnPaths.hostHome), 'C:/Users/example/.trae-cn')
+  assert.equal(traeCnPaths.projectSkills, false)
 
   const traeSoloPaths = resolveHostPaths(traeSolo, 'C:/Users/example')
   assert.equal(normalizePath(traeSoloPaths.hostHome), 'C:/Users/example/.trae-solo')
@@ -340,7 +352,7 @@ it('install - projectHostById 跳过缺失宿主并处理未知宿主错误', ()
   )
 }))
 
-it('install - Hermes 宿主只投影统一技能集合并保留 SOUL', () => withTempDir('airules-hermes-host-', (tmpDir) => {
+it('install - Hermes 复用 canonical skills 并只清理旧 AIRules 链接', () => withTempDir('airules-hermes-host-', (tmpDir) => {
   const userHome = path.join(tmpDir, 'user')
   const moluoHome = path.join(userHome, '.moluoxixi')
   const hermesHome = path.join(userHome, 'AppData', 'Local', 'hermes')
@@ -348,25 +360,25 @@ it('install - Hermes 宿主只投影统一技能集合并保留 SOUL', () => wit
   const linkType = process.platform === 'win32' ? 'junction' : 'dir'
 
   writeFile(path.join(moluoHome, 'vendor', 'AGENTS.md'), '# AIRules\n\n## 核心规则\n\n- 禁止错误绕行。\n')
-  // 预置真实 SOUL.md 身份内容，skills-only 投影不得修改。
   writeFile(path.join(hermesHome, 'SOUL.md'), '# Soul\n\n身份与人格描述。\n')
   fs.mkdirSync(path.join(vendorSkillsDir, 'api-docs'), { recursive: true })
   fs.mkdirSync(path.join(hermesHome, 'skills'), { recursive: true })
-  fs.symlinkSync(path.join(tmpDir, 'stale-skill'), path.join(hermesHome, 'skills', 'stale-skill'), linkType)
+  fs.symlinkSync(path.join(vendorSkillsDir, 'api-docs'), path.join(hermesHome, 'skills', 'legacy-api-docs'), linkType)
+  writeFile(path.join(hermesHome, 'skills', 'user-skill', 'SKILL.md'), 'user skill\n')
 
   const projected = projectHostById('hermes', userHome, moluoHome)
 
   assert.equal(projected.success, true)
 
-  // SOUL.md 仍是真实文件，且内容逐字节保持不变。
   const soulPath = path.join(hermesHome, 'SOUL.md')
   assert.equal(fs.lstatSync(soulPath).isSymbolicLink(), false)
   const soul = fs.readFileSync(soulPath, 'utf8')
   assert.match(soul, /身份与人格描述。/)
   assert.equal(soul, '# Soul\n\n身份与人格描述。\n')
 
-  assert.ok(fs.lstatSync(path.join(hermesHome, 'skills', 'api-docs')).isSymbolicLink())
-  assert.equal(fs.existsSync(path.join(hermesHome, 'skills', 'stale-skill')), false)
+  assert.equal(fs.existsSync(path.join(hermesHome, 'skills', 'api-docs')), false)
+  assert.equal(fs.existsSync(path.join(hermesHome, 'skills', 'legacy-api-docs')), false)
+  assert.equal(fs.readFileSync(path.join(hermesHome, 'skills', 'user-skill', 'SKILL.md'), 'utf8'), 'user skill\n')
   assert.ok(fs.lstatSync(path.join(userHome, '.agents', 'skills', 'api-docs')).isSymbolicLink())
 }))
 

@@ -28,7 +28,7 @@ export interface HostConfig {
   skillsDirName?: string
   /** 指定宿主不启用的 skills，仅影响最终宿主投影。 */
   excludedSkills?: string[]
-  /** 是否启用 skills 投影，默认启用。 */
+  /** 是否向宿主私有目录投影 skills；false 表示宿主直接复用 canonical `.agents/skills`。 */
   projectSkills?: boolean
   /** 角色可选 MCP 中性源到该宿主配置的投影规则。 */
   mcp?: McpProjection
@@ -71,7 +71,12 @@ export const HOST_CONFIGS: HostConfig[] = [
       serverOverrides: { codegraph: { args: ['serve', '--mcp'] } },
     },
   },
-  { id: 'hermes', aliases: ['hermes desktop'], homeRelPath: path.join('AppData', 'Local', 'hermes') },
+  {
+    id: 'hermes',
+    aliases: ['hermes desktop'],
+    homeRelPath: path.join('AppData', 'Local', 'hermes'),
+    projectSkills: false,
+  },
   {
     id: 'cursor',
     homeRelPath: '.cursor',
@@ -85,12 +90,75 @@ export const HOST_CONFIGS: HostConfig[] = [
       serverDefaults: { type: 'stdio' },
     },
   },
-  { id: 'qoderwork', homeRelPath: '.qoderwork' },
-  { id: 'trae', homeRelPath: '.trae', mcp: { homeRelPath: path.join('AppData', 'Roaming', 'Trae', 'User'), relDir: '.', fileName: 'mcp.json', serversKey: 'mcpServers', format: 'json', defaultTopLevel: { inputs: [] } } },
-  { id: 'trae-cn', homeRelPath: '.trae-cn', mcp: { homeRelPath: path.join('AppData', 'Roaming', 'Trae CN', 'User'), relDir: '.', fileName: 'mcp.json', serversKey: 'mcpServers', format: 'json', defaultTopLevel: { inputs: [] } } },
-  { id: 'trae-solo', homeRelPath: '.trae-solo', projectSkills: false, mcp: { homeRelPath: path.join('AppData', 'Roaming', 'TRAE SOLO', 'User'), relDir: '.', fileName: 'mcp.json', serversKey: 'mcpServers', format: 'json', defaultTopLevel: { inputs: [] } } },
-  { id: 'trae-solo-cn', homeRelPath: '.trae-solo-cn', projectSkills: false, mcp: { homeRelPath: path.join('AppData', 'Roaming', 'TRAE SOLO CN', 'User'), relDir: '.', fileName: 'mcp.json', serversKey: 'mcpServers', format: 'json', defaultTopLevel: { inputs: [] } } },
-  { id: 'qoder', homeRelPath: '.qoder', projectSkills: false, mcp: { homeRelPath: path.join('AppData', 'Roaming', 'Qoder', 'SharedClientCache'), relDir: '.', fileName: 'mcp.json', serversKey: 'mcpServers', format: 'json', serverDefaults: { type: 'stdio' } } },
+  {
+    id: 'qoderwork',
+    homeRelPath: '.qoderwork',
+  },
+  {
+    id: 'trae',
+    homeRelPath: '.trae',
+    projectSkills: false,
+    mcp: {
+      homeRelPath: path.join('AppData', 'Roaming', 'Trae', 'User'),
+      relDir: '.',
+      fileName: 'mcp.json',
+      serversKey: 'mcpServers',
+      format: 'json',
+      defaultTopLevel: { inputs: [] },
+    },
+  },
+  {
+    id: 'trae-cn',
+    homeRelPath: '.trae-cn',
+    projectSkills: false,
+    mcp: {
+      homeRelPath: path.join('AppData', 'Roaming', 'Trae CN', 'User'),
+      relDir: '.',
+      fileName: 'mcp.json',
+      serversKey: 'mcpServers',
+      format: 'json',
+      defaultTopLevel: { inputs: [] },
+    },
+  },
+  {
+    id: 'trae-solo',
+    homeRelPath: '.trae-solo',
+    projectSkills: false,
+    mcp: {
+      homeRelPath: path.join('AppData', 'Roaming', 'TRAE SOLO', 'User'),
+      relDir: '.',
+      fileName: 'mcp.json',
+      serversKey: 'mcpServers',
+      format: 'json',
+      defaultTopLevel: { inputs: [] },
+    },
+  },
+  {
+    id: 'trae-solo-cn',
+    homeRelPath: '.trae-solo-cn',
+    projectSkills: false,
+    mcp: {
+      homeRelPath: path.join('AppData', 'Roaming', 'TRAE SOLO CN', 'User'),
+      relDir: '.',
+      fileName: 'mcp.json',
+      serversKey: 'mcpServers',
+      format: 'json',
+      defaultTopLevel: { inputs: [] },
+    },
+  },
+  {
+    id: 'qoder',
+    homeRelPath: '.qoder',
+    projectSkills: false,
+    mcp: {
+      homeRelPath: path.join('AppData', 'Roaming', 'Qoder', 'SharedClientCache'),
+      relDir: '.',
+      fileName: 'mcp.json',
+      serversKey: 'mcpServers',
+      format: 'json',
+      serverDefaults: { type: 'stdio' },
+    },
+  },
   {
     id: 'opencode',
     homeRelPath: path.join('.config', 'opencode'),

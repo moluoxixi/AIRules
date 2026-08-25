@@ -56,6 +56,10 @@ it.each([
   ['codex', '.codex', 'skills', '.codex/config.toml'],
   ['cursor', '.cursor', 'skills-cursor', '.cursor/mcp.json'],
   ['qoder', '.qoder', 'skills', 'AppData/Roaming/Qoder/SharedClientCache/mcp.json'],
+  ['trae', '.trae', 'skills', 'AppData/Roaming/Trae/User/mcp.json'],
+  ['trae-cn', '.trae-cn', 'skills', 'AppData/Roaming/Trae CN/User/mcp.json'],
+  ['trae-solo', '.trae-solo', 'skills', 'AppData/Roaming/TRAE SOLO/User/mcp.json'],
+  ['trae-solo-cn', '.trae-solo-cn', 'skills', 'AppData/Roaming/TRAE SOLO CN/User/mcp.json'],
   ['opencode', '.config/opencode', 'skills', '.config/opencode/opencode.json'],
 ])('%s reuses canonical skills while retaining host MCP projection', async (host, hostHomePath, skillsDirName, mcpFilePath) => {
   const { moluoHome, userHome } = fixture()
@@ -68,6 +72,17 @@ it.each([
   assert.ok(fs.existsSync(path.join(userHome, '.agents', 'skills', 'demo', 'SKILL.md')))
   assert.equal(fs.existsSync(path.join(userHome, ...hostHomePath.split('/'), skillsDirName, 'demo')), false)
   assert.ok(fs.statSync(path.join(userHome, ...mcpFilePath.split('/'))).isFile())
+})
+
+it('hermes reuses canonical skills without creating a private skill entry', async () => {
+  const { moluoHome, userHome } = fixture()
+  const hermesHome = path.join(userHome, 'AppData', 'Local', 'hermes')
+  fs.mkdirSync(hermesHome, { recursive: true })
+
+  assert.equal(projectHostById('hermes', userHome, moluoHome).success, true)
+  assert.equal(await verifyHost('hermes', moluoHome, userHome), true)
+  assert.ok(fs.existsSync(path.join(userHome, '.agents', 'skills', 'demo', 'SKILL.md')))
+  assert.equal(fs.existsSync(path.join(hermesHome, 'skills', 'demo')), false)
 })
 
 it('verifyHost validates JSON and TOML MCP server presence while preserving user servers', async () => {
@@ -93,16 +108,19 @@ it('verifyHost validates JSON and TOML MCP server presence while preserving user
   assert.ok(cursor.mcpServers.user)
 })
 
-it('verifyHost checks MCP-only hosts', async () => {
+it.each([
+  ['trae-solo', 'TRAE SOLO'],
+  ['trae-solo-cn', 'TRAE SOLO CN'],
+])('verifyHost checks MCP-only host %s', async (host, roamingDir) => {
   const { moluoHome, userHome } = fixture()
   writeSharedMcp(moluoHome)
-  const mcpHome = path.join(userHome, 'AppData', 'Roaming', 'TRAE SOLO', 'User')
+  const mcpHome = path.join(userHome, 'AppData', 'Roaming', roamingDir, 'User')
   fs.mkdirSync(mcpHome, { recursive: true })
 
-  assert.equal(projectHostById('trae-solo', userHome, moluoHome, 'demo').success, true)
-  assert.equal(await verifyHost('trae-solo', moluoHome, userHome, 'demo'), true)
+  assert.equal(projectHostById(host, userHome, moluoHome, 'demo').success, true)
+  assert.equal(await verifyHost(host, moluoHome, userHome, 'demo'), true)
   fs.rmSync(path.join(mcpHome, 'mcp.json'))
-  assert.equal(await verifyHost('trae-solo', moluoHome, userHome, 'demo'), false)
+  assert.equal(await verifyHost(host, moluoHome, userHome, 'demo'), false)
 })
 
 it('verifyGlobalAgentSkills requires and validates the mandatory shared layer', async () => {

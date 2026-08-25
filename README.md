@@ -52,7 +52,7 @@ Use `moluoxixi --help` to see the commands included in the installed package.
 
 ## Shared skills
 
-AIRules maintains canonical skills in `~/.agents/skills`. Codex, Cursor, Qoder, and OpenCode discover that directory directly, so AIRules does not create duplicate skills in those hosts' private directories. MCP configuration remains host-specific.
+AIRules maintains canonical skills in `~/.agents/skills`. Codex, Cursor, Qoder, Trae, Trae CN, Trae Solo, Trae Solo CN, Hermes, and OpenCode discover that directory directly, so AIRules does not create duplicate skills in those hosts' private directories. MCP configuration remains host-specific.
 
 ## Version
 

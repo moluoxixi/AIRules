@@ -52,7 +52,7 @@ moluoxixi --version
 
 ## 共享 skills
 
-AIRules 将 canonical skills 维护在 `~/.agents/skills`。Codex、Cursor、Qoder 和 OpenCode 会直接发现该目录，因此 AIRules 不会再向这些宿主的私有目录创建重复 skills。MCP 配置仍按宿主分别管理。
+AIRules 将 canonical skills 维护在 `~/.agents/skills`。Codex、Cursor、Qoder、Trae、Trae CN、Trae Solo、Trae Solo CN、Hermes 和 OpenCode 会直接发现该目录，因此 AIRules 不会再向这些宿主的私有目录创建重复 skills。MCP 配置仍按宿主分别管理。
 
 ## 版本
 
