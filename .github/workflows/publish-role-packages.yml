@@ -79,3 +79,7 @@ jobs:
           NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
           RELEASE_TAG: ${{ github.event_name == 'workflow_dispatch' && inputs.tag || github.ref_name }}
         run: pnpm exec tsx scripts/role-packages.ts publish --tag "$RELEASE_TAG"
+
+      - name: Run role post-publish verification
+        working-directory: roles/${{ steps.release.outputs.role }}
+        run: pnpm run --if-present verify:published

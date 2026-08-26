@@ -23,6 +23,7 @@
     "release:check": "node packages/cli/scripts/release-preflight.js check-versions",
     "release:plan": "node packages/cli/scripts/release-preflight.js publish-plan",
     "verify:publish": "pnpm run test:publish && pnpm run build && pnpm run typecheck && pnpm run lint:publish && node packages/cli/scripts/release-preflight.js verify-packed-cli",
+    "verify:published": "node packages/cli/scripts/release-preflight.js verify-npm --package all",
     "publish:dry-run": "pnpm run verify:publish && pnpm --filter @moluoxixi/airules-moluoxixi-core publish --dry-run --no-git-checks --access public && pnpm --filter @moluoxixi/airules-moluoxixi-cli publish --dry-run --no-git-checks --access public"
   },
   "devDependencies": {

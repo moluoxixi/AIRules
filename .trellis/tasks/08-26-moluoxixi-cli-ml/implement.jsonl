@@ -1,0 +1,3 @@
+{"file": ".trellis/tasks/08-26-moluoxixi-cli-ml/research/impact-and-release.md", "reason": "提供 tl->ml 影响面、版本、同步边界和共存验证证据"}
+{"file": ".trellis/spec/guides/code-reuse-thinking-guide.md", "reason": "修改共享 package manifest 与发布 gate 前核验单一真源和重复契约"}
+{"file": ".trellis/tasks/08-26-moluoxixi-cli-ml/research/github-release-pipeline.md", "reason": "提供 tag 触发、GitHub 发布顺序、认证、幂等和失败处理契约"}

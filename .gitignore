@@ -1,6 +1,6 @@
 # 本项目
 vendor
-
+.pnpm-store
 # ai相关
 .qoder
 .cursor

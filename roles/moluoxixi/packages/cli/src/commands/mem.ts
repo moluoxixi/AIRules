@@ -133,7 +133,7 @@ function warnOpencodeUnavailable(): void {
   if (opencodeWarned) return;
   opencodeWarned = true;
   process.stderr.write(
-    "⚠️  tl mem: OpenCode platform reader is temporarily unavailable in this build.\n" +
+    "⚠️  ml mem: OpenCode platform reader is temporarily unavailable in this build.\n" +
       "    OpenCode 1.2+ moved to SQLite; the native dependency was reverted in\n" +
       "    0.6.0-beta.4 due to install failures. Re-enabled in a future release.\n",
   );

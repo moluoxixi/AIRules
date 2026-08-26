@@ -37,7 +37,7 @@ const roleRoot = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..'
 const mattSkillsSource = 'https://github.com/mattpocock/skills.git'
 const mattSkillsRevision = '8b78b531ab965735c5dc74f6f7a219e1e37326df'
 
-const publishedPackageVersion = '0.6.21'
+const publishedPackageVersion = '0.6.22'
 const publishedRepository = 'https://github.com/moluoxixi/AIRules'
 
 const migratedRuntimePaths = [
@@ -275,7 +275,7 @@ describe('moluoxixi finalized role assets', () => {
       version: publishedPackageVersion,
       bin: {
         moluoxixi: './bin/moluoxixi.js',
-        tl: './bin/moluoxixi.js',
+        ml: './bin/moluoxixi.js',
       },
       dependencies: {
         '@moluoxixi/airules-moluoxixi-core': 'workspace:*',
@@ -298,6 +298,7 @@ describe('moluoxixi finalized role assets', () => {
       },
     })
     expect(cli).not.toHaveProperty('private')
+    expect(cli.bin).not.toHaveProperty('tl')
     expect(cli.files).toEqual(['dist', 'bin', 'README.md', 'LICENSE'])
     expect(workspace).toMatchObject({
       packageManager: 'pnpm@10.32.1',
@@ -312,6 +313,7 @@ describe('moluoxixi finalized role assets', () => {
         'test:publish': expect.any(String),
         'typecheck': expect.any(String),
         'verify:publish': expect.any(String),
+        'verify:published': 'node packages/cli/scripts/release-preflight.js verify-npm --package all',
       },
     })
     expect(workspace.scripts).not.toHaveProperty('verify:identity')

@@ -75,7 +75,9 @@ function tagVersionFromEnv() {
   // Role releases use `moluoxixi-v<semver>` so they cannot trigger the root package workflow.
   // GITHUB_REF_NAME on `release.published` is the tag name.
   const ref = process.env.GITHUB_REF_NAME || process.env.GITHUB_REF || "";
-  const m = ref.match(/(?:refs\/tags\/)?moluoxixi-v(\d+\.\d+\.\d+(?:-[A-Za-z0-9.+-]+)?)$/);
+  const m = ref.match(
+    /(?:refs\/tags\/)?moluoxixi-v(\d+\.\d+\.\d+(?:-[A-Za-z0-9.+-]+)?)$/,
+  );
   return m ? m[1] : null;
 }
 
@@ -111,6 +113,26 @@ function npmViewJSON(args) {
     { encoding: "utf-8", stdio: ["pipe", "pipe", "pipe"], timeout: 15_000 },
   ).trim();
   return out ? JSON.parse(out) : null;
+}
+
+const EXPECTED_CLI_BIN = "./bin/moluoxixi.js";
+
+export function cliBinContractError(bin) {
+  if (bin?.moluoxixi !== EXPECTED_CLI_BIN) {
+    return `bin.moluoxixi is "${bin?.moluoxixi}" but expected "${EXPECTED_CLI_BIN}".`;
+  }
+  if (bin?.ml !== EXPECTED_CLI_BIN) {
+    return `bin.ml is "${bin?.ml}" but expected "${EXPECTED_CLI_BIN}".`;
+  }
+  if (Object.prototype.hasOwnProperty.call(bin ?? {}, "tl")) {
+    return `must not expose the legacy tl alias.`;
+  }
+  return null;
+}
+
+function assertCliBinContract(bin, label) {
+  const error = cliBinContractError(bin);
+  if (error) fail(`${label} ${error}`);
 }
 
 async function sleep(ms) {
@@ -249,7 +271,9 @@ function verifyPackedCli() {
     const packedPkg = readJSON(path.join(extractDir, "package/package.json"));
     const dep = packedPkg.dependencies?.["@moluoxixi/airules-moluoxixi-core"];
     if (!dep) {
-      fail(`packed CLI is missing dependency on @moluoxixi/airules-moluoxixi-core.`);
+      fail(
+        `packed CLI is missing dependency on @moluoxixi/airules-moluoxixi-core.`,
+      );
     }
     if (dep !== v.cliVersion) {
       fail(
@@ -257,8 +281,9 @@ function verifyPackedCli() {
           `pnpm should rewrite workspace:* to the exact published version; got "${dep}" instead.`,
       );
     }
+    assertCliBinContract(packedPkg.bin, "packed CLI");
     console.log(
-      `${GREEN}ok${RESET} packed CLI pins @moluoxixi/airules-moluoxixi-core to exact ${v.cliVersion}.`,
+      `${GREEN}ok${RESET} packed CLI pins core to exact ${v.cliVersion} and exposes moluoxixi + ml without tl.`,
     );
   } finally {
     fs.rmSync(tmp, { recursive: true, force: true });
@@ -287,8 +312,13 @@ async function verifyNpm({ packageFilter }) {
           `${pkg.name}@${tag} resolves to ${taggedVersion ?? "nothing"}, expected ${v.cliVersion}.`,
         );
       }
+      if (pkg.key === "cli") {
+        const publishedBin = npmViewJSON(`${pkg.name}@${v.cliVersion} bin`);
+        assertCliBinContract(publishedBin, `${pkg.name}@${v.cliVersion}`);
+      }
       console.log(
-        `${GREEN}ok${RESET} ${pkg.name}@${v.cliVersion} visible on npm tag "${tag}".`,
+        `${GREEN}ok${RESET} ${pkg.name}@${v.cliVersion} visible on npm tag "${tag}"` +
+          (pkg.key === "cli" ? " with moluoxixi + ml and no tl." : "."),
       );
     });
   }
@@ -342,4 +372,9 @@ async function main() {
   fail(`unknown command: ${cmd}`);
 }
 
-main();
+if (
+  process.argv[1] &&
+  path.resolve(process.argv[1]) === fileURLToPath(import.meta.url)
+) {
+  main();
+}
