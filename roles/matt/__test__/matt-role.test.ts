@@ -6,7 +6,7 @@ import { afterEach, describe, expect, it } from 'vitest'
 import { parseDocument } from 'yaml'
 import { rebuildVendorAssets } from '../../../scripts/lib/vendor-staging.js'
 import { loadVendorManifest } from '../../../scripts/lib/vendors.js'
-import { extendsRoles, hosts, vendors } from '../constants/skills.js'
+import { capabilities, extendsRoles, hosts, vendors } from '../constants/skills.js'
 
 const roleRoot = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..')
 const manifestPath = path.join(roleRoot, 'constants', 'skills.ts')
@@ -30,6 +30,7 @@ describe('matt role', () => {
   it('projects the pinned engineering and productivity namespaces', async () => {
     expect(extendsRoles).toEqual([])
     expect(hosts).toBe('all')
+    expect(capabilities).toEqual(['engineering', 'productivity'])
     expect(vendors).toEqual([
       {
         name: 'mattpocock',

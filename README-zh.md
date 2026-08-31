@@ -54,6 +54,18 @@ moluoxixi --version
 
 AIRules 将 canonical skills 维护在 `~/.agents/skills`。Codex、Cursor、Qoder、Trae、Trae CN、Trae Solo、Trae Solo CN、Hermes 和 OpenCode 会直接发现该目录，因此 AIRules 不会再向这些宿主的私有目录创建重复 skills。MCP 配置仍按宿主分别管理。
 
+## 角色能力
+
+角色只声明需要的公共 capability，由 registry 统一组合对应的 skills 与 MCP：
+
+| 角色 | Capabilities |
+|---|---|
+| `trellis` | `common`, `coding`, `productivity`, `frontend` |
+| `moluoxixi` | `common`, `coding`, `productivity`, `frontend` |
+| `matt` | `engineering`, `productivity` |
+
+`frontend` 固定安装 Anthropic `frontend-design` 与 Playwright MCP。详细映射见 [capabilities/README.md](capabilities/README.md)。
+
 ## 版本
 
 ```bash

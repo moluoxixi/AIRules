@@ -1,0 +1,33 @@
+{
+  "id": "add-frontend-design-skill",
+  "name": "add-frontend-design-skill",
+  "title": "建立角色能力配置与初始化治理",
+  "description": "由公共 capability 组合角色 skills 与 MCP，并让 Trellis、Moluoxixi 初始化后整理无效 spec 和 bootstrap task。",
+  "status": "in_progress",
+  "dev_type": null,
+  "scope": null,
+  "package": null,
+  "priority": "P2",
+  "creator": "wl",
+  "assignee": "wl",
+  "createdAt": "2026-08-31",
+  "completedAt": null,
+  "branch": null,
+  "base_branch": "main",
+  "worktree_path": null,
+  "commit": null,
+  "pr_url": null,
+  "subtasks": [],
+  "children": [],
+  "parent": null,
+  "relatedFiles": [
+    "capabilities/",
+    "mcps/frontend/",
+    "roles/trellis/constants/skills.ts",
+    "roles/moluoxixi/constants/skills.ts",
+    "roles/trellis/skills/init-project/",
+    "roles/moluoxixi/skills/init-project/"
+  ],
+  "notes": "本机 frontend-design 已按固定 commit 安装到 canonical ~/.agents/skills；角色编译清单通过 pack verifier 验证。",
+  "meta": {}
+}

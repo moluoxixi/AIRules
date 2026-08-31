@@ -4,7 +4,7 @@ import fs from 'node:fs'
 import os from 'node:os'
 import path from 'node:path'
 import process from 'node:process'
-import { fileURLToPath } from 'node:url'
+import { fileURLToPath, pathToFileURL } from 'node:url'
 
 const repoRoot = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..')
 const packageJson = JSON.parse(fs.readFileSync(path.join(repoRoot, 'package.json'), 'utf8'))
@@ -69,6 +69,18 @@ try {
   const moluoxixiManifest = path.join(installedPackageRoot, 'dist', 'roles', 'moluoxixi', 'constants', 'skills.js')
   if (!fs.existsSync(moluoxixiManifest))
     throw new Error('Packed AIRules is missing the compiled Moluoxixi role package declaration')
+  const trellisManifest = path.join(installedPackageRoot, 'dist', 'roles', 'trellis', 'constants', 'skills.js')
+  const capabilityModule = path.join(installedPackageRoot, 'dist', 'capabilities', 'index.js')
+  if (!fs.existsSync(trellisManifest) || !fs.existsSync(capabilityModule))
+    throw new Error('Packed AIRules is missing compiled role capability modules')
+  for (const manifestPath of [moluoxixiManifest, trellisManifest]) {
+    const manifest = await import(pathToFileURL(manifestPath).href)
+    if (!manifest.capabilities?.includes('frontend'))
+      throw new Error(`Packed role manifest does not declare frontend capability: ${manifestPath}`)
+    const frontendVendor = manifest.vendors?.find(vendor => vendor.name === 'anthropic-skills')
+    if (frontendVendor?.revision !== '3b3fad96af16a10759d930941b4520ba0c40edae')
+      throw new Error(`Packed role manifest does not pin frontend-design: ${manifestPath}`)
+  }
 
   const fixtureRoot = path.join(temporaryRoot, 'fixture')
   const airulesHome = path.join(temporaryRoot, 'airules-home')

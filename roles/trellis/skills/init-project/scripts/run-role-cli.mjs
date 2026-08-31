@@ -16,6 +16,7 @@ function main() {
   const projectRoot = resolveProjectRoot(options.project ?? process.cwd())
   const platforms = normalizePlatforms(options.platforms)
   const cli = resolveRoleCli()
+  const workflowRootExisted = fs.existsSync(path.join(projectRoot, '.trellis'))
   const bootstrapTaskExisted = fs.existsSync(path.join(projectRoot, '.trellis', 'tasks', '00-bootstrap-guidelines', 'task.json'))
   const cliArgs = [
     'init',
@@ -39,17 +40,29 @@ function main() {
   if (!fs.statSync(path.join(projectRoot, '.trellis'), { throwIfNoEntry: false })?.isDirectory())
     throw new Error('Trellis initialization exited successfully but did not create .trellis')
 
-  const bootstrapLocalization = localizeBootstrapTask({
-    project: projectRoot,
-    enabled: !bootstrapTaskExisted,
-  })
+  const bootstrapTaskCreated = !bootstrapTaskExisted
+    && fs.existsSync(path.join(projectRoot, '.trellis', 'tasks', '00-bootstrap-guidelines', 'task.json'))
+  const bootstrapLocalization = bootstrapTaskExisted
+    ? { status: 'preserved', reason: 'preexisting-task' }
+    : workflowRootExisted
+      ? { status: 'preserved', reason: 'reinitialization' }
+      : localizeBootstrapTask({
+          project: projectRoot,
+          enabled: true,
+        })
   const extension = installExtension({
     project: projectRoot,
     platforms,
     force: options.force,
   })
   const readme = injectReadme(projectRoot)
-  process.stdout.write(`${JSON.stringify({ bootstrapLocalization, extension, readme }, null, 2)}\n`)
+  process.stdout.write(`${JSON.stringify({
+    freshInitialization: !workflowRootExisted,
+    bootstrapTaskCreated,
+    bootstrapLocalization,
+    extension,
+    readme,
+  }, null, 2)}\n`)
   if (extension.conflicts.length > 0 || readme.status === 'conflict')
     process.exitCode = 2
 }

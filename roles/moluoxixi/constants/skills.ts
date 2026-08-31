@@ -1,4 +1,6 @@
+import type { CapabilityName } from '../../../capabilities/index.js'
 import type { RolePackageConfig, VendorRepo } from '../../../scripts/lib/vendors.js'
+import { composeCapabilities } from '../../../capabilities/index.js'
 
 export const extendsRoles: string[] = []
 
@@ -19,37 +21,22 @@ export const packages: RolePackageConfig[] = [
   },
 ]
 
-export const vendors: VendorRepo[] = [
-  {
-    name: 'moluoxixi',
-    source: 'https://github.com/moluoxixi/AIRules.git',
-    projections: [
-      {
-        kind: 'role-assets',
-        sourceDir: 'roles/moluoxixi',
-      },
-      {
-        kind: 'namespace',
-        sourceDir: 'skills/common',
-        output: 'common',
-      },
-      {
-        kind: 'mcp',
-        sourceFile: 'mcps/code/mcps.json',
-        output: 'mcps/code/mcp.json',
-      },
-    ],
-  },
-  {
-    name: 'mattpocock',
-    source: 'https://github.com/mattpocock/skills.git',
-    revision: '8b78b531ab965735c5dc74f6f7a219e1e37326df',
-    projections: [
-      {
-        kind: 'namespace',
-        sourceDir: 'skills/productivity',
-        output: 'productivity',
-      },
-    ],
-  },
-]
+export const capabilities = [
+  'common',
+  'coding',
+  'productivity',
+  'frontend',
+] as const satisfies readonly CapabilityName[]
+
+const roleVendor: VendorRepo = {
+  name: 'moluoxixi',
+  source: 'https://github.com/moluoxixi/AIRules.git',
+  projections: [
+    {
+      kind: 'role-assets',
+      sourceDir: 'roles/moluoxixi',
+    },
+  ],
+}
+
+export const vendors: VendorRepo[] = composeCapabilities(capabilities, { roleVendor })

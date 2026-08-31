@@ -54,6 +54,18 @@ Use `moluoxixi --help` to see the commands included in the installed package.
 
 AIRules maintains canonical skills in `~/.agents/skills`. Codex, Cursor, Qoder, Trae, Trae CN, Trae Solo, Trae Solo CN, Hermes, and OpenCode discover that directory directly, so AIRules does not create duplicate skills in those hosts' private directories. MCP configuration remains host-specific.
 
+## Role capabilities
+
+Roles declare reusable capabilities, and the shared registry composes their skills and MCP servers:
+
+| Role | Capabilities |
+|---|---|
+| `trellis` | `common`, `coding`, `productivity`, `frontend` |
+| `moluoxixi` | `common`, `coding`, `productivity`, `frontend` |
+| `matt` | `engineering`, `productivity` |
+
+The `frontend` capability pins Anthropic's `frontend-design` skill and includes the Playwright MCP server. See [capabilities/README.md](capabilities/README.md) for the complete mapping.
+
 ## Version
 
 ```bash

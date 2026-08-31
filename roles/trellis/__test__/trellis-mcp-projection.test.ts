@@ -23,10 +23,16 @@ function createFixture(): { moluoHome: string, userHome: string } {
   fs.mkdirSync(path.join(moluoHome, 'vendor', 'skills'), { recursive: true })
   fs.mkdirSync(path.join(moluoHome, 'roles', 'trellis'), { recursive: true })
   fs.cpSync(path.join(roleRoot, 'mcp'), path.join(moluoHome, 'roles', 'trellis', 'mcp'), { recursive: true })
-  const catalog = loadMcpCatalog(path.resolve(roleRoot, '..', '..', 'mcps', 'code', 'mcps.json'))
-  const sharedMcpFile = path.join(moluoHome, 'vendor', 'mcps', 'code', 'mcp.json')
-  fs.mkdirSync(path.dirname(sharedMcpFile), { recursive: true })
-  fs.writeFileSync(sharedMcpFile, `${JSON.stringify({ mcpServers: catalog.servers }, null, 2)}\n`)
+  const codeCatalog = loadMcpCatalog(path.resolve(roleRoot, '..', '..', 'mcps', 'code', 'mcps.json'))
+  const frontendCatalog = loadMcpCatalog(path.resolve(roleRoot, '..', '..', 'mcps', 'frontend', 'mcps.json'))
+  for (const [capability, catalog] of [
+    ['code', codeCatalog],
+    ['frontend', frontendCatalog],
+  ] as const) {
+    const sharedMcpFile = path.join(moluoHome, 'vendor', 'mcps', capability, 'mcp.json')
+    fs.mkdirSync(path.dirname(sharedMcpFile), { recursive: true })
+    fs.writeFileSync(sharedMcpFile, `${JSON.stringify({ mcpServers: catalog.servers }, null, 2)}\n`)
+  }
   return { moluoHome, userHome }
 }
 

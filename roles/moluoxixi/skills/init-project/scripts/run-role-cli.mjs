@@ -7,6 +7,7 @@ import path from 'node:path'
 import process from 'node:process'
 import { fileURLToPath } from 'node:url'
 import { installExtension, normalizePlatforms, PLATFORM_ORDER } from './install-extension.mjs'
+import { localizeBootstrapTask } from './localize-bootstrap.mjs'
 
 const SKILL_ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..')
 
@@ -15,6 +16,8 @@ function main() {
   const projectRoot = path.resolve(options.project ?? process.cwd())
   const platforms = normalizePlatforms(options.platforms)
   const cli = resolveRoleCli()
+  const workflowRootExisted = fs.existsSync(path.join(projectRoot, '.moluoxixi'))
+  const bootstrapTaskExisted = fs.existsSync(path.join(projectRoot, '.moluoxixi', 'tasks', '00-bootstrap-guidelines', 'task.json'))
   const cliArgs = [
     'init',
     ...platforms.map(platform => `--${platform}`),
@@ -37,12 +40,27 @@ function main() {
   if (!fs.statSync(path.join(projectRoot, '.moluoxixi'), { throwIfNoEntry: false })?.isDirectory())
     throw new Error('Moluoxixi initialization exited successfully but did not create .moluoxixi')
 
+  const bootstrapTaskCreated = !bootstrapTaskExisted
+    && fs.existsSync(path.join(projectRoot, '.moluoxixi', 'tasks', '00-bootstrap-guidelines', 'task.json'))
+  const bootstrapLocalization = bootstrapTaskExisted
+    ? { status: 'preserved', reason: 'preexisting-task' }
+    : workflowRootExisted
+      ? { status: 'preserved', reason: 'reinitialization' }
+      : localizeBootstrapTask({
+          project: projectRoot,
+          enabled: true,
+        })
   const extension = installExtension({
     project: projectRoot,
     platforms,
     force: options.force,
   })
-  process.stdout.write(`${JSON.stringify({ extension }, null, 2)}\n`)
+  process.stdout.write(`${JSON.stringify({
+    freshInitialization: !workflowRootExisted,
+    bootstrapTaskCreated,
+    bootstrapLocalization,
+    extension,
+  }, null, 2)}\n`)
   if (extension.conflicts.length > 0)
     process.exitCode = 2
 }

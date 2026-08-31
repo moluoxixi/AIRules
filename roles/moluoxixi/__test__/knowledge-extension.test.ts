@@ -8,6 +8,8 @@ import { afterEach, describe, expect, it } from 'vitest'
 // The initializer is distributed as role-local JavaScript rather than a public TS module.
 // @ts-expect-error no declaration file is shipped for the role-local entrypoint
 import { installExtension } from '../skills/init-project/scripts/install-extension.mjs'
+// @ts-expect-error no declaration file is shipped for the role-local entrypoint
+import { localizeBootstrapTask } from '../skills/init-project/scripts/localize-bootstrap.mjs'
 
 const roleRoot = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..')
 const skillRoot = path.join(roleRoot, 'skills', 'init-project')
@@ -214,7 +216,7 @@ describe('role-owned knowledge extension', () => {
     const root = fs.mkdtempSync(path.join(os.tmpdir(), 'airules-knowledge-wrapper-'))
     temporaryRoots.push(root)
     const fakeCli = path.join(root, 'fake-cli.mjs')
-    fs.writeFileSync(fakeCli, `import fs from 'node:fs'; import path from 'node:path'; fs.mkdirSync(path.join(process.cwd(), '.moluoxixi'), { recursive: true }); fs.writeFileSync(path.join(process.cwd(), '.moluoxixi', 'workflow.md'), '# Workflow\\n');\n`)
+    fs.writeFileSync(fakeCli, `import fs from 'node:fs'; import path from 'node:path'; const task = path.join(process.cwd(), '.moluoxixi', 'tasks', '00-bootstrap-guidelines'); fs.mkdirSync(task, { recursive: true }); fs.writeFileSync(path.join(process.cwd(), '.moluoxixi', 'workflow.md'), '# Workflow\\n'); fs.writeFileSync(path.join(task, 'task.json'), JSON.stringify({ id: '00-bootstrap-guidelines', name: '00-bootstrap-guidelines', title: 'Bootstrap Guidelines', description: 'Fill in project development guidelines for AI agents', relatedFiles: ['.moluoxixi/spec/backend/'], notes: 'First-time setup task created by moluoxixi init (backend project)' }, null, 2)); fs.writeFileSync(path.join(task, 'prd.md'), '# Bootstrap Task: Fill Project Development Guidelines\\n');\n`)
     const wrapper = path.join(skillRoot, 'scripts', 'run-role-cli.mjs')
     const result = spawnSync(process.execPath, [wrapper, '--project', root, '--platform', 'codex', '--yes'], {
       cwd: root,
@@ -223,8 +225,78 @@ describe('role-owned knowledge extension', () => {
     })
 
     expect(result.status, result.stderr).toBe(0)
+    expect(JSON.parse(result.stdout)).toMatchObject({
+      freshInitialization: true,
+      bootstrapTaskCreated: true,
+      bootstrapLocalization: { status: 'updated' },
+    })
     expect(fs.existsSync(path.join(root, '.moluoxixi', 'knowledge', 'index.md'))).toBe(true)
     expect(fs.existsSync(path.join(root, '.moluoxixi', 'airules-init-manifest.json'))).toBe(true)
+    expect(JSON.parse(fs.readFileSync(path.join(root, '.moluoxixi', 'tasks', '00-bootstrap-guidelines', 'task.json'), 'utf8')).title).toBe('初始化项目规范')
+    expect(fs.readFileSync(path.join(root, '.moluoxixi', 'tasks', '00-bootstrap-guidelines', 'prd.md'), 'utf8')).toContain('# 初始化任务：补充项目开发规范')
+  })
+
+  it('preserves an existing or customized bootstrap task', () => {
+    const root = projectFixture()
+    const taskRoot = path.join(root, '.moluoxixi', 'tasks', '00-bootstrap-guidelines')
+    fs.mkdirSync(taskRoot, { recursive: true })
+    const task = {
+      id: '00-bootstrap-guidelines',
+      name: '00-bootstrap-guidelines',
+      title: 'Custom bootstrap',
+      description: 'Fill in project development guidelines for AI agents',
+      notes: 'First-time setup task created by moluoxixi init (backend project)',
+    }
+    fs.writeFileSync(path.join(taskRoot, 'task.json'), `${JSON.stringify(task, null, 2)}\n`)
+    fs.writeFileSync(path.join(taskRoot, 'prd.md'), '# Bootstrap Task: Fill Project Development Guidelines\nCustom text\n')
+
+    expect(localizeBootstrapTask({ project: root })).toEqual({ status: 'preserved', reason: 'customized-bootstrap' })
+    expect(JSON.parse(fs.readFileSync(path.join(taskRoot, 'task.json'), 'utf8')).title).toBe('Custom bootstrap')
+    expect(localizeBootstrapTask({ project: root, enabled: false })).toEqual({ status: 'preserved', reason: 'preexisting-task' })
+  })
+
+  it('reports re-initialization without claiming ownership of an existing bootstrap task', () => {
+    const root = projectFixture()
+    const taskRoot = path.join(root, '.moluoxixi', 'tasks', '00-bootstrap-guidelines')
+    fs.mkdirSync(taskRoot, { recursive: true })
+    fs.writeFileSync(path.join(taskRoot, 'task.json'), '{"title":"Custom bootstrap"}\n')
+    const fakeCli = path.join(root, 'fake-cli.mjs')
+    fs.writeFileSync(fakeCli, 'process.exitCode = 0\n')
+    const wrapper = path.join(skillRoot, 'scripts', 'run-role-cli.mjs')
+    const result = spawnSync(process.execPath, [wrapper, '--project', root, '--platform', 'codex', '--yes'], {
+      cwd: root,
+      encoding: 'utf8',
+      env: { ...process.env, MOLUOXIXI_ROLE_CLI: fakeCli },
+    })
+
+    expect(result.status, result.stderr).toBe(0)
+    expect(JSON.parse(result.stdout)).toMatchObject({
+      freshInitialization: false,
+      bootstrapTaskCreated: false,
+      bootstrapLocalization: { status: 'preserved', reason: 'preexisting-task' },
+    })
+    expect(fs.readFileSync(path.join(taskRoot, 'task.json'), 'utf8')).toBe('{"title":"Custom bootstrap"}\n')
+  })
+
+  it('does not localize a bootstrap task created during re-initialization', () => {
+    const root = projectFixture()
+    const taskRoot = path.join(root, '.moluoxixi', 'tasks', '00-bootstrap-guidelines')
+    const fakeCli = path.join(root, 'fake-cli.mjs')
+    fs.writeFileSync(fakeCli, `import fs from 'node:fs'; import path from 'node:path'; const task = path.join(process.cwd(), '.moluoxixi', 'tasks', '00-bootstrap-guidelines'); fs.mkdirSync(task, { recursive: true }); fs.writeFileSync(path.join(task, 'task.json'), JSON.stringify({ id: '00-bootstrap-guidelines', name: '00-bootstrap-guidelines', title: 'Bootstrap Guidelines', description: 'Fill in project development guidelines for AI agents', notes: 'First-time setup task created by moluoxixi init (backend project)' }, null, 2)); fs.writeFileSync(path.join(task, 'prd.md'), '# Bootstrap Task: Fill Project Development Guidelines\\n');\n`)
+    const wrapper = path.join(skillRoot, 'scripts', 'run-role-cli.mjs')
+    const result = spawnSync(process.execPath, [wrapper, '--project', root, '--platform', 'codex', '--yes'], {
+      cwd: root,
+      encoding: 'utf8',
+      env: { ...process.env, MOLUOXIXI_ROLE_CLI: fakeCli },
+    })
+
+    expect(result.status, result.stderr).toBe(0)
+    expect(JSON.parse(result.stdout)).toMatchObject({
+      freshInitialization: false,
+      bootstrapTaskCreated: true,
+      bootstrapLocalization: { status: 'preserved', reason: 'reinitialization' },
+    })
+    expect(JSON.parse(fs.readFileSync(path.join(taskRoot, 'task.json'), 'utf8')).title).toBe('Bootstrap Guidelines')
   })
 
   it('does not install the extension when the role CLI fails', () => {

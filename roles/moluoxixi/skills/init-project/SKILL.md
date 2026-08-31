@@ -27,6 +27,32 @@ Moluoxixi CLI，再独立注入 AIRules 扩展；不要直接编辑或复制角�
 5. 确认 `.moluoxixi/workflow.md`、目标宿主目录以及
    `.moluoxixi/knowledge/index.md` 已生成。报告扩展摘要中的 created、updated、
    preserved 和 conflicts；退出码 `2` 表示安全内容已安装，但冲突文件被保留。
+6. 读取包装器输出的 `freshInitialization`、`bootstrapTaskCreated` 和
+   `bootstrapLocalization`，按下方“初始化规范治理”分支处理后再报告结果。
+
+## 初始化规范治理
+
+只有 `freshInitialization` 与 `bootstrapTaskCreated` 均为 `true`，且
+`bootstrapLocalization.status` 为 `updated` 时，才允许自动整理。其它情况只审计
+并报告 spec/task，不改写、不归档、不删除。
+
+对可证明的首次 bootstrap：
+
+1. 检查 Moluoxixi 生成路径之外的仓库内容，并检查生成的 spec。用户选择或修改过
+   的 spec 只进入审计分支。
+2. 存在真实代码或既有约定文档时，加载并遵循 `moluoxixi-spec-bootstrap`，依据仓库
+   事实重塑 `.moluoxixi/spec/`。满足该 Skill 的完成条件后运行：
+
+   ```bash
+   python ./.moluoxixi/scripts/task.py archive --no-commit 00-bootstrap-guidelines
+   ```
+
+3. 仓库没有真实代码或约定依据时，重新读取生成的 task 与 spec。仅当 task 仍与本次
+   本地化内容一致、spec 仍只有通用占位内容时，精确删除 `.moluoxixi/spec/` 和
+   `.moluoxixi/tasks/00-bootstrap-guidelines/`。报告删除路径，并提示项目形成约定后
+   运行 `moluoxixi-spec-bootstrap`。
+4. 任一生成区域在 init 后发生修改，或证据存在歧义时，保留全部内容并报告差异。
+   其它 task 以及上述两个精确目标之外的路径不属于清理范围。
 
 ## 知识库扩展
 
@@ -55,5 +81,7 @@ Moluoxixi CLI，再独立注入 AIRules 扩展；不要直接编辑或复制角�
 - 扩展只使用 `.moluoxixi/airules-init-manifest.json`，不修改上游
   `.moluoxixi/.template-hashes.json`。
 - `sources/`、`library/`、`index.md` 是项目数据；重复初始化和 `--force` 都保留。
+- 已存在或已修改的 spec/bootstrap task 只审计；自动治理只处理包装器可证明的
+  本次首次初始化生成物。
 - 扩展安装失败时回滚扩展自己的全部写入；已完成的基线 CLI 初始化保持原状。
 - 命令不存在或执行失败时，报告错误并停止；不安装临时包作为回退。

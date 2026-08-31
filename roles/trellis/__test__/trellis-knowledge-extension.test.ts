@@ -225,6 +225,11 @@ describe('trellis role-owned knowledge extension', () => {
     })
 
     expect(result.status, result.stderr).toBe(0)
+    expect(JSON.parse(result.stdout)).toMatchObject({
+      freshInitialization: true,
+      bootstrapTaskCreated: true,
+      bootstrapLocalization: { status: 'updated' },
+    })
     expect(fs.existsSync(path.join(root, '.trellis', 'knowledge', 'index.md'))).toBe(true)
     expect(fs.existsSync(path.join(root, '.trellis', 'airules-init-manifest.json'))).toBe(true)
     expect(JSON.parse(fs.readFileSync(path.join(root, '.trellis', 'tasks', '00-bootstrap-guidelines', 'task.json'), 'utf8')).title).toBe('初始化项目规范')
@@ -250,6 +255,50 @@ describe('trellis role-owned knowledge extension', () => {
     expect(localizeBootstrapTask({ project: root })).toEqual({ status: 'preserved', reason: 'customized-bootstrap' })
     expect(JSON.parse(fs.readFileSync(path.join(taskRoot, 'task.json'), 'utf8')).title).toBe('Custom bootstrap')
     expect(localizeBootstrapTask({ project: root, enabled: false })).toEqual({ status: 'preserved', reason: 'preexisting-task' })
+  })
+
+  it('reports re-initialization without claiming ownership of an existing bootstrap task', () => {
+    const root = projectFixture()
+    const taskRoot = path.join(root, '.trellis', 'tasks', '00-bootstrap-guidelines')
+    fs.mkdirSync(taskRoot, { recursive: true })
+    fs.writeFileSync(path.join(taskRoot, 'task.json'), '{"title":"Custom bootstrap"}\n')
+    const fakeCli = path.join(root, 'fake-cli.mjs')
+    fs.writeFileSync(fakeCli, 'process.exitCode = 0\n')
+    const wrapper = path.join(skillRoot, 'scripts', 'run-role-cli.mjs')
+    const result = spawnSync(process.execPath, [wrapper, '--project', root, '--platform', 'codex', '--yes'], {
+      cwd: root,
+      encoding: 'utf8',
+      env: { ...process.env, TRELLIS_ROLE_CLI: fakeCli },
+    })
+
+    expect(result.status, result.stderr).toBe(0)
+    expect(JSON.parse(result.stdout)).toMatchObject({
+      freshInitialization: false,
+      bootstrapTaskCreated: false,
+      bootstrapLocalization: { status: 'preserved', reason: 'preexisting-task' },
+    })
+    expect(fs.readFileSync(path.join(taskRoot, 'task.json'), 'utf8')).toBe('{"title":"Custom bootstrap"}\n')
+  })
+
+  it('does not localize a bootstrap task created during re-initialization', () => {
+    const root = projectFixture()
+    const taskRoot = path.join(root, '.trellis', 'tasks', '00-bootstrap-guidelines')
+    const fakeCli = path.join(root, 'fake-cli.mjs')
+    fs.writeFileSync(fakeCli, `import fs from 'node:fs'; import path from 'node:path'; const task = path.join(process.cwd(), '.trellis', 'tasks', '00-bootstrap-guidelines'); fs.mkdirSync(task, { recursive: true }); fs.writeFileSync(path.join(task, 'task.json'), JSON.stringify({ id: '00-bootstrap-guidelines', name: '00-bootstrap-guidelines', title: 'Bootstrap Guidelines', description: 'Fill in project development guidelines for AI agents', notes: 'First-time setup task created by trellis init (backend project)' }, null, 2)); fs.writeFileSync(path.join(task, 'prd.md'), '# Bootstrap Task: Fill Project Development Guidelines\\n');\n`)
+    const wrapper = path.join(skillRoot, 'scripts', 'run-role-cli.mjs')
+    const result = spawnSync(process.execPath, [wrapper, '--project', root, '--platform', 'codex', '--yes'], {
+      cwd: root,
+      encoding: 'utf8',
+      env: { ...process.env, TRELLIS_ROLE_CLI: fakeCli },
+    })
+
+    expect(result.status, result.stderr).toBe(0)
+    expect(JSON.parse(result.stdout)).toMatchObject({
+      freshInitialization: false,
+      bootstrapTaskCreated: true,
+      bootstrapLocalization: { status: 'preserved', reason: 'reinitialization' },
+    })
+    expect(JSON.parse(fs.readFileSync(path.join(taskRoot, 'task.json'), 'utf8')).title).toBe('Bootstrap Guidelines')
   })
 
   it('does not install the extension when the role CLI fails', () => {

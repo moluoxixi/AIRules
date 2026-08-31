@@ -3,7 +3,7 @@ import path from 'node:path'
 import { fileURLToPath } from 'node:url'
 import { describe, expect, it } from 'vitest'
 import { parseDocument } from 'yaml'
-import { extendsRoles, hosts, packages, vendors } from '../constants/skills.js'
+import { capabilities, extendsRoles, hosts, packages, vendors } from '../constants/skills.js'
 
 interface RoleManifest {
   assets: {
@@ -24,6 +24,12 @@ interface RoleManifest {
   role_id: string
   role_version: string
   third_party: {
+    frontend_design: {
+      name: string
+      revision: string
+      skill: string
+      source: string
+    }
     productivity_skills: {
       category: string
       name: string
@@ -36,6 +42,8 @@ interface RoleManifest {
 const roleRoot = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..')
 const mattSkillsSource = 'https://github.com/mattpocock/skills.git'
 const mattSkillsRevision = '8b78b531ab965735c5dc74f6f7a219e1e37326df'
+const anthropicSkillsSource = 'https://github.com/anthropics/skills.git'
+const anthropicSkillsRevision = '3b3fad96af16a10759d930941b4520ba0c40edae'
 
 const publishedPackageVersion = '0.6.22'
 const publishedRepository = 'https://github.com/moluoxixi/AIRules'
@@ -175,9 +183,15 @@ describe('moluoxixi finalized role assets', () => {
         initialize_project_skill: 'init-project',
       },
       role_id: 'moluoxixi',
-      role_version: '0.4.0',
+      role_version: '0.5.0',
     })
     expect(manifest.third_party).toEqual({
+      frontend_design: {
+        name: 'Anthropic Frontend Design',
+        source: anthropicSkillsSource,
+        revision: anthropicSkillsRevision,
+        skill: 'skills/frontend-design',
+      },
       productivity_skills: {
         name: 'Matt Pocock Skills',
         source: mattSkillsSource,
@@ -193,6 +207,7 @@ describe('moluoxixi finalized role assets', () => {
 
     expect(extendsRoles).toEqual([])
     expect(hosts).toBe('all')
+    expect(capabilities).toEqual(['common', 'coding', 'productivity', 'frontend'])
     expect(packages).toEqual([
       {
         name: '@moluoxixi/airules-moluoxixi-core',
@@ -204,13 +219,14 @@ describe('moluoxixi finalized role assets', () => {
         install: { kind: 'npm-global', version: 'latest' },
       },
     ])
-    expect(vendors).toHaveLength(2)
+    expect(vendors).toHaveLength(3)
     expect(vendors[0]).toMatchObject({
       name: 'moluoxixi',
       projections: [
         { kind: 'role-assets', sourceDir: 'roles/moluoxixi' },
         { kind: 'namespace', sourceDir: 'skills/common', output: 'common' },
         { kind: 'mcp', sourceFile: 'mcps/code/mcps.json', output: 'mcps/code/mcp.json' },
+        { kind: 'mcp', sourceFile: 'mcps/frontend/mcps.json', output: 'mcps/frontend/mcp.json' },
       ],
     })
     expect(vendors[0]?.setup).toBeUndefined()
@@ -223,6 +239,18 @@ describe('moluoxixi finalized role assets', () => {
           kind: 'namespace',
           sourceDir: 'skills/productivity',
           output: 'productivity',
+        },
+      ],
+    })
+    expect(vendors[2]).toEqual({
+      name: 'anthropic-skills',
+      source: anthropicSkillsSource,
+      revision: anthropicSkillsRevision,
+      projections: [
+        {
+          kind: 'skills',
+          sourceBaseDir: 'skills',
+          skills: ['frontend-design'],
         },
       ],
     })

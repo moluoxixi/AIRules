@@ -41,6 +41,7 @@ describe('init-project skill', () => {
       'SKILL.md',
       'agents/openai.yaml',
       'assets/project-extension/AGENTS.md',
+      'assets/project-extension/bootstrap-prd.md',
       'assets/project-extension/hosts/opencode/moluoxixi-knowledge.js',
       'assets/project-extension/hosts/pi/moluoxixi-knowledge.ts',
       'assets/project-extension/knowledge/gitignore.txt',
@@ -54,6 +55,7 @@ describe('init-project skill', () => {
       'references/platforms.md',
       'scripts/core/extension-transaction.mjs',
       'scripts/install-extension.mjs',
+      'scripts/localize-bootstrap.mjs',
       'scripts/run-role-cli.mjs',
     ])
     const skillSource = fs.readFileSync(path.join(skillRoot, 'SKILL.md'), 'utf8')
@@ -62,6 +64,8 @@ describe('init-project skill', () => {
     expect(skillBody).toContain('scripts/run-role-cli.mjs')
     expect(skillBody).toContain('.moluoxixi/knowledge/index.md')
     expect(skillBody).toContain('.moluoxixi/airules-init-manifest.json')
+    expect(skillBody).toContain('moluoxixi-spec-bootstrap')
+    expect(skillBody).toContain('archive --no-commit 00-bootstrap-guidelines')
     expect(skillBody).toContain('命令不存在或执行失败时，报告错误并停止')
     expect(skillBody).not.toMatch(/npx|npm install --global/iu)
   })
@@ -90,6 +94,7 @@ describe('init-project skill', () => {
     expect(inventory.skills).toEqual(['init-project'])
     expect(walkFiles(stagedSkill)).toEqual(walkFiles(skillRoot))
     expect(fs.existsSync(path.join(stagedSkill, 'scripts', 'install-extension.mjs'))).toBe(true)
+    expect(fs.existsSync(path.join(stagedSkill, 'scripts', 'localize-bootstrap.mjs'))).toBe(true)
     expect(fs.existsSync(path.join(stagedSkill, 'assets', 'project-extension', 'skill', 'SKILL.md'))).toBe(true)
     expect(fs.existsSync(path.join(installedRole, 'packages', 'core', 'package.json'))).toBe(true)
     expect(fs.existsSync(path.join(installedRole, 'packages', 'cli', 'bin', 'moluoxixi.js'))).toBe(true)

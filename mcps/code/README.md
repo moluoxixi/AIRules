@@ -34,7 +34,6 @@
 1. **codegraph** - 需要全局安装 `npm install -g @colbymchenry/codegraph`
 2. **context7** - 无需安装，通过 npx 自动运行
 3. **sequential-thinking** - 无需安装，通过 npx 自动运行
-4. **playwright** - 无需安装，通过 npx 自动运行
 
 ## 字段说明
 
@@ -49,16 +48,14 @@
 
 ## 使用方式
 
-通过 vendor projection 自动同步和安装：
+由 `coding` capability 统一声明 vendor projection；角色只声明 capability：
 
 ```typescript
 // roles/<role>/constants/skills.ts
-const projection = {
-  kind: 'mcp',
-  sourceFile: 'mcps/code/mcps.json',
-  output: 'mcps/code/mcp.json',
-}
+export const capabilities = ['coding'] as const
 ```
+
+projection 的单一配置源位于 `capabilities/coding.ts`，角色清单不得重复维护。
 
 同步时会：
 1. 读取 `mcps.json` 文件

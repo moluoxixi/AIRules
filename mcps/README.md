@@ -7,8 +7,11 @@
 ```
 mcps/
 ├── README.md
-└── code/                   # 编码相关 MCP 服务器
-    ├── mcps.json          # MCP 配置和安装要求（统一清单）
+├── code/                   # 通用编码 MCP 服务器
+│   ├── mcps.json          # MCP 配置和安装要求（统一清单）
+│   └── README.md
+└── frontend/               # 前端实现与验证 MCP 服务器
+    ├── mcps.json
     └── README.md
 ```
 
@@ -53,19 +56,22 @@ mcps/
 - **codegraph** - 需要全局安装命令
 - **context7** - 无需安装（npx）
 - **sequential-thinking** - 无需安装（npx）
+
+### frontend/
+
+前端实现与 UI 验证能力，仅供声明 `frontend` capability 的角色共享：
+
 - **playwright** - 无需安装（npx）
 
-## Vendor Projection 配置
+## Capability 配置
 
-在 `constants/skills.ts` 中配置：
+角色在 `constants/skills.ts` 中声明所需 capability：
 
 ```typescript
-const projection = {
-  kind: 'mcp',
-  sourceFile: 'mcps/code/mcps.json',
-  output: 'mcps/code/mcp.json',
-}
+export const capabilities = ['coding', 'frontend'] as const
 ```
+
+`capabilities/coding.ts` 与 `capabilities/frontend.ts` 是 MCP projection 的单一配置源。
 
 同步时：
 1. 读取 `mcps.json` 文件
@@ -89,6 +95,9 @@ vendor/
 mkdir -p mcps/design
 # 创建 mcps/design/mcps.json 和 mcps/design/README.md
 ```
+
+同时在 `capabilities/` 中定义或更新对应 capability，并由角色声明该能力；不要在
+角色清单中直接复制 MCP projection。
 
 分类示例：
 - `mcps/code/` - 编码相关

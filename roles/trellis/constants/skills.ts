@@ -1,46 +1,33 @@
+import type { CapabilityName } from '../../../capabilities/index.js'
 import type { VendorRepo } from '../../../scripts/lib/vendors.js'
+import { composeCapabilities } from '../../../capabilities/index.js'
 
 export const extendsRoles: string[] = []
 
 export const hosts = 'all'
 
-export const vendors: VendorRepo[] = [
-  {
-    name: 'trellis',
-    source: 'https://github.com/moluoxixi/AIRules.git',
-    setup: [
-      {
-        command: 'npm',
-        args: ['install', '--global', '@mindfoldhq/trellis@latest'],
-      },
-    ],
-    projections: [
-      {
-        kind: 'role-assets',
-        sourceDir: 'roles/trellis',
-      },
-      {
-        kind: 'namespace',
-        sourceDir: 'skills/common',
-        output: 'common',
-      },
-      {
-        kind: 'mcp',
-        sourceFile: 'mcps/code/mcps.json',
-        output: 'mcps/code/mcp.json',
-      },
-    ],
-  },
-  {
-    name: 'mattpocock',
-    source: 'https://github.com/mattpocock/skills.git',
-    revision: '8b78b531ab965735c5dc74f6f7a219e1e37326df',
-    projections: [
-      {
-        kind: 'namespace',
-        sourceDir: 'skills/productivity',
-        output: 'productivity',
-      },
-    ],
-  },
-]
+export const capabilities = [
+  'common',
+  'coding',
+  'productivity',
+  'frontend',
+] as const satisfies readonly CapabilityName[]
+
+const roleVendor: VendorRepo = {
+  name: 'trellis',
+  source: 'https://github.com/moluoxixi/AIRules.git',
+  setup: [
+    {
+      command: 'npm',
+      args: ['install', '--global', '@mindfoldhq/trellis@latest'],
+    },
+  ],
+  projections: [
+    {
+      kind: 'role-assets',
+      sourceDir: 'roles/trellis',
+    },
+  ],
+}
+
+export const vendors: VendorRepo[] = composeCapabilities(capabilities, { roleVendor })

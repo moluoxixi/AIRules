@@ -9,7 +9,7 @@ import { parseDocument } from 'yaml'
 import { HOST_IDS } from '../../../constants/hosts.js'
 import { rebuildVendorAssets } from '../../../scripts/lib/vendor-staging.js'
 import { loadVendorManifest } from '../../../scripts/lib/vendors.js'
-import { extendsRoles, hosts, vendors } from '../constants/skills.js'
+import { capabilities, extendsRoles, hosts, vendors } from '../constants/skills.js'
 
 const roleRoot = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..')
 const manifestPath = path.join(roleRoot, 'constants', 'skills.ts')
@@ -17,6 +17,8 @@ const temporaryRoots: string[] = []
 const workspaceFolderPlaceholder = '$' + '{workspaceFolder}'
 const mattSkillsSource = 'https://github.com/mattpocock/skills.git'
 const mattSkillsRevision = '8b78b531ab965735c5dc74f6f7a219e1e37326df'
+const anthropicSkillsSource = 'https://github.com/anthropics/skills.git'
+const anthropicSkillsRevision = '3b3fad96af16a10759d930941b4520ba0c40edae'
 
 afterEach(() => {
   for (const root of temporaryRoots.splice(0)) {
@@ -28,6 +30,7 @@ describe('native Trellis role', () => {
   it('installs the official CLI and projects the AIRules-owned initialization entry', async () => {
     expect(extendsRoles).toEqual([])
     expect(hosts).toBe('all')
+    expect(capabilities).toEqual(['common', 'coding', 'productivity', 'frontend'])
     expect(vendors).toEqual([
       {
         name: 'trellis',
@@ -53,6 +56,11 @@ describe('native Trellis role', () => {
             sourceFile: 'mcps/code/mcps.json',
             output: 'mcps/code/mcp.json',
           },
+          {
+            kind: 'mcp',
+            sourceFile: 'mcps/frontend/mcps.json',
+            output: 'mcps/frontend/mcp.json',
+          },
         ],
       },
       {
@@ -64,6 +72,18 @@ describe('native Trellis role', () => {
             kind: 'namespace',
             sourceDir: 'skills/productivity',
             output: 'productivity',
+          },
+        ],
+      },
+      {
+        name: 'anthropic-skills',
+        source: anthropicSkillsSource,
+        revision: anthropicSkillsRevision,
+        projections: [
+          {
+            kind: 'skills',
+            sourceBaseDir: 'skills',
+            skills: ['frontend-design'],
           },
         ],
       },
@@ -96,6 +116,11 @@ describe('native Trellis role', () => {
         source: 'mcps/code/mcps.json',
         target: 'vendor/mcps/code/mcp.json',
       },
+      {
+        kind: 'mcp-file',
+        source: 'mcps/frontend/mcps.json',
+        target: 'vendor/mcps/frontend/mcp.json',
+      },
     ])
     expect(loaded.vendors.mattpocock).toMatchObject({
       repo: mattSkillsSource,
@@ -106,6 +131,15 @@ describe('native Trellis role', () => {
         target: 'vendor/skills/productivity',
       }],
     })
+    expect(loaded.vendors['anthropic-skills']).toMatchObject({
+      repo: anthropicSkillsSource,
+      revision: anthropicSkillsRevision,
+      links: [{
+        kind: 'skill',
+        source: 'skills/frontend-design',
+        target: 'vendor/skills/frontend-design',
+      }],
+    })
   })
 
   it('ships the native initialization entry and declares shared coding MCP servers', () => {
@@ -113,6 +147,7 @@ describe('native Trellis role', () => {
     expect(fs.readdirSync(path.join(roleRoot, 'skills')).sort()).toEqual(['init-project'])
     expect(fs.statSync(path.join(roleRoot, 'skills', 'init-project', 'scripts', 'inject-readme.mjs')).isFile()).toBe(true)
     expect(fs.statSync(path.join(roleRoot, 'skills', 'init-project', 'scripts', 'install-extension.mjs')).isFile()).toBe(true)
+    expect(fs.statSync(path.join(roleRoot, 'skills', 'init-project', 'scripts', 'localize-bootstrap.mjs')).isFile()).toBe(true)
     expect(fs.statSync(path.join(roleRoot, 'skills', 'init-project', 'scripts', 'run-role-cli.mjs')).isFile()).toBe(true)
     expect(fs.statSync(path.join(roleRoot, 'skills', 'init-project', 'scripts', 'core', 'extension-transaction.mjs')).isFile()).toBe(true)
     expect(fs.statSync(path.join(roleRoot, 'skills', 'init-project', 'assets', 'readme-usage.md')).isFile()).toBe(true)
@@ -124,13 +159,19 @@ describe('native Trellis role', () => {
     expect(skill).toContain('scripts/run-role-cli.mjs')
     expect(skill).toContain('--developer <confirmed-developer>')
     expect(skill).toContain('AIRULES:TRELLIS-ZH-COMPAT')
-    expect(skill).toContain('Do not stage or commit generated files')
+    expect(skill).toContain('trellis-spec-bootstrap')
+    expect(skill).toContain('archive --no-commit 00-bootstrap-guidelines')
+    expect(skill).toContain('Do not stage or commit generated')
 
     expect(JSON.parse(fs.readFileSync(path.join(roleRoot, 'mcp', 'mcp.json'), 'utf8'))).toEqual({ mcpServers: {} })
     const catalog = JSON.parse(fs.readFileSync(path.resolve(roleRoot, '..', '..', 'mcps', 'code', 'mcps.json'), 'utf8')) as {
       mcps: Record<string, { mcp: { args: string[], command: string } }>
     }
-    expect(Object.keys(catalog.mcps).sort()).toEqual(['codegraph', 'context7', 'playwright', 'sequential-thinking'])
+    expect(Object.keys(catalog.mcps).sort()).toEqual(['codegraph', 'context7', 'sequential-thinking'])
+    const frontendCatalog = JSON.parse(fs.readFileSync(path.resolve(roleRoot, '..', '..', 'mcps', 'frontend', 'mcps.json'), 'utf8')) as {
+      mcps: Record<string, { mcp: { args: string[], command: string } }>
+    }
+    expect(Object.keys(frontendCatalog.mcps)).toEqual(['playwright'])
     expect(catalog.mcps.codegraph.mcp.args).toEqual(['serve', '--mcp', '--path', workspaceFolderPlaceholder])
 
     const document = parseDocument(fs.readFileSync(path.join(roleRoot, 'role.yaml'), 'utf8'), {
@@ -143,7 +184,7 @@ describe('native Trellis role', () => {
     expect(document.toJS({ maxAliasCount: 0 })).toMatchObject({
       schema_version: 1,
       role_id: 'trellis',
-      role_version: '0.4.1',
+      role_version: '0.5.0',
       status: 'stable',
       canonical_root: 'roles/trellis',
       assets: {
@@ -170,6 +211,12 @@ describe('native Trellis role', () => {
           source: mattSkillsSource,
           revision: mattSkillsRevision,
           category: 'skills/productivity',
+        },
+        frontend_design: {
+          name: 'Anthropic Frontend Design',
+          source: anthropicSkillsSource,
+          revision: anthropicSkillsRevision,
+          skill: 'skills/frontend-design',
         },
       },
     })
@@ -255,6 +302,7 @@ describe('native Trellis role', () => {
     expect(fs.existsSync(path.join(homeDir, 'vendor', 'skills', 'init-project', 'assets', 'project-extension', 'AGENTS.md'))).toBe(true)
     expect(fs.existsSync(path.join(homeDir, 'vendor', 'skills', 'init-project', 'scripts', 'inject-readme.mjs'))).toBe(true)
     expect(fs.existsSync(path.join(homeDir, 'vendor', 'skills', 'init-project', 'scripts', 'install-extension.mjs'))).toBe(true)
+    expect(fs.existsSync(path.join(homeDir, 'vendor', 'skills', 'init-project', 'scripts', 'localize-bootstrap.mjs'))).toBe(true)
     expect(fs.existsSync(path.join(homeDir, 'vendor', 'skills', 'init-project', 'scripts', 'run-role-cli.mjs'))).toBe(true)
     expect(fs.existsSync(path.join(homeDir, 'vendor', 'skills', 'init-project', 'scripts', 'core', 'extension-transaction.mjs'))).toBe(true)
     expect(fs.existsSync(path.join(homeDir, 'roles', 'trellis', 'mcp', 'mcp.json'))).toBe(true)

@@ -49,18 +49,50 @@ block, and README usage block installed after native initialization succeeds.
    the affected user file and report it; do not retry with `--force` unless the
    user explicitly authorizes overwriting the managed portion. Propagate every
    other CLI failure without claiming initialization succeeded.
-9. Report the native Trellis and AIRules extension results. Point out
-   `.trellis/knowledge/sources/` as the document inbox and summarize changed
-   paths using `git status --short`. Do not stage or commit generated files
-   unless the user explicitly requests it.
+9. Read the wrapper's `freshInitialization`, `bootstrapTaskCreated`, and
+   `bootstrapLocalization` fields, then apply Bootstrap Hygiene below.
+10. Report the native Trellis, bootstrap hygiene, and AIRules extension results.
+    Point out `.trellis/knowledge/sources/` as the document inbox and summarize
+    changed paths using `git status --short`. Do not stage or commit generated
+    files unless the user explicitly requests it.
+
+## Bootstrap Hygiene
+
+Automatic organization is allowed only when `freshInitialization` and
+`bootstrapTaskCreated` are both `true`, and `bootstrapLocalization.status` is
+`updated`. Otherwise audit the spec/task and report findings without changing,
+archiving, or deleting them.
+
+For a proven fresh bootstrap:
+
+1. Inspect repository content outside Trellis-generated paths and inspect the
+   generated spec. User-selected/custom spec content is an audit-only case.
+2. When real source code or established convention documents exist, load and
+   follow `trellis-spec-bootstrap`. Reshape `.trellis/spec/` from repository
+   evidence, satisfy that skill's done criteria, then run:
+
+   ```bash
+   python ./.trellis/scripts/task.py archive --no-commit 00-bootstrap-guidelines
+   ```
+
+3. When the repository has no real source or convention evidence, re-read the
+   exact generated task and spec paths. If the task still matches the localized
+   bootstrap content and the spec still contains only generic placeholders,
+   remove exactly `.trellis/spec/` and
+   `.trellis/tasks/00-bootstrap-guidelines/`. Report the removed paths and tell
+   the user to run `trellis-spec-bootstrap` after project conventions exist.
+4. Preserve everything and report the mismatch when either generated area was
+   modified after init or the evidence is ambiguous. Other tasks and all paths
+   outside the two exact bootstrap targets are never part of cleanup.
 
 ## Native Boundary
 
 - Use the CLI installed by the `trellis` role. Do not install a second copy
   with `npx` or a project dependency.
 - Let the installed CLI own `.trellis` workflow, commands, skills, agents, and
-  native hooks. AIRules only localizes the default bootstrap task created during
-  first initialization; it preserves pre-existing or customized task content.
+  native hooks. AIRules localizes the default bootstrap task created during
+  first initialization and then applies the evidence-driven hygiene branch
+  above; it preserves pre-existing or customized task/spec content.
 - Keep AIRules assets under this role-local Skill. Never depend on another role
   or modify an upstream Trellis package during project initialization.
 - Preserve `.trellis/knowledge/index.md`, `sources/`, `library/`, and
