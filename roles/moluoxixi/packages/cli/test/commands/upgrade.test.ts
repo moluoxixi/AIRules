@@ -81,7 +81,7 @@ describe("upgrade command", () => {
 
     const expectedCommand: [string, string[]] = process.platform === "win32"
       ? ["cmd.exe", ["/d", "/s", "/c", "npm install -g @moluoxixi/airules-moluoxixi-cli@latest"]]
-      : ["npm", ["install", "-g", "@moluoxixi/airules-moluoxixi-cli@latest"]]
+      : ["npm", ["install", "-g", "@moluoxixi/airules-moluoxixi-cli@latest"]];
     expect(runner).toHaveBeenCalledWith(
       expectedCommand[0],
       expectedCommand[1],

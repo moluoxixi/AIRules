@@ -22,7 +22,7 @@
  * because those may be customized for the Moluoxixi project itself.
  */
 
-import { cpSync, readdirSync, statSync, mkdirSync, existsSync } from "node:fs";
+import { cpSync, existsSync, mkdirSync, readdirSync, statSync } from "node:fs";
 import { join, extname } from "node:path";
 
 const EXCLUDED_TEMPLATE_ENTRIES = new Set(["__pycache__", ".DS_Store"]);

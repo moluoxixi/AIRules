@@ -39,11 +39,9 @@ import { FILE_NAMES } from "../constants/paths.js";
 import { getAllMigrations } from "../migrations/index.js";
 import { saveHashes } from "./template-hash.js";
 import { toPosix } from "./posix.js";
+import { MOLUOXIXI_BLOCK_END, MOLUOXIXI_BLOCK_START } from "./managed-paths.js";
 import type { AITool } from "../types/ai-tools.js";
 import type { TemplateHashes } from "../types/migration.js";
-
-const MOLUOXIXI_BLOCK_START = "<!-- MOLUOXIXI:START -->";
-const MOLUOXIXI_BLOCK_END = "<!-- MOLUOXIXI:END -->";
 
 export interface PruneResult {
   /** Manifest keys removed (POSIX-style relative paths). */

@@ -45,7 +45,7 @@ const mattSkillsRevision = '8b78b531ab965735c5dc74f6f7a219e1e37326df'
 const anthropicSkillsSource = 'https://github.com/anthropics/skills.git'
 const anthropicSkillsRevision = '3b3fad96af16a10759d930941b4520ba0c40edae'
 
-const publishedPackageVersion = '0.6.22'
+const publishedPackageVersion = '0.6.23'
 const publishedRepository = 'https://github.com/moluoxixi/AIRules'
 
 const migratedRuntimePaths = [

@@ -72,7 +72,7 @@ Before implementing, read:
 - `.moluoxixi/spec/` - Development guidelines
 - Task `prd.md` - Requirements document
 - Task `design.md` / `implement.md` if present
-- `implement.jsonl` when curated (skip `_example` seed rows)
+- `implement.jsonl` when curated (skip rows without a `file` field, e.g. legacy `_example` placeholders)
 - `.snow/log/moluoxixi-context.txt` if present (breadcrumb from inject hooks)
 
 ## Core Responsibilities

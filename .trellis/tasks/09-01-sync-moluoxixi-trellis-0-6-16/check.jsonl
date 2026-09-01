@@ -1,0 +1,5 @@
+{"file":".trellis/tasks/09-01-sync-moluoxixi-trellis-0-6-16/research/upstream-0.6.16-sync.md","reason":"复核 commit 身份、直接冲突、版本选择、适配保留项和完整验证范围。"}
+{"file":".trellis/spec/guides/cross-layer-thinking-guide.md","reason":"检查 fresh init、update、runtime templates、rebuild 与正式导出的跨层一致性。"}
+{"file":".trellis/spec/guides/code-reuse-thinking-guide.md","reason":"检查语义重放是否重复实现上游能力或造成多事实源。"}
+{"file":".trellis/spec/distribution/index.md","reason":"检查角色分发质量门禁和角色专属测试归属。"}
+{"file":".trellis/spec/distribution/role-capabilities.md","reason":"确认角色自有 packages/CLI 不进入公共 capability registry，并由角色契约测试覆盖。"}

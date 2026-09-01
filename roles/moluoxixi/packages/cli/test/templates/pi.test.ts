@@ -1,6 +1,6 @@
 import { describe, expect, it, vi } from "vitest";
 import { createRequire } from "node:module";
-import { existsSync, readFileSync, rmSync } from "node:fs";
+import { existsSync, readFileSync, realpathSync, rmSync } from "node:fs";
 import { mkdtempSync, writeFileSync, mkdirSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
@@ -574,6 +574,117 @@ describe("pi templates", () => {
     }
   });
 
+  it("scopes per-session caches by resolved root when ctx.cwd changes", () => {
+    const root1 = createMinimalMoluoxixiRoot();
+    const root2 = createMinimalMoluoxixiRoot();
+    const sessionsDir1 = join(root1, ".moluoxixi", ".runtime", "sessions");
+    const sessionsDir2 = join(root2, ".moluoxixi", ".runtime", "sessions");
+    const taskDir1 = join(root1, ".moluoxixi", "tasks", "shared-task");
+    const taskDir2 = join(root2, ".moluoxixi", "tasks", "shared-task");
+    mkdirSync(sessionsDir1, { recursive: true });
+    mkdirSync(sessionsDir2, { recursive: true });
+    mkdirSync(taskDir1, { recursive: true });
+    mkdirSync(taskDir2, { recursive: true });
+    writeFileSync(join(taskDir1, "prd.md"), "ROOT ONE PRD CONTENT");
+    writeFileSync(join(taskDir2, "prd.md"), "ROOT TWO PRD CONTENT");
+    const sessionRef = JSON.stringify({ current_task: "tasks/shared-task" });
+    writeFileSync(join(sessionsDir1, "pi_shared-session.json"), sessionRef);
+    writeFileSync(join(sessionsDir2, "pi_shared-session.json"), sessionRef);
+
+    try {
+      const { moluoxixiExtension } = loadExtensionInternals();
+      const handlers = new Map<
+        string,
+        (event: unknown, ctx?: unknown) => unknown
+      >();
+      moluoxixiExtension({
+        registerTool: vi.fn(),
+        registerShortcut: vi.fn(),
+        on(event, handler) {
+          handlers.set(event, handler);
+        },
+      });
+      const fire = (cwd: string) =>
+        handlers.get("before_agent_start")?.(
+          { type: "before_agent_start", systemPrompt: "BASE" },
+          { cwd, sessionManager: { getSessionId: () => "shared-session" } },
+        ) as { systemPrompt?: string; message?: { content?: string } };
+
+      const first = fire(root1);
+      expect(first.systemPrompt).toContain("ROOT ONE PRD CONTENT");
+
+      // Same session key but a different session cwd must NOT reuse the
+      // first project's cached startup/task context.
+      const second = fire(root2);
+      expect(second.systemPrompt).toContain("ROOT TWO PRD CONTENT");
+      expect(second.systemPrompt).not.toContain("ROOT ONE PRD CONTENT");
+    } finally {
+      rmSync(root1, { recursive: true, force: true });
+      rmSync(root2, { recursive: true, force: true });
+    }
+  });
+
+  it("re-asserts the current root's task context when a session switches back", () => {
+    const root1 = createMinimalMoluoxixiRoot();
+    const root2 = createMinimalMoluoxixiRoot();
+    const sessionsDir1 = join(root1, ".moluoxixi", ".runtime", "sessions");
+    const sessionsDir2 = join(root2, ".moluoxixi", ".runtime", "sessions");
+    const taskDir1 = join(root1, ".moluoxixi", "tasks", "shared-task");
+    const taskDir2 = join(root2, ".moluoxixi", "tasks", "shared-task");
+    mkdirSync(sessionsDir1, { recursive: true });
+    mkdirSync(sessionsDir2, { recursive: true });
+    mkdirSync(taskDir1, { recursive: true });
+    mkdirSync(taskDir2, { recursive: true });
+    writeFileSync(join(taskDir1, "prd.md"), "ROOT ONE PRD CONTENT");
+    writeFileSync(join(taskDir2, "prd.md"), "ROOT TWO PRD CONTENT");
+    const sessionRef = JSON.stringify({ current_task: "tasks/shared-task" });
+    writeFileSync(join(sessionsDir1, "pi_shared-session.json"), sessionRef);
+    writeFileSync(join(sessionsDir2, "pi_shared-session.json"), sessionRef);
+
+    try {
+      const { moluoxixiExtension } = loadExtensionInternals();
+      const handlers = new Map<
+        string,
+        (event: unknown, ctx?: unknown) => unknown
+      >();
+      moluoxixiExtension({
+        registerTool: vi.fn(),
+        registerShortcut: vi.fn(),
+        on(event, handler) {
+          handlers.set(event, handler);
+        },
+      });
+      const fire = (cwd: string) =>
+        handlers.get("before_agent_start")?.(
+          { type: "before_agent_start", systemPrompt: "BASE" },
+          { cwd, sessionManager: { getSessionId: () => "shared-session" } },
+        ) as { systemPrompt?: string; message?: { content?: string } };
+
+      // A: first visit seeds the snapshot into the system prompt; the
+      // persisted history carries only the runtime context.
+      const a1 = fire(root1);
+      expect(a1.message?.content ?? "").not.toContain(
+        "<moluoxixi-task-context-update>",
+      );
+
+      // A -> B: the switch re-asserts B's task context as a persisted
+      // update (it supersedes the system-prompt context).
+      const b = fire(root2);
+      expect(b.message?.content).toContain("<moluoxixi-task-context-update>");
+      expect(b.message?.content).toContain("ROOT TWO PRD CONTENT");
+
+      // B -> A with unchanged A on disk: A's task context must be re-emitted
+      // so the most recent persisted update belongs to A, not B.
+      const a2 = fire(root1);
+      expect(a2.message?.content).toContain("<moluoxixi-task-context-update>");
+      expect(a2.message?.content).toContain("ROOT ONE PRD CONTENT");
+      expect(a2.message?.content).not.toContain("ROOT TWO PRD CONTENT");
+    } finally {
+      rmSync(root1, { recursive: true, force: true });
+      rmSync(root2, { recursive: true, force: true });
+    }
+  });
+
   it("extension tool_result handler marks failed/cancelled subagent runs as errors", () => {
     const extension = getExtensionTemplate();
 
@@ -701,14 +812,15 @@ fallbackModels:
       thinking: "max",
       fallbackModels: [],
     };
-    const dogfoodExtension = readFileSync(
-      join(process.cwd(), "..", "..", ".pi", "extensions", "moluoxixi", "index.ts"),
-      "utf-8",
+    const packagedExtension = collectPiTemplates().get(
+      ".pi/extensions/moluoxixi/index.ts",
     );
+    expect(packagedExtension).toBe(getExtensionTemplate());
 
-    for (const extensionSource of [getExtensionTemplate(), dogfoodExtension]) {
+    for (const extensionSource of [getExtensionTemplate(), packagedExtension]) {
+      expect(extensionSource).toBeDefined();
       const { buildPiArgs, resolveRunCfg, splitModelThinking } =
-        loadMaxThinkingInternals(extensionSource);
+        loadMaxThinkingInternals(extensionSource as string);
       const config = resolveRunCfg({}, agentCfg);
 
       expect(config).toEqual({
@@ -793,10 +905,12 @@ fallbackModels:
   });
 
   it("passes the invoking Pi model to the spawned child process", async () => {
-    const root = createMinimalMoluoxixiRoot();
-    const agentDir = join(root, ".pi", "agents");
-    const fakeCli = join(root, "fake-pi.cjs");
-    const capturedArgs = join(root, "child-args.json");
+    const hostRoot = createMinimalMoluoxixiRoot();
+    const sessionRoot = createMinimalMoluoxixiRoot();
+    const agentDir = join(sessionRoot, ".pi", "agents");
+    const fakeCli = join(sessionRoot, "fake-pi.cjs");
+    const capturedArgs = join(sessionRoot, "child-args.json");
+    const capturedCwd = join(sessionRoot, "child-cwd.txt");
     mkdirSync(agentDir, { recursive: true });
     writeFileSync(
       join(agentDir, "moluoxixi-implement.md"),
@@ -807,13 +921,14 @@ fallbackModels:
       [
         'const { writeFileSync } = require("node:fs");',
         `writeFileSync(${JSON.stringify(capturedArgs)}, JSON.stringify(process.argv.slice(2)));`,
+        `writeFileSync(${JSON.stringify(capturedCwd)}, process.cwd());`,
         'process.stdout.write(JSON.stringify({ message: { role: "assistant", content: [{ type: "text", text: "fake child ok" }] } }) + "\\n");',
         "",
       ].join("\n"),
     );
 
     try {
-      const { moluoxixiExtension } = loadExtensionInternals(root, {
+      const { moluoxixiExtension } = loadExtensionInternals(hostRoot, {
         MOLUOXIXI_PI_CLI_JS: fakeCli,
       });
       let registeredTool: RegisteredPiTool | undefined;
@@ -832,10 +947,16 @@ fallbackModels:
         { agent: "moluoxixi-implement", prompt: "Implement the task" },
         undefined,
         undefined,
-        { model: { provider: "openai-proxy", id: "gpt-5.6-sol" } },
+        {
+          cwd: sessionRoot,
+          model: { provider: "openai-proxy", id: "gpt-5.6-sol" },
+        },
       );
 
       expect(result.content[0]?.text).toBe("fake child ok");
+      expect(realpathSync(readFileSync(capturedCwd, "utf-8"))).toBe(
+        realpathSync(sessionRoot),
+      );
       expect(JSON.parse(readFileSync(capturedArgs, "utf-8"))).toEqual([
         "--mode",
         "json",
@@ -845,7 +966,8 @@ fallbackModels:
         "openai-proxy/gpt-5.6-sol:xhigh",
       ]);
     } finally {
-      rmSync(root, { recursive: true, force: true });
+      rmSync(hostRoot, { recursive: true, force: true });
+      rmSync(sessionRoot, { recursive: true, force: true });
     }
   });
 

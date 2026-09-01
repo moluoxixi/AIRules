@@ -289,7 +289,13 @@ function materializeDirectory(basePath, dirPath, reason, limits, budget, maxFile
   }
 
   for (const filename of files.slice(0, maxFiles)) {
-    const relativePath = join(dirPath, filename)
+    // Keep notices portable: generated prompts use POSIX-style paths even on
+    // Windows so tests and downstream agents see the same contract everywhere.
+    const relativePath = [dirPath, filename]
+      .filter(Boolean)
+      .join("/")
+      .replaceAll(/\\+/g, "/")
+      .replaceAll(/\/{2,}/g, "/")
     const block = materializeFile(basePath, relativePath, reason, limits, budget)
     if (block) blocks.push(block)
   }

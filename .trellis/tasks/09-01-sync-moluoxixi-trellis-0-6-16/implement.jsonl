@@ -1,0 +1,3 @@
+{"file":".trellis/tasks/09-01-sync-moluoxixi-trellis-0-6-16/research/upstream-0.6.16-sync.md","reason":"提供固定 commit、适配提交、冲突面、npm 版本决策和安全同步顺序。"}
+{"file":".trellis/spec/guides/cross-layer-thinking-guide.md","reason":"约束源码镜像、rebuild、完整导出、runtime templates 与测试之间的跨边界一致性。"}
+{"file":".trellis/spec/guides/code-reuse-thinking-guide.md","reason":"语义重放时先复用上游 0.6.16 已有修复，避免重新引入被上游取代的本地实现。"}

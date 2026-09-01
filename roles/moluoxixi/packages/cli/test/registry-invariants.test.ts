@@ -9,6 +9,7 @@
  * one of the registries or derived data.
  */
 
+import { spawnSync } from "node:child_process";
 import { describe, expect, it } from "vitest";
 import { AI_TOOLS } from "../src/types/ai-tools.js";
 import {
@@ -16,6 +17,20 @@ import {
 } from "../src/configurators/index.js";
 
 const COMMANDER_RESERVED_FLAGS = ["help", "version", "V", "h"];
+
+function resolvePythonCommand(): string {
+  const candidates = [process.env.PYTHON_CMD, "python", "python3"].filter(
+    (candidate): candidate is string => Boolean(candidate),
+  );
+  for (const candidate of candidates) {
+    const probe = spawnSync(candidate, ["--version"], {
+      encoding: "utf-8",
+      windowsHide: true,
+    });
+    if (probe.status === 0) return candidate;
+  }
+  return "python3";
+}
 
 // =============================================================================
 // Internal Consistency (SQLite-style invariant checks)
@@ -327,7 +342,7 @@ describe("every platform resolves to a marker label workflow.md uses", () => {
     // execFileSync, not execSync: the probe is multi-line, and going through a
     // shell would turn its newlines into literal backslash-n.
     const raw = execFileSync(
-      process.env.PYTHON_CMD || "python3",
+      resolvePythonCommand(),
       ["-c", probe, JSON.stringify(flags)],
       { encoding: "utf-8" },
     );
