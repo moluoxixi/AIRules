@@ -15,18 +15,22 @@ import {
 import path from 'node:path'
 import process from 'node:process'
 import { fileURLToPath } from 'node:url'
-import { TextDecoder } from 'node:util'
+import { parseEnv, TextDecoder } from 'node:util'
 
 const scriptPath = fileURLToPath(import.meta.url)
 const sourceRoot = path.resolve(path.dirname(scriptPath), '..')
 const scriptRelativePath = normalizeRelativePath(path.relative(sourceRoot, scriptPath))
 const defaultProjectName = 'busyming'
 const sourceGithubRepository = 'https://github.com/moluoxixi/AIRules'
+const localEnvironmentFile = 'env.local'
+const targetEnvironmentVariable = 'AIRULES_MIGRATE_TARGET'
+const repositoryUrlEnvironmentVariable = 'AIRULES_MIGRATE_REPOSITORY_URL'
 const utf8Decoder = new TextDecoder('utf-8', { fatal: true })
 
 const sourceOnlyPrefixes = [
   '.claude',
   '.github',
+  localEnvironmentFile,
   'roles/trellis',
   scriptRelativePath,
   'scripts/lib/__test__/migrate-project.test.ts',
@@ -36,6 +40,24 @@ const trellisOwnedTargetRoots = ['.agents', '.codex', '.trellis']
 
 function normalizeRelativePath(value) {
   return value.split(path.sep).join('/')
+}
+
+function loadLocalEnvironment() {
+  const environmentPath = path.join(sourceRoot, localEnvironmentFile)
+  if (!existsSync(environmentPath))
+    return
+
+  let values
+  try {
+    values = parseEnv(readFileSync(environmentPath, 'utf8'))
+  }
+  catch (error) {
+    throw new Error(`Cannot parse ${localEnvironmentFile}: ${error instanceof Error ? error.message : String(error)}`)
+  }
+  for (const [name, value] of Object.entries(values)) {
+    if (process.env[name] === undefined)
+      process.env[name] = value
+  }
 }
 
 function createNameReplacement(projectName) {
@@ -463,10 +485,15 @@ The target is cleared before migration, except for its root .git entry.
 Moluoxixi path names and UTF-8 text are renamed to "${defaultProjectName}" by default.
 Use --name to select another lowercase kebab-case project name.
 Use --repository-url to replace this project's GitHub repository links with any specified link.
+The root env.local file is loaded automatically and supports:
+  - ${targetEnvironmentVariable}
+  - ${repositoryUrlEnvironmentVariable}
+CLI arguments override process environment variables, which override env.local values.
 The following source content is not copied:
   - all .git metadata
   - node_modules directories at any depth
   - root .github and .claude directories
+  - root ${localEnvironmentFile}
   - roles/trellis
   - this migration script and its test
 
@@ -483,7 +510,7 @@ function parseArguments(args) {
   let confirmed = false
   let help = false
   let projectName = defaultProjectName
-  let repositoryUrl
+  let repositoryUrl = process.env[repositoryUrlEnvironmentVariable] || undefined
 
   for (let index = 0; index < args.length; index += 1) {
     const argument = args[index]
@@ -521,10 +548,18 @@ function parseArguments(args) {
     }
   }
 
-  return { confirmed, dryRun, help, projectName, repositoryUrl, target }
+  return {
+    confirmed,
+    dryRun,
+    help,
+    projectName,
+    repositoryUrl,
+    target: (target ?? process.env[targetEnvironmentVariable]) || undefined,
+  }
 }
 
 function main() {
+  loadLocalEnvironment()
   const options = parseArguments(process.argv.slice(2))
   if (options.help) {
     console.log(usage())

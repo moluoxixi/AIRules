@@ -53,10 +53,27 @@ function createFixture(): { root: string, source: string, target: string } {
   return { root, source, target }
 }
 
-function runMigrator(source: string, target: string, ...args: string[]) {
-  return spawnSync(process.execPath, [path.join(source, 'scripts', 'migrate-project.mjs'), target, ...args], {
+function runMigrator(source: string, target: string | undefined, ...args: string[]) {
+  return runMigratorWithEnvironment(source, target, {}, ...args)
+}
+
+function runMigratorWithEnvironment(
+  source: string,
+  target: string | undefined,
+  environment: Record<string, string>,
+  ...args: string[]
+) {
+  const childEnvironment = { ...process.env }
+  delete childEnvironment.AIRULES_MIGRATE_TARGET
+  delete childEnvironment.AIRULES_MIGRATE_REPOSITORY_URL
+  return spawnSync(process.execPath, [
+    path.join(source, 'scripts', 'migrate-project.mjs'),
+    ...(target ? [target] : []),
+    ...args,
+  ], {
     cwd: source,
     encoding: 'utf8',
+    env: { ...childEnvironment, ...environment },
   })
 }
 
@@ -122,6 +139,7 @@ describe('project migration', () => {
     writeFile(path.join(source, '.trellis', 'workflow.md'), 'Trellis workflow\n')
     writeFile(path.join(source, '.agents', 'skills', 'trellis-start', 'SKILL.md'), 'Trellis skill\n')
     writeFile(path.join(source, '.codex', 'agents', 'trellis-check.toml'), 'name = "Trellis"\n')
+    writeFile(path.join(source, 'env.local'), 'UNRELATED_LOCAL_SETTING=source-only\n')
     writeFile(path.join(source, 'node_modules', 'example', 'index.js'))
     writeFile(path.join(source, 'roles', 'moluoxixi', 'packages', 'demo', 'node_modules', 'example', 'index.js'))
     writeFile(path.join(source, 'coverage', 'lcov.info'))
@@ -177,6 +195,7 @@ describe('project migration', () => {
     expect(fs.existsSync(path.join(target, '.trellis'))).toBe(false)
     expect(fs.existsSync(path.join(target, '.agents'))).toBe(false)
     expect(fs.existsSync(path.join(target, '.codex'))).toBe(false)
+    expect(fs.existsSync(path.join(target, 'env.local'))).toBe(false)
     expect(fs.existsSync(path.join(target, 'roles', 'trellis'))).toBe(false)
     expect(fs.existsSync(path.join(target, 'scripts', 'migrate-project.mjs'))).toBe(false)
     expect(fs.existsSync(path.join(target, 'scripts', 'lib', '__test__', 'migrate-project.test.ts'))).toBe(false)
@@ -210,6 +229,49 @@ describe('project migration', () => {
     expect(fs.existsSync(path.join(source, 'src', 'app.ts'))).toBe(true)
     expect(fs.existsSync(path.join(target, 'stale.txt'))).toBe(true)
     expect(fs.existsSync(path.join(target, 'src', 'app.ts'))).toBe(false)
+  })
+
+  it('loads the target directory and repository link from env.local', () => {
+    const { source, target } = createFixture()
+    const repositoryUrl = 'https://git.example.local/team/from-local-file'
+    writeFile(path.join(source, 'env.local'), [
+      `AIRULES_MIGRATE_TARGET=${target.replaceAll('\\', '/')}`,
+      `AIRULES_MIGRATE_REPOSITORY_URL=${repositoryUrl}`,
+    ].join('\n'))
+
+    const result = runMigrator(source, undefined, '--yes')
+
+    expect(result.status, result.stderr).toBe(0)
+    expect(result.stdout).toContain(`Target: ${target}`)
+    expect(JSON.parse(fs.readFileSync(path.join(target, 'package.json'), 'utf8')).repository).toBe(repositoryUrl)
+    expect(fs.existsSync(path.join(target, 'env.local'))).toBe(false)
+  })
+
+  it('supports process environment variables and lets CLI arguments override them', () => {
+    const { root, source, target } = createFixture()
+    const localTarget = path.join(root, 'local-target')
+    const environmentTarget = path.join(root, 'environment-target')
+    const environmentUrl = 'https://git.example.local/team/from-environment'
+    const cliUrl = 'https://git.example.local/team/from-cli'
+    writeFile(path.join(source, 'env.local'), [
+      `AIRULES_MIGRATE_TARGET=${localTarget.replaceAll('\\', '/')}`,
+      'AIRULES_MIGRATE_REPOSITORY_URL=https://git.example.local/team/from-local-file',
+    ].join('\n'))
+
+    const environmentResult = runMigratorWithEnvironment(source, undefined, {
+      AIRULES_MIGRATE_REPOSITORY_URL: environmentUrl,
+      AIRULES_MIGRATE_TARGET: environmentTarget,
+    }, '--yes')
+    expect(environmentResult.status, environmentResult.stderr).toBe(0)
+    expect(JSON.parse(fs.readFileSync(path.join(environmentTarget, 'package.json'), 'utf8')).repository).toBe(environmentUrl)
+    expect(fs.existsSync(localTarget)).toBe(false)
+
+    const cliResult = runMigratorWithEnvironment(source, target, {
+      AIRULES_MIGRATE_REPOSITORY_URL: environmentUrl,
+      AIRULES_MIGRATE_TARGET: environmentTarget,
+    }, '--repository-url', cliUrl, '--yes')
+    expect(cliResult.status, cliResult.stderr).toBe(0)
+    expect(JSON.parse(fs.readFileSync(path.join(target, 'package.json'), 'utf8')).repository).toBe(cliUrl)
   })
 
   it('requires explicit confirmation for destructive migration', () => {
