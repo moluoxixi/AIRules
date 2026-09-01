@@ -72,7 +72,7 @@ node scripts/migrate-project.mjs <target-directory> --yes
 node scripts/migrate-project.mjs <target-directory> --name <project-name> --yes
 ```
 
-The default project name is `busyming`. Before copying, the target is cleared except for its root `.git`. The source repository remains unchanged; root `.github`, root `.claude`, `roles/trellis`, the migration script, and its test are excluded from the copy. The completed target contains neither Trellis paths nor Trellis text outside `.git`.
+The default project name is `busyming`. Before copying, the target is cleared except for its root `.git`. The source repository remains unchanged; every `node_modules` directory, root `.github`, root `.claude`, `roles/trellis`, the migration script, and its test are excluded from the copy. The completed target contains neither Trellis paths nor Trellis text outside `.git`.
 
 ## Development
 

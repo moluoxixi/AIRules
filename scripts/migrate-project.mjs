@@ -83,7 +83,7 @@ function isSourceOnly(relativePath) {
   const normalized = normalizeRelativePath(relativePath)
   const segments = normalized.split('/')
 
-  if (segments.includes('.git'))
+  if (segments.includes('.git') || segments.includes('node_modules'))
     return true
 
   return sourceOnlyPrefixes.some(prefix => normalized === prefix || normalized.startsWith(`${prefix}/`))
@@ -445,11 +445,12 @@ Moluoxixi path names and UTF-8 text are renamed to "${defaultProjectName}" by de
 Use --name to select another lowercase kebab-case project name.
 The following source content is not copied:
   - all .git metadata
+  - node_modules directories at any depth
   - root .github and .claude directories
   - roles/trellis
   - this migration script and its test
 
-Everything else is copied, including ignored content when present. The source directory remains unchanged.
+Everything else is copied, including other ignored content when present. The source directory remains unchanged.
 Trellis-owned target roots and remaining Trellis references are removed after copying.
 
 Use --dry-run to validate paths without changing either directory.
