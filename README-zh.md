@@ -72,7 +72,7 @@ node scripts/migrate-project.mjs <target-directory> --yes
 node scripts/migrate-project.mjs <target-directory> --name <project-name> --yes
 ```
 
-默认项目名为 `busyming`。目标目录接收迁移文件前仅保留根级 `.git`；源目录仅保留 `.git`、根级 `.github`、根级 `.claude`、`roles/trellis`、迁移脚本及其测试。迁移完成后，目标 `.git` 之外不存在任何 Trellis 路径或文本。
+默认项目名为 `busyming`。复制前会清空目标目录，仅保留目标根级 `.git`。源仓库保持不变；根级 `.github`、根级 `.claude`、`roles/trellis`、迁移脚本及其测试不会被复制。完成后，目标 `.git` 之外不存在任何 Trellis 路径或文本。
 
 ## 开发
 
@@ -88,4 +88,3 @@ English documentation: [README.md](README.md)
 ## 许可证
 
 MIT
-

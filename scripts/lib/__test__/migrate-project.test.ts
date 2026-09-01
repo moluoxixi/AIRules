@@ -74,8 +74,27 @@ function expectNoTrellis(root: string, current = root): void {
   }
 }
 
+function snapshotTree(root: string, current = root): Array<{ content?: string, path: string, type: string }> {
+  const snapshot: Array<{ content?: string, path: string, type: string }> = []
+  for (const entry of fs.readdirSync(current, { withFileTypes: true })) {
+    const entryPath = path.join(current, entry.name)
+    const relativePath = path.relative(root, entryPath)
+    if (entry.isDirectory()) {
+      snapshot.push({ path: relativePath, type: 'directory' })
+      snapshot.push(...snapshotTree(root, entryPath))
+    }
+    else if (entry.isSymbolicLink()) {
+      snapshot.push({ content: fs.readlinkSync(entryPath), path: relativePath, type: 'symlink' })
+    }
+    else {
+      snapshot.push({ content: fs.readFileSync(entryPath).toString('base64'), path: relativePath, type: 'file' })
+    }
+  }
+  return snapshot
+}
+
 describe('project migration', () => {
-  it('moves every non-protected entry, removes Trellis content, and rebuilds role-based READMEs', () => {
+  it('copies every non-protected entry without modifying the source, removes Trellis content, and rebuilds role-based READMEs', () => {
     const { source, target } = createFixture()
     for (const relativePath of trellisReferenceFixtures)
       copyRepositoryFile(source, relativePath)
@@ -113,6 +132,7 @@ describe('project migration', () => {
     fs.writeFileSync(path.join(source, 'src', 'branded.txt'), textWithByteOrderMark)
     writeFile(path.join(target, '.git', 'HEAD'), 'ref: refs/heads/main\n')
     writeFile(path.join(target, 'stale.txt'))
+    const sourceBefore = snapshotTree(source)
 
     const result = runMigrator(source, target, '--yes')
 
@@ -146,17 +166,7 @@ describe('project migration', () => {
     expect(fs.existsSync(path.join(target, 'scripts', 'migrate-project.mjs'))).toBe(false)
     expect(fs.existsSync(path.join(target, 'scripts', 'lib', '__test__', 'migrate-project.test.ts'))).toBe(false)
 
-    expect(fs.existsSync(path.join(source, '.git', 'HEAD'))).toBe(true)
-    expect(fs.existsSync(path.join(source, '.github', 'workflows', 'release.yml'))).toBe(true)
-    expect(fs.existsSync(path.join(source, '.claude', 'settings.json'))).toBe(true)
-    expect(fs.existsSync(path.join(source, 'roles', 'trellis', 'role.yaml'))).toBe(true)
-    expect(fs.existsSync(path.join(source, 'scripts', 'migrate-project.mjs'))).toBe(true)
-    expect(fs.existsSync(path.join(source, 'scripts', 'lib', '__test__', 'migrate-project.test.ts'))).toBe(true)
-    expect(fs.existsSync(path.join(source, 'roles', 'moluoxixi'))).toBe(false)
-    expect(fs.existsSync(path.join(source, '.trellis'))).toBe(false)
-    expect(fs.existsSync(path.join(source, '.agents'))).toBe(false)
-    expect(fs.existsSync(path.join(source, '.codex'))).toBe(false)
-    expect(fs.existsSync(path.join(source, 'node_modules'))).toBe(false)
+    expect(snapshotTree(source)).toEqual(sourceBefore)
 
     const readme = fs.readFileSync(path.join(target, 'README.md'), 'utf8')
     const readmeZh = fs.readFileSync(path.join(target, 'README-zh.md'), 'utf8')

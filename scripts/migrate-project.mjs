@@ -9,7 +9,6 @@ import {
   readFileSync,
   readlinkSync,
   realpathSync,
-  rmdirSync,
   rmSync,
   writeFileSync,
 } from 'node:fs'
@@ -419,26 +418,6 @@ function assertNoTrellisContent(targetRoot) {
   }
 }
 
-function removeIncluded(sourceDirectory, relativeDirectory = '') {
-  for (const entry of readdirSync(sourceDirectory)) {
-    const relativePath = relativeDirectory ? `${relativeDirectory}/${entry}` : entry
-    if (isSourceOnly(relativePath))
-      continue
-
-    const sourcePath = path.join(sourceDirectory, entry)
-    const stats = lstatSync(sourcePath)
-
-    if (stats.isDirectory() && !stats.isSymbolicLink()) {
-      removeIncluded(sourcePath, relativePath)
-      if (readdirSync(sourcePath).length === 0)
-        rmdirSync(sourcePath)
-      continue
-    }
-
-    rmSync(sourcePath, { force: true })
-  }
-}
-
 function migrationSummary(targetRoot, dryRun, replacement) {
   const targetEntries = existsSync(targetRoot)
     ? readdirSync(targetRoot).filter(entry => entry !== '.git')
@@ -452,7 +431,7 @@ function migrationSummary(targetRoot, dryRun, replacement) {
     `Project name: ${replacement.projectName}`,
     `Name forms: moluoxixi -> ${replacement.projectName}, Moluoxixi -> ${replacement.display}, MOLUOXIXI -> ${replacement.constant}`,
     `Target entries to remove: ${targetEntries.length}`,
-    `Source top-level entries to migrate: ${sourceEntries.length}`,
+    `Source top-level entries to copy: ${sourceEntries.length}`,
   ].join('\n')
 }
 
@@ -464,13 +443,13 @@ function usage() {
 The target is cleared before migration, except for its root .git entry.
 Moluoxixi path names and UTF-8 text are renamed to "${defaultProjectName}" by default.
 Use --name to select another lowercase kebab-case project name.
-The following source content is retained and not migrated:
+The following source content is not copied:
   - all .git metadata
   - root .github and .claude directories
   - roles/trellis
   - this migration script and its test
 
-Everything else is migrated, including ignored content when present.
+Everything else is copied, including ignored content when present. The source directory remains unchanged.
 Trellis-owned target roots and remaining Trellis references are removed after copying.
 
 Use --dry-run to validate paths without changing either directory.
@@ -539,7 +518,6 @@ function main() {
   removeTrellisOwnedContent(targetRoot)
   regenerateReadmes(targetRoot, replacement)
   assertNoTrellisContent(targetRoot)
-  removeIncluded(sourceRoot)
   console.log('Migration complete')
 }
 
