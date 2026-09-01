@@ -18,14 +18,14 @@
 
 ## 验收标准
 
-- [ ] 源镜像 clean、detached 在固定 commit；rebuild clean 且从该 commit 派生。
-- [ ] rebuild 只保留 identity transform、必要 Moluoxixi 适配和包名门禁修正，额外 publish-suite commit 已通过 revert 撤销。
-- [ ] core/CLI 都是 `0.6.23`，CLI 有 `moluoxixi` 与 `ml` 且没有 `tl`。
-- [ ] 必要 build、typecheck、lint、定向测试与角色 identity 检查通过。
-- [ ] rebuild 与正式 packages 的相对路径集合和逐文件 hash 完全一致。
-- [ ] `.trellis/spec` 记录人工语义审查和最小范围决策，索引完整且无空模板规范层。
-- [ ] 不改动用户已有的迁移脚本文件，不执行 npm 发布或 dist-tag 变更。
-- [ ] AIRules 变更提交后成功推送到 `origin/main`。
+- [x] 源镜像 clean、detached 在固定 commit；rebuild clean 且从该 commit 派生。
+- [x] rebuild 只保留 identity transform、必要 Moluoxixi 适配和包名门禁修正，额外 publish-suite commit 已通过 revert 撤销。
+- [x] core/CLI 都是 `0.6.23`，CLI 有 `moluoxixi` 与 `ml` 且没有 `tl`。
+- [x] 必要 build、typecheck、lint、定向测试与角色 identity 检查通过。
+- [x] rebuild 与正式 packages 的相对路径集合和逐文件 hash 完全一致。
+- [x] `.trellis/spec` 记录人工语义审查和最小范围决策，索引完整且无空模板规范层。
+- [x] 不改动用户已有的迁移脚本文件，不执行 npm 发布或 dist-tag 变更。
+- [x] AIRules 变更提交后成功推送到 `origin/main`。
 
 ## 不在范围内
 
