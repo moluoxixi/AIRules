@@ -48,6 +48,7 @@ function createFixture(): { root: string, source: string, target: string } {
     description: 'Moluoxixi role distribution.',
     license: 'MIT',
     name: 'moluoxixi-ai-rules',
+    repository: 'https://github.com/moluoxixi/AIRules',
   }, null, 2))
   return { root, source, target }
 }
@@ -102,6 +103,11 @@ describe('project migration', () => {
     writeFile(path.join(source, 'README.md'), '# Moluoxixi\n\nTrellis content\n')
     writeFile(path.join(source, 'README-zh.md'), '# Moluoxixi\n\nTrellis 内容\n')
     writeFile(path.join(source, 'src', 'app.ts'), 'export class Moluoxixi {}\nexport const env = "MOLUOXIXI_CONTEXT_ID"\n')
+    writeFile(path.join(source, 'src', 'repository-links.txt'), [
+      'https://github.com/moluoxixi/AIRules',
+      'https://github.com/moluoxixi/AIRules.git',
+      'https://github.com/external/tool',
+    ].join('\n'))
     writeFile(path.join(source, 'scripts', 'keep.mjs'), 'export const command = "moluoxixi"\n')
     writeFile(path.join(source, 'scripts', 'lib', '__test__', 'migrate-project.test.ts'))
     writeFile(path.join(source, 'roles', 'moluoxixi', 'role.yaml'), 'role_id: moluoxixi\ndescription: Moluoxixi\n')
@@ -135,7 +141,8 @@ describe('project migration', () => {
     writeFile(path.join(target, 'stale.txt'))
     const sourceBefore = snapshotTree(source)
 
-    const result = runMigrator(source, target, '--yes')
+    const repositoryUrl = 'https://git.example.local/team/moluoxixi-rules'
+    const result = runMigrator(source, target, '--repository-url', repositoryUrl, '--yes')
 
     expect(result.status, result.stderr).toBe(0)
     expect(result.stdout).toContain('Migration complete')
@@ -153,6 +160,12 @@ describe('project migration', () => {
     expect(fs.existsSync(path.join(target, 'logs', 'migration.log'))).toBe(true)
     expect(fs.readFileSync(path.join(target, 'src', 'app.ts'), 'utf8')).toContain('class Busyming')
     expect(fs.readFileSync(path.join(target, 'src', 'app.ts'), 'utf8')).toContain('BUSYMING_CONTEXT_ID')
+    expect(JSON.parse(fs.readFileSync(path.join(target, 'package.json'), 'utf8')).repository).toBe(repositoryUrl)
+    expect(fs.readFileSync(path.join(target, 'src', 'repository-links.txt'), 'utf8')).toBe([
+      repositoryUrl,
+      repositoryUrl,
+      'https://github.com/external/tool',
+    ].join('\n'))
     expect(fs.readFileSync(path.join(target, 'assets', 'busyming.bin'))).toEqual(binaryContent)
     expect(fs.readFileSync(path.join(target, 'src', 'branded.txt'))).toEqual(Buffer.concat([
       Buffer.from([0xEF, 0xBB, 0xBF]),
@@ -238,6 +251,19 @@ describe('project migration', () => {
 
     expect(result.status).not.toBe(0)
     expect(result.stderr).toMatch(/lowercase kebab-case/i)
+    expect(fs.existsSync(path.join(source, 'src', 'app.ts'))).toBe(true)
+    expect(fs.existsSync(path.join(target, 'stale.txt'))).toBe(true)
+  })
+
+  it('rejects repository links containing whitespace before cleaning the target', () => {
+    const { source, target } = createFixture()
+    writeFile(path.join(source, 'src', 'app.ts'))
+    writeFile(path.join(target, 'stale.txt'))
+
+    const result = runMigrator(source, target, '--repository-url', 'not a valid link', '--yes')
+
+    expect(result.status).not.toBe(0)
+    expect(result.stderr).toMatch(/without whitespace/i)
     expect(fs.existsSync(path.join(source, 'src', 'app.ts'))).toBe(true)
     expect(fs.existsSync(path.join(target, 'stale.txt'))).toBe(true)
   })

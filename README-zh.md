@@ -70,9 +70,10 @@ node scripts/migrate-project.mjs <target-directory> --dry-run
 ```bash
 node scripts/migrate-project.mjs <target-directory> --yes
 node scripts/migrate-project.mjs <target-directory> --name <project-name> --yes
+node scripts/migrate-project.mjs <target-directory> --name <project-name> --repository-url <repository-url> --yes
 ```
 
-默认项目名为 `busyming`。复制前会清空目标目录，仅保留目标根级 `.git`。源仓库保持不变；任意层级的 `node_modules`、根级 `.github`、根级 `.claude`、`roles/trellis`、迁移脚本及其测试不会被复制。完成后，目标 `.git` 之外不存在任何 Trellis 路径或文本。
+默认项目名为 `busyming`。使用 `--repository-url` 可将本项目的 `https://github.com/moluoxixi/AIRules` 仓库链接（包括 `.git` 形式）替换为任意指定链接，其它链接保持不变。复制前会清空目标目录，仅保留目标根级 `.git`。源仓库保持不变；任意层级的 `node_modules`、根级 `.github`、根级 `.claude`、`roles/trellis`、迁移脚本及其测试不会被复制。完成后，目标 `.git` 之外不存在任何 Trellis 路径或文本。
 
 ## 开发
 

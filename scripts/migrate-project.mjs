@@ -21,6 +21,7 @@ const scriptPath = fileURLToPath(import.meta.url)
 const sourceRoot = path.resolve(path.dirname(scriptPath), '..')
 const scriptRelativePath = normalizeRelativePath(path.relative(sourceRoot, scriptPath))
 const defaultProjectName = 'busyming'
+const sourceGithubRepository = 'https://github.com/moluoxixi/AIRules'
 const utf8Decoder = new TextDecoder('utf-8', { fatal: true })
 
 const sourceOnlyPrefixes = [
@@ -52,11 +53,28 @@ function createNameReplacement(projectName) {
   }
 }
 
+function validateRepositoryUrl(value) {
+  if (/\s/u.test(value))
+    throw new Error('--repository-url must be a non-empty link without whitespace')
+  return value
+}
+
 function replaceProjectName(value, replacement) {
   return value
     .replaceAll('MOLUOXIXI', replacement.constant)
     .replaceAll('Moluoxixi', replacement.display)
     .replaceAll('moluoxixi', replacement.projectName)
+}
+
+function replaceProjectText(value, replacement, repositoryUrl) {
+  if (!repositoryUrl)
+    return replaceProjectName(value, replacement)
+
+  return value
+    .replaceAll(`${sourceGithubRepository}.git`, sourceGithubRepository)
+    .split(sourceGithubRepository)
+    .map(segment => replaceProjectName(segment, replacement))
+    .join(repositoryUrl)
 }
 
 function isSameOrChildPath(candidate, parent) {
@@ -147,18 +165,18 @@ function validateRenamePlan(sourceDirectory, replacement, relativeDirectory = ''
   }
 }
 
-function replaceCopiedText(sourcePath, targetPath, replacement) {
+function replaceCopiedText(sourcePath, targetPath, replacement, repositoryUrl) {
   const content = readFileSync(sourcePath)
   const decodedContent = decodeUtf8(content)
   if (!decodedContent)
     return
 
-  const replaced = replaceProjectName(decodedContent.text, replacement)
+  const replaced = replaceProjectText(decodedContent.text, replacement, repositoryUrl)
   if (replaced !== decodedContent.text)
     writeUtf8(targetPath, replaced, decodedContent.hasByteOrderMark)
 }
 
-function copyIncluded(sourceDirectory, targetDirectory, replacement, relativeDirectory = '') {
+function copyIncluded(sourceDirectory, targetDirectory, replacement, repositoryUrl, relativeDirectory = '') {
   mkdirSync(targetDirectory, { recursive: true })
 
   for (const entry of readdirSync(sourceDirectory)) {
@@ -171,7 +189,7 @@ function copyIncluded(sourceDirectory, targetDirectory, replacement, relativeDir
     const stats = lstatSync(sourcePath)
 
     if (stats.isDirectory() && !stats.isSymbolicLink()) {
-      copyIncluded(sourcePath, targetPath, replacement, relativePath)
+      copyIncluded(sourcePath, targetPath, replacement, repositoryUrl, relativePath)
       continue
     }
 
@@ -183,7 +201,7 @@ function copyIncluded(sourceDirectory, targetDirectory, replacement, relativeDir
       verbatimSymlinks: true,
     })
     if (stats.isFile())
-      replaceCopiedText(sourcePath, targetPath, replacement)
+      replaceCopiedText(sourcePath, targetPath, replacement, repositoryUrl)
   }
 }
 
@@ -418,7 +436,7 @@ function assertNoTrellisContent(targetRoot) {
   }
 }
 
-function migrationSummary(targetRoot, dryRun, replacement) {
+function migrationSummary(targetRoot, dryRun, replacement, repositoryUrl) {
   const targetEntries = existsSync(targetRoot)
     ? readdirSync(targetRoot).filter(entry => entry !== '.git')
     : []
@@ -430,6 +448,7 @@ function migrationSummary(targetRoot, dryRun, replacement) {
     `Target: ${targetRoot}`,
     `Project name: ${replacement.projectName}`,
     `Name forms: moluoxixi -> ${replacement.projectName}, Moluoxixi -> ${replacement.display}, MOLUOXIXI -> ${replacement.constant}`,
+    `Repository URL: ${repositoryUrl ?? replaceProjectName(sourceGithubRepository, replacement)}`,
     `Target entries to remove: ${targetEntries.length}`,
     `Source top-level entries to copy: ${sourceEntries.length}`,
   ].join('\n')
@@ -437,12 +456,13 @@ function migrationSummary(targetRoot, dryRun, replacement) {
 
 function usage() {
   return `Usage:
-  node scripts/migrate-project.mjs <target-directory> [--name <name>] --dry-run
-  node scripts/migrate-project.mjs <target-directory> [--name <name>] --yes
+  node scripts/migrate-project.mjs <target-directory> [--name <name>] [--repository-url <url>] --dry-run
+  node scripts/migrate-project.mjs <target-directory> [--name <name>] [--repository-url <url>] --yes
 
 The target is cleared before migration, except for its root .git entry.
 Moluoxixi path names and UTF-8 text are renamed to "${defaultProjectName}" by default.
 Use --name to select another lowercase kebab-case project name.
+Use --repository-url to replace this project's GitHub repository links with any specified link.
 The following source content is not copied:
   - all .git metadata
   - node_modules directories at any depth
@@ -463,6 +483,7 @@ function parseArguments(args) {
   let confirmed = false
   let help = false
   let projectName = defaultProjectName
+  let repositoryUrl
 
   for (let index = 0; index < args.length; index += 1) {
     const argument = args[index]
@@ -482,6 +503,13 @@ function parseArguments(args) {
       projectName = value
       index += 1
     }
+    else if (argument === '--repository-url') {
+      const value = args[index + 1]
+      if (!value || value.startsWith('-'))
+        throw new Error('--repository-url requires a value')
+      repositoryUrl = value
+      index += 1
+    }
     else if (argument.startsWith('-')) {
       throw new Error(`Unknown option: ${argument}`)
     }
@@ -493,7 +521,7 @@ function parseArguments(args) {
     }
   }
 
-  return { confirmed, dryRun, help, projectName, target }
+  return { confirmed, dryRun, help, projectName, repositoryUrl, target }
 }
 
 function main() {
@@ -505,17 +533,18 @@ function main() {
   if (!options.target)
     throw new Error(usage())
   const replacement = createNameReplacement(options.projectName)
+  const repositoryUrl = options.repositoryUrl ? validateRepositoryUrl(options.repositoryUrl) : undefined
   if (!options.dryRun && !options.confirmed)
     throw new Error('Refusing destructive migration without --yes. Run with --dry-run first.')
 
   const targetRoot = validateTarget(options.target)
   validateRenamePlan(sourceRoot, replacement)
-  console.log(migrationSummary(targetRoot, options.dryRun, replacement))
+  console.log(migrationSummary(targetRoot, options.dryRun, replacement, repositoryUrl))
   if (options.dryRun)
     return
 
   cleanTarget(targetRoot)
-  copyIncluded(sourceRoot, targetRoot, replacement)
+  copyIncluded(sourceRoot, targetRoot, replacement, repositoryUrl)
   removeTrellisOwnedContent(targetRoot)
   regenerateReadmes(targetRoot, replacement)
   assertNoTrellisContent(targetRoot)
