@@ -57,24 +57,6 @@ Role 只声明需要的公共 capabilities，由 registry 统一组合对应的 
 
 Canonical shared skills 安装到 `~/.agents/skills`。能够直接发现该目录的宿主不会在其私有 skills 目录中收到重复副本；MCP 配置仍按宿主分别管理。
 
-## 仓库迁移
-
-先预览迁移到另一个 clone 仓库的结果：
-
-```bash
-node scripts/migrate-project.mjs <target-directory> --dry-run
-```
-
-确认路径后执行迁移：
-
-```bash
-node scripts/migrate-project.mjs <target-directory> --yes
-node scripts/migrate-project.mjs <target-directory> --name <project-name> --yes
-node scripts/migrate-project.mjs <target-directory> --name <project-name> --repository-url <repository-url> --yes
-```
-
-默认项目名为 `busyming`。使用 `--repository-url` 可将本项目的 `https://github.com/moluoxixi/AIRules` 仓库链接（包括 `.git` 形式）替换为任意指定链接，其它链接保持不变。复制前会清空目标目录，仅保留目标根级 `.git`。源仓库保持不变；任意层级的 `node_modules`、根级 `.github`、根级 `.claude`、`roles/trellis`、迁移脚本及其测试不会被复制。完成后，目标 `.git` 之外不存在任何 Trellis 路径或文本。
-
 ## 开发
 
 ```bash

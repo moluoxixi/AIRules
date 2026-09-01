@@ -57,24 +57,6 @@ Roles declare reusable capabilities, and the shared registry composes the corres
 
 Canonical shared skills are installed in `~/.agents/skills`. Hosts that discover this directory directly do not receive duplicate copies in their private skill directories. MCP configuration remains host-specific.
 
-## Repository migration
-
-Preview a migration to another cloned repository:
-
-```bash
-node scripts/migrate-project.mjs <target-directory> --dry-run
-```
-
-Execute it after reviewing the paths:
-
-```bash
-node scripts/migrate-project.mjs <target-directory> --yes
-node scripts/migrate-project.mjs <target-directory> --name <project-name> --yes
-node scripts/migrate-project.mjs <target-directory> --name <project-name> --repository-url <repository-url> --yes
-```
-
-The default project name is `busyming`. Use `--repository-url` to replace this project's `https://github.com/moluoxixi/AIRules` repository links, including `.git` variants, with any specified link; other links are unchanged. Before copying, the target is cleared except for its root `.git`. The source repository remains unchanged; every `node_modules` directory, root `.github`, root `.claude`, `roles/trellis`, the migration script, and its test are excluded from the copy. The completed target contains neither Trellis paths nor Trellis text outside `.git`.
-
 ## Development
 
 ```bash
