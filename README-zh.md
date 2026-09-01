@@ -1,75 +1,86 @@
 # Moluoxixi AIRules
 
-AIRules 为受支持的 AI 编程宿主分发 skills、MCP 配置和角色资产。
+AIRules 将带版本的 AI skills、MCP 配置和角色专属资产分发到受支持的编程宿主。只需安装一次 package，再选择符合目标工作方式的 role。
 
-## 安装 package
-
-全局安装已发布的 package：
+## 安装
 
 ```bash
 npm install --global moluoxixi-ai-rules
-```
-
-检查已安装的 CLI：
-
-```bash
 airules --version
 ```
 
-## 安装角色
+Role 安装在用户级目录。安装完成后，再从目标项目执行对应的项目初始化命令。
 
-为所有受支持的宿主安装或更新角色：
+## `moluoxixi`
+
+AIRules 的主角色。它组合公共的 coding、frontend 和 productivity capabilities，并提供角色专属的项目初始化能力和可发布 CLI package。
 
 ```bash
 airules install moluoxixi --host all
-```
-
-其他角色使用相同的 package 命令：
-
-```bash
-airules install trellis --host all
-airules install matt --host all
-```
-
-不修改安装内容，仅验证已安装的角色：
-
-```bash
 airules verify moluoxixi --host all
 ```
 
-安装是用户级操作。角色安装完成后，在目标项目中执行项目初始化命令。
-
-## Moluoxixi package CLI
-
-Moluoxixi 角色还发布了独立 CLI package `@moluoxixi/airules-moluoxixi-cli`：
+该角色还发布独立 CLI package：
 
 ```bash
 npm install --global @moluoxixi/airules-moluoxixi-cli
 moluoxixi --version
 ```
 
-使用 `moluoxixi --help` 查看已安装 package 提供的命令。
+使用 `moluoxixi --help` 查看可用的项目命令。角色资产位于 [`roles/moluoxixi`](roles/moluoxixi)。
 
-## 共享 skills
+## `matt`
 
-AIRules 将 canonical skills 维护在 `~/.agents/skills`。Codex、Cursor、Qoder、Trae、Trae CN、Trae Solo、Trae Solo CN、Hermes 和 OpenCode 会直接发现该目录，因此 AIRules 不会再向这些宿主的私有目录创建重复 skills。MCP 配置仍按宿主分别管理。
-
-## 角色能力
-
-角色只声明需要的公共 capability，由 registry 统一组合对应的 skills 与 MCP：
-
-| 角色 | Capabilities |
-|---|---|
-| `trellis` | `common`, `coding`, `productivity`, `frontend` |
-| `moluoxixi` | `common`, `coding`, `productivity`, `frontend` |
-| `matt` | `engineering`, `productivity` |
-
-`frontend` 固定安装 Anthropic `frontend-design` 与 Playwright MCP。详细映射见 [capabilities/README.md](capabilities/README.md)。
-
-## 版本
+安装 Matt Pocock 的 engineering 和 productivity skills，不包含较大角色提供的项目工作流或 MCP 资产。
 
 ```bash
-airules --version
+airules install matt --host all
+airules verify matt --host all
+```
+
+角色资产位于 [`roles/matt`](roles/matt)。
+
+## `trellis`
+
+安装原生 Trellis 项目工作流，以及公共的 coding、frontend 和 productivity capabilities。
+
+```bash
+airules install trellis --host all
+airules verify trellis --host all
+```
+
+安装后，在目标项目中通过该角色的项目初始化入口初始化或更新 Trellis。角色资产位于 [`roles/trellis`](roles/trellis)。
+
+## 公共分发机制
+
+Role 只声明需要的公共 capabilities，由 registry 统一组合对应的 skills 与 MCP servers。完整映射见 [capabilities/README.md](capabilities/README.md)。
+
+Canonical shared skills 安装到 `~/.agents/skills`。能够直接发现该目录的宿主不会在其私有 skills 目录中收到重复副本；MCP 配置仍按宿主分别管理。
+
+## 仓库迁移
+
+先预览迁移到另一个 clone 仓库的结果：
+
+```bash
+node scripts/migrate-project.mjs <target-directory> --dry-run
+```
+
+确认路径后执行迁移：
+
+```bash
+node scripts/migrate-project.mjs <target-directory> --yes
+node scripts/migrate-project.mjs <target-directory> --name <project-name> --yes
+```
+
+默认项目名为 `busyming`。目标目录接收迁移文件前仅保留根级 `.git`；源目录仅保留 `.git`、根级 `.github`、根级 `.claude`、`roles/trellis`、迁移脚本及其测试。迁移完成后，目标 `.git` 之外不存在任何 Trellis 路径或文本。
+
+## 开发
+
+```bash
+npm install
+npm test
+npm run typecheck
+npm run lint:check
 ```
 
 English documentation: [README.md](README.md)
@@ -78,19 +89,3 @@ English documentation: [README.md](README.md)
 
 MIT
 
-<!-- AIRULES:TRELLIS:START -->
-
-## Trellis 工作流
-
-本项目使用 Trellis 管理 AI 辅助开发流程。在 AI 编程助手中可以发送：
-
-```text
-请使用 Trellis 开始处理这个需求：<描述需求>
-请使用 Trellis 继续当前任务。
-请使用 Trellis 检查当前改动。
-请使用 Trellis 完成本次工作。
-```
-
-项目的工作流、任务和规范状态位于 `.trellis/`。
-
-<!-- AIRULES:TRELLIS:END -->
