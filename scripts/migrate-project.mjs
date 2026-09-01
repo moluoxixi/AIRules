@@ -27,7 +27,6 @@ const utf8Decoder = new TextDecoder('utf-8', { fatal: true })
 const sourceOnlyPrefixes = [
   '.claude',
   '.github',
-  '.trellis',
   'roles/trellis',
   scriptRelativePath,
   'scripts/lib/__test__/migrate-project.test.ts',
