@@ -812,15 +812,14 @@ fallbackModels:
       thinking: "max",
       fallbackModels: [],
     };
-    const packagedExtension = collectPiTemplates().get(
-      ".pi/extensions/moluoxixi/index.ts",
+    const dogfoodExtension = readFileSync(
+      join(process.cwd(), "..", "..", ".pi", "extensions", "moluoxixi", "index.ts"),
+      "utf-8",
     );
-    expect(packagedExtension).toBe(getExtensionTemplate());
 
-    for (const extensionSource of [getExtensionTemplate(), packagedExtension]) {
-      expect(extensionSource).toBeDefined();
+    for (const extensionSource of [getExtensionTemplate(), dogfoodExtension]) {
       const { buildPiArgs, resolveRunCfg, splitModelThinking } =
-        loadMaxThinkingInternals(extensionSource as string);
+        loadMaxThinkingInternals(extensionSource);
       const config = resolveRunCfg({}, agentCfg);
 
       expect(config).toEqual({

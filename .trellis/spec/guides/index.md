@@ -51,6 +51,13 @@ These guides help you **ask the right questions before coding**.
 
 → Read [Code Reuse Thinking Guide](./code-reuse-thinking-guide.md)
 
+### When Upgrading An External Baseline
+
+- [ ] Read [External Baseline Sync Contract](../distribution/external-baseline-sync.md)
+- [ ] Separate true acceptance blockers from newly discovered nonblocking issues
+- [ ] Confirm every scope expansion was explicitly approved
+- [ ] Never treat deterministic identity replacement as semantic adaptation
+
 ### When Verifying AI Cross-Review Results
 
 - [ ] Reviewer claims "user input can be malicious" → Check the actual data source (internal manifest? user config? external API?)

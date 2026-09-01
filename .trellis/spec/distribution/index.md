@@ -1,10 +1,11 @@
 # Distribution Specifications
 
-本层描述 AIRules 角色分发配置、vendor 投影和宿主安装之间的可执行契约，适用于 `capabilities/`、`roles/*/constants/`、`mcps/` 与 `scripts/lib/vendor*`。
+本层描述 AIRules 角色分发配置、外部基线、vendor 投影和宿主安装之间的可执行契约，适用于 `capabilities/`、`roles/*/constants/`、`roles/*/.sync`、`roles/*/packages`、`mcps/` 与 `scripts/lib/vendor*`。
 
 ## Pre-Development Checklist
 
 - 修改角色 skills/MCP 组成前，读取 [Role Capability Contract](role-capabilities.md)。
+- 升级角色外部源码或重新导出 packages 前，读取 [External Baseline Sync Contract](external-baseline-sync.md)。
 - 搜索所有角色的 `capabilities` 声明和同一 vendor/projection 目标。
 - 确认变更属于公共 capability 还是 role-owned 资产。
 
@@ -18,3 +19,4 @@
 ## Specifications
 
 - [Role Capability Contract](role-capabilities.md)
+- [External Baseline Sync Contract](external-baseline-sync.md)
