@@ -4,12 +4,14 @@ import path from 'node:path'
 import { afterEach, describe, expect, it } from 'vitest'
 import { publishWorkspace } from '../../role-packages.js'
 import {
+  affectedRolePackageWorkspaces,
   compareSemver,
   discoverRolePackageWorkspaces,
   loadRolePackageWorkspace,
+  nextPatchVersion,
+  nextWorkspacePatchVersion,
   npmDistTag,
-  parseRoleReleaseTag,
-  requireReleaseMatchesWorkspace,
+  writeWorkspaceVersion,
 } from '../role-packages.js'
 
 const temporaryRoots: string[] = []
@@ -62,18 +64,49 @@ describe('role package publication contract', () => {
     expect(workspace.version).toBe('1.2.3')
     expect(workspace.packages.map(rolePackage => rolePackage.name)).toEqual(['@demo/core', '@demo/cli'])
     expect((await discoverRolePackageWorkspaces(root)).map(item => item.role)).toEqual(['demo'])
-    requireReleaseMatchesWorkspace(parseRoleReleaseTag('refs/tags/demo-v1.2.3'), workspace)
   })
 
-  it('parses role tags and selects stable or prerelease npm dist-tags', () => {
-    expect(parseRoleReleaseTag('moluoxixi-v0.6.20')).toEqual({ role: 'moluoxixi', version: '0.6.20' })
+  it('increments patch versions and selects stable or prerelease npm dist-tags', () => {
+    expect(nextPatchVersion('0.6.20')).toBe('0.6.21')
+    expect(nextPatchVersion('0.6.20-beta.2')).toBe('0.6.21')
     expect(npmDistTag('0.6.20')).toBe('latest')
     expect(npmDistTag('0.7.0-beta.2')).toBe('beta')
     expect(npmDistTag('0.7.0-1')).toBe('next')
     expect(compareSemver('1.2.3', '1.2.2')).toBeGreaterThan(0)
     expect(compareSemver('1.2.3', '1.2.3-beta.2')).toBeGreaterThan(0)
     expect(compareSemver('1.2.3-beta.10', '1.2.3-beta.2')).toBeGreaterThan(0)
-    expect(() => parseRoleReleaseTag('v0.6.20')).toThrow(/<role>-v<semver>/)
+    expect(() => nextPatchVersion('latest')).toThrow(/invalid semver/)
+  })
+
+  it('selects changed role workspaces from package and publication config paths', async () => {
+    const workspaces = await discoverRolePackageWorkspaces(createRepository())
+    expect(affectedRolePackageWorkspaces(workspaces, ['roles/demo/packages/core/src/index.ts']))
+      .toEqual(workspaces)
+    expect(affectedRolePackageWorkspaces(workspaces, ['.\\roles\\demo\\constants\\skills.js']))
+      .toEqual(workspaces)
+    expect(affectedRolePackageWorkspaces(workspaces, ['roles/demo/skills/demo/SKILL.md']))
+      .toEqual([])
+    expect(affectedRolePackageWorkspaces(workspaces, ['roles/other/packages/core/src/index.ts']))
+      .toEqual([])
+  })
+
+  it('chooses the next unpublished shared patch and rewrites role manifests', async () => {
+    const root = createRepository()
+    const workspace = await loadRolePackageWorkspace(root, 'demo')
+    const versions = new Map<string, string>([
+      ['@demo/core@latest', '1.2.3'],
+      ['@demo/cli@latest', '1.2.4'],
+      ['@demo/core@1.2.5', '1.2.5'],
+    ])
+
+    const version = nextWorkspacePatchVersion(workspace, specifier => versions.get(specifier))
+    expect(version).toBe('1.2.6')
+    writeWorkspaceVersion(workspace, version)
+
+    const rewritten = await loadRolePackageWorkspace(root, 'demo')
+    expect(rewritten.version).toBe('1.2.6')
+    expect(rewritten.packages.map(rolePackage => rolePackage.version)).toEqual(['1.2.6', '1.2.6'])
+    expect(rewritten.packages[1].packageJson.dependencies?.['@demo/core']).toBe('workspace:*')
   })
 
   it('publishes in configured order without rolling a newer dist-tag backward', async () => {
@@ -142,11 +175,6 @@ describe('role package publication contract', () => {
   it('rejects manifest identity drift and invalid dependency order', async () => {
     await expect(loadRolePackageWorkspace(createRepository({ wrongName: true }), 'demo')).rejects.toThrow(/name mismatch/)
     await expect(loadRolePackageWorkspace(createRepository({ reverseOrder: true }), 'demo')).rejects.toThrow(/must appear before/)
-  })
-
-  it('rejects a release tag whose version differs from the role packages', async () => {
-    const workspace = await loadRolePackageWorkspace(createRepository(), 'demo')
-    expect(() => requireReleaseMatchesWorkspace(parseRoleReleaseTag('demo-v1.2.4'), workspace)).toThrow(/does not match/)
   })
 
   it('rejects package names owned by more than one role', async () => {

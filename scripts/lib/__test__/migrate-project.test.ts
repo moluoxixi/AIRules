@@ -79,10 +79,16 @@ function runMigratorWithEnvironment(
 
 function expectNoTrellis(root: string, current = root): void {
   for (const entry of fs.readdirSync(current, { withFileTypes: true })) {
-    if (current === root && entry.name === '.git')
-      continue
     const entryPath = path.join(current, entry.name)
-    expect(path.relative(root, entryPath).toLowerCase()).not.toContain('trellis')
+    const relativePath = path.relative(root, entryPath)
+    if (current === root && (
+      entry.name === '.git'
+      || entry.name === 'node_modules'
+      || /^README.*\.md$/iu.test(entry.name)
+    )) {
+      continue
+    }
+    expect(relativePath.toLowerCase()).not.toContain('trellis')
     if (entry.isDirectory()) {
       expectNoTrellis(root, entryPath)
     }
@@ -112,13 +118,44 @@ function snapshotTree(root: string, current = root): Array<{ content?: string, p
 }
 
 describe('project migration', () => {
-  it('copies every non-protected entry without modifying the source, removes Trellis content, and rebuilds role-based READMEs', () => {
+  it('copies every non-protected entry, preserves target dependencies, and removes only Trellis README sections', () => {
     const { source, target } = createFixture()
     for (const relativePath of trellisReferenceFixtures)
       copyRepositoryFile(source, relativePath)
 
-    writeFile(path.join(source, 'README.md'), '# Moluoxixi\n\nTrellis content\n')
-    writeFile(path.join(source, 'README-zh.md'), '# Moluoxixi\n\nTrellis 内容\n')
+    writeFile(path.join(source, 'README.md'), [
+      '# Moluoxixi',
+      '',
+      'This overview keeps an ordinary Trellis reference.',
+      '',
+      '```md',
+      '## `trellis`',
+      'This fenced example is not a role section.',
+      '```',
+      '',
+      '## `moluoxixi`',
+      '',
+      'Custom Moluoxixi details that the migration must retain.',
+      '',
+      '## `trellis`',
+      '',
+      '### Unknown future content',
+      '',
+      '| Trellis | data |',
+      '| --- | --- |',
+      '| workflow | custom |',
+      '',
+      '## `matt`',
+      '',
+      'Custom Matt details that the migration must retain.',
+      '',
+      '## Development',
+      '',
+      'Keep this custom development section.',
+      '',
+    ].join('\n'))
+    writeFile(path.join(source, 'README-en.md'), '# Moluoxixi\n\n## `trellis`\n\nRemove this role.\n\n## Notes\n\nKeep English notes.\n')
+    writeFile(path.join(source, 'README-zh.md'), '# Moluoxixi\n\n## `trellis`\n\n删除这个角色。\n\n## 说明\n\n保留中文说明。\n')
     writeFile(path.join(source, 'src', 'app.ts'), 'export class Moluoxixi {}\nexport const env = "MOLUOXIXI_CONTEXT_ID"\n')
     writeFile(path.join(source, 'src', 'repository-links.txt'), [
       'https://github.com/moluoxixi/AIRules',
@@ -156,6 +193,7 @@ describe('project migration', () => {
     ])
     fs.writeFileSync(path.join(source, 'src', 'branded.txt'), textWithByteOrderMark)
     writeFile(path.join(target, '.git', 'HEAD'), 'ref: refs/heads/main\n')
+    writeFile(path.join(target, 'node_modules', 'cached-package', 'index.js'), 'Trellis dependency cache\n')
     writeFile(path.join(target, 'stale.txt'))
     const sourceBefore = snapshotTree(source)
 
@@ -170,7 +208,7 @@ describe('project migration', () => {
     expect(fs.existsSync(path.join(target, 'roles', 'busyming', '.sync', 'baseline.txt'))).toBe(true)
     expect(fs.existsSync(path.join(target, 'roles', 'matt', 'role.yaml'))).toBe(true)
     expect(fs.existsSync(path.join(target, '.busyming', 'busyming-context.js'))).toBe(true)
-    expect(fs.existsSync(path.join(target, 'node_modules'))).toBe(false)
+    expect(fs.readFileSync(path.join(target, 'node_modules', 'cached-package', 'index.js'), 'utf8')).toBe('Trellis dependency cache\n')
     expect(fs.existsSync(path.join(target, 'roles', 'busyming', 'packages', 'demo', 'node_modules'))).toBe(false)
     expect(fs.existsSync(path.join(target, 'coverage', 'lcov.info'))).toBe(true)
     expect(fs.existsSync(path.join(target, '.codegraph', 'index.json'))).toBe(true)
@@ -204,36 +242,17 @@ describe('project migration', () => {
 
     const readme = fs.readFileSync(path.join(target, 'README.md'), 'utf8')
     const readmeEn = fs.readFileSync(path.join(target, 'README-en.md'), 'utf8')
+    const readmeZh = fs.readFileSync(path.join(target, 'README-zh.md'), 'utf8')
     expect(readme).toContain('## `busyming`')
     expect(readme).toContain('## `matt`')
-    expect(readme).toContain('### 功能')
-    expect(readme).toContain('### 安装')
-    expect(readme).toContain('### 用法')
-    expect(readme).toContain('使用 `init-project` 初始化当前项目')
-    expect(readme).toContain('该角色无需项目初始化')
-    expect(readme).toContain('工作流：提出问题 → AI 选择合适的 skill')
-    expect(readmeEn).toContain('## `busyming`')
-    expect(readmeEn).toContain('## `matt`')
-    expect(readmeEn).toContain('### Features')
-    expect(readmeEn).toContain('### Install')
-    expect(readmeEn).toContain('### Usage')
-    expect(readmeEn).toContain('Workflow: state the problem → the AI selects the relevant skill')
-    for (const role of ['busyming', 'matt']) {
-      const readmeRoleSection = readme.slice(
-        readme.indexOf(`## \`${role}\``),
-        readme.indexOf('\n## ', readme.indexOf(`## \`${role}\``) + 1),
-      )
-      expect(readmeRoleSection.indexOf('### 安装')).toBeLessThan(readmeRoleSection.indexOf('### 功能'))
-      expect(readmeRoleSection.indexOf('### 功能')).toBeLessThan(readmeRoleSection.indexOf('### 用法'))
-
-      const readmeEnRoleSection = readmeEn.slice(
-        readmeEn.indexOf(`## \`${role}\``),
-        readmeEn.indexOf('\n## ', readmeEn.indexOf(`## \`${role}\``) + 1),
-      )
-      expect(readmeEnRoleSection.indexOf('### Install')).toBeLessThan(readmeEnRoleSection.indexOf('### Features'))
-      expect(readmeEnRoleSection.indexOf('### Features')).toBeLessThan(readmeEnRoleSection.indexOf('### Usage'))
-    }
-    expect(fs.existsSync(path.join(target, 'README-zh.md'))).toBe(false)
+    expect(readme).toContain('This overview keeps an ordinary Trellis reference.')
+    expect(readme).toContain('## `trellis`\nThis fenced example is not a role section.')
+    expect(readme).toContain('Custom Busyming details that the migration must retain.')
+    expect(readme).toContain('Custom Matt details that the migration must retain.')
+    expect(readme).toContain('Keep this custom development section.')
+    expect(readme).not.toContain('Unknown future content')
+    expect(readmeEn).toBe('# Busyming\n\n## Notes\n\nKeep English notes.\n')
+    expect(readmeZh).toBe('# Busyming\n\n## 说明\n\n保留中文说明。\n')
     expectNoTrellis(target)
 
     const verifySyntax = spawnSync(process.execPath, ['--check', path.join(target, 'scripts', 'verify-packed-airules.mjs')], {
@@ -247,14 +266,228 @@ describe('project migration', () => {
     writeFile(path.join(source, 'src', 'app.ts'))
     writeFile(path.join(target, 'stale.txt'))
 
-    const result = runMigrator(source, target, '--dry-run')
+    const result = runMigrator(source, target, '--preserve', 'cache/downloads', '--dry-run')
 
     expect(result.status, result.stderr).toBe(0)
     expect(result.stdout).toContain('Mode: dry-run')
     expect(result.stdout).toContain('Project name: busyming')
+    expect(result.stdout).toContain('Preserved target paths: .git, node_modules, cache/downloads')
     expect(fs.existsSync(path.join(source, 'src', 'app.ts'))).toBe(true)
     expect(fs.existsSync(path.join(target, 'stale.txt'))).toBe(true)
     expect(fs.existsSync(path.join(target, 'src', 'app.ts'))).toBe(false)
+  })
+
+  it('preserves multiple configured target paths and removes their unpreserved siblings', () => {
+    const { source, target } = createFixture()
+    writeFile(path.join(source, 'src', 'app.ts'))
+    writeFile(path.join(target, 'cache', 'downloads', 'archive.bin'), 'cached\n')
+    writeFile(path.join(target, 'cache', 'stale.txt'))
+    writeFile(path.join(target, 'local-only', 'settings.json'), '{"source":"Trellis"}\n')
+    writeFile(path.join(target, 'remove-me', 'stale.txt'))
+
+    const result = runMigrator(
+      source,
+      target,
+      '--preserve',
+      'cache/downloads',
+      '--preserve',
+      'local-only',
+      '--preserve',
+      'cache/downloads',
+      '--yes',
+    )
+
+    expect(result.status, result.stderr).toBe(0)
+    expect(result.stdout).toContain('Preserved target paths: .git, node_modules, cache/downloads, local-only')
+    expect(fs.readFileSync(path.join(target, 'cache', 'downloads', 'archive.bin'), 'utf8')).toBe('cached\n')
+    expect(fs.existsSync(path.join(target, 'cache', 'stale.txt'))).toBe(false)
+    expect(fs.readFileSync(path.join(target, 'local-only', 'settings.json'), 'utf8')).toBe('{"source":"Trellis"}\n')
+    expect(fs.existsSync(path.join(target, 'remove-me'))).toBe(false)
+  })
+
+  it.each([
+    '.',
+    '..',
+    '../escape',
+    'a/../b',
+    'a//b',
+    'a\\b',
+    'name.',
+    'name ',
+    '/absolute',
+    'C:/escape',
+  ])('rejects unsafe preserve path %s before cleaning the target', (preservedPath) => {
+    const { source, target } = createFixture()
+    writeFile(path.join(source, 'src', 'app.ts'))
+    writeFile(path.join(target, 'stale.txt'))
+
+    const result = runMigrator(source, target, '--preserve', preservedPath, '--yes')
+
+    expect(result.status).not.toBe(0)
+    expect(result.stderr).toMatch(/preserve.*relative path/i)
+    expect(fs.existsSync(path.join(target, 'stale.txt'))).toBe(true)
+  })
+
+  it('rejects preserve paths that overlap migration output before cleaning the target', () => {
+    const { source, target } = createFixture()
+    writeFile(path.join(source, 'cache', 'generated.txt'))
+    writeFile(path.join(target, 'cache', 'downloads', 'archive.bin'))
+    writeFile(path.join(target, 'stale.txt'))
+
+    const result = runMigrator(source, target, '--preserve', 'cache/downloads', '--yes')
+
+    expect(result.status).not.toBe(0)
+    expect(result.stderr).toMatch(/preserve.*overlap.*migration output/i)
+    expect(fs.existsSync(path.join(target, 'stale.txt'))).toBe(true)
+    expect(fs.existsSync(path.join(target, 'cache', 'downloads', 'archive.bin'))).toBe(true)
+  })
+
+  it('rejects preserve paths that overlap Trellis cleanup roots before cleaning the target', () => {
+    const { source, target } = createFixture()
+    writeFile(path.join(target, '.trellis', 'tasks', 'state.json'))
+    writeFile(path.join(target, 'stale.txt'))
+
+    const result = runMigrator(source, target, '--preserve', '.trellis/tasks', '--yes')
+
+    expect(result.status).not.toBe(0)
+    expect(result.stderr).toMatch(/preserve.*Trellis cleanup/i)
+    expect(fs.existsSync(path.join(target, 'stale.txt'))).toBe(true)
+    expect(fs.existsSync(path.join(target, '.trellis', 'tasks', 'state.json'))).toBe(true)
+  })
+
+  it('rejects a preserve path below a symbolic-link parent before cleaning the target', () => {
+    const { root, source, target } = createFixture()
+    const outside = path.join(root, 'outside')
+    writeFile(path.join(source, 'src', 'app.ts'))
+    writeFile(path.join(outside, 'sentinel.txt'))
+    fs.mkdirSync(target, { recursive: true })
+    fs.symlinkSync(outside, path.join(target, 'linked'), process.platform === 'win32' ? 'junction' : 'dir')
+    writeFile(path.join(target, 'stale.txt'))
+
+    const result = runMigrator(source, target, '--preserve', 'linked/child', '--yes')
+
+    expect(result.status).not.toBe(0)
+    expect(result.stderr).toMatch(/symbolic-link.*preserve/i)
+    expect(fs.existsSync(path.join(target, 'stale.txt'))).toBe(true)
+    expect(fs.readFileSync(path.join(outside, 'sentinel.txt'), 'utf8')).toBe('content\n')
+  })
+
+  it('removes Trellis H2 sections without changing README line endings, BOM, or fenced examples', () => {
+    const { source, target } = createFixture()
+    const sourceText = [
+      '# Moluoxixi',
+      '',
+      'Overview keeps Trellis.',
+      '',
+      '```md',
+      '## `trellis`',
+      'fenced example',
+      '```',
+      '',
+      '## `moluoxixi`',
+      '',
+      'Keep Moluoxixi.',
+      '',
+      '  ## `TrElLiS` ###',
+      '### Unknown internals',
+      '~~~md',
+      '## fake boundary',
+      '~~~',
+      '',
+      '## Next',
+      '',
+      'Keep after.',
+      '',
+      '## TRELLIS',
+      'remove second block',
+      '',
+      '# Final',
+      '',
+      'Keep final.',
+      '',
+    ].join('\r\n')
+    fs.writeFileSync(path.join(source, 'README-custom.MD'), Buffer.concat([
+      Buffer.from([0xEF, 0xBB, 0xBF]),
+      Buffer.from(sourceText),
+    ]))
+
+    const result = runMigrator(source, target, '--yes')
+
+    expect(result.status, result.stderr).toBe(0)
+    expect(fs.readFileSync(path.join(target, 'README-custom.MD'))).toEqual(Buffer.concat([
+      Buffer.from([0xEF, 0xBB, 0xBF]),
+      Buffer.from([
+        '# Busyming',
+        '',
+        'Overview keeps Trellis.',
+        '',
+        '```md',
+        '## `trellis`',
+        'fenced example',
+        '```',
+        '',
+        '## `busyming`',
+        '',
+        'Keep Busyming.',
+        '',
+        '## Next',
+        '',
+        'Keep after.',
+        '',
+        '# Final',
+        '',
+        'Keep final.',
+        '',
+      ].join('\r\n')),
+    ]))
+  })
+
+  it('rejects a non-UTF-8 root README before cleaning the target', () => {
+    const { source, target } = createFixture()
+    fs.writeFileSync(path.join(source, 'README.md'), Buffer.from([0xFF, 0xFE, 0x00, 0x00]))
+    writeFile(path.join(target, 'stale.txt'))
+
+    const result = runMigrator(source, target, '--yes')
+
+    expect(result.status).not.toBe(0)
+    expect(result.stderr).toMatch(/README\.md.*UTF-8/i)
+    expect(fs.existsSync(path.join(target, 'stale.txt'))).toBe(true)
+  })
+
+  it('removes the complete Trellis tree entry from skills organization when later siblings exist', () => {
+    const { source, target } = createFixture()
+    writeFile(path.join(source, 'SKILLS_ORGANIZATION.md'), [
+      '# Skills',
+      '',
+      '```text',
+      'roles/',
+      '├── trellis/',
+      '│   ├── constants/',
+      '│   └── skills/',
+      '│       └── init-project/',
+      '└── matt/',
+      '    └── skills/',
+      '```',
+      '',
+      'Keep this note.',
+      '',
+    ].join('\n'))
+
+    const result = runMigrator(source, target, '--yes')
+
+    expect(result.status, result.stderr).toBe(0)
+    expect(fs.readFileSync(path.join(target, 'SKILLS_ORGANIZATION.md'), 'utf8')).toBe([
+      '# Skills',
+      '',
+      '```text',
+      'roles/',
+      '└── matt/',
+      '    └── skills/',
+      '```',
+      '',
+      'Keep this note.',
+      '',
+    ].join('\n'))
   })
 
   it('loads the target directory and repository link from .env.local', () => {

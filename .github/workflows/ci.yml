@@ -1,6 +1,6 @@
 name: CI
 
-# PR 与 main 推送阶段的质量门禁。发布门禁见 publish.yml（tag 触发）。
+# PR 与 main 推送阶段的质量门禁。受影响包由发布工作流在 main 推送后发布。
 on:
   push:
     branches: [main]

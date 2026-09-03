@@ -6,12 +6,13 @@ import path from 'node:path'
 import process from 'node:process'
 import { fileURLToPath } from 'node:url'
 import {
+  affectedRolePackageWorkspaces,
   compareSemver,
   discoverRolePackageWorkspaces,
   loadRolePackageWorkspace,
+  nextWorkspacePatchVersion,
   npmDistTag,
-  parseRoleReleaseTag,
-  requireReleaseMatchesWorkspace,
+  writeWorkspaceVersion,
 } from './lib/role-packages.js'
 
 const repoRoot = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..')
@@ -25,16 +26,16 @@ function optionValue(args: string[], name: string): string {
   return value
 }
 
-function executable(name: 'npm' | 'pnpm'): string {
-  return process.platform === 'win32' ? `${name}.cmd` : name
+function executable(name: 'git' | 'npm' | 'pnpm'): string {
+  return process.platform === 'win32' && name !== 'git' ? `${name}.cmd` : name
 }
 
-function run(command: 'npm' | 'pnpm', args: string[], cwd = repoRoot): string {
+function run(command: 'git' | 'npm' | 'pnpm', args: string[], cwd = repoRoot): string {
   const result = spawnSync(executable(command), args, {
     cwd,
     encoding: 'utf8',
     env: process.env,
-    shell: process.platform === 'win32',
+    shell: process.platform === 'win32' && command !== 'git',
     stdio: ['ignore', 'pipe', 'pipe'],
   })
   if (result.error)
@@ -182,18 +183,34 @@ function writeGithubOutput(values: Record<string, string>): void {
   fs.appendFileSync(outputPath, `${Object.entries(values).map(([key, value]) => `${key}=${value}`).join('\n')}\n`)
 }
 
-async function prepareRelease(tag: string): Promise<RolePackageWorkspace> {
-  const release = parseRoleReleaseTag(tag)
-  const workspace = await loadRolePackageWorkspace(repoRoot, release.role)
-  requireReleaseMatchesWorkspace(release, workspace)
-  return workspace
+function changedPathsBetween(before: string, after: string): string[] {
+  return run('git', ['diff', '--name-only', '--diff-filter=ACMRD', before, after])
+    .split(/\r?\n/u)
+    .filter(Boolean)
+}
+
+async function prepareLatest(role: string): Promise<RolePackageWorkspace> {
+  const workspace = await loadRolePackageWorkspace(repoRoot, role)
+  const version = nextWorkspacePatchVersion(workspace, npmViewVersion)
+  writeWorkspaceVersion(workspace, version)
+  return loadRolePackageWorkspace(repoRoot, role)
 }
 
 async function main(): Promise<void> {
   const [command, ...args] = process.argv.slice(2)
   if (command === 'matrix') {
-    const workspaces = await discoverRolePackageWorkspaces(repoRoot)
-    process.stdout.write(JSON.stringify({ include: workspaces.map(({ role }) => ({ role })) }))
+    let workspaces = await discoverRolePackageWorkspaces(repoRoot)
+    const before = args.includes('--before') ? optionValue(args, '--before') : undefined
+    const after = args.includes('--after') ? optionValue(args, '--after') : undefined
+    if ((before === undefined) !== (after === undefined))
+      throw new Error('--before and --after must be provided together')
+    if (before && after)
+      workspaces = affectedRolePackageWorkspaces(workspaces, changedPathsBetween(before, after))
+    const matrix = JSON.stringify({ include: workspaces.map(({ role }) => ({ role })) })
+    if (args.includes('--github'))
+      writeGithubOutput({ has_changes: String(workspaces.length > 0), matrix })
+    else
+      process.stdout.write(matrix)
     return
   }
   if (command === 'verify') {
@@ -201,8 +218,8 @@ async function main(): Promise<void> {
     console.log(`[role-packages] ${workspace.role}@${workspace.version}: ${workspace.packages.map(item => item.name).join(', ')}`)
     return
   }
-  if (command === 'prepare-release') {
-    const workspace = await prepareRelease(optionValue(args, '--tag'))
+  if (command === 'prepare-latest') {
+    const workspace = await prepareLatest(optionValue(args, '--role'))
     const values = {
       dist_tag: npmDistTag(workspace.version),
       package_count: String(workspace.packages.length),
@@ -216,12 +233,12 @@ async function main(): Promise<void> {
     return
   }
   if (command === 'publish') {
-    const workspace = await prepareRelease(optionValue(args, '--tag'))
+    const workspace = await loadRolePackageWorkspace(repoRoot, optionValue(args, '--role'))
     await publishWorkspace(workspace)
     return
   }
 
-  throw new Error('Usage: role-packages <matrix|verify|prepare-release|publish> [--role <role>] [--tag <role-vsemver>] [--github]')
+  throw new Error('Usage: role-packages <matrix|verify|prepare-latest|publish> [--role <role>] [--before <sha> --after <sha>] [--github]')
 }
 
 const invokedPath = process.argv[1] ? path.resolve(process.argv[1]) : undefined

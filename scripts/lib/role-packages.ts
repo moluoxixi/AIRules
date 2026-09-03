@@ -6,7 +6,6 @@ import { resolveRoleManifestPath } from './roles.js'
 import { loadVendorManifest } from './vendors.js'
 
 const semverPattern = /^(?:0|[1-9]\d*)\.(?:0|[1-9]\d*)\.(?:0|[1-9]\d*)(?:-[0-9A-Za-z-]+(?:\.[0-9A-Za-z-]+)*)?(?:\+[0-9A-Za-z-]+(?:\.[0-9A-Za-z-]+)*)?$/u
-const roleReleaseTagPattern = /^([a-z0-9][a-z0-9-]{0,62})-v(.+)$/u
 
 interface PackageJson {
   dependencies?: Record<string, string>
@@ -34,22 +33,6 @@ export interface RolePackageWorkspace {
   role: string
   roleRoot: string
   version: string
-}
-
-export interface RoleReleaseTag {
-  role: string
-  version: string
-}
-
-export function parseRoleReleaseTag(tagValue: string): RoleReleaseTag {
-  const tag = tagValue.replace(/^refs\/tags\//u, '')
-  const match = tag.match(roleReleaseTagPattern)
-  if (!match || !semverPattern.test(match[2]))
-    throw new Error(`Role release tag must match <role>-v<semver>: ${tagValue}`)
-  return {
-    role: requireRoleName(match[1]),
-    version: match[2],
-  }
 }
 
 export function npmDistTag(version: string): string {
@@ -104,6 +87,13 @@ export function compareSemver(left: string, right: string): number {
       return leftNumbers[index] - rightNumbers[index]
   }
   return comparePrerelease(leftPrerelease, rightPrerelease)
+}
+
+export function nextPatchVersion(version: string): string {
+  if (!semverPattern.test(version))
+    throw new Error(`Cannot increment invalid semver: ${version}`)
+  const [major, minor, patch] = version.split(/[+-]/u, 1)[0].split('.').map(Number)
+  return `${major}.${minor}.${patch + 1}`
 }
 
 function readPackageJson(packageJsonPath: string): PackageJson {
@@ -227,15 +217,52 @@ export async function discoverRolePackageWorkspaces(repoRoot: string): Promise<R
   return workspaces
 }
 
-export function requireReleaseMatchesWorkspace(
-  release: RoleReleaseTag,
-  workspace: RolePackageWorkspace,
-): void {
-  if (release.role !== workspace.role)
-    throw new Error(`Release tag role "${release.role}" does not match workspace role "${workspace.role}"`)
-  if (release.version !== workspace.version) {
-    throw new Error(
-      `Release tag version "${release.version}" does not match ${workspace.role} package version "${workspace.version}"`,
+export function affectedRolePackageWorkspaces(
+  workspaces: RolePackageWorkspace[],
+  changedPaths: string[],
+): RolePackageWorkspace[] {
+  const normalizedPaths = changedPaths.map(filePath => filePath.replaceAll('\\', '/').replace(/^\.\//u, ''))
+  return workspaces.filter((workspace) => {
+    const rolePrefix = `roles/${workspace.role}/`
+    const exactPaths = new Set([
+      `${rolePrefix}constants/skills.js`,
+      `${rolePrefix}constants/skills.ts`,
+      `${rolePrefix}package.json`,
+      `${rolePrefix}pnpm-lock.yaml`,
+      `${rolePrefix}pnpm-workspace.yaml`,
+    ])
+    const packagePrefixes = workspace.packages.map(
+      rolePackage => `${rolePrefix}${rolePackage.relativePath.replaceAll('\\', '/').replace(/\/$/u, '')}/`,
     )
+    return normalizedPaths.some(filePath => exactPaths.has(filePath)
+      || packagePrefixes.some(prefix => filePath.startsWith(prefix)))
+  })
+}
+
+export function nextWorkspacePatchVersion(
+  workspace: RolePackageWorkspace,
+  npmViewVersion: (specifier: string) => string | undefined,
+): string {
+  const latestVersions = workspace.packages
+    .map(rolePackage => npmViewVersion(`${rolePackage.name}@latest`))
+    .filter((version): version is string => version !== undefined)
+  const baseline = latestVersions.reduce<string | undefined>(
+    (highest, version) => highest === undefined || compareSemver(highest, version) < 0 ? version : highest,
+    undefined,
+  )
+  let candidate = baseline === undefined ? workspace.version : nextPatchVersion(baseline)
+  while (workspace.packages.some(rolePackage => npmViewVersion(`${rolePackage.name}@${candidate}`) !== undefined))
+    candidate = nextPatchVersion(candidate)
+  return candidate
+}
+
+export function writeWorkspaceVersion(workspace: RolePackageWorkspace, version: string): void {
+  if (!semverPattern.test(version) || version.includes('-') || version.includes('+'))
+    throw new Error(`Role package release version must be stable semver: ${version}`)
+  for (const rolePackage of workspace.packages) {
+    const packageJsonPath = path.join(rolePackage.directory, 'package.json')
+    const packageJson = readPackageJson(packageJsonPath)
+    packageJson.version = version
+    fs.writeFileSync(packageJsonPath, `${JSON.stringify(packageJson, null, 2)}\n`)
   }
 }

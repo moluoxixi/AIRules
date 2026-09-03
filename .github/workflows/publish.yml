@@ -1,73 +1,101 @@
 name: Publish package
 
-# Tag-based publishing keeps npm versions tied to immutable Git tags.
 on:
   push:
-    tags:
-      - 'v*.*.*'
-  workflow_dispatch:
-    inputs:
-      tag:
-        description: Existing git tag to publish, for example v0.1.0
-        required: true
-        type: string
+    branches: [main]
+    paths:
+      - package.json
+      - README.md
+      - README-en.md
+      - 'bin/**'
+      - 'capabilities/**'
+      - 'constants/**'
+      - 'docs/**'
+      - 'roles/*/constants/**'
+      - 'roles/*/role.yaml'
+      - 'roles/*/runtime/**'
+      - 'scripts/**'
+      - '!scripts/**/__test__/**'
+      - tsconfig.json
+      - tsconfig.build.json
 
 permissions:
-  # npm provenance needs an OIDC token from GitHub Actions.
   contents: read
   id-token: write
 
 concurrency:
-  group: publish-${{ github.event_name == 'workflow_dispatch' && inputs.tag || github.ref_name }}
+  group: publish-package-main
   cancel-in-progress: false
 
 jobs:
   publish:
-    name: Build, verify, and publish to npm
+    name: Build, verify, and publish latest
     runs-on: ubuntu-latest
 
     steps:
-      - name: Checkout release tag
+      - name: Reject an unreliable diff base
+        env:
+          BEFORE_SHA: ${{ github.event.before }}
+          CREATED: ${{ github.event.created }}
+          FORCED: ${{ github.event.forced }}
+        run: |
+          if [ "$CREATED" = "true" ] || [ "$FORCED" = "true" ] || [ "$BEFORE_SHA" = "0000000000000000000000000000000000000000" ]; then
+            echo "Cannot publish from a created or force-pushed main branch because its diff base is unreliable." >&2
+            exit 1
+          fi
+
+      - name: Checkout main
         uses: actions/checkout@v6
+
+      - name: Set up pnpm
+        uses: pnpm/action-setup@v4
         with:
-          ref: ${{ github.event_name == 'workflow_dispatch' && inputs.tag || github.ref }}
+          version: 10.32.1
 
       - name: Set up Node.js
         uses: actions/setup-node@v6
         with:
           node-version: 24
           registry-url: https://registry.npmjs.org
-          package-manager-cache: false
+          cache: pnpm
+          cache-dependency-path: pnpm-lock.yaml
 
-      # npm install is intentional because this repository does not track lockfiles.
       - name: Install dependencies
-        run: npm install
-
-      # Prevent publishing a tag whose version differs from the package manifest.
-      - name: Verify tag matches package version
-        env:
-          RELEASE_TAG: ${{ github.event_name == 'workflow_dispatch' && inputs.tag || github.ref_name }}
-        run: |
-          package_version="$(node -p "require('./package.json').version")"
-          tag_version="${RELEASE_TAG#refs/tags/}"
-          tag_version="${tag_version#v}"
-
-          if [ "$tag_version" != "$package_version" ]; then
-            echo "Release tag '$RELEASE_TAG' must match package.json version '$package_version'." >&2
-            exit 1
-          fi
+        run: pnpm install --frozen-lockfile
 
       - name: Lint
-        run: npm run lint:check
+        run: pnpm run lint:check
 
       - name: Typecheck
-        run: npm run typecheck
+        run: pnpm run typecheck
 
       - name: Test
-        run: npm test
+        run: pnpm test
 
-      - name: Publish to npm
+      - name: Select the next patch version
+        id: version
         env:
-          # Store an npm automation token in the repository secret NPM_TOKEN.
           NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
-        run: npm publish --provenance --access public
+        run: |
+          package_name="$(node -p "require('./package.json').name")"
+          latest_version="$(npm view "$package_name@latest" version --registry https://registry.npmjs.org)"
+          next_version="$(node -e '
+            const match = process.argv[1].match(/^(0|[1-9]\d*)\.(0|[1-9]\d*)\.(0|[1-9]\d*)$/u)
+            if (!match) throw new Error(`npm latest is not stable semver: ${process.argv[1]}`)
+            process.stdout.write(`${match[1]}.${match[2]}.${Number(match[3]) + 1}`)
+          ' "$latest_version")"
+
+          while npm view "$package_name@$next_version" version --registry https://registry.npmjs.org >/dev/null 2>&1; do
+            next_version="$(node -e '
+              const [major, minor, patch] = process.argv[1].split(".").map(Number)
+              process.stdout.write(`${major}.${minor}.${patch + 1}`)
+            ' "$next_version")"
+          done
+
+          npm version "$next_version" --no-git-tag-version --allow-same-version
+          echo "version=$next_version" >> "$GITHUB_OUTPUT"
+
+      - name: Publish latest
+        env:
+          NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
+        run: npm publish --provenance --access public --tag latest
