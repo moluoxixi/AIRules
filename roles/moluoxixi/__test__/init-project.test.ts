@@ -46,6 +46,7 @@ describe('init-project skill', () => {
       'assets/project-extension/hosts/pi/moluoxixi-knowledge.ts',
       'assets/project-extension/knowledge/gitignore.txt',
       'assets/project-extension/knowledge/index.md',
+      'assets/project-extension/knowledge/relations.json',
       'assets/project-extension/runtime/common/knowledge.py',
       'assets/project-extension/runtime/knowledge-hook.py',
       'assets/project-extension/runtime/knowledge.py',

@@ -312,6 +312,25 @@ function roleAssets(targetRoot, roleId) {
     .filter(asset => existsSync(path.join(targetRoot, 'roles', roleId, asset)))
 }
 
+function roleWorkflow(roleId, language, hasProjectInitializer) {
+  if (language === 'zh') {
+    if (roleId === 'trellis')
+      return '工作流：首次接入时运行一次 `init-project`；日常按“规划（Plan）→ 执行（Execute）→ 完成（Finish）”推进。'
+    if (roleId === 'moluoxixi')
+      return '工作流：首次接入时运行一次 `init-project`；之后按需求、任务、实现、检查和完成推进，并结合项目知识库。'
+    if (!hasProjectInitializer)
+      return '工作流：提出问题 → AI 选择合适的 skill → 在当前项目中实施并复核；不需要项目初始化。'
+    return '工作流：首次接入时运行一次 `init-project`；之后直接描述需求，由项目工作流推进任务、实现、检查和完成。'
+  }
+  if (roleId === 'trellis')
+    return 'Workflow: run `init-project` once for first-time setup; then move through Plan → Execute → Finish.'
+  if (roleId === 'moluoxixi')
+    return 'Workflow: run `init-project` once for first-time setup; then move through requirement, task, implementation, checking, and completion with the project knowledge base.'
+  if (!hasProjectInitializer)
+    return 'Workflow: state the problem → the AI selects the relevant skill → implement and review in the current project; no project initialization is required.'
+  return 'Workflow: run `init-project` once for first-time setup; then describe requirements directly and let the project workflow guide task, implementation, checking, and completion.'
+}
+
 function readPackageMetadata(targetRoot, replacement) {
   const manifestPath = path.join(targetRoot, 'package.json')
   if (!existsSync(manifestPath)) {
@@ -329,80 +348,86 @@ function readPackageMetadata(targetRoot, replacement) {
   }
 }
 
-function renderRoleSections(targetRoot, roles, language) {
+function renderRoleSections(targetRoot, roles, language, packageName) {
   return roles.map((roleId) => {
     const assets = roleAssets(targetRoot, roleId)
     const assetSummary = assets.length > 0 ? assets.map(asset => `\`${asset}\``).join(', ') : language === 'zh' ? '无独立资产目录' : 'No dedicated asset directories'
+    const hasProjectInitializer = existsSync(path.join(targetRoot, 'roles', roleId, 'skills', 'init-project', 'SKILL.md'))
     if (language === 'zh') {
-      return `### \`${roleId}\`
+      return `## \`${roleId}\`
 
-角色目录：[\`roles/${roleId}\`](roles/${roleId})
+${hasProjectInitializer
+  ? '适合需要角色专属项目工作流、初始化能力和配套资产的用户。'
+  : '适合直接使用角色 skills，而不需要项目工作流或初始化状态的用户。'}
 
-资产：${assetSummary}
+### 安装
 
 \`\`\`bash
+npm install --global ${packageName}
 airules install ${roleId} --host all
 airules verify ${roleId} --host all
-\`\`\``
+\`\`\`
+
+### 功能
+
+- 分发角色资产：${assetSummary}。
+- ${hasProjectInitializer
+  ? '提供项目初始化入口，并在项目中维护角色专属工作流和状态。'
+  : '安装后由 AI 根据任务直接选择对应 skills，不创建角色专属项目状态。'}
+
+### 用法
+
+${hasProjectInitializer
+  ? '安装后，在目标项目的 AI 宿主中要求 AI 使用 `init-project` 初始化当前项目并配置实际宿主；初始化完成后再直接描述任务。'
+  : '该角色无需项目初始化。安装后在对应 AI 宿主中直接描述任务，AI 会按需调用该角色的 skills。'}
+
+${roleWorkflow(roleId, 'zh', hasProjectInitializer)}
+
+角色目录：[\`roles/${roleId}\`](roles/${roleId})`
     }
-    return `### \`${roleId}\`
+    return `## \`${roleId}\`
 
-Role directory: [\`roles/${roleId}\`](roles/${roleId})
+${hasProjectInitializer
+  ? 'For users who need the role-specific project workflow, initialization, and supporting assets.'
+  : 'For users who want to invoke the role skills directly without project workflow state or initialization.'}
 
-Assets: ${assetSummary}
+### Install
 
 \`\`\`bash
+npm install --global ${packageName}
 airules install ${roleId} --host all
 airules verify ${roleId} --host all
-\`\`\``
+\`\`\`
+
+### Features
+
+- Distributes role assets: ${assetSummary}.
+- ${hasProjectInitializer
+  ? 'Provides a project initializer and maintains the role-specific workflow and state in the project.'
+  : 'Lets the AI select the relevant skills directly after installation and creates no role-specific project state.'}
+
+### Usage
+
+${hasProjectInitializer
+  ? 'After installation, ask the AI in the target project to use `init-project` to initialize the project and configure the actual host. Then describe the task normally.'
+  : 'This role requires no project initialization. Describe the task directly in the selected AI host, which will invoke the role skills as needed.'}
+
+${roleWorkflow(roleId, 'en', hasProjectInitializer)}
+
+Role directory: [\`roles/${roleId}\`](roles/${roleId})`
   }).join('\n\n')
 }
 
 function regenerateReadmes(targetRoot, replacement) {
   const roles = discoverRoles(targetRoot)
   const metadata = readPackageMetadata(targetRoot, replacement)
-  const english = `# ${replacement.display} AIRules
-
-${metadata.description}
-
-## Install
-
-\`\`\`bash
-npm install --global ${metadata.name}
-airules --version
-\`\`\`
-
-## Roles
-
-${renderRoleSections(targetRoot, roles, 'en') || 'No roles are currently available.'}
-
-## Development
-
-\`\`\`bash
-npm install
-npm test
-\`\`\`
-
-Chinese documentation: [README-zh.md](README-zh.md)
-
-## License
-
-${metadata.license}
-`
   const chinese = `# ${replacement.display} AIRules
 
-${metadata.description}
+${replacement.display} AIRules 为受支持的 AI 编程宿主分发带版本的 skills、MCP 配置和角色专属资产。
 
-## 安装
+[English](README-en.md)
 
-\`\`\`bash
-npm install --global ${metadata.name}
-airules --version
-\`\`\`
-
-## Roles
-
-${renderRoleSections(targetRoot, roles, 'zh') || '当前没有可用角色。'}
+${renderRoleSections(targetRoot, roles, 'zh', metadata.name) || '当前没有可用角色。'}
 
 ## 开发
 
@@ -411,21 +436,39 @@ npm install
 npm test
 \`\`\`
 
-English documentation: [README.md](README.md)
-
 ## 许可证
 
 ${metadata.license}
 `
-  writeUtf8(path.join(targetRoot, 'README.md'), english)
-  writeUtf8(path.join(targetRoot, 'README-zh.md'), chinese)
+  const english = `# ${replacement.display} AIRules
+
+${metadata.description}
+
+[简体中文](README.md)
+
+${renderRoleSections(targetRoot, roles, 'en', metadata.name) || 'No roles are currently available.'}
+
+## Development
+
+\`\`\`bash
+npm install
+npm test
+\`\`\`
+
+## License
+
+${metadata.license}
+`
+  writeUtf8(path.join(targetRoot, 'README.md'), chinese)
+  writeUtf8(path.join(targetRoot, 'README-en.md'), english)
+  rmSync(path.join(targetRoot, 'README-zh.md'), { force: true })
   writeUtf8(path.join(targetRoot, 'SKILLS_ORGANIZATION.md'), `# Skills Organization
 
 Shared skills live in [\`skills/common\`](skills/common). Role-owned skills remain under their role directory.
 
 ## Roles
 
-${renderRoleSections(targetRoot, roles, 'en') || 'No roles are currently available.'}
+${renderRoleSections(targetRoot, roles, 'en', metadata.name) || 'No roles are currently available.'}
 `)
 }
 
@@ -485,10 +528,10 @@ The target is cleared before migration, except for its root .git entry.
 Moluoxixi path names and UTF-8 text are renamed to "${defaultProjectName}" by default.
 Use --name to select another lowercase kebab-case project name.
 Use --repository-url to replace this project's GitHub repository links with any specified link.
-The root env.local file is loaded automatically and supports:
+The root ${localEnvironmentFile} file is loaded automatically and supports:
   - ${targetEnvironmentVariable}
   - ${repositoryUrlEnvironmentVariable}
-CLI arguments override process environment variables, which override env.local values.
+CLI arguments override process environment variables, which override ${localEnvironmentFile} values.
 The following source content is not copied:
   - all .git metadata
   - node_modules directories at any depth

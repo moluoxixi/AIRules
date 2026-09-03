@@ -1,4 +1,6 @@
+import { Buffer } from 'node:buffer'
 import { execFileSync, spawnSync } from 'node:child_process'
+import { createHash } from 'node:crypto'
 import fs from 'node:fs'
 import os from 'node:os'
 import path from 'node:path'
@@ -44,6 +46,30 @@ function resolvePython(): string | undefined {
   return undefined
 }
 
+function sourceHash(root: string, name = 'api.md'): string {
+  return createHash('sha256')
+    .update(fs.readFileSync(path.join(root, '.moluoxixi', 'knowledge', 'sources', name)))
+    .digest('hex')
+}
+
+function writeRelations(root: string, assets: Record<string, unknown>): void {
+  fs.writeFileSync(
+    path.join(root, '.moluoxixi', 'knowledge', 'relations.json'),
+    `${JSON.stringify({ version: 1, assets }, null, 2)}\n`,
+  )
+}
+
+function writeMappedAsset(root: string, hash = sourceHash(root)): void {
+  const page = path.join(root, '.moluoxixi', 'knowledge', 'library', 'api.md')
+  fs.writeFileSync(page, '# Organized API\n')
+  writeRelations(root, {
+    'concept:api': {
+      page: 'library/api.md',
+      sources: [{ path: 'api.md', sha256: hash }],
+    },
+  })
+}
+
 describe('role-owned knowledge extension', () => {
   it('installs knowledge data, skills, fallback rules, and an independent hook', () => {
     const root = projectFixture()
@@ -53,6 +79,10 @@ describe('role-owned knowledge extension', () => {
     expect(fs.readFileSync(path.join(root, '.moluoxixi', 'knowledge', 'index.md'), 'utf8')).toContain('# Project Knowledge')
     expect(fs.statSync(path.join(root, '.moluoxixi', 'knowledge', 'sources')).isDirectory()).toBe(true)
     expect(fs.statSync(path.join(root, '.moluoxixi', 'knowledge', 'library')).isDirectory()).toBe(true)
+    expect(JSON.parse(fs.readFileSync(path.join(root, '.moluoxixi', 'knowledge', 'relations.json'), 'utf8'))).toEqual({
+      version: 1,
+      assets: {},
+    })
     expect(fs.existsSync(path.join(root, '.moluoxixi', 'scripts', 'knowledge.py'))).toBe(true)
     expect(fs.existsSync(path.join(root, '.agents', 'skills', 'moluoxixi-knowledge', 'SKILL.md'))).toBe(true)
     expect(fs.readFileSync(path.join(root, 'AGENTS.md'), 'utf8')).toContain('MOLUOXIXI KNOWLEDGE:START')
@@ -75,6 +105,7 @@ describe('role-owned knowledge extension', () => {
     expect(manifest.schemaVersion).toBe(1)
     expect(manifest.entries).toHaveProperty('.moluoxixi/scripts/knowledge.py')
     expect(manifest.entries).not.toHaveProperty('.moluoxixi/knowledge/index.md')
+    expect(manifest.entries).not.toHaveProperty('.moluoxixi/knowledge/relations.json')
     expect(fs.existsSync(path.join(root, '.moluoxixi', '.template-hashes.json'))).toBe(false)
   })
 
@@ -84,6 +115,7 @@ describe('role-owned knowledge extension', () => {
     fs.writeFileSync(path.join(root, '.moluoxixi', 'knowledge', 'index.md'), '# Custom Index\n')
     fs.writeFileSync(path.join(root, '.moluoxixi', 'knowledge', 'sources', 'api.md'), '# API\n')
     fs.writeFileSync(path.join(root, '.moluoxixi', 'knowledge', 'library', 'api.md'), '# Organized API\n')
+    fs.writeFileSync(path.join(root, '.moluoxixi', 'knowledge', 'relations.json'), '{"version":1,"assets":{"custom":{}}}\n')
     fs.writeFileSync(path.join(root, '.moluoxixi', 'knowledge', '.state.json'), '{"custom":true}\n')
 
     const reinit = installExtension({ project: root, platforms: ['codex'] })
@@ -94,7 +126,27 @@ describe('role-owned knowledge extension', () => {
     expect(fs.readFileSync(path.join(root, '.moluoxixi', 'knowledge', 'index.md'), 'utf8')).toBe('# Custom Index\n')
     expect(fs.readFileSync(path.join(root, '.moluoxixi', 'knowledge', 'sources', 'api.md'), 'utf8')).toBe('# API\n')
     expect(fs.readFileSync(path.join(root, '.moluoxixi', 'knowledge', 'library', 'api.md'), 'utf8')).toBe('# Organized API\n')
+    expect(fs.readFileSync(path.join(root, '.moluoxixi', 'knowledge', 'relations.json'), 'utf8')).toBe('{"version":1,"assets":{"custom":{}}}\n')
     expect(fs.readFileSync(path.join(root, '.moluoxixi', 'knowledge', '.state.json'), 'utf8')).toBe('{"custom":true}\n')
+  })
+
+  it('treats a symlinked relation ledger as a conflict when the host supports symlinks', () => {
+    const root = projectFixture()
+    installExtension({ project: root, platforms: ['codex'] })
+    const target = path.join(root, 'external-relations.json')
+    const relationPath = path.join(root, '.moluoxixi', 'knowledge', 'relations.json')
+    fs.writeFileSync(target, '{"version":1,"assets":{}}\n')
+    fs.rmSync(relationPath)
+    try {
+      fs.symlinkSync(target, relationPath, 'file')
+    }
+    catch {
+      return
+    }
+
+    const result = installExtension({ project: root, platforms: ['codex'] })
+    expect(result.conflicts).toContain('.moluoxixi/knowledge/relations.json')
+    expect(fs.lstatSync(relationPath).isSymbolicLink()).toBe(true)
   })
 
   it('merges its managed AGENTS block around existing project instructions', () => {
@@ -168,13 +220,14 @@ describe('role-owned knowledge extension', () => {
     const result = installExtension({ project: root, platforms: ['codex'], dryRun: true })
 
     expect(result.created).toContain('.moluoxixi/knowledge/index.md')
+    expect(result.created).toContain('.moluoxixi/knowledge/relations.json')
     expect(fs.existsSync(path.join(root, '.moluoxixi', 'knowledge'))).toBe(false)
     expect(fs.existsSync(path.join(root, '.moluoxixi', 'airules-init-manifest.json'))).toBe(false)
   })
 
   const python = resolvePython()
   const detectorIt = python ? it : it.skip
-  detectorIt('detects, acknowledges, and redetects source content changes', () => {
+  detectorIt('gates acknowledgement and traces affected assets across source changes', () => {
     const root = projectFixture()
     installExtension({ project: root, platforms: ['codex'] })
     const source = path.join(root, '.moluoxixi', 'knowledge', 'sources', 'api.md')
@@ -184,12 +237,27 @@ describe('role-owned knowledge extension', () => {
 
     const first = JSON.parse(run(['status', '--json']))
     expect(first.added.map((entry: { path: string }) => entry.path)).toEqual(['api.md'])
+    expect(JSON.parse(run(['sources', '--json']))['api.md'].sha256).toBe(sourceHash(root))
+    expect(first.relation_errors).toContainEqual({ code: 'source_unmapped', path: 'api.md' })
+    expect(() => run(['acknowledge', '--batch', first.batch_id])).toThrow()
+
+    writeMappedAsset(root)
+    const organized = JSON.parse(run(['status', '--json']))
     fs.writeFileSync(path.join(root, '.moluoxixi', 'knowledge', '.state.lock'), 'interrupted process\n')
-    run(['acknowledge', '--batch', first.batch_id])
+    run(['acknowledge', '--batch', organized.batch_id])
     expect(JSON.parse(run(['status', '--json'])).pending).toBe(false)
 
     fs.writeFileSync(source, '# API\nVersion two\n')
-    expect(JSON.parse(run(['status', '--json'])).modified).toHaveLength(1)
+    const modified = JSON.parse(run(['status', '--json']))
+    expect(modified.modified).toHaveLength(1)
+    expect(modified.impacted).toEqual([
+      { source: 'api.md', change: 'modified', assets: ['concept:api'] },
+    ])
+    expect(modified.relation_errors).toContainEqual({
+      code: 'relation_source_hash_stale',
+      asset: 'concept:api',
+      path: 'api.md',
+    })
 
     const hook = spawnSync(python!, [
       path.join(root, '.moluoxixi', 'scripts', 'knowledge-hook.py'),
@@ -207,10 +275,151 @@ describe('role-owned knowledge extension', () => {
     const context = JSON.parse(hook.stdout).hookSpecificOutput.additionalContext
     expect(context).toContain('trust="untrusted-project-data"')
     expect(context).toContain('modified: api.md')
+    expect(context).toContain('impacted: api.md -> concept:api')
+    expect(context).toContain('relation error: relation_source_hash_stale')
 
+    writeMappedAsset(root)
+    const refreshed = JSON.parse(run(['status', '--json']))
+    run(['acknowledge', '--batch', refreshed.batch_id])
     fs.rmSync(source)
-    expect(JSON.parse(run(['status', '--json'])).deleted).toHaveLength(1)
+    const deleted = JSON.parse(run(['status', '--json']))
+    expect(deleted.deleted).toHaveLength(1)
+    expect(deleted.impacted[0].assets).toEqual(['concept:api'])
+
+    writeRelations(root, {})
+    fs.rmSync(path.join(root, '.moluoxixi', 'knowledge', 'library', 'api.md'))
+    const detached = JSON.parse(run(['status', '--json']))
+    expect(detached.impacted[0].assets).toEqual(['concept:api'])
+    expect(detached.relation_errors).toEqual([])
+    run(['acknowledge', '--batch', detached.batch_id])
+    expect(JSON.parse(run(['status', '--json'])).pending).toBe(false)
   }, 15_000)
+
+  detectorIt('rejects malformed relations, missing pages, and dangling sources', () => {
+    const root = projectFixture()
+    installExtension({ project: root, platforms: ['codex'] })
+    const knowledge = path.join(root, '.moluoxixi', 'knowledge')
+    fs.writeFileSync(path.join(knowledge, 'sources', 'api.md'), '# API\n')
+    const script = path.join(root, '.moluoxixi', 'scripts', 'knowledge.py')
+    const runStatus = () => JSON.parse(execFileSync(python!, [script, 'status', '--json'], { cwd: root, encoding: 'utf8' }))
+
+    fs.writeFileSync(path.join(knowledge, 'relations.json'), '{broken\n')
+    expect(runStatus().relation_errors).toEqual([{ code: 'relations_json_invalid' }])
+
+    writeRelations(root, {
+      'concept:api': {
+        page: 'library/missing.md',
+        sources: [{ path: 'api.md', sha256: sourceHash(root) }],
+      },
+    })
+    expect(runStatus().relation_errors).toContainEqual({
+      code: 'asset_page_missing',
+      asset: 'concept:api',
+      path: 'library/missing.md',
+    })
+
+    writeRelations(root, {
+      'concept:missing': {
+        page: 'library/missing.md',
+        sources: [{ path: 'missing.md', sha256: '0'.repeat(64) }],
+      },
+    })
+    expect(runStatus().relation_errors).toContainEqual({
+      code: 'relation_source_missing',
+      asset: 'concept:missing',
+      path: 'missing.md',
+    })
+
+    writeRelations(root, {
+      'concept:unsafe': {
+        page: '../outside.md',
+        sources: [{ path: '../outside.md', sha256: '0'.repeat(64) }],
+      },
+    })
+    const unsafe = runStatus().relation_errors
+    expect(unsafe).toContainEqual({ code: 'relations_page_invalid', asset: 'concept:unsafe' })
+    expect(unsafe).toContainEqual({
+      code: 'relations_source_path_invalid',
+      asset: 'concept:unsafe',
+      path: '../outside.md',
+    })
+
+    fs.writeFileSync(path.join(knowledge, 'library', 'orphan.md'), '# Orphan\n')
+    writeRelations(root, {})
+    const orphaned = runStatus()
+    expect(orphaned.relation_errors).toContainEqual({
+      code: 'library_page_unmapped',
+      path: 'library/orphan.md',
+    })
+    const rejected = spawnSync(python!, [script, 'acknowledge', '--batch', orphaned.batch_id], {
+      cwd: root,
+      encoding: 'utf8',
+    })
+    expect(rejected.status).toBe(1)
+    expect(rejected.stderr).toContain('library_page_unmapped')
+
+    writeRelations(root, { ['x'.repeat(100_000)]: {} })
+    const hook = spawnSync(
+      python!,
+      [path.join(root, '.moluoxixi', 'scripts', 'knowledge-hook.py'), '--platform', 'codex', '--event', 'prompt'],
+      { cwd: root, encoding: 'utf8' },
+    )
+    expect(hook.status).toBe(0)
+    const context = JSON.parse(hook.stdout).hookSpecificOutput.additionalContext
+    expect(Buffer.byteLength(context, 'utf8')).toBeLessThanOrEqual(24 * 1024)
+    expect(context).toContain('Knowledge context truncated')
+    expect(context).toMatch(/<\/moluoxixi-knowledge>$/u)
+  })
+
+  detectorIt('rejects a symlinked relation ledger when the host supports symlinks', () => {
+    const root = projectFixture()
+    installExtension({ project: root, platforms: ['codex'] })
+    const relationPath = path.join(root, '.moluoxixi', 'knowledge', 'relations.json')
+    const target = path.join(root, 'external-relations.json')
+    fs.writeFileSync(target, '{"version":1,"assets":{}}\n')
+    fs.rmSync(relationPath)
+    try {
+      fs.symlinkSync(target, relationPath, 'file')
+    }
+    catch {
+      return
+    }
+    const script = path.join(root, '.moluoxixi', 'scripts', 'knowledge.py')
+    const status = JSON.parse(execFileSync(python!, [script, 'status', '--json'], { cwd: root, encoding: 'utf8' }))
+    expect(status.relation_errors).toEqual([{ code: 'relations_path_unsafe' }])
+  })
+
+  detectorIt('reads version 1 state and upgrades it after a relation-only acknowledgement', () => {
+    const root = projectFixture()
+    installExtension({ project: root, platforms: ['codex'] })
+    const source = path.join(root, '.moluoxixi', 'knowledge', 'sources', 'api.md')
+    fs.writeFileSync(source, '# API\n')
+    const hash = sourceHash(root)
+    fs.writeFileSync(
+      path.join(root, '.moluoxixi', 'knowledge', '.state.json'),
+      `${JSON.stringify({
+        version: 1,
+        processed: { 'api.md': { sha256: hash, size: fs.statSync(source).size } },
+      })}\n`,
+    )
+    const script = path.join(root, '.moluoxixi', 'scripts', 'knowledge.py')
+    const run = (args: string[]) => execFileSync(python!, [script, ...args], { cwd: root, encoding: 'utf8' })
+
+    const unmapped = JSON.parse(run(['status', '--json']))
+    expect(unmapped.state_upgrade_required).toBe(true)
+    expect(unmapped.relation_errors).toContainEqual({ code: 'source_unmapped', path: 'api.md' })
+
+    writeMappedAsset(root, hash)
+    const status = JSON.parse(run(['status', '--json']))
+    expect(status.added).toEqual([])
+    expect(status.modified).toEqual([])
+    expect(status.relations_modified).toBe(true)
+    run(['acknowledge', '--batch', status.batch_id])
+    const state = JSON.parse(fs.readFileSync(path.join(root, '.moluoxixi', 'knowledge', '.state.json'), 'utf8'))
+    expect(state.version).toBe(2)
+    expect(state.assets).toHaveProperty('concept:api')
+    expect(JSON.parse(run(['status', '--json'])).pending).toBe(false)
+  })
 
   it('runs the extension after the role CLI succeeds', () => {
     const root = fs.mkdtempSync(path.join(os.tmpdir(), 'airules-knowledge-wrapper-'))

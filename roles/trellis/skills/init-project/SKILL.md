@@ -95,8 +95,8 @@ For a proven fresh bootstrap:
   above; it preserves pre-existing or customized task/spec content.
 - Keep AIRules assets under this role-local Skill. Never depend on another role
   or modify an upstream Trellis package during project initialization.
-- Preserve `.trellis/knowledge/index.md`, `sources/`, `library/`, and
-  `.state.json` across re-initialization and `--force`.
+- Preserve `.trellis/knowledge/index.md`, `relations.json`, `sources/`,
+  `library/`, and `.state.json` across re-initialization and `--force`.
 - The temporary Simplified Chinese task convention is isolated between
   `AIRULES:TRELLIS-ZH-COMPAT` markers in the managed `AGENTS.md` block. Remove
   only that inner block after upstream Trellis provides equivalent localization.

@@ -6,6 +6,7 @@
 
 - 修改角色 skills/MCP 组成前，读取 [Role Capability Contract](role-capabilities.md)。
 - 升级角色外部源码或重新导出 packages 前，读取 [External Baseline Sync Contract](external-baseline-sync.md)。
+- 修改角色知识库 scanner、Hook、Skill 或初始化资产前，读取 [Knowledge Extension Contract](knowledge-extension.md)。
 - 搜索所有角色的 `capabilities` 声明和同一 vendor/projection 目标。
 - 确认变更属于公共 capability 还是 role-owned 资产。
 
@@ -20,3 +21,4 @@
 
 - [Role Capability Contract](role-capabilities.md)
 - [External Baseline Sync Contract](external-baseline-sync.md)
+- [Knowledge Extension Contract](knowledge-extension.md)

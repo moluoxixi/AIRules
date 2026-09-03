@@ -61,6 +61,7 @@ Moluoxixi CLI，再独立注入 AIRules 扩展；不要直接编辑或复制角�
 ```text
 .moluoxixi/knowledge/
   index.md
+  relations.json
   sources/
   library/
 ```
@@ -80,7 +81,8 @@ Moluoxixi CLI，再独立注入 AIRules 扩展；不要直接编辑或复制角�
   [asset-layout.md](references/asset-layout.md)。
 - 扩展只使用 `.moluoxixi/airules-init-manifest.json`，不修改上游
   `.moluoxixi/.template-hashes.json`。
-- `sources/`、`library/`、`index.md` 是项目数据；重复初始化和 `--force` 都保留。
+- `sources/`、`library/`、`index.md`、`relations.json` 是项目数据；重复初始化和
+  `--force` 都保留。
 - 已存在或已修改的 spec/bootstrap task 只审计；自动治理只处理包装器可证明的
   本次首次初始化生成物。
 - 扩展安装失败时回滚扩展自己的全部写入；已完成的基线 CLI 初始化保持原状。

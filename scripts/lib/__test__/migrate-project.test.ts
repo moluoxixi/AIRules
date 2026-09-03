@@ -139,7 +139,7 @@ describe('project migration', () => {
     writeFile(path.join(source, '.trellis', 'workflow.md'), 'Trellis workflow\n')
     writeFile(path.join(source, '.agents', 'skills', 'trellis-start', 'SKILL.md'), 'Trellis skill\n')
     writeFile(path.join(source, '.codex', 'agents', 'trellis-check.toml'), 'name = "Trellis"\n')
-    writeFile(path.join(source, 'env.local'), 'UNRELATED_LOCAL_SETTING=source-only\n')
+    writeFile(path.join(source, '.env.local'), 'UNRELATED_LOCAL_SETTING=source-only\n')
     writeFile(path.join(source, 'node_modules', 'example', 'index.js'))
     writeFile(path.join(source, 'roles', 'moluoxixi', 'packages', 'demo', 'node_modules', 'example', 'index.js'))
     writeFile(path.join(source, 'coverage', 'lcov.info'))
@@ -195,7 +195,7 @@ describe('project migration', () => {
     expect(fs.existsSync(path.join(target, '.trellis'))).toBe(false)
     expect(fs.existsSync(path.join(target, '.agents'))).toBe(false)
     expect(fs.existsSync(path.join(target, '.codex'))).toBe(false)
-    expect(fs.existsSync(path.join(target, 'env.local'))).toBe(false)
+    expect(fs.existsSync(path.join(target, '.env.local'))).toBe(false)
     expect(fs.existsSync(path.join(target, 'roles', 'trellis'))).toBe(false)
     expect(fs.existsSync(path.join(target, 'scripts', 'migrate-project.mjs'))).toBe(false)
     expect(fs.existsSync(path.join(target, 'scripts', 'lib', '__test__', 'migrate-project.test.ts'))).toBe(false)
@@ -203,11 +203,37 @@ describe('project migration', () => {
     expect(snapshotTree(source)).toEqual(sourceBefore)
 
     const readme = fs.readFileSync(path.join(target, 'README.md'), 'utf8')
-    const readmeZh = fs.readFileSync(path.join(target, 'README-zh.md'), 'utf8')
-    expect(readme).toContain('### `busyming`')
-    expect(readme).toContain('### `matt`')
-    expect(readmeZh).toContain('### `busyming`')
-    expect(readmeZh).toContain('### `matt`')
+    const readmeEn = fs.readFileSync(path.join(target, 'README-en.md'), 'utf8')
+    expect(readme).toContain('## `busyming`')
+    expect(readme).toContain('## `matt`')
+    expect(readme).toContain('### 功能')
+    expect(readme).toContain('### 安装')
+    expect(readme).toContain('### 用法')
+    expect(readme).toContain('使用 `init-project` 初始化当前项目')
+    expect(readme).toContain('该角色无需项目初始化')
+    expect(readme).toContain('工作流：提出问题 → AI 选择合适的 skill')
+    expect(readmeEn).toContain('## `busyming`')
+    expect(readmeEn).toContain('## `matt`')
+    expect(readmeEn).toContain('### Features')
+    expect(readmeEn).toContain('### Install')
+    expect(readmeEn).toContain('### Usage')
+    expect(readmeEn).toContain('Workflow: state the problem → the AI selects the relevant skill')
+    for (const role of ['busyming', 'matt']) {
+      const readmeRoleSection = readme.slice(
+        readme.indexOf(`## \`${role}\``),
+        readme.indexOf('\n## ', readme.indexOf(`## \`${role}\``) + 1),
+      )
+      expect(readmeRoleSection.indexOf('### 安装')).toBeLessThan(readmeRoleSection.indexOf('### 功能'))
+      expect(readmeRoleSection.indexOf('### 功能')).toBeLessThan(readmeRoleSection.indexOf('### 用法'))
+
+      const readmeEnRoleSection = readmeEn.slice(
+        readmeEn.indexOf(`## \`${role}\``),
+        readmeEn.indexOf('\n## ', readmeEn.indexOf(`## \`${role}\``) + 1),
+      )
+      expect(readmeEnRoleSection.indexOf('### Install')).toBeLessThan(readmeEnRoleSection.indexOf('### Features'))
+      expect(readmeEnRoleSection.indexOf('### Features')).toBeLessThan(readmeEnRoleSection.indexOf('### Usage'))
+    }
+    expect(fs.existsSync(path.join(target, 'README-zh.md'))).toBe(false)
     expectNoTrellis(target)
 
     const verifySyntax = spawnSync(process.execPath, ['--check', path.join(target, 'scripts', 'verify-packed-airules.mjs')], {
@@ -231,10 +257,10 @@ describe('project migration', () => {
     expect(fs.existsSync(path.join(target, 'src', 'app.ts'))).toBe(false)
   })
 
-  it('loads the target directory and repository link from env.local', () => {
+  it('loads the target directory and repository link from .env.local', () => {
     const { source, target } = createFixture()
     const repositoryUrl = 'https://git.example.local/team/from-local-file'
-    writeFile(path.join(source, 'env.local'), [
+    writeFile(path.join(source, '.env.local'), [
       `AIRULES_MIGRATE_TARGET=${target.replaceAll('\\', '/')}`,
       `AIRULES_MIGRATE_REPOSITORY_URL=${repositoryUrl}`,
     ].join('\n'))
@@ -244,7 +270,7 @@ describe('project migration', () => {
     expect(result.status, result.stderr).toBe(0)
     expect(result.stdout).toContain(`Target: ${target}`)
     expect(JSON.parse(fs.readFileSync(path.join(target, 'package.json'), 'utf8')).repository).toBe(repositoryUrl)
-    expect(fs.existsSync(path.join(target, 'env.local'))).toBe(false)
+    expect(fs.existsSync(path.join(target, '.env.local'))).toBe(false)
   })
 
   it('supports process environment variables and lets CLI arguments override them', () => {
@@ -253,7 +279,7 @@ describe('project migration', () => {
     const environmentTarget = path.join(root, 'environment-target')
     const environmentUrl = 'https://git.example.local/team/from-environment'
     const cliUrl = 'https://git.example.local/team/from-cli'
-    writeFile(path.join(source, 'env.local'), [
+    writeFile(path.join(source, '.env.local'), [
       `AIRULES_MIGRATE_TARGET=${localTarget.replaceAll('\\', '/')}`,
       'AIRULES_MIGRATE_REPOSITORY_URL=https://git.example.local/team/from-local-file',
     ].join('\n'))

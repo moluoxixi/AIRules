@@ -117,7 +117,8 @@ export function installExtension({ project, platforms, force = false, dryRun = f
       nextEntries[relativePath] = prepared.entry
   }
 
-  prepareKnowledgeData(projectRoot, operations, result)
+  prepareKnowledgeData(projectRoot, operations, result, 'index.md')
+  prepareKnowledgeData(projectRoot, operations, result, 'relations.json')
   const nextManifest = Buffer.from(`${JSON.stringify({
     schemaVersion: 1,
     generatorVersion: GENERATOR_VERSION,
@@ -142,16 +143,22 @@ export function installExtension({ project, platforms, force = false, dryRun = f
   return result
 }
 
-function prepareKnowledgeData(projectRoot, operations, result) {
-  const relativePath = '.moluoxixi/knowledge/index.md'
+function prepareKnowledgeData(projectRoot, operations, result, name) {
+  const relativePath = `.moluoxixi/knowledge/${name}`
   const target = safeTarget(projectRoot, relativePath)
-  if (fs.existsSync(target)) {
+  const stats = fs.lstatSync(target, { throwIfNoEntry: false })
+  if (stats && (!stats.isFile() || stats.isSymbolicLink())) {
+    result.conflicts.push(relativePath)
+    operations.push({ relativePath, status: 'conflicts', target })
+    return
+  }
+  if (stats) {
     result.preserved.push(relativePath)
     operations.push({ relativePath, status: 'preserved', target })
     return
   }
   result.created.push(relativePath)
-  operations.push({ desired: readAsset('knowledge/index.md'), relativePath, status: 'created', target })
+  operations.push({ desired: readAsset(`knowledge/${name}`), relativePath, status: 'created', target })
 }
 
 function prepareItem(projectRoot, relativePath, item, existingEntry, force) {
