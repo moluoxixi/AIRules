@@ -74,8 +74,6 @@ jobs:
 
       - name: Select the next patch version
         id: version
-        env:
-          NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
         run: |
           package_name="$(node -p "require('./package.json').name")"
           latest_version="$(npm view "$package_name@latest" version --registry https://registry.npmjs.org)"
@@ -96,6 +94,4 @@ jobs:
           echo "version=$next_version" >> "$GITHUB_OUTPUT"
 
       - name: Publish latest
-        env:
-          NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
         run: npm publish --provenance --access public --tag latest

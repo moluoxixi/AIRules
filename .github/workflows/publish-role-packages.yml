@@ -100,8 +100,6 @@ jobs:
 
       - name: Select the next shared patch version
         id: release
-        env:
-          NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
         run: pnpm exec tsx scripts/role-packages.ts prepare-latest --role "${{ matrix.role }}" --github
 
       - name: Install role workspace dependencies
@@ -116,8 +114,6 @@ jobs:
         run: pnpm run verify:publish && pnpm run typecheck
 
       - name: Publish packages in configured order
-        env:
-          NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
         run: pnpm exec tsx scripts/role-packages.ts publish --role "${{ matrix.role }}"
 
       - name: Run role post-publish verification
