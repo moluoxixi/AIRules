@@ -1,5 +1,9 @@
+import type { CapabilityName } from '../../capabilities/index.js'
+import fs from 'node:fs'
 import path from 'node:path'
 import { fileURLToPath, pathToFileURL, URL } from 'node:url'
+import { parseDocument } from 'yaml'
+import { CAPABILITY_NAMES, composeCapabilities } from '../../capabilities/index.js'
 import { HOST_IDS } from '../../constants/hosts.js'
 import { flattenedSkillName, flattenedVendorSkillTarget } from './skill-projection.js'
 
@@ -378,9 +382,12 @@ export function walkVendorTree(node: any, namespaceParts: string[], vendors: Rec
 export async function loadVendorManifest(manifestPath: string): Promise<VendorManifest> {
   const manifestUrl = pathToFileURL(path.resolve(manifestPath)).href
   const module = await import(manifestUrl)
-  const vendorTree = module.vendors ?? module.default?.vendors ?? module.default
+  const roleVendor = module.roleVendor ?? module.default?.roleVendor
+  const vendorTree = roleVendor === undefined
+    ? module.vendors ?? module.default?.vendors ?? module.default
+    : composeRoleVendorTree(manifestPath, roleVendor)
   if (!vendorTree || typeof vendorTree !== 'object') {
-    throw new Error(`Vendor manifest "${manifestPath}" must export a "vendors" object`)
+    throw new Error(`Vendor manifest "${manifestPath}" must export a "vendors" object or a "roleVendor" definition`)
   }
 
   const vendors: Record<string, Vendor> = {}
@@ -394,6 +401,87 @@ export async function loadVendorManifest(manifestPath: string): Promise<VendorMa
     version: 1,
     vendors,
   }
+}
+
+interface RoleCapabilityContract {
+  capabilities: CapabilityName[]
+  roleVendorPosition?: 'before' | 'after'
+}
+
+/**
+ * 定位清单对应的 role.yaml 角色契约。
+ * 源码与 checkout 布局下契约位于清单的角色根目录；
+ * dist 布局（dist/roles/<role>/constants/skills.js）下回退到包根的 roles/<role>/role.yaml。
+ */
+function resolveRoleContractPath(manifestPath: string): string {
+  const resolvedManifest = path.resolve(manifestPath)
+  const roleRoot = path.dirname(path.dirname(resolvedManifest))
+  const sourceContract = path.join(roleRoot, 'role.yaml')
+  if (fs.existsSync(sourceContract))
+    return sourceContract
+
+  const rolesDir = path.dirname(roleRoot)
+  const distRoot = path.dirname(rolesDir)
+  if (path.basename(rolesDir) === 'roles' && path.basename(distRoot) === 'dist') {
+    const packagedContract = path.join(path.dirname(distRoot), 'roles', path.basename(roleRoot), 'role.yaml')
+    if (fs.existsSync(packagedContract))
+      return packagedContract
+  }
+  throw new Error(`Vendor manifest "${manifestPath}" exports "roleVendor" but its role.yaml contract is missing: ${sourceContract}`)
+}
+
+function loadRoleCapabilityContract(manifestPath: string): RoleCapabilityContract {
+  const contractPath = resolveRoleContractPath(manifestPath)
+  const document = parseDocument(fs.readFileSync(contractPath, 'utf8'), {
+    merge: false,
+    prettyErrors: true,
+    strict: true,
+    uniqueKeys: true,
+  })
+  if (document.errors.length > 0) {
+    throw new Error(`Role contract "${contractPath}" is invalid: ${document.errors.map(error => error.message).join('; ')}`)
+  }
+  const contract = document.toJS({ maxAliasCount: 0 }) as unknown
+  if (!contract || typeof contract !== 'object' || Array.isArray(contract)) {
+    throw new Error(`Role contract "${contractPath}" must be a YAML mapping`)
+  }
+
+  const { capabilities, role_vendor_position: roleVendorPosition } = contract as Record<string, unknown>
+  if (!Array.isArray(capabilities) || capabilities.length === 0) {
+    throw new Error(`Role contract "${contractPath}" must declare a non-empty "capabilities" list`)
+  }
+  const seen = new Set<string>()
+  for (const capability of capabilities) {
+    if (typeof capability !== 'string' || !(CAPABILITY_NAMES as readonly string[]).includes(capability)) {
+      throw new Error(`Role contract "${contractPath}" references unknown capability "${String(capability)}"`)
+    }
+    if (seen.has(capability)) {
+      throw new Error(`Role contract "${contractPath}" declares duplicate capability "${capability}"`)
+    }
+    seen.add(capability)
+  }
+  if (roleVendorPosition !== undefined && roleVendorPosition !== 'before' && roleVendorPosition !== 'after') {
+    throw new Error(`Role contract "${contractPath}" field "role_vendor_position" must be "before" or "after"`)
+  }
+
+  return {
+    capabilities: capabilities as CapabilityName[],
+    ...(roleVendorPosition === undefined ? {} : { roleVendorPosition }),
+  }
+}
+
+/**
+ * 依据 role.yaml 声明的 capabilities，把清单导出的 roleVendor 组合成完整 vendors 列表。
+ */
+function composeRoleVendorTree(manifestPath: string, roleVendor: unknown): VendorRepo[] {
+  if (!isVendorEntry(roleVendor)) {
+    throw new Error(`Vendor manifest "${manifestPath}" export "roleVendor" must be a vendor definition with name and source`)
+  }
+  const contract = loadRoleCapabilityContract(manifestPath)
+  return composeCapabilities(contract.capabilities, {
+    roleVendor: roleVendor as VendorRepo,
+    ...(contract.roleVendorPosition === undefined ? {} : { roleVendorPosition: contract.roleVendorPosition }),
+  })
 }
 
 function normalizeRolePackages(value: unknown, manifestPath: string): RolePackageConfig[] {

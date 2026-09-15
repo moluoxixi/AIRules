@@ -9,7 +9,7 @@ import { afterEach, describe, expect, it } from 'vitest'
 
 // The initializer is distributed as role-local JavaScript rather than a public TS module.
 // @ts-expect-error no declaration file is shipped for the role-local entrypoint
-import { installExtension } from '../skills/init-project/scripts/install-extension.mjs'
+import { ensurePythonCommand, installExtension } from '../skills/init-project/scripts/install-extension.mjs'
 // @ts-expect-error no declaration file is shipped for the role-local entrypoint
 import { localizeBootstrapTask } from '../skills/init-project/scripts/localize-bootstrap.mjs'
 
@@ -86,7 +86,7 @@ describe('role-owned knowledge extension', () => {
     expect(fs.existsSync(path.join(root, '.moluoxixi', 'scripts', 'knowledge.py'))).toBe(true)
     expect(fs.existsSync(path.join(root, '.agents', 'skills', 'moluoxixi-knowledge', 'SKILL.md'))).toBe(true)
     expect(fs.readFileSync(path.join(root, 'AGENTS.md'), 'utf8')).toContain('MOLUOXIXI KNOWLEDGE:START')
-    const expectedPython = process.platform === 'win32' ? 'python' : 'python3'
+    const expectedPython = 'python3'
     const fallback = fs.readFileSync(path.join(root, 'AGENTS.md'), 'utf8')
     const knowledgeSkill = fs.readFileSync(path.join(root, '.agents', 'skills', 'moluoxixi-knowledge', 'SKILL.md'), 'utf8')
     expect(fallback).toContain(`${expectedPython} ./.moluoxixi/scripts/knowledge.py status --json`)
@@ -561,5 +561,64 @@ describe('role-owned knowledge extension', () => {
     ]
     for (const skillDir of roots)
       expect(fs.existsSync(path.join(root, skillDir, 'moluoxixi-knowledge', 'SKILL.md')), skillDir).toBe(true)
+  })
+})
+
+function pythonFixture(commands: string[]): { binDir: string, homeDir: string, env: Record<string, string> } {
+  const root = fs.mkdtempSync(path.join(os.tmpdir(), 'airules-python-'))
+  temporaryRoots.push(root)
+  const binDir = path.join(root, 'bin')
+  const homeDir = path.join(root, 'home')
+  fs.mkdirSync(binDir, { recursive: true })
+  fs.mkdirSync(homeDir, { recursive: true })
+  for (const command of commands) {
+    const target = path.join(binDir, command)
+    fs.writeFileSync(target, '#!/bin/sh\nexit 0\n')
+    fs.chmodSync(target, 0o755)
+  }
+  return { binDir, homeDir, env: { PATH: binDir } }
+}
+
+describe('ensurePythonCommand', () => {
+  it.skipIf(process.platform === 'win32')('reports python3 as available when it is already on PATH', () => {
+    const { homeDir, env } = pythonFixture(['python3'])
+    expect(ensurePythonCommand({ env, homeDir, platform: 'linux' })).toEqual({ command: 'python3', status: 'available' })
+  })
+
+  it('throws when neither python3 nor python is on PATH', () => {
+    const { homeDir, env } = pythonFixture([])
+    expect(() => ensurePythonCommand({ env, homeDir, platform: 'linux' })).toThrow(/install Python 3/)
+  })
+
+  it.skipIf(process.platform === 'win32')('installs a python3 shim from python and reports pending on dry runs', () => {
+    const { binDir, homeDir, env } = pythonFixture(['python'])
+    const interpreter = path.join(binDir, 'python')
+    const shim = path.join(binDir, 'python3')
+
+    const pending = ensurePythonCommand({ dryRun: true, env, homeDir, platform: 'linux' })
+    expect(pending).toEqual({ command: 'python3', status: 'pending', interpreter, shim, onPath: true })
+    expect(fs.existsSync(shim)).toBe(false)
+
+    // 历史遗留的坏 symlink 会被替换而不是报错。
+    fs.symlinkSync('/nonexistent-python', shim)
+    const installed = ensurePythonCommand({ env, homeDir, platform: 'linux' })
+    expect(installed).toEqual({ command: 'python3', status: 'installed', interpreter, shim, onPath: true })
+    expect(fs.readFileSync(shim, 'utf8')).toContain(`exec "${interpreter}" "$@"`)
+
+    // 装好的 shim 真实可运行，再次调用直接判定 available。
+    expect(ensurePythonCommand({ env, homeDir, platform: 'linux' })).toEqual({ command: 'python3', status: 'available' })
+  })
+
+  it.skipIf(process.platform === 'win32')('writes a cmd wrapper next to the interpreter for Windows hosts', () => {
+    const { binDir, homeDir, env } = pythonFixture(['python.EXE'])
+    const result = ensurePythonCommand({ env: { ...env, PATHEXT: '.EXE;.CMD' }, homeDir, platform: 'win32' })
+    expect(result).toMatchObject({ command: 'python3', status: 'installed', shim: path.join(binDir, 'python3.cmd'), onPath: true })
+    expect(fs.readFileSync(path.join(binDir, 'python3.cmd'), 'utf8')).toContain(`@"${path.join(binDir, 'python.EXE')}" %*`)
+  })
+
+  it.skipIf(process.platform === 'win32')('refuses to overwrite an unmanaged python3 file', () => {
+    const { binDir, homeDir, env } = pythonFixture(['python'])
+    fs.writeFileSync(path.join(binDir, 'python3'), 'not managed\n')
+    expect(() => ensurePythonCommand({ env, homeDir, platform: 'linux' })).toThrow(/not created by AIRules/)
   })
 })

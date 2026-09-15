@@ -1,8 +1,10 @@
 #!/usr/bin/env node
 
 import { Buffer } from 'node:buffer'
+import { spawnSync } from 'node:child_process'
 import { createHash } from 'node:crypto'
 import fs from 'node:fs'
+import os from 'node:os'
 import path from 'node:path'
 import process from 'node:process'
 import { fileURLToPath } from 'node:url'
@@ -15,6 +17,7 @@ const GENERATOR_VERSION = '1.0.0'
 const BLOCK_START = '<!-- AIRULES:TRELLIS-EXTENSION:START -->'
 const BLOCK_END = '<!-- AIRULES:TRELLIS-EXTENSION:END -->'
 const HOOK_MARKER = '--airules-trellis-knowledge-hook'
+const PYTHON_SHIM_MARKER = 'airules-python-shim'
 
 export const PLATFORM_ORDER = [
   'claude',
@@ -426,11 +429,101 @@ export function normalizePlatforms(values) {
 }
 
 function pythonCommand() {
-  return process.platform === 'win32' ? 'python' : 'python3'
+  // 所有平台统一使用 python3 命令（与上游 Trellis 脚本一致）；CLI 入口通过 ensurePythonCommand 保证其可用。
+  return 'python3'
+}
+
+/**
+ * 在 PATH 上查找可执行命令，返回绝对路径。
+ */
+function findExecutable(command, env, platform) {
+  const entries = (env.PATH ?? '').split(path.delimiter).filter(Boolean)
+  const extensions = platform === 'win32' ? (env.PATHEXT ?? '.COM;.EXE;.BAT;.CMD').split(';').filter(Boolean) : ['']
+  for (const entry of entries) {
+    for (const extension of extensions) {
+      const candidate = path.join(entry, `${command}${extension}`)
+      const stats = fs.statSync(candidate, { throwIfNoEntry: false })
+      if (!stats?.isFile())
+        continue
+      if (platform !== 'win32') {
+        try {
+          fs.accessSync(candidate, fs.constants.X_OK)
+        }
+        catch {
+          continue
+        }
+      }
+      return candidate
+    }
+  }
+  return undefined
+}
+
+function isWritableDirectory(target) {
+  if (!fs.statSync(target, { throwIfNoEntry: false })?.isDirectory())
+    return false
+  try {
+    fs.accessSync(target, fs.constants.W_OK)
+    return true
+  }
+  catch {
+    return false
+  }
+}
+
+/**
+ * 选择 python3 shim 的安装目录：优先解释器所在目录等已在 PATH 上且可写的候选，否则回退到 ~/.local/bin。
+ */
+function resolvePythonShimDirectory(env, homeDir, interpreterDir) {
+  const pathEntries = new Set((env.PATH ?? '').split(path.delimiter).filter(Boolean).map(entry => path.resolve(entry)))
+  const localBin = path.join(homeDir, '.local', 'bin')
+  const candidates = [interpreterDir, localBin, '/usr/local/bin', '/opt/homebrew/bin']
+  for (const candidate of candidates) {
+    if (pathEntries.has(path.resolve(candidate)) && isWritableDirectory(candidate))
+      return { dir: candidate, onPath: true }
+  }
+  return { dir: localBin, onPath: pathEntries.has(path.resolve(localBin)) }
+}
+
+/**
+ * 保证 python3 命令可用：缺失时用 python 创建同名 wrapper shim（Windows 为 python3.cmd），两者皆无则报错。
+ * 用 --version 真实探测命令可运行（macOS CLT stub 按 argv[0] 分发，symlink 会失效），因此 shim 写入 wrapper 脚本。
+ */
+export function ensurePythonCommand({ dryRun = false, env = process.env, homeDir = os.homedir(), platform = process.platform } = {}) {
+  const available = findExecutable('python3', env, platform)
+  if (available && probeCommand(available))
+    return { command: 'python3', status: 'available' }
+  const interpreter = findExecutable('python', env, platform)
+  if (!interpreter || !probeCommand(interpreter))
+    throw new Error('Neither "python3" nor "python" is available on PATH; install Python 3 first (https://www.python.org/downloads/)')
+
+  const { dir, onPath } = resolvePythonShimDirectory(env, homeDir, path.dirname(interpreter))
+  const shim = path.join(dir, platform === 'win32' ? 'python3.cmd' : 'python3')
+  if (dryRun)
+    return { command: 'python3', status: 'pending', interpreter, shim, onPath }
+
+  fs.mkdirSync(dir, { recursive: true })
+  const existing = fs.lstatSync(shim, { throwIfNoEntry: false })
+  if (existing) {
+    const replaceable = existing.isSymbolicLink()
+      || (existing.isFile() && fs.readFileSync(shim, 'utf8').includes(PYTHON_SHIM_MARKER))
+    if (!replaceable)
+      throw new Error(`Cannot install the python3 shim: ${shim} already exists and was not created by AIRules`)
+    fs.rmSync(shim)
+  }
+  const content = platform === 'win32'
+    ? `@rem ${PYTHON_SHIM_MARKER}\r\n@"${interpreter}" %*\r\n`
+    : `#!/bin/sh\n# ${PYTHON_SHIM_MARKER}\nexec "${interpreter}" "$@"\n`
+  fs.writeFileSync(shim, content, { mode: 0o755 })
+  return { command: 'python3', status: 'installed', interpreter, shim, onPath }
 }
 
 function sha256(content) {
   return createHash('sha256').update(content).digest('hex')
+}
+
+function probeCommand(executable) {
+  return spawnSync(executable, ['--version'], { stdio: 'ignore', timeout: 10000, windowsHide: true }).status === 0
 }
 
 function parseCli(argv) {
@@ -452,7 +545,12 @@ function parseCli(argv) {
 
 if (path.resolve(process.argv[1] ?? '') === fileURLToPath(import.meta.url)) {
   try {
-    const result = installExtension(parseCli(process.argv.slice(2)))
+    const options = parseCli(process.argv.slice(2))
+    const python = ensurePythonCommand({ dryRun: options.dryRun })
+    if (python.status === 'installed' && !python.onPath)
+      process.stderr.write(`Warning: ${python.command} shim installed at ${python.shim}, but its directory is not on PATH\n`)
+    const result = installExtension(options)
+    result.python = python
     process.stdout.write(`${JSON.stringify(result, null, 2)}\n`)
     if (result.conflicts.length > 0)
       process.exitCode = 2

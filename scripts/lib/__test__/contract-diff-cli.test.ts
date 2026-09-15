@@ -19,7 +19,8 @@ afterEach(() => {
 })
 
 function temporaryRoot(): string {
-  const root = fs.mkdtempSync(path.join(os.tmpdir(), 'airules-contract-cli-'))
+  // realpath 解开 macOS 上 /var -> /private/var 的符号链接，contract-diff 会拒绝含符号链接的祖先目录
+  const root = fs.realpathSync(fs.mkdtempSync(path.join(os.tmpdir(), 'airules-contract-cli-')))
   temporaryRoots.push(root)
   return root
 }
@@ -64,6 +65,11 @@ function runCli(args: string[]) {
   return spawnSync(process.execPath, [tsxCli, airulesCli, ...args], {
     cwd: repoRoot,
     encoding: 'utf8',
+    env: {
+      ...process.env,
+      // Node >= 23 下 tsx 的 module.register() 会触发 DEP0205 警告污染 stderr，需经 NODE_OPTIONS 透传到 tsx 重启的子进程
+      NODE_OPTIONS: `${process.env.NODE_OPTIONS ?? ''} --disable-warning=DEP0205`.trim(),
+    },
   })
 }
 

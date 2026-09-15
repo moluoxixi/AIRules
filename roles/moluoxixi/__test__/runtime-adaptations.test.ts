@@ -30,8 +30,9 @@ describe('moluoxixi runtime adaptations', () => {
       autoTrustSymlinks: false,
     })
 
-    const project = fs.mkdtempSync(path.join(os.tmpdir(), 'moluoxixi-runtime-project-'))
-    const external = fs.mkdtempSync(path.join(os.tmpdir(), 'moluoxixi-runtime-external-'))
+    // realpath 解开 macOS 上 /var -> /private/var 的符号链接，保证相对路径断言稳定
+    const project = fs.realpathSync(fs.mkdtempSync(path.join(os.tmpdir(), 'moluoxixi-runtime-project-')))
+    const external = fs.realpathSync(fs.mkdtempSync(path.join(os.tmpdir(), 'moluoxixi-runtime-external-')))
     roots.push(project, external)
     const evidence = path.join(external, 'evidence.md')
     fs.writeFileSync(evidence, '# trusted evidence\n')

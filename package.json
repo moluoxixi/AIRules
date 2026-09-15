@@ -23,7 +23,6 @@
     "README.md",
     "bin",
     "dist",
-    "docs",
     "roles/*/constants/**",
     "roles/*/role.yaml"
   ],

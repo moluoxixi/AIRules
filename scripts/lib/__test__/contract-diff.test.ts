@@ -30,7 +30,8 @@ afterEach(() => {
 })
 
 function temporaryRoot(): string {
-  const root = fs.mkdtempSync(path.join(os.tmpdir(), 'airules-contract-diff-'))
+  // realpath 解开 macOS 上 /var -> /private/var 的符号链接，contract-diff 会拒绝含符号链接的祖先目录
+  const root = fs.realpathSync(fs.mkdtempSync(path.join(os.tmpdir(), 'airules-contract-diff-')))
   temporaryRoots.push(root)
   return root
 }
@@ -1723,6 +1724,9 @@ describe('contract diff normalization', () => {
         : ''
       if (process.platform === 'win32' && ['EACCES', 'ENOENT', 'EPERM'].includes(code))
         return
+      // macOS 的 link() 会跟随符号链接，悬空时报 ENOENT，无法构造硬链接别名场景
+      if (process.platform === 'darwin' && code === 'ENOENT')
+        return
       throw error
     }
     expect(() => writeContractAudit(aliasPath, audit, [expectedPath, actualPath]))
@@ -1794,7 +1798,15 @@ describe('contract diff normalization', () => {
       actualPath,
       '--output',
       output,
-    ], { cwd: repoRoot, encoding: 'utf8' })
+    ], {
+      cwd: repoRoot,
+      encoding: 'utf8',
+      env: {
+        ...process.env,
+        // Node >= 23 下 tsx 的 module.register() 会触发 DEP0205 警告污染 stderr，需经 NODE_OPTIONS 透传到 tsx 重启的子进程
+        NODE_OPTIONS: `${process.env.NODE_OPTIONS ?? ''} --disable-warning=DEP0205`.trim(),
+      },
+    })
 
     expect(result.status).toBe(1)
     expect(result.stderr).toBe('')

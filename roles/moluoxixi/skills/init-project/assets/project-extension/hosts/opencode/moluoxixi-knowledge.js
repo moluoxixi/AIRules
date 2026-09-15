@@ -18,7 +18,7 @@ function findRoot(start) {
 }
 
 function readContext(root) {
-  const python = process.platform === 'win32' ? 'python' : 'python3'
+  const python = 'python3'
   const result = spawnSync(
     python,
     ['-X', 'utf8', join(root, '.moluoxixi', 'scripts', 'knowledge.py'), 'context'],

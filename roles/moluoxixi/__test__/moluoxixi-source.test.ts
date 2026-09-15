@@ -3,7 +3,8 @@ import path from 'node:path'
 import { fileURLToPath } from 'node:url'
 import { describe, expect, it } from 'vitest'
 import { parseDocument } from 'yaml'
-import { capabilities, extendsRoles, hosts, packages, vendors } from '../constants/skills.js'
+import { loadVendorManifest } from '../../../scripts/lib/vendors.js'
+import { extendsRoles, hosts, packages, roleVendor } from '../constants/skills.js'
 
 interface RoleManifest {
   assets: {
@@ -12,6 +13,7 @@ interface RoleManifest {
     skills: string
   }
   canonical_root: string
+  capabilities: string[]
   distribution: {
     bootstrap_manifest: string
     full_role_path_required: boolean
@@ -164,7 +166,7 @@ describe('moluoxixi finalized role assets', () => {
     expect(fs.existsSync(resolveRolePath(relativePath))).toBe(false)
   })
 
-  it('maps native assets and distributes the self-contained initializer', () => {
+  it('maps native assets and distributes the self-contained initializer', async () => {
     const manifest = readRoleManifest()
     expect(manifest).toMatchObject({
       assets: {
@@ -173,6 +175,7 @@ describe('moluoxixi finalized role assets', () => {
         skills: 'skills',
       },
       canonical_root: 'roles/moluoxixi',
+      capabilities: ['common', 'coding', 'productivity', 'frontend'],
       distribution: {
         bootstrap_manifest: 'constants/skills.ts',
         full_role_path_required: true,
@@ -207,7 +210,6 @@ describe('moluoxixi finalized role assets', () => {
 
     expect(extendsRoles).toEqual([])
     expect(hosts).toBe('all')
-    expect(capabilities).toEqual(['common', 'coding', 'productivity', 'frontend'])
     expect(packages).toEqual([
       {
         name: '@moluoxixi/airules-moluoxixi-core',
@@ -219,38 +221,41 @@ describe('moluoxixi finalized role assets', () => {
         install: { kind: 'npm-global', version: 'latest' },
       },
     ])
-    expect(vendors).toHaveLength(3)
-    expect(vendors[0]).toMatchObject({
+    expect(roleVendor).toEqual({
       name: 'moluoxixi',
+      source: 'https://github.com/moluoxixi/AIRules.git',
       projections: [
         { kind: 'role-assets', sourceDir: 'roles/moluoxixi' },
-        { kind: 'namespace', sourceDir: 'skills/common', output: 'common' },
-        { kind: 'mcp', sourceFile: 'mcps/code/mcps.json', output: 'mcps/code/mcp.json' },
-        { kind: 'mcp', sourceFile: 'mcps/frontend/mcps.json', output: 'mcps/frontend/mcp.json' },
       ],
     })
-    expect(vendors[0]?.setup).toBeUndefined()
-    expect(vendors[1]).toEqual({
-      name: 'mattpocock',
-      source: mattSkillsSource,
+    const loaded = await loadVendorManifest(resolveRolePath('constants/skills.ts'))
+    expect(Object.keys(loaded.vendors)).toEqual(['moluoxixi', 'mattpocock', 'anthropic-skills'])
+    expect(loaded.vendors.moluoxixi?.setup).toBeUndefined()
+    expect(loaded.vendors.moluoxixi?.links).toEqual([
+      { kind: 'role-assets-dir', source: 'roles/moluoxixi', target: 'vendor' },
+      { kind: 'namespace-dir', source: 'skills/common', target: 'vendor/skills/common' },
+      { kind: 'mcp-file', source: 'mcps/code/mcps.json', target: 'vendor/mcps/code/mcp.json' },
+      { kind: 'mcp-file', source: 'mcps/frontend/mcps.json', target: 'vendor/mcps/frontend/mcp.json' },
+    ])
+    expect(loaded.vendors.mattpocock).toMatchObject({
+      repo: mattSkillsSource,
       revision: mattSkillsRevision,
-      projections: [
+      links: [
         {
-          kind: 'namespace',
-          sourceDir: 'skills/productivity',
-          output: 'productivity',
+          kind: 'namespace-dir',
+          source: 'skills/productivity',
+          target: 'vendor/skills/productivity',
         },
       ],
     })
-    expect(vendors[2]).toEqual({
-      name: 'anthropic-skills',
-      source: anthropicSkillsSource,
+    expect(loaded.vendors['anthropic-skills']).toMatchObject({
+      repo: anthropicSkillsSource,
       revision: anthropicSkillsRevision,
-      projections: [
+      links: [
         {
-          kind: 'skills',
-          sourceBaseDir: 'skills',
-          skills: ['frontend-design'],
+          kind: 'skill',
+          source: 'skills/frontend-design',
+          target: 'vendor/skills/frontend-design',
         },
       ],
     })

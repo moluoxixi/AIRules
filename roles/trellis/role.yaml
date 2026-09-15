@@ -7,6 +7,11 @@ description: Installs Trellis, shared coding and frontend capabilities, native p
 assets:
   skills: skills
   mcp: mcp
+capabilities:
+  - common
+  - coding
+  - productivity
+  - frontend
 distribution:
   bootstrap_manifest: constants/skills.ts
   full_role_path_required: true

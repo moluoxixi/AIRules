@@ -8,6 +8,11 @@ assets:
   skills: skills
   mcp: mcp
   packages: packages
+capabilities:
+  - common
+  - coding
+  - productivity
+  - frontend
 distribution:
   bootstrap_manifest: constants/skills.ts
   full_role_path_required: true

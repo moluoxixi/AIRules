@@ -37,7 +37,8 @@ function copyRepositoryFile(source: string, relativePath: string): void {
 }
 
 function createFixture(): { root: string, source: string, target: string } {
-  const root = fs.mkdtempSync(path.join(os.tmpdir(), 'airules-migrate-project-'))
+  // realpath 解开 macOS 上 /var -> /private/var 的符号链接，让断言路径与脚本输出的规范路径一致
+  const root = fs.realpathSync(fs.mkdtempSync(path.join(os.tmpdir(), 'airules-migrate-project-')))
   const source = path.join(root, 'source')
   const target = path.join(root, 'target')
   roots.push(root)

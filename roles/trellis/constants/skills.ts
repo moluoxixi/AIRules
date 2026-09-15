@@ -1,19 +1,11 @@
-import type { CapabilityName } from '../../../capabilities/index.js'
 import type { VendorRepo } from '../../../scripts/lib/vendors.js'
-import { composeCapabilities } from '../../../capabilities/index.js'
 
 export const extendsRoles: string[] = []
 
 export const hosts = 'all'
 
-export const capabilities = [
-  'common',
-  'coding',
-  'productivity',
-  'frontend',
-] as const satisfies readonly CapabilityName[]
-
-const roleVendor: VendorRepo = {
+// 角色能力（capabilities）声明在 roles/trellis/role.yaml 中，由 loadVendorManifest 组合成 vendors。
+export const roleVendor: VendorRepo = {
   name: 'trellis',
   source: 'https://github.com/moluoxixi/AIRules.git',
   setup: [
@@ -29,5 +21,3 @@ const roleVendor: VendorRepo = {
     },
   ],
 }
-
-export const vendors: VendorRepo[] = composeCapabilities(capabilities, { roleVendor })

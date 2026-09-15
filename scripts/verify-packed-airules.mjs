@@ -75,9 +75,12 @@ try {
     throw new Error('Packed AIRules is missing compiled role capability modules')
   for (const manifestPath of [moluoxixiManifest, trellisManifest]) {
     const manifest = await import(pathToFileURL(manifestPath).href)
-    if (!manifest.capabilities?.includes('frontend'))
-      throw new Error(`Packed role manifest does not declare frontend capability: ${manifestPath}`)
-    const frontendVendor = manifest.vendors?.find(vendor => vendor.name === 'anthropic-skills')
+    if (typeof manifest.roleVendor?.name !== 'string')
+      throw new Error(`Packed role manifest does not export a roleVendor definition: ${manifestPath}`)
+    // loadVendorManifest 会回退到包根的 roles/<role>/role.yaml 读取 capabilities 并组合 vendors。
+    const { loadVendorManifest } = await import(pathToFileURL(path.join(installedPackageRoot, 'dist', 'scripts', 'lib', 'vendors.js')).href)
+    const loaded = await loadVendorManifest(manifestPath)
+    const frontendVendor = loaded.vendors['anthropic-skills']
     if (frontendVendor?.revision !== '3b3fad96af16a10759d930941b4520ba0c40edae')
       throw new Error(`Packed role manifest does not pin frontend-design: ${manifestPath}`)
   }

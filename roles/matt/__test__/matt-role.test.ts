@@ -6,7 +6,7 @@ import { afterEach, describe, expect, it } from 'vitest'
 import { parseDocument } from 'yaml'
 import { rebuildVendorAssets } from '../../../scripts/lib/vendor-staging.js'
 import { loadVendorManifest } from '../../../scripts/lib/vendors.js'
-import { capabilities, extendsRoles, hosts, vendors } from '../constants/skills.js'
+import { extendsRoles, hosts, roleVendor } from '../constants/skills.js'
 
 const roleRoot = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..')
 const manifestPath = path.join(roleRoot, 'constants', 'skills.ts')
@@ -30,38 +30,20 @@ describe('matt role', () => {
   it('projects the pinned engineering and productivity namespaces', async () => {
     expect(extendsRoles).toEqual([])
     expect(hosts).toBe('all')
-    expect(capabilities).toEqual(['engineering', 'productivity'])
-    expect(vendors).toEqual([
-      {
-        name: 'mattpocock',
-        source: mattSkillsSource,
-        revision: mattSkillsRevision,
-        projections: [
-          {
-            kind: 'namespace',
-            sourceDir: 'skills/engineering',
-            output: 'engineering',
-          },
-          {
-            kind: 'namespace',
-            sourceDir: 'skills/productivity',
-            output: 'productivity',
-          },
-        ],
-      },
-      {
-        name: 'matt-role',
-        source: 'https://github.com/moluoxixi/AIRules.git',
-        projections: [
-          {
-            kind: 'role-assets',
-            sourceDir: 'roles/matt',
-          },
-        ],
-      },
-    ])
+    expect(roleVendor).toEqual({
+      name: 'matt-role',
+      source: 'https://github.com/moluoxixi/AIRules.git',
+      projections: [
+        {
+          kind: 'role-assets',
+          sourceDir: 'roles/matt',
+        },
+      ],
+    })
 
     const loaded = await loadVendorManifest(manifestPath)
+    // role.yaml 声明 role_vendor_position: after，能力供应商必须排在角色供应商之前。
+    expect(Object.keys(loaded.vendors)).toEqual(['mattpocock', 'matt-role'])
     expect(loaded.vendors.mattpocock).toMatchObject({
       repo: mattSkillsSource,
       revision: mattSkillsRevision,
@@ -108,6 +90,11 @@ describe('matt role', () => {
       assets: {
         skills: 'skills',
       },
+      capabilities: [
+        'engineering',
+        'productivity',
+      ],
+      role_vendor_position: 'after',
       distribution: {
         bootstrap_manifest: 'constants/skills.ts',
         full_role_path_required: true,

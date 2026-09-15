@@ -925,6 +925,46 @@ export default {
   })
 })
 
+it('vendors - roleVendor 清单从 role.yaml 组合 capabilities 并校验契约', async () => {
+  await withTempDirAsync('airules-role-vendor-manifest-', async (tmpDir) => {
+    const roleRoot = path.join(tmpDir, 'roles', 'demo')
+    const manifestPath = path.join(roleRoot, 'constants', 'skills.mjs')
+    writeFile(manifestPath, `export const roleVendor = {
+      name: 'demo',
+      source: 'https://example.test/demo.git',
+      projections: [{ kind: 'role-assets', sourceDir: 'roles/demo' }],
+    }\n`)
+
+    // 缺少 role.yaml 契约时必须拒绝。
+    await assert.rejects(() => loadVendorManifest(manifestPath), /role\.yaml contract is missing/)
+
+    const contractPath = path.join(roleRoot, 'role.yaml')
+    writeFile(contractPath, 'role_id: demo\ncapabilities:\n  - coding\nrole_vendor_position: after\n')
+    const composed = await loadVendorManifest(manifestPath)
+    assert.deepEqual(Object.keys(composed.vendors), ['demo'])
+    assert.deepEqual(composed.vendors.demo.links, [
+      { kind: 'role-assets-dir', source: 'roles/demo', target: 'vendor' },
+      { kind: 'mcp-file', source: 'mcps/code/mcps.json', target: 'vendor/mcps/code/mcp.json' },
+    ])
+
+    writeFile(contractPath, 'role_id: demo\ncapabilities: []\n')
+    await assert.rejects(() => loadVendorManifest(manifestPath), /non-empty "capabilities" list/)
+
+    writeFile(contractPath, 'role_id: demo\ncapabilities:\n  - nonsense\n')
+    await assert.rejects(() => loadVendorManifest(manifestPath), /unknown capability "nonsense"/)
+
+    writeFile(contractPath, 'role_id: demo\ncapabilities:\n  - coding\n  - coding\n')
+    await assert.rejects(() => loadVendorManifest(manifestPath), /duplicate capability "coding"/)
+
+    writeFile(contractPath, 'role_id: demo\ncapabilities:\n  - coding\nrole_vendor_position: middle\n')
+    await assert.rejects(() => loadVendorManifest(manifestPath), /"role_vendor_position" must be "before" or "after"/)
+
+    const invalidRoleVendorManifest = path.join(roleRoot, 'constants', 'invalid.mjs')
+    writeFile(invalidRoleVendorManifest, `export const roleVendor = { name: 'demo' }\n`)
+    await assert.rejects(() => loadVendorManifest(invalidRoleVendorManifest), /"roleVendor" must be a vendor definition/)
+  })
+})
+
 it('vendors - 角色 package 配置归一化并拒绝非法声明', async () => {
   await withTempDirAsync('airules-package-manifest-', async (tmpDir) => {
     const validManifest = path.join(tmpDir, 'valid.mjs')

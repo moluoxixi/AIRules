@@ -9,7 +9,7 @@ import { parseDocument } from 'yaml'
 import { HOST_IDS } from '../../../constants/hosts.js'
 import { rebuildVendorAssets } from '../../../scripts/lib/vendor-staging.js'
 import { loadVendorManifest } from '../../../scripts/lib/vendors.js'
-import { capabilities, extendsRoles, hosts, vendors } from '../constants/skills.js'
+import { extendsRoles, hosts, roleVendor } from '../constants/skills.js'
 
 const roleRoot = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..')
 const manifestPath = path.join(roleRoot, 'constants', 'skills.ts')
@@ -30,67 +30,26 @@ describe('native Trellis role', () => {
   it('installs the official CLI and projects the AIRules-owned initialization entry', async () => {
     expect(extendsRoles).toEqual([])
     expect(hosts).toBe('all')
-    expect(capabilities).toEqual(['common', 'coding', 'productivity', 'frontend'])
-    expect(vendors).toEqual([
-      {
-        name: 'trellis',
-        source: 'https://github.com/moluoxixi/AIRules.git',
-        setup: [
-          {
-            command: 'npm',
-            args: ['install', '--global', '@mindfoldhq/trellis@latest'],
-          },
-        ],
-        projections: [
-          {
-            kind: 'role-assets',
-            sourceDir: 'roles/trellis',
-          },
-          {
-            kind: 'namespace',
-            sourceDir: 'skills/common',
-            output: 'common',
-          },
-          {
-            kind: 'mcp',
-            sourceFile: 'mcps/code/mcps.json',
-            output: 'mcps/code/mcp.json',
-          },
-          {
-            kind: 'mcp',
-            sourceFile: 'mcps/frontend/mcps.json',
-            output: 'mcps/frontend/mcp.json',
-          },
-        ],
-      },
-      {
-        name: 'mattpocock',
-        source: mattSkillsSource,
-        revision: mattSkillsRevision,
-        projections: [
-          {
-            kind: 'namespace',
-            sourceDir: 'skills/productivity',
-            output: 'productivity',
-          },
-        ],
-      },
-      {
-        name: 'anthropic-skills',
-        source: anthropicSkillsSource,
-        revision: anthropicSkillsRevision,
-        projections: [
-          {
-            kind: 'skills',
-            sourceBaseDir: 'skills',
-            skills: ['frontend-design'],
-          },
-        ],
-      },
-    ])
+    expect(roleVendor).toEqual({
+      name: 'trellis',
+      source: 'https://github.com/moluoxixi/AIRules.git',
+      setup: [
+        {
+          command: 'npm',
+          args: ['install', '--global', '@mindfoldhq/trellis@latest'],
+        },
+      ],
+      projections: [
+        {
+          kind: 'role-assets',
+          sourceDir: 'roles/trellis',
+        },
+      ],
+    })
 
     const loaded = await loadVendorManifest(manifestPath)
     expect(loaded.hosts).toEqual(HOST_IDS)
+    expect(Object.keys(loaded.vendors).sort()).toEqual(['anthropic-skills', 'mattpocock', 'trellis'])
     expect(loaded.vendors.trellis).toMatchObject({
       repo: 'https://github.com/moluoxixi/AIRules.git',
       setup: [
@@ -191,6 +150,7 @@ describe('native Trellis role', () => {
         skills: 'skills',
         mcp: 'mcp',
       },
+      capabilities: ['common', 'coding', 'productivity', 'frontend'],
       distribution: {
         bootstrap_manifest: 'constants/skills.ts',
         full_role_path_required: true,

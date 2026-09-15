@@ -6,6 +6,10 @@ canonical_root: roles/matt
 description: Installs Matt Pocock's engineering and productivity skills through AIRules.
 assets:
   skills: skills
+capabilities:
+  - engineering
+  - productivity
+role_vendor_position: after
 distribution:
   bootstrap_manifest: constants/skills.ts
   full_role_path_required: true

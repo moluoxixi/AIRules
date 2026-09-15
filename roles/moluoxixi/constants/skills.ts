@@ -1,6 +1,4 @@
-import type { CapabilityName } from '../../../capabilities/index.js'
 import type { RolePackageConfig, VendorRepo } from '../../../scripts/lib/vendors.js'
-import { composeCapabilities } from '../../../capabilities/index.js'
 
 export const extendsRoles: string[] = []
 
@@ -21,14 +19,8 @@ export const packages: RolePackageConfig[] = [
   },
 ]
 
-export const capabilities = [
-  'common',
-  'coding',
-  'productivity',
-  'frontend',
-] as const satisfies readonly CapabilityName[]
-
-const roleVendor: VendorRepo = {
+// 角色能力（capabilities）声明在 roles/moluoxixi/role.yaml 中，由 loadVendorManifest 组合成 vendors。
+export const roleVendor: VendorRepo = {
   name: 'moluoxixi',
   source: 'https://github.com/moluoxixi/AIRules.git',
   projections: [
@@ -38,5 +30,3 @@ const roleVendor: VendorRepo = {
     },
   ],
 }
-
-export const vendors: VendorRepo[] = composeCapabilities(capabilities, { roleVendor })
