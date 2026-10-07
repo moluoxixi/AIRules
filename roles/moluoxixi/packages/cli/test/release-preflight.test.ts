@@ -13,6 +13,15 @@ describe("release preflight CLI bin contract", () => {
     ).toBeNull();
   });
 
+  it("accepts npm's normalized bin paths after publish", () => {
+    expect(
+      cliBinContractError({
+        moluoxixi: "bin/moluoxixi.js",
+        ml: "bin/moluoxixi.js",
+      }),
+    ).toBeNull();
+  });
+
   it("rejects a missing ml alias", () => {
     expect(cliBinContractError({ moluoxixi: expectedBin })).toBe(
       `bin.ml is "undefined" but expected "${expectedBin}".`,

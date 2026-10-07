@@ -117,11 +117,17 @@ function npmViewJSON(args) {
 
 const EXPECTED_CLI_BIN = "./bin/moluoxixi.js";
 
+function normalizeCliBinPath(value) {
+  if (typeof value !== "string") return value;
+  return value.replace(/\\/g, "/").replace(/^\.\//, "");
+}
+
 export function cliBinContractError(bin) {
-  if (bin?.moluoxixi !== EXPECTED_CLI_BIN) {
+  const expectedBin = normalizeCliBinPath(EXPECTED_CLI_BIN);
+  if (normalizeCliBinPath(bin?.moluoxixi) !== expectedBin) {
     return `bin.moluoxixi is "${bin?.moluoxixi}" but expected "${EXPECTED_CLI_BIN}".`;
   }
-  if (bin?.ml !== EXPECTED_CLI_BIN) {
+  if (normalizeCliBinPath(bin?.ml) !== expectedBin) {
     return `bin.ml is "${bin?.ml}" but expected "${EXPECTED_CLI_BIN}".`;
   }
   if (Object.prototype.hasOwnProperty.call(bin ?? {}, "tl")) {
