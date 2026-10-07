@@ -1,0 +1,19 @@
+schema_version: 1
+capability_id: common
+description: Shared workflow skills and Hindsight memory integration.
+role_projections:
+  - kind: namespace
+    source_dir: skills
+    output: common
+  - kind: mcp
+    source_file: mcps.json
+    output: mcps/common/mcp.json
+vendors:
+  - name: hindsight-memory
+    source: https://github.com/vectorize-io/hindsight.git
+    revision: 9269b88417ed263e5a8350f2e416ca2b322756b1
+    projections:
+      - kind: skills
+        source_base_dir: skills
+        skills:
+          - hindsight-docs

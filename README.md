@@ -71,6 +71,8 @@ npm install --global @moluoxixi/airules-moluoxixi-cli
 | 知识扩展 | `moluoxixi-knowledge` | 把 `knowledge/sources/` 整理为 library 页面，更新 `index.md` 和 `relations.json`，通过一致性门禁后确认批次 |
 | `common` | `create-skill` | 创建或修订可复用的 agent skill |
 | `common` | `spec-organization` | 重组 spec 目录、命名、索引和链接 |
+| `common` | `hindsight-memory` | 通过 MCP 按项目保存和检索跨会话记忆 |
+| `common` | `hindsight-docs` | 查询 Hindsight API、部署和高级配置文档 |
 | `frontend` | `frontend-design` | 为新 UI 或现有界面重塑提供有明确审美方向的设计指导 |
 | `productivity` | `grill-me` | 启动严格访谈，把模糊想法推进到可执行方案 |
 | `productivity` | `grilling` | 压力测试计划、决策或设计中的薄弱假设 |
@@ -80,7 +82,7 @@ npm install --global @moluoxixi/airules-moluoxixi-cli
 | `productivity` | `wait-what` | 用更直接的技术英语重新解释未被理解的内容 |
 | `productivity` | `writing-for-agents` | 编写供 agent 消费的 skills、`AGENTS.md` 和 `CLAUDE.md` |
 
-`coding` capability 安装 CodeGraph、Context7、Sequential Thinking MCP；`frontend` capability 安装 Playwright MCP。前者分别用于代码关系探索、库文档查询和结构化推理，后者用于浏览器检查与自动化。
+`common` capability 配置 Hindsight HTTP 记忆 MCP，默认连接 `http://localhost:8888/mcp/`；服务启动和模型配置见 [Common](capabilities/common/README.md)。`coding` capability 安装 CodeGraph、Context7、Sequential Thinking MCP，用于代码关系探索、库文档查询和结构化推理；`frontend` capability 安装 Playwright MCP，用于浏览器检查与自动化。
 
 #### Agents、hooks 与调度
 
@@ -252,6 +254,8 @@ trellis --version
 | 知识扩展 | `trellis-knowledge` | 整理 `.trellis/knowledge/sources/`，更新 library/index/relations 并确认稳定批次 |
 | `common` | `create-skill` | 创建或修订可复用的 agent skill |
 | `common` | `spec-organization` | 重组项目 specification 文档及索引 |
+| `common` | `hindsight-memory` | 通过 MCP 按项目保存和检索跨会话记忆 |
+| `common` | `hindsight-docs` | 查询 Hindsight API、部署和高级配置文档 |
 | `frontend` | `frontend-design` | 指导有明确视觉方向的前端设计与重塑 |
 | `productivity` | `grill-me` | 启动严格需求访谈 |
 | `productivity` | `grilling` | 压力测试计划、决策或设计 |
@@ -261,7 +265,7 @@ trellis --version
 | `productivity` | `wait-what` | 重新解释未被理解的内容 |
 | `productivity` | `writing-for-agents` | 编写 agent 文档与 skills |
 
-Trellis 同样安装 CodeGraph、Context7、Sequential Thinking 和 Playwright MCP；role-owned MCP 清单为空，实际 MCP 来自 `coding` 与 `frontend` capabilities。
+Trellis 同样配置 Hindsight、CodeGraph、Context7、Sequential Thinking 和 Playwright MCP；role-owned MCP 清单为空，实际 MCP 来自 `common`、`coding` 与 `frontend` capabilities。Hindsight 服务的运行要求见 [Common](capabilities/common/README.md)。
 
 #### Agents、hooks 与调度
 
@@ -302,7 +306,7 @@ Plan 阶段创建并确认 PRD，复杂任务补齐 design/implement 后 `task.p
 
 ## 公共分发机制
 
-Role 只声明 capability，registry 负责按声明顺序组合 vendor，合并兼容投影、去重完全相同的 projection，并拒绝来源或目标冲突。完整映射见 [capabilities/README.md](capabilities/README.md)。
+共享 skills、MCP 清单和供应商声明按能力集中在 `capabilities/<能力>/`，例如 `capabilities/common/skills/`。每个能力目录是纯数据目录，只包含 `capability.yaml`、skills、MCP 清单和文档；Role 在 `role.yaml` 中选择 capability。运行时加载器位于 `scripts/lib/capabilities.ts`，负责按声明顺序组合 vendor，合并兼容投影、去重完全相同的 projection，并拒绝来源或目标冲突。目录结构与完整映射见 [capabilities/README.md](capabilities/README.md)。
 
 分发链路为：
 

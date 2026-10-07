@@ -6,10 +6,9 @@ import { afterEach, describe, expect, it } from 'vitest'
 import { parseDocument } from 'yaml'
 import { rebuildVendorAssets } from '../../../scripts/lib/vendor-staging.js'
 import { loadVendorManifest } from '../../../scripts/lib/vendors.js'
-import { extendsRoles, hosts, roleVendor } from '../constants/skills.js'
 
 const roleRoot = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..')
-const manifestPath = path.join(roleRoot, 'constants', 'skills.ts')
+const manifestPath = path.join(roleRoot, 'role.yaml')
 const temporaryRoots: string[] = []
 const mattSkillsSource = 'https://github.com/mattpocock/skills.git'
 const mattSkillsRevision = '8b78b531ab965735c5dc74f6f7a219e1e37326df'
@@ -28,15 +27,16 @@ afterEach(() => {
 
 describe('matt role', () => {
   it('projects the pinned engineering and productivity namespaces', async () => {
-    expect(extendsRoles).toEqual([])
-    expect(hosts).toBe('all')
-    expect(roleVendor).toEqual({
+    const roleContract = parseDocument(fs.readFileSync(manifestPath, 'utf8')).toJS({ maxAliasCount: 0 }) as Record<string, unknown>
+    expect(roleContract.extends_roles).toEqual([])
+    expect(roleContract.hosts).toBe('all')
+    expect(roleContract.role_vendor).toEqual({
       name: 'matt-role',
       source: 'https://github.com/moluoxixi/AIRules.git',
       projections: [
         {
           kind: 'role-assets',
-          sourceDir: 'roles/matt',
+          source_dir: 'roles/matt',
         },
       ],
     })
@@ -70,7 +70,7 @@ describe('matt role', () => {
   })
 
   it('ships a canonical remote role contract', () => {
-    expect(fs.readdirSync(roleRoot).sort()).toEqual(['__test__', 'constants', 'mcp', 'role.yaml', 'skills'])
+    expect(fs.readdirSync(roleRoot).sort()).toEqual(['__test__', 'mcp', 'role.yaml', 'skills'])
     expect(JSON.parse(fs.readFileSync(path.join(roleRoot, 'mcp', 'mcp.json'), 'utf8'))).toEqual({ mcpServers: {} })
 
     const document = parseDocument(fs.readFileSync(path.join(roleRoot, 'role.yaml'), 'utf8'), {
@@ -95,8 +95,20 @@ describe('matt role', () => {
         'productivity',
       ],
       role_vendor_position: 'after',
+      hosts: 'all',
+      extends_roles: [],
+      role_vendor: {
+        name: 'matt-role',
+        source: 'https://github.com/moluoxixi/AIRules.git',
+        projections: [
+          {
+            kind: 'role-assets',
+            source_dir: 'roles/matt',
+          },
+        ],
+      },
       distribution: {
-        bootstrap_manifest: 'constants/skills.ts',
+        bootstrap_manifest: 'role.yaml',
         full_role_path_required: true,
         npm_embedded_source: false,
       },

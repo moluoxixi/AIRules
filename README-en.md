@@ -71,6 +71,8 @@ Project workflow entries become slash commands or discoverable skills according 
 | Knowledge extension | `moluoxixi-knowledge` | Organize sources into library pages, update `index.md` and `relations.json`, then acknowledge a valid batch |
 | `common` | `create-skill` | Create or revise a reusable agent skill |
 | `common` | `spec-organization` | Reorganize specification directories, names, indexes, and links |
+| `common` | `hindsight-memory` | Retain and recall project memory through MCP across sessions |
+| `common` | `hindsight-docs` | Look up Hindsight API, deployment, and advanced configuration |
 | `frontend` | `frontend-design` | Give intentional visual direction when creating or reshaping interfaces |
 | `productivity` | `grill-me` | Start a rigorous interview that turns an idea into an executable plan |
 | `productivity` | `grilling` | Stress-test plans, decisions, and designs |
@@ -80,7 +82,7 @@ Project workflow entries become slash commands or discoverable skills according 
 | `productivity` | `wait-what` | Restate misunderstood material in direct technical English |
 | `productivity` | `writing-for-agents` | Write skills, `AGENTS.md`, and `CLAUDE.md` for agent consumption |
 
-The `coding` capability installs the CodeGraph, Context7, and Sequential Thinking MCP servers for code relationships, library documentation, and structured reasoning. The `frontend` capability installs Playwright MCP for browser inspection and automation.
+The `common` capability configures the Hindsight HTTP memory MCP at `http://localhost:8888/mcp/`. See [Common](capabilities/common/README.md) for service startup and model configuration. The `coding` capability installs CodeGraph, Context7, and Sequential Thinking MCP for code relationships, library documentation, and structured reasoning. The `frontend` capability installs Playwright MCP for browser inspection and automation.
 
 #### Agents, hooks, and dispatch
 
@@ -245,6 +247,8 @@ Native Trellis projects workflow entries as commands or skills according to host
 | Knowledge extension | `trellis-knowledge` | Organize sources, update library/index/relations, and acknowledge a stable batch |
 | `common` | `create-skill` | Create or revise a reusable agent skill |
 | `common` | `spec-organization` | Reorganize project specification documents and indexes |
+| `common` | `hindsight-memory` | Retain and recall project memory through MCP across sessions |
+| `common` | `hindsight-docs` | Look up Hindsight API, deployment, and advanced configuration |
 | `frontend` | `frontend-design` | Guide intentional frontend design and redesign |
 | `productivity` | `grill-me` | Start a rigorous requirements interview |
 | `productivity` | `grilling` | Stress-test plans, decisions, and designs |
@@ -254,7 +258,7 @@ Native Trellis projects workflow entries as commands or skills according to host
 | `productivity` | `wait-what` | Restate misunderstood material |
 | `productivity` | `writing-for-agents` | Write agent-facing documents and skills |
 
-Trellis also installs the CodeGraph, Context7, Sequential Thinking, and Playwright MCP servers. Its role-owned MCP manifest is empty; these servers come from `coding` and `frontend` capabilities.
+Trellis configures Hindsight, CodeGraph, Context7, Sequential Thinking, and Playwright MCP. Its role-owned MCP manifest is empty; these servers come from `common`, `coding`, and `frontend` capabilities. See [Common](capabilities/common/README.md) for Hindsight service requirements.
 
 #### Agents, hooks, and dispatch
 
@@ -295,7 +299,7 @@ Role source: [`roles/trellis`](roles/trellis).
 
 ## Shared distribution
 
-Roles declare capabilities. The registry composes vendors in declaration order, merges compatible projections, deduplicates identical projections, and rejects source or target conflicts. See [capabilities/README.md](capabilities/README.md) for the complete mapping.
+Shared skills, MCP catalogs, and vendor declarations live together in `capabilities/<capability>/`, such as `capabilities/common/skills/`. Each capability is a data-only directory containing `capability.yaml`, skills, MCP catalogs, and documentation; roles select capabilities in `role.yaml`. The runtime loader lives in `scripts/lib/capabilities.ts`, composes vendors in declaration order, merges compatible projections, deduplicates identical projections, and rejects source or target conflicts. See [capabilities/README.md](capabilities/README.md) for the layout and complete mapping.
 
 ```text
 role manifest

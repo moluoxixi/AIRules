@@ -180,12 +180,9 @@ function requireRoleAssetRoot(
 
 function requireCanonicalRoleContract(roleRoot: string, role: string, vendorId: string): CanonicalRoleAssetRoots {
   const roleManifest = path.join(roleRoot, 'role.yaml')
-  const constantsFile = path.join(roleRoot, 'constants', 'skills.ts')
-  for (const [label, file] of [['role manifest', roleManifest], ['role constants', constantsFile]] as const) {
-    const stats = fs.lstatSync(file, { throwIfNoEntry: false })
-    if (!stats?.isFile() || stats.isSymbolicLink()) {
-      throw new Error(`Vendor "${vendorId}" canonical ${label} must be a plain file: ${file}`)
-    }
+  const roleManifestStats = fs.lstatSync(roleManifest, { throwIfNoEntry: false })
+  if (!roleManifestStats?.isFile() || roleManifestStats.isSymbolicLink()) {
+    throw new Error(`Vendor "${vendorId}" canonical role manifest must be a plain file: ${roleManifest}`)
   }
 
   const document = parseDocument(fs.readFileSync(roleManifest, 'utf8'), {

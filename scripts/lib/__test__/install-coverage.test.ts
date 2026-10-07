@@ -944,7 +944,7 @@ it('vendors - roleVendor 清单从 role.yaml 组合 capabilities 并校验契约
     assert.deepEqual(Object.keys(composed.vendors), ['demo'])
     assert.deepEqual(composed.vendors.demo.links, [
       { kind: 'role-assets-dir', source: 'roles/demo', target: 'vendor' },
-      { kind: 'mcp-file', source: 'mcps/code/mcps.json', target: 'vendor/mcps/code/mcp.json' },
+      { kind: 'mcp-file', source: 'capabilities/coding/mcps.json', target: 'vendor/mcps/code/mcp.json' },
     ])
 
     writeFile(contractPath, 'role_id: demo\ncapabilities: []\n')
@@ -959,6 +959,7 @@ it('vendors - roleVendor 清单从 role.yaml 组合 capabilities 并校验契约
     writeFile(contractPath, 'role_id: demo\ncapabilities:\n  - coding\nrole_vendor_position: middle\n')
     await assert.rejects(() => loadVendorManifest(manifestPath), /"role_vendor_position" must be "before" or "after"/)
 
+    writeFile(contractPath, 'role_id: demo\ncapabilities:\n  - coding\nrole_vendor_position: after\n')
     const invalidRoleVendorManifest = path.join(roleRoot, 'constants', 'invalid.mjs')
     writeFile(invalidRoleVendorManifest, `export const roleVendor = { name: 'demo' }\n`)
     await assert.rejects(() => loadVendorManifest(invalidRoleVendorManifest), /"roleVendor" must be a vendor definition/)

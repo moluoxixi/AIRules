@@ -1,0 +1,7 @@
+schema_version: 1
+capability_id: coding
+description: Shared coding MCP servers.
+role_projections:
+  - kind: mcp
+    source_file: mcps.json
+    output: mcps/code/mcp.json

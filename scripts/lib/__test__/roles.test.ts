@@ -45,6 +45,12 @@ function writeRoleManifest(repoRoot: string, role: string, content = 'export con
   fs.writeFileSync(manifestFile, content, 'utf8')
 }
 
+function writeYamlRoleManifest(repoRoot: string, role: string, extendsRoles: string[] = []): void {
+  const manifestFile = path.join(repoRoot, 'roles', role, 'role.yaml')
+  fs.mkdirSync(path.dirname(manifestFile), { recursive: true })
+  fs.writeFileSync(manifestFile, `schema_version: 1\nrole_id: ${role}\nextends_roles: ${JSON.stringify(extendsRoles)}\n`, 'utf8')
+}
+
 it('uses an empty string as the default role', () => {
   expect(DEFAULT_ROLE).toBe('')
 })
@@ -55,26 +61,41 @@ it('requires a valid role when resolving explicit role paths', () => {
   expect(() => requireRolePaths(repoRoot, undefined)).toThrow(/role name/i)
 })
 
-it('fails closed when an explicit role is missing required directories or constants', () => {
+it('fails closed when an explicit role is missing its declaration', () => {
   const repoRoot = fs.mkdtempSync(path.join(os.tmpdir(), 'airules-role-structure-'))
   temporaryRoots.push(repoRoot)
 
   expect(() => requireRolePaths(repoRoot, 'alpha')).toThrow(/unknown AIRules role/i)
 
   fs.mkdirSync(path.join(repoRoot, 'roles', 'alpha'), { recursive: true })
-  expect(() => requireRolePaths(repoRoot, 'alpha')).toThrow(/constants directory/i)
+  expect(() => requireRolePaths(repoRoot, 'alpha')).toThrow(/missing AIRules role skill manifest/i)
 
   fs.mkdirSync(path.join(repoRoot, 'roles', 'alpha', 'constants'))
-  expect(() => requireRolePaths(repoRoot, 'alpha')).toThrow(/role constants/i)
+  expect(() => requireRolePaths(repoRoot, 'alpha')).toThrow(/missing AIRules role skill manifest/i)
 })
 
-it('resolves only the selected role path and constants file', () => {
+it('accepts a YAML-only role without a legacy constants tree', () => {
+  const repoRoot = fs.mkdtempSync(path.join(os.tmpdir(), 'airules-yaml-role-'))
+  temporaryRoots.push(repoRoot)
+  const roleRoot = path.join(repoRoot, 'roles', 'alpha')
+  fs.mkdirSync(roleRoot, { recursive: true })
+  fs.writeFileSync(path.join(roleRoot, 'role.yaml'), 'schema_version: 1\nrole_id: alpha\n', 'utf8')
+
+  expect(requireRolePaths(repoRoot, 'alpha')).toMatchObject({
+    role: 'alpha',
+    roleRoot: fs.realpathSync(roleRoot),
+    roleManifest: fs.realpathSync(path.join(roleRoot, 'role.yaml')),
+  })
+})
+
+it('resolves only the selected role path and legacy constants file', () => {
   const repoRoot = createRepo()
   const roleRoot = fs.realpathSync(path.join(repoRoot, 'roles', 'alpha'))
 
   expect(requireRolePaths(repoRoot, 'alpha')).toMatchObject({
     role: 'alpha',
     roleRoot,
+    roleManifest: path.join(roleRoot, 'constants', 'skills.ts'),
     constantsFile: path.join(roleRoot, 'constants', 'skills.ts'),
   })
 })
@@ -173,6 +194,20 @@ it('returns no overlays for the empty role and deduplicates shared ancestors', a
 
   await expect(roleOverlayOrder(repoRoot, '')).resolves.toEqual([])
   await expect(roleOverlayOrder(repoRoot, 'root')).resolves.toEqual(['base', 'left', 'right', 'root'])
+})
+
+it('reads YAML role inheritance and rejects YAML cycles', async () => {
+  const repoRoot = fs.mkdtempSync(path.join(os.tmpdir(), 'airules-yaml-role-inheritance-'))
+  temporaryRoots.push(repoRoot)
+  writeYamlRoleManifest(repoRoot, 'base')
+  writeYamlRoleManifest(repoRoot, 'left', ['base'])
+  writeYamlRoleManifest(repoRoot, 'right', ['base'])
+  writeYamlRoleManifest(repoRoot, 'root', ['left', 'right'])
+  writeYamlRoleManifest(repoRoot, 'cycle-a', ['cycle-b'])
+  writeYamlRoleManifest(repoRoot, 'cycle-b', ['cycle-a'])
+
+  await expect(roleOverlayOrder(repoRoot, 'root')).resolves.toEqual(['base', 'left', 'right', 'root'])
+  await expect(roleOverlayOrder(repoRoot, 'cycle-a')).rejects.toThrow(/inheritance cycle/i)
 })
 
 it('rejects cyclic inheritance and malformed extendsRoles exports', async () => {

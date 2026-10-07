@@ -4,7 +4,6 @@ import { fileURLToPath } from 'node:url'
 import { describe, expect, it } from 'vitest'
 import { parseDocument } from 'yaml'
 import { loadVendorManifest } from '../../../scripts/lib/vendors.js'
-import { extendsRoles, hosts, packages, roleVendor } from '../constants/skills.js'
 
 interface RoleManifest {
   assets: {
@@ -14,6 +13,16 @@ interface RoleManifest {
   }
   canonical_root: string
   capabilities: string[]
+  extends_roles?: string[]
+  hosts: string[]
+  packages: Array<{
+    name: string
+    path: string
+    install?: {
+      kind: string
+      version?: string
+    }
+  }>
   distribution: {
     bootstrap_manifest: string
     full_role_path_required: boolean
@@ -25,6 +34,13 @@ interface RoleManifest {
   }
   role_id: string
   role_version: string
+  role_vendor: {
+    name: string
+    source: string
+    revision?: string
+    setup?: unknown[]
+    projections: unknown[]
+  }
   third_party: {
     frontend_design: {
       name: string
@@ -110,7 +126,6 @@ describe('moluoxixi finalized role assets', () => {
     expect(sortPaths(distributedEntries)).toEqual(sortPaths([
       '.gitignore',
       '__test__',
-      'constants',
       'mcp',
       'package.json',
       'packages',
@@ -177,7 +192,7 @@ describe('moluoxixi finalized role assets', () => {
       canonical_root: 'roles/moluoxixi',
       capabilities: ['common', 'coding', 'productivity', 'frontend'],
       distribution: {
-        bootstrap_manifest: 'constants/skills.ts',
+        bootstrap_manifest: 'role.yaml',
         full_role_path_required: true,
         npm_embedded_source: false,
       },
@@ -208,9 +223,9 @@ describe('moluoxixi finalized role assets', () => {
     expect(fs.statSync(resolveRolePath(manifest.entrypoints.initialize_project_script)).isFile()).toBe(true)
     expect(fs.existsSync(resolveRolePath('skills/init-project/scripts/migrations/manifests'))).toBe(false)
 
-    expect(extendsRoles).toEqual([])
-    expect(hosts).toBe('all')
-    expect(packages).toEqual([
+    expect(manifest.extends_roles).toEqual([])
+    expect(manifest.hosts).toBe('all')
+    expect(manifest.packages).toEqual([
       {
         name: '@moluoxixi/airules-moluoxixi-core',
         path: 'packages/core',
@@ -221,21 +236,22 @@ describe('moluoxixi finalized role assets', () => {
         install: { kind: 'npm-global', version: 'latest' },
       },
     ])
-    expect(roleVendor).toEqual({
+    expect(manifest.role_vendor).toEqual({
       name: 'moluoxixi',
       source: 'https://github.com/moluoxixi/AIRules.git',
       projections: [
-        { kind: 'role-assets', sourceDir: 'roles/moluoxixi' },
+        { kind: 'role-assets', source_dir: 'roles/moluoxixi' },
       ],
     })
-    const loaded = await loadVendorManifest(resolveRolePath('constants/skills.ts'))
-    expect(Object.keys(loaded.vendors)).toEqual(['moluoxixi', 'mattpocock', 'anthropic-skills'])
+    const loaded = await loadVendorManifest(resolveRolePath('role.yaml'))
+    expect(Object.keys(loaded.vendors)).toEqual(['moluoxixi', 'hindsight-memory', 'mattpocock', 'anthropic-skills'])
     expect(loaded.vendors.moluoxixi?.setup).toBeUndefined()
     expect(loaded.vendors.moluoxixi?.links).toEqual([
       { kind: 'role-assets-dir', source: 'roles/moluoxixi', target: 'vendor' },
-      { kind: 'namespace-dir', source: 'skills/common', target: 'vendor/skills/common' },
-      { kind: 'mcp-file', source: 'mcps/code/mcps.json', target: 'vendor/mcps/code/mcp.json' },
-      { kind: 'mcp-file', source: 'mcps/frontend/mcps.json', target: 'vendor/mcps/frontend/mcp.json' },
+      { kind: 'namespace-dir', source: 'capabilities/common/skills', target: 'vendor/skills/common' },
+      { kind: 'mcp-file', source: 'capabilities/common/mcps.json', target: 'vendor/mcps/common/mcp.json' },
+      { kind: 'mcp-file', source: 'capabilities/coding/mcps.json', target: 'vendor/mcps/code/mcp.json' },
+      { kind: 'mcp-file', source: 'capabilities/frontend/mcps.json', target: 'vendor/mcps/frontend/mcp.json' },
     ])
     expect(loaded.vendors.mattpocock).toMatchObject({
       repo: mattSkillsSource,
@@ -257,6 +273,13 @@ describe('moluoxixi finalized role assets', () => {
           source: 'skills/frontend-design',
           target: 'vendor/skills/frontend-design',
         },
+      ],
+    })
+    expect(loaded.vendors['hindsight-memory']).toMatchObject({
+      repo: 'https://github.com/vectorize-io/hindsight.git',
+      revision: '9269b88417ed263e5a8350f2e416ca2b322756b1',
+      links: [
+        { kind: 'skill', source: 'skills/hindsight-docs', target: 'vendor/skills/hindsight-docs' },
       ],
     })
     expect(JSON.parse(fs.readFileSync(resolveRolePath('mcp/mcp.json'), 'utf8'))).toEqual({

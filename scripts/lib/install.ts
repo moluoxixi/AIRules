@@ -618,7 +618,11 @@ export function applyMcpServerProjection(
   return Object.fromEntries(Object.entries(servers).map(([name, value]) => {
     const base = typeof value === 'object' && value !== null && !Array.isArray(value) ? value as Record<string, unknown> : {}
     const projected = { ...serverDefaults, ...base, ...serverOverrides?.[name] }
-    if (serverCommandFormat !== 'command-array' || typeof projected.command !== 'string')
+    if (serverCommandFormat !== 'command-array')
+      return [name, projected]
+    if (typeof projected.url === 'string')
+      return [name, { ...projected, type: 'remote' }]
+    if (typeof projected.command !== 'string')
       return [name, projected]
 
     const { args, command, env, ...rest } = projected
@@ -667,8 +671,16 @@ function projectMcpToHost(moluoHome: string, role: string, mcpHome: string, mcp:
   for (const [name, value] of Object.entries(projectedServers)) {
     if (userDeclared.has(name))
       continue
-    const server = value as { command?: string, args?: string[], env?: Record<string, string> }
+    const server = value as {
+      command?: string
+      args?: string[]
+      env?: Record<string, string>
+      url?: string
+      headers?: Record<string, string>
+    }
     lines.push(`[${mcp.serversKey}.${tomlKey(name)}]`)
+    if (server.url)
+      lines.push(`url = "${escapeTomlString(server.url)}"`)
     if (server.command)
       lines.push(`command = "${escapeTomlString(server.command)}"`)
     if (Array.isArray(server.args))
@@ -678,6 +690,12 @@ function projectMcpToHost(moluoHome: string, role: string, mcpHome: string, mcp:
         .map(([key, value]) => `${tomlKey(key)} = "${escapeTomlString(String(value))}"`)
         .join(', ')
       lines.push(`env = { ${environment} }`)
+    }
+    if (server.headers && Object.keys(server.headers).length > 0) {
+      const headers = Object.entries(server.headers)
+        .map(([key, value]) => `${tomlKey(key)} = "${escapeTomlString(String(value))}"`)
+        .join(', ')
+      lines.push(`http_headers = { ${headers} }`)
     }
     lines.push('')
   }

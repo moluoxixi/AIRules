@@ -1,10 +1,20 @@
-import type { CapabilityName } from '../../capabilities/index.js'
+import type { CapabilityName } from './capability-types.js'
+import type {
+  RolePackageConfig,
+  SetupCommand,
+  SkillDef,
+  Vendor,
+  VendorLink,
+  VendorManifest,
+  VendorProjection,
+  VendorRepo,
+} from './manifest-types.js'
 import fs from 'node:fs'
 import path from 'node:path'
 import { fileURLToPath, pathToFileURL, URL } from 'node:url'
 import { parseDocument } from 'yaml'
-import { CAPABILITY_NAMES, composeCapabilities } from '../../capabilities/index.js'
 import { HOST_IDS } from '../../constants/hosts.js'
+import { CAPABILITY_NAMES, composeCapabilities } from './capabilities.js'
 import { flattenedSkillName, flattenedVendorSkillTarget } from './skill-projection.js'
 
 const vendorNamePattern = /^[A-Za-z0-9][\w-]*$/u
@@ -14,147 +24,23 @@ const gitCommitPattern = /^[a-f0-9]{40}$/u
 const remoteGitProtocols = new Set(['https:', 'http:', 'ssh:', 'git:', 'git+ssh:'])
 const scpStyleRemotePattern = /^[^@\s/:]+@[^@\s/:]+:\S+$/u
 
-/**
- * 安装前置命令必须以结构化参数声明，避免把配置内容拼进 shell 字符串。
- */
-export interface SetupCommand {
-  command: string
-  args?: string[]
-  /** Windows 下该命令由 `.cmd` shim 提供；宿主执行器据此安全解析可执行文件。 */
-  windowsCommandShim?: boolean
-  /**
-   * 当指定命令已存在于 PATH 时跳过当前 setup 命令。
-   * 适用于全局工具已安装后不应重复覆盖正在运行二进制的场景。
-   */
-  skipIfCommandAvailable?: string
-}
-
-/** A published role package may optionally provide a global CLI for role setup. */
-export interface RolePackageInstall {
-  kind: 'npm-global'
-  /** npm version or dist-tag. Defaults to `latest`. */
-  version?: string
-}
-
-/** Role-owned npm package declaration. Array order is the publication order. */
-export interface RolePackageConfig {
-  name: string
-  /** Package directory relative to `roles/<role>`. */
-  path: string
-  /** Packages without this field are published but not globally installed. */
-  install?: RolePackageInstall
-}
-
-/**
- * 单个 skill 的详细配置（适用于需要重命名或前置安装命令的场景）。
- */
-export interface SkillConfig {
-  /** 仓库内源目录名。 */
-  name: string
-  /** 安装后目录名，默认与 name 相同。 */
-  output?: string
-  /**
-   * 该 skill 的安装前置命令。
-   * 在 skill 链接建立后执行，例如安装对应的全局 CLI 工具。
-   */
-  setup?: SetupCommand[]
-}
-
-/**
- * 技能定义：字符串简写或对象配置。
- */
-export type SkillDef = string | SkillConfig
-
-/**
- * 单个供应商仓库内的一条安装投影规则。
- */
-export type VendorProjection
-  = | {
-    kind: 'namespace'
-    /** 仓库内要递归扫描的目录。 */
-    sourceDir: string
-    /** 清单中的占位名；实际 vendor 目录由叶子 skill 名称决定。 */
-    output: string
-    /** namespace 级安装前置命令。 */
-    setup?: SetupCommand[]
-  }
-  | {
-    kind: 'skills'
-    /** 仓库内技能所在的基准目录。 */
-    sourceBaseDir: string
-    /** 需要精确安装的技能列表。 */
-    skills: SkillDef[]
-  }
-  | {
-    kind: 'role-assets'
-    /** 远程仓库内所选角色根目录，如 roles/example-development。 */
-    sourceDir: string
-  }
-  | {
-    kind: 'mcp'
-    /** 仓库内单个 MCP 清单文件路径，如 mcps/code/mcps.json。文件格式包含 mcp 配置和 setup 命令。 */
-    sourceFile: string
-    /** 投影到 vendor/ 下的目标路径，如 mcps/code/mcp.json。会从 sourceFile 提取 mcp 配置并生成标准 MCP 格式。 */
-    output: string
-  }
-
-/**
- * 代表一个必须通过 Git remote checkout 获取的供应商仓库。
- */
-export interface VendorRepo {
-  /** 供应商名称，也是克隆到本地后的目录名。 */
-  name: string
-  /** Git 仓库地址。 */
-  source: string
-  /** 固定 checkout 的完整 Git commit SHA；省略时跟随远端默认分支。 */
-  revision?: string
-  /**
-   * 供应商级安装前置命令。
-   */
-  setup?: SetupCommand[]
-  /** 从远程 checkout 投影到 vendor staging 的安装规则列表；仅做 setup 的供应商可为空。 */
-  projections: VendorProjection[]
-}
-
-/**
- * 技能节点：可以是一个具体的 VendorRepo，也可以是包含多个节点的分类对象。
- */
-export type VendorNode = VendorRepo | { [category: string]: VendorNode[] }
-
-/**
- * 供应商配置根结构。
- */
-export type VendorsConfig = VendorNode[]
+export type {
+  RolePackageConfig,
+  RolePackageInstall,
+  SetupCommand,
+  SkillConfig,
+  SkillDef,
+  Vendor,
+  VendorLink,
+  VendorManifest,
+  VendorNode,
+  VendorProjection,
+  VendorRepo,
+  VendorsConfig,
+} from './manifest-types.js'
 
 export function normalizePath(value: string): string {
   return value.replace(/\\/g, '/')
-}
-
-export interface VendorLink {
-  kind:
-    | 'namespace-dir'
-    | 'skill'
-    | 'role-assets-dir'
-    | 'mcp-file'
-  source: string
-  target: string
-  /** 该 skill 或 MCP 的安装前置命令 */
-  setup?: SetupCommand[]
-}
-
-export interface Vendor {
-  repo: string
-  revision?: string
-  cloneDir: string
-  setup?: SetupCommand[]
-  links: VendorLink[]
-}
-
-export interface VendorManifest {
-  hosts?: string[]
-  packages?: RolePackageConfig[]
-  version: number
-  vendors: Record<string, Vendor>
 }
 
 export function rolePackageSetupCommands(packages: RolePackageConfig[] = []): SetupCommand[] {
@@ -380,20 +266,32 @@ export function walkVendorTree(node: any, namespaceParts: string[], vendors: Rec
 }
 
 export async function loadVendorManifest(manifestPath: string): Promise<VendorManifest> {
-  const manifestUrl = pathToFileURL(path.resolve(manifestPath)).href
-  const module = await import(manifestUrl)
-  const roleVendor = module.roleVendor ?? module.default?.roleVendor
+  const resolvedManifestPath = path.resolve(manifestPath)
+  const roleContract = tryLoadRoleContract(manifestPath)
+  const isRoleYaml = path.basename(resolvedManifestPath).toLowerCase() === 'role.yaml'
+  const module = isRoleYaml
+    ? {}
+    : await import(pathToFileURL(resolvedManifestPath).href)
+  const roleVendor = roleContract?.roleVendor
+    ?? module.roleVendor
+    ?? module.default?.roleVendor
   const vendorTree = roleVendor === undefined
-    ? module.vendors ?? module.default?.vendors ?? module.default
-    : composeRoleVendorTree(manifestPath, roleVendor)
+    ? (isRoleYaml ? {} : module.vendors ?? module.default?.vendors ?? module.default)
+    : composeRoleVendorTree(manifestPath, roleVendor, roleContract)
   if (!vendorTree || typeof vendorTree !== 'object') {
     throw new Error(`Vendor manifest "${manifestPath}" must export a "vendors" object or a "roleVendor" definition`)
   }
 
   const vendors: Record<string, Vendor> = {}
   walkVendorTree(vendorTree, [], vendors)
-  const hosts = normalizeRoleHosts(module.hosts ?? module.default?.hosts, manifestPath)
-  const packages = normalizeRolePackages(module.packages ?? module.default?.packages, manifestPath)
+  const hosts = normalizeRoleHosts(
+    roleContract?.hosts ?? module.hosts ?? module.default?.hosts,
+    manifestPath,
+  )
+  const packages = normalizeRolePackages(
+    roleContract?.packages ?? module.packages ?? module.default?.packages,
+    manifestPath,
+  )
 
   return {
     ...(hosts === undefined ? {} : { hosts }),
@@ -403,8 +301,11 @@ export async function loadVendorManifest(manifestPath: string): Promise<VendorMa
   }
 }
 
-interface RoleCapabilityContract {
-  capabilities: CapabilityName[]
+interface RoleContractData {
+  hosts?: unknown
+  packages?: unknown
+  capabilities?: unknown
+  roleVendor?: unknown
   roleVendorPosition?: 'before' | 'after'
 }
 
@@ -415,6 +316,9 @@ interface RoleCapabilityContract {
  */
 function resolveRoleContractPath(manifestPath: string): string {
   const resolvedManifest = path.resolve(manifestPath)
+  if (path.basename(resolvedManifest).toLowerCase() === 'role.yaml' && fs.existsSync(resolvedManifest)) {
+    return resolvedManifest
+  }
   const roleRoot = path.dirname(path.dirname(resolvedManifest))
   const sourceContract = path.join(roleRoot, 'role.yaml')
   if (fs.existsSync(sourceContract))
@@ -430,8 +334,31 @@ function resolveRoleContractPath(manifestPath: string): string {
   throw new Error(`Vendor manifest "${manifestPath}" exports "roleVendor" but its role.yaml contract is missing: ${sourceContract}`)
 }
 
-function loadRoleCapabilityContract(manifestPath: string): RoleCapabilityContract {
-  const contractPath = resolveRoleContractPath(manifestPath)
+function tryLoadRoleContract(manifestPath: string): RoleContractData | undefined {
+  const resolvedManifest = path.resolve(manifestPath)
+  let contractPath: string | undefined
+  if (path.basename(resolvedManifest).toLowerCase() === 'role.yaml') {
+    contractPath = resolvedManifest
+  }
+  else {
+    const roleRoot = path.dirname(path.dirname(resolvedManifest))
+    const sourceContract = path.join(roleRoot, 'role.yaml')
+    if (fs.existsSync(sourceContract)) {
+      contractPath = sourceContract
+    }
+    else {
+      const rolesDir = path.dirname(roleRoot)
+      const distRoot = path.dirname(rolesDir)
+      if (path.basename(rolesDir) === 'roles' && path.basename(distRoot) === 'dist') {
+        const packagedContract = path.join(path.dirname(distRoot), 'roles', path.basename(roleRoot), 'role.yaml')
+        if (fs.existsSync(packagedContract))
+          contractPath = packagedContract
+      }
+    }
+  }
+  if (contractPath === undefined || !fs.existsSync(contractPath))
+    return undefined
+
   const document = parseDocument(fs.readFileSync(contractPath, 'utf8'), {
     merge: false,
     prettyErrors: true,
@@ -446,10 +373,34 @@ function loadRoleCapabilityContract(manifestPath: string): RoleCapabilityContrac
     throw new Error(`Role contract "${contractPath}" must be a YAML mapping`)
   }
 
-  const { capabilities, role_vendor_position: roleVendorPosition } = contract as Record<string, unknown>
+  const record = contract as Record<string, unknown>
+  const capabilities = record.capabilities
+  const roleVendorPosition = record.role_vendor_position ?? record.roleVendorPosition
+  if (roleVendorPosition !== undefined && roleVendorPosition !== 'before' && roleVendorPosition !== 'after') {
+    throw new Error(`Role contract "${contractPath}" field "role_vendor_position" must be "before" or "after"`)
+  }
+
+  return {
+    ...(capabilities === undefined ? {} : { capabilities }),
+    ...(record.hosts === undefined ? {} : { hosts: record.hosts }),
+    ...(record.packages === undefined ? {} : { packages: record.packages }),
+    ...(record.role_vendor === undefined && record.roleVendor === undefined
+      ? {}
+      : { roleVendor: record.role_vendor ?? record.roleVendor }),
+    ...(roleVendorPosition === undefined ? {} : { roleVendorPosition }),
+  }
+}
+
+function requireRoleCapabilityContract(manifestPath: string, contract: RoleContractData): {
+  capabilities: CapabilityName[]
+  roleVendorPosition?: 'before' | 'after'
+} {
+  const capabilities = contract.capabilities
+  const contractPath = resolveRoleContractPath(manifestPath)
   if (!Array.isArray(capabilities) || capabilities.length === 0) {
     throw new Error(`Role contract "${contractPath}" must declare a non-empty "capabilities" list`)
   }
+
   const seen = new Set<string>()
   for (const capability of capabilities) {
     if (typeof capability !== 'string' || !(CAPABILITY_NAMES as readonly string[]).includes(capability)) {
@@ -460,26 +411,149 @@ function loadRoleCapabilityContract(manifestPath: string): RoleCapabilityContrac
     }
     seen.add(capability)
   }
-  if (roleVendorPosition !== undefined && roleVendorPosition !== 'before' && roleVendorPosition !== 'after') {
-    throw new Error(`Role contract "${contractPath}" field "role_vendor_position" must be "before" or "after"`)
-  }
 
   return {
     capabilities: capabilities as CapabilityName[],
-    ...(roleVendorPosition === undefined ? {} : { roleVendorPosition }),
+    ...(contract.roleVendorPosition === undefined ? {} : { roleVendorPosition: contract.roleVendorPosition }),
+  }
+}
+
+function manifestRecord(value: unknown, location: string): Record<string, unknown> {
+  if (!value || typeof value !== 'object' || Array.isArray(value))
+    throw new TypeError(`${location} must be an object`)
+  return value as Record<string, unknown>
+}
+
+function manifestString(value: unknown, location: string): string {
+  if (typeof value !== 'string' || value.length === 0)
+    throw new TypeError(`${location} must be a non-empty string`)
+  return value
+}
+
+function manifestOptionalString(value: unknown, location: string): string | undefined {
+  return value === undefined ? undefined : manifestString(value, location)
+}
+
+function manifestField(record: Record<string, unknown>, snake: string, camel: string): unknown {
+  return record[snake] ?? record[camel]
+}
+
+function normalizeSetupCommands(value: unknown, location: string): SetupCommand[] | undefined {
+  if (value === undefined)
+    return undefined
+  if (!Array.isArray(value))
+    throw new TypeError(`${location} must be an array`)
+
+  return value.map((entry, index) => {
+    const commandLocation = `${location}[${index}]`
+    const record = manifestRecord(entry, commandLocation)
+    const command = manifestString(record.command, `${commandLocation}.command`)
+    const args = record.args
+    if (args !== undefined && (!Array.isArray(args) || args.some(argument => typeof argument !== 'string'))) {
+      throw new TypeError(`${commandLocation}.args must be an array of strings`)
+    }
+    const windowsCommandShim = manifestField(record, 'windows_command_shim', 'windowsCommandShim')
+    const skipIfCommandAvailable = manifestField(record, 'skip_if_command_available', 'skipIfCommandAvailable')
+    if (windowsCommandShim !== undefined && typeof windowsCommandShim !== 'boolean')
+      throw new TypeError(`${commandLocation}.windows_command_shim must be boolean`)
+    if (skipIfCommandAvailable !== undefined && typeof skipIfCommandAvailable !== 'string')
+      throw new TypeError(`${commandLocation}.skip_if_command_available must be a string`)
+    return {
+      command,
+      ...(args === undefined ? {} : { args: args as string[] }),
+      ...(windowsCommandShim === undefined ? {} : { windowsCommandShim }),
+      ...(skipIfCommandAvailable === undefined ? {} : { skipIfCommandAvailable }),
+    }
+  })
+}
+
+function normalizeSkillDefinition(value: unknown, location: string): SkillDef {
+  if (typeof value === 'string')
+    return value
+  const record = manifestRecord(value, location)
+  const name = manifestString(record.name, `${location}.name`)
+  const output = manifestOptionalString(record.output, `${location}.output`)
+  const setup = normalizeSetupCommands(record.setup, `${location}.setup`)
+  return {
+    name,
+    ...(output === undefined ? {} : { output }),
+    ...(setup === undefined ? {} : { setup }),
+  }
+}
+
+function normalizeProjectionDefinitions(value: unknown, location: string): VendorProjection[] {
+  if (!Array.isArray(value))
+    throw new TypeError(`${location} must be an array`)
+  return value.map((entry, index) => {
+    const projectionLocation = `${location}[${index}]`
+    const record = manifestRecord(entry, projectionLocation)
+    const kind = manifestString(record.kind, `${projectionLocation}.kind`)
+    if (kind === 'namespace') {
+      return {
+        kind,
+        sourceDir: manifestString(manifestField(record, 'source_dir', 'sourceDir'), `${projectionLocation}.source_dir`),
+        output: manifestString(record.output, `${projectionLocation}.output`),
+        ...(normalizeSetupCommands(record.setup, `${projectionLocation}.setup`) === undefined
+          ? {}
+          : { setup: normalizeSetupCommands(record.setup, `${projectionLocation}.setup`) }),
+      }
+    }
+    if (kind === 'skills') {
+      const skills = record.skills
+      if (!Array.isArray(skills))
+        throw new TypeError(`${projectionLocation}.skills must be an array`)
+      return {
+        kind,
+        sourceBaseDir: manifestString(manifestField(record, 'source_base_dir', 'sourceBaseDir'), `${projectionLocation}.source_base_dir`),
+        skills: skills.map((skill, skillIndex) => normalizeSkillDefinition(skill, `${projectionLocation}.skills[${skillIndex}]`)),
+      }
+    }
+    if (kind === 'role-assets') {
+      return {
+        kind,
+        sourceDir: manifestString(manifestField(record, 'source_dir', 'sourceDir'), `${projectionLocation}.source_dir`),
+      }
+    }
+    if (kind === 'mcp') {
+      return {
+        kind,
+        sourceFile: manifestString(manifestField(record, 'source_file', 'sourceFile'), `${projectionLocation}.source_file`),
+        output: manifestString(record.output, `${projectionLocation}.output`),
+      }
+    }
+    throw new Error(`${projectionLocation} has unknown kind "${kind}"`)
+  })
+}
+
+function normalizeVendorDefinition(value: unknown, manifestPath: string): VendorRepo {
+  const location = `Vendor manifest "${manifestPath}" roleVendor`
+  const record = manifestRecord(value, location)
+  const name = manifestString(record.name, `${location}.name`)
+  const source = manifestString(record.source, `${location}.source`)
+  const revision = manifestOptionalString(record.revision, `${location}.revision`)
+  const setup = normalizeSetupCommands(record.setup, `${location}.setup`)
+  const projections = normalizeProjectionDefinitions(record.projections, `${location}.projections`)
+  if (projections.length === 0 && (!setup || setup.length === 0))
+    throw new Error(`${location} must declare projections or setup`)
+  return {
+    name,
+    source,
+    ...(revision === undefined ? {} : { revision }),
+    ...(setup === undefined ? {} : { setup }),
+    projections,
   }
 }
 
 /**
  * 依据 role.yaml 声明的 capabilities，把清单导出的 roleVendor 组合成完整 vendors 列表。
  */
-function composeRoleVendorTree(manifestPath: string, roleVendor: unknown): VendorRepo[] {
+function composeRoleVendorTree(manifestPath: string, roleVendor: unknown, roleContract?: RoleContractData): VendorRepo[] {
   if (!isVendorEntry(roleVendor)) {
     throw new Error(`Vendor manifest "${manifestPath}" export "roleVendor" must be a vendor definition with name and source`)
   }
-  const contract = loadRoleCapabilityContract(manifestPath)
+  const contract = requireRoleCapabilityContract(manifestPath, roleContract ?? tryLoadRoleContract(manifestPath) ?? {})
   return composeCapabilities(contract.capabilities, {
-    roleVendor: roleVendor as VendorRepo,
+    roleVendor: normalizeVendorDefinition(roleVendor, manifestPath),
     ...(contract.roleVendorPosition === undefined ? {} : { roleVendorPosition: contract.roleVendorPosition }),
   })
 }

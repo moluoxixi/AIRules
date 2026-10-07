@@ -5,6 +5,7 @@ import os from 'node:os'
 import path from 'node:path'
 import process from 'node:process'
 import { fileURLToPath, pathToFileURL } from 'node:url'
+import { parse } from 'yaml'
 
 const repoRoot = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..')
 const packageJson = JSON.parse(fs.readFileSync(path.join(repoRoot, 'package.json'), 'utf8'))
@@ -66,35 +67,45 @@ try {
     throw new Error('Packed airules --help does not expose the role install command')
 
   const installedPackageRoot = path.join(consumerRoot, 'node_modules', packageJson.name)
-  const moluoxixiManifest = path.join(installedPackageRoot, 'dist', 'roles', 'moluoxixi', 'constants', 'skills.js')
+  const moluoxixiManifest = path.join(installedPackageRoot, 'roles', 'moluoxixi', 'role.yaml')
   if (!fs.existsSync(moluoxixiManifest))
-    throw new Error('Packed AIRules is missing the compiled Moluoxixi role package declaration')
-  const trellisManifest = path.join(installedPackageRoot, 'dist', 'roles', 'trellis', 'constants', 'skills.js')
-  const capabilityModule = path.join(installedPackageRoot, 'dist', 'capabilities', 'index.js')
-  if (!fs.existsSync(trellisManifest) || !fs.existsSync(capabilityModule))
-    throw new Error('Packed AIRules is missing compiled role capability modules')
+    throw new Error('Packed AIRules is missing the Moluoxixi role YAML declaration')
+  const trellisManifest = path.join(installedPackageRoot, 'roles', 'trellis', 'role.yaml')
+  const capabilityDeclaration = path.join(installedPackageRoot, 'capabilities', 'common', 'capability.yaml')
+  if (!fs.existsSync(trellisManifest) || !fs.existsSync(capabilityDeclaration))
+    throw new Error('Packed AIRules is missing role or capability declarations')
   for (const manifestPath of [moluoxixiManifest, trellisManifest]) {
-    const manifest = await import(pathToFileURL(manifestPath).href)
-    if (typeof manifest.roleVendor?.name !== 'string')
-      throw new Error(`Packed role manifest does not export a roleVendor definition: ${manifestPath}`)
-    // loadVendorManifest 会回退到包根的 roles/<role>/role.yaml 读取 capabilities 并组合 vendors。
+    // loadVendorManifest 直接读取 role.yaml，并按 capabilities 组合 vendors。
     const { loadVendorManifest } = await import(pathToFileURL(path.join(installedPackageRoot, 'dist', 'scripts', 'lib', 'vendors.js')).href)
     const loaded = await loadVendorManifest(manifestPath)
     const frontendVendor = loaded.vendors['anthropic-skills']
     if (frontendVendor?.revision !== '3b3fad96af16a10759d930941b4520ba0c40edae')
       throw new Error(`Packed role manifest does not pin frontend-design: ${manifestPath}`)
+    const memoryVendor = loaded.vendors['hindsight-memory']
+    if (memoryVendor?.revision !== '9269b88417ed263e5a8350f2e416ca2b322756b1')
+      throw new Error(`Packed role manifest does not pin Hindsight documentation: ${manifestPath}`)
+    const roleContract = parse(fs.readFileSync(manifestPath, 'utf8'))
+    const roleVendorName = roleContract?.role_vendor?.name
+    if (!roleVendorName)
+      throw new Error(`Packed role YAML does not declare role_vendor.name: ${manifestPath}`)
+    const roleLinks = loaded.vendors[roleVendorName]?.links ?? []
+    for (const source of ['capabilities/common/skills', 'capabilities/common/mcps.json']) {
+      if (!roleLinks.some(link => link.source === source))
+        throw new Error(`Packed role manifest is missing shared capability assets: ${source}`)
+    }
   }
 
   const fixtureRoot = path.join(temporaryRoot, 'fixture')
   const airulesHome = path.join(temporaryRoot, 'airules-home')
   const userHome = path.join(temporaryRoot, 'user')
-  fs.mkdirSync(path.join(fixtureRoot, 'roles', 'smoke', 'constants'), { recursive: true })
+  fs.mkdirSync(path.join(fixtureRoot, 'roles', 'smoke'), { recursive: true })
   fs.mkdirSync(path.join(userHome, '.codex'), { recursive: true })
   fs.writeFileSync(path.join(fixtureRoot, 'package.json'), '{"type":"module"}\n')
-  fs.writeFileSync(path.join(fixtureRoot, 'roles', 'smoke', 'constants', 'skills.js'), [
-    'export const hosts = [\'codex\']',
-    'export const vendors = []',
-  ].join('\n'))
+  fs.writeFileSync(path.join(fixtureRoot, 'roles', 'smoke', 'role.yaml'), `${[
+    'schema_version: 1',
+    'role_id: smoke',
+    'hosts: [codex]',
+  ].join('\n')}\n`)
   const installOutput = run(airulesExecutable, [
     'install',
     'smoke',

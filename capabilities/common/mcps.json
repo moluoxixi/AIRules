@@ -1,0 +1,12 @@
+{
+  "mcps": {
+    "hindsight": {
+      "mcp": {
+        "type": "http",
+        "url": "http://localhost:8888/mcp/"
+      },
+      "setup": [],
+      "description": "共享 Hindsight HTTP 记忆服务。启动一个本地或远程实例，各宿主通过同一 endpoint 保存、检索和反思跨会话记忆。"
+    }
+  }
+}

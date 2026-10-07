@@ -17,7 +17,7 @@ const trellisReferenceFixtures = [
   'capabilities/README.md',
   'eslint.config.ts',
   'scripts/verify-packed-airules.mjs',
-  'skills/common/spec-organization/SKILL.md',
+  'capabilities/common/skills/spec-organization/SKILL.md',
 ]
 
 afterEach(() => {

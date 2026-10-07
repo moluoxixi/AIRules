@@ -1,8 +1,12 @@
 import fs from 'node:fs'
 import os from 'node:os'
 import path from 'node:path'
+import { fileURLToPath } from 'node:url'
 import { afterEach, describe, expect, it, vi } from 'vitest'
+import { capabilityRegistry } from '../capabilities.js'
 import { cleanupEmptyVendorSkillDirectories, rebuildVendorAssets } from '../vendor-staging.js'
+
+const commonCapability = capabilityRegistry.common
 
 const temporaryRoots: string[] = []
 
@@ -57,10 +61,33 @@ function writeRoleContract(homeDir: string, vendor: string, role: string): void 
   if (!fs.existsSync(manifest)) {
     writeFile(manifest, `role_id: ${role}\ncanonical_root: roles/${role}\n`)
   }
-  writeFile(repoPath(homeDir, vendor, 'roles', role, 'constants', 'skills.ts'), 'export const vendors = []\n')
 }
 
 describe('rebuildVendorAssets', () => {
+  it('stages shared skills and memory MCP from the capability asset directory', async () => {
+    const { root, homeDir } = createFixture()
+    const commonRoot = fileURLToPath(new URL('../../../capabilities/common/', import.meta.url))
+    const checkoutCommonRoot = repoPath(homeDir, 'remote', 'capabilities', 'common')
+    fs.mkdirSync(path.dirname(checkoutCommonRoot), { recursive: true })
+    fs.cpSync(commonRoot, checkoutCommonRoot, { recursive: true })
+    const manifestPath = writeManifest(root, 'common-assets', [
+      vendorDefinition('remote', Array.from(commonCapability.roleProjections ?? [])),
+    ])
+
+    const inventory = await rebuildVendorAssets({ homeDir, role: 'alpha', manifestPath })
+
+    expect(inventory.skills).toEqual(['create-skill', 'hindsight-memory', 'spec-organization'])
+    for (const skill of inventory.skills) {
+      expect(fs.readFileSync(path.join(homeDir, 'vendor', 'skills', skill, 'SKILL.md')))
+        .toEqual(fs.readFileSync(path.join(commonRoot, 'skills', skill, 'SKILL.md')))
+    }
+    expect(JSON.parse(fs.readFileSync(path.join(homeDir, 'vendor', 'mcps', 'common', 'mcp.json'), 'utf8'))).toEqual({
+      mcpServers: {
+        hindsight: { type: 'http', url: 'http://localhost:8888/mcp/' },
+      },
+    })
+  })
+
   it('accepts a home path whose ancestor resolves through a filesystem alias', async () => {
     const { root } = createFixture()
     const actualRoot = path.join(root, 'private', 'var')
@@ -328,7 +355,7 @@ describe('rebuildVendorAssets', () => {
     expect(fs.readFileSync(path.join(homeDir, 'roles', 'alpha', 'rules', 'AGENTS.md'), 'utf8')).toBe('# alpha\n')
   })
 
-  it('requires the canonical role manifest and bootstrap constants', async () => {
+  it('requires the canonical role manifest and accepts YAML-only roles', async () => {
     const missingManifest = createFixture()
     writeFile(
       repoPath(missingManifest.homeDir, 'canonical-source', 'roles', 'alpha', 'constants', 'skills.ts'),
@@ -343,19 +370,19 @@ describe('rebuildVendorAssets', () => {
       manifestPath: missingManifestPath,
     })).rejects.toThrow(/role manifest.*plain file/i)
 
-    const missingConstants = createFixture()
+    const yamlOnly = createFixture()
     writeFile(
-      repoPath(missingConstants.homeDir, 'canonical-source', 'roles', 'alpha', 'role.yaml'),
+      repoPath(yamlOnly.homeDir, 'canonical-source', 'roles', 'alpha', 'role.yaml'),
       'role_id: alpha\n',
     )
-    const missingConstantsPath = writeManifest(missingConstants.root, 'missing-role-constants', [
+    const yamlOnlyPath = writeManifest(yamlOnly.root, 'yaml-only-role', [
       vendorDefinition('canonical-source', [{ kind: 'role-assets', sourceDir: 'roles/alpha' }]),
     ])
     await expect(rebuildVendorAssets({
-      homeDir: missingConstants.homeDir,
+      homeDir: yamlOnly.homeDir,
       role: 'alpha',
-      manifestPath: missingConstantsPath,
-    })).rejects.toThrow(/role constants.*plain file/i)
+      manifestPath: yamlOnlyPath,
+    })).resolves.toMatchObject({ role: 'alpha' })
   })
 
   it.each([
@@ -384,7 +411,7 @@ describe('rebuildVendorAssets', () => {
     ).rejects.toThrow(expected as RegExp)
   })
 
-  it('rejects a role constants directory in place of the bootstrap file', async () => {
+  it('allows a role constants directory to coexist with the YAML contract', async () => {
     const { root, homeDir } = createFixture()
     writeFile(repoPath(homeDir, 'canonical-source', 'roles', 'alpha', 'role.yaml'), 'role_id: alpha\n')
     fs.mkdirSync(repoPath(homeDir, 'canonical-source', 'roles', 'alpha', 'constants', 'skills.ts'), {
@@ -396,7 +423,7 @@ describe('rebuildVendorAssets', () => {
 
     await expect(
       rebuildVendorAssets({ homeDir, role: 'alpha', manifestPath }),
-    ).rejects.toThrow(/role constants.*plain file/i)
+    ).resolves.toMatchObject({ role: 'alpha' })
   })
 
   it('rejects project instance state embedded in a canonical role or project template', async () => {

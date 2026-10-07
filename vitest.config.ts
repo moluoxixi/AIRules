@@ -4,6 +4,7 @@ export default defineConfig({
   test: {
     exclude: [
       '**/node_modules/**',
+      '**/.pnpm-store/**',
       '**/dist/**',
       'roles/*/packages/**',
       '.skill-references/**',

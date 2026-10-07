@@ -518,9 +518,14 @@ function removeTrellisOwnedContent(targetRoot) {
     .replaceAll('!fs.existsSync(trellisManifest) || ', '')
     .replaceAll(', trellisManifest', ''))
   updateTargetText(targetRoot, 'SKILLS_ORGANIZATION.md', removeTrellisOrganizationContent)
-  updateTargetText(targetRoot, 'skills/common/spec-organization/SKILL.md', content => content
-    .replaceAll(', `.trellis/spec`', '')
-    .replaceAll('、`.trellis/spec/`', ''))
+  for (const relativePath of [
+    'capabilities/common/skills/spec-organization/SKILL.md',
+    'skills/common/spec-organization/SKILL.md',
+  ]) {
+    updateTargetText(targetRoot, relativePath, content => content
+      .replaceAll(', `.trellis/spec`', '')
+      .replaceAll('、`.trellis/spec/`', ''))
+  }
 }
 
 function removeTrellisOrganizationContent(content) {

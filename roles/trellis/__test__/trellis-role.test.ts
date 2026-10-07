@@ -9,10 +9,9 @@ import { parseDocument } from 'yaml'
 import { HOST_IDS } from '../../../constants/hosts.js'
 import { rebuildVendorAssets } from '../../../scripts/lib/vendor-staging.js'
 import { loadVendorManifest } from '../../../scripts/lib/vendors.js'
-import { extendsRoles, hosts, roleVendor } from '../constants/skills.js'
 
 const roleRoot = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..')
-const manifestPath = path.join(roleRoot, 'constants', 'skills.ts')
+const manifestPath = path.join(roleRoot, 'role.yaml')
 const temporaryRoots: string[] = []
 const workspaceFolderPlaceholder = '$' + '{workspaceFolder}'
 const mattSkillsSource = 'https://github.com/mattpocock/skills.git'
@@ -28,9 +27,10 @@ afterEach(() => {
 
 describe('native Trellis role', () => {
   it('installs the official CLI and projects the AIRules-owned initialization entry', async () => {
-    expect(extendsRoles).toEqual([])
-    expect(hosts).toBe('all')
-    expect(roleVendor).toEqual({
+    const roleContract = parseDocument(fs.readFileSync(manifestPath, 'utf8')).toJS({ maxAliasCount: 0 }) as Record<string, unknown>
+    expect(roleContract.extends_roles).toEqual([])
+    expect(roleContract.hosts).toBe('all')
+    expect(roleContract.role_vendor).toEqual({
       name: 'trellis',
       source: 'https://github.com/moluoxixi/AIRules.git',
       setup: [
@@ -42,14 +42,14 @@ describe('native Trellis role', () => {
       projections: [
         {
           kind: 'role-assets',
-          sourceDir: 'roles/trellis',
+          source_dir: 'roles/trellis',
         },
       ],
     })
 
     const loaded = await loadVendorManifest(manifestPath)
     expect(loaded.hosts).toEqual(HOST_IDS)
-    expect(Object.keys(loaded.vendors).sort()).toEqual(['anthropic-skills', 'mattpocock', 'trellis'])
+    expect(Object.keys(loaded.vendors).sort()).toEqual(['anthropic-skills', 'hindsight-memory', 'mattpocock', 'trellis'])
     expect(loaded.vendors.trellis).toMatchObject({
       repo: 'https://github.com/moluoxixi/AIRules.git',
       setup: [
@@ -67,17 +67,22 @@ describe('native Trellis role', () => {
       },
       {
         kind: 'namespace-dir',
-        source: 'skills/common',
+        source: 'capabilities/common/skills',
         target: 'vendor/skills/common',
       },
       {
         kind: 'mcp-file',
-        source: 'mcps/code/mcps.json',
+        source: 'capabilities/common/mcps.json',
+        target: 'vendor/mcps/common/mcp.json',
+      },
+      {
+        kind: 'mcp-file',
+        source: 'capabilities/coding/mcps.json',
         target: 'vendor/mcps/code/mcp.json',
       },
       {
         kind: 'mcp-file',
-        source: 'mcps/frontend/mcps.json',
+        source: 'capabilities/frontend/mcps.json',
         target: 'vendor/mcps/frontend/mcp.json',
       },
     ])
@@ -99,10 +104,17 @@ describe('native Trellis role', () => {
         target: 'vendor/skills/frontend-design',
       }],
     })
+    expect(loaded.vendors['hindsight-memory']).toMatchObject({
+      repo: 'https://github.com/vectorize-io/hindsight.git',
+      revision: '9269b88417ed263e5a8350f2e416ca2b322756b1',
+      links: [
+        { kind: 'skill', source: 'skills/hindsight-docs', target: 'vendor/skills/hindsight-docs' },
+      ],
+    })
   })
 
   it('ships the native initialization entry and declares shared coding MCP servers', () => {
-    expect(fs.readdirSync(roleRoot).sort()).toEqual(['__test__', 'constants', 'mcp', 'role.yaml', 'skills'])
+    expect(fs.readdirSync(roleRoot).sort()).toEqual(['__test__', 'mcp', 'role.yaml', 'skills'])
     expect(fs.readdirSync(path.join(roleRoot, 'skills')).sort()).toEqual(['init-project'])
     expect(fs.statSync(path.join(roleRoot, 'skills', 'init-project', 'scripts', 'inject-readme.mjs')).isFile()).toBe(true)
     expect(fs.statSync(path.join(roleRoot, 'skills', 'init-project', 'scripts', 'install-extension.mjs')).isFile()).toBe(true)
@@ -123,14 +135,21 @@ describe('native Trellis role', () => {
     expect(skill).toContain('Do not stage or commit generated')
 
     expect(JSON.parse(fs.readFileSync(path.join(roleRoot, 'mcp', 'mcp.json'), 'utf8'))).toEqual({ mcpServers: {} })
-    const catalog = JSON.parse(fs.readFileSync(path.resolve(roleRoot, '..', '..', 'mcps', 'code', 'mcps.json'), 'utf8')) as {
+    const catalog = JSON.parse(fs.readFileSync(path.resolve(roleRoot, '..', '..', 'capabilities', 'coding', 'mcps.json'), 'utf8')) as {
       mcps: Record<string, { mcp: { args: string[], command: string } }>
     }
     expect(Object.keys(catalog.mcps).sort()).toEqual(['codegraph', 'context7', 'sequential-thinking'])
-    const frontendCatalog = JSON.parse(fs.readFileSync(path.resolve(roleRoot, '..', '..', 'mcps', 'frontend', 'mcps.json'), 'utf8')) as {
+    const frontendCatalog = JSON.parse(fs.readFileSync(path.resolve(roleRoot, '..', '..', 'capabilities', 'frontend', 'mcps.json'), 'utf8')) as {
       mcps: Record<string, { mcp: { args: string[], command: string } }>
     }
     expect(Object.keys(frontendCatalog.mcps)).toEqual(['playwright'])
+    const commonCatalog = JSON.parse(fs.readFileSync(path.resolve(roleRoot, '..', '..', 'capabilities', 'common', 'mcps.json'), 'utf8')) as {
+      mcps: Record<string, { mcp: { type: string, url: string } }>
+    }
+    expect(commonCatalog.mcps.hindsight.mcp).toEqual({
+      type: 'http',
+      url: 'http://localhost:8888/mcp/',
+    })
     expect(catalog.mcps.codegraph.mcp.args).toEqual(['serve', '--mcp', '--path', workspaceFolderPlaceholder])
 
     const document = parseDocument(fs.readFileSync(path.join(roleRoot, 'role.yaml'), 'utf8'), {
@@ -152,7 +171,7 @@ describe('native Trellis role', () => {
       },
       capabilities: ['common', 'coding', 'productivity', 'frontend'],
       distribution: {
-        bootstrap_manifest: 'constants/skills.ts',
+        bootstrap_manifest: 'role.yaml',
         full_role_path_required: true,
         npm_embedded_source: false,
       },

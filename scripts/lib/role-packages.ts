@@ -131,7 +131,7 @@ function validatePublicationOrder(packages: ResolvedRolePackage[]): void {
 export async function loadRolePackageWorkspace(repoRoot: string, roleValue: unknown): Promise<RolePackageWorkspace> {
   const role = requireRoleName(roleValue)
   const manifestPath = resolveRoleManifestPath(repoRoot, role)
-  const roleRoot = fs.realpathSync(path.resolve(manifestPath, '..', '..'))
+  const roleRoot = roleRootFromManifestPath(manifestPath)
   const manifest = await loadVendorManifest(manifestPath)
   if (!manifest.packages || manifest.packages.length === 0)
     throw new Error(`AIRules role "${role}" does not declare publishable packages`)
@@ -193,11 +193,15 @@ export async function discoverRolePackageWorkspaces(repoRoot: string): Promise<R
     .map(entry => entry.name)
     .sort()
   for (const roleName of roleNames) {
-    const manifestPath = path.join(rolesRoot, roleName, 'constants', 'skills.ts')
-    const javascriptManifestPath = path.join(rolesRoot, roleName, 'constants', 'skills.js')
-    if (!fs.existsSync(manifestPath) && !fs.existsSync(javascriptManifestPath))
+    const roleRoot = path.join(rolesRoot, roleName)
+    const manifestPath = [
+      path.join(roleRoot, 'role.yaml'),
+      path.join(roleRoot, 'constants', 'skills.ts'),
+      path.join(roleRoot, 'constants', 'skills.js'),
+    ].find(candidate => fs.existsSync(candidate))
+    if (manifestPath === undefined)
       continue
-    const manifest = await loadVendorManifest(fs.existsSync(manifestPath) ? manifestPath : javascriptManifestPath)
+    const manifest = await loadVendorManifest(manifestPath)
     if ((manifest.packages?.length ?? 0) > 0)
       workspaces.push(await loadRolePackageWorkspace(repoRoot, roleName))
   }
@@ -225,6 +229,7 @@ export function affectedRolePackageWorkspaces(
   return workspaces.filter((workspace) => {
     const rolePrefix = `roles/${workspace.role}/`
     const exactPaths = new Set([
+      `${rolePrefix}role.yaml`,
       `${rolePrefix}constants/skills.js`,
       `${rolePrefix}constants/skills.ts`,
       `${rolePrefix}package.json`,
@@ -237,6 +242,15 @@ export function affectedRolePackageWorkspaces(
     return normalizedPaths.some(filePath => exactPaths.has(filePath)
       || packagePrefixes.some(prefix => filePath.startsWith(prefix)))
   })
+}
+
+function roleRootFromManifestPath(manifestPath: string): string {
+  const resolved = path.resolve(manifestPath)
+  return fs.realpathSync(
+    path.basename(resolved).toLowerCase() === 'role.yaml'
+      ? path.dirname(resolved)
+      : path.dirname(path.dirname(resolved)),
+  )
 }
 
 export function nextWorkspacePatchVersion(

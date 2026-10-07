@@ -4,7 +4,7 @@
 
 ## 说明
 
-此目录用于角色专属的 MCP 服务器配置。通用的 MCP 服务器（如编码相关）已统一管理在项目根目录的 `mcps/` 中。
+此目录用于角色专属的 MCP 服务器配置。共享 MCP 统一管理在 [`capabilities/`](../../../capabilities/README.md) 中，与对应能力的 skills 和供应商声明放在一起。
 
 ## 使用场景
 
@@ -16,7 +16,7 @@
 
 ## 当前配置
 
-`mcp.json` 保持空对象，表示此角色使用全局 MCP 配置（通过 vendor projection 同步自 `mcps/`）。
+`mcp.json` 中的 `mcpServers` 保持为空；此角色通过 `role.yaml` 选择 `common`、`coding` 和 `frontend`，从全局能力目录同步共享 MCP。
 
 ## 扩展配置
 

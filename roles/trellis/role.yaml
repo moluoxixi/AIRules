@@ -12,8 +12,19 @@ capabilities:
   - coding
   - productivity
   - frontend
+hosts: all
+extends_roles: []
+role_vendor:
+  name: trellis
+  source: https://github.com/moluoxixi/AIRules.git
+  setup:
+    - command: npm
+      args: [install, --global, '@mindfoldhq/trellis@latest']
+  projections:
+    - kind: role-assets
+      source_dir: roles/trellis
 distribution:
-  bootstrap_manifest: constants/skills.ts
+  bootstrap_manifest: role.yaml
   full_role_path_required: true
   npm_embedded_source: false
 entrypoints:

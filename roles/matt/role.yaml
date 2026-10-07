@@ -10,8 +10,16 @@ capabilities:
   - engineering
   - productivity
 role_vendor_position: after
+hosts: all
+extends_roles: []
+role_vendor:
+  name: matt-role
+  source: https://github.com/moluoxixi/AIRules.git
+  projections:
+    - kind: role-assets
+      source_dir: roles/matt
 distribution:
-  bootstrap_manifest: constants/skills.ts
+  bootstrap_manifest: role.yaml
   full_role_path_required: true
   npm_embedded_source: false
 third_party:

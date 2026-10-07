@@ -23,9 +23,11 @@ function createFixture(): { moluoHome: string, userHome: string } {
   fs.mkdirSync(path.join(moluoHome, 'vendor', 'skills'), { recursive: true })
   fs.mkdirSync(path.join(moluoHome, 'roles', 'trellis'), { recursive: true })
   fs.cpSync(path.join(roleRoot, 'mcp'), path.join(moluoHome, 'roles', 'trellis', 'mcp'), { recursive: true })
-  const codeCatalog = loadMcpCatalog(path.resolve(roleRoot, '..', '..', 'mcps', 'code', 'mcps.json'))
-  const frontendCatalog = loadMcpCatalog(path.resolve(roleRoot, '..', '..', 'mcps', 'frontend', 'mcps.json'))
+  const codeCatalog = loadMcpCatalog(path.resolve(roleRoot, '..', '..', 'capabilities', 'coding', 'mcps.json'))
+  const commonCatalog = loadMcpCatalog(path.resolve(roleRoot, '..', '..', 'capabilities', 'common', 'mcps.json'))
+  const frontendCatalog = loadMcpCatalog(path.resolve(roleRoot, '..', '..', 'capabilities', 'frontend', 'mcps.json'))
   for (const [capability, catalog] of [
+    ['common', commonCatalog],
     ['code', codeCatalog],
     ['frontend', frontendCatalog],
   ] as const) {
@@ -47,16 +49,21 @@ describe('trellis MCP projection', () => {
     projectHostById('cursor', userHome, moluoHome, 'trellis')
 
     const claude = JSON.parse(fs.readFileSync(path.join(userHome, '.claude.json'), 'utf8')) as {
-      mcpServers: Record<string, { args: string[], command: string, type: string }>
+      mcpServers: Record<string, unknown>
     }
     expect(claude.mcpServers.codegraph).toEqual({
       type: 'stdio',
       command: 'codegraph',
       args: ['serve', '--mcp'],
     })
+    expect(claude.mcpServers.hindsight).toEqual({
+      type: 'http',
+      url: 'http://localhost:8888/mcp/',
+    })
     expect(Object.keys(claude.mcpServers).sort()).toEqual([
       'codegraph',
       'context7',
+      'hindsight',
       'playwright',
       'sequential-thinking',
     ])
@@ -66,6 +73,8 @@ describe('trellis MCP projection', () => {
     expect(codex).toContain('[mcp_servers.context7]')
     expect(codex).toContain('[mcp_servers.sequential-thinking]')
     expect(codex).toContain('[mcp_servers.playwright]')
+    expect(codex).toContain('[mcp_servers.hindsight]')
+    expect(codex).toContain('url = "http://localhost:8888/mcp/"')
     expect(codex).not.toContain(workspaceFolderPlaceholder)
 
     const cursor = JSON.parse(fs.readFileSync(path.join(userHome, '.cursor', 'mcp.json'), 'utf8')) as {
@@ -95,10 +104,10 @@ describe('trellis MCP projection', () => {
       '--path',
       workspaceFolderPlaceholder,
     ])
-    expect(Object.keys(trae.mcpServers)).toHaveLength(4)
+    expect(Object.keys(trae.mcpServers)).toHaveLength(5)
   })
 
-  it('converts every server to the OpenCode command-array schema', () => {
+  it('converts local and HTTP servers to the OpenCode schema', () => {
     const { moluoHome, userHome } = createFixture()
     const openCodeHome = path.join(userHome, '.config', 'opencode')
     fs.mkdirSync(openCodeHome, { recursive: true })
@@ -107,7 +116,7 @@ describe('trellis MCP projection', () => {
 
     const config = JSON.parse(fs.readFileSync(path.join(openCodeHome, 'opencode.json'), 'utf8')) as {
       $schema: string
-      mcp: Record<string, { command: string[], enabled: boolean, type: string }>
+      mcp: Record<string, { command: string[], enabled: boolean, type: string, url?: string }>
     }
     expect(config.$schema).toBe('https://opencode.ai/config.json')
     expect(config.mcp.codegraph).toEqual({
@@ -122,5 +131,10 @@ describe('trellis MCP projection', () => {
       '@modelcontextprotocol/server-sequential-thinking@latest',
     ])
     expect(config.mcp.playwright.command).toEqual(['npx', '-y', '@playwright/mcp@latest'])
+    expect(config.mcp.hindsight).toEqual({
+      type: 'remote',
+      enabled: true,
+      url: 'http://localhost:8888/mcp/',
+    })
   })
 })

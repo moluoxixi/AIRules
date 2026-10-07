@@ -3,7 +3,7 @@ import { describe, expect, it } from 'vitest'
 import {
   composeCapabilities,
   composeCapabilityDefinitions,
-} from '../../../capabilities/index.js'
+} from '../capabilities.js'
 
 const roleVendor: VendorRepo = {
   name: 'demo-role',
@@ -22,14 +22,16 @@ describe('capability composition', () => {
 
     expect(result.map(vendor => vendor.name)).toEqual([
       'demo-role',
+      'hindsight-memory',
       'mattpocock',
       'anthropic-skills',
     ])
     expect(result[0]?.projections).toEqual([
       { kind: 'role-assets', sourceDir: 'roles/demo' },
-      { kind: 'namespace', sourceDir: 'skills/common', output: 'common' },
-      { kind: 'mcp', sourceFile: 'mcps/code/mcps.json', output: 'mcps/code/mcp.json' },
-      { kind: 'mcp', sourceFile: 'mcps/frontend/mcps.json', output: 'mcps/frontend/mcp.json' },
+      { kind: 'namespace', sourceDir: 'capabilities/common/skills', output: 'common' },
+      { kind: 'mcp', sourceFile: 'capabilities/common/mcps.json', output: 'mcps/common/mcp.json' },
+      { kind: 'mcp', sourceFile: 'capabilities/coding/mcps.json', output: 'mcps/code/mcp.json' },
+      { kind: 'mcp', sourceFile: 'capabilities/frontend/mcps.json', output: 'mcps/frontend/mcp.json' },
     ])
     expect(JSON.stringify({ capabilities, roleVendor })).toBe(before)
 

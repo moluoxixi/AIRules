@@ -8,7 +8,6 @@
     "sourceMap": false
   },
   "include": [
-    "capabilities/**/*.ts",
     "constants/**/*.ts",
     "roles/*/constants/**/*.ts",
     "roles/*/runtime/**/*.ts",

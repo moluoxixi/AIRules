@@ -1,14 +1,7 @@
-import type { VendorProjection, VendorRepo } from '../scripts/lib/vendors.js'
+import type { VendorProjection, VendorRepo } from './manifest-types.js'
 
-export const CAPABILITY_NAMES = [
-  'common',
-  'coding',
-  'frontend',
-  'productivity',
-  'engineering',
-] as const
-
-export type CapabilityName = typeof CAPABILITY_NAMES[number]
+/** Capability ids are discovered from capability directories containing capability.yaml. */
+export type CapabilityName = string
 
 export interface CapabilityDefinition {
   roleProjections?: readonly VendorProjection[]
