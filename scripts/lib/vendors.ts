@@ -1,5 +1,6 @@
 import type { CapabilityName } from './types/capabilities.js'
 import type {
+  RoleContractData,
   RolePackageConfig,
   SetupCommand,
   SkillDef,
@@ -15,6 +16,7 @@ import { fileURLToPath, pathToFileURL, URL } from 'node:url'
 import { parseDocument } from 'yaml'
 import { CAPABILITY_NAMES, composeCapabilities } from './capabilities.js'
 import { HOST_IDS } from './hosts.js'
+import { resolveRoleManifestPath, roleOverlayOrder } from './roles.js'
 import { flattenedSkillName, flattenedVendorSkillTarget } from './skill-projection.js'
 
 const vendorNamePattern = /^[A-Za-z0-9][\w-]*$/u
@@ -277,7 +279,7 @@ export async function loadVendorManifest(manifestPath: string): Promise<VendorMa
     ?? module.default?.roleVendor
   const vendorTree = roleVendor === undefined
     ? (isRoleYaml ? {} : module.vendors ?? module.default?.vendors ?? module.default)
-    : composeRoleVendorTree(manifestPath, roleVendor, roleContract)
+    : await composeRoleVendorTree(manifestPath, roleVendor, roleContract)
   if (!vendorTree || typeof vendorTree !== 'object') {
     throw new Error(`Vendor manifest "${manifestPath}" must export a "vendors" object or a "roleVendor" definition`)
   }
@@ -299,14 +301,6 @@ export async function loadVendorManifest(manifestPath: string): Promise<VendorMa
     version: 1,
     vendors,
   }
-}
-
-interface RoleContractData {
-  hosts?: unknown
-  packages?: unknown
-  capabilities?: unknown
-  roleVendor?: unknown
-  roleVendorPosition?: 'before' | 'after'
 }
 
 /**
@@ -382,6 +376,9 @@ function tryLoadRoleContract(manifestPath: string): RoleContractData | undefined
 
   return {
     ...(capabilities === undefined ? {} : { capabilities }),
+    ...(record.extends_roles === undefined && record.extendsRoles === undefined
+      ? {}
+      : { extendsRoles: record.extends_roles ?? record.extendsRoles }),
     ...(record.hosts === undefined ? {} : { hosts: record.hosts }),
     ...(record.packages === undefined ? {} : { packages: record.packages }),
     ...(record.role_vendor === undefined && record.roleVendor === undefined
@@ -391,29 +388,50 @@ function tryLoadRoleContract(manifestPath: string): RoleContractData | undefined
   }
 }
 
-function requireRoleCapabilityContract(manifestPath: string, contract: RoleContractData): {
+async function requireRoleCapabilityContract(manifestPath: string, contract: RoleContractData): Promise<{
   capabilities: CapabilityName[]
   roleVendorPosition?: 'before' | 'after'
-} {
-  const capabilities = contract.capabilities
+}> {
   const contractPath = resolveRoleContractPath(manifestPath)
-  if (!Array.isArray(capabilities) || capabilities.length === 0) {
-    throw new Error(`Role contract "${contractPath}" must declare a non-empty "capabilities" list`)
+  const extendsRoles = contract.extendsRoles ?? []
+  if (!Array.isArray(extendsRoles) || !extendsRoles.every(role => typeof role === 'string')) {
+    throw new TypeError(`Role contract "${contractPath}" field "extends_roles" must be a string array`)
   }
 
+  const roleRoot = path.dirname(contractPath)
+  const repoRoot = path.resolve(roleRoot, '..', '..')
+  const role = path.basename(roleRoot)
+  const lineage = extendsRoles.length === 0 ? [role] : await roleOverlayOrder(repoRoot, role)
+  const capabilities: CapabilityName[] = []
   const seen = new Set<string>()
-  for (const capability of capabilities) {
-    if (typeof capability !== 'string' || !(CAPABILITY_NAMES as readonly string[]).includes(capability)) {
-      throw new Error(`Role contract "${contractPath}" references unknown capability "${String(capability)}"`)
+  for (const ancestor of lineage) {
+    const ancestorPath = ancestor === role ? contractPath : resolveRoleManifestPath(repoRoot, ancestor)
+    const ancestorContract = ancestor === role ? contract : tryLoadRoleContract(ancestorPath)
+    const declared = ancestorContract?.capabilities ?? []
+    if (!Array.isArray(declared)) {
+      throw new TypeError(`Role contract "${ancestorPath}" must declare "capabilities" as a list`)
     }
-    if (seen.has(capability)) {
-      throw new Error(`Role contract "${contractPath}" declares duplicate capability "${capability}"`)
+    const localSeen = new Set<string>()
+    for (const capability of declared) {
+      if (typeof capability !== 'string' || !(CAPABILITY_NAMES as readonly string[]).includes(capability)) {
+        throw new Error(`Role contract "${ancestorPath}" references unknown capability "${String(capability)}"`)
+      }
+      if (localSeen.has(capability)) {
+        throw new Error(`Role contract "${ancestorPath}" declares duplicate capability "${capability}"`)
+      }
+      localSeen.add(capability)
+      if (!seen.has(capability)) {
+        capabilities.push(capability)
+        seen.add(capability)
+      }
     }
-    seen.add(capability)
+  }
+  if (capabilities.length === 0) {
+    throw new Error(`Role contract "${contractPath}" must declare a non-empty "capabilities" list, directly or through inheritance`)
   }
 
   return {
-    capabilities: capabilities as CapabilityName[],
+    capabilities,
     ...(contract.roleVendorPosition === undefined ? {} : { roleVendorPosition: contract.roleVendorPosition }),
   }
 }
@@ -547,11 +565,11 @@ function normalizeVendorDefinition(value: unknown, manifestPath: string): Vendor
 /**
  * 依据 role.yaml 声明的 capabilities，把清单导出的 roleVendor 组合成完整 vendors 列表。
  */
-function composeRoleVendorTree(manifestPath: string, roleVendor: unknown, roleContract?: RoleContractData): VendorRepo[] {
+async function composeRoleVendorTree(manifestPath: string, roleVendor: unknown, roleContract?: RoleContractData): Promise<VendorRepo[]> {
   if (!isVendorEntry(roleVendor)) {
     throw new Error(`Vendor manifest "${manifestPath}" export "roleVendor" must be a vendor definition with name and source`)
   }
-  const contract = requireRoleCapabilityContract(manifestPath, roleContract ?? tryLoadRoleContract(manifestPath) ?? {})
+  const contract = await requireRoleCapabilityContract(manifestPath, roleContract ?? tryLoadRoleContract(manifestPath) ?? {})
   return composeCapabilities(contract.capabilities, {
     roleVendor: normalizeVendorDefinition(roleVendor, manifestPath),
     ...(contract.roleVendorPosition === undefined ? {} : { roleVendorPosition: contract.roleVendorPosition }),

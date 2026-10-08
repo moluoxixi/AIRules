@@ -83,31 +83,57 @@ try {
     throw new Error('Packed AIRules does not resolve declared host aliases and portable paths')
   if (fs.existsSync(path.join(installedPackageRoot, 'dist', 'constants', 'hosts.js')))
     throw new Error('Packed AIRules still contains the retired host constants module')
-  const moluoxixiManifest = path.join(installedPackageRoot, 'roles', 'moluoxixi', 'role.yaml')
-  if (!fs.existsSync(moluoxixiManifest))
-    throw new Error('Packed AIRules is missing the Moluoxixi role YAML declaration')
-  const trellisManifest = path.join(installedPackageRoot, 'roles', 'trellis', 'role.yaml')
-  const capabilityDeclaration = path.join(installedPackageRoot, 'capabilities', 'common', 'capability.yaml')
-  if (!fs.existsSync(trellisManifest) || !fs.existsSync(capabilityDeclaration))
-    throw new Error('Packed AIRules is missing role or capability declarations')
-  for (const manifestPath of [moluoxixiManifest, trellisManifest]) {
-    // loadVendorManifest 直接读取 role.yaml，并按 capabilities 组合 vendors。
-    const { loadVendorManifest } = await import(pathToFileURL(path.join(installedPackageRoot, 'dist', 'scripts', 'lib', 'vendors.js')).href)
+  for (const relativePath of [
+    'capabilities/common/capability.yaml',
+    'capabilities/grilling/capability.yaml',
+    'capabilities/common/skills/hindsight-memory/SKILL.md',
+    'capabilities/common/skills/hindsight-memory/references/visualization.md',
+    'capabilities/common/skills/hindsight-memory/assets/compose.yaml',
+    'capabilities/common/skills/hindsight-memory/assets/hindsight.env.example',
+  ]) {
+    if (!fs.existsSync(path.join(installedPackageRoot, relativePath)))
+      throw new Error(`Packed AIRules is missing a capability asset: ${relativePath}`)
+  }
+
+  const roles = fs.readdirSync(path.join(repoRoot, 'roles'))
+    .filter(role => fs.existsSync(path.join(repoRoot, 'roles', role, 'role.yaml')))
+  const { loadVendorManifest } = await import(pathToFileURL(path.join(installedPackageRoot, 'dist', 'scripts', 'lib', 'vendors.js')).href)
+  const { roleOverlayOrder } = await import(pathToFileURL(path.join(installedPackageRoot, 'dist', 'scripts', 'lib', 'roles.js')).href)
+  for (const role of roles) {
+    const manifestPath = path.join(installedPackageRoot, 'roles', role, 'role.yaml')
+    if (!fs.existsSync(manifestPath))
+      throw new Error(`Packed AIRules is missing a role declaration: ${role}`)
+    const lineage = await roleOverlayOrder(installedPackageRoot, role)
+    const capabilities = new Set(lineage.flatMap((ancestor) => {
+      const contract = parse(fs.readFileSync(path.join(installedPackageRoot, 'roles', ancestor, 'role.yaml'), 'utf8'))
+      return contract.capabilities ?? []
+    }))
     const loaded = await loadVendorManifest(manifestPath)
-    const frontendVendor = loaded.vendors['anthropic-skills']
-    if (frontendVendor?.revision !== '3b3fad96af16a10759d930941b4520ba0c40edae')
+    if (capabilities.has('frontend') && loaded.vendors['anthropic-skills']?.revision !== '3b3fad96af16a10759d930941b4520ba0c40edae')
       throw new Error(`Packed role manifest does not pin frontend-design: ${manifestPath}`)
-    const memoryVendor = loaded.vendors['hindsight-memory']
-    if (memoryVendor?.revision !== '9269b88417ed263e5a8350f2e416ca2b322756b1')
+    if (capabilities.has('common') && loaded.vendors['hindsight-memory']?.revision !== '9269b88417ed263e5a8350f2e416ca2b322756b1')
       throw new Error(`Packed role manifest does not pin Hindsight documentation: ${manifestPath}`)
+    if (capabilities.has('grilling')) {
+      const grillingVendor = loaded.vendors.mattpocock
+      if (grillingVendor?.revision !== '8b78b531ab965735c5dc74f6f7a219e1e37326df'
+        || !grillingVendor.links.some(link => link.source === 'skills/productivity/grilling')) {
+        throw new Error(`Packed role manifest is missing inherited grilling: ${manifestPath}`)
+      }
+    }
     const roleContract = parse(fs.readFileSync(manifestPath, 'utf8'))
     const roleVendorName = roleContract?.role_vendor?.name
     if (!roleVendorName)
       throw new Error(`Packed role YAML does not declare role_vendor.name: ${manifestPath}`)
     const roleLinks = loaded.vendors[roleVendorName]?.links ?? []
-    for (const source of ['capabilities/common/skills', 'capabilities/common/mcps.json']) {
-      if (!roleLinks.some(link => link.source === source))
-        throw new Error(`Packed role manifest is missing shared capability assets: ${source}`)
+    if (capabilities.has('common')) {
+      for (const source of ['capabilities/common/skills', 'capabilities/common/mcps.json']) {
+        if (!roleLinks.some(link => link.source === source))
+          throw new Error(`Packed role manifest is missing shared capability assets: ${source}`)
+      }
+    }
+    if (role === 'general' && (Object.keys(loaded.vendors).length !== 3
+      || roleLinks.filter(link => link.kind === 'mcp-file').length !== 1)) {
+      throw new Error('Packed general role includes unexpected vendors or MCP catalogs')
     }
   }
 

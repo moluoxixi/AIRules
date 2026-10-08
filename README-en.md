@@ -2,7 +2,7 @@
 
 [简体中文](README.md) | English
 
-AIRules distributes versioned role capabilities to AI coding hosts. A role is more than a prompt collection: it is an installable composition of shared skills, MCP servers, a role CLI, project workflows, agents, hooks, and runtime assets.
+AIRules distributes versioned role capabilities to AI hosts. A role combines the shared skills, MCP servers, role CLI, project workflows, agents, hooks, and runtime assets it needs.
 
 There are two installation layers:
 
@@ -11,9 +11,50 @@ There are two installation layers:
 
 The AIRules installer handles user-level package setup, asset distribution, and managed skill/MCP verification, but it does not dispatch agents. The initialized Moluoxixi or Trellis main workflow owns dispatch, hooks inject state and context, and skills perform semantic work and file changes.
 
+## `general`
+
+For users who need to question plans, remember decisions across sessions, and organize documents. It also provides the shared base for development roles.
+
+### Install
+
+```bash
+npm install --global moluoxixi-ai-rules
+airules install general --host all
+airules verify general --host all
+```
+
+### Features
+
+`general` selects `common` and `grilling`, providing five skills and the Hindsight memory MCP:
+
+| Skill | Purpose |
+| --- | --- |
+| `grilling` | Question plans, decisions, and assumptions to establish tradeoffs and validation criteria |
+| `hindsight-memory` | Recall and retain confirmed project knowledge and connect memory visualization |
+| `hindsight-docs` | Consult Hindsight API, deployment, and configuration documentation |
+| `create-skill` | Create or revise a reusable agent skill |
+| `spec-organization` | Organize document directories, indexes, and links |
+
+The default MCP endpoint is `http://localhost:8888/mcp/`. The official Hindsight console at `http://localhost:9999` shows facts, source documents, and entity relationships. Connect a standalone console to an existing API, or use the bundled Docker Compose assets for a new deployment. Model settings live in the user configuration directory and data persists in a named volume. See [memory visualization](capabilities/common/skills/hindsight-memory/references/visualization.md).
+
+`moluoxixi`, `trellis`, and `matt` inherit these capabilities with `extends_roles: [general]`. Installing a development role includes its inherited capabilities. See [General](roles/general/README.md) and [role inheritance](capabilities/README.md#角色继承).
+
+### Usage
+
+Describe the goal or name a skill directly:
+
+```text
+Use grilling to question this plan and check its assumptions and tradeoffs.
+Remember our confirmed decisions, reasoning, and next validation criteria.
+Recall this project's earlier decisions and check whether they still apply.
+Open this project's memory visualization to inspect facts and entity relationships.
+```
+
+Roles share the same Hindsight API and project bank. Start the service using the deployment guide and verify memory reads and writes before using it.
+
 ## `moluoxixi`
 
-For users who want a complete AI development workflow with the native Moluoxixi CLI, project knowledge, multi-domain skills, and controlled multi-agent dispatch.
+For users who want a complete AI development workflow with the native Moluoxixi CLI, project knowledge, multi-domain skills, and controlled multi-agent dispatch. It inherits `general` and adds `coding`, `productivity`, and `frontend`.
 
 ### Install
 
@@ -43,7 +84,7 @@ npm install --global @moluoxixi/airules-moluoxixi-cli
 | Layer | Assets | Responsibility |
 | --- | --- | --- |
 | User-level role | Moluoxixi core, `moluoxixi`/`ml`, `init-project` | Native initialization, update, task, memory, workflow, and channel commands |
-| Shared capabilities | `common`, `coding`, `productivity`, `frontend` | Shared and pinned external skills plus MCP servers |
+| Shared capabilities | Inherited `common`, `grilling`; own `coding`, `productivity`, `frontend` | Shared and pinned external skills plus MCP servers |
 | Native project | `.moluoxixi/workflow.md`, `tasks/`, `spec/`, `scripts/`, `agents/`, host configuration | Workflow state, task artifacts, project rules, and agent definitions |
 | AIRules project extension | `.moluoxixi/knowledge/`, knowledge runtime and hook, `moluoxixi-knowledge` | Source change detection and traceable project knowledge |
 
@@ -75,7 +116,7 @@ Project workflow entries become slash commands or discoverable skills according 
 | `common` | `hindsight-docs` | Look up Hindsight API, deployment, and advanced configuration |
 | `frontend` | `frontend-design` | Give intentional visual direction when creating or reshaping interfaces |
 | `productivity` | `grill-me` | Start a rigorous interview that turns an idea into an executable plan |
-| `productivity` | `grilling` | Stress-test plans, decisions, and designs |
+| `grilling` | `grilling` | Inherited from `general`; stress-test plans, decisions, and designs |
 | `productivity` | `handoff` | Compress the conversation into a document another agent can resume |
 | `productivity` | `teach` | Run stateful teaching across sessions in the current repository |
 | `productivity` | `to-questionnaire` | Turn unresolved decisions into a questionnaire for an informed person |
@@ -134,7 +175,7 @@ Role source: [`roles/moluoxixi`](roles/moluoxixi).
 
 ## `matt`
 
-For users who want Matt Pocock's engineering and productivity methods without a fixed project workflow, project agents, hooks, MCP servers, or a role CLI.
+For users who want Matt Pocock's engineering and productivity methods together with shared grilling and memory capabilities.
 
 ### Install
 
@@ -148,12 +189,16 @@ airules verify matt --host all
 
 #### Installed assets
 
-`matt` composes only the `engineering` and `productivity` capabilities. It installs pinned upstream skills but creates no `.matt/` directory and has no role-owned `init-project`, agents, hooks, CLI, or MCP server.
+`matt` inherits `common` and `grilling` from `general`, then adds its own `engineering` and `productivity` capabilities. Shared skills and the Hindsight MCP are installed with the role and use the same project bank as other roles. See [memory visualization](capabilities/common/skills/hindsight-memory/references/visualization.md) for console setup. Engineering and productivity skills use a pinned upstream revision; the role requires no project initialization.
 
 #### Skills
 
 | Capability | Skill | Purpose |
 | --- | --- | --- |
+| `common` | `create-skill` | Create or revise a reusable agent skill |
+| `common` | `spec-organization` | Organize document directories, indexes, and links |
+| `common` | `hindsight-memory` | Retain and recall project memory and connect the official console |
+| `common` | `hindsight-docs` | Consult Hindsight API and deployment documentation |
 | `engineering` | `ask-matt` | Explicit router that selects the appropriate Matt skill or flow |
 | `engineering` | `code-review` | Review changes since a baseline against standards and specification |
 | `engineering` | `codebase-design` | Improve module boundaries, interfaces, and testability using deep-module principles |
@@ -173,7 +218,7 @@ airules verify matt --host all
 | `engineering` | `wayfinder` | Plan work larger than one agent session as a decision and ticket map |
 | `engineering` | `wizard` | Generate an interactive Bash wizard for human-only credentials, consoles, or migrations |
 | `productivity` | `grill-me` | Start a rigorous planning interview |
-| `productivity` | `grilling` | Stress-test a plan, decision, or design |
+| `grilling` | `grilling` | Inherited from `general`; stress-test a plan, decision, or design |
 | `productivity` | `handoff` | Produce a resumable cross-agent handoff |
 | `productivity` | `teach` | Teach across sessions with recorded state |
 | `productivity` | `to-questionnaire` | Turn unknowns into a questionnaire for an informed person |
@@ -195,13 +240,13 @@ Turn this proposal into a spec, then use to-tickets to split the work.
 Implement this behavior with tdd, then run code-review.
 ```
 
-A typical extended chain is `setup-matt-pocock-skills -> to-spec -> to-tickets -> implement -> code-review`; isolated problems can invoke one skill directly. The host, repository documents, or issue tracker owns state, and AIRules creates no `.matt/` directory.
+A typical extended chain is `setup-matt-pocock-skills -> to-spec -> to-tickets -> implement -> code-review`; isolated problems can invoke one skill directly. The host, repository documents, or issue tracker owns task state. Confirmed reusable decisions can be retained with `hindsight-memory`.
 
 Role source: [`roles/matt`](roles/matt).
 
 ## `trellis`
 
-For users who want the native Trellis task-and-specification workflow together with AIRules shared skills, MCP, project knowledge, and multi-agent dispatch.
+For users who want the native Trellis task-and-specification workflow together with AIRules shared skills, MCP, project knowledge, and multi-agent dispatch. It inherits `general` and adds `coding`, `productivity`, and `frontend`.
 
 ### Install
 
@@ -221,7 +266,7 @@ The role install provides the Trellis CLI and user-level capabilities but does n
 | Layer | Assets | Responsibility |
 | --- | --- | --- |
 | User-level role | Trellis CLI and `init-project` | Native `init/update/upgrade/uninstall/mem/workflow/platforms/channel` commands |
-| Shared capabilities | `common`, `coding`, `productivity`, `frontend` | The same shared skills, pinned external skills, and MCP servers as Moluoxixi |
+| Shared capabilities | Inherited `common`, `grilling`; own `coding`, `productivity`, `frontend` | The same shared skills, pinned external skills, and MCP servers as Moluoxixi |
 | Native project | `.trellis/workflow.md`, `tasks/`, `spec/`, `scripts/`, `agents/`, host configuration | Plan/Execute/Finish state, task artifacts, specs, and agent definitions |
 | AIRules project extension | `.trellis/knowledge/`, knowledge runtime and hook, `trellis-knowledge` | Source change detection and bidirectionally traceable knowledge |
 
@@ -251,7 +296,7 @@ Native Trellis projects workflow entries as commands or skills according to host
 | `common` | `hindsight-docs` | Look up Hindsight API, deployment, and advanced configuration |
 | `frontend` | `frontend-design` | Guide intentional frontend design and redesign |
 | `productivity` | `grill-me` | Start a rigorous requirements interview |
-| `productivity` | `grilling` | Stress-test plans, decisions, and designs |
+| `grilling` | `grilling` | Inherited from `general`; stress-test plans, decisions, and designs |
 | `productivity` | `handoff` | Produce a cross-agent handoff |
 | `productivity` | `teach` | Teach across sessions with recorded progress |
 | `productivity` | `to-questionnaire` | Turn unresolved questions into a questionnaire |
@@ -301,10 +346,13 @@ Role source: [`roles/trellis`](roles/trellis).
 
 Shared skills, MCP catalogs, and vendor declarations live together in `capabilities/<capability>/`, such as `capabilities/common/skills/`. Each capability is a data-only directory containing `capability.yaml`, skills, MCP catalogs, and documentation; roles select capabilities in `role.yaml`. The runtime loader lives in `scripts/lib/capabilities.ts`, composes vendors in declaration order, merges compatible projections, deduplicates identical projections, and rejects source or target conflicts. See [capabilities/README.md](capabilities/README.md) for the layout and complete mapping.
 
+`extends_roles` recursively combines parent capabilities before the child's own choices. Shared ancestors and capabilities are deduplicated; missing parents and inheritance cycles are rejected. A parent may be a declaration-only template. The child declares its own role vendor, hosts, and CLI packages. See [role inheritance](capabilities/README.md#角色继承).
+
 Host directories, aliases, skill projection switches, and MCP formats are declared in [hosts/hosts.yaml](hosts/hosts.yaml). `scripts/lib/hosts.ts` loads and validates the declaration and resolves paths; declaration types live in `scripts/lib/types/`. Adding a host only requires a YAML entry. See [hosts/README.md](hosts/README.md) for fields and maintenance guidance.
 
 ```text
 role manifest
+  -> role inheritance and capability composition
   -> pinned vendor checkout / package setup
   -> vendor staging
   -> canonical ~/.agents/skills

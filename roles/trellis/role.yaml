@@ -8,12 +8,11 @@ assets:
   skills: skills
   mcp: mcp
 capabilities:
-  - common
   - coding
   - productivity
   - frontend
 hosts: all
-extends_roles: []
+extends_roles: [general]
 role_vendor:
   name: trellis
   source: https://github.com/moluoxixi/AIRules.git

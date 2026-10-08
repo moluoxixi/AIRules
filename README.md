@@ -2,7 +2,7 @@
 
 简体中文 | [English](README-en.md)
 
-AIRules 为 AI 编程宿主分发带版本的角色能力。一个 role 不只是“一组提示词”，而是由共享 skills、MCP servers、角色 CLI、项目工作流、agents、hooks 和运行时资产组成的可安装组合。
+AIRules 为 AI 宿主分发带版本的角色能力。一个 role 按需组合共享 skills、MCP servers、角色 CLI、项目工作流、agents、hooks 和运行时资产。
 
 先区分两个安装层级：
 
@@ -11,9 +11,50 @@ AIRules 为 AI 编程宿主分发带版本的角色能力。一个 role 不只�
 
 AIRules 安装器负责用户级 package setup、资产分发和受管 skills/MCP 校验，但不调度 agents。agents 的派发权属于初始化后的 Moluoxixi/Trellis 主工作流，hooks 负责注入状态和上下文，skills 才负责语义分析与文件修改。
 
+## `general`
+
+适合需要计划审问、跨会话记忆和文档整理的用户，也是开发角色共享的基础角色。
+
+### 安装
+
+```bash
+npm install --global moluoxixi-ai-rules
+airules install general --host all
+airules verify general --host all
+```
+
+### 功能
+
+`general` 选择 `common` 和 `grilling`，提供五项 skills 和 Hindsight 记忆 MCP：
+
+| Skill | 做什么 |
+| --- | --- |
+| `grilling` | 审问计划、决策和假设，明确取舍与验证条件 |
+| `hindsight-memory` | 按项目回忆和保存已确认的信息，连接记忆可视化 |
+| `hindsight-docs` | 查询 Hindsight API、部署和高级配置文档 |
+| `create-skill` | 创建或修订可复用的 agent skill |
+| `spec-organization` | 整理文档目录、索引和链接 |
+
+Hindsight MCP 默认连接 `http://localhost:8888/mcp/`。官方控制台默认位于 `http://localhost:9999`，可查看记忆事实、来源文档和实体关系图。已有 API 可单独启动控制台；首次部署可使用随 skill 分发的 Docker Compose，模型配置和数据分别保存在用户配置目录与持久化卷中。步骤见 [记忆可视化](capabilities/common/skills/hindsight-memory/references/visualization.md)。
+
+`moluoxixi`、`trellis` 和 `matt` 通过 `extends_roles: [general]` 继承这些通用能力；安装开发角色时会一并安装。声明与规则见 [General](roles/general/README.md) 和 [角色继承](capabilities/README.md#角色继承)。
+
+### 用法
+
+直接在宿主中描述目标或点名 skill：
+
+```text
+请用 grilling 审问这个计划，逐项检查假设和取舍。
+请记住我们已确认的结论、理由和下一步验证条件。
+回忆这个项目之前的决定，并核对是否仍适用。
+打开当前项目的记忆可视化，查看事实和实体关系图。
+```
+
+不同角色使用同一 Hindsight 服务和项目 bank，复用已确认的记忆。使用记忆前按上述部署说明启动服务并验证读写。
+
 ## `moluoxixi`
 
-适合希望获得完整 AI 开发流程，同时需要 Moluoxixi 原生 CLI、项目知识库、多领域 skills 和可控多 agent 调度的用户。
+适合希望获得完整 AI 开发流程，同时需要 Moluoxixi 原生 CLI、项目知识库、多领域 skills 和可控多 agent 调度的用户。继承 `general`，再增加 `coding`、`productivity` 和 `frontend`。
 
 ### 安装
 
@@ -43,7 +84,7 @@ npm install --global @moluoxixi/airules-moluoxixi-cli
 | 层级 | 资产 | 作用 |
 | --- | --- | --- |
 | 用户级角色资产 | Moluoxixi core、`moluoxixi`/`ml` CLI、`init-project` | 提供原生项目初始化、更新、任务、memory、workflow 和 channel 命令 |
-| 公共 capability | `common`、`coding`、`productivity`、`frontend` | 组合共享 skills、外部固定版本 skills 和 MCP servers |
+| 公共 capability | 继承的 `common`、`grilling`；自身的 `coding`、`productivity`、`frontend` | 组合共享 skills、外部固定版本 skills 和 MCP servers |
 | 原生项目资产 | `.moluoxixi/workflow.md`、`tasks/`、`spec/`、`scripts/`、`agents/`、宿主配置 | 保存工作流状态、任务工件、项目规范和 agent 定义 |
 | AIRules 项目扩展 | `.moluoxixi/knowledge/`、知识 runtime、宿主 knowledge hook、`moluoxixi-knowledge` | 检测 source 变化，维护可追踪的项目知识库 |
 
@@ -75,7 +116,7 @@ npm install --global @moluoxixi/airules-moluoxixi-cli
 | `common` | `hindsight-docs` | 查询 Hindsight API、部署和高级配置文档 |
 | `frontend` | `frontend-design` | 为新 UI 或现有界面重塑提供有明确审美方向的设计指导 |
 | `productivity` | `grill-me` | 启动严格访谈，把模糊想法推进到可执行方案 |
-| `productivity` | `grilling` | 压力测试计划、决策或设计中的薄弱假设 |
+| `grilling` | `grilling` | 从 `general` 继承，压力测试计划、决策或设计中的薄弱假设 |
 | `productivity` | `handoff` | 把当前对话压缩为下一位 agent 可接手的交接文档 |
 | `productivity` | `teach` | 在当前仓库中进行可跨会话记录状态的教学 |
 | `productivity` | `to-questionnaire` | 把 agent 无法独立回答的决策转成给知情人的问卷 |
@@ -141,7 +182,7 @@ SubagentStart
 
 ## `matt`
 
-适合只想安装 Matt Pocock 的工程方法和效率 skills，不需要固定项目工作流、项目 agents、hooks、MCP 或角色 CLI 的用户。
+适合需要 Matt Pocock 工程方法和效率 skills，并希望复用通用审问和记忆能力的用户。
 
 ### 安装
 
@@ -155,12 +196,16 @@ airules verify matt --host all
 
 #### 安装后的资产
 
-`matt` 只组合 `engineering` 和 `productivity` 两个 capability。它安装固定上游版本的 skills，但不创建 `.matt/`，没有 role-owned `init-project`、agents、hooks、CLI 或 MCP server。
+`matt` 继承 `general` 的 `common` 和 `grilling`，再组合自身的 `engineering` 和 `productivity`。通用 skills 和 Hindsight MCP 随角色安装，项目 bank 与其它角色共用；控制台部署见 [记忆可视化](capabilities/common/skills/hindsight-memory/references/visualization.md)。工程和效率 skills 固定上游版本，角色无需项目初始化。
 
 #### Skills
 
 | Capability | Skill | 做什么 |
 | --- | --- | --- |
+| `common` | `create-skill` | 创建或修订可复用的 agent skill |
+| `common` | `spec-organization` | 整理文档目录、索引和链接 |
+| `common` | `hindsight-memory` | 保存和检索项目记忆，连接官方可视化控制台 |
+| `common` | `hindsight-docs` | 查询 Hindsight API 和部署文档 |
 | `engineering` | `ask-matt` | 根据当前问题选择适合的 Matt skill 或工作流；这是显式调用的路由器 |
 | `engineering` | `code-review` | 从指定基线对改动做 standards 与 spec 双轴审查 |
 | `engineering` | `codebase-design` | 用深模块原则改进模块边界、接口和可测试性 |
@@ -180,7 +225,7 @@ airules verify matt --host all
 | `engineering` | `wayfinder` | 把超出单次会话的大型工作规划成决策与 ticket 地图 |
 | `engineering` | `wizard` | 生成交互式 bash wizard，引导人工完成凭据、控制台或迁移步骤 |
 | `productivity` | `grill-me` | 启动严格访谈，把模糊计划推进到可执行状态 |
-| `productivity` | `grilling` | 压力测试计划、决策或设计 |
+| `grilling` | `grilling` | 从 `general` 继承，压力测试计划、决策或设计 |
 | `productivity` | `handoff` | 生成下一位 agent 可直接接手的交接文档 |
 | `productivity` | `teach` | 在仓库中进行可记录进度的跨会话教学 |
 | `productivity` | `to-questionnaire` | 把未决问题转成面向知情人的问卷 |
@@ -202,13 +247,13 @@ airules verify matt --host all
 请使用 tdd 实现这个行为，最后运行 code-review。
 ```
 
-一条典型链路是 `setup-matt-pocock-skills -> to-spec -> to-tickets -> implement -> code-review`；单点问题则直接使用对应 skill。所有状态由当前宿主、仓库文档或 issue tracker 管理，AIRules 不创建 `.matt/`。
+一条典型链路是 `setup-matt-pocock-skills -> to-spec -> to-tickets -> implement -> code-review`；单点问题则直接使用对应 skill。任务状态由当前宿主、仓库文档或 issue tracker 管理，已确认的可复用结论可通过 `hindsight-memory` 保存。
 
 角色源码位于 [`roles/matt`](roles/matt)。
 
 ## `trellis`
 
-适合希望使用原生 Trellis 的任务与规范驱动工作流，同时获得 AIRules 共享 skills、MCP、知识库和多 agent 调度的用户。
+适合希望使用原生 Trellis 的任务与规范驱动工作流，同时获得 AIRules 共享 skills、MCP、知识库和多 agent 调度的用户。继承 `general`，再增加 `coding`、`productivity` 和 `frontend`。
 
 ### 安装
 
@@ -228,7 +273,7 @@ trellis --version
 | 层级 | 资产 | 作用 |
 | --- | --- | --- |
 | 用户级角色资产 | Trellis CLI、`init-project` | 提供原生 `init/update/upgrade/uninstall/mem/workflow/platforms/channel` 命令 |
-| 公共 capability | `common`、`coding`、`productivity`、`frontend` | 与 Moluoxixi 相同的共享 skills、外部固定版本 skills 和 MCP servers |
+| 公共 capability | 继承的 `common`、`grilling`；自身的 `coding`、`productivity`、`frontend` | 与 Moluoxixi 相同的共享 skills、外部固定版本 skills 和 MCP servers |
 | 原生项目资产 | `.trellis/workflow.md`、`tasks/`、`spec/`、`scripts/`、`agents/`、宿主配置 | 保存 Plan/Execute/Finish 状态、任务工件、规范和 agent 定义 |
 | AIRules 项目扩展 | `.trellis/knowledge/`、知识 runtime、宿主 hook、`trellis-knowledge` | 自动发现 source 变化并维护双向可追踪知识关系 |
 
@@ -258,7 +303,7 @@ trellis --version
 | `common` | `hindsight-docs` | 查询 Hindsight API、部署和高级配置文档 |
 | `frontend` | `frontend-design` | 指导有明确视觉方向的前端设计与重塑 |
 | `productivity` | `grill-me` | 启动严格需求访谈 |
-| `productivity` | `grilling` | 压力测试计划、决策或设计 |
+| `grilling` | `grilling` | 从 `general` 继承，压力测试计划、决策或设计 |
 | `productivity` | `handoff` | 生成跨 agent 交接文档 |
 | `productivity` | `teach` | 进行可记录进度的跨会话教学 |
 | `productivity` | `to-questionnaire` | 把未决问题转成问卷 |
@@ -308,19 +353,22 @@ Plan 阶段创建并确认 PRD，复杂任务补齐 design/implement 后 `task.p
 
 共享 skills、MCP 清单和供应商声明按能力集中在 `capabilities/<能力>/`，例如 `capabilities/common/skills/`。每个能力目录是纯数据目录，只包含 `capability.yaml`、skills、MCP 清单和文档；Role 在 `role.yaml` 中选择 capability。运行时加载器位于 `scripts/lib/capabilities.ts`，负责按声明顺序组合 vendor，合并兼容投影、去重完全相同的 projection，并拒绝来源或目标冲突。目录结构与完整映射见 [capabilities/README.md](capabilities/README.md)。
 
+角色通过 `extends_roles` 递归继承父角色的 capabilities，再加入自身能力。共同祖先和重复能力自动去重；缺失父角色与循环继承会报错。父角色可作为纯声明模板；子角色使用自身的 role vendor、宿主和 CLI packages。规则见 [角色继承](capabilities/README.md#角色继承)。
+
 宿主目录、别名、skills 投影开关和 MCP 格式统一声明在 [hosts/hosts.yaml](hosts/hosts.yaml)。`scripts/lib/hosts.ts` 负责加载、校验和路径解析，声明类型放在 `scripts/lib/types/`。新增宿主只需更新 YAML；字段与维护说明见 [hosts/README.md](hosts/README.md)。
 
 分发链路为：
 
 ```text
 role manifest
+  -> 角色继承与 capabilities 合并
   -> 固定 vendor checkout / package setup
   -> vendor staging
   -> canonical ~/.agents/skills
   -> 宿主 skill 投影与 MCP 合并
 ```
 
-当前安装 role 的受管 shared layer 会替换上一 role 不再需要的受管链接，因此不要把三个 role 理解为完全隔离、永久叠加的环境。用户已有的同名 MCP 配置优先保留。`airules verify` 检查受管 skills、宿主 links 和 MCP server 名称，不检查项目初始化器生成的 agents/hooks；后者应通过角色工作流自身的检查完成。
+当前安装 role 的受管 shared layer 会替换上一 role 不再需要的受管链接，因此多个 role 共用同一个用户级环境。用户已有的同名 MCP 配置优先保留。`airules verify` 检查受管 skills、宿主 links 和 MCP server 名称，不检查项目初始化器生成的 agents/hooks；后者应通过角色工作流自身的检查完成。
 
 ## 开发
 

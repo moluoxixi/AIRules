@@ -17,6 +17,7 @@ const fixtureSkills = [
   { category: 'engineering', name: 'testing' },
   { category: 'productivity', name: 'focus' },
   { category: 'productivity', name: 'handoff' },
+  { category: 'productivity', name: 'grilling' },
 ] as const
 
 afterEach(() => {
@@ -28,7 +29,7 @@ afterEach(() => {
 describe('matt role', () => {
   it('projects the pinned engineering and productivity namespaces', async () => {
     const roleContract = parseDocument(fs.readFileSync(manifestPath, 'utf8')).toJS({ maxAliasCount: 0 }) as Record<string, unknown>
-    expect(roleContract.extends_roles).toEqual([])
+    expect(roleContract.extends_roles).toEqual(['general'])
     expect(roleContract.hosts).toBe('all')
     expect(roleContract.role_vendor).toEqual({
       name: 'matt-role',
@@ -43,12 +44,17 @@ describe('matt role', () => {
 
     const loaded = await loadVendorManifest(manifestPath)
     // role.yaml 声明 role_vendor_position: after，能力供应商必须排在角色供应商之前。
-    expect(Object.keys(loaded.vendors)).toEqual(['mattpocock', 'matt-role'])
+    expect(Object.keys(loaded.vendors)).toEqual(['hindsight-memory', 'mattpocock', 'matt-role'])
     expect(loaded.vendors.mattpocock).toMatchObject({
       repo: mattSkillsSource,
       revision: mattSkillsRevision,
     })
     expect(loaded.vendors.mattpocock?.links).toEqual([
+      {
+        kind: 'skill',
+        source: 'skills/productivity/grilling',
+        target: 'vendor/skills/grilling',
+      },
       {
         kind: 'namespace-dir',
         source: 'skills/engineering',
@@ -66,6 +72,8 @@ describe('matt role', () => {
         source: 'roles/matt',
         target: 'vendor',
       },
+      { kind: 'namespace-dir', source: 'capabilities/common/skills', target: 'vendor/skills/common' },
+      { kind: 'mcp-file', source: 'capabilities/common/mcps.json', target: 'vendor/mcps/common/mcp.json' },
     ])
   })
 
@@ -96,7 +104,7 @@ describe('matt role', () => {
       ],
       role_vendor_position: 'after',
       hosts: 'all',
-      extends_roles: [],
+      extends_roles: ['general'],
       role_vendor: {
         name: 'matt-role',
         source: 'https://github.com/moluoxixi/AIRules.git',
@@ -140,12 +148,25 @@ describe('matt role', () => {
     }
     fs.mkdirSync(path.dirname(roleRepository), { recursive: true })
     fs.cpSync(roleRoot, roleRepository, { recursive: true })
+    const commonRoot = path.resolve(roleRoot, '..', '..', 'capabilities', 'common')
+    const checkoutCommonRoot = path.join(homeDir, 'vendor', 'repos', 'matt-role', 'capabilities', 'common')
+    fs.mkdirSync(path.dirname(checkoutCommonRoot), { recursive: true })
+    fs.cpSync(commonRoot, checkoutCommonRoot, { recursive: true })
+    const docsRoot = path.join(homeDir, 'vendor', 'repos', 'hindsight-memory', 'skills', 'hindsight-docs')
+    fs.mkdirSync(docsRoot, { recursive: true })
+    fs.writeFileSync(path.join(docsRoot, 'SKILL.md'), '---\nname: hindsight-docs\ndescription: fixture\n---\n')
 
     const inventory = await rebuildVendorAssets({ homeDir, role: 'matt', manifestPath })
     expect(inventory).toEqual({
       role: 'matt',
       roleRoot: path.join(homeDir, 'roles', 'matt'),
-      skills: fixtureSkills.map(({ name }) => name).sort((left, right) => left.localeCompare(right)),
+      skills: [
+        ...fixtureSkills.map(({ name }) => name),
+        'create-skill',
+        'hindsight-docs',
+        'hindsight-memory',
+        'spec-organization',
+      ].sort((left, right) => left.localeCompare(right)),
     })
     for (const { name } of fixtureSkills) {
       expect(fs.statSync(path.join(homeDir, 'vendor', 'skills', name, 'SKILL.md')).isFile()).toBe(true)

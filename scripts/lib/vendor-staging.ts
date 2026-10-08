@@ -318,15 +318,21 @@ function conflicts(left: string, right: string): boolean {
     || rightKey.startsWith(`${leftKey}/`)
 }
 
-function requireNoTargetConflicts(assets: PlannedAsset[], label: string): void {
+function requireNoTargetConflicts(assets: PlannedAsset[], label: string): PlannedAsset[] {
   const accepted: PlannedAsset[] = []
   for (const asset of assets) {
     const previous = accepted.find(candidate => conflicts(candidate.target, asset.target))
     if (previous) {
+      // A skill selected by a base role can also be included in a child namespace.
+      if (previous.vendorId === asset.vendorId && previous.kind === asset.kind
+        && previous.source === asset.source && previous.target === asset.target) {
+        continue
+      }
       throw new Error(`${label} at "${asset.target}": ${previous.vendorId} conflicts with ${asset.vendorId}`)
     }
     accepted.push(asset)
   }
+  return accepted
 }
 
 function resolveRoleChild(
@@ -385,8 +391,7 @@ function expandRoleAssets(roleRoot: string, vendorId: string): PlannedAsset[] {
     }
   }
 
-  requireNoTargetConflicts(roleAssets, 'Canonical role-assets target conflict')
-  return roleAssets
+  return requireNoTargetConflicts(roleAssets, 'Canonical role-assets target conflict')
 }
 
 function buildStagingPlan(
@@ -407,7 +412,7 @@ function buildStagingPlan(
     }
   }
 
-  requireNoTargetConflicts(ordinary, 'Ordinary vendor target conflict')
+  const uniqueOrdinary = requireNoTargetConflicts(ordinary, 'Ordinary vendor target conflict')
 
   if (roleDeclarations.length > 1) {
     throw new Error('A vendor manifest may declare at most one canonical role-assets source')
@@ -415,7 +420,7 @@ function buildStagingPlan(
 
   const roleDeclaration = roleDeclarations[0]
   return {
-    ordinary,
+    ordinary: uniqueOrdinary,
     roleSource: roleDeclaration === undefined
       ? undefined
       : resolveRoleSource(homeDir, role, roleDeclaration.vendorId, roleDeclaration.source),

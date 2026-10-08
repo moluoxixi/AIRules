@@ -190,7 +190,7 @@ describe('moluoxixi finalized role assets', () => {
         skills: 'skills',
       },
       canonical_root: 'roles/moluoxixi',
-      capabilities: ['common', 'coding', 'productivity', 'frontend'],
+      capabilities: ['coding', 'productivity', 'frontend'],
       distribution: {
         bootstrap_manifest: 'role.yaml',
         full_role_path_required: true,
@@ -223,7 +223,7 @@ describe('moluoxixi finalized role assets', () => {
     expect(fs.statSync(resolveRolePath(manifest.entrypoints.initialize_project_script)).isFile()).toBe(true)
     expect(fs.existsSync(resolveRolePath('skills/init-project/scripts/migrations/manifests'))).toBe(false)
 
-    expect(manifest.extends_roles).toEqual([])
+    expect(manifest.extends_roles).toEqual(['general'])
     expect(manifest.hosts).toBe('all')
     expect(manifest.packages).toEqual([
       {
@@ -257,6 +257,7 @@ describe('moluoxixi finalized role assets', () => {
       repo: mattSkillsSource,
       revision: mattSkillsRevision,
       links: [
+        { kind: 'skill', source: 'skills/productivity/grilling', target: 'vendor/skills/grilling' },
         {
           kind: 'namespace-dir',
           source: 'skills/productivity',

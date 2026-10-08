@@ -51,7 +51,9 @@ it('documents package installation without a source-link workflow', () => {
   const englishReadme = fs.readFileSync(path.join(repoRoot, 'README-en.md'), 'utf8')
   expect(defaultReadme).toContain('[English](README-en.md)')
   expect(englishReadme).toContain('[简体中文](README.md)')
-  for (const role of ['moluoxixi', 'matt', 'trellis']) {
+  const roles = fs.readdirSync(path.join(repoRoot, 'roles'))
+    .filter(role => fs.existsSync(path.join(repoRoot, 'roles', role, 'role.yaml')))
+  for (const role of roles) {
     expect(defaultReadme).toContain(`## \`${role}\``)
     expect(englishReadme).toContain(`## \`${role}\``)
 
@@ -69,12 +71,12 @@ it('documents package installation without a source-link workflow', () => {
     expect(englishRoleSection.indexOf('### Install')).toBeLessThan(englishRoleSection.indexOf('### Features'))
     expect(englishRoleSection.indexOf('### Features')).toBeLessThan(englishRoleSection.indexOf('### Usage'))
   }
-  expect(defaultReadme.match(/^### 功能$/gmu)).toHaveLength(3)
-  expect(defaultReadme.match(/^### 安装$/gmu)).toHaveLength(3)
-  expect(defaultReadme.match(/^### 用法$/gmu)).toHaveLength(3)
-  expect(englishReadme.match(/^### Features$/gmu)).toHaveLength(3)
-  expect(englishReadme.match(/^### Install$/gmu)).toHaveLength(3)
-  expect(englishReadme.match(/^### Usage$/gmu)).toHaveLength(3)
+  expect(defaultReadme.match(/^### 功能$/gmu)).toHaveLength(roles.length)
+  expect(defaultReadme.match(/^### 安装$/gmu)).toHaveLength(roles.length)
+  expect(defaultReadme.match(/^### 用法$/gmu)).toHaveLength(roles.length)
+  expect(englishReadme.match(/^### Features$/gmu)).toHaveLength(roles.length)
+  expect(englishReadme.match(/^### Install$/gmu)).toHaveLength(roles.length)
+  expect(englishReadme.match(/^### Usage$/gmu)).toHaveLength(roles.length)
   expect(defaultReadme).toContain('请使用 init-project 初始化当前项目的 Moluoxixi 工作流')
   expect(defaultReadme).toContain('无需运行 `init-project`')
   expect(defaultReadme).toContain('请使用 init-project 初始化当前项目的 Trellis 工作流')

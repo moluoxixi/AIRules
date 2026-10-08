@@ -89,3 +89,12 @@ export interface RoleContract {
   path: string
   value: Record<string, unknown>
 }
+
+export interface RoleContractData {
+  hosts?: unknown
+  packages?: unknown
+  capabilities?: unknown
+  extendsRoles?: unknown
+  roleVendor?: unknown
+  roleVendorPosition?: 'before' | 'after'
+}

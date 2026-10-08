@@ -9,12 +9,11 @@ assets:
   mcp: mcp
   packages: packages
 capabilities:
-  - common
   - coding
   - productivity
   - frontend
 hosts: all
-extends_roles: []
+extends_roles: [general]
 role_vendor:
   name: moluoxixi
   source: https://github.com/moluoxixi/AIRules.git

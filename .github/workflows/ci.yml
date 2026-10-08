@@ -84,6 +84,7 @@ jobs:
           scripts/lib/__test__/hosts.test.ts
           scripts/lib/__test__/canonical-path.test.ts
           scripts/lib/__test__/roles.test.ts
+          scripts/lib/__test__/role-inheritance.test.ts
           scripts/lib/__test__/install-coverage.test.ts
           scripts/lib/__test__/tool.test.ts
           scripts/lib/__test__/install-cli.test.ts
@@ -92,6 +93,8 @@ jobs:
           roles/moluoxixi/__test__/init-project.test.ts
           roles/moluoxixi/__test__/moluoxixi-source.test.ts
           roles/trellis/__test__/trellis-mcp-projection.test.ts
+          roles/general/__test__/general-role.test.ts
+          roles/matt/__test__/matt-role.test.ts
 
   discover-role-packages:
     name: Discover role package workspaces

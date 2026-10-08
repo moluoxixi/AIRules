@@ -28,7 +28,7 @@ afterEach(() => {
 describe('native Trellis role', () => {
   it('installs the official CLI and projects the AIRules-owned initialization entry', async () => {
     const roleContract = parseDocument(fs.readFileSync(manifestPath, 'utf8')).toJS({ maxAliasCount: 0 }) as Record<string, unknown>
-    expect(roleContract.extends_roles).toEqual([])
+    expect(roleContract.extends_roles).toEqual(['general'])
     expect(roleContract.hosts).toBe('all')
     expect(roleContract.role_vendor).toEqual({
       name: 'trellis',
@@ -90,6 +90,10 @@ describe('native Trellis role', () => {
       repo: mattSkillsSource,
       revision: mattSkillsRevision,
       links: [{
+        kind: 'skill',
+        source: 'skills/productivity/grilling',
+        target: 'vendor/skills/grilling',
+      }, {
         kind: 'namespace-dir',
         source: 'skills/productivity',
         target: 'vendor/skills/productivity',
@@ -169,7 +173,7 @@ describe('native Trellis role', () => {
         skills: 'skills',
         mcp: 'mcp',
       },
-      capabilities: ['common', 'coding', 'productivity', 'frontend'],
+      capabilities: ['coding', 'productivity', 'frontend'],
       distribution: {
         bootstrap_manifest: 'role.yaml',
         full_role_path_required: true,

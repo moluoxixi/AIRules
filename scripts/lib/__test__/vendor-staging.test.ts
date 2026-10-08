@@ -64,6 +64,23 @@ function writeRoleContract(homeDir: string, vendor: string, role: string): void 
 }
 
 describe('rebuildVendorAssets', () => {
+  it('stages an inherited skill only once when the child also selects its namespace', async () => {
+    const { root, homeDir } = createFixture()
+    writeFile(repoPath(homeDir, 'remote', 'skills', 'methods', 'shared', 'SKILL.md'), '# shared\n')
+    writeFile(repoPath(homeDir, 'remote', 'skills', 'methods', 'extra', 'SKILL.md'), '# extra\n')
+    const manifestPath = writeManifest(root, 'overlapping-skills', [
+      vendorDefinition('remote', [
+        { kind: 'skills', sourceBaseDir: 'skills/methods', skills: ['shared'] },
+        { kind: 'namespace', sourceDir: 'skills/methods', output: 'methods' },
+      ]),
+    ])
+
+    const inventory = await rebuildVendorAssets({ homeDir, role: 'alpha', manifestPath })
+
+    expect(inventory.skills).toEqual(['extra', 'shared'])
+    expect(fs.readFileSync(path.join(homeDir, 'vendor', 'skills', 'shared', 'SKILL.md'), 'utf8')).toBe('# shared\n')
+  })
+
   it('stages shared skills and memory MCP from the capability asset directory', async () => {
     const { root, homeDir } = createFixture()
     const commonRoot = fileURLToPath(new URL('../../../capabilities/common/', import.meta.url))

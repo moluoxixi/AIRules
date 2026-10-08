@@ -1,6 +1,6 @@
 ---
 name: hindsight-memory
-description: Recall and retain project decisions, verified fixes, and user preferences through Hindsight MCP. Use when work depends on prior decisions, a completed task produces reusable learnings, or the user asks to remember or retrieve context across sessions.
+description: Recall and retain project decisions, verified fixes, and user preferences through Hindsight MCP. Use when work depends on prior decisions, a completed task produces reusable learnings, or the user asks to remember, retrieve, browse, or visualize memory across sessions.
 ---
 
 # Hindsight Memory
@@ -24,6 +24,14 @@ description: Recall and retain project decisions, verified fixes, and user prefe
 用户要求记住的信息，或任务完成后确认的设计决定、修复方法、有效命令及其适用条件，可以通过 `retain` 保存。提供足够的原始上下文，让 Hindsight 提取事实：问题、最终决定或解决步骤、验证结果、项目与相关文件，以及会影响适用性的版本信息。
 
 只记录已确认且有复用价值的内容。未验证的推测应明确标注状态；凭据和密钥留在配置系统中。已有同一结果时补充新信息，避免重复写入。若工具返回异步 operation，按工具能力检查状态，只有确认完成后才声称已保存。
+
+`grilling` 结束后，用户已确认的结论可按上述规则保存，并附上理由、取舍和下一步验证条件；待验证假设明确保留其状态。
+
+## 查看与可视化
+
+用户要求浏览记忆、查看实体关系图或部署可视化时，读取 [可视化操作说明](references/visualization.md)。先核对当前 MCP 的 API 地址与 bank，再连接官方 Hindsight 控制台。已有服务使用独立控制台接入同一个 API；首次部署使用随 skill 分发的 Compose 资产。
+
+在控制台选择上述同一 bank，查看记忆、来源文档和实体关系；只有页面能访问且测试记忆出现在对应 bank 时，才确认可视化连接成功。部署命令完成或页面可访问本身不能证明记忆读写已成功。
 
 ## 服务不可用
 

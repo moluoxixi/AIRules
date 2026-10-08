@@ -24,6 +24,7 @@ capabilities/
 │   ├── capability.yaml         # Anthropic frontend-design 上游声明
 │   ├── mcps.json               # Playwright
 │   └── README.md
+├── grilling/capability.yaml    # 仅同步 Matt Pocock grilling
 ├── productivity/capability.yaml # Matt Pocock productivity 上游声明
 └── engineering/capability.yaml # Matt Pocock engineering 上游声明
 ```
@@ -41,24 +42,34 @@ AIRules 自有共享 skills 实际存放在 `capabilities/<能力>/skills/`。�
 | [`frontend`](frontend/README.md) | Anthropic `frontend-design` | Playwright |
 | `productivity` | Matt Pocock productivity skills | 无 |
 | `engineering` | Matt Pocock engineering skills | 无 |
+| [`grilling`](grilling/README.md) | Matt Pocock `grilling` | 无 |
 
-| Role | Capabilities |
-|---|---|
-| `trellis` | `common`, `coding`, `productivity`, `frontend` |
-| `moluoxixi` | `common`, `coding`, `productivity`, `frontend` |
-| `matt` | `engineering`, `productivity` |
+| Role | 继承 | 自身 Capabilities |
+|---|---|---|
+| [`general`](../roles/general/README.md) | 无 | `common`, `grilling` |
+| `trellis` | `general` | `coding`, `productivity`, `frontend` |
+| `moluoxixi` | `general` | `coding`, `productivity`, `frontend` |
+| `matt` | `general` | `engineering`, `productivity` |
 
 角色选择示例：
 
 ```yaml
 # roles/<role>/role.yaml
+extends_roles: [general]
 capabilities:
-  - common
   - coding
   - frontend
 ```
 
 `roles/<role>/role.yaml` 声明角色自身的 `role_vendor`、CLI 安装命令、宿主支持、继承关系和 publishable packages。角色自有的 `init-project`、hooks、agents、packages 等仍放在 `roles/<role>/`，由 `role-assets` 全量同步。旧包若仍带有 `constants/skills.ts`，安装器会在没有 `role.yaml` 时兼容读取它。
+
+## 角色继承
+
+`extends_roles` 将角色作为可复用的能力模板。`general` 既能独立安装，也作为开发角色的基础：子角色安装时递归读取父角色的 `capabilities`，再加入自己的能力。多层和多父角色按声明顺序合并，共同祖先与相同能力只处理一次。子角色可用 `capabilities: []` 继承整组通用能力。
+
+继承范围是 capability 声明及其 skills、MCP 与供应商 setup。子角色的 `role_vendor`、角色专属资产、CLI packages 和 hosts 由自身声明；安装器将继承的第一方能力从子角色的 AIRules 远程 checkout 投影到 vendor。能力模板可只声明 `capabilities` 和 `extends_roles`；独立安装的角色需提供自身 `role_vendor`。
+
+缺失父角色、循环继承、单份声明中的重复能力及供应商版本冲突会报错。`grilling` 同时由父角色显式选择、由子角色的 `productivity` namespace 带入时，同一供应商的同一源码只投影一次；不同来源的同名 skill 仍报冲突。
 
 ## MCP 清单
 

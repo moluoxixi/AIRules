@@ -11,7 +11,7 @@ capabilities:
   - productivity
 role_vendor_position: after
 hosts: all
-extends_roles: []
+extends_roles: [general]
 role_vendor:
   name: matt-role
   source: https://github.com/moluoxixi/AIRules.git
