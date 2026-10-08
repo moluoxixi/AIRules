@@ -183,25 +183,6 @@ describe('native Trellis role', () => {
         initialize_project_skill: 'init-project',
         initialize_project_script: 'skills/init-project/scripts/run-role-cli.mjs',
       },
-      third_party: {
-        upstream: {
-          name: 'Trellis',
-          source: 'https://github.com/mindfold-ai/Trellis.git',
-          package: '@mindfoldhq/trellis@latest',
-        },
-        productivity_skills: {
-          name: 'Matt Pocock Skills',
-          source: mattSkillsSource,
-          revision: mattSkillsRevision,
-          category: 'skills/productivity',
-        },
-        frontend_design: {
-          name: 'Anthropic Frontend Design',
-          source: anthropicSkillsSource,
-          revision: anthropicSkillsRevision,
-          skill: 'skills/frontend-design',
-        },
-      },
     })
   })
 

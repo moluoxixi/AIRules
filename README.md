@@ -253,7 +253,7 @@ airules verify matt --host all
 
 ## `trellis`
 
-适合希望使用原生 Trellis 的任务与规范驱动工作流，同时获得 AIRules 共享 skills、MCP、知识库和多 agent 调度的用户。继承 `general`，再增加 `coding`、`productivity` 和 `frontend`。
+适合希望使用原生 [Trellis](https://github.com/mindfold-ai/Trellis) 的任务与规范驱动工作流，同时获得 AIRules 共享 skills、MCP、知识库和多 agent 调度的用户。继承 `general`，再增加 `coding`、`productivity` 和 `frontend`。
 
 ### 安装
 

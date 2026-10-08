@@ -120,17 +120,6 @@ describe('matt role', () => {
         full_role_path_required: true,
         npm_embedded_source: false,
       },
-      third_party: {
-        upstream: {
-          name: 'Matt Pocock Skills',
-          source: mattSkillsSource,
-          revision: mattSkillsRevision,
-          categories: [
-            'skills/engineering',
-            'skills/productivity',
-          ],
-        },
-      },
     })
   })
 

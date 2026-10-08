@@ -246,7 +246,7 @@ Role source: [`roles/matt`](roles/matt).
 
 ## `trellis`
 
-For users who want the native Trellis task-and-specification workflow together with AIRules shared skills, MCP, project knowledge, and multi-agent dispatch. It inherits `general` and adds `coding`, `productivity`, and `frontend`.
+For users who want the native [Trellis](https://github.com/mindfold-ai/Trellis) task-and-specification workflow together with AIRules shared skills, MCP, project knowledge, and multi-agent dispatch. It inherits `general` and adds `coding`, `productivity`, and `frontend`.
 
 ### Install
 

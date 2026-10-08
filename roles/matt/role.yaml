@@ -22,11 +22,3 @@ distribution:
   bootstrap_manifest: role.yaml
   full_role_path_required: true
   npm_embedded_source: false
-third_party:
-  upstream:
-    name: Matt Pocock Skills
-    source: https://github.com/mattpocock/skills.git
-    revision: 8b78b531ab965735c5dc74f6f7a219e1e37326df
-    categories:
-      - skills/engineering
-      - skills/productivity

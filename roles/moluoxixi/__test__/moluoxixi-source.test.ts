@@ -41,20 +41,6 @@ interface RoleManifest {
     setup?: unknown[]
     projections: unknown[]
   }
-  third_party: {
-    frontend_design: {
-      name: string
-      revision: string
-      skill: string
-      source: string
-    }
-    productivity_skills: {
-      category: string
-      name: string
-      revision: string
-      source: string
-    }
-  }
 }
 
 const roleRoot = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..')
@@ -202,20 +188,6 @@ describe('moluoxixi finalized role assets', () => {
       },
       role_id: 'moluoxixi',
       role_version: '0.5.0',
-    })
-    expect(manifest.third_party).toEqual({
-      frontend_design: {
-        name: 'Anthropic Frontend Design',
-        source: anthropicSkillsSource,
-        revision: anthropicSkillsRevision,
-        skill: 'skills/frontend-design',
-      },
-      productivity_skills: {
-        name: 'Matt Pocock Skills',
-        source: mattSkillsSource,
-        revision: mattSkillsRevision,
-        category: 'skills/productivity',
-      },
     })
     expect(fs.statSync(resolveRolePath(manifest.assets.skills)).isDirectory()).toBe(true)
     expect(fs.statSync(resolveRolePath(manifest.assets.mcp)).isDirectory()).toBe(true)

@@ -63,6 +63,8 @@ capabilities:
 
 `roles/<role>/role.yaml` 声明角色自身的 `role_vendor`、CLI 安装命令、宿主支持、继承关系和 publishable packages。角色自有的 `init-project`、hooks、agents、packages 等仍放在 `roles/<role>/`，由 `role-assets` 全量同步。旧包若仍带有 `constants/skills.ts`，安装器会在没有 `role.yaml` 时兼容读取它。
 
+共享能力的上游仓库、固定 commit 和投影路径统一以 `capability.yaml` 的 `vendors` 为准；角色通过 `capabilities` 与 `extends_roles` 引用这些声明。
+
 ## 角色继承
 
 `extends_roles` 将角色作为可复用的能力模板。`general` 既能独立安装，也作为开发角色的基础：子角色安装时递归读取父角色的 `capabilities`，再加入自己的能力。多层和多父角色按声明顺序合并，共同祖先与相同能力只处理一次。子角色可用 `capabilities: []` 继承整组通用能力。

@@ -29,18 +29,3 @@ distribution:
 entrypoints:
   initialize_project_skill: init-project
   initialize_project_script: skills/init-project/scripts/run-role-cli.mjs
-third_party:
-  upstream:
-    name: Trellis
-    source: https://github.com/mindfold-ai/Trellis.git
-    package: '@mindfoldhq/trellis@latest'
-  productivity_skills:
-    name: Matt Pocock Skills
-    source: https://github.com/mattpocock/skills.git
-    revision: 8b78b531ab965735c5dc74f6f7a219e1e37326df
-    category: skills/productivity
-  frontend_design:
-    name: Anthropic Frontend Design
-    source: https://github.com/anthropics/skills.git
-    revision: 3b3fad96af16a10759d930941b4520ba0c40edae
-    skill: skills/frontend-design
