@@ -85,7 +85,7 @@ try {
     throw new Error('Packed AIRules still contains the retired host constants module')
   for (const relativePath of [
     'capabilities/common/capability.yaml',
-    'capabilities/grilling/capability.yaml',
+    'capabilities/productivity/capability.yaml',
     'capabilities/common/skills/hindsight-memory/SKILL.md',
     'capabilities/common/skills/hindsight-memory/references/visualization.md',
     'capabilities/common/skills/hindsight-memory/assets/compose.yaml',
@@ -113,16 +113,11 @@ try {
       throw new Error(`Packed role manifest does not pin frontend-design: ${manifestPath}`)
     if (capabilities.has('common') && loaded.vendors['hindsight-memory']?.revision !== '9269b88417ed263e5a8350f2e416ca2b322756b1')
       throw new Error(`Packed role manifest does not pin Hindsight documentation: ${manifestPath}`)
-    if (capabilities.has('grilling')) {
-      const grillingVendor = loaded.vendors.mattpocock
-      if (grillingVendor?.revision !== '8b78b531ab965735c5dc74f6f7a219e1e37326df'
-        || !grillingVendor.links.some(link => link.source === 'skills/productivity/grilling')) {
-        throw new Error(`Packed role manifest is missing inherited grilling: ${manifestPath}`)
-      }
-    }
     for (const namespace of ['engineering', 'productivity']) {
-      if (capabilities.has(namespace) && !loaded.vendors.mattpocock?.links.some(link => link.source === `skills/${namespace}`))
-        throw new Error(`Packed role manifest is missing inherited ${namespace}: ${manifestPath}`)
+      if (capabilities.has(namespace) && (loaded.vendors.mattpocock?.revision !== '8b78b531ab965735c5dc74f6f7a219e1e37326df'
+        || !loaded.vendors.mattpocock.links.some(link => link.source === `skills/${namespace}`))) {
+        throw new Error(`Packed role manifest is missing pinned ${namespace}: ${manifestPath}`)
+      }
     }
     const roleContract = parse(fs.readFileSync(manifestPath, 'utf8'))
     const roleVendorName = roleContract?.role_vendor?.name

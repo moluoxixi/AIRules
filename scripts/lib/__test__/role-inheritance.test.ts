@@ -40,7 +40,7 @@ describe('role capability inheritance', () => {
   it('combines a single inheritance chain once and keeps child installation settings', async () => {
     const root = createRepo()
     writeRole(root, 'base', {
-      capabilities: ['common', 'grilling'],
+      capabilities: ['common', 'productivity'],
       packages: [{ name: '@example/base-cli', path: 'packages/cli', install: { kind: 'npm-global' } }],
     })
     writeRole(root, 'template', { extends_roles: ['base'], capabilities: ['common', 'coding', 'frontend'] })
@@ -65,7 +65,6 @@ describe('role capability inheritance', () => {
     ])
     expect(Object.values(loaded.vendors).every(vendor => vendor.setup === undefined)).toBe(true)
     expect(loaded.vendors.mattpocock?.links).toEqual([
-      { kind: 'skill', source: 'skills/productivity/grilling', target: 'vendor/skills/grilling' },
       { kind: 'namespace-dir', source: 'skills/productivity', target: 'vendor/skills/productivity' },
     ])
   })
