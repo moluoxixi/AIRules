@@ -2,7 +2,7 @@
 
 `capabilities/` 集中维护跨角色复用的供应商声明、skills 和 MCP 配置。每个能力目录同时容纳资产与安装声明；角色在 `roles/<role>/role.yaml` 中选择能力。
 
-能力和角色声明都使用 YAML，因为它们是安装器、校验器和其它分发工具共享的配置数据，而不是执行逻辑。增加能力或角色字段时只需更新目录声明，不需要编写 TypeScript。运行时类型集中在 `scripts/lib/manifest-types.ts` 和 `scripts/lib/capability-types.ts`；旧角色的 `constants/skills.ts` 仅作为兼容回退，不是权威来源。
+能力、角色和[宿主声明](../hosts/README.md)都使用 YAML，因为它们是安装器、校验器和其它分发工具共享的配置数据，而不是执行逻辑。新增能力、角色或宿主只需更新声明，不需要编写 TypeScript 注册表。声明类型集中在 `scripts/lib/types/`；旧角色的 `constants/skills.ts` 仅作为兼容回退，不是权威来源。
 
 ## 目录与职责
 
@@ -28,7 +28,7 @@ capabilities/
 └── engineering/capability.yaml # Matt Pocock engineering 上游声明
 ```
 
-每个能力目录的 `capability.yaml` 描述从哪个 Git 仓库、哪个固定 commit、哪个路径获取资产，以及投影到哪里；目录中的 `skills/` 和 `mcps.json` 是能力实际携带的资产。`scripts/lib/capabilities.ts` 是安装器使用的通用加载器，按角色选择顺序组合这些声明，合并相同供应商并拒绝配置冲突；`scripts/lib/capability-types.ts` 只存放运行时类型。新增能力只需新增目录和 `capability.yaml`，无需修改 TypeScript 注册表。
+每个能力目录的 `capability.yaml` 描述从哪个 Git 仓库、哪个固定 commit、哪个路径获取资产，以及投影到哪里；目录中的 `skills/` 和 `mcps.json` 是能力实际携带的资产。`scripts/lib/capabilities.ts` 是安装器使用的通用加载器，按角色选择顺序组合这些声明，合并相同供应商并拒绝配置冲突；`scripts/lib/types/capabilities.ts` 只存放声明类型。新增能力只需新增目录和 `capability.yaml`，无需修改 TypeScript 注册表。
 
 AIRules 自有共享 skills 实际存放在 `capabilities/<能力>/skills/`。第三方 skills 保留在上游，安装时按声明的固定 commit 远程同步，不在此目录复制源码。AIRules 自有资产也从 AIRules 的远程 checkout 投影，符合本项目的远程分发机制。
 

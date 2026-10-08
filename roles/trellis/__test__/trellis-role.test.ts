@@ -6,7 +6,7 @@ import path from 'node:path'
 import { fileURLToPath } from 'node:url'
 import { afterEach, describe, expect, it } from 'vitest'
 import { parseDocument } from 'yaml'
-import { HOST_IDS } from '../../../constants/hosts.js'
+import { HOST_IDS } from '../../../scripts/lib/hosts.js'
 import { rebuildVendorAssets } from '../../../scripts/lib/vendor-staging.js'
 import { loadVendorManifest } from '../../../scripts/lib/vendors.js'
 

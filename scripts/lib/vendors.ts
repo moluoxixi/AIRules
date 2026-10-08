@@ -1,4 +1,4 @@
-import type { CapabilityName } from './capability-types.js'
+import type { CapabilityName } from './types/capabilities.js'
 import type {
   RolePackageConfig,
   SetupCommand,
@@ -8,13 +8,13 @@ import type {
   VendorManifest,
   VendorProjection,
   VendorRepo,
-} from './manifest-types.js'
+} from './types/manifest.js'
 import fs from 'node:fs'
 import path from 'node:path'
 import { fileURLToPath, pathToFileURL, URL } from 'node:url'
 import { parseDocument } from 'yaml'
-import { HOST_IDS } from '../../constants/hosts.js'
 import { CAPABILITY_NAMES, composeCapabilities } from './capabilities.js'
+import { HOST_IDS } from './hosts.js'
 import { flattenedSkillName, flattenedVendorSkillTarget } from './skill-projection.js'
 
 const vendorNamePattern = /^[A-Za-z0-9][\w-]*$/u
@@ -37,7 +37,7 @@ export type {
   VendorProjection,
   VendorRepo,
   VendorsConfig,
-} from './manifest-types.js'
+} from './types/manifest.js'
 
 export function normalizePath(value: string): string {
   return value.replace(/\\/g, '/')

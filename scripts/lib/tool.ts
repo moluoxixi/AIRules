@@ -1,7 +1,7 @@
 import os from 'node:os'
 import path from 'node:path'
 import { fileURLToPath } from 'node:url'
-import { HOST_IDS, resolveHostId } from '../../constants/hosts.js'
+import { HOST_IDS, resolveHostId } from './hosts.js'
 import {
   ensureGlobalSkillLink,
   ensureInstallRoot,

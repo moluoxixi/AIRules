@@ -67,6 +67,22 @@ try {
     throw new Error('Packed airules --help does not expose the role install command')
 
   const installedPackageRoot = path.join(consumerRoot, 'node_modules', packageJson.name)
+  const hostDeclaration = path.join(installedPackageRoot, 'hosts', 'hosts.yaml')
+  if (!fs.existsSync(hostDeclaration))
+    throw new Error('Packed AIRules is missing the host YAML declaration')
+  const { HOST_IDS, findHostConfig, resolveHostPaths } = await import(
+    pathToFileURL(path.join(installedPackageRoot, 'dist', 'scripts', 'lib', 'hosts.js')).href,
+  )
+  const declaredHosts = parse(fs.readFileSync(hostDeclaration, 'utf8'))
+  if (JSON.stringify(HOST_IDS) !== JSON.stringify(declaredHosts.hosts.map(host => host.id)))
+    throw new Error('Packed AIRules host registry does not match its YAML declaration')
+  if (!help.includes(HOST_IDS.join(', ')))
+    throw new Error('Packed CLI help does not expose the declared host order')
+  const hermes = findHostConfig('hermes desktop')
+  if (!hermes || resolveHostPaths(hermes, consumerRoot).hostHome !== path.join(consumerRoot, 'AppData', 'Local', 'hermes'))
+    throw new Error('Packed AIRules does not resolve declared host aliases and portable paths')
+  if (fs.existsSync(path.join(installedPackageRoot, 'dist', 'constants', 'hosts.js')))
+    throw new Error('Packed AIRules still contains the retired host constants module')
   const moluoxixiManifest = path.join(installedPackageRoot, 'roles', 'moluoxixi', 'role.yaml')
   if (!fs.existsSync(moluoxixiManifest))
     throw new Error('Packed AIRules is missing the Moluoxixi role YAML declaration')

@@ -1,5 +1,5 @@
-import type { McpProjection } from '../../constants/hosts.js'
 import type { LinkEntry } from './links.js'
+import type { McpProjection } from './types/hosts.js'
 import type { SetupCommand, VendorManifest } from './vendors.js'
 import { execFileSync } from 'node:child_process'
 import {
@@ -19,8 +19,8 @@ import {
 
 import os from 'node:os'
 import path from 'node:path'
-import { findHostConfig, resolveGlobalAgentSkillsPath, resolveHostPaths } from '../../constants/hosts.js'
 import { areSamePaths, canonicalPath, canonicalPathKey, isPathInside } from './canonical-path.js'
+import { findHostConfig, resolveGlobalAgentSkillsPath, resolveHostPaths } from './hosts.js'
 import { buildLinkPlan } from './links.js'
 import { loadMcpCatalog, validateMcpServerNames } from './mcp-catalog.js'
 import { requireRoleName } from './role-assets.js'

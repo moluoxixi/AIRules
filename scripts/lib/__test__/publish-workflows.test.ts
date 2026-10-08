@@ -26,6 +26,7 @@ describe('package publication workflows', () => {
 
     expect(workflow.on.push.branches).toEqual(['main'])
     expect(workflow.on.push.paths).toContain('package.json')
+    expect(workflow.on.push.paths).toContain('hosts/**')
     expect(workflow.on.push.paths).toContain('roles/*/constants/**')
     expect(workflow.on.push.tags).toBeUndefined()
     expect(workflow.on.workflow_dispatch).toBeUndefined()

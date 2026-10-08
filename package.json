@@ -24,6 +24,7 @@
     "bin",
     "capabilities",
     "dist",
+    "hosts",
     "roles/*/role.yaml"
   ],
   "scripts": {

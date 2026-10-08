@@ -1,9 +1,9 @@
-import type { McpProjection } from '../../constants/hosts.js'
+import type { McpProjection } from './types/hosts.js'
 import { existsSync, lstatSync, readdirSync, readFileSync } from 'node:fs'
 import os from 'node:os'
 import path from 'node:path'
 import kleur from 'kleur'
-import { findHostConfig, resolveGlobalAgentSkillsPath, resolveHostPaths } from '../../constants/hosts.js'
+import { findHostConfig, resolveGlobalAgentSkillsPath, resolveHostPaths } from './hosts.js'
 import { applyMcpServerProjection, readInstalledMcpServers, readTomlMcpServerNames } from './install.js'
 import { DEFAULT_ROLE } from './roles.js'
 

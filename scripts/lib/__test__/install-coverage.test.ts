@@ -4,7 +4,7 @@ import fs from 'node:fs'
 import os from 'node:os'
 import path from 'node:path'
 import { it } from 'vitest'
-import { findHostConfig, HOST_IDS, resolveGlobalAgentSkillsPath, resolveHostId, resolveHostPaths } from '../../../constants/hosts.js'
+import { findHostConfig, HOST_IDS, resolveGlobalAgentSkillsPath, resolveHostId, resolveHostPaths } from '../hosts.js'
 import {
   cleanupLegacyHostSkillLinks,
   ensureGlobalSkillLink,

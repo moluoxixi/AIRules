@@ -81,6 +81,7 @@ jobs:
       - name: Test native install paths
         run: >-
           pnpm exec vitest run
+          scripts/lib/__test__/hosts.test.ts
           scripts/lib/__test__/canonical-path.test.ts
           scripts/lib/__test__/roles.test.ts
           scripts/lib/__test__/install-coverage.test.ts

@@ -308,6 +308,8 @@ Plan 阶段创建并确认 PRD，复杂任务补齐 design/implement 后 `task.p
 
 共享 skills、MCP 清单和供应商声明按能力集中在 `capabilities/<能力>/`，例如 `capabilities/common/skills/`。每个能力目录是纯数据目录，只包含 `capability.yaml`、skills、MCP 清单和文档；Role 在 `role.yaml` 中选择 capability。运行时加载器位于 `scripts/lib/capabilities.ts`，负责按声明顺序组合 vendor，合并兼容投影、去重完全相同的 projection，并拒绝来源或目标冲突。目录结构与完整映射见 [capabilities/README.md](capabilities/README.md)。
 
+宿主目录、别名、skills 投影开关和 MCP 格式统一声明在 [hosts/hosts.yaml](hosts/hosts.yaml)。`scripts/lib/hosts.ts` 负责加载、校验和路径解析，声明类型放在 `scripts/lib/types/`。新增宿主只需更新 YAML；字段与维护说明见 [hosts/README.md](hosts/README.md)。
+
 分发链路为：
 
 ```text

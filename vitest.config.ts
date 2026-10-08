@@ -16,7 +16,6 @@ export default defineConfig({
       provider: 'v8',
       reporter: ['text', 'lcov'],
       include: [
-        'constants/**/*.ts',
         'roles/*/runtime/**/*.ts',
         'scripts/lib/**/*.ts',
       ],

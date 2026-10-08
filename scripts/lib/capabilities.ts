@@ -3,15 +3,15 @@ import type {
   CapabilityName,
   CapabilitySelection,
   ComposeCapabilitiesOptions,
-} from './capability-types.js'
-import type { SetupCommand, SkillDef, VendorProjection, VendorRepo } from './manifest-types.js'
+} from './types/capabilities.js'
+import type { SetupCommand, SkillDef, VendorProjection, VendorRepo } from './types/manifest.js'
 import fs from 'node:fs'
 import path from 'node:path'
 import { fileURLToPath } from 'node:url'
 
 import { parseDocument } from 'yaml'
 
-export type { CapabilityDefinition, CapabilityName, CapabilitySelection, ComposeCapabilitiesOptions } from './capability-types.js'
+export type { CapabilityDefinition, CapabilityName, CapabilitySelection, ComposeCapabilitiesOptions } from './types/capabilities.js'
 
 /**
  * Capability content is data owned by each directory. This loader is the

@@ -4,13 +4,13 @@ import path from 'node:path'
 import { fileURLToPath } from 'node:url'
 import { parseArgs } from 'node:util'
 import kleur from 'kleur'
-import { HOST_IDS } from '../constants/hosts.js'
 import {
   compareContractFiles,
   createContractErrorAudit,
   serializeContractAudit,
   writeContractAudit,
 } from './lib/contract-diff.js'
+import { HOST_IDS } from './lib/hosts.js'
 import { requireRoleName } from './lib/role-assets.js'
 import {
   getDefaultMoluoHome,

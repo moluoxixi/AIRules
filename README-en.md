@@ -301,6 +301,8 @@ Role source: [`roles/trellis`](roles/trellis).
 
 Shared skills, MCP catalogs, and vendor declarations live together in `capabilities/<capability>/`, such as `capabilities/common/skills/`. Each capability is a data-only directory containing `capability.yaml`, skills, MCP catalogs, and documentation; roles select capabilities in `role.yaml`. The runtime loader lives in `scripts/lib/capabilities.ts`, composes vendors in declaration order, merges compatible projections, deduplicates identical projections, and rejects source or target conflicts. See [capabilities/README.md](capabilities/README.md) for the layout and complete mapping.
 
+Host directories, aliases, skill projection switches, and MCP formats are declared in [hosts/hosts.yaml](hosts/hosts.yaml). `scripts/lib/hosts.ts` loads and validates the declaration and resolves paths; declaration types live in `scripts/lib/types/`. Adding a host only requires a YAML entry. See [hosts/README.md](hosts/README.md) for fields and maintenance guidance.
+
 ```text
 role manifest
   -> pinned vendor checkout / package setup

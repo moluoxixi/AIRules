@@ -9,7 +9,7 @@ on:
       - README-en.md
       - 'bin/**'
       - 'capabilities/**'
-      - 'constants/**'
+      - 'hosts/**'
       - 'docs/**'
       - 'roles/*/constants/**'
       - 'roles/*/role.yaml'

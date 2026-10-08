@@ -1,0 +1,134 @@
+schema_version: 1
+
+# 所有角色共享的 canonical skills 目录。
+global_agent_skills:
+  home_rel_path: .agents
+  skills_dir_name: skills
+
+# 路径相对于用户 home，统一使用 /；顺序决定 --host all 和帮助输出顺序。
+# 宿主原生 agents、commands、hooks、settings 由角色的项目初始化器安装。
+hosts:
+  - id: claude
+    home_rel_path: .claude
+    mcp:
+      home_rel_path: .
+      rel_dir: .
+      file_name: .claude.json
+      servers_key: mcpServers
+      format: json
+      require_host_home: true
+      server_defaults:
+        type: stdio
+      server_overrides:
+        codegraph:
+          args: [serve, --mcp]
+
+  - id: codex
+    home_rel_path: .codex
+    project_skills: false
+    mcp:
+      rel_dir: .
+      file_name: config.toml
+      servers_key: mcp_servers
+      format: toml
+      server_overrides:
+        codegraph:
+          args: [serve, --mcp]
+
+  - id: hermes
+    aliases: [hermes desktop]
+    home_rel_path: AppData/Local/hermes
+    project_skills: false
+
+  - id: cursor
+    home_rel_path: .cursor
+    skills_dir_name: skills-cursor
+    project_skills: false
+    mcp:
+      rel_dir: .
+      file_name: mcp.json
+      servers_key: mcpServers
+      format: json
+      server_defaults:
+        type: stdio
+
+  - id: qoderwork
+    home_rel_path: .qoderwork
+
+  - id: trae
+    home_rel_path: .trae
+    project_skills: false
+    mcp:
+      home_rel_path: AppData/Roaming/Trae/User
+      rel_dir: .
+      file_name: mcp.json
+      servers_key: mcpServers
+      format: json
+      default_top_level:
+        inputs: []
+
+  - id: trae-cn
+    home_rel_path: .trae-cn
+    project_skills: false
+    mcp:
+      home_rel_path: AppData/Roaming/Trae CN/User
+      rel_dir: .
+      file_name: mcp.json
+      servers_key: mcpServers
+      format: json
+      default_top_level:
+        inputs: []
+
+  - id: trae-solo
+    home_rel_path: .trae-solo
+    project_skills: false
+    mcp:
+      home_rel_path: AppData/Roaming/TRAE SOLO/User
+      rel_dir: .
+      file_name: mcp.json
+      servers_key: mcpServers
+      format: json
+      default_top_level:
+        inputs: []
+
+  - id: trae-solo-cn
+    home_rel_path: .trae-solo-cn
+    project_skills: false
+    mcp:
+      home_rel_path: AppData/Roaming/TRAE SOLO CN/User
+      rel_dir: .
+      file_name: mcp.json
+      servers_key: mcpServers
+      format: json
+      default_top_level:
+        inputs: []
+
+  - id: qoder
+    home_rel_path: .qoder
+    project_skills: false
+    mcp:
+      home_rel_path: AppData/Roaming/Qoder/SharedClientCache
+      rel_dir: .
+      file_name: mcp.json
+      servers_key: mcpServers
+      format: json
+      server_defaults:
+        type: stdio
+
+  - id: opencode
+    home_rel_path: .config/opencode
+    project_skills: false
+    mcp:
+      rel_dir: .
+      file_name: opencode.json
+      servers_key: mcp
+      format: json
+      default_top_level:
+        $schema: https://opencode.ai/config.json
+      server_defaults:
+        type: local
+        enabled: true
+      server_overrides:
+        codegraph:
+          args: [serve, --mcp]
+      server_command_format: command-array

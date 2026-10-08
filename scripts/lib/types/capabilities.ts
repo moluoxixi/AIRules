@@ -1,4 +1,4 @@
-import type { VendorProjection, VendorRepo } from './manifest-types.js'
+import type { VendorProjection, VendorRepo } from './manifest.js'
 
 /** Capability ids are discovered from capability directories containing capability.yaml. */
 export type CapabilityName = string
