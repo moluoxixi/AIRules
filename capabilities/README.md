@@ -46,19 +46,18 @@ AIRules 自有共享 skills 实际存放在 `capabilities/<能力>/skills/`。�
 
 | Role | 继承 | 自身 Capabilities |
 |---|---|---|
-| [`general`](../roles/general/README.md) | 无 | `common`, `grilling` |
-| `trellis` | `general` | `coding`, `productivity`, `frontend` |
-| `moluoxixi` | `general` | `coding`, `productivity`, `frontend` |
-| `matt` | `general` | `engineering`, `productivity` |
+| [`general`](../roles/general/README.md) | 无 | `common` |
+| [`development`](../roles/development/README.md) | `general` | `coding`, `productivity`, `frontend` |
+| `trellis` | `development` | 无，使用模板的共享能力 |
+| `moluoxixi` | `development` | 无，使用模板的共享能力 |
+| `matt` | `development` | `engineering` |
 
 角色选择示例：
 
 ```yaml
 # roles/<role>/role.yaml
-extends_roles: [general]
-capabilities:
-  - coding
-  - frontend
+extends_roles: [development]
+capabilities: []
 ```
 
 `roles/<role>/role.yaml` 声明角色自身的 `role_vendor`、CLI 安装命令、宿主支持、继承关系和 publishable packages。角色自有的 `init-project`、hooks、agents、packages 等仍放在 `roles/<role>/`，由 `role-assets` 全量同步。旧包若仍带有 `constants/skills.ts`，安装器会在没有 `role.yaml` 时兼容读取它。
@@ -67,7 +66,11 @@ capabilities:
 
 ## 角色继承
 
-`extends_roles` 将角色作为可复用的能力模板。`general` 既能独立安装，也作为开发角色的基础：子角色安装时递归读取父角色的 `capabilities`，再加入自己的能力。多层和多父角色按声明顺序合并，共同祖先与相同能力只处理一次。子角色可用 `capabilities: []` 继承整组通用能力。
+`extends_roles` 将角色作为可复用的能力模板。每个角色只允许继承一个父角色，或用 `extends_roles: []` 声明没有父角色。多父角色声明会在加载阶段报错，重复填写相同父角色也会报错；YAML 与旧 `extendsRoles` 导出使用同一校验规则。
+
+`general` 提供记忆、skill 编写与文档整理；`development` 继承 `general`，集中维护 `coding`、`productivity` 与 `frontend`。具体开发角色统一继承 `development` 的基础 skills 与 MCP，再选择自己的工程工作流。`engineering` 由 Matt 角色单独选择。两个基础角色也可独立安装。
+
+子角色安装时沿单继承链读取父角色的 `capabilities`，再加入自己的能力；链上重复的能力只处理一次。子角色可用 `capabilities: []` 继承整组模板能力。能力组合仍会校验供应商版本和投影目标冲突。
 
 继承范围是 capability 声明及其 skills、MCP 与供应商 setup。子角色的 `role_vendor`、角色专属资产、CLI packages 和 hosts 由自身声明；安装器将继承的第一方能力从子角色的 AIRules 远程 checkout 投影到 vendor。能力模板可只声明 `capabilities` 和 `extends_roles`；独立安装的角色需提供自身 `role_vendor`。
 

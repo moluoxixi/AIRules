@@ -79,29 +79,29 @@ export async function roleOverlayOrder(repoRoot: string, roleValue: unknown = DE
 
   const role = requireRoleName(roleValue)
   const orderedRoles: string[] = []
-  const seenRoles = new Set<string>()
   const visitingRoles = new Set<string>()
-
-  async function visit(roleName: string): Promise<void> {
+  let roleName: string | undefined = role
+  while (roleName !== undefined) {
     requireRolePaths(repoRoot, roleName)
-    if (seenRoles.has(roleName)) {
-      return
-    }
     if (visitingRoles.has(roleName)) {
       throw new Error(`AIRules role inheritance cycle detected at "${roleName}"`)
     }
-
     visitingRoles.add(roleName)
-    for (const extendedRole of await loadRoleExtendsRoles(repoRoot, roleName)) {
-      await visit(extendedRole)
-    }
-    visitingRoles.delete(roleName)
-    seenRoles.add(roleName)
     orderedRoles.push(roleName)
+    const parents = await loadRoleExtendsRoles(repoRoot, roleName)
+    roleName = parents[0]
   }
+  return orderedRoles.reverse()
+}
 
-  await visit(role)
-  return orderedRoles
+export function requireRoleInheritance(value: unknown, location: string): string[] {
+  if (!Array.isArray(value) || !value.every(roleName => typeof roleName === 'string')) {
+    throw new TypeError(`${location} must be a string array`)
+  }
+  if (value.length > 1) {
+    throw new Error(`${location} supports at most one parent role (single inheritance)`)
+  }
+  return value
 }
 
 export function resolveRoleManifestPath(
@@ -180,21 +180,14 @@ async function loadRoleExtendsRoles(repoRoot: string, role: string): Promise<str
     }
     const record = value as Record<string, unknown>
     const extendsRoles = record.extends_roles ?? record.extendsRoles ?? []
-    if (!Array.isArray(extendsRoles) || !extendsRoles.every(roleName => typeof roleName === 'string')) {
-      throw new TypeError(`roles/${role}/role.yaml field "extends_roles" must be a string array`)
-    }
-    return extendsRoles
+    return requireRoleInheritance(extendsRoles, `roles/${role}/role.yaml field "extends_roles"`)
   }
 
   const manifestUrl = pathToFileURL(path.resolve(manifestPath)).href
   const module = await import(manifestUrl)
   const extendsRoles = module.extendsRoles ?? module.default?.extendsRoles ?? []
 
-  if (!Array.isArray(extendsRoles) || !extendsRoles.every(roleName => typeof roleName === 'string')) {
-    throw new TypeError(`roles/${role}/constants/skills.ts export "extendsRoles" must be a string array`)
-  }
-
-  return extendsRoles
+  return requireRoleInheritance(extendsRoles, `roles/${role}/constants/skills.ts export "extendsRoles"`)
 }
 
 function requireInsideRoot(root: string, target: string, field: string, rootLabel: string): void {

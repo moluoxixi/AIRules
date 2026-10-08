@@ -1,19 +1,21 @@
 schema_version: 1
-role_id: general
+role_id: development
 role_version: 0.1.0
 status: stable
-canonical_root: roles/general
-description: Shared skills for organizing knowledge and persistent memory with the Hindsight console.
+canonical_root: roles/development
+description: Shared development template for productivity, coding tools, and frontend work.
 capabilities:
-  - common
+  - coding
+  - productivity
+  - frontend
 hosts: all
-extends_roles: []
+extends_roles: [general]
 role_vendor:
-  name: general-role
+  name: development-role
   source: https://github.com/moluoxixi/AIRules.git
   projections:
     - kind: role-assets
-      source_dir: roles/general
+      source_dir: roles/development
 distribution:
   bootstrap_manifest: role.yaml
   full_role_path_required: true

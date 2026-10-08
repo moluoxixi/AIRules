@@ -13,7 +13,7 @@ The AIRules installer handles user-level package setup, asset distribution, and 
 
 ## `general`
 
-For users who need to question plans, remember decisions across sessions, and organize documents. It also provides the shared base for development roles.
+For users who need to remember decisions across sessions, write skills, and organize documents. It also provides the shared base for development roles.
 
 ### Install
 
@@ -25,11 +25,10 @@ airules verify general --host all
 
 ### Features
 
-`general` selects `common` and `grilling`, providing five skills and the Hindsight memory MCP:
+`general` selects `common`, providing four skills and the Hindsight memory MCP:
 
 | Skill | Purpose |
 | --- | --- |
-| `grilling` | Question plans, decisions, and assumptions to establish tradeoffs and validation criteria |
 | `hindsight-memory` | Recall and retain confirmed project knowledge and connect memory visualization |
 | `hindsight-docs` | Consult Hindsight API, deployment, and configuration documentation |
 | `create-skill` | Create or revise a reusable agent skill |
@@ -37,14 +36,14 @@ airules verify general --host all
 
 The default MCP endpoint is `http://localhost:8888/mcp/`. The official Hindsight console at `http://localhost:9999` shows facts, source documents, and entity relationships. Connect a standalone console to an existing API, or use the bundled Docker Compose assets for a new deployment. Model settings live in the user configuration directory and data persists in a named volume. See [memory visualization](capabilities/common/skills/hindsight-memory/references/visualization.md).
 
-`moluoxixi`, `trellis`, and `matt` inherit these capabilities with `extends_roles: [general]`. Installing a development role includes its inherited capabilities. See [General](roles/general/README.md) and [role inheritance](capabilities/README.md#角色继承).
+The `development` template inherits these capabilities with `extends_roles: [general]`. `moluoxixi`, `trellis`, and `matt` all inherit `development`. Installing a development role includes its inherited capabilities. See [General](roles/general/README.md) and [role inheritance](capabilities/README.md#角色继承).
 
 ### Usage
 
 Describe the goal or name a skill directly:
 
 ```text
-Use grilling to question this plan and check its assumptions and tradeoffs.
+Organize this project's documentation directories, indexes, and links.
 Remember our confirmed decisions, reasoning, and next validation criteria.
 Recall this project's earlier decisions and check whether they still apply.
 Open this project's memory visualization to inspect facts and entity relationships.
@@ -52,9 +51,42 @@ Open this project's memory visualization to inspect facts and entity relationshi
 
 Roles share the same Hindsight API and project bank. Start the service using the deployment guide and verify memory reads and writes before using it.
 
+## `development`
+
+The shared development template adds `coding`, `productivity`, and `frontend` to the memory and documentation capabilities inherited from `general`. `matt`, `moluoxixi`, and `trellis` all use `extends_roles: [development]` and receive the same base skills and MCP servers. `matt` selects `engineering` separately; Moluoxixi and Trellis use their own engineering workflows.
+
+### Install
+
+```bash
+npm install --global moluoxixi-ai-rules
+airules install development --host all
+airules verify development --host all
+```
+
+### Features
+
+```text
+general
+└── development
+    ├── matt
+    ├── moluoxixi
+    └── trellis
+```
+
+The template can be installed independently without project initialization. Concrete roles retain their own CLI, workflow, and initialization entry. Add shared development capabilities in the template once. See [Development](roles/development/README.md) for capabilities and inheritance rules.
+
+### Usage
+
+```text
+Use grilling to question this development plan and establish validation criteria.
+Use frontend-design to design this interface, then inspect it with Playwright.
+```
+
+For a new development role, declare `extends_roles: [development]` and `capabilities: []` in its `role.yaml`. Add role-specific capabilities to its own declaration. Each role may extend at most one parent, and multi-level chains are supported.
+
 ## `moluoxixi`
 
-For users who want a complete AI development workflow with the native Moluoxixi CLI, project knowledge, multi-domain skills, and controlled multi-agent dispatch. It inherits `general` and adds `coding`, `productivity`, and `frontend`.
+For users who want a complete AI development workflow with the native Moluoxixi CLI, project knowledge, multi-domain skills, and controlled multi-agent dispatch. It inherits all shared capabilities from `development` and adds its own project workflow.
 
 ### Install
 
@@ -84,7 +116,7 @@ npm install --global @moluoxixi/airules-moluoxixi-cli
 | Layer | Assets | Responsibility |
 | --- | --- | --- |
 | User-level role | Moluoxixi core, `moluoxixi`/`ml`, `init-project` | Native initialization, update, task, memory, workflow, and channel commands |
-| Shared capabilities | Inherited `common`, `grilling`; own `coding`, `productivity`, `frontend` | Shared and pinned external skills plus MCP servers |
+| Shared capabilities | Shared tools inherited from `development` | General skills, productivity skills, frontend skills, and MCP servers |
 | Native project | `.moluoxixi/workflow.md`, `tasks/`, `spec/`, `scripts/`, `agents/`, host configuration | Workflow state, task artifacts, project rules, and agent definitions |
 | AIRules project extension | `.moluoxixi/knowledge/`, knowledge runtime and hook, `moluoxixi-knowledge` | Source change detection and traceable project knowledge |
 
@@ -116,12 +148,14 @@ Project workflow entries become slash commands or discoverable skills according 
 | `common` | `hindsight-docs` | Look up Hindsight API, deployment, and advanced configuration |
 | `frontend` | `frontend-design` | Give intentional visual direction when creating or reshaping interfaces |
 | `productivity` | `grill-me` | Start a rigorous interview that turns an idea into an executable plan |
-| `grilling` | `grilling` | Inherited from `general`; stress-test plans, decisions, and designs |
+| `productivity` | `grilling` | Stress-test plans, decisions, and designs |
 | `productivity` | `handoff` | Compress the conversation into a document another agent can resume |
 | `productivity` | `teach` | Run stateful teaching across sessions in the current repository |
 | `productivity` | `to-questionnaire` | Turn unresolved decisions into a questionnaire for an informed person |
 | `productivity` | `wait-what` | Restate misunderstood material in direct technical English |
 | `productivity` | `writing-for-agents` | Write skills, `AGENTS.md`, and `CLAUDE.md` for agent consumption |
+
+Shared tools are maintained in [Development](roles/development/README.md). The Moluoxixi workflow below owns engineering implementation and review.
 
 The `common` capability configures the Hindsight HTTP memory MCP at `http://localhost:8888/mcp/`. See [Common](capabilities/common/README.md) for service startup and model configuration. The `coding` capability installs CodeGraph, Context7, and Sequential Thinking MCP for code relationships, library documentation, and structured reasoning. The `frontend` capability installs Playwright MCP for browser inspection and automation.
 
@@ -189,7 +223,7 @@ airules verify matt --host all
 
 #### Installed assets
 
-`matt` inherits `common` and `grilling` from `general`, then adds its own `engineering` and `productivity` capabilities. Shared skills and the Hindsight MCP are installed with the role and use the same project bank as other roles. See [memory visualization](capabilities/common/skills/hindsight-memory/references/visualization.md) for console setup. Engineering and productivity skills use a pinned upstream revision; the role requires no project initialization.
+`matt` inherits the base development capabilities from `development` and separately selects `engineering` to organize engineering work with Matt skills, without project initialization. The install includes shared skills and Hindsight, CodeGraph, Context7, Sequential Thinking, and Playwright MCP servers. Engineering and productivity skills use a pinned upstream revision. Hindsight uses the same project bank as other roles; see [memory visualization](capabilities/common/skills/hindsight-memory/references/visualization.md) for console setup.
 
 #### Skills
 
@@ -199,6 +233,7 @@ airules verify matt --host all
 | `common` | `spec-organization` | Organize document directories, indexes, and links |
 | `common` | `hindsight-memory` | Retain and recall project memory and connect the official console |
 | `common` | `hindsight-docs` | Consult Hindsight API and deployment documentation |
+| `frontend` | `frontend-design` | Guide visual design for new interfaces and redesigns |
 | `engineering` | `ask-matt` | Explicit router that selects the appropriate Matt skill or flow |
 | `engineering` | `code-review` | Review changes since a baseline against standards and specification |
 | `engineering` | `codebase-design` | Improve module boundaries, interfaces, and testability using deep-module principles |
@@ -218,7 +253,7 @@ airules verify matt --host all
 | `engineering` | `wayfinder` | Plan work larger than one agent session as a decision and ticket map |
 | `engineering` | `wizard` | Generate an interactive Bash wizard for human-only credentials, consoles, or migrations |
 | `productivity` | `grill-me` | Start a rigorous planning interview |
-| `grilling` | `grilling` | Inherited from `general`; stress-test a plan, decision, or design |
+| `productivity` | `grilling` | Stress-test a plan, decision, or design |
 | `productivity` | `handoff` | Produce a resumable cross-agent handoff |
 | `productivity` | `teach` | Teach across sessions with recorded state |
 | `productivity` | `to-questionnaire` | Turn unknowns into a questionnaire for an informed person |
@@ -246,7 +281,7 @@ Role source: [`roles/matt`](roles/matt).
 
 ## `trellis`
 
-For users who want the native [Trellis](https://github.com/mindfold-ai/Trellis) task-and-specification workflow together with AIRules shared skills, MCP, project knowledge, and multi-agent dispatch. It inherits `general` and adds `coding`, `productivity`, and `frontend`.
+For users who want the native [Trellis](https://github.com/mindfold-ai/Trellis) task-and-specification workflow together with AIRules shared skills, MCP, project knowledge, and multi-agent dispatch. It inherits all shared capabilities from `development` and adds its own project workflow.
 
 ### Install
 
@@ -266,7 +301,7 @@ The role install provides the Trellis CLI and user-level capabilities but does n
 | Layer | Assets | Responsibility |
 | --- | --- | --- |
 | User-level role | Trellis CLI and `init-project` | Native `init/update/upgrade/uninstall/mem/workflow/platforms/channel` commands |
-| Shared capabilities | Inherited `common`, `grilling`; own `coding`, `productivity`, `frontend` | The same shared skills, pinned external skills, and MCP servers as Moluoxixi |
+| Shared capabilities | Shared tools inherited from `development` | The same base skills and MCP servers as other development roles |
 | Native project | `.trellis/workflow.md`, `tasks/`, `spec/`, `scripts/`, `agents/`, host configuration | Plan/Execute/Finish state, task artifacts, specs, and agent definitions |
 | AIRules project extension | `.trellis/knowledge/`, knowledge runtime and hook, `trellis-knowledge` | Source change detection and bidirectionally traceable knowledge |
 
@@ -296,12 +331,14 @@ Native Trellis projects workflow entries as commands or skills according to host
 | `common` | `hindsight-docs` | Look up Hindsight API, deployment, and advanced configuration |
 | `frontend` | `frontend-design` | Guide intentional frontend design and redesign |
 | `productivity` | `grill-me` | Start a rigorous requirements interview |
-| `grilling` | `grilling` | Inherited from `general`; stress-test plans, decisions, and designs |
+| `productivity` | `grilling` | Stress-test plans, decisions, and designs |
 | `productivity` | `handoff` | Produce a cross-agent handoff |
 | `productivity` | `teach` | Teach across sessions with recorded progress |
 | `productivity` | `to-questionnaire` | Turn unresolved questions into a questionnaire |
 | `productivity` | `wait-what` | Restate misunderstood material |
 | `productivity` | `writing-for-agents` | Write agent-facing documents and skills |
+
+Shared tools are maintained in [Development](roles/development/README.md). The Trellis workflow below owns engineering implementation and review.
 
 Trellis configures Hindsight, CodeGraph, Context7, Sequential Thinking, and Playwright MCP. Its role-owned MCP manifest is empty; these servers come from `common`, `coding`, and `frontend` capabilities. See [Common](capabilities/common/README.md) for Hindsight service requirements.
 
@@ -346,7 +383,7 @@ Role source: [`roles/trellis`](roles/trellis).
 
 Shared skills, MCP catalogs, and vendor declarations live together in `capabilities/<capability>/`, such as `capabilities/common/skills/`. Each capability is a data-only directory containing `capability.yaml`, skills, MCP catalogs, and documentation; roles select capabilities in `role.yaml`. The runtime loader lives in `scripts/lib/capabilities.ts`, composes vendors in declaration order, merges compatible projections, deduplicates identical projections, and rejects source or target conflicts. See [capabilities/README.md](capabilities/README.md) for the layout and complete mapping.
 
-`extends_roles` recursively combines parent capabilities before the child's own choices. Shared ancestors and capabilities are deduplicated; missing parents and inheritance cycles are rejected. A parent may be a declaration-only template. The child declares its own role vendor, hosts, and CLI packages. See [role inheritance](capabilities/README.md#角色继承).
+`extends_roles` combines capabilities along a single inheritance chain before the child's own choices. Each role may extend at most one parent; repeated capabilities are deduplicated. Multiple parents, missing parents, and inheritance cycles are rejected. A parent may be a declaration-only template. The child declares its own role vendor, hosts, and CLI packages. See [role inheritance](capabilities/README.md#角色继承).
 
 Host directories, aliases, skill projection switches, and MCP formats are declared in [hosts/hosts.yaml](hosts/hosts.yaml). `scripts/lib/hosts.ts` loads and validates the declaration and resolves paths; declaration types live in `scripts/lib/types/`. Adding a host only requires a YAML entry. See [hosts/README.md](hosts/README.md) for fields and maintenance guidance.
 

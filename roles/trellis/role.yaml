@@ -3,16 +3,13 @@ role_id: trellis
 role_version: 0.5.0
 status: stable
 canonical_root: roles/trellis
-description: Installs Trellis, shared coding and frontend capabilities, native project initialization, and Matt Pocock productivity skills through AIRules.
+description: Installs Trellis and native project initialization with the shared development template.
 assets:
   skills: skills
   mcp: mcp
-capabilities:
-  - coding
-  - productivity
-  - frontend
+capabilities: []
 hosts: all
-extends_roles: [general]
+extends_roles: [development]
 role_vendor:
   name: trellis
   source: https://github.com/moluoxixi/AIRules.git

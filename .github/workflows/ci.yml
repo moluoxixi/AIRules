@@ -94,6 +94,7 @@ jobs:
           roles/moluoxixi/__test__/moluoxixi-source.test.ts
           roles/trellis/__test__/trellis-mcp-projection.test.ts
           roles/general/__test__/general-role.test.ts
+          roles/development/__test__/development-role.test.ts
           roles/matt/__test__/matt-role.test.ts
 
   discover-role-packages:

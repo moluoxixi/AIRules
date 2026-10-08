@@ -37,16 +37,15 @@ function writeRole(root: string, role: string, fields: Record<string, unknown> =
 }
 
 describe('role capability inheritance', () => {
-  it('combines a diamond from ancestors to child once and keeps child installation settings', async () => {
+  it('combines a single inheritance chain once and keeps child installation settings', async () => {
     const root = createRepo()
     writeRole(root, 'base', {
       capabilities: ['common', 'grilling'],
       packages: [{ name: '@example/base-cli', path: 'packages/cli', install: { kind: 'npm-global' } }],
     })
-    writeRole(root, 'left', { extends_roles: ['base'], capabilities: ['coding'] })
-    writeRole(root, 'right', { extends_roles: ['base'], capabilities: ['common', 'frontend'] })
+    writeRole(root, 'template', { extends_roles: ['base'], capabilities: ['common', 'coding', 'frontend'] })
     const manifestPath = writeRole(root, 'child', {
-      extends_roles: ['left', 'right'],
+      extends_roles: ['template'],
       capabilities: ['productivity'],
       hosts: ['codex'],
       role_vendor_position: 'after',
@@ -69,6 +68,30 @@ describe('role capability inheritance', () => {
       { kind: 'skill', source: 'skills/productivity/grilling', target: 'vendor/skills/grilling' },
       { kind: 'namespace-dir', source: 'skills/productivity', target: 'vendor/skills/productivity' },
     ])
+  })
+
+  it.each([
+    ['left', 'right'],
+    ['left', 'left'],
+  ])('rejects multiple parents without composing their capabilities (%s)', async (...parents) => {
+    const root = createRepo()
+    writeRole(root, 'left', { capabilities: ['common'] })
+    writeRole(root, 'right', { capabilities: ['frontend'] })
+    const manifestPath = writeRole(root, 'child', { extends_roles: parents, capabilities: ['coding'] })
+
+    await expect(loadVendorManifest(manifestPath)).rejects.toThrow(/at most one parent role/u)
+    writeRole(root, 'child', { extends_roles: parents, role_vendor: undefined })
+    await expect(loadVendorManifest(manifestPath)).rejects.toThrow(/at most one parent role/u)
+    writeRole(root, 'template', { extends_roles: parents, role_vendor: undefined })
+    writeRole(root, 'child', { extends_roles: ['template'] })
+    await expect(loadVendorManifest(manifestPath)).rejects.toThrow(/at most one parent role/u)
+  })
+
+  it('rejects multiple parents in a legacy vendor manifest', async () => {
+    const root = createRepo()
+    const manifestPath = path.join(root, 'manifest.mjs')
+    fs.writeFileSync(manifestPath, 'export const extendsRoles = [\'left\', \'right\']\nexport const vendors = []\n')
+    await expect(loadVendorManifest(manifestPath)).rejects.toThrow(/at most one parent role/u)
   })
 
   it.each([undefined, []])('allows a child to get all capabilities from a declaration-only template (%s)', async (capabilities) => {

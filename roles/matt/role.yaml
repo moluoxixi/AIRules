@@ -3,15 +3,14 @@ role_id: matt
 role_version: 0.1.0
 status: experimental
 canonical_root: roles/matt
-description: Installs Matt Pocock's engineering and productivity skills through AIRules.
+description: Development role using Matt Pocock's skills and shared coding and frontend tools.
 assets:
   skills: skills
 capabilities:
   - engineering
-  - productivity
 role_vendor_position: after
 hosts: all
-extends_roles: [general]
+extends_roles: [development]
 role_vendor:
   name: matt-role
   source: https://github.com/moluoxixi/AIRules.git

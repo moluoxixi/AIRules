@@ -4,7 +4,7 @@
 
 ## 说明
 
-此目录用于角色专属的 MCP 服务器配置。共享 MCP 统一管理在 [`capabilities/`](../../../capabilities/README.md) 中，与对应能力的 skills 和供应商声明放在一起。`matt` 通过继承 `general` 获得 `common` 的 Hindsight 记忆 MCP。
+此目录用于角色专属的 MCP 服务器配置。共享 MCP 统一管理在 [`capabilities/`](../../../capabilities/README.md) 中，与对应能力的 skills 和供应商声明放在一起。`matt` 通过继承 [`development`](../../development/README.md) 获得 Hindsight、CodeGraph、Context7、Sequential Thinking 和 Playwright MCP。
 
 ## 使用场景
 
@@ -17,7 +17,7 @@
 
 ## 当前配置
 
-`mcp.json` 保持空对象；当前 MCP 来自继承的 [`common`](../../../capabilities/common/README.md)，通过远程 vendor projection 同步。
+`mcp.json` 保持空对象；当前 MCP 来自模板继承的 `common`、`coding` 和 `frontend`，通过远程 vendor projection 同步。
 
 ## 扩展配置
 

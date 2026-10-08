@@ -120,6 +120,10 @@ try {
         throw new Error(`Packed role manifest is missing inherited grilling: ${manifestPath}`)
       }
     }
+    for (const namespace of ['engineering', 'productivity']) {
+      if (capabilities.has(namespace) && !loaded.vendors.mattpocock?.links.some(link => link.source === `skills/${namespace}`))
+        throw new Error(`Packed role manifest is missing inherited ${namespace}: ${manifestPath}`)
+    }
     const roleContract = parse(fs.readFileSync(manifestPath, 'utf8'))
     const roleVendorName = roleContract?.role_vendor?.name
     if (!roleVendorName)
@@ -131,7 +135,7 @@ try {
           throw new Error(`Packed role manifest is missing shared capability assets: ${source}`)
       }
     }
-    if (role === 'general' && (Object.keys(loaded.vendors).length !== 3
+    if (role === 'general' && (Object.keys(loaded.vendors).length !== 2
       || roleLinks.filter(link => link.kind === 'mcp-file').length !== 1)) {
       throw new Error('Packed general role includes unexpected vendors or MCP catalogs')
     }

@@ -23,11 +23,9 @@ describe('general role', () => {
     const loaded = await loadVendorManifest(manifestPath)
     expect(loaded.hosts).toEqual(HOST_IDS)
     expect(loaded.packages).toEqual([])
-    expect(Object.keys(loaded.vendors)).toEqual(['general-role', 'hindsight-memory', 'mattpocock'])
+    expect(Object.keys(loaded.vendors)).toEqual(['general-role', 'hindsight-memory'])
     expect(Object.values(loaded.vendors).every(vendor => vendor.setup === undefined)).toBe(true)
-    expect(loaded.vendors.mattpocock?.links).toEqual([
-      { kind: 'skill', source: 'skills/productivity/grilling', target: 'vendor/skills/grilling' },
-    ])
+    expect(loaded.vendors.mattpocock).toBeUndefined()
 
     const root = fs.mkdtempSync(path.join(os.tmpdir(), 'airules-general-'))
     temporaryRoots.push(root)
@@ -50,7 +48,7 @@ describe('general role', () => {
 
     const inventory = await rebuildVendorAssets({ homeDir, role: 'general', manifestPath })
 
-    expect(inventory.skills).toEqual(['create-skill', 'grilling', 'hindsight-docs', 'hindsight-memory', 'spec-organization'])
+    expect(inventory.skills).toEqual(['create-skill', 'hindsight-docs', 'hindsight-memory', 'spec-organization'])
     expect(fs.readFileSync(path.join(homeDir, 'roles', 'general', 'role.yaml'), 'utf8')).toBe(fs.readFileSync(manifestPath, 'utf8'))
     const memoryRoot = path.join(homeDir, 'vendor', 'skills', 'hindsight-memory')
     for (const asset of ['assets/compose.yaml', 'assets/hindsight.env.example', 'references/visualization.md']) {

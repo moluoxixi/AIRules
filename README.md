@@ -13,7 +13,7 @@ AIRules 安装器负责用户级 package setup、资产分发和受管 skills/MC
 
 ## `general`
 
-适合需要计划审问、跨会话记忆和文档整理的用户，也是开发角色共享的基础角色。
+适合需要跨会话记忆、skill 编写和文档整理的用户，也是开发角色共享的基础角色。
 
 ### 安装
 
@@ -25,11 +25,10 @@ airules verify general --host all
 
 ### 功能
 
-`general` 选择 `common` 和 `grilling`，提供五项 skills 和 Hindsight 记忆 MCP：
+`general` 选择 `common`，提供四项 skills 和 Hindsight 记忆 MCP：
 
 | Skill | 做什么 |
 | --- | --- |
-| `grilling` | 审问计划、决策和假设，明确取舍与验证条件 |
 | `hindsight-memory` | 按项目回忆和保存已确认的信息，连接记忆可视化 |
 | `hindsight-docs` | 查询 Hindsight API、部署和高级配置文档 |
 | `create-skill` | 创建或修订可复用的 agent skill |
@@ -37,14 +36,14 @@ airules verify general --host all
 
 Hindsight MCP 默认连接 `http://localhost:8888/mcp/`。官方控制台默认位于 `http://localhost:9999`，可查看记忆事实、来源文档和实体关系图。已有 API 可单独启动控制台；首次部署可使用随 skill 分发的 Docker Compose，模型配置和数据分别保存在用户配置目录与持久化卷中。步骤见 [记忆可视化](capabilities/common/skills/hindsight-memory/references/visualization.md)。
 
-`moluoxixi`、`trellis` 和 `matt` 通过 `extends_roles: [general]` 继承这些通用能力；安装开发角色时会一并安装。声明与规则见 [General](roles/general/README.md) 和 [角色继承](capabilities/README.md#角色继承)。
+开发模板 `development` 通过 `extends_roles: [general]` 继承这些通用能力；`moluoxixi`、`trellis` 和 `matt` 再统一继承 `development`。安装开发角色时会一并安装。声明与规则见 [General](roles/general/README.md) 和 [角色继承](capabilities/README.md#角色继承)。
 
 ### 用法
 
 直接在宿主中描述目标或点名 skill：
 
 ```text
-请用 grilling 审问这个计划，逐项检查假设和取舍。
+请整理这个项目的文档目录、索引和链接。
 请记住我们已确认的结论、理由和下一步验证条件。
 回忆这个项目之前的决定，并核对是否仍适用。
 打开当前项目的记忆可视化，查看事实和实体关系图。
@@ -52,9 +51,42 @@ Hindsight MCP 默认连接 `http://localhost:8888/mcp/`。官方控制台默认�
 
 不同角色使用同一 Hindsight 服务和项目 bank，复用已确认的记忆。使用记忆前按上述部署说明启动服务并验证读写。
 
+## `development`
+
+开发通用模板，在 `general` 的记忆和文档能力之上集中提供 `coding`、`productivity` 和 `frontend`。`matt`、`moluoxixi`、`trellis` 都使用 `extends_roles: [development]`，获得相同的基础 skills 和 MCP。`engineering` 由 `matt` 单独选择；Moluoxixi 和 Trellis 使用各自的工程工作流。
+
+### 安装
+
+```bash
+npm install --global moluoxixi-ai-rules
+airules install development --host all
+airules verify development --host all
+```
+
+### 功能
+
+```text
+general
+└── development
+    ├── matt
+    ├── moluoxixi
+    └── trellis
+```
+
+模板可独立安装，无需项目初始化。具体角色保留自身的 CLI、工作流和初始化入口；新增共享开发能力只需更新模板。完整能力与继承规则见 [Development](roles/development/README.md)。
+
+### 用法
+
+```text
+请使用 grilling 审问这个开发计划，明确取舍和验证条件。
+请使用 frontend-design 设计这个界面，并用 Playwright 检查效果。
+```
+
+新增开发角色时，在其 `role.yaml` 中声明 `extends_roles: [development]`，并设置 `capabilities: []`；专属能力可在自身声明中追加。每个角色最多继承一个父角色，支持多层链。
+
 ## `moluoxixi`
 
-适合希望获得完整 AI 开发流程，同时需要 Moluoxixi 原生 CLI、项目知识库、多领域 skills 和可控多 agent 调度的用户。继承 `general`，再增加 `coding`、`productivity` 和 `frontend`。
+适合希望获得完整 AI 开发流程，同时需要 Moluoxixi 原生 CLI、项目知识库、多领域 skills 和可控多 agent 调度的用户。继承 `development` 的全部共享开发能力，再提供自己的项目工作流。
 
 ### 安装
 
@@ -84,7 +116,7 @@ npm install --global @moluoxixi/airules-moluoxixi-cli
 | 层级 | 资产 | 作用 |
 | --- | --- | --- |
 | 用户级角色资产 | Moluoxixi core、`moluoxixi`/`ml` CLI、`init-project` | 提供原生项目初始化、更新、任务、memory、workflow 和 channel 命令 |
-| 公共 capability | 继承的 `common`、`grilling`；自身的 `coding`、`productivity`、`frontend` | 组合共享 skills、外部固定版本 skills 和 MCP servers |
+| 公共 capability | 从 `development` 继承共享工具能力 | 组合通用 skills、效率 skills、前端 skills 和 MCP servers |
 | 原生项目资产 | `.moluoxixi/workflow.md`、`tasks/`、`spec/`、`scripts/`、`agents/`、宿主配置 | 保存工作流状态、任务工件、项目规范和 agent 定义 |
 | AIRules 项目扩展 | `.moluoxixi/knowledge/`、知识 runtime、宿主 knowledge hook、`moluoxixi-knowledge` | 检测 source 变化，维护可追踪的项目知识库 |
 
@@ -116,12 +148,14 @@ npm install --global @moluoxixi/airules-moluoxixi-cli
 | `common` | `hindsight-docs` | 查询 Hindsight API、部署和高级配置文档 |
 | `frontend` | `frontend-design` | 为新 UI 或现有界面重塑提供有明确审美方向的设计指导 |
 | `productivity` | `grill-me` | 启动严格访谈，把模糊想法推进到可执行方案 |
-| `grilling` | `grilling` | 从 `general` 继承，压力测试计划、决策或设计中的薄弱假设 |
+| `productivity` | `grilling` | 压力测试计划、决策或设计中的薄弱假设 |
 | `productivity` | `handoff` | 把当前对话压缩为下一位 agent 可接手的交接文档 |
 | `productivity` | `teach` | 在当前仓库中进行可跨会话记录状态的教学 |
 | `productivity` | `to-questionnaire` | 把 agent 无法独立回答的决策转成给知情人的问卷 |
 | `productivity` | `wait-what` | 用更直接的技术英语重新解释未被理解的内容 |
 | `productivity` | `writing-for-agents` | 编写供 agent 消费的 skills、`AGENTS.md` 和 `CLAUDE.md` |
+
+共享工具由 [Development](roles/development/README.md) 集中维护，工程实施和审查由下述 Moluoxixi 工作流负责。
 
 `common` capability 配置 Hindsight HTTP 记忆 MCP，默认连接 `http://localhost:8888/mcp/`；服务启动和模型配置见 [Common](capabilities/common/README.md)。`coding` capability 安装 CodeGraph、Context7、Sequential Thinking MCP，用于代码关系探索、库文档查询和结构化推理；`frontend` capability 安装 Playwright MCP，用于浏览器检查与自动化。
 
@@ -196,7 +230,7 @@ airules verify matt --host all
 
 #### 安装后的资产
 
-`matt` 继承 `general` 的 `common` 和 `grilling`，再组合自身的 `engineering` 和 `productivity`。通用 skills 和 Hindsight MCP 随角色安装，项目 bank 与其它角色共用；控制台部署见 [记忆可视化](capabilities/common/skills/hindsight-memory/references/visualization.md)。工程和效率 skills 固定上游版本，角色无需项目初始化。
+`matt` 继承 `development` 的基础开发能力，再单独选择 `engineering`，使用 Matt skills 组织工程工作，无需项目初始化。共享 skills 以及 Hindsight、CodeGraph、Context7、Sequential Thinking 和 Playwright MCP 随角色安装。工程和效率 skills 固定上游版本；Hindsight 项目 bank 与其它角色共用，控制台部署见 [记忆可视化](capabilities/common/skills/hindsight-memory/references/visualization.md)。
 
 #### Skills
 
@@ -206,6 +240,7 @@ airules verify matt --host all
 | `common` | `spec-organization` | 整理文档目录、索引和链接 |
 | `common` | `hindsight-memory` | 保存和检索项目记忆，连接官方可视化控制台 |
 | `common` | `hindsight-docs` | 查询 Hindsight API 和部署文档 |
+| `frontend` | `frontend-design` | 为新 UI 和界面改造提供视觉设计指导 |
 | `engineering` | `ask-matt` | 根据当前问题选择适合的 Matt skill 或工作流；这是显式调用的路由器 |
 | `engineering` | `code-review` | 从指定基线对改动做 standards 与 spec 双轴审查 |
 | `engineering` | `codebase-design` | 用深模块原则改进模块边界、接口和可测试性 |
@@ -225,7 +260,7 @@ airules verify matt --host all
 | `engineering` | `wayfinder` | 把超出单次会话的大型工作规划成决策与 ticket 地图 |
 | `engineering` | `wizard` | 生成交互式 bash wizard，引导人工完成凭据、控制台或迁移步骤 |
 | `productivity` | `grill-me` | 启动严格访谈，把模糊计划推进到可执行状态 |
-| `grilling` | `grilling` | 从 `general` 继承，压力测试计划、决策或设计 |
+| `productivity` | `grilling` | 压力测试计划、决策或设计 |
 | `productivity` | `handoff` | 生成下一位 agent 可直接接手的交接文档 |
 | `productivity` | `teach` | 在仓库中进行可记录进度的跨会话教学 |
 | `productivity` | `to-questionnaire` | 把未决问题转成面向知情人的问卷 |
@@ -253,7 +288,7 @@ airules verify matt --host all
 
 ## `trellis`
 
-适合希望使用原生 [Trellis](https://github.com/mindfold-ai/Trellis) 的任务与规范驱动工作流，同时获得 AIRules 共享 skills、MCP、知识库和多 agent 调度的用户。继承 `general`，再增加 `coding`、`productivity` 和 `frontend`。
+适合希望使用原生 [Trellis](https://github.com/mindfold-ai/Trellis) 的任务与规范驱动工作流，同时获得 AIRules 共享 skills、MCP、知识库和多 agent 调度的用户。继承 `development` 的全部共享开发能力，再提供自己的项目工作流。
 
 ### 安装
 
@@ -273,7 +308,7 @@ trellis --version
 | 层级 | 资产 | 作用 |
 | --- | --- | --- |
 | 用户级角色资产 | Trellis CLI、`init-project` | 提供原生 `init/update/upgrade/uninstall/mem/workflow/platforms/channel` 命令 |
-| 公共 capability | 继承的 `common`、`grilling`；自身的 `coding`、`productivity`、`frontend` | 与 Moluoxixi 相同的共享 skills、外部固定版本 skills 和 MCP servers |
+| 公共 capability | 从 `development` 继承共享工具能力 | 与其它开发角色相同的基础 skills 和 MCP servers |
 | 原生项目资产 | `.trellis/workflow.md`、`tasks/`、`spec/`、`scripts/`、`agents/`、宿主配置 | 保存 Plan/Execute/Finish 状态、任务工件、规范和 agent 定义 |
 | AIRules 项目扩展 | `.trellis/knowledge/`、知识 runtime、宿主 hook、`trellis-knowledge` | 自动发现 source 变化并维护双向可追踪知识关系 |
 
@@ -303,12 +338,14 @@ trellis --version
 | `common` | `hindsight-docs` | 查询 Hindsight API、部署和高级配置文档 |
 | `frontend` | `frontend-design` | 指导有明确视觉方向的前端设计与重塑 |
 | `productivity` | `grill-me` | 启动严格需求访谈 |
-| `grilling` | `grilling` | 从 `general` 继承，压力测试计划、决策或设计 |
+| `productivity` | `grilling` | 压力测试计划、决策或设计 |
 | `productivity` | `handoff` | 生成跨 agent 交接文档 |
 | `productivity` | `teach` | 进行可记录进度的跨会话教学 |
 | `productivity` | `to-questionnaire` | 把未决问题转成问卷 |
 | `productivity` | `wait-what` | 重新解释未被理解的内容 |
 | `productivity` | `writing-for-agents` | 编写 agent 文档与 skills |
+
+共享工具由 [Development](roles/development/README.md) 集中维护，工程实施和审查由下述 Trellis 工作流负责。
 
 Trellis 同样配置 Hindsight、CodeGraph、Context7、Sequential Thinking 和 Playwright MCP；role-owned MCP 清单为空，实际 MCP 来自 `common`、`coding` 与 `frontend` capabilities。Hindsight 服务的运行要求见 [Common](capabilities/common/README.md)。
 
@@ -353,7 +390,7 @@ Plan 阶段创建并确认 PRD，复杂任务补齐 design/implement 后 `task.p
 
 共享 skills、MCP 清单和供应商声明按能力集中在 `capabilities/<能力>/`，例如 `capabilities/common/skills/`。每个能力目录是纯数据目录，只包含 `capability.yaml`、skills、MCP 清单和文档；Role 在 `role.yaml` 中选择 capability。运行时加载器位于 `scripts/lib/capabilities.ts`，负责按声明顺序组合 vendor，合并兼容投影、去重完全相同的 projection，并拒绝来源或目标冲突。目录结构与完整映射见 [capabilities/README.md](capabilities/README.md)。
 
-角色通过 `extends_roles` 递归继承父角色的 capabilities，再加入自身能力。共同祖先和重复能力自动去重；缺失父角色与循环继承会报错。父角色可作为纯声明模板；子角色使用自身的 role vendor、宿主和 CLI packages。规则见 [角色继承](capabilities/README.md#角色继承)。
+角色通过 `extends_roles` 沿单继承链读取父角色的 capabilities，再加入自身能力。每个角色最多继承一个父角色，链上的重复能力自动去重；多父角色、缺失父角色与循环继承会报错。父角色可作为纯声明模板；子角色使用自身的 role vendor、宿主和 CLI packages。规则见 [角色继承](capabilities/README.md#角色继承)。
 
 宿主目录、别名、skills 投影开关和 MCP 格式统一声明在 [hosts/hosts.yaml](hosts/hosts.yaml)。`scripts/lib/hosts.ts` 负责加载、校验和路径解析，声明类型放在 `scripts/lib/types/`。新增宿主只需更新 YAML；字段与维护说明见 [hosts/README.md](hosts/README.md)。
 

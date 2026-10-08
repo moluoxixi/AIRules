@@ -16,7 +16,7 @@ import { fileURLToPath, pathToFileURL, URL } from 'node:url'
 import { parseDocument } from 'yaml'
 import { CAPABILITY_NAMES, composeCapabilities } from './capabilities.js'
 import { HOST_IDS } from './hosts.js'
-import { resolveRoleManifestPath, roleOverlayOrder } from './roles.js'
+import { requireRoleInheritance, resolveRoleManifestPath, roleOverlayOrder } from './roles.js'
 import { flattenedSkillName, flattenedVendorSkillTarget } from './skill-projection.js'
 
 const vendorNamePattern = /^[A-Za-z0-9][\w-]*$/u
@@ -274,6 +274,10 @@ export async function loadVendorManifest(manifestPath: string): Promise<VendorMa
   const module = isRoleYaml
     ? {}
     : await import(pathToFileURL(resolvedManifestPath).href)
+  requireRoleInheritance(
+    roleContract?.extendsRoles ?? module.extendsRoles ?? module.default?.extendsRoles ?? [],
+    `Vendor manifest "${manifestPath}" field "extends_roles"`,
+  )
   const roleVendor = roleContract?.roleVendor
     ?? module.roleVendor
     ?? module.default?.roleVendor
@@ -393,10 +397,7 @@ async function requireRoleCapabilityContract(manifestPath: string, contract: Rol
   roleVendorPosition?: 'before' | 'after'
 }> {
   const contractPath = resolveRoleContractPath(manifestPath)
-  const extendsRoles = contract.extendsRoles ?? []
-  if (!Array.isArray(extendsRoles) || !extendsRoles.every(role => typeof role === 'string')) {
-    throw new TypeError(`Role contract "${contractPath}" field "extends_roles" must be a string array`)
-  }
+  const extendsRoles = requireRoleInheritance(contract.extendsRoles ?? [], `Role contract "${contractPath}" field "extends_roles"`)
 
   const roleRoot = path.dirname(contractPath)
   const repoRoot = path.resolve(roleRoot, '..', '..')

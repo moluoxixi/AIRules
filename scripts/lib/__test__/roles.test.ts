@@ -184,30 +184,41 @@ it('rejects missing and non-file role manifest candidates', () => {
   expect(() => resolveRoleManifestPath(directoryRoot, 'alpha')).toThrow(/manifest is not a file/i)
 })
 
-it('returns no overlays for the empty role and deduplicates shared ancestors', async () => {
-  const repoRoot = fs.mkdtempSync(path.join(os.tmpdir(), 'airules-role-diamond-'))
+it('returns no overlays for the empty role and orders a legacy single inheritance chain', async () => {
+  const repoRoot = fs.mkdtempSync(path.join(os.tmpdir(), 'airules-role-chain-'))
   temporaryRoots.push(repoRoot)
   writeRoleManifest(repoRoot, 'base')
-  writeRoleManifest(repoRoot, 'left', `export const extendsRoles = ['base']\nexport const vendors = []\n`)
-  writeRoleManifest(repoRoot, 'right', `export const extendsRoles = ['base']\nexport const vendors = []\n`)
-  writeRoleManifest(repoRoot, 'root', `export const extendsRoles = ['left', 'right']\nexport const vendors = []\n`)
+  writeRoleManifest(repoRoot, 'template', `export const extendsRoles = ['base']\nexport const vendors = []\n`)
+  writeRoleManifest(repoRoot, 'root', `export const extendsRoles = ['template']\nexport const vendors = []\n`)
 
   await expect(roleOverlayOrder(repoRoot, '')).resolves.toEqual([])
-  await expect(roleOverlayOrder(repoRoot, 'root')).resolves.toEqual(['base', 'left', 'right', 'root'])
+  await expect(roleOverlayOrder(repoRoot, 'root')).resolves.toEqual(['base', 'template', 'root'])
 })
 
 it('reads YAML role inheritance and rejects YAML cycles', async () => {
   const repoRoot = fs.mkdtempSync(path.join(os.tmpdir(), 'airules-yaml-role-inheritance-'))
   temporaryRoots.push(repoRoot)
   writeYamlRoleManifest(repoRoot, 'base')
-  writeYamlRoleManifest(repoRoot, 'left', ['base'])
-  writeYamlRoleManifest(repoRoot, 'right', ['base'])
-  writeYamlRoleManifest(repoRoot, 'root', ['left', 'right'])
+  writeYamlRoleManifest(repoRoot, 'template', ['base'])
+  writeYamlRoleManifest(repoRoot, 'root', ['template'])
   writeYamlRoleManifest(repoRoot, 'cycle-a', ['cycle-b'])
   writeYamlRoleManifest(repoRoot, 'cycle-b', ['cycle-a'])
 
-  await expect(roleOverlayOrder(repoRoot, 'root')).resolves.toEqual(['base', 'left', 'right', 'root'])
+  await expect(roleOverlayOrder(repoRoot, 'root')).resolves.toEqual(['base', 'template', 'root'])
   await expect(roleOverlayOrder(repoRoot, 'cycle-a')).rejects.toThrow(/inheritance cycle/i)
+})
+
+it.each(['yaml', 'legacy'])('rejects multiple parents in %s declarations before applying overlays', async (format) => {
+  const repoRoot = fs.mkdtempSync(path.join(os.tmpdir(), 'airules-role-multiple-parents-'))
+  temporaryRoots.push(repoRoot)
+  for (const parents of [['left', 'right'], ['left', 'left']]) {
+    const role = parents[0] === parents[1] ? 'duplicate' : 'multiple'
+    if (format === 'yaml')
+      writeYamlRoleManifest(repoRoot, role, parents)
+    else
+      writeRoleManifest(repoRoot, role, `export const extendsRoles = ${JSON.stringify(parents)}\nexport const vendors = []\n`)
+    await expect(roleOverlayOrder(repoRoot, role)).rejects.toThrow(/at most one parent role/u)
+  }
 })
 
 it('rejects cyclic inheritance and malformed extendsRoles exports', async () => {
