@@ -1,10 +1,9 @@
-import type { SetupCommand } from './vendors.js'
+import type { SetupCommand } from './types/manifest.js'
+import type { McpCatalog, McpServerDefinition, McpServerOwner } from './types/mcp.js'
 import fs from 'node:fs'
+import { canonicalJson } from './core/canonical-json.js'
 
-export interface McpCatalog {
-  servers: Record<string, Record<string, unknown>>
-  setup: SetupCommand[]
-}
+export type { McpCatalog } from './types/mcp.js'
 
 const reservedServerNames = new Set(['__proto__', 'constructor', 'prototype'])
 
@@ -45,6 +44,30 @@ export function validateMcpServerNames(servers: Record<string, unknown>, sourceF
   }
 }
 
+export function readMcpServerFile(sourceFile: string): Record<string, unknown> {
+  const stats = fs.lstatSync(sourceFile)
+  if (!stats.isFile() || stats.isSymbolicLink())
+    throw new Error(`MCP source must be a plain file: ${sourceFile}`)
+  const raw = fs.readFileSync(sourceFile, 'utf8').trim()
+  if (!raw)
+    return {}
+  let parsed: unknown
+  try {
+    parsed = JSON.parse(raw) as unknown
+  }
+  catch (error) {
+    throw new Error(`MCP source is invalid JSON: ${sourceFile}`, { cause: error })
+  }
+  if (!isRecord(parsed))
+    throw new Error(`MCP source must contain an "mcpServers" object: ${sourceFile}`)
+  if (parsed.mcpServers === undefined)
+    return {}
+  if (!isRecord(parsed.mcpServers))
+    throw new Error(`MCP source must contain an "mcpServers" object: ${sourceFile}`)
+  validateMcpServerNames(parsed.mcpServers, sourceFile)
+  return parsed.mcpServers
+}
+
 export function loadMcpCatalog(sourceFile: string): McpCatalog {
   let parsed: unknown
   try {
@@ -61,6 +84,7 @@ export function loadMcpCatalog(sourceFile: string): McpCatalog {
 
   const servers = Object.create(null) as Record<string, Record<string, unknown>>
   const setup: SetupCommand[] = []
+  const serverSetup = Object.create(null) as Record<string, SetupCommand[]>
   for (const [name, value] of Object.entries(parsed.mcps)) {
     if (!name || !isRecord(value) || !isRecord(value.mcp)) {
       throw new Error(`MCP catalog entry must contain an "mcp" object: ${sourceFile}#${name}`)
@@ -70,10 +94,37 @@ export function loadMcpCatalog(sourceFile: string): McpCatalog {
     }
 
     servers[name] = value.mcp
-    for (const [index, command] of (value.setup ?? []).entries()) {
-      setup.push(parseSetupCommand(command, `${sourceFile}#${name}.setup[${index}]`))
-    }
+    serverSetup[name] = (value.setup ?? []).map((command: unknown, index: number) => parseSetupCommand(command, `${sourceFile}#${name}.setup[${index}]`))
+    setup.push(...serverSetup[name])
   }
 
-  return { servers, setup }
+  return { servers, serverSetup, setup }
+}
+
+export function setupIdentity(setup: readonly SetupCommand[] = []): string {
+  return canonicalJson(setup.map(command => ({
+    command: command.command,
+    args: command.args ?? [],
+    windowsCommandShim: command.windowsCommandShim ?? false,
+    skipIfCommandAvailable: command.skipIfCommandAvailable ?? null,
+  })))
+}
+
+/** Returns false for a completely identical declaration; incompatible names fail closed. */
+export function mergeMcpServer(
+  owners: Map<string, McpServerOwner>,
+  name: string,
+  definition: McpServerDefinition,
+  owner: string,
+): boolean {
+  const previous = owners.get(name)
+  if (previous) {
+    if (canonicalJson(previous.server) !== canonicalJson(definition.server)
+      || setupIdentity(previous.setup) !== setupIdentity(definition.setup)) {
+      throw new Error(`Shared MCP server "${name}" has conflicting connection or setup definitions: ${previous.owner} conflicts with ${owner}`)
+    }
+    return false
+  }
+  owners.set(name, { ...definition, owner })
+  return true
 }

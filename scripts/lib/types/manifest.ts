@@ -83,18 +83,5 @@ export interface VendorManifest {
   packages?: RolePackageConfig[]
   version: number
   vendors: Record<string, Vendor>
-}
-
-export interface RoleContract {
-  path: string
-  value: Record<string, unknown>
-}
-
-export interface RoleContractData {
-  hosts?: unknown
-  packages?: unknown
-  capabilities?: unknown
-  extendsRoles?: unknown
-  roleVendor?: unknown
-  roleVendorPosition?: 'before' | 'after'
+  origins?: Record<string, { vendor: string[], links: string[][] }>
 }

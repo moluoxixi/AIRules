@@ -1,20 +1,22 @@
-schema_version: 1
+schema_version: 2
 role_id: general
 role_version: 0.1.0
 status: stable
 canonical_root: roles/general
 description: Shared skills for organizing knowledge and persistent memory with the Hindsight console.
-capabilities:
-  - common
-hosts: all
 extends_roles: []
-role_vendor:
-  name: general-role
-  source: https://github.com/moluoxixi/AIRules.git
-  projections:
-    - kind: role-assets
-      source_dir: roles/general
-distribution:
-  bootstrap_manifest: role.yaml
-  full_role_path_required: true
-  npm_embedded_source: false
+provides:
+  capabilities:
+    - common
+installation:
+  hosts: all
+  role_vendor:
+    name: general-role
+    source: https://github.com/moluoxixi/AIRules.git
+    projections:
+      - kind: role-assets
+        source_dir: roles/general
+  distribution:
+    bootstrap_manifest: role.yaml
+    full_role_path_required: true
+    npm_embedded_source: false

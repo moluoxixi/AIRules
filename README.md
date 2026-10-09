@@ -82,7 +82,7 @@ general
 请使用 frontend-design 设计这个界面，并用 Playwright 检查效果。
 ```
 
-新增开发角色时，在其 `role.yaml` 中声明 `extends_roles: [development]`，并设置 `capabilities: []`；专属能力可在自身声明中追加。每个角色最多继承一个父角色，支持多层链。
+新增开发角色时，在其 `role.yaml` 中使用 `schema_version: 2`，声明 `extends_roles: [development]` 和 `provides.capabilities: []`；附加共享能力可在自身声明中追加。v2 支持多个父角色，重复祖先和能力自动去重，配置冲突时直接报错。
 
 ## `moluoxixi`
 
@@ -388,9 +388,9 @@ Plan 阶段创建并确认 PRD，复杂任务补齐 design/implement 后 `task.p
 
 ## 公共分发机制
 
-共享 skills、MCP 清单和供应商声明按能力集中在 `capabilities/<能力>/`，例如 `capabilities/common/skills/`。每个能力目录是纯数据目录，只包含 `capability.yaml`、skills、MCP 清单和文档；Role 在 `role.yaml` 中选择 capability。运行时加载器位于 `scripts/lib/capabilities.ts`，负责按声明顺序组合 vendor，合并兼容投影、去重完全相同的 projection，并拒绝来源或目标冲突。目录结构与完整映射见 [capabilities/README.md](capabilities/README.md)。
+共享 skills、MCP 清单和供应商声明按能力集中在 `capabilities/<能力>/`，例如 `capabilities/common/skills/`。每个能力目录是纯数据目录，只包含 `capability.yaml`、skills、MCP 清单和文档；Role 在 v2 `role.yaml` 的 `provides.capabilities` 中选择 capability，把自身安装设置放在 `installation`。运行时加载器位于 `scripts/lib/capabilities.ts`，负责按声明顺序组合 vendor，合并兼容投影、去重完全相同的 projection，并拒绝来源或目标冲突。目录结构与完整映射见 [capabilities/README.md](capabilities/README.md)。
 
-角色通过 `extends_roles` 沿单继承链读取父角色的 capabilities，再加入自身能力。每个角色最多继承一个父角色，链上的重复能力自动去重；多父角色、缺失父角色与循环继承会报错。父角色可作为纯声明模板；子角色使用自身的 role vendor、宿主和 CLI packages。规则见 [角色继承](capabilities/README.md#角色继承)。
+v2 角色通过 `extends_roles` 组合多个父模板的共享能力，再加入自身能力。遍历遵循父角色声明顺序，重复祖先和 capability 只处理一次；同名 skill 或 MCP 只有来源和有效配置一致时才去重，冲突、缺失父角色与循环继承会报错。继承只读取 `provides.capabilities`，私有资产、role vendor、宿主和 CLI packages 使用所选角色的 `installation`。校验通过后才执行 setup 和提交受管资产；外部 setup 的环境变化以及不同名称 skill 的语义重复仍需人工判断。v1 与旧模块继续兼容单继承。规则见 [角色继承](capabilities/README.md#角色继承)。
 
 宿主目录、别名、skills 投影开关和 MCP 格式统一声明在 [hosts/hosts.yaml](hosts/hosts.yaml)。`scripts/lib/hosts.ts` 负责加载、校验和路径解析，声明类型放在 `scripts/lib/types/`。新增宿主只需更新 YAML；字段与维护说明见 [hosts/README.md](hosts/README.md)。
 
@@ -399,8 +399,8 @@ Plan 阶段创建并确认 PRD，复杂任务补齐 design/implement 后 `task.p
 ```text
 role manifest
   -> 角色继承与 capabilities 合并
-  -> 固定 vendor checkout / package setup
-  -> vendor staging
+  -> 固定 vendor checkout
+  -> vendor staging 校验 / setup / 提交
   -> canonical ~/.agents/skills
   -> 宿主 skill 投影与 MCP 合并
 ```

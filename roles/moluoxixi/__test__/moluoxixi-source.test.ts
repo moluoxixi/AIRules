@@ -6,41 +6,36 @@ import { parseDocument } from 'yaml'
 import { loadVendorManifest } from '../../../scripts/lib/vendors.js'
 
 interface RoleManifest {
-  assets: {
-    mcp: string
-    packages: string
-    skills: string
-  }
   canonical_root: string
-  capabilities: string[]
   extends_roles?: string[]
-  hosts: string[]
-  packages: Array<{
-    name: string
-    path: string
-    install?: {
-      kind: string
-      version?: string
+  provides: { capabilities: string[] }
+  installation: {
+    assets: { mcp: string, packages: string, skills: string }
+    hosts: string | string[]
+    packages: Array<{
+      name: string
+      path: string
+      install?: { kind: string, version?: string }
+    }>
+    distribution: {
+      bootstrap_manifest: string
+      full_role_path_required: boolean
+      npm_embedded_source: boolean
     }
-  }>
-  distribution: {
-    bootstrap_manifest: string
-    full_role_path_required: boolean
-    npm_embedded_source: boolean
-  }
-  entrypoints: {
-    initialize_project_script: string
-    initialize_project_skill: string
+    entrypoints: {
+      initialize_project_script: string
+      initialize_project_skill: string
+    }
+    role_vendor: {
+      name: string
+      source: string
+      revision?: string
+      setup?: unknown[]
+      projections: unknown[]
+    }
   }
   role_id: string
   role_version: string
-  role_vendor: {
-    name: string
-    source: string
-    revision?: string
-    setup?: unknown[]
-    projections: unknown[]
-  }
 }
 
 const roleRoot = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..')
@@ -170,34 +165,36 @@ describe('moluoxixi finalized role assets', () => {
   it('maps native assets and distributes the self-contained initializer', async () => {
     const manifest = readRoleManifest()
     expect(manifest).toMatchObject({
-      assets: {
-        mcp: 'mcp',
-        packages: 'packages',
-        skills: 'skills',
+      provides: { capabilities: [] },
+      installation: {
+        assets: {
+          mcp: 'mcp',
+          packages: 'packages',
+          skills: 'skills',
+        },
+        distribution: {
+          bootstrap_manifest: 'role.yaml',
+          full_role_path_required: true,
+          npm_embedded_source: false,
+        },
+        entrypoints: {
+          initialize_project_script: 'skills/init-project/scripts/run-role-cli.mjs',
+          initialize_project_skill: 'init-project',
+        },
       },
       canonical_root: 'roles/moluoxixi',
-      capabilities: [],
-      distribution: {
-        bootstrap_manifest: 'role.yaml',
-        full_role_path_required: true,
-        npm_embedded_source: false,
-      },
-      entrypoints: {
-        initialize_project_script: 'skills/init-project/scripts/run-role-cli.mjs',
-        initialize_project_skill: 'init-project',
-      },
       role_id: 'moluoxixi',
       role_version: '0.5.0',
     })
-    expect(fs.statSync(resolveRolePath(manifest.assets.skills)).isDirectory()).toBe(true)
-    expect(fs.statSync(resolveRolePath(manifest.assets.mcp)).isDirectory()).toBe(true)
-    expect(fs.statSync(resolveRolePath(manifest.assets.packages)).isDirectory()).toBe(true)
-    expect(fs.statSync(resolveRolePath(manifest.entrypoints.initialize_project_script)).isFile()).toBe(true)
+    expect(fs.statSync(resolveRolePath(manifest.installation.assets.skills)).isDirectory()).toBe(true)
+    expect(fs.statSync(resolveRolePath(manifest.installation.assets.mcp)).isDirectory()).toBe(true)
+    expect(fs.statSync(resolveRolePath(manifest.installation.assets.packages)).isDirectory()).toBe(true)
+    expect(fs.statSync(resolveRolePath(manifest.installation.entrypoints.initialize_project_script)).isFile()).toBe(true)
     expect(fs.existsSync(resolveRolePath('skills/init-project/scripts/migrations/manifests'))).toBe(false)
 
     expect(manifest.extends_roles).toEqual(['development'])
-    expect(manifest.hosts).toBe('all')
-    expect(manifest.packages).toEqual([
+    expect(manifest.installation.hosts).toBe('all')
+    expect(manifest.installation.packages).toEqual([
       {
         name: '@moluoxixi/airules-moluoxixi-core',
         path: 'packages/core',
@@ -208,7 +205,7 @@ describe('moluoxixi finalized role assets', () => {
         install: { kind: 'npm-global', version: 'latest' },
       },
     ])
-    expect(manifest.role_vendor).toEqual({
+    expect(manifest.installation.role_vendor).toEqual({
       name: 'moluoxixi',
       source: 'https://github.com/moluoxixi/AIRules.git',
       projections: [

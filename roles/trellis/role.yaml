@@ -1,28 +1,30 @@
-schema_version: 1
+schema_version: 2
 role_id: trellis
 role_version: 0.5.0
 status: stable
 canonical_root: roles/trellis
 description: Installs Trellis and native project initialization with the shared development template.
-assets:
-  skills: skills
-  mcp: mcp
-capabilities: []
-hosts: all
 extends_roles: [development]
-role_vendor:
-  name: trellis
-  source: https://github.com/moluoxixi/AIRules.git
-  setup:
-    - command: npm
-      args: [install, --global, '@mindfoldhq/trellis@latest']
-  projections:
-    - kind: role-assets
-      source_dir: roles/trellis
-distribution:
-  bootstrap_manifest: role.yaml
-  full_role_path_required: true
-  npm_embedded_source: false
-entrypoints:
-  initialize_project_skill: init-project
-  initialize_project_script: skills/init-project/scripts/run-role-cli.mjs
+provides:
+  capabilities: []
+installation:
+  assets:
+    skills: skills
+    mcp: mcp
+  hosts: all
+  role_vendor:
+    name: trellis
+    source: https://github.com/moluoxixi/AIRules.git
+    setup:
+      - command: npm
+        args: [install, --global, '@mindfoldhq/trellis@latest']
+    projections:
+      - kind: role-assets
+        source_dir: roles/trellis
+  distribution:
+    bootstrap_manifest: role.yaml
+    full_role_path_required: true
+    npm_embedded_source: false
+  entrypoints:
+    initialize_project_skill: init-project
+    initialize_project_script: skills/init-project/scripts/run-role-cli.mjs

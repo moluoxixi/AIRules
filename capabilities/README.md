@@ -54,25 +54,63 @@ AIRules 自有共享 skills 实际存放在 `capabilities/<能力>/skills/`。�
 
 ```yaml
 # roles/<role>/role.yaml
+schema_version: 2
+role_id: example
 extends_roles: [development]
-capabilities: []
+provides:
+  capabilities: []
 ```
 
-`roles/<role>/role.yaml` 声明角色自身的 `role_vendor`、CLI 安装命令、宿主支持、继承关系和 publishable packages。角色自有的 `init-project`、hooks、agents、packages 等仍放在 `roles/<role>/`，由 `role-assets` 全量同步。旧包若仍带有 `constants/skills.ts`，安装器会在没有 `role.yaml` 时兼容读取它。
+`roles/<role>/role.yaml` 把共享能力放在 `provides`，把角色自身的安装设置放在 `installation`。角色自有的 `init-project`、hooks、agents、packages 等仍放在 `roles/<role>/`，由 `role-assets` 全量远程同步。旧包若仍带有 `constants/skills.ts`，安装器会在没有 `role.yaml` 时兼容读取它；v2 声明不会执行这些旧模块。
 
-共享能力的上游仓库、固定 commit 和投影路径统一以 `capability.yaml` 的 `vendors` 为准；角色通过 `capabilities` 与 `extends_roles` 引用这些声明。
+共享能力的上游仓库、固定 commit 和投影路径统一以 `capability.yaml` 的 `vendors` 为准；角色通过 `provides.capabilities` 与 `extends_roles` 引用这些声明。
 
 ## 角色继承
 
-`extends_roles` 将角色作为可复用的能力模板。每个角色只允许继承一个父角色，或用 `extends_roles: []` 声明没有父角色。多父角色声明会在加载阶段报错，重复填写相同父角色也会报错；YAML 与旧 `extendsRoles` 导出使用同一校验规则。
+`schema_version: 2` 支持在 `extends_roles` 中声明多个父角色。角色可以作为纯能力模板，也可以独立安装。继承只读取 `provides.capabilities`；`installation` 中的设置始终属于当前选择的角色：
+
+| 字段 | 用途 | 是否继承 |
+|---|---|---|
+| `provides.capabilities` | 引用共享 skills、MCP 与供应商 setup | 是 |
+| `installation.role_vendor` | 当前角色的远程资产与专属 setup | 否 |
+| `installation.assets` | 当前角色的私有资产路径 | 否 |
+| `installation.hosts` | 宿主支持范围 | 否 |
+| `installation.packages` | 角色 CLI 与 npm 安装声明 | 否 |
+| `installation.distribution`、`installation.entrypoints` | 分发约定与初始化入口 | 否 |
+
+```yaml
+schema_version: 2
+role_id: example
+extends_roles: [development, general]
+provides:
+  capabilities: []
+installation:
+  hosts: all
+  role_vendor:
+    name: example-role
+    source: https://github.com/moluoxixi/AIRules.git
+    projections:
+      - kind: role-assets
+        source_dir: roles/example
+```
+
+安装器按父角色声明顺序进行深度优先遍历，先处理祖先，再处理自身。上例中 `development` 已继承 `general`，最终顺序仍是 `general → development → example`；同一祖先与 capability 只处理一次。父角色顺序不会产生隐式覆盖。
 
 `general` 提供记忆、skill 编写与文档整理；`development` 继承 `general`，集中维护 `coding`、`productivity` 与 `frontend`。具体开发角色统一继承 `development` 的基础 skills 与 MCP，再选择自己的工程工作流。`engineering` 由 Matt 角色单独选择。两个基础角色也可独立安装。
 
-子角色安装时沿单继承链读取父角色的 `capabilities`，再加入自己的能力；链上重复的能力只处理一次。子角色可用 `capabilities: []` 继承整组模板能力。能力组合仍会校验供应商版本和投影目标冲突。
+纯模板只需声明 `schema_version`、`role_id`、`extends_roles` 和 `provides.capabilities`。安装共享能力的具体角色必须提供自己的 `installation.role_vendor`，使第一方能力从该角色的 AIRules 远程 checkout 投影到 vendor；父模板的私有 skills、MCP、hooks、agents 和 packages 不会随继承安装。
 
-继承范围是 capability 声明及其 skills、MCP 与供应商 setup。子角色的 `role_vendor`、角色专属资产、CLI packages 和 hosts 由自身声明；安装器将继承的第一方能力从子角色的 AIRules 远程 checkout 投影到 vendor。能力模板可只声明 `capabilities` 和 `extends_roles`；独立安装的角色需提供自身 `role_vendor`。
+重复与冲突按以下规则处理：
 
-缺失父角色、循环继承、单份声明中的重复能力及供应商版本冲突会报错。同一供应商的同一源码只投影一次；不同来源的同名 skill 仍报冲突。`grilling` skill 归属 `productivity`，随该能力的 namespace 一起同步。
+- 同一供应商必须使用相同仓库、revision 和有效 setup；兼容的投影可以合并。
+- 同名 skill 只有供应商、来源、revision、源码路径、输出目标和有效 setup 全部相同时才去重。namespace 与显式 skill 选择的重叠也会校验；不同来源的同名 skill 直接报错。
+- 同名 MCP 只有完整连接配置和有效 setup 相同时才去重。JSON 对象字段顺序不影响比较，`args`、`env`、URL、headers 或 setup 的差异都会报错。
+- 相同 setup 命令组只执行一次；组内命令顺序与有意重复的命令保留。
+- 缺失父角色、循环继承、重复填写父角色、单份声明中的重复 capability，以及供应商或文件目标的大小写冲突都会报错。冲突信息包含角色继承路径与能力来源。
+
+安装器在执行 setup 前校验来源、内容和受管目标目录，再提交暂存结果。校验或 setup 失败时保留上一版受管资产；提交失败时尝试恢复旧内容，恢复失败会保留备份并报告错误。不同名称的 skills 仍可能在语义上重复，安装器无法判断这类冲突；外部 setup 命令造成的环境变化也不能自动回滚。
+
+`schema_version: 1`、未声明版本的旧 YAML 和旧 `extendsRoles` 模块继续兼容单继承。迁移到 v2 时，将顶层 `capabilities` 移入 `provides`，将安装字段移入 `installation`。`grilling` skill 仍归属 `productivity`，没有独立的 grilling 分类。
 
 ## MCP 清单
 

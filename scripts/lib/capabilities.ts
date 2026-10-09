@@ -2,6 +2,7 @@ import type {
   CapabilityDefinition,
   CapabilityName,
   CapabilitySelection,
+  CapabilityVendorEntry,
   ComposeCapabilitiesOptions,
 } from './types/capabilities.js'
 import type { SetupCommand, SkillDef, VendorProjection, VendorRepo } from './types/manifest.js'
@@ -10,6 +11,7 @@ import path from 'node:path'
 import { fileURLToPath } from 'node:url'
 
 import { parseDocument } from 'yaml'
+import { setupIdentity } from './mcp-catalog.js'
 
 export type { CapabilityDefinition, CapabilityName, CapabilitySelection, ComposeCapabilitiesOptions } from './types/capabilities.js'
 
@@ -241,34 +243,56 @@ export function composeCapabilityDefinitions(
 ): VendorRepo[] {
   const seenCapabilities = new Set<string>()
   const roleVendor = cloneVendor(options.roleVendor)
-  const capabilityVendors: VendorRepo[] = []
+  const capabilityVendors: Array<{ vendor: VendorRepo, origin: string }> = []
+  const roleOrigin = options.roleOrigin ?? 'selected role installation'
+  const roleProjections = new Map<string, string[]>()
 
   for (const selection of selections) {
     if (seenCapabilities.has(selection.name))
       throw new Error(`Capability "${selection.name}" is declared more than once`)
     seenCapabilities.add(selection.name)
 
-    for (const projection of selection.definition.roleProjections ?? [])
+    const origin = selection.origin ?? options.capabilityOrigins?.[selection.name] ?? `capability ${selection.name}`
+    for (const projection of selection.definition.roleProjections ?? []) {
       appendProjection(roleVendor, projection)
+      const key = projectionKey(projection)
+      const origins = roleProjections.get(key) ?? []
+      origins.push(origin)
+      roleProjections.set(key, origins)
+    }
     for (const vendor of selection.definition.vendors ?? [])
-      capabilityVendors.push(cloneVendor(vendor))
+      capabilityVendors.push({ vendor: cloneVendor(vendor), origin })
   }
 
+  const roleProjectionOrigins = roleVendor.projections.map((projection) => {
+    const origins = roleProjections.get(projectionKey(projection))
+    return origins?.length ? [...new Set(origins)] : [roleOrigin]
+  })
+
   const sequence = options.roleVendorPosition === 'after'
-    ? [...capabilityVendors, roleVendor]
-    : [roleVendor, ...capabilityVendors]
+    ? [...capabilityVendors, { vendor: roleVendor, origin: roleOrigin, projectionOrigins: roleProjectionOrigins }]
+    : [{ vendor: roleVendor, origin: roleOrigin, projectionOrigins: roleProjectionOrigins }, ...capabilityVendors]
   return mergeVendors(sequence)
 }
 
-function mergeVendors(sequence: readonly VendorRepo[]): VendorRepo[] {
+function mergeVendors(sequence: readonly CapabilityVendorEntry[]): VendorRepo[] {
   const result: VendorRepo[] = []
-  const byName = new Map<string, VendorRepo>()
+  const byName = new Map<string, { vendor: VendorRepo, origin: string, projectionOrigins: string[][] }>()
 
-  for (const candidate of sequence) {
-    const existing = byName.get(candidate.name)
+  for (const entry of sequence) {
+    const candidate = entry.vendor
+    const caseAlias = [...byName.keys()].find(name => name.toLowerCase() === candidate.name.toLowerCase() && name !== candidate.name)
+    if (caseAlias)
+      throw new Error(`Vendor names differ only by case: ${caseAlias} (${byName.get(caseAlias)!.origin}), ${candidate.name} (${entry.origin})`)
+    const existingEntry = byName.get(candidate.name)
+    const existing = existingEntry?.vendor
     if (!existing) {
       const cloned = cloneVendor(candidate)
-      byName.set(cloned.name, cloned)
+      byName.set(cloned.name, {
+        vendor: cloned,
+        origin: entry.origin,
+        projectionOrigins: entry.projectionOrigins ?? cloned.projections.map(() => [entry.origin]),
+      })
       result.push(cloned)
       continue
     }
@@ -278,13 +302,22 @@ function mergeVendors(sequence: readonly VendorRepo[]): VendorRepo[] {
       || existing.revision !== candidate.revision
       || setupKey(existing.setup) !== setupKey(candidate.setup)
     ) {
-      throw new Error(`Vendor "${candidate.name}" has conflicting source, revision, or setup definitions`)
+      throw new Error(`Vendor "${candidate.name}" has conflicting source, revision, or setup definitions between ${existingEntry?.origin} and ${entry.origin}`)
     }
-    for (const projection of candidate.projections)
+    for (const [index, projection] of candidate.projections.entries()) {
+      const projectionOwner = existing.projections.findIndex(existingProjection => projectionKey(existingProjection) === projectionKey(projection))
+      if (projectionOwner >= 0) {
+        const origins = entry.projectionOrigins?.[index] ?? [entry.origin]
+        existingEntry!.projectionOrigins[projectionOwner] = [...new Set([...existingEntry!.projectionOrigins[projectionOwner]!, ...origins])]
+        continue
+      }
       appendProjection(existing, projection)
+      existingEntry!.projectionOrigins.push(entry.projectionOrigins?.[index] ?? [entry.origin])
+    }
+    existingEntry!.origin = `${existingEntry!.origin}, ${entry.origin}`
   }
 
-  validateProjectionTargets(result)
+  validateProjectionTargets([...byName.values()])
   return result
 }
 
@@ -295,37 +328,46 @@ function appendProjection(vendor: VendorRepo, projection: VendorProjection): voi
   vendor.projections.push(cloneProjection(projection))
 }
 
-function validateProjectionTargets(vendors: readonly VendorRepo[]): void {
-  const owners = new Map<string, { projection: string, vendor: string }>()
-  for (const vendor of vendors) {
-    for (const projection of vendor.projections) {
-      const key = projectionKey(projection)
-      for (const target of projectionTargets(projection)) {
-        const owner = owners.get(target)
-        if (owner) {
+function validateProjectionTargets(vendors: readonly { vendor: VendorRepo, origin: string, projectionOrigins: string[][] }[]): void {
+  const owners = new Map<string, { projection: string, vendor: string, origin: string }>()
+  for (const entry of vendors) {
+    const vendor = entry.vendor
+    for (const [index, projection] of vendor.projections.entries()) {
+      for (const { target, identity } of projectionClaims(projection)) {
+        const owner = owners.get(target.toLowerCase())
+        if (owner && (owner.vendor !== vendor.name || owner.projection !== identity)) {
           throw new Error(
-            `Projection target "${target}" conflicts between vendor "${owner.vendor}" and vendor "${vendor.name}"`,
+            `Projection target "${target}" conflicts between vendor "${owner.vendor}" (${owner.origin}) and vendor "${vendor.name}" (${entry.projectionOrigins[index]?.join(', ') ?? entry.origin})`,
           )
         }
-        owners.set(target, { projection: key, vendor: vendor.name })
+        owners.set(target.toLowerCase(), { projection: identity, vendor: vendor.name, origin: entry.projectionOrigins[index]?.join(', ') ?? entry.origin })
       }
     }
   }
 }
 
-function projectionTargets(projection: VendorProjection): string[] {
+function projectionClaims(projection: VendorProjection): Array<{ target: string, identity: string }> {
+  const identity = projectionKey(projection)
   if (projection.kind === 'namespace')
-    return [`skill-namespace:${projection.output}`]
+    return [{ target: `skill-namespace:${leafName(projection.output)}`, identity }]
   if (projection.kind === 'skills') {
     return projection.skills.map((skill) => {
-      const name = typeof skill === 'string' ? skill : skill.output ?? leafName(skill.name)
-      return `skill:${name}`
+      const source = typeof skill === 'string' ? skill : skill.name
+      const name = leafName(typeof skill === 'string' ? skill : skill.output ?? skill.name)
+      return {
+        target: `skill:${name}`,
+        identity: JSON.stringify([
+          path.posix.join(projection.sourceBaseDir.replaceAll('\\', '/'), source.replaceAll('\\', '/')),
+          name,
+          setupKey(typeof skill === 'string' ? undefined : skill.setup),
+        ]),
+      }
     })
   }
   if (projection.kind === 'mcp')
-    return [`mcp:${projection.output}`]
+    return [{ target: `mcp:${projection.output}`, identity }]
   if (projection.kind === 'role-assets')
-    return ['role-assets']
+    return [{ target: 'role-assets', identity }]
   return assertNever(projection)
 }
 
@@ -354,17 +396,12 @@ function projectionKey(projection: VendorProjection): string {
 
 function skillKey(skill: SkillDef): unknown {
   if (typeof skill === 'string')
-    return skill
-  return [skill.name, skill.output, setupKey(skill.setup)]
+    return [skill, leafName(skill), setupKey(undefined)]
+  return [skill.name, leafName(skill.output ?? skill.name), setupKey(skill.setup)]
 }
 
 function setupKey(setup: readonly SetupCommand[] | undefined): string {
-  return JSON.stringify((setup ?? []).map(command => [
-    command.command,
-    command.args ?? [],
-    command.windowsCommandShim,
-    command.skipIfCommandAvailable,
-  ]))
+  return setupIdentity(setup)
 }
 
 function cloneVendor(vendor: VendorRepo): VendorRepo {

@@ -1,23 +1,25 @@
-schema_version: 1
+schema_version: 2
 role_id: matt
 role_version: 0.1.0
 status: experimental
 canonical_root: roles/matt
 description: Development role using Matt Pocock's skills and shared coding and frontend tools.
-assets:
-  skills: skills
-capabilities:
-  - engineering
-role_vendor_position: after
-hosts: all
 extends_roles: [development]
-role_vendor:
-  name: matt-role
-  source: https://github.com/moluoxixi/AIRules.git
-  projections:
-    - kind: role-assets
-      source_dir: roles/matt
-distribution:
-  bootstrap_manifest: role.yaml
-  full_role_path_required: true
-  npm_embedded_source: false
+provides:
+  capabilities:
+    - engineering
+installation:
+  assets:
+    skills: skills
+  role_vendor_position: after
+  hosts: all
+  role_vendor:
+    name: matt-role
+    source: https://github.com/moluoxixi/AIRules.git
+    projections:
+      - kind: role-assets
+        source_dir: roles/matt
+  distribution:
+    bootstrap_manifest: role.yaml
+    full_role_path_required: true
+    npm_embedded_source: false

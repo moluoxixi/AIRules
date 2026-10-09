@@ -72,6 +72,69 @@ describe('capability composition', () => {
     ])
   })
 
+  it('allows partially overlapping explicit skills from the same source and effective setup', () => {
+    const result = composeCapabilityDefinitions([
+      {
+        name: 'base',
+        definition: { vendors: [vendor('shared', 'https://example.com/shared.git', [
+          { kind: 'skills', sourceBaseDir: 'skills/methods', skills: ['shared', 'one'] },
+        ])] },
+      },
+      {
+        name: 'extra',
+        definition: { vendors: [vendor('shared', 'https://example.com/shared.git', [
+          { kind: 'skills', sourceBaseDir: 'skills', skills: [{ name: 'methods/shared', output: 'category/shared', setup: [] }, 'two'] },
+          { kind: 'namespace', sourceDir: 'skills/methods', output: 'methods', setup: [] },
+        ])] },
+      },
+    ], { roleVendor })
+    expect(result[1]?.projections).toHaveLength(3)
+  })
+
+  it('rejects conflicting outputs inside a single skills projection with provenance', () => {
+    expect(() => composeCapabilityDefinitions([{
+      name: 'one',
+      origin: 'child → template [one]',
+      definition: { vendors: [vendor('shared', 'https://example.com/shared.git', [{
+        kind: 'skills',
+        sourceBaseDir: 'skills',
+        skills: [{ name: 'a', output: 'nested/review' }, { name: 'b', output: 'review' }],
+      }])] },
+    }], { roleVendor })).toThrow(/skill:review.*child → template \[one\]/u)
+  })
+
+  it('normalizes absent setup defaults while rejecting differing skill setup', () => {
+    const build = (command: string) => composeCapabilityDefinitions([
+      { name: 'one', origin: 'child → left [one]', definition: { vendors: [vendor('shared', 'https://example.com/shared.git', [{
+        kind: 'skills',
+        sourceBaseDir: 'skills',
+        skills: [{ name: 'review', setup: [{ command: 'prepare' }] }],
+      }])] } },
+      { name: 'two', origin: 'child → right [two]', definition: { vendors: [vendor('shared', 'https://example.com/shared.git', [{
+        kind: 'skills',
+        sourceBaseDir: 'skills',
+        skills: [{ name: 'review', setup: [{ command, args: [], windowsCommandShim: false }] }],
+      }])] } },
+    ], { roleVendor })
+    expect(build('prepare')[1]?.projections).toHaveLength(1)
+    expect(() => build('different')).toThrow(/skill:review.*child → left.*child → right/u)
+  })
+
+  it('rejects vendor and output names that differ only by case', () => {
+    expect(() => composeCapabilityDefinitions([
+      { name: 'one', definition: { vendors: [vendor('Shared', 'https://example.com/shared.git', [])] } },
+      { name: 'two', definition: { vendors: [vendor('shared', 'https://example.com/shared.git', [])] } },
+    ], { roleVendor })).toThrow(/Vendor names differ only by case/u)
+    expect(() => composeCapabilityDefinitions([{
+      name: 'one',
+      definition: { vendors: [vendor('shared', 'https://example.com/shared.git', [{
+        kind: 'skills',
+        sourceBaseDir: 'skills',
+        skills: [{ name: 'a', output: 'Review' }, { name: 'b', output: 'review' }],
+      }])] },
+    }], { roleVendor })).toThrow(/Projection target "skill:review"/u)
+  })
+
   it.each([
     ['source', vendor('shared', 'https://example.com/other.git', [])],
     ['revision', { ...vendor('shared', 'https://example.com/shared.git', []), revision: 'b'.repeat(40) }],

@@ -5,7 +5,7 @@ import os from 'node:os'
 import path from 'node:path'
 import process from 'node:process'
 import { fileURLToPath, pathToFileURL } from 'node:url'
-import { parse } from 'yaml'
+import { parse, stringify } from 'yaml'
 
 const repoRoot = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..')
 const packageJson = JSON.parse(fs.readFileSync(path.join(repoRoot, 'package.json'), 'utf8'))
@@ -99,13 +99,14 @@ try {
     .filter(role => fs.existsSync(path.join(repoRoot, 'roles', role, 'role.yaml')))
   const { loadVendorManifest } = await import(pathToFileURL(path.join(installedPackageRoot, 'dist', 'scripts', 'lib', 'vendors.js')).href)
   const { roleOverlayOrder } = await import(pathToFileURL(path.join(installedPackageRoot, 'dist', 'scripts', 'lib', 'roles.js')).href)
+  const { readRoleContract } = await import(pathToFileURL(path.join(installedPackageRoot, 'dist', 'scripts', 'lib', 'role-contract.js')).href)
   for (const role of roles) {
     const manifestPath = path.join(installedPackageRoot, 'roles', role, 'role.yaml')
     if (!fs.existsSync(manifestPath))
       throw new Error(`Packed AIRules is missing a role declaration: ${role}`)
     const lineage = await roleOverlayOrder(installedPackageRoot, role)
     const capabilities = new Set(lineage.flatMap((ancestor) => {
-      const contract = parse(fs.readFileSync(path.join(installedPackageRoot, 'roles', ancestor, 'role.yaml'), 'utf8'))
+      const contract = readRoleContract(path.join(installedPackageRoot, 'roles', ancestor, 'role.yaml'))
       return contract.capabilities ?? []
     }))
     const loaded = await loadVendorManifest(manifestPath)
@@ -119,10 +120,10 @@ try {
         throw new Error(`Packed role manifest is missing pinned ${namespace}: ${manifestPath}`)
       }
     }
-    const roleContract = parse(fs.readFileSync(manifestPath, 'utf8'))
-    const roleVendorName = roleContract?.role_vendor?.name
+    const roleContract = readRoleContract(manifestPath)
+    const roleVendorName = roleContract.roleVendor?.name
     if (!roleVendorName)
-      throw new Error(`Packed role YAML does not declare role_vendor.name: ${manifestPath}`)
+      throw new Error(`Packed role YAML does not declare installation.role_vendor.name: ${manifestPath}`)
     const roleLinks = loaded.vendors[roleVendorName]?.links ?? []
     if (capabilities.has('common')) {
       for (const source of ['capabilities/common/skills', 'capabilities/common/mcps.json']) {
@@ -165,6 +166,68 @@ try {
     throw new Error(`Packed airules install did not complete the fixture role:\n${installOutput}`)
   if (!fs.existsSync(path.join(userHome, '.agents', 'skills')))
     throw new Error('Packed airules install did not create the global Agent skills projection')
+
+  const diamondRoles = [
+    ['base', [], ['common']],
+    ['left', ['base'], ['coding']],
+    ['right', ['base'], ['common', 'frontend']],
+    ['diamond', ['left', 'right'], ['common']],
+  ]
+  for (const [role, parents, capabilities] of diamondRoles) {
+    const roleRoot = path.join(fixtureRoot, 'roles', role)
+    fs.mkdirSync(roleRoot, { recursive: true })
+    fs.writeFileSync(path.join(roleRoot, 'role.yaml'), stringify({
+      schema_version: 2,
+      role_id: role,
+      extends_roles: parents,
+      provides: { capabilities },
+      installation: {
+        hosts: [role === 'diamond' ? 'codex' : 'claude'],
+        role_vendor: {
+          name: `${role}-role`,
+          source: 'https://example.test/roles.git',
+          ...(role === 'diamond' ? {} : { setup: [{ command: 'parent-setup-must-not-run' }] }),
+          projections: [{ kind: 'role-assets', source_dir: `roles/${role}` }],
+        },
+      },
+    }))
+  }
+  const diamondOrder = await roleOverlayOrder(fixtureRoot, 'diamond')
+  if (JSON.stringify(diamondOrder) !== JSON.stringify(['base', 'left', 'right', 'diamond']))
+    throw new Error(`Packed v2 inheritance does not deduplicate the diamond: ${diamondOrder}`)
+  const diamondManifest = path.join(fixtureRoot, 'roles', 'diamond', 'role.yaml')
+  const diamond = await loadVendorManifest(diamondManifest)
+  if (Object.keys(diamond.vendors).some(name => ['base-role', 'left-role', 'right-role'].includes(name))
+    || JSON.stringify(diamond.hosts) !== JSON.stringify(['codex'])
+    || diamond.vendors['diamond-role'].links.filter(link => link.source === 'capabilities/common/skills').length !== 1
+    || diamond.vendors['diamond-role'].links.filter(link => link.source === 'capabilities/common/mcps.json').length !== 1) {
+    throw new Error('Packed v2 inheritance duplicates shared capabilities or inherits parent installation settings')
+  }
+
+  // Exercise the packed CLI offline while leaving parent setup declarations in place.
+  for (const [role] of diamondRoles) {
+    const contractPath = path.join(fixtureRoot, 'roles', role, 'role.yaml')
+    const contract = parse(fs.readFileSync(contractPath, 'utf8'))
+    contract.provides.capabilities = []
+    if (role === 'diamond')
+      delete contract.installation.role_vendor
+    fs.writeFileSync(contractPath, stringify(contract))
+  }
+  const diamondInstallOutput = run(airulesExecutable, [
+    'install',
+    'diamond',
+    '--repo-root',
+    fixtureRoot,
+    '--home',
+    airulesHome,
+    '--user-home',
+    userHome,
+    '--host',
+    'codex',
+    '--no-verify',
+  ], { cwd: consumerRoot, capture: true })
+  if (!diamondInstallOutput.includes('[install] diamond 完成: codex'))
+    throw new Error(`Packed v2 airules install did not complete the diamond fixture:\n${diamondInstallOutput}`)
   console.log(`Packed ${packageJson.name}@${packageJson.version} installs and runs successfully.`)
 }
 finally {

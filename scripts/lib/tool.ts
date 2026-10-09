@@ -99,8 +99,6 @@ async function syncVendorsIfNeeded(paths: ToolPaths, skipVendors: boolean, manif
     for (const vendor of Object.values(manifest.vendors)) {
       ensureVendorRepo(paths.moluoHome, vendor)
     }
-
-    runSkillSetupCommands(manifest, paths.moluoHome)
   }
   else {
     for (const vendor of Object.values(manifest.vendors)) {
@@ -120,13 +118,15 @@ async function syncVendorStaging(paths: ToolPaths, skipVendors: boolean, manifes
     moluoHome: paths.moluoHome,
     repoRoot: paths.repoRoot,
   }
-  ensureInstallRoot(installPaths)
   await syncVendorsIfNeeded(paths, skipVendors, manifest)
   await rebuildVendorAssets({
     homeDir: paths.moluoHome,
     role: paths.role,
     manifestPath: paths.manifestPath,
+    manifest,
+    beforeCommit: skipVendors ? undefined : () => runSkillSetupCommands(manifest, paths.moluoHome),
   })
+  ensureInstallRoot(installPaths)
   ensureGlobalSkillLink(installPaths)
 }
 

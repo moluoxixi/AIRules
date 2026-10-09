@@ -25,9 +25,9 @@ describe('shared development template', () => {
     const childPath = path.join(repoRoot, 'roles', role, 'role.yaml')
     const child = await loadVendorManifest(childPath)
     const contract = parseDocument(fs.readFileSync(childPath, 'utf8')).toJS({ maxAliasCount: 0 })
-    const childVendorName = contract.role_vendor.name
+    const childVendorName = contract.installation.role_vendor.name
 
-    expect(contract.capabilities).toEqual(role === 'matt' ? ['engineering'] : [])
+    expect(contract.provides.capabilities).toEqual(role === 'matt' ? ['engineering'] : [])
     await expect(roleOverlayOrder(repoRoot, role)).resolves.toEqual(['general', 'development', role])
     for (const vendor of ['hindsight-memory', 'anthropic-skills'])
       expect(child.vendors[vendor]).toEqual(base.vendors[vendor])

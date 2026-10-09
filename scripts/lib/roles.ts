@@ -1,20 +1,16 @@
+import type { RoleInheritanceEntry, RolePaths } from './types/roles.js'
 import fs from 'node:fs'
 import path from 'node:path'
 import { pathToFileURL } from 'node:url'
-import { parseDocument } from 'yaml'
 import { isPathInside } from './canonical-path.js'
 import { requireRoleName } from './role-assets.js'
+import { readRoleContract, requireRoleInheritance } from './role-contract.js'
+
+export { requireRoleInheritance } from './role-contract.js'
+export type { RolePaths } from './types/roles.js'
 
 export const DEFAULT_ROLE = ''
 export const COMMON_ROLE = ''
-
-export interface RolePaths {
-  role: string
-  roleRoot: string
-  roleManifest: string
-  constantsDir?: string
-  constantsFile?: string
-}
 
 export function requireRolePaths(repoRoot: string, roleValue: unknown): RolePaths {
   const role = requireRoleName(roleValue)
@@ -73,35 +69,46 @@ export function requireRolePaths(repoRoot: string, roleValue: unknown): RolePath
 }
 
 export async function roleOverlayOrder(repoRoot: string, roleValue: unknown = DEFAULT_ROLE): Promise<string[]> {
+  return (await resolveRoleInheritance(repoRoot, roleValue)).map(entry => entry.role)
+}
+
+export async function resolveRoleInheritance(repoRoot: string, roleValue: unknown = DEFAULT_ROLE): Promise<RoleInheritanceEntry[]> {
   if (roleValue === '') {
     return []
   }
 
   const role = requireRoleName(roleValue)
-  const orderedRoles: string[] = []
+  const orderedRoles: RoleInheritanceEntry[] = []
   const visitingRoles = new Set<string>()
-  let roleName: string | undefined = role
-  while (roleName !== undefined) {
-    requireRolePaths(repoRoot, roleName)
+  const visitedRoles = new Set<string>()
+  async function visit(roleName: string, inheritancePath: string[]): Promise<void> {
     if (visitingRoles.has(roleName)) {
-      throw new Error(`AIRules role inheritance cycle detected at "${roleName}"`)
+      throw new Error(`AIRules role inheritance cycle detected: ${inheritancePath.join(' → ')}`)
     }
+    if (visitedRoles.has(roleName))
+      return
+    const { roleManifest: manifestPath } = requireRolePaths(repoRoot, roleName)
     visitingRoles.add(roleName)
-    orderedRoles.push(roleName)
-    const parents = await loadRoleExtendsRoles(repoRoot, roleName)
-    roleName = parents[0]
+    const contract = path.basename(manifestPath).toLowerCase() === 'role.yaml' ? readRoleContract(manifestPath) : undefined
+    if (contract?.roleId !== undefined && contract.roleId !== roleName)
+      throw new Error(`Role contract "${manifestPath}" role_id must equal "${roleName}" (${inheritancePath.join(' → ')})`)
+    if (contract?.canonicalRoot !== undefined && contract.canonicalRoot !== `roles/${roleName}`)
+      throw new Error(`Role contract "${manifestPath}" canonical_root must equal roles/${roleName} (${inheritancePath.join(' → ')})`)
+    const parents = contract?.extendsRoles ?? await loadLegacyRoleExtendsRoles(manifestPath)
+    for (const parent of parents) {
+      try {
+        await visit(parent, [...inheritancePath, parent])
+      }
+      catch (error) {
+        throw new Error(`${String(error)} (inheritance: ${[...inheritancePath, parent].join(' → ')})`, { cause: error })
+      }
+    }
+    visitingRoles.delete(roleName)
+    visitedRoles.add(roleName)
+    orderedRoles.push({ role: roleName, manifestPath, inheritancePath, contract })
   }
-  return orderedRoles.reverse()
-}
-
-export function requireRoleInheritance(value: unknown, location: string): string[] {
-  if (!Array.isArray(value) || !value.every(roleName => typeof roleName === 'string')) {
-    throw new TypeError(`${location} must be a string array`)
-  }
-  if (value.length > 1) {
-    throw new Error(`${location} supports at most one parent role (single inheritance)`)
-  }
-  return value
+  await visit(role, [role])
+  return orderedRoles
 }
 
 export function resolveRoleManifestPath(
@@ -162,32 +169,12 @@ function resolveManifestCandidate(repoRoot: string, requestedRoleRoot: string, m
   return resolvedManifest
 }
 
-async function loadRoleExtendsRoles(repoRoot: string, role: string): Promise<string[]> {
-  const manifestPath = resolveRoleManifestPath(repoRoot, role)
-  if (path.basename(manifestPath).toLowerCase() === 'role.yaml') {
-    const document = parseDocument(fs.readFileSync(manifestPath, 'utf8'), {
-      merge: false,
-      prettyErrors: true,
-      strict: true,
-      uniqueKeys: true,
-    })
-    if (document.errors.length > 0) {
-      throw new Error(`Role contract "${manifestPath}" is invalid: ${document.errors.map(error => error.message).join('; ')}`)
-    }
-    const value = document.toJS({ maxAliasCount: 0 }) as unknown
-    if (!value || typeof value !== 'object' || Array.isArray(value)) {
-      throw new TypeError(`Role contract "${manifestPath}" must be a YAML mapping`)
-    }
-    const record = value as Record<string, unknown>
-    const extendsRoles = record.extends_roles ?? record.extendsRoles ?? []
-    return requireRoleInheritance(extendsRoles, `roles/${role}/role.yaml field "extends_roles"`)
-  }
-
+async function loadLegacyRoleExtendsRoles(manifestPath: string): Promise<string[]> {
   const manifestUrl = pathToFileURL(path.resolve(manifestPath)).href
   const module = await import(manifestUrl)
   const extendsRoles = module.extendsRoles ?? module.default?.extendsRoles ?? []
 
-  return requireRoleInheritance(extendsRoles, `roles/${role}/constants/skills.ts export "extendsRoles"`)
+  return requireRoleInheritance(extendsRoles, `Role manifest "${manifestPath}" export "extendsRoles"`)
 }
 
 function requireInsideRoot(root: string, target: string, field: string, rootLabel: string): void {

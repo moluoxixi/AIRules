@@ -1,5 +1,6 @@
 import type { LinkEntry } from './links.js'
 import type { McpProjection } from './types/hosts.js'
+import type { McpServerOwner } from './types/mcp.js'
 import type { SetupCommand, VendorManifest } from './vendors.js'
 import { execFileSync } from 'node:child_process'
 import {
@@ -22,9 +23,10 @@ import path from 'node:path'
 import { areSamePaths, canonicalPath, canonicalPathKey, isPathInside } from './canonical-path.js'
 import { findHostConfig, resolveGlobalAgentSkillsPath, resolveHostPaths } from './hosts.js'
 import { buildLinkPlan } from './links.js'
-import { loadMcpCatalog, validateMcpServerNames } from './mcp-catalog.js'
+import { loadMcpCatalog, mergeMcpServer, readMcpServerFile, setupIdentity } from './mcp-catalog.js'
 import { requireRoleName } from './role-assets.js'
-import { DEFAULT_ROLE, roleOverlayOrder } from './roles.js'
+import { readRoleContract } from './role-contract.js'
+import { DEFAULT_ROLE, resolveRoleInheritance } from './roles.js'
 import { collectFlattenedSkillSources, discoverSkillDirectories, flattenedSkillName } from './skill-projection.js'
 import { loadVendorManifest, rolePackageSetupCommands } from './vendors.js'
 
@@ -114,20 +116,15 @@ function isSetupCommandAvailable(command: string): boolean {
  * @param manifest 已解析的 VendorManifest
  */
 export function runSkillSetupCommands(manifest: VendorManifest, homeDir?: string): void {
-  const rolePackageCommands = rolePackageSetupCommands(manifest.packages)
-  if (rolePackageCommands.length > 0) {
-    console.log('\n[setup] 安装角色声明的 npm packages...')
-    runSetupCommandGroup('role packages', rolePackageCommands)
-  }
+  // Build and validate the whole command plan before executing its first command.
+  const groups = [{ owner: 'role packages', commands: rolePackageSetupCommands(manifest.packages) }]
+  const mcpOwners = new Map<string, McpServerOwner>()
 
   for (const [vendorName, vendor] of Object.entries(manifest.vendors)) {
-    if (vendor.setup && vendor.setup.length > 0) {
-      console.log(`\n[setup] 执行 ${vendorName} 的安装前置命令...`)
-      runSetupCommandGroup(vendorName, vendor.setup)
-    }
+    groups.push({ owner: vendorName, commands: vendor.setup ?? [] })
 
     for (const link of vendor.links) {
-      const setupCommands = [...(link.setup ?? [])]
+      const owner = `${vendorName}/${link.kind === 'mcp-file' ? 'mcp' : path.basename(link.target)}`
       if (link.kind === 'mcp-file') {
         if (!homeDir) {
           throw new Error(`[setup] ${vendorName} MCP setup requires the AIRules home directory`)
@@ -141,15 +138,34 @@ export function runSkillSetupCommands(manifest: VendorManifest, homeDir?: string
         if (!stats?.isFile() || stats.isSymbolicLink() || !isPathInside(checkoutRoot, realpathSync(sourceFile))) {
           throw new Error(`[setup] ${vendorName} MCP catalog must be a plain file inside its checkout: ${link.source}`)
         }
-        setupCommands.push(...loadMcpCatalog(sourceFile).setup)
-      }
-      if (setupCommands.length === 0)
+        const catalog = loadMcpCatalog(sourceFile)
+        const serverGroups: typeof groups = []
+        for (const [name, server] of Object.entries(catalog.servers)) {
+          const setup = catalog.serverSetup[name] ?? []
+          if (mergeMcpServer(mcpOwners, name, {
+            server,
+            setup: [...(vendor.setup ?? []), ...(link.setup ?? []), ...setup],
+          }, `${vendorName} (${sourceFile})`)) {
+            serverGroups.push({ owner: `${owner}:${name}`, commands: setup })
+          }
+        }
+        if (serverGroups.length > 0) {
+          groups.push({ owner, commands: link.setup ?? [] }, ...serverGroups)
+        }
         continue
-
-      const assetName = link.kind === 'mcp-file' ? 'mcp' : path.basename(link.target)
-      console.log(`\n[setup] 执行 ${vendorName}/${assetName} 的安装前置命令...`)
-      runSetupCommandGroup(`${vendorName}/${assetName}`, setupCommands)
+      }
+      groups.push({ owner, commands: link.setup ?? [] })
     }
+  }
+
+  const executed = new Set<string>()
+  for (const { owner, commands } of groups) {
+    const identity = setupIdentity(commands)
+    if (commands.length === 0 || executed.has(identity))
+      continue
+    executed.add(identity)
+    console.log(`\n[setup] 执行 ${owner} 的安装前置命令...`)
+    runSetupCommandGroup(owner, commands)
   }
 }
 
@@ -331,19 +347,20 @@ export function syncFlattenedSkills(
 }
 
 /**
- * 将第一方 skills 源目录投影到 vendor/skills，作为第三方 vendor 后的本地覆盖层。
+ * 将第一方 skills 源目录投影到 vendor/skills；v2 仅投影所选角色并拒绝共享目标冲突。
  * 该函数只清理曾经指向同一 source skills 根目录的过时链接，不会删除第三方 vendor 技能。
  */
 export async function syncFirstPartySkillsToVendor(sourceRoot: string, moluoHome: string, role = DEFAULT_ROLE) {
   const legacySkillsDir = path.join(sourceRoot, 'skills')
   const rolesRoot = path.join(sourceRoot, 'roles')
-  const sourceSkillRoots = existsSync(rolesRoot)
-    ? (await roleOverlayOrder(sourceRoot, role))
-        .map(roleName => path.join(sourceRoot, 'roles', roleName, 'skills'))
-        .filter(existsSync)
-    : []
+  const lineage = existsSync(rolesRoot) ? await resolveRoleInheritance(sourceRoot, role) : []
+  const isV2 = lineage.at(-1)?.contract?.schemaVersion === 2
+  const selectedRoles = isV2 ? lineage.slice(-1) : lineage
+  const sourceSkillRoots = selectedRoles
+    .map(entry => path.join(sourceRoot, 'roles', entry.role, (entry.contract?.assets as { skills?: string } | undefined)?.skills ?? 'skills'))
+    .filter(existsSync)
 
-  if (sourceSkillRoots.length === 0 && existsSync(legacySkillsDir)) {
+  if (!isV2 && sourceSkillRoots.length === 0 && existsSync(legacySkillsDir)) {
     sourceSkillRoots.push(legacySkillsDir)
   }
 
@@ -374,6 +391,13 @@ export async function syncFirstPartySkillsToVendor(sourceRoot: string, moluoHome
   }
 
   const skillSources = [...seenSkillNames.values()].map(({ name, source }) => ({ name, source }))
+  if (isV2) {
+    for (const skill of skillSources) {
+      const target = path.join(vendorSkillsDir, skill.name)
+      if (existsSync(target) && !isSamePath(realpathSync(target), skill.source))
+        throw new Error(`Role/shared skill target conflict "${skill.name}": ${target} conflicts with ${skill.source}`)
+    }
+  }
   const currentSkillNames = new Set(skillSources.map(skill => skill.name))
   const normalizedSourceSkillRoots = sourceSkillRoots.map(canonicalPath)
   const normalizedManagedSkillRoots = existsSync(rolesRoot)
@@ -528,38 +552,12 @@ function tomlKey(key: string): string {
   return /^[\w-]+$/u.test(key) ? key : `"${escapeTomlString(key)}"`
 }
 
-function readMcpServerFile(sourceFile: string): Record<string, unknown> {
-  const stats = lstatSync(sourceFile)
-  if (!stats.isFile() || stats.isSymbolicLink())
-    throw new Error(`MCP source must be a plain file: ${sourceFile}`)
-  const raw = readFileSync(sourceFile, 'utf8').trim()
-  if (!raw)
-    return {}
-  let parsed: unknown
-  try {
-    parsed = JSON.parse(raw) as unknown
-  }
-  catch (error) {
-    throw new Error(`MCP source is invalid JSON: ${sourceFile}`, { cause: error })
-  }
-  if (parsed === null || typeof parsed !== 'object' || Array.isArray(parsed))
-    throw new Error(`MCP source must contain an "mcpServers" object: ${sourceFile}`)
-  const servers = (parsed as { mcpServers?: unknown }).mcpServers
-  if (servers === undefined)
-    return {}
-  if (servers === null || typeof servers !== 'object' || Array.isArray(servers))
-    throw new Error(`MCP source must contain an "mcpServers" object: ${sourceFile}`)
-  const serverRecord = servers as Record<string, unknown>
-  validateMcpServerNames(serverRecord, sourceFile)
-  return serverRecord
-}
-
 function readVendorMcpServers(moluoHome: string): Record<string, unknown> {
   const root = path.join(moluoHome, 'vendor', 'mcps')
   if (!existsSync(root))
     return {}
   const servers = Object.create(null) as Record<string, unknown>
-  const sources = new Map<string, string>()
+  const owners = new Map<string, McpServerOwner>()
 
   function visit(directory: string): void {
     const stats = lstatSync(directory)
@@ -575,12 +573,8 @@ function readVendorMcpServers(moluoHome: string): Record<string, unknown> {
       else if (entry.isFile() && entry.name === 'mcp.json') {
         const fileServers = readMcpServerFile(entryPath)
         for (const [name, server] of Object.entries(fileServers)) {
-          const previous = sources.get(name)
-          if (previous) {
-            throw new Error(`Duplicate shared MCP server "${name}": ${previous} conflicts with ${entryPath}`)
-          }
-          servers[name] = server
-          sources.set(name, entryPath)
+          if (mergeMcpServer(owners, name, { server, setup: [] }, entryPath))
+            servers[name] = server
         }
       }
     }
@@ -593,9 +587,19 @@ function readVendorMcpServers(moluoHome: string): Record<string, unknown> {
 export function readInstalledMcpServers(moluoHome: string, role: string): Record<string, unknown> | undefined {
   const servers = readVendorMcpServers(moluoHome)
   if (role) {
-    const roleSource = path.join(moluoHome, 'roles', requireRoleName(role), 'mcp', 'mcp.json')
-    if (existsSync(roleSource))
-      Object.assign(servers, readMcpServerFile(roleSource))
+    const roleRoot = path.join(moluoHome, 'roles', requireRoleName(role))
+    const contractPath = path.join(roleRoot, 'role.yaml')
+    const assets = existsSync(contractPath) ? readRoleContract(contractPath).assets as { mcp?: string } | undefined : undefined
+    const roleSource = path.resolve(roleRoot, assets?.mcp ?? 'mcp', 'mcp.json')
+    if (!isPathInside(roleRoot, roleSource))
+      throw new Error(`Role MCP source must stay inside the selected role: ${roleSource}`)
+    if (existsSync(roleSource)) {
+      const owners = new Map<string, McpServerOwner>(Object.entries(servers).map(([name, server]) => [name, { server, setup: [], owner: 'shared capabilities' }]))
+      for (const [name, server] of Object.entries(readMcpServerFile(roleSource))) {
+        if (mergeMcpServer(owners, name, { server, setup: [] }, `${role} (${roleSource})`))
+          servers[name] = server
+      }
+    }
   }
   return Object.keys(servers).length > 0 ? servers : undefined
 }

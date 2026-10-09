@@ -1,34 +1,36 @@
-schema_version: 1
+schema_version: 2
 role_id: moluoxixi
 role_version: 0.5.0
 status: experimental
 canonical_root: roles/moluoxixi
 description: Publishable role-local Moluoxixi packages and project initialization with the shared development template.
-assets:
-  skills: skills
-  mcp: mcp
-  packages: packages
-capabilities: []
-hosts: all
 extends_roles: [development]
-role_vendor:
-  name: moluoxixi
-  source: https://github.com/moluoxixi/AIRules.git
-  projections:
-    - kind: role-assets
-      source_dir: roles/moluoxixi
-packages:
-  - name: '@moluoxixi/airules-moluoxixi-core'
-    path: packages/core
-  - name: '@moluoxixi/airules-moluoxixi-cli'
-    path: packages/cli
-    install:
-      kind: npm-global
-      version: latest
-distribution:
-  bootstrap_manifest: role.yaml
-  full_role_path_required: true
-  npm_embedded_source: false
-entrypoints:
-  initialize_project_skill: init-project
-  initialize_project_script: skills/init-project/scripts/run-role-cli.mjs
+provides:
+  capabilities: []
+installation:
+  assets:
+    skills: skills
+    mcp: mcp
+    packages: packages
+  hosts: all
+  role_vendor:
+    name: moluoxixi
+    source: https://github.com/moluoxixi/AIRules.git
+    projections:
+      - kind: role-assets
+        source_dir: roles/moluoxixi
+  packages:
+    - name: '@moluoxixi/airules-moluoxixi-core'
+      path: packages/core
+    - name: '@moluoxixi/airules-moluoxixi-cli'
+      path: packages/cli
+      install:
+        kind: npm-global
+        version: latest
+  distribution:
+    bootstrap_manifest: role.yaml
+    full_role_path_required: true
+    npm_embedded_source: false
+  entrypoints:
+    initialize_project_skill: init-project
+    initialize_project_script: skills/init-project/scripts/run-role-cli.mjs

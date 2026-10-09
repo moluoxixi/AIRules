@@ -28,10 +28,11 @@ afterEach(() => {
 describe('native Trellis role', () => {
   it('installs the official CLI and projects the AIRules-owned initialization entry', async () => {
     const roleContract = parseDocument(fs.readFileSync(manifestPath, 'utf8')).toJS({ maxAliasCount: 0 }) as Record<string, unknown>
+    const installation = roleContract.installation as Record<string, unknown>
     expect(roleContract.extends_roles).toEqual(['development'])
-    expect(roleContract.capabilities).toEqual([])
-    expect(roleContract.hosts).toBe('all')
-    expect(roleContract.role_vendor).toEqual({
+    expect(roleContract.provides).toEqual({ capabilities: [] })
+    expect(installation.hosts).toBe('all')
+    expect(installation.role_vendor).toEqual({
       name: 'trellis',
       source: 'https://github.com/moluoxixi/AIRules.git',
       setup: [
@@ -161,24 +162,26 @@ describe('native Trellis role', () => {
     })
     expect(document.errors).toEqual([])
     expect(document.toJS({ maxAliasCount: 0 })).toMatchObject({
-      schema_version: 1,
+      schema_version: 2,
       role_id: 'trellis',
       role_version: '0.5.0',
       status: 'stable',
       canonical_root: 'roles/trellis',
-      assets: {
-        skills: 'skills',
-        mcp: 'mcp',
-      },
-      capabilities: [],
-      distribution: {
-        bootstrap_manifest: 'role.yaml',
-        full_role_path_required: true,
-        npm_embedded_source: false,
-      },
-      entrypoints: {
-        initialize_project_skill: 'init-project',
-        initialize_project_script: 'skills/init-project/scripts/run-role-cli.mjs',
+      provides: { capabilities: [] },
+      installation: {
+        assets: {
+          skills: 'skills',
+          mcp: 'mcp',
+        },
+        distribution: {
+          bootstrap_manifest: 'role.yaml',
+          full_role_path_required: true,
+          npm_embedded_source: false,
+        },
+        entrypoints: {
+          initialize_project_skill: 'init-project',
+          initialize_project_script: 'skills/init-project/scripts/run-role-cli.mjs',
+        },
       },
     })
   })

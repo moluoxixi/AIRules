@@ -1,53 +1,31 @@
-import type { VendorLink, VendorManifest } from './vendors.js'
+import type { VendorLink, VendorManifest } from './types/manifest.js'
+import type { McpServerOwner } from './types/mcp.js'
+import type {
+  CanonicalRoleAssetRoots,
+  ManagedEntryCommit,
+  ManagedEntrySpec,
+  MaterializedPlan,
+  PlannedAsset,
+  RebuildVendorAssetsOptions,
+  SourceKind,
+  VendorAssetInventory,
+  VendorStagingPlan,
+} from './types/vendor-staging.js'
 import fs from 'node:fs'
 import os from 'node:os'
 import path from 'node:path'
-import { parseDocument } from 'yaml'
 import { isPathInside } from './canonical-path.js'
-import { loadMcpCatalog } from './mcp-catalog.js'
+import { loadMcpCatalog, mergeMcpServer, readMcpServerFile, setupIdentity } from './mcp-catalog.js'
 import { requireRoleName } from './role-assets.js'
+import { readRoleContract } from './role-contract.js'
 import { collectFlattenedSkillSources } from './skill-projection.js'
 import { loadVendorManifest } from './vendors.js'
 
-export interface VendorAssetInventory {
-  role: string
-  roleRoot?: string
-  skills: string[]
-}
-
-export interface RebuildVendorAssetsOptions {
-  homeDir: string
-  role: string
-  manifestPath: string
-}
-
-interface PlannedAsset {
-  vendorId: string
-  kind: VendorLink['kind']
-  source: string
-  target: string
-}
-
-interface VendorStagingPlan {
-  ordinary: PlannedAsset[]
-  roleSource?: string
-  roleVendorId?: string
-}
-
-interface MaterializedPlan {
-  buildRoot: string
-  stagingRoot: string
-  roleStagingRoot?: string
-}
-
-type SourceKind = 'file' | 'directory'
-
-interface CanonicalRoleAssetRoots {
-  skills: string
-}
+export type { RebuildVendorAssetsOptions, VendorAssetInventory } from './types/vendor-staging.js'
 
 const defaultCanonicalRoleAssetRoots: CanonicalRoleAssetRoots = {
   skills: 'skills',
+  mcp: 'mcp',
 }
 
 function portablePath(value: string): string {
@@ -162,17 +140,17 @@ function validateRoleSourceTree(source: string, roleRoot: string, vendorId: stri
 
 function requireRoleAssetRoot(
   assets: Record<string, unknown> | undefined,
-  key: keyof CanonicalRoleAssetRoots,
+  key: string,
   roleManifest: string,
 ): string {
   const declared = assets?.[key]
-  const configured = declared === undefined ? defaultCanonicalRoleAssetRoots[key] : declared
+  const configured = declared === undefined ? defaultCanonicalRoleAssetRoots[key as keyof CanonicalRoleAssetRoots] : declared
   if (typeof configured !== 'string' || configured.length === 0) {
     throw new Error(`AIRules role asset root "${key}" must be a non-empty relative path: ${roleManifest}`)
   }
 
   const normalized = path.posix.normalize(configured.replace(/\\/gu, '/'))
-  if (path.posix.isAbsolute(normalized) || normalized === '..' || normalized.startsWith('../')) {
+  if (/^[A-Za-z]:/u.test(normalized) || path.posix.isAbsolute(normalized) || normalized === '..' || normalized.startsWith('../') || normalized.split('/').includes('..')) {
     throw new Error(`AIRules role asset root "${key}" must stay inside the role: ${roleManifest}`)
   }
   return normalized
@@ -185,29 +163,26 @@ function requireCanonicalRoleContract(roleRoot: string, role: string, vendorId: 
     throw new Error(`Vendor "${vendorId}" canonical role manifest must be a plain file: ${roleManifest}`)
   }
 
-  const document = parseDocument(fs.readFileSync(roleManifest, 'utf8'), {
-    merge: false,
-    prettyErrors: true,
-    strict: true,
-    uniqueKeys: true,
-  })
-  if (document.errors.length > 0) {
-    throw new Error(`Vendor "${vendorId}" role.yaml is invalid: ${document.errors.map(error => error.message).join('; ')}`)
+  let contract
+  try {
+    contract = readRoleContract(roleManifest)
   }
-  const manifest = document.toJS({ maxAliasCount: 0 }) as unknown
-  if (!isRecord(manifest) || manifest.role_id !== role) {
+  catch (error) {
+    throw new Error(`Vendor "${vendorId}" role.yaml is invalid: ${String(error)}`, { cause: error })
+  }
+  if (contract.roleId !== role) {
     throw new Error(`Vendor "${vendorId}" role.yaml role_id must equal selected role "${role}"`)
   }
-  if (manifest.canonical_root !== undefined && manifest.canonical_root !== `roles/${role}`) {
+  if (contract.canonicalRoot !== undefined && contract.canonicalRoot !== `roles/${role}`) {
     throw new Error(`Vendor "${vendorId}" role.yaml canonical_root must equal roles/${role}`)
   }
 
-  if (manifest.assets !== undefined && !isRecord(manifest.assets)) {
+  if (contract.assets !== undefined && !isRecord(contract.assets))
     throw new Error(`Vendor "${vendorId}" role.yaml assets must be an object`)
-  }
-  const assets = manifest.assets as Record<string, unknown> | undefined
+  const assets = contract.assets as Record<string, unknown> | undefined
   return {
     skills: requireRoleAssetRoot(assets, 'skills', roleManifest),
+    mcp: requireRoleAssetRoot(assets, 'mcp', roleManifest),
   }
 }
 
@@ -270,6 +245,8 @@ function expandOrdinaryLink(
   homeDir: string,
   vendorId: string,
   link: VendorLink,
+  setup: NonNullable<VendorLink['setup']>,
+  origin: string,
 ): PlannedAsset[] {
   const checkoutRoot = path.resolve(homeDir, 'vendor', 'repos', vendorId)
 
@@ -282,6 +259,8 @@ function expandOrdinaryLink(
         kind: 'skill',
         source,
         target: requireManagedTarget(homeDir, 'skill', path.posix.join('vendor', 'skills', name)),
+        setup,
+        origin,
       }
     })
   }
@@ -296,6 +275,8 @@ function expandOrdinaryLink(
       kind: link.kind,
       source: requireSource(checkoutRoot, link.source, 'file', vendorId),
       target: requireManagedTarget(homeDir, link.kind, link.target),
+      setup,
+      origin,
     }]
   }
 
@@ -307,6 +288,8 @@ function expandOrdinaryLink(
     kind: link.kind,
     source,
     target: requireManagedTarget(homeDir, link.kind, link.target),
+    setup,
+    origin,
   }]
 }
 
@@ -325,10 +308,11 @@ function requireNoTargetConflicts(assets: PlannedAsset[], label: string): Planne
     if (previous) {
       // A skill selected by a base role can also be included in a child namespace.
       if (previous.vendorId === asset.vendorId && previous.kind === asset.kind
-        && previous.source === asset.source && previous.target === asset.target) {
+        && previous.source === asset.source && previous.target === asset.target
+        && setupIdentity(previous.setup) === setupIdentity(asset.setup)) {
         continue
       }
-      throw new Error(`${label} at "${asset.target}": ${previous.vendorId} conflicts with ${asset.vendorId}`)
+      throw new Error(`${label} at "${asset.target}": ${previous.origin} (${previous.vendorId}, ${previous.source}) conflicts with ${asset.origin} (${asset.vendorId}, ${asset.source})`)
     }
     accepted.push(asset)
   }
@@ -375,7 +359,7 @@ function resolveRoleSource(
   return roleRoot
 }
 
-function expandRoleAssets(roleRoot: string, vendorId: string): PlannedAsset[] {
+function expandRoleAssets(roleRoot: string, vendorId: string, setup: NonNullable<VendorLink['setup']>, origin: string): PlannedAsset[] {
   const roleAssets: PlannedAsset[] = []
   const assetRoots = requireCanonicalRoleContract(roleRoot, path.basename(roleRoot), vendorId)
   const skillsRoot = resolveRoleChild(roleRoot, assetRoots.skills, 'directory')
@@ -387,6 +371,8 @@ function expandRoleAssets(roleRoot: string, vendorId: string): PlannedAsset[] {
         kind: 'skill',
         source,
         target: path.join('skills', name),
+        setup,
+        origin,
       })
     }
   }
@@ -400,15 +386,17 @@ function buildStagingPlan(
   role: string,
 ): VendorStagingPlan {
   const ordinary: PlannedAsset[] = []
-  const roleDeclarations: Array<{ vendorId: string, source: string }> = []
+  const roleDeclarations: Array<{ vendorId: string, source: string, setup: NonNullable<VendorLink['setup']>, origin: string }> = []
 
   for (const [vendorId, vendor] of Object.entries(manifest.vendors)) {
-    for (const link of vendor.links) {
+    for (const [index, link] of vendor.links.entries()) {
+      const setup = [...(vendor.setup ?? []), ...(link.setup ?? [])]
+      const origin = manifest.origins?.[vendorId]?.links[index]?.join(', ') ?? vendorId
       if (link.kind === 'role-assets-dir') {
-        roleDeclarations.push({ vendorId, source: link.source })
+        roleDeclarations.push({ vendorId, source: link.source, setup, origin })
         continue
       }
-      ordinary.push(...expandOrdinaryLink(homeDir, vendorId, link))
+      ordinary.push(...expandOrdinaryLink(homeDir, vendorId, link, setup, origin))
     }
   }
 
@@ -419,29 +407,37 @@ function buildStagingPlan(
   }
 
   const roleDeclaration = roleDeclarations[0]
+  let roleSource: string | undefined
+  let roleVendorId: string | undefined
+  let roleMcpPath: string | undefined
+  let roleAssets: PlannedAsset[] = []
+  if (roleDeclaration !== undefined) {
+    roleSource = resolveRoleSource(homeDir, role, roleDeclaration.vendorId, roleDeclaration.source)
+    roleVendorId = roleDeclaration.vendorId
+    const roots = requireCanonicalRoleContract(roleSource, role, roleVendorId)
+    roleAssets = expandRoleAssets(roleSource, roleVendorId, roleDeclaration.setup, roleDeclaration.origin)
+    const mcpRoot = resolveRoleChild(roleSource, roots.mcp, 'directory')
+    roleMcpPath = mcpRoot ? path.join(mcpRoot, 'mcp.json') : undefined
+  }
+  const assets = requireNoTargetConflicts([...uniqueOrdinary, ...roleAssets], 'Role/shared managed target conflict')
   return {
-    ordinary: uniqueOrdinary,
-    roleSource: roleDeclaration === undefined
-      ? undefined
-      : resolveRoleSource(homeDir, role, roleDeclaration.vendorId, roleDeclaration.source),
-    roleVendorId: roleDeclaration?.vendorId,
+    assets,
+    ...(roleSource === undefined ? {} : { roleSource }),
+    ...(roleVendorId === undefined ? {} : { roleVendorId }),
+    ...(roleMcpPath === undefined ? {} : { roleMcpPath }),
+    ...(roleDeclaration === undefined ? {} : { roleSetup: roleDeclaration.setup, roleOrigin: roleDeclaration.origin }),
   }
 }
 
 function copyPlannedAsset(
   stagingRoot: string,
   asset: PlannedAsset,
-  replace: boolean,
-  mcpCatalog?: ReturnType<typeof loadMcpCatalog>,
+  mcpServers?: Record<string, unknown>,
 ): void {
   const target = path.join(stagingRoot, asset.target)
-  if (replace) {
-    fs.rmSync(target, { recursive: true, force: true })
-  }
   fs.mkdirSync(path.dirname(target), { recursive: true })
   if (asset.kind === 'mcp-file') {
-    const catalog = mcpCatalog ?? loadMcpCatalog(asset.source)
-    fs.writeFileSync(target, `${JSON.stringify({ mcpServers: catalog.servers }, null, 2)}\n`, 'utf8')
+    fs.writeFileSync(target, `${JSON.stringify({ mcpServers }, null, 2)}\n`, 'utf8')
     return
   }
   fs.cpSync(asset.source, target, { recursive: true, dereference: true })
@@ -453,19 +449,27 @@ function materializePlan(plan: VendorStagingPlan, role: string): MaterializedPla
   fs.mkdirSync(stagingRoot)
 
   try {
-    const mcpServerOwners = new Map<string, PlannedAsset>()
-    for (const asset of plan.ordinary) {
+    const mcpServerOwners = new Map<string, McpServerOwner>()
+    for (const asset of plan.assets) {
       const mcpCatalog = asset.kind === 'mcp-file' ? loadMcpCatalog(asset.source) : undefined
-      for (const serverName of Object.keys(mcpCatalog?.servers ?? {})) {
-        const previous = mcpServerOwners.get(serverName)
-        if (previous) {
-          throw new Error(
-            `Shared MCP server "${serverName}" is declared by both ${previous.vendorId} (${previous.source}) and ${asset.vendorId} (${asset.source})`,
-          )
+      const servers: Record<string, unknown> = Object.create(null)
+      for (const [name, server] of Object.entries(mcpCatalog?.servers ?? {})) {
+        if (mergeMcpServer(mcpServerOwners, name, {
+          server,
+          setup: [...(asset.setup ?? []), ...(mcpCatalog!.serverSetup[name] ?? [])],
+        }, `${asset.origin} (${asset.vendorId}, ${asset.source})`)) {
+          servers[name] = server
         }
-        mcpServerOwners.set(serverName, asset)
       }
-      copyPlannedAsset(stagingRoot, asset, false, mcpCatalog)
+      copyPlannedAsset(stagingRoot, asset, servers)
+    }
+    if (plan.roleMcpPath && fs.existsSync(plan.roleMcpPath)) {
+      for (const [name, server] of Object.entries(readMcpServerFile(plan.roleMcpPath))) {
+        mergeMcpServer(mcpServerOwners, name, {
+          server,
+          setup: plan.roleSetup ?? [],
+        }, `${plan.roleOrigin ?? `${role} [installation]`} (${plan.roleMcpPath})`)
+      }
     }
     let roleStagingRoot: string | undefined
     if (plan.roleSource !== undefined && plan.roleVendorId !== undefined) {
@@ -473,9 +477,6 @@ function materializePlan(plan: VendorStagingPlan, role: string): MaterializedPla
       fs.mkdirSync(path.dirname(roleStagingRoot), { recursive: true })
       fs.cpSync(plan.roleSource, roleStagingRoot, { recursive: true, dereference: false })
       validateSourceTree(roleStagingRoot, buildRoot, 'staged-role', new Set())
-      for (const asset of expandRoleAssets(roleStagingRoot, plan.roleVendorId)) {
-        copyPlannedAsset(stagingRoot, asset, true)
-      }
     }
     return { buildRoot, stagingRoot, roleStagingRoot }
   }
@@ -483,30 +484,6 @@ function materializePlan(plan: VendorStagingPlan, role: string): MaterializedPla
     removeBestEffort(buildRoot)
     throw new Error('Failed to materialize vendor staging', { cause: error })
   }
-}
-
-function listRelativeFiles(root: string): string[] {
-  if (!fs.existsSync(root)) {
-    return []
-  }
-
-  const files: string[] = []
-  function visit(current: string): void {
-    for (const entry of fs.readdirSync(current, { withFileTypes: true }).sort((left, right) => compareStable(left.name, right.name))) {
-      const entryPath = path.join(current, entry.name)
-      if (entry.isDirectory()) {
-        visit(entryPath)
-      }
-      else if (entry.isFile()) {
-        files.push(path.relative(root, entryPath).replace(/\\/gu, '/'))
-      }
-      else {
-        throw new Error(`Staged asset has unsupported filesystem type: ${entryPath}`)
-      }
-    }
-  }
-  visit(root)
-  return files.sort(compareStable)
 }
 
 function validateInventory(
@@ -539,20 +516,6 @@ function validateInventory(
 }
 
 const managedEntryNames = ['skills', 'mcps'] as const
-
-interface ManagedEntryCommit {
-  current: string
-  backup: string
-  movedCurrent: boolean
-  installedNext: boolean
-}
-
-interface ManagedEntrySpec {
-  current: string
-  next: string
-  backup: string
-  preserveRoot?: boolean
-}
 
 function requirePlainDirectoryOrMissing(target: string, label: string): void {
   const stats = fs.lstatSync(target, { throwIfNoEntry: false })
@@ -590,10 +553,10 @@ function rollbackManagedEntries(entries: ManagedEntryCommit[]): Error[] {
   return rollbackErrors
 }
 
-function managedChildNames(currentRoot: string, nextRoot: string, label: string): string[] {
+function managedChildNames(currentRoot: string | undefined, nextRoot: string | undefined, label: string): string[] {
   const names = new Map<string, string>()
   for (const root of [currentRoot, nextRoot]) {
-    if (!fs.existsSync(root))
+    if (root === undefined || !fs.existsSync(root))
       continue
     requirePlainDirectoryOrMissing(root, label)
     for (const entry of fs.readdirSync(root, { withFileTypes: true })) {
@@ -612,6 +575,49 @@ function managedChildNames(currentRoot: string, nextRoot: string, label: string)
 function isPlainDirectory(target: string): boolean {
   const stats = fs.lstatSync(target, { throwIfNoEntry: false })
   return stats !== undefined && stats.isDirectory() && !stats.isSymbolicLink()
+}
+
+function preflightDirectoryContents(currentRoot: string | undefined, nextRoot: string | undefined, label: string): void {
+  for (const name of managedChildNames(currentRoot, nextRoot, label)) {
+    const currentChild = currentRoot === undefined ? undefined : path.join(currentRoot, name)
+    const nextChild = nextRoot === undefined ? undefined : path.join(nextRoot, name)
+    const currentDirectory = currentChild !== undefined && isPlainDirectory(currentChild) ? currentChild : undefined
+    const nextDirectory = nextChild !== undefined && isPlainDirectory(nextChild) ? nextChild : undefined
+    if (currentDirectory !== undefined || nextDirectory !== undefined)
+      preflightDirectoryContents(currentDirectory, nextDirectory, label)
+  }
+}
+
+function requireManagedDirectory(target: string, label: string): void {
+  requirePlainDirectoryOrMissing(target, label)
+  const parent = path.dirname(target)
+  requirePlainDirectoryOrMissing(parent, `${label} parent`)
+  if (!fs.existsSync(parent))
+    return
+  const name = path.basename(target)
+  const caseAlias = fs.readdirSync(parent).find(child => child.toLowerCase() === name.toLowerCase() && child !== name)
+  if (caseAlias !== undefined)
+    throw new Error(`${label} names differ only by case: ${caseAlias}, ${name}`)
+}
+
+/** Validate every managed destination before setup can produce side effects. */
+function preflightManagedEntries(stagingRoot: string, roleStagingRoot: string | undefined, homeDir: string, role: string): void {
+  const resolvedHome = path.resolve(homeDir)
+  const vendorRoot = path.join(resolvedHome, 'vendor')
+  requireManagedDirectory(vendorRoot, 'Vendor staging root')
+  for (const name of managedEntryNames) {
+    const current = path.join(vendorRoot, name)
+    const next = path.join(stagingRoot, name)
+    requireManagedDirectory(current, `Managed vendor ${name} root`)
+    preflightDirectoryContents(current, next, `Managed vendor ${name} directory`)
+  }
+  if (roleStagingRoot !== undefined) {
+    const rolesRoot = path.join(resolvedHome, 'roles')
+    requireManagedDirectory(rolesRoot, 'AIRules roles root')
+    const currentRole = path.join(rolesRoot, role)
+    requireManagedDirectory(currentRole, 'Installed AIRules role')
+    preflightDirectoryContents(currentRole, roleStagingRoot, 'Installed AIRules role directory')
+  }
 }
 
 function commitDirectoryContents(
@@ -685,6 +691,7 @@ async function commitManagedEntries(
   homeDir: string,
   role: string,
 ): Promise<void> {
+  preflightManagedEntries(stagingRoot, roleStagingRoot, homeDir, role)
   const resolvedHome = path.resolve(homeDir)
   const vendorRoot = path.join(resolvedHome, 'vendor')
   const rolesRoot = path.join(resolvedHome, 'roles')
@@ -808,13 +815,15 @@ export function cleanupEmptyVendorSkillDirectories(homeDir: string): void {
 
 export async function rebuildVendorAssets(options: RebuildVendorAssetsOptions): Promise<VendorAssetInventory> {
   const role = requireRoleName(options.role)
-  const manifest = await loadVendorManifest(options.manifestPath)
+  const manifest = options.manifest ?? await loadVendorManifest(options.manifestPath)
   const plan = buildStagingPlan(manifest, options.homeDir, role)
   const { buildRoot, stagingRoot, roleStagingRoot } = materializePlan(plan, role)
   const finalVendorRoot = path.resolve(options.homeDir, 'vendor')
 
   try {
     const inventory = validateInventory(stagingRoot, finalVendorRoot, role, roleStagingRoot)
+    preflightManagedEntries(stagingRoot, roleStagingRoot, options.homeDir, role)
+    await options.beforeCommit?.()
     await commitManagedEntries(stagingRoot, roleStagingRoot, options.homeDir, role)
     return inventory
   }

@@ -1,22 +1,24 @@
-schema_version: 1
+schema_version: 2
 role_id: development
 role_version: 0.1.0
 status: stable
 canonical_root: roles/development
 description: Shared development template for productivity, coding tools, and frontend work.
-capabilities:
-  - coding
-  - productivity
-  - frontend
-hosts: all
 extends_roles: [general]
-role_vendor:
-  name: development-role
-  source: https://github.com/moluoxixi/AIRules.git
-  projections:
-    - kind: role-assets
-      source_dir: roles/development
-distribution:
-  bootstrap_manifest: role.yaml
-  full_role_path_required: true
-  npm_embedded_source: false
+provides:
+  capabilities:
+    - coding
+    - productivity
+    - frontend
+installation:
+  hosts: all
+  role_vendor:
+    name: development-role
+    source: https://github.com/moluoxixi/AIRules.git
+    projections:
+      - kind: role-assets
+        source_dir: roles/development
+  distribution:
+    bootstrap_manifest: role.yaml
+    full_role_path_required: true
+    npm_embedded_source: false

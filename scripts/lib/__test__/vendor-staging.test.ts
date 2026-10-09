@@ -4,7 +4,9 @@ import path from 'node:path'
 import { fileURLToPath } from 'node:url'
 import { afterEach, describe, expect, it, vi } from 'vitest'
 import { capabilityRegistry } from '../capabilities.js'
+import { readInstalledMcpServers, runSkillSetupCommands } from '../install.js'
 import { cleanupEmptyVendorSkillDirectories, rebuildVendorAssets } from '../vendor-staging.js'
+import { loadVendorManifest } from '../vendors.js'
 
 const commonCapability = capabilityRegistry.common
 
@@ -64,6 +66,183 @@ function writeRoleContract(homeDir: string, vendor: string, role: string): void 
 }
 
 describe('rebuildVendorAssets', () => {
+  it('deduplicates partial explicit and namespace overlap before installation', async () => {
+    const { root, homeDir } = createFixture()
+    for (const skill of ['shared', 'one', 'two'])
+      writeFile(repoPath(homeDir, 'remote', 'skills', 'methods', skill, 'SKILL.md'), `# ${skill}\n`)
+    const manifestPath = writeManifest(root, 'partial-overlap', [
+      vendorDefinition('remote', [
+        { kind: 'skills', sourceBaseDir: 'skills/methods', skills: ['shared', 'one'] },
+        { kind: 'skills', sourceBaseDir: 'skills/methods', skills: [{ name: 'shared', setup: [] }, 'two'] },
+        { kind: 'namespace', sourceDir: 'skills/methods', output: 'methods' },
+      ]),
+    ])
+    const beforeCommit = vi.fn()
+    const inventory = await rebuildVendorAssets({ homeDir, role: 'alpha', manifestPath, beforeCommit })
+    expect(inventory.skills).toEqual(['one', 'shared', 'two'])
+    expect(beforeCommit).toHaveBeenCalledTimes(1)
+    expect(fs.readdirSync(path.join(homeDir, 'vendor', 'skills'))).toEqual(['one', 'shared', 'two'])
+  })
+
+  it('deduplicates MCP servers with identical configuration despite JSON key order', async () => {
+    const { root, homeDir } = createFixture()
+    const one = { command: 'node', args: ['server.mjs'], env: { A: 'a', B: 'b' } }
+    const two = { env: { B: 'b', A: 'a' }, args: ['server.mjs'], command: 'node' }
+    writeFile(repoPath(homeDir, 'one', 'mcps.json'), JSON.stringify({ mcps: { shared: { mcp: one } } }))
+    writeFile(repoPath(homeDir, 'two', 'mcps.json'), JSON.stringify({ mcps: { shared: { mcp: two, setup: [] } } }))
+    const manifestPath = writeManifest(root, 'identical-mcp', ['one', 'two'].map(name => vendorDefinition(name, [
+      { kind: 'mcp', sourceFile: 'mcps.json', output: `mcps/${name}/mcp.json` },
+    ])))
+
+    await rebuildVendorAssets({ homeDir, role: 'alpha', manifestPath })
+    expect(readInstalledMcpServers(homeDir, '')).toEqual({ shared: one })
+    const second = JSON.parse(fs.readFileSync(path.join(homeDir, 'vendor', 'mcps', 'two', 'mcp.json'), 'utf8'))
+    expect(second.mcpServers).toEqual({})
+  })
+
+  it.each([
+    ['args', { command: 'node', args: ['other.mjs'], env: { MODE: 'base' } }, []],
+    ['env', { command: 'node', args: ['server.mjs'], env: { MODE: 'other' } }, []],
+    ['url', { type: 'http', url: 'https://other.example.test/mcp', headers: { Team: 'base' } }, []],
+    ['headers', { type: 'http', url: 'https://example.test/mcp', headers: { Team: 'other' } }, []],
+    ['setup', { command: 'node', args: ['server.mjs'], env: { MODE: 'base' } }, [{ command: 'different-setup' }]],
+  ])('rejects differing MCP %s before setup or output changes', async (field, server, setup) => {
+    const { root, homeDir } = createFixture()
+    const first = field === 'url' || field === 'headers'
+      ? { type: 'http', url: 'https://example.test/mcp', headers: { Team: 'base' } }
+      : { command: 'node', args: ['server.mjs'], env: { MODE: 'base' } }
+    writeFile(repoPath(homeDir, 'one', 'mcps.json'), JSON.stringify({ mcps: { shared: { mcp: first } } }))
+    writeFile(repoPath(homeDir, 'two', 'mcps.json'), JSON.stringify({ mcps: { shared: { mcp: server, setup } } }))
+    const manifestPath = writeManifest(root, `mcp-${field}-conflict`, ['one', 'two'].map(name => vendorDefinition(name, [
+      { kind: 'mcp', sourceFile: 'mcps.json', output: `mcps/${name}/mcp.json` },
+    ])))
+    const stable = path.join(homeDir, 'vendor', 'mcps', 'stable', 'mcp.json')
+    writeFile(stable, validMcp('stable'))
+    const beforeCommit = vi.fn()
+
+    await expect(rebuildVendorAssets({ homeDir, role: 'alpha', manifestPath, beforeCommit })).rejects.toMatchObject({
+      cause: expect.objectContaining({ message: expect.stringMatching(/shared.*one.*two/iu) }),
+    })
+    expect(beforeCommit).not.toHaveBeenCalled()
+    expect(fs.readFileSync(stable, 'utf8')).toBe(validMcp('stable'))
+  })
+
+  it('rejects different setup on overlapping skills before setup or output changes', async () => {
+    const { root, homeDir } = createFixture()
+    writeFile(repoPath(homeDir, 'remote', 'skills', 'methods', 'shared', 'SKILL.md'), '# shared\n')
+    const manifestPath = writeManifest(root, 'skill-setup-conflict', [vendorDefinition('remote', [
+      { kind: 'skills', sourceBaseDir: 'skills/methods', skills: ['shared'] },
+      { kind: 'namespace', sourceDir: 'skills/methods', output: 'methods', setup: [{ command: 'different-setup' }] },
+    ])])
+    const stable = path.join(homeDir, 'vendor', 'skills', 'stable', 'SKILL.md')
+    writeFile(stable, '# stable\n')
+    const beforeCommit = vi.fn()
+
+    await expect(rebuildVendorAssets({ homeDir, role: 'alpha', manifestPath, beforeCommit })).rejects.toThrow(/target conflict.*shared/iu)
+    expect(beforeCommit).not.toHaveBeenCalled()
+    expect(fs.readFileSync(stable, 'utf8')).toBe('# stable\n')
+  })
+
+  it('rejects shared/private skill conflicts and preserves the installed role', async () => {
+    const { root, homeDir } = createFixture()
+    const roleRoot = repoPath(homeDir, 'remote', 'roles', 'alpha')
+    writeFile(path.join(roleRoot, 'role.yaml'), 'schema_version: 2\nrole_id: alpha\nprovides: { capabilities: [] }\n')
+    writeFile(path.join(roleRoot, 'skills', 'shared', 'SKILL.md'), '# same text\n')
+    writeFile(repoPath(homeDir, 'remote', 'skills', 'shared', 'SKILL.md'), '# same text\n')
+    const manifestPath = writeManifest(root, 'shared-private-skill-conflict', [vendorDefinition('remote', [
+      { kind: 'role-assets', sourceDir: 'roles/alpha' },
+      { kind: 'skills', sourceBaseDir: 'skills', skills: ['shared'] },
+    ])])
+    const installedRole = path.join(homeDir, 'roles', 'alpha', 'sentinel.txt')
+    const stableSkill = path.join(homeDir, 'vendor', 'skills', 'stable', 'SKILL.md')
+    writeFile(installedRole, 'previous role\n')
+    writeFile(stableSkill, '# stable\n')
+    const beforeCommit = vi.fn()
+
+    await expect(rebuildVendorAssets({ homeDir, role: 'alpha', manifestPath, beforeCommit })).rejects.toThrow(/Role\/shared managed target conflict.*shared/u)
+    expect(beforeCommit).not.toHaveBeenCalled()
+    expect(fs.readFileSync(installedRole, 'utf8')).toBe('previous role\n')
+    expect(fs.readFileSync(stableSkill, 'utf8')).toBe('# stable\n')
+  })
+
+  it.each([false, true])('checks shared/private MCP duplication before installation (conflict=%s)', async (conflict) => {
+    const { root, homeDir } = createFixture()
+    const roleRoot = repoPath(homeDir, 'remote', 'roles', 'alpha')
+    writeFile(path.join(roleRoot, 'role.yaml'), 'schema_version: 2\nrole_id: alpha\nprovides: { capabilities: [] }\n')
+    writeFile(path.join(roleRoot, 'mcp', 'mcp.json'), validMcp(conflict ? 'different' : 'same'))
+    writeFile(repoPath(homeDir, 'remote', 'mcps.json'), JSON.stringify({ mcps: { demo: { mcp: { command: 'same' } } } }))
+    const manifestPath = writeManifest(root, 'shared-private-mcp', [vendorDefinition('remote', [
+      { kind: 'role-assets', sourceDir: 'roles/alpha' },
+      { kind: 'mcp', sourceFile: 'mcps.json', output: 'mcps/shared/mcp.json' },
+    ])])
+    const stable = path.join(homeDir, 'roles', 'alpha', 'sentinel.txt')
+    writeFile(stable, 'previous role\n')
+    const beforeCommit = vi.fn()
+    const result = rebuildVendorAssets({ homeDir, role: 'alpha', manifestPath, beforeCommit })
+
+    if (conflict) {
+      await expect(result).rejects.toMatchObject({ cause: expect.objectContaining({ message: expect.stringMatching(/conflicting connection or setup/u) }) })
+      expect(beforeCommit).not.toHaveBeenCalled()
+      expect(fs.readFileSync(stable, 'utf8')).toBe('previous role\n')
+    }
+    else {
+      await result
+      expect(beforeCommit).toHaveBeenCalledTimes(1)
+      expect(readInstalledMcpServers(homeDir, 'alpha')).toEqual({ demo: { command: 'same' } })
+    }
+  })
+
+  it.each(['source', 'destination', 'case'])('rejects invalid %s before setup starts', async (invalid) => {
+    const { root, homeDir } = createFixture()
+    if (invalid !== 'source')
+      writeFile(repoPath(homeDir, 'remote', 'skills', 'review', 'SKILL.md'), '# review\n')
+    if (invalid === 'destination')
+      writeFile(path.join(homeDir, 'vendor', 'skills'), 'invalid destination\n')
+    else
+      writeFile(path.join(homeDir, 'vendor', 'skills', invalid === 'case' ? 'Review' : 'stable', 'SKILL.md'), '# stable\n')
+    const manifestPath = writeManifest(root, 'invalid-preflight', [vendorDefinition('remote', [
+      { kind: 'skills', sourceBaseDir: 'skills', skills: ['review'] },
+    ])])
+    const beforeCommit = vi.fn()
+
+    await expect(rebuildVendorAssets({ homeDir, role: 'alpha', manifestPath, beforeCommit })).rejects.toThrow()
+    expect(beforeCommit).not.toHaveBeenCalled()
+    const sentinel = invalid === 'destination'
+      ? path.join(homeDir, 'vendor', 'skills')
+      : path.join(homeDir, 'vendor', 'skills', invalid === 'case' ? 'Review' : 'stable', 'SKILL.md')
+    expect(fs.readFileSync(sentinel, 'utf8')).toBe(invalid === 'destination' ? 'invalid destination\n' : '# stable\n')
+  })
+
+  it('preserves all managed outputs when setup fails after successful validation', async () => {
+    const { root, homeDir } = createFixture()
+    writeFile(repoPath(homeDir, 'remote', 'roles', 'alpha', 'role.yaml'), 'role_id: alpha\n')
+    writeFile(repoPath(homeDir, 'remote', 'roles', 'alpha', 'skills', 'fresh', 'SKILL.md'), '# fresh\n')
+    const definition = {
+      ...vendorDefinition('remote', [{ kind: 'role-assets', sourceDir: 'roles/alpha' }]),
+      setup: [{ command: process.execPath, args: ['-e', 'process.exit(7)'] }],
+    }
+    const manifestPath = writeManifest(root, 'setup-failure', [definition])
+    const manifest = await loadVendorManifest(manifestPath)
+    const previousRole = path.join(homeDir, 'roles', 'alpha', 'sentinel.txt')
+    const stableSkill = path.join(homeDir, 'vendor', 'skills', 'stable', 'SKILL.md')
+    const stableMcp = path.join(homeDir, 'vendor', 'mcps', 'stable', 'mcp.json')
+    writeFile(previousRole, 'previous role\n')
+    writeFile(stableSkill, '# stable\n')
+    writeFile(stableMcp, validMcp('stable'))
+
+    await expect(rebuildVendorAssets({
+      homeDir,
+      role: 'alpha',
+      manifestPath,
+      manifest,
+      beforeCommit: () => runSkillSetupCommands(manifest, homeDir),
+    })).rejects.toThrow(/安装前置命令失败/u)
+    expect(fs.readFileSync(previousRole, 'utf8')).toBe('previous role\n')
+    expect(fs.readFileSync(stableSkill, 'utf8')).toBe('# stable\n')
+    expect(fs.readFileSync(stableMcp, 'utf8')).toBe(validMcp('stable'))
+    expect(fs.existsSync(path.join(homeDir, 'vendor', 'skills', 'fresh'))).toBe(false)
+  })
+
   it('stages an inherited skill only once when the child also selects its namespace', async () => {
     const { root, homeDir } = createFixture()
     writeFile(repoPath(homeDir, 'remote', 'skills', 'methods', 'shared', 'SKILL.md'), '# shared\n')

@@ -702,16 +702,19 @@ it('install - 拒绝空 MCP server 名称', () => withTempDir('airules-empty-mcp
   )
 }))
 
-it('install - 拒绝共享 MCP 重名并允许角色覆盖共享配置', () => withTempDir('airules-mcp-overrides-', (tmpDir) => {
+it('install - 拒绝共享与角色 MCP 的不一致重名配置', () => withTempDir('airules-mcp-overrides-', (tmpDir) => {
   writeFile(path.join(tmpDir, 'vendor', 'mcps', 'one', 'mcp.json'), '{"mcpServers":{"demo":{"command":"shared"}}}\n')
   writeFile(path.join(tmpDir, 'roles', 'alpha', 'mcp', 'mcp.json'), '{"mcpServers":{"demo":{"command":"role"}}}\n')
 
-  assert.deepEqual(readInstalledMcpServers(tmpDir, 'alpha')?.demo, { command: 'role' })
+  assert.throws(
+    () => readInstalledMcpServers(tmpDir, 'alpha'),
+    /conflicting connection or setup definitions/u,
+  )
 
   writeFile(path.join(tmpDir, 'vendor', 'mcps', 'two', 'mcp.json'), '{"mcpServers":{"demo":{"command":"duplicate"}}}\n')
   assert.throws(
     () => readInstalledMcpServers(tmpDir, 'alpha'),
-    /Duplicate shared MCP server "demo"/u,
+    /Shared MCP server "demo" has conflicting/u,
   )
 }))
 

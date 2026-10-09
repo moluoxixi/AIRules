@@ -30,10 +30,11 @@ afterEach(() => {
 describe('matt role', () => {
   it('projects the pinned engineering and productivity namespaces', async () => {
     const roleContract = parseDocument(fs.readFileSync(manifestPath, 'utf8')).toJS({ maxAliasCount: 0 }) as Record<string, unknown>
+    const installation = roleContract.installation as Record<string, unknown>
     expect(roleContract.extends_roles).toEqual(['development'])
-    expect(roleContract.capabilities).toEqual(['engineering'])
-    expect(roleContract.hosts).toBe('all')
-    expect(roleContract.role_vendor).toEqual({
+    expect(roleContract.provides).toEqual({ capabilities: ['engineering'] })
+    expect(installation.hosts).toBe('all')
+    expect(installation.role_vendor).toEqual({
       name: 'matt-role',
       source: 'https://github.com/moluoxixi/AIRules.git',
       projections: [
@@ -88,33 +89,37 @@ describe('matt role', () => {
     })
     expect(document.errors).toEqual([])
     expect(document.toJS({ maxAliasCount: 0 })).toEqual({
-      schema_version: 1,
+      schema_version: 2,
       role_id: 'matt',
       role_version: '0.1.0',
       status: 'experimental',
       canonical_root: 'roles/matt',
       description: 'Development role using Matt Pocock\'s skills and shared coding and frontend tools.',
-      assets: {
-        skills: 'skills',
-      },
-      capabilities: ['engineering'],
-      role_vendor_position: 'after',
-      hosts: 'all',
       extends_roles: ['development'],
-      role_vendor: {
-        name: 'matt-role',
-        source: 'https://github.com/moluoxixi/AIRules.git',
-        projections: [
-          {
-            kind: 'role-assets',
-            source_dir: 'roles/matt',
-          },
-        ],
+      provides: {
+        capabilities: ['engineering'],
       },
-      distribution: {
-        bootstrap_manifest: 'role.yaml',
-        full_role_path_required: true,
-        npm_embedded_source: false,
+      installation: {
+        assets: {
+          skills: 'skills',
+        },
+        role_vendor_position: 'after',
+        hosts: 'all',
+        role_vendor: {
+          name: 'matt-role',
+          source: 'https://github.com/moluoxixi/AIRules.git',
+          projections: [
+            {
+              kind: 'role-assets',
+              source_dir: 'roles/matt',
+            },
+          ],
+        },
+        distribution: {
+          bootstrap_manifest: 'role.yaml',
+          full_role_path_required: true,
+          npm_embedded_source: false,
+        },
       },
     })
   })

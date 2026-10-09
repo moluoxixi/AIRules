@@ -82,7 +82,7 @@ Use grilling to question this development plan and establish validation criteria
 Use frontend-design to design this interface, then inspect it with Playwright.
 ```
 
-For a new development role, declare `extends_roles: [development]` and `capabilities: []` in its `role.yaml`. Add role-specific capabilities to its own declaration. Each role may extend at most one parent, and multi-level chains are supported.
+For a new development role, use `schema_version: 2` and declare `extends_roles: [development]` with `provides.capabilities: []` in its `role.yaml`. Add shared capabilities to its own declaration. v2 supports multiple parents, deduplicates shared ancestors and capabilities, and rejects conflicting configurations.
 
 ## `moluoxixi`
 
@@ -381,17 +381,17 @@ Role source: [`roles/trellis`](roles/trellis).
 
 ## Shared distribution
 
-Shared skills, MCP catalogs, and vendor declarations live together in `capabilities/<capability>/`, such as `capabilities/common/skills/`. Each capability is a data-only directory containing `capability.yaml`, skills, MCP catalogs, and documentation; roles select capabilities in `role.yaml`. The runtime loader lives in `scripts/lib/capabilities.ts`, composes vendors in declaration order, merges compatible projections, deduplicates identical projections, and rejects source or target conflicts. See [capabilities/README.md](capabilities/README.md) for the layout and complete mapping.
+Shared skills, MCP catalogs, and vendor declarations live together in `capabilities/<capability>/`, such as `capabilities/common/skills/`. Each capability is a data-only directory containing `capability.yaml`, skills, MCP catalogs, and documentation. v2 roles select shared capabilities in `provides.capabilities` and keep their own installation settings in `installation`. The runtime loader lives in `scripts/lib/capabilities.ts`, composes vendors in declaration order, merges compatible projections, deduplicates identical projections, and rejects source or target conflicts. See [capabilities/README.md](capabilities/README.md) for the layout and complete mapping.
 
-`extends_roles` combines capabilities along a single inheritance chain before the child's own choices. Each role may extend at most one parent; repeated capabilities are deduplicated. Multiple parents, missing parents, and inheritance cycles are rejected. A parent may be a declaration-only template. The child declares its own role vendor, hosts, and CLI packages. See [role inheritance](capabilities/README.md#角色继承).
+v2 `extends_roles` combines shared capabilities from multiple parents before the child's own choices. Traversal follows declared parent order and visits each ancestor and capability once. Same-name skills and MCP servers deduplicate only when their sources and effective configurations agree; conflicts, missing parents, and cycles fail. Only `provides.capabilities` is inherited. Private assets, the role vendor, hosts, and CLI packages come from the selected role's `installation`. Staging is validated before setup and managed output is committed. External setup effects cannot be rolled back, and semantic overlap between differently named skills still requires human judgment. v1 and legacy modules retain single inheritance. See [role inheritance](capabilities/README.md#角色继承).
 
 Host directories, aliases, skill projection switches, and MCP formats are declared in [hosts/hosts.yaml](hosts/hosts.yaml). `scripts/lib/hosts.ts` loads and validates the declaration and resolves paths; declaration types live in `scripts/lib/types/`. Adding a host only requires a YAML entry. See [hosts/README.md](hosts/README.md) for fields and maintenance guidance.
 
 ```text
 role manifest
   -> role inheritance and capability composition
-  -> pinned vendor checkout / package setup
-  -> vendor staging
+  -> pinned vendor checkout
+  -> staging validation / setup / commit
   -> canonical ~/.agents/skills
   -> host skill projection and MCP merge
 ```

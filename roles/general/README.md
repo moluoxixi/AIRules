@@ -39,8 +39,11 @@ airules verify general --host all
 [`development`](../development/README.md) 通过 `extends_roles: [general]` 继承通用能力，并集中选择共享开发能力。`moluoxixi`、`trellis` 和 `matt` 再继承 `development`。新增开发角色使用同一模板：
 
 ```yaml
+schema_version: 2
+role_id: example
 extends_roles: [development]
-capabilities: []
+provides:
+  capabilities: []
 ```
 
-角色仅支持单继承，可以沿单个父角色形成多层继承链；相同能力自动去重。规则见 [角色继承](../../capabilities/README.md#角色继承)。
+v2 角色可继承多个模板，重复祖先与能力自动去重；同名 skill 或 MCP 配置不一致时安装失败。继承只组合 `provides.capabilities`，角色私有资产与 `installation` 设置由所选角色自己声明。规则见 [角色继承](../../capabilities/README.md#角色继承)。

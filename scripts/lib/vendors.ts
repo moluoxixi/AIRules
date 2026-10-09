@@ -1,6 +1,5 @@
 import type { CapabilityName } from './types/capabilities.js'
 import type {
-  RoleContractData,
   RolePackageConfig,
   SetupCommand,
   SkillDef,
@@ -10,13 +9,15 @@ import type {
   VendorProjection,
   VendorRepo,
 } from './types/manifest.js'
+import type { RoleContractData } from './types/roles.js'
 import fs from 'node:fs'
 import path from 'node:path'
 import { fileURLToPath, pathToFileURL, URL } from 'node:url'
-import { parseDocument } from 'yaml'
-import { CAPABILITY_NAMES, composeCapabilities } from './capabilities.js'
+import { CAPABILITY_NAMES, capabilityRegistry, composeCapabilities } from './capabilities.js'
 import { HOST_IDS } from './hosts.js'
-import { requireRoleInheritance, resolveRoleManifestPath, roleOverlayOrder } from './roles.js'
+import { setupIdentity } from './mcp-catalog.js'
+import { readRoleContract } from './role-contract.js'
+import { requireRoleInheritance, resolveRoleInheritance } from './roles.js'
 import { flattenedSkillName, flattenedVendorSkillTarget } from './skill-projection.js'
 
 const vendorNamePattern = /^[A-Za-z0-9][\w-]*$/u
@@ -70,7 +71,7 @@ function isVendorEntry(value: any): boolean {
 }
 
 function requireVendorName(value: string): string {
-  if (!vendorNamePattern.test(value)) {
+  if (!vendorNamePattern.test(value) || ['__proto__', 'constructor', 'prototype'].includes(value)) {
     throw new Error(`Invalid vendor name "${value}": expected a safe single-path identifier`)
   }
   return value
@@ -208,6 +209,9 @@ function mergeVendor(vendors: Record<string, Vendor>, vendorName: string, entry:
   const revision = requireGitRevision(entry.revision, safeVendorName)
   const cloneDir = path.posix.join('vendor', 'repos', safeVendorName)
   const links = buildLinksForEntry(entry)
+  const caseAlias = Object.keys(vendors).find(name => name.toLowerCase() === safeVendorName.toLowerCase() && name !== safeVendorName)
+  if (caseAlias)
+    throw new Error(`Vendor names differ only by case: ${caseAlias}, ${safeVendorName}`)
 
   if (!vendors[safeVendorName]) {
     vendors[safeVendorName] = {
@@ -225,12 +229,17 @@ function mergeVendor(vendors: Record<string, Vendor>, vendorName: string, entry:
     existing.repo !== remoteSource
     || existing.revision !== revision
     || existing.cloneDir !== cloneDir
+    || setupIdentity(existing.setup) !== setupIdentity(entry.setup)
   ) {
     throw new Error(`供应商 "${safeVendorName}" 在不同模块中的定义不一致`)
   }
 
-  existing.setup = [...(existing.setup ?? []), ...(entry.setup ?? [])]
-  existing.links.push(...links)
+  for (const link of links) {
+    if (!existing.links.some(previous => previous.kind === link.kind && previous.source === link.source
+      && previous.target === link.target && setupIdentity(previous.setup) === setupIdentity(link.setup))) {
+      existing.links.push(link)
+    }
+  }
 }
 
 /**
@@ -271,40 +280,63 @@ export async function loadVendorManifest(manifestPath: string): Promise<VendorMa
   const resolvedManifestPath = path.resolve(manifestPath)
   const roleContract = tryLoadRoleContract(manifestPath)
   const isRoleYaml = path.basename(resolvedManifestPath).toLowerCase() === 'role.yaml'
-  const module = isRoleYaml
-    ? {}
-    : await import(pathToFileURL(resolvedManifestPath).href)
-  requireRoleInheritance(
-    roleContract?.extendsRoles ?? module.extendsRoles ?? module.default?.extendsRoles ?? [],
-    `Vendor manifest "${manifestPath}" field "extends_roles"`,
-  )
-  const roleVendor = roleContract?.roleVendor
-    ?? module.roleVendor
-    ?? module.default?.roleVendor
+  const isV2 = roleContract?.schemaVersion === 2
+  const module = isRoleYaml || isV2 ? {} : await import(pathToFileURL(resolvedManifestPath).href)
+  if (!roleContract)
+    requireRoleInheritance(module.extendsRoles ?? module.default?.extendsRoles ?? [], `Vendor manifest "${manifestPath}" field "extends_roles"`)
+  const capabilityContract = roleContract ? await requireRoleCapabilityContract(roleContract) : undefined
+  const roleVendor = isV2 ? roleContract.roleVendor : roleContract?.roleVendor ?? module.roleVendor ?? module.default?.roleVendor
+  if (roleContract?.schemaVersion === 2 && capabilityContract!.capabilities.length > 0 && roleVendor === undefined)
+    throw new Error(`Role contract "${manifestPath}" installation.role_vendor is required to install provided capabilities`)
   const vendorTree = roleVendor === undefined
-    ? (isRoleYaml ? {} : module.vendors ?? module.default?.vendors ?? module.default)
-    : await composeRoleVendorTree(manifestPath, roleVendor, roleContract)
-  if (!vendorTree || typeof vendorTree !== 'object') {
+    ? (isRoleYaml || isV2 ? {} : module.vendors ?? module.default?.vendors ?? module.default)
+    : await composeRoleVendorTree(manifestPath, roleVendor, roleContract, capabilityContract)
+  if (!vendorTree || typeof vendorTree !== 'object')
     throw new Error(`Vendor manifest "${manifestPath}" must export a "vendors" object or a "roleVendor" definition`)
-  }
-
   const vendors: Record<string, Vendor> = {}
   walkVendorTree(vendorTree, [], vendors)
-  const hosts = normalizeRoleHosts(
-    roleContract?.hosts ?? module.hosts ?? module.default?.hosts,
-    manifestPath,
-  )
-  const packages = normalizeRolePackages(
-    roleContract?.packages ?? module.packages ?? module.default?.packages,
-    manifestPath,
-  )
-
+  const hosts = normalizeRoleHosts(isV2 ? roleContract.hosts : roleContract?.hosts ?? module.hosts ?? module.default?.hosts, manifestPath)
+  const packages = normalizeRolePackages(isV2 ? roleContract.packages : roleContract?.packages ?? module.packages ?? module.default?.packages, manifestPath)
   return {
     ...(hosts === undefined ? {} : { hosts }),
     packages,
     version: 1,
     vendors,
+    ...(capabilityContract === undefined
+      ? {}
+      : {
+          origins: capabilityVendorOrigins(vendors, capabilityContract.origins, roleVendor, path.basename(path.dirname(roleContract!.path))),
+        }),
   }
+}
+
+function capabilityVendorOrigins(vendors: Record<string, Vendor>, capabilities: Record<string, string>, roleVendor: unknown, role: string): NonNullable<VendorManifest['origins']> {
+  const origins: NonNullable<VendorManifest['origins']> = {}
+  const roleName = isVendorEntry(roleVendor) ? (roleVendor as VendorRepo).name : undefined
+  for (const [name, vendor] of Object.entries(vendors)) {
+    const links = vendor.links.map(() => [] as string[])
+    for (const [capability, origin] of Object.entries(capabilities)) {
+      const definition = capabilityRegistry[capability]!
+      const projections = [
+        ...(name === roleName ? definition.roleProjections ?? [] : []),
+        ...(definition.vendors?.filter(candidate => candidate.name === name).flatMap(candidate => candidate.projections) ?? []),
+      ]
+      for (const projection of projections) {
+        for (const candidate of buildLinksForEntry({ name, projections: [projection] })) {
+          vendor.links.forEach((link, index) => {
+            if (link.kind === candidate.kind && link.source === candidate.source && link.target === candidate.target)
+              links[index]!.push(origin)
+          })
+        }
+      }
+    }
+    const fallback = `${role} [installation]`
+    origins[name] = {
+      vendor: [...new Set(links.flat().length === 0 ? [fallback] : links.flat())],
+      links: links.map(values => values.length === 0 ? [fallback] : [...new Set(values)]),
+    }
+  }
+  return origins
 }
 
 /**
@@ -357,84 +389,38 @@ function tryLoadRoleContract(manifestPath: string): RoleContractData | undefined
   if (contractPath === undefined || !fs.existsSync(contractPath))
     return undefined
 
-  const document = parseDocument(fs.readFileSync(contractPath, 'utf8'), {
-    merge: false,
-    prettyErrors: true,
-    strict: true,
-    uniqueKeys: true,
-  })
-  if (document.errors.length > 0) {
-    throw new Error(`Role contract "${contractPath}" is invalid: ${document.errors.map(error => error.message).join('; ')}`)
-  }
-  const contract = document.toJS({ maxAliasCount: 0 }) as unknown
-  if (!contract || typeof contract !== 'object' || Array.isArray(contract)) {
-    throw new Error(`Role contract "${contractPath}" must be a YAML mapping`)
-  }
-
-  const record = contract as Record<string, unknown>
-  const capabilities = record.capabilities
-  const roleVendorPosition = record.role_vendor_position ?? record.roleVendorPosition
-  if (roleVendorPosition !== undefined && roleVendorPosition !== 'before' && roleVendorPosition !== 'after') {
-    throw new Error(`Role contract "${contractPath}" field "role_vendor_position" must be "before" or "after"`)
-  }
-
-  return {
-    ...(capabilities === undefined ? {} : { capabilities }),
-    ...(record.extends_roles === undefined && record.extendsRoles === undefined
-      ? {}
-      : { extendsRoles: record.extends_roles ?? record.extendsRoles }),
-    ...(record.hosts === undefined ? {} : { hosts: record.hosts }),
-    ...(record.packages === undefined ? {} : { packages: record.packages }),
-    ...(record.role_vendor === undefined && record.roleVendor === undefined
-      ? {}
-      : { roleVendor: record.role_vendor ?? record.roleVendor }),
-    ...(roleVendorPosition === undefined ? {} : { roleVendorPosition }),
-  }
+  return readRoleContract(contractPath)
 }
 
-async function requireRoleCapabilityContract(manifestPath: string, contract: RoleContractData): Promise<{
+async function requireRoleCapabilityContract(contract: RoleContractData): Promise<{
   capabilities: CapabilityName[]
-  roleVendorPosition?: 'before' | 'after'
+  origins: Record<string, string>
 }> {
-  const contractPath = resolveRoleContractPath(manifestPath)
-  const extendsRoles = requireRoleInheritance(contract.extendsRoles ?? [], `Role contract "${contractPath}" field "extends_roles"`)
-
-  const roleRoot = path.dirname(contractPath)
+  const roleRoot = path.dirname(contract.path)
   const repoRoot = path.resolve(roleRoot, '..', '..')
   const role = path.basename(roleRoot)
-  const lineage = extendsRoles.length === 0 ? [role] : await roleOverlayOrder(repoRoot, role)
+  const lineage = await resolveRoleInheritance(repoRoot, role)
   const capabilities: CapabilityName[] = []
-  const seen = new Set<string>()
-  for (const ancestor of lineage) {
-    const ancestorPath = ancestor === role ? contractPath : resolveRoleManifestPath(repoRoot, ancestor)
-    const ancestorContract = ancestor === role ? contract : tryLoadRoleContract(ancestorPath)
-    const declared = ancestorContract?.capabilities ?? []
-    if (!Array.isArray(declared)) {
-      throw new TypeError(`Role contract "${ancestorPath}" must declare "capabilities" as a list`)
-    }
+  const origins: Record<string, string> = {}
+  for (const entry of lineage) {
+    const declared = entry.contract?.capabilities ?? []
+    const location = `Role contract "${entry.manifestPath}" (${entry.inheritancePath.join(' → ')})`
+    if (!Array.isArray(declared))
+      throw new TypeError(`${location} must declare "capabilities" as a list`)
     const localSeen = new Set<string>()
     for (const capability of declared) {
-      if (typeof capability !== 'string' || !(CAPABILITY_NAMES as readonly string[]).includes(capability)) {
-        throw new Error(`Role contract "${ancestorPath}" references unknown capability "${String(capability)}"`)
-      }
-      if (localSeen.has(capability)) {
-        throw new Error(`Role contract "${ancestorPath}" declares duplicate capability "${capability}"`)
-      }
+      if (typeof capability !== 'string' || !(CAPABILITY_NAMES as readonly string[]).includes(capability))
+        throw new Error(`${location} references unknown capability "${String(capability)}"`)
+      if (localSeen.has(capability))
+        throw new Error(`${location} declares duplicate capability "${capability}"`)
       localSeen.add(capability)
-      if (!seen.has(capability)) {
+      if (!Object.hasOwn(origins, capability)) {
         capabilities.push(capability)
-        seen.add(capability)
+        origins[capability] = `${entry.inheritancePath.join(' → ')} [${capability}]`
       }
     }
   }
-  if (capabilities.length === 0) {
-    throw new Error(`Role contract "${contractPath}" must declare a non-empty "capabilities" list, directly or through inheritance`)
-  }
-
-  return {
-    capabilities,
-    ...(contract.roleVendorPosition === undefined ? {} : { roleVendorPosition: contract.roleVendorPosition }),
-  }
+  return { capabilities, origins }
 }
 
 function manifestRecord(value: unknown, location: string): Record<string, unknown> {
@@ -566,14 +552,25 @@ function normalizeVendorDefinition(value: unknown, manifestPath: string): Vendor
 /**
  * 依据 role.yaml 声明的 capabilities，把清单导出的 roleVendor 组合成完整 vendors 列表。
  */
-async function composeRoleVendorTree(manifestPath: string, roleVendor: unknown, roleContract?: RoleContractData): Promise<VendorRepo[]> {
-  if (!isVendorEntry(roleVendor)) {
+async function composeRoleVendorTree(
+  manifestPath: string,
+  roleVendor: unknown,
+  roleContract?: RoleContractData,
+  capabilityContract?: Awaited<ReturnType<typeof requireRoleCapabilityContract>>,
+): Promise<VendorRepo[]> {
+  if (!isVendorEntry(roleVendor))
     throw new Error(`Vendor manifest "${manifestPath}" export "roleVendor" must be a vendor definition with name and source`)
-  }
-  const contract = await requireRoleCapabilityContract(manifestPath, roleContract ?? tryLoadRoleContract(manifestPath) ?? {})
+  const declaration = roleContract ?? tryLoadRoleContract(manifestPath)
+  if (!declaration)
+    throw new Error(`Vendor manifest "${manifestPath}" exports "roleVendor" but its role.yaml contract is missing: ${resolveRoleContractPath(manifestPath)}`)
+  const contract = capabilityContract ?? await requireRoleCapabilityContract(declaration)
+  if (contract.capabilities.length === 0 && declaration.schemaVersion === 1)
+    throw new Error(`Role contract "${declaration.path}" must declare a non-empty "capabilities" list, directly or through inheritance`)
   return composeCapabilities(contract.capabilities, {
     roleVendor: normalizeVendorDefinition(roleVendor, manifestPath),
-    ...(contract.roleVendorPosition === undefined ? {} : { roleVendorPosition: contract.roleVendorPosition }),
+    roleVendorPosition: declaration.roleVendorPosition,
+    capabilityOrigins: contract.origins,
+    roleOrigin: `${path.basename(path.dirname(declaration.path))} [installation]`,
   })
 }
 
