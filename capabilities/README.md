@@ -138,3 +138,11 @@ installation:
 - 角色专属资产：放在 `roles/<role>/`。角色只选择能力，无需逐个复制公共供应商配置。
 
 公共分发和能力测试放在 `scripts/lib/__test__/`；角色专属测试放在 `roles/<role>/__test__/`。
+
+## 安装验证
+
+先执行 `npm run build`。`npm test` 中的 `role-install.e2e.test.mjs` 从空 AIRules home 开始，通过临时 `git://` 远端实际下载供应商，保留完整菱形继承声明，并执行真实 CLI 与 npm setup。用例覆盖重复 skills、MCP 和 setup 去重、父角色私有资产隔离、重复安装、冲突拒绝，以及 setup 失败后保留旧资产和宿主配置。宿主包含 Claude、Codex 和 OpenCode；用户目录、Git 配置与 npm prefix 均隔离。
+
+`npm run verify:packed-airules` 把 npm tarball 安装到独立消费项目，再用打包后的 CLI 执行同一组安装用例。CI 在 Linux、Windows 和 macOS 上运行这些检查。
+
+`npm run verify:remote-role-install` 从真实 GitHub 上游下载当前 AIRules commit 与 capability 固定的供应商 commit，安装 `common`、`productivity` 和 `frontend` 的菱形组合，比较 skills 与可视化资源内容，并校验三种宿主的 MCP 配置。该检查需要联网，由 Linux CI 执行；它验证安装与配置，不启动 MCP 服务或调用模型。

@@ -482,7 +482,7 @@ function materializePlan(plan: VendorStagingPlan, role: string): MaterializedPla
   }
   catch (error) {
     removeBestEffort(buildRoot)
-    throw new Error('Failed to materialize vendor staging', { cause: error })
+    throw new Error(`Failed to materialize vendor staging: ${String(error)}`, { cause: error })
   }
 }
 

@@ -45,6 +45,13 @@ jobs:
       - name: Test
         run: pnpm test
 
+      - name: Verify packed role installation
+        run: pnpm run verify:packed-airules
+
+      - name: Verify real upstream role installation
+        timeout-minutes: 10
+        run: pnpm run verify:remote-role-install
+
   platform-install:
     name: Platform install (${{ matrix.os }})
     runs-on: ${{ matrix.os }}
@@ -85,6 +92,7 @@ jobs:
           scripts/lib/__test__/canonical-path.test.ts
           scripts/lib/__test__/roles.test.ts
           scripts/lib/__test__/role-inheritance.test.ts
+          scripts/lib/__test__/role-install.e2e.test.mjs
           scripts/lib/__test__/install-coverage.test.ts
           scripts/lib/__test__/tool.test.ts
           scripts/lib/__test__/install-cli.test.ts

@@ -364,7 +364,7 @@ describe('rebuildVendorAssets', () => {
     ])
 
     await expect(rebuildVendorAssets({ homeDir, role: 'alpha', manifestPath })).rejects.toMatchObject({
-      message: 'Failed to materialize vendor staging',
+      message: expect.stringMatching(/Failed to materialize vendor staging:.*entry.*mcp.*object/i),
       cause: expect.objectContaining({
         message: expect.stringMatching(/entry.*mcp.*object/i),
       }),
@@ -387,7 +387,7 @@ describe('rebuildVendorAssets', () => {
     ])
 
     await expect(rebuildVendorAssets({ homeDir, role: 'alpha', manifestPath })).rejects.toMatchObject({
-      message: 'Failed to materialize vendor staging',
+      message: expect.stringMatching(/Failed to materialize vendor staging:.*shared MCP server "shared".*one.*two/i),
       cause: expect.objectContaining({
         message: expect.stringMatching(/shared MCP server "shared".*one.*two/i),
       }),
