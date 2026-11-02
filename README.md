@@ -419,3 +419,7 @@ npm run lint:check
 ## 许可证
 
 MIT
+
+## memory-superpowers
+
+实验性本地 Basic Memory + 官方 Superpowers 角色，支持 Codex、Claude Code、Cursor。安装 role 后须初始化目标项目；安装、配置、团队索引和验证边界见 [使用说明](roles/memory-superpowers/README.md)。
