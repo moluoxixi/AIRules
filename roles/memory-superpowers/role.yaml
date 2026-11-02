@@ -1,0 +1,26 @@
+schema_version: 2
+role_id: memory-superpowers
+role_version: 0.1.0
+status: experimental
+canonical_root: roles/memory-superpowers
+description: Local Basic Memory experience library with official Superpowers and task source references.
+extends_roles: []
+provides:
+  capabilities: []
+installation:
+  hosts: [claude, codex, cursor]
+  assets:
+    skills: skills
+  role_vendor:
+    name: memory-superpowers-role
+    source: https://github.com/moluoxixi/AIRules.git
+    projections:
+      - kind: role-assets
+        source_dir: roles/memory-superpowers
+  distribution:
+    bootstrap_manifest: role.yaml
+    full_role_path_required: true
+    npm_embedded_source: false
+  entrypoints:
+    initialize_project_skill: memory-superpowers
+    initialize_project_script: skills/memory-superpowers/scripts/project.py
