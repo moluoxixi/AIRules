@@ -46,3 +46,4 @@ lerna-debug.log*
 *.sln
 *.sw?
 .zed
+/.airules/memory-superpowers/

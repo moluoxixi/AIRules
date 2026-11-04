@@ -1,5 +1,16 @@
 # 验证记录（2026-11-02）
 
+## BMAD 需求评审扩展（2026-11-04）
+
+- 固定 BMAD 6.12.4 / `bab9082c3e884e0d72c759bcd1a6d90bcc01be84`。`bmad.py install` 已在 AIRules 本机项目实际运行，官方 PRD 技能、四个共享脚本及隔离配置可用；项目级 `review-requirements` 入口已连接。运行缓存不进入 Git。
+- `uv run roles/memory-superpowers/__test__/bmad_integration.py --keep`：通过真实上游下载/安装、中文和空格 PRD 路径、重复安装、索引去重、配置入口、原件与已有 `_bmad`/宿主配置保留、官方配置与日志脚本、跨项目缓存复用、越界/输出冲突/状态目录原件拒绝、修改过的 runtime 和脏缓存拒绝。新增模板绝对路径、rubric 覆盖、`.gitignore` 原件及硬链接保护后再次运行通过。
+- `pnpm exec vitest run roles/memory-superpowers/__test__/role.test.ts`：2 项通过。新增测试使用当前角色文件实际 staging 并投影到隔离的 Codex、Claude、Cursor 宿主目录，连续两次通过公共技能及宿主校验，确认脚本、rubric、技能与 UI 元数据均随角色分发。该测试不创建 Git fixture 提交，不等同于远程默认分支的完整 CLI 下载测试。
+- 新技能结构校验、改动 TypeScript 文件 ESLint、`pnpm run typecheck`、`pnpm run build`、`git diff --check` 通过。未运行会创建本地 Git fixture 提交的全量测试，遵守本次“不在本地提交或推送”的要求。
+- 独立代码审查修正了返回字段与技能指针不一致，以及重复评审可能混入旧 reviewer 文件的问题。只综合本轮重新生成的报告文件，不增加另一套索引。
+- 一次合成订单样例的实际 AI 评审演练完成：读取 PRD、OpenAPI、交互规范，由主代理 IAB 实际点击原型的编辑、保存、拒绝和空结果筛选，评审代理据此生成 rubric 与 Markdown/HTML 双报告。识别待审核可编辑冲突、拒绝原因/状态缺失、含税金额契约冲突等 9 项问题；已实现的空态未被误报。报告以 `partial` 表示尚有产品决策，明确未测后端、hover、持久化和并发。主代理复读并打开 HTML 核对，五份输入的前后哈希一致。这是单一样例演练，不是准确率基准或所有宿主的行为保证。
+
+以上自动化验证安装、分发、输入绑定与保护，不证明模型能发现所有需求问题。仅 Validate 的依赖链经过验证，未宣称支持完整 BMAD Create/Update。宿主文件投影测试不等于在三个宿主中分别完成真实聊天验收；此次环境为 macOS，Windows/Linux 未实测。
+
 ## 自动化
 
 - `pnpm exec vitest run roles/memory-superpowers/__test__/role.test.ts`：1 项通过，真实 manifest 可由 AIRules 发现，独立继承和平台范围正确。

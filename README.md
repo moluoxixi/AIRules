@@ -422,4 +422,4 @@ MIT
 
 ## memory-superpowers
 
-实验性本地 Basic Memory + 官方 Superpowers 角色，支持 Codex、Claude Code、Cursor。安装 role 后须初始化目标项目；安装、配置、团队索引和验证边界见 [使用说明](roles/memory-superpowers/README.md)。
+实验性本地 Basic Memory + 官方 Superpowers 角色，附带按需安装的 BMAD 研发需求评审入口，支持 Codex、Claude Code、Cursor。Memory/Superpowers 安装后须初始化目标项目；需求评审可以独立使用。安装、配置、团队索引和验证边界见 [使用说明](roles/memory-superpowers/README.md)。

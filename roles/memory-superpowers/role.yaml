@@ -1,9 +1,9 @@
 schema_version: 2
 role_id: memory-superpowers
-role_version: 0.1.0
+role_version: 0.2.0
 status: experimental
 canonical_root: roles/memory-superpowers
-description: Local Basic Memory experience library with official Superpowers and task source references.
+description: Local Basic Memory, official Superpowers, and on-demand BMAD requirements review with shared task sources.
 extends_roles: []
 provides:
   capabilities: []
