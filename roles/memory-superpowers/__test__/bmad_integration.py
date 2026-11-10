@@ -11,7 +11,6 @@ import argparse
 import hashlib
 import json
 from pathlib import Path
-import shutil
 import subprocess
 import tempfile
 
@@ -112,7 +111,7 @@ def exercise(root, source_cache=None):
     entries = [json.loads(line) for line in first_entries.splitlines()]
     assert len(entries) == 2
     assert entries[0] == {'file': '团队约定.md', 'reason': 'Existing adopted source'}
-    assert entries[1]['file'] == str(prd.relative_to(project))
+    assert entries[1]['file'] == prd.relative_to(project).as_posix()
     assert all(set(entry) == {'file', 'reason'} for entry in entries)
     assert (project / '.gitignore').read_text().count('/.airules/memory-superpowers/') == 1
     assert (project / '.gitignore').read_text().startswith('# Existing ignore rules\nnode_modules/\n')
@@ -227,14 +226,14 @@ def main():
     parser.add_argument('--keep', action='store_true', help='Keep the temporary project for manual review')
     parser.add_argument('--source-cache', type=Path, help='Reuse a verified clean pinned upstream checkout')
     args = parser.parse_args()
-    root = Path(tempfile.mkdtemp(prefix='airules-bmad-integration-')).resolve()
-    try:
-        exercise(root, args.source_cache)
-    finally:
-        if args.keep:
-            print(f'Kept test workspace: {root}')
-        else:
-            shutil.rmtree(root)
+    # TemporaryDirectory also removes read-only Git objects on Windows.
+    with tempfile.TemporaryDirectory(prefix='airules-bmad-integration-', delete=not args.keep) as temporary:
+        root = Path(temporary).resolve()
+        try:
+            exercise(root, args.source_cache)
+        finally:
+            if args.keep:
+                print(f'Kept test workspace: {root}')
 
 
 if __name__ == '__main__':

@@ -386,6 +386,20 @@ Plan 阶段创建并确认 PRD，复杂任务补齐 design/implement 后 `task.p
 
 角色源码位于 [`roles/trellis`](roles/trellis)。
 
+## `memory-superpowers`
+
+### 安装
+
+实验性角色，支持 Codex、Claude Code、Cursor。角色进入远程分发源后，使用 `airules install memory-superpowers --host codex` 安装，并通过 `airules verify memory-superpowers --host codex` 校验。需要 uv、Git 和 Python 3.12；首次初始化需要联网下载固定版本依赖。完整命令与宿主参数见[使用说明](roles/memory-superpowers/README.md)。
+
+### 功能
+
+提供项目独立的本地 Basic Memory、官方 Superpowers 技能，以及按需安装的 BMAD 研发需求评审入口。不继承 general/development 的工具，也不安装额外插件或 hooks。
+
+### 用法
+
+安装角色后，对每个目标项目执行 `memory-superpowers` 初始化；需求评审可独立使用 `review-requirements`。配置、团队索引和验证范围见[使用说明](roles/memory-superpowers/README.md)与[验证记录](roles/memory-superpowers/VERIFICATION.md)。宿主文件投影和 MCP 协议测试不等于真实聊天验收。
+
 ## 公共分发机制
 
 共享 skills、MCP 清单和供应商声明按能力集中在 `capabilities/<能力>/`，例如 `capabilities/common/skills/`。每个能力目录是纯数据目录，只包含 `capability.yaml`、skills、MCP 清单和文档；Role 在 v2 `role.yaml` 的 `provides.capabilities` 中选择 capability，把自身安装设置放在 `installation`。运行时加载器位于 `scripts/lib/capabilities.ts`，负责按声明顺序组合 vendor，合并兼容投影、去重完全相同的 projection，并拒绝来源或目标冲突。目录结构与完整映射见 [capabilities/README.md](capabilities/README.md)。
@@ -419,7 +433,3 @@ npm run lint:check
 ## 许可证
 
 MIT
-
-## memory-superpowers
-
-实验性本地 Basic Memory + 官方 Superpowers 角色，附带按需安装的 BMAD 研发需求评审入口，支持 Codex、Claude Code、Cursor。Memory/Superpowers 安装后须初始化目标项目；需求评审可以独立使用。安装、配置、团队索引和验证边界见 [使用说明](roles/memory-superpowers/README.md)。

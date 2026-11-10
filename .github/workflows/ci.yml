@@ -193,14 +193,18 @@ jobs:
         uses: astral-sh/setup-uv@v6
         with:
           python-version: '3.12'
+          cache-dependency-glob: roles/memory-superpowers/**/*.py
 
       - name: Verify real pinned BMAD installation and input preservation
         run: uv run roles/memory-superpowers/__test__/bmad_integration.py
 
       - name: Initialize an isolated Basic Memory project
+        id: memory_init
+        if: ${{ !cancelled() }}
         run: |
           mkdir -p "$RUNNER_TEMP/airules-memory-integration"
           uv run roles/memory-superpowers/skills/memory-superpowers/scripts/project.py init --project "$RUNNER_TEMP/airules-memory-integration" --host codex
 
       - name: Verify real MCP handshake and repeat initialization
+        if: ${{ !cancelled() && steps.memory_init.outcome == 'success' }}
         run: uv run --with mcp roles/memory-superpowers/__test__/integration.py "$RUNNER_TEMP/airules-memory-integration"
