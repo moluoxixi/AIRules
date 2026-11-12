@@ -1,4 +1,4 @@
 interface:
-  display_name: "研发需求评审"
-  short_description: "Review requirements, prototypes, and API readiness"
-  default_prompt: "Use $review-requirements to review the existing requirements, prototype, and API documents before implementation."
+  display_name: 研发需求评审
+  short_description: 'Review requirements, prototypes, and API readiness'
+  default_prompt: 'Use $review-requirements to review the existing requirements, prototype, and API documents before implementation.'

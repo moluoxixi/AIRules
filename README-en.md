@@ -379,6 +379,20 @@ Use `init-project` only for first-time setup, adding a host, or reconfiguration.
 
 Role source: [`roles/trellis`](roles/trellis).
 
+## `memory-superpowers`
+
+### Install
+
+This experimental role supports Codex, Claude Code, and Cursor. Once the role is available from the remote distribution source, install it with `airules install memory-superpowers --host codex` and check it with `airules verify memory-superpowers --host codex`. It requires uv, Git, Python 3.12, and network access for the initial pinned dependency downloads. See the [role guide](roles/memory-superpowers/README.md) for initialization commands and host options.
+
+### Features
+
+Provides project-local Basic Memory, official Superpowers skills, and an on-demand BMAD requirements review entry point. It does not inherit the general/development tools or install additional plugins or hooks.
+
+### Usage
+
+Initialize each target project with `memory-superpowers` after installing the role. The `review-requirements` skill can be used independently. See the [role guide](roles/memory-superpowers/README.md) and [verification record](roles/memory-superpowers/VERIFICATION.md) for configuration, shared source indexes, and validation limits. Host file projection and MCP protocol tests do not establish real host chat behavior.
+
 ## Shared distribution
 
 Shared skills, MCP catalogs, and vendor declarations live together in `capabilities/<capability>/`, such as `capabilities/common/skills/`. Each capability is a data-only directory containing `capability.yaml`, skills, MCP catalogs, and documentation. v2 roles select shared capabilities in `provides.capabilities` and keep their own installation settings in `installation`. The runtime loader lives in `scripts/lib/capabilities.ts`, composes vendors in declaration order, merges compatible projections, deduplicates identical projections, and rejects source or target conflicts. See [capabilities/README.md](capabilities/README.md) for the layout and complete mapping.
