@@ -1,11 +1,11 @@
 name: CI
 
-# PR 与 main 推送阶段的质量门禁。受影响包由发布工作流在 main 推送后发布。
+# PR、main 和 memory-superpowers 功能分支的质量门禁。发布仍仅由 main 触发。
 on:
   push:
-    branches: [main]
+    branches: [main, codex/memory-superpowers]
   pull_request:
-    branches: [main]
+    branches: [main, codex/memory-superpowers]
 
 concurrency:
   group: ci-${{ github.ref }}
@@ -104,6 +104,7 @@ jobs:
           roles/general/__test__/general-role.test.ts
           roles/development/__test__/development-role.test.ts
           roles/matt/__test__/matt-role.test.ts
+          roles/memory-superpowers/__test__/role.test.ts
 
   discover-role-packages:
     name: Discover role package workspaces
@@ -167,3 +168,43 @@ jobs:
       - name: Test, typecheck, and verify publish tarballs
         working-directory: roles/${{ matrix.role }}
         run: pnpm run verify:publish && pnpm run typecheck
+
+  memory-superpowers-integration:
+    name: Memory superpowers integration (${{ matrix.os }})
+    runs-on: ${{ matrix.os }}
+    timeout-minutes: 25
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, windows-latest, macos-latest]
+    defaults:
+      run:
+        shell: bash
+    env:
+      UV_PYTHON: '3.12'
+      PYTHONUTF8: '1'
+      GIT_TERMINAL_PROMPT: '0'
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up uv and Python
+        uses: astral-sh/setup-uv@v6
+        with:
+          python-version: '3.12'
+          cache-dependency-glob: roles/memory-superpowers/**/*.py
+
+      - name: Verify real pinned BMAD installation and input preservation
+        run: uv run roles/memory-superpowers/__test__/bmad_integration.py
+
+      - name: Initialize an isolated Basic Memory project
+        id: memory_init
+        if: ${{ !cancelled() }}
+        run: |
+          mkdir -p "$RUNNER_TEMP/airules-memory-integration"
+          uv run roles/memory-superpowers/skills/memory-superpowers/scripts/project.py init --project "$RUNNER_TEMP/airules-memory-integration" --host codex
+
+      - name: Verify real MCP handshake and repeat initialization
+        if: ${{ !cancelled() && steps.memory_init.outcome == 'success' }}
+        run: uv run --with mcp roles/memory-superpowers/__test__/integration.py "$RUNNER_TEMP/airules-memory-integration"
