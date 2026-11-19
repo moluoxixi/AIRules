@@ -14,6 +14,8 @@ python3 roles/requirement-flow/skills/requirement-flow/flow.py --project /path/t
 
 从新版本的 AIRules 或已更新的用户级 skill 再次 `init` 即可升级，也支持已使用 0.1.0 的项目。进行中与已归档的数据均保留。遇到团队改过的受管文件或已有同名 skill，安装器会指出冲突路径。现有 Moluoxixi 项目需显式加 `--migrate`，旧 Codex 入口备份在 `.requirements/migrations/moluoxixi/`，原任务、独立 skill、其他 hooks 和项目规则保留。
 
+使用本机 Git worktree 的项目可以在主工作区安装并提交，再按项目原有流程同步分支。需求的 `model.json`、`handbook.html` 和 `evidence/` 中的回执与附件一起保存。同一仓库的工作区通过 Git 公共目录里的本机密钥复核回执。备份仓库或迁移机器时应单独保管这些密钥，新克隆需要恢复密钥才能复核原始回执。
+
 ## 一个入口与五个专项
 
 项目的默认入口是 `requirement-flow`。它读当前需求图和授权范围，组合五种工作方法。动作可以跳过、重复或并行。例如，已确认字段的小修复可直接开发，接口待确认只影响使用该接口的故事。
@@ -39,6 +41,8 @@ python3 "$FLOW" task plan-search serve
 ```
 
 `serve` 输出本机 URL，支持筛选、查看处理与证据、登记业务决定。离线可打开 `.requirements/active/plan-search/handbook.html`；AI 可读同目录 `model.json`，或用 `task plan-search context <故事ID>` 只读取一个功能。
+
+图页默认以 100% 展示功能卡和各自的验收进度。点「筛选功能」可搜索或多选，收起浮层后仍保留筛选范围。选择功能或切换「实现链路」，可以沿连线查看接口、处理、业务决定和验证记录。右上角的锁控制滚轮与双指缩放，初始锁定；锁定时仍可平移、手动加减。点击百分比恢复原大小，点击「适应画布」查看当前图的全貌。
 
 ## 验收与归档
 

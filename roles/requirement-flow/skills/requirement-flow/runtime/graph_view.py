@@ -133,7 +133,12 @@ def make_graph(work, states, scenarios):
                 caption = story["flow"][-1]
             elif action["kind"] == "验证" and story.get("examples"):
                 amounts = [r["example"] for r in routes if r["decision"] in action["decisions"] and r.get("example")]
-                caption = " / ".join(amounts) if amounts else story["examples"][0]["given"]
+                covered = set(action.get("covers", []))
+                example = next((case for case in story["examples"] if case.get("id") in covered), None)
+                if example:
+                    caption = example["given"]
+                elif amounts or not covered:
+                    caption = " / ".join(amounts) if amounts else story["examples"][0]["given"]
         node(key, kind_of[action["kind"]], action["title"], caption, action["kind"],
              "待验" if action["kind"] == "验证" and state == "blocked" else state_names[state],
              activity=state)

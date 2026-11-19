@@ -17,6 +17,8 @@ ROLE = "requirement-flow"
 SPECIALISTS = ("flow-requirements", "flow-contracts", "flow-implement", "flow-verify", "flow-review")
 SKILL = SKILLS / ROLE
 MANIFEST = Path(".requirements/installation.json")
+IGNORE = Path(".requirements/.gitignore")
+LOCAL_PATTERNS = (b".receipt-key", b".receipt-key-*", b".workflow.lock", b".capture-*/", b".model.json.*", b".handbook.html.*")
 ARCHIVE = Path(".requirements/migrations/moluoxixi")
 ROOT_FILES = {"SKILL.md", "flow.py", "install_project.py", "references/model.md", "agents/openai.yaml"}
 RUNTIME_FILES = {"dagre.min.js", "evidence.py", "graph_view.py", "knowledge.py", "lesson_retirement.py",
@@ -335,6 +337,12 @@ def install_locked(root, migrate):
                text + ("" if not text or text.endswith(("\n", "\r")) else line_break) + block + line_break)
     if updated.encode() != original:
         files[agents_path] = updated.encode()
+    ignored = read_file(safe_path(root, IGNORE)) or b""
+    missing = [pattern for pattern in LOCAL_PATTERNS if pattern not in ignored.splitlines()]
+    if missing:
+        newline = b"\r\n" if b"\r\n" in ignored else b"\n"
+        prefix = newline if ignored and not ignored.endswith(b"\n") else b""
+        files[IGNORE] = ignored + prefix + newline.join(missing) + newline
     manifest = {"format": 2, "role": ROLE, "files": {k: digest(v) for k, v in wanted.items()},
                 "agents_block": digest(block.encode()), "migrated": previously_migrated or migration}
     manifest_bytes = (json.dumps(manifest, sort_keys=True, indent=2) + "\n").encode()

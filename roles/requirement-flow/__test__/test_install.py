@@ -177,6 +177,14 @@ class InstallProjectTest(unittest.TestCase):
             installer.install(self.project)
         self.assertEqual(snapshot(self.project), original)
 
+    def test_install_adds_local_evidence_ignores_and_keeps_project_patterns(self):
+        path = write(self.project, ".requirements/.gitignore", b"team-local/\r\n.workflow.lock")
+        installer.install(self.project)
+        self.assertTrue(path.read_bytes().startswith(b"team-local/\r\n.workflow.lock\r\n"))
+        for pattern in installer.LOCAL_PATTERNS:
+            self.assertEqual(path.read_bytes().splitlines().count(pattern), 1)
+        self.assertFalse(installer.install(self.project)["changed"])
+
     def test_refuses_modified_managed_files_and_rules_without_writing(self):
         installer.install(self.project)
         for relative in (".agents/skills/requirement-flow/flow.py", ".agents/skills/flow-review/SKILL.md", "AGENTS.md"):

@@ -1,6 +1,7 @@
 """Capture and check local verification artifacts, independent of the renderer."""
 import codecs
 from datetime import datetime, timezone
+from functools import lru_cache
 import hashlib
 import hmac
 import json
@@ -12,7 +13,7 @@ import shutil
 import stat
 import subprocess
 import tempfile
-import time
+import unicodedata
 
 
 def require(value, message):
@@ -56,27 +57,84 @@ def storage(workspace, *, create=False):
     return directory(root)
 
 
-def local_key(root, *, create=False):
-    path = root / ".receipt-key"
-    if create:
+@lru_cache(maxsize=64)
+def git_common_dir(project):
+    # Ignore Git variables inherited from the caller's own repository or hooks.
+    env = {name: value for name, value in os.environ.items() if not name.startswith("GIT_")}
+    result = subprocess.run(["git", "--git-dir=.git", "rev-parse", "--git-common-dir"],
+                            cwd=project, env=env, capture_output=True)
+    require(result.returncode == 0, f"无法定位本项目共享的 Git 目录：{project}")
+    return directory(project / os.fsdecode(result.stdout.rstrip(b"\r\n")))
+
+
+def shared_key_path(root):
+    task = root.parent
+    bucket = task.parent
+    project = bucket.parent.parent
+    if root.name != "evidence" or bucket.name not in ("active", "archive") or bucket.parent.name != ".requirements":
+        return None
+    # An independently initialized project nested inside a different repository keeps its own evidence.
+    marker = project / ".git"
+    require(not linked(marker), f"Git 入口不能是符号链接：{marker}")
+    if not marker.exists():
+        return None
+    ident = unicodedata.normalize("NFC", task.name).encode("utf-8")
+    return git_common_dir(project) / "airules-requirement-flow-keys" / hashlib.sha256(ident).hexdigest()
+
+
+def read_key(path):
+    flags = os.O_RDONLY | getattr(os, "O_BINARY", 0) | getattr(os, "O_NOFOLLOW", 0)
+    with os.fdopen(os.open(regular(path), flags), "rb") as stream:
+        key = stream.read(33)
+    require(len(key) == 32, "本任务的证据校验密钥不完整")
+    return key
+
+
+def key_at(path, *, create=False, expected=None):
+    if create or expected is not None:
+        path.parent.mkdir(mode=0o700, exist_ok=True)
+    directory(path.parent)
+    if not path.exists() and not linked(path):
+        require(create or expected is not None, "缺少本任务的证据校验密钥")
+        fd, tmp = tempfile.mkstemp(prefix=".receipt-key-", dir=path.parent)
         try:
-            fd = os.open(path, os.O_WRONLY | os.O_CREAT | os.O_EXCL, 0o600)
-        except FileExistsError:
-            pass
-        else:
             with os.fdopen(fd, "wb") as stream:
-                stream.write(secrets.token_bytes(32))
+                stream.write(expected if expected is not None else secrets.token_bytes(32))
                 stream.flush()
                 os.fsync(stream.fileno())
-    # Another collector may be creating the same task's first key.
-    for _ in range(30):
-        key = regular(path).read_bytes()
-        if len(key) == 32:
-            return key
-        if key:
-            break
-        time.sleep(0.01)
-    raise ValueError("本任务的证据校验密钥不完整")
+            try:
+                # Publish complete bytes without replacing a concurrent winner's key.
+                os.link(tmp, path)
+            except FileExistsError:
+                pass
+        finally:
+            os.unlink(tmp)
+    key = read_key(path)
+    require(expected is None or hmac.compare_digest(key, expected),
+            "同一需求已有另一份证据校验密钥，请核对需求来源")
+    return key
+
+
+def import_worktree_key(root, source):
+    """Adopt a trusted legacy task key in this repository's private Git metadata."""
+    root = directory(root)
+    target = shared_key_path(root)
+    require(target is not None, "目标应属于已启用需求编排的 Git 工作区")
+    expected = read_key(Path(source))
+    legacy = root / ".receipt-key"
+    if legacy.exists() or linked(legacy):
+        require(hmac.compare_digest(expected, read_key(legacy)), "目标工作区的旧密钥与导入来源冲突")
+    key_at(target, expected=expected)
+
+
+def local_key(root, *, create=False):
+    legacy = root / ".receipt-key"
+    shared = shared_key_path(root)
+    target = shared or legacy
+    previous = read_key(legacy) if shared and (legacy.exists() or linked(legacy)) else None
+    if create and previous is None and not target.exists() and any(root.glob("*/receipt.json")):
+        require(target.exists(), "已有回执缺少原始密钥，请先恢复本任务的证据校验密钥")
+    return key_at(target, create=create, expected=previous)
 
 
 def hash_file(path):

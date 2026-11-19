@@ -23,20 +23,27 @@
   const picks = new Set()
   const chipButtons = new Map()
   const decisionNotes = new Map()
+  let viewPreference = null
+  let chainNodes = new Map()
   let graph = fullGraph
   let nodes = new Map()
   let visibleActions = new Set()
   let visibleStories = []
   let scoped = false
+  const canvasPaper = '#f8f8f4'
   const styles = {
-    request: { fill: '#19394e', stroke: '#19394e', title: '#ffffff', text: '#c5e6e9', icon: '#a5e0d2' },
-    story: { fill: '#eaf2ff', stroke: '#80a5d2', title: '#193e6a', text: '#41698e', icon: '#316ba7' },
-    decision: { fill: '#fff1d8', stroke: '#bd813b', title: '#693c10', text: '#855019', icon: '#a5671e' },
-    contract: { fill: '#e4f4ee', stroke: '#73a89a', title: '#174f4d', text: '#346c60', icon: '#247b6b' },
-    research: { fill: '#e7f4f2', stroke: '#76ada5', title: '#184f52', text: '#396e71', icon: '#2a7772' },
-    develop: { fill: '#ffffff', stroke: '#87a2b8', title: '#193d53', text: '#486a7e', icon: '#32778a' },
-    verify: { fill: '#f2edfa', stroke: '#a998c2', title: '#513e70', text: '#68547e', icon: '#796398' },
-    delivery: { fill: '#e5ebf1', stroke: '#89a1b3', title: '#29485b', text: '#50697c', icon: '#567286' },
+    request: { fill: '#193c4a', stroke: '#193c4a', title: '#fffdf5', text: '#cce4e2', icon: '#9ad4c5' },
+    story: { fill: '#edf3f9', stroke: '#718b9f', title: '#1c3d57', text: '#425d70', icon: '#395f81' },
+    decision: { fill: '#fbf2e1', stroke: '#a6814e', title: '#603e1c', text: '#765734', icon: '#855624' },
+    contract: { fill: '#e7f3ed', stroke: '#668c80', title: '#174a45', text: '#385f57', icon: '#246d61' },
+    research: { fill: '#eaf3f2', stroke: '#668a88', title: '#244b50', text: '#446065', icon: '#346a6c' },
+    develop: { fill: '#eff2f3', stroke: '#7d8d96', title: '#293e4c', text: '#4d5f69', icon: '#4d6675' },
+    verify: { fill: '#f2edf7', stroke: '#907d9b', title: '#493852', text: '#67546e', icon: '#795b87' },
+    delivery: { fill: '#e8eeeb', stroke: '#738981', title: '#304a43', text: '#486358', icon: '#4c6a60' },
+  }
+  const statusColors = {
+    passed: { fill: '#d8ebdd', ink: '#24593a' },
+    pending: { fill: '#f8e8c9', ink: '#714b17' },
   }
   const glyph = {
     request: 'M2 8h5m0 0c3 0 1-5 5-5h2M7 8c3 0 1 5 5 5h2',
@@ -49,12 +56,12 @@
     delivery: 'M2 5h12v8H2zM1 2.5h14V5H1zM6 8h4',
   }
   const lineColors = {
-    normal: '#718da2',
-    story: '#678bb5',
-    done: '#498879',
-    possible: '#ac742e',
-    chosen: '#95581b',
-    skipped: '#9ca8b1',
+    normal: '#65808a',
+    story: '#6484a0',
+    done: '#537e70',
+    possible: '#a16c2d',
+    chosen: '#83531e',
+    skipped: '#7c8986',
   }
   const activeName = {
     ready: '可推进',
@@ -124,15 +131,12 @@
     for (const n of nodes.values()) {
       const size = n.kind === 'request' ? 17 : n.mono ? 14 : 15.5
       const inset = n.kind === 'decision' ? 23 : 14
-      const minWidth = n.kind === 'request' ? 169 : n.kind === 'delivery' ? 151 : wide ? 197 : 157
-      const shortCaption = n.caption && Array.from(n.caption).length <= 24 ? widthOf(n.caption, 11.7, 450) : 0
-      const sharedWidth = n.sharedNote ? widthOf(n.sharedNote, 11.2, 600) + 4 : 0
-      const contentWidth = Math.max(widthOf(n.title, size, 680, n.mono), shortCaption, sharedWidth) + 2 * inset + 2
-      const width = Math.ceil(Math.min(n.kind === 'decision' ? 257 : 235, Math.max(minWidth, contentWidth)))
+      // Cards keep a consistent reading width at each zoom.
+      const width = n.kind === 'request' ? 228 : isOverview() ? 198 : n.kind === 'decision' ? 238 : 216
       const labels = linesOf(n.title, width - 2 * inset, 2, size, 680, n.mono)
       const caps = linesOf(n.caption, width - 2 * inset, 1, 11.7, 450)
       const shared = linesOf(n.sharedNote, width - 2 * inset, 1, 11.2, 600)
-      const height = 34 + 18 * labels.length + (caps.length ? 14 : 0) + (shared.length ? 17 : 0)
+      const height = Math.max(isOverview() ? 74 : 78, 36 + 18 * labels.length + (caps.length ? 14 : 0) + (shared.length ? 17 : 0))
       boxes.set(n.id, { width, height, size, inset, labels, caps, shared })
     }
     layouts.clear()
@@ -155,8 +159,8 @@
     svg(
       'path',
       {
-        'd': 'M.8 .8 7 4 .8 7.2',
-        'fill': 'none',
+        'd': 'M1 1 7 4 1 7Z',
+        'fill': color,
         'stroke': color,
         'stroke-width': 1.4,
         'stroke-linejoin': 'round',
@@ -171,9 +175,9 @@
     const g = new dagre.graphlib.Graph({ multigraph: true })
     g.setGraph({
       rankdir: dir,
-      ranksep: dir === 'TB' ? 20 : 34,
-      nodesep: dir === 'TB' ? 52 : 82,
-      edgesep: 15,
+      ranksep: dir === 'TB' ? 66 : 76,
+      nodesep: dir === 'TB' ? 44 : 36,
+      edgesep: 20,
       marginx: 8,
       marginy: 8,
     })
@@ -197,8 +201,114 @@
       positions: new Map(graph.nodes.map(n => [n.id, g.node(n.id)])),
       routes: graph.edges.map((e, i) => g.edge(e.source, e.target, String(i))),
     }
+    routeWires(result)
     layouts.set(dir, result)
     return result
+  }
+  function routeWires(result) {
+    // Dagre supplies clear passages between cards, including waypoints beside
+    // intervening ranks on long dependencies. Turn only in the gutters.
+    const across = result.dir === 'LR'
+    const along = across ? 'x' : 'y'
+    const cross = across ? 'y' : 'x'
+    const depth = across ? 'width' : 'height'
+    const breadth = across ? 'height' : 'width'
+    const rankDepth = new Map()
+    const ports = new Map()
+    const gutters = new Map()
+    const reserve = obj => rankDepth.set(obj[along], Math.max(rankDepth.get(obj[along]) || 0, obj[depth] / 2))
+    for (const card of result.positions.values()) reserve(card)
+    for (const route of result.routes) {
+      if (Number.isFinite(route[along]))
+        reserve(route)
+    }
+
+    const anchors = result.routes.map((route, i) => {
+      const edge = graph.edges[i]
+      const from = result.positions.get(edge.source)
+      const to = result.positions.get(edge.target)
+      const sign = Math.sign(to[along] - from[along])
+      if (!sign || route.points.length < 3)
+        return null
+      const middle = route.points.slice(1, -1)
+      const ends = [[edge.source, from, sign, middle[0]], [edge.target, to, -sign, middle.at(-1)]]
+      const [start, end] = ends.map(([id, card, side, neighbor], j) => {
+        const paper = { ...card }
+        const face = JSON.stringify([id, side])
+        if (!ports.has(face))
+          ports.set(face, [])
+        ports.get(face).push({ paper, toward: neighbor[cross], tie: j ? from[cross] : to[cross] })
+        return paper
+      })
+      return [start, ...middle, end]
+    })
+    // Even at a busy junction an arrow meets the flat part of its card.
+    for (const face of ports.values()) {
+      face.sort((a, b) => a.toward - b.toward || a.tie - b.tie)
+      const step = Math.min(12, Math.max(0, face[0].paper[breadth] - 32) / Math.max(1, face.length - 1))
+      face.forEach(({ paper }, j) => {
+        paper[cross] += (j - (face.length - 1) / 2) * step
+      })
+    }
+
+    const legs = anchors.map(points => points && points.slice(1).map((next, i) => {
+      const prev = points[i]
+      const lo = Math.min(prev[along], next[along])
+      const hi = Math.max(prev[along], next[along])
+      const left = lo + (rankDepth.get(lo) || 0)
+      const right = hi - (rankDepth.get(hi) || 0)
+      const leg = { turn: (left + right) / 2, left, right, low: Math.min(prev[cross], next[cross]), high: Math.max(prev[cross], next[cross]) }
+      if (leg.low !== leg.high) {
+        const key = JSON.stringify([lo, hi])
+        if (!gutters.has(key))
+          gutters.set(key, [])
+        gutters.get(key).push(leg)
+      }
+      return leg
+    }))
+    // Give overlapping transverse segments separate tracks. Disjoint
+    // branches can reuse the same track without suggesting a connection.
+    for (const group of gutters.values()) {
+      const last = []
+      group.sort((a, b) => a.low - b.low || a.high - b.high)
+      for (const leg of group) {
+        let lane = last.findIndex(end => end + 5 < leg.low)
+        if (lane < 0)
+          lane = last.length
+        last[lane] = leg.high
+        leg.lane = lane
+      }
+      const space = Math.max(0, group[0].right - group[0].left - 12)
+      const step = Math.min(8, space / Math.max(1, last.length - 1))
+      for (const leg of group) leg.turn += (leg.lane - (last.length - 1) / 2) * step
+    }
+    anchors.forEach((points, i) => {
+      if (!points)
+        return
+      const end = points.at(-1)
+      const start = points[0]
+      const sign = Math.sign(end[along] - start[along])
+      const turns = []
+      const add = (u, v) => {
+        const point = { [along]: u, [cross]: v }
+        const last = turns.at(-1)
+        if (last && last.x === point.x && last.y === point.y)
+          return
+        const prev = turns.at(-2)
+        if (prev && ((prev.x === last.x && last.x === point.x) || (prev.y === last.y && last.y === point.y)))
+          turns.pop()
+        turns.push(point)
+      }
+      add(start[along] + sign * (start[depth] / 2 + 1), start[cross])
+      for (const [j, leg] of legs[i].entries()) {
+        add(leg.turn, points[j][cross])
+        add(leg.turn, points[j + 1][cross])
+        if (j < legs[i].length - 1)
+          add(points[j + 1][along], points[j + 1][cross])
+      }
+      add(end[along] - sign * (end[depth] / 2 + 2.5), end[cross])
+      result.routes[i].points = turns
+    })
   }
   function rounded(points) {
     if (!points || !points.length)
@@ -213,7 +323,7 @@
       const bc = Math.hypot(c.x - b.x, c.y - b.y)
       if (!ab || !bc)
         continue
-      const r = Math.min(14, ab / 2, bc / 2)
+      const r = Math.min(7, ab / 2, bc / 2)
       d
         += ` L${
           xy({ x: b.x + ((a.x - b.x) * r) / ab, y: b.y + ((a.y - b.y) * r) / ab })
@@ -227,6 +337,8 @@
   let layout
   let camera = { x: 0, y: 0, scale: 1 }
   let fitted = 1
+  let cameraMode = 'reading'
+  let gestureLocked = true
   let selected = null
   let restoreCamera = null
   let boxSize = { w: 0, h: 0 }
@@ -241,8 +353,11 @@
       key = 'done'
     const color = lineColors[key]
     const group = svg('g', { 'class': 'map-edge', 'aria-hidden': 'true' }, $('wires'))
+    const d = rounded(route.points)
+    // A narrow background stroke gives a crossing a visible overpass in the SVG export too.
+    svg('path', { 'd': d, 'class': 'map-line', 'stroke': canvasPaper, 'stroke-width': 5.5 }, group)
     const at = {
-      'd': rounded(route.points),
+      'd': d,
       'class': 'map-line',
       'stroke': color,
       'stroke-width': e.mode === 'chosen' ? 2.8 : 1.9,
@@ -266,8 +381,8 @@
           'width': route.width,
           'height': 17,
           'rx': 4,
-          'fill': '#fff9ec',
-          'stroke': '#e2cba8',
+          'fill': e.mode === 'skipped' ? styles.develop.fill : styles.decision.fill,
+          'stroke': e.mode === 'skipped' ? styles.develop.stroke : styles.decision.stroke,
           'stroke-width': 0.7,
         },
         label,
@@ -281,7 +396,7 @@
           'text-anchor': 'middle',
           'font-size': 11.8,
           'font-weight': 600,
-          'fill': e.mode === 'skipped' ? '#687783' : '#84501e',
+          'fill': e.mode === 'skipped' ? styles.develop.text : styles.decision.text,
         },
         label,
         e.label,
@@ -289,6 +404,67 @@
     }
     edgeEls.push([group, label])
   }
+  function isOverview() {
+    if (!storyIds.length)
+      return false
+    if (viewPreference)
+      return viewPreference === 'overview'
+    return !picks.size && !$('feature-query').value.trim()
+  }
+
+  function overviewLayout() {
+    const rootBox = boxes.get('@request')
+    const cardWidth = boxes.get(visibleStories[0]).width
+    const pitch = cardWidth + 34
+    const columns = Math.min(visibleStories.length, Math.max(1, Math.min(3, Math.floor((boxSize.w - 8) / pitch))))
+    const width = Math.max(rootBox.width + 24, columns * pitch + 6)
+    const root = { x: width / 2, y: 12 + rootBox.height / 2 }
+    const positions = new Map([['@request', root]])
+    const branches = []
+    let top = root.y + rootBox.height / 2 + 29
+    for (let i = 0; i < visibleStories.length; i += columns) {
+      const row = visibleStories.slice(i, i + columns)
+      const rowHeight = Math.max(...row.map(id => boxes.get(id).height))
+      row.forEach((id, col) => {
+        const b = boxes.get(id)
+        const left = columns === 2 && col === 0
+        const x = columns === 2
+          ? root.x + (left ? -1 : 1) * (b.width / 2 + 15)
+          : (width - columns * pitch) / 2 + (col + 0.5) * pitch + 6
+        const y = top + rowHeight / 2
+        positions.set(id, { x, y })
+        const end = x + (left ? 1 : -1) * b.width / 2
+        branches.push({ y, end, rail: columns === 2 ? root.x : end - 15 })
+      })
+      top += rowHeight + 14
+    }
+    return { dir: 'TB', width, height: top, positions, branches }
+  }
+
+  function drawOverviewWires() {
+    const { positions, branches } = layout
+    const root = positions.get('@request')
+    const bottom = root.y + boxes.get('@request').height / 2
+    const joint = bottom + 14
+    const attrs = { 'class': 'map-line', 'stroke': lineColors.normal, 'stroke-width': 1.7 }
+    const base = $('wires')
+    const rails = new Map()
+    for (const { rail, y } of branches) rails.set(rail, y)
+    svg('path', { ...attrs, d: `M${root.x} ${bottom}V${joint}` }, base)
+    const xs = [root.x, ...rails.keys()]
+    svg('path', { ...attrs, d: `M${Math.min(...xs)} ${joint}H${Math.max(...xs)}` }, base)
+    for (const [x, lastY] of rails)
+      svg('path', { ...attrs, d: `M${x} ${joint}V${lastY}` }, base)
+    const junctions = new Set()
+    for (const { rail, y, end } of branches) {
+      const line = svg('path', { ...attrs, class: 'map-edge map-line', d: `M${rail} ${y}H${end}` }, base)
+      if (!junctions.has(`${rail},${y}`))
+        svg('circle', { cx: rail, cy: y, r: 2.3, fill: attrs.stroke }, base)
+      junctions.add(`${rail},${y}`)
+      edgeEls.push([line])
+    }
+  }
+
   function drawNode(n) {
     const p = layout.positions.get(n.id)
     const b = boxes.get(n.id)
@@ -310,7 +486,7 @@
     svg('title', {}, g, [n.title, n.state, n.caption, n.sharedNote].filter(Boolean).join(' · '))
     const x = -b.width / 2
     const y = -b.height / 2
-    const groupColor = n.activity === 'active' ? '#216c84' : c.stroke
+    const groupColor = n.activity === 'active' ? '#28746a' : c.stroke
     const shape = {
       'fill': c.fill,
       'stroke': groupColor,
@@ -422,15 +598,20 @@
     )
     svg('text', { 'x': left + 17, 'y': y + 18.4, 'class': 'n-label', 'font-size': 10.8, 'fill': c.text }, g, n.label)
     if (n.state) {
-      const ink
-        = n.state === '待你决定' || n.state === '待核对' || n.state === '需复核'
-          ? '#864d16'
-          : n.activity === 'active'
-            ? '#0c6967'
-            : c.text
       const right = -x - b.inset
+      const progress = n.kind === 'story' && n.state.match(/^(\d+)\/(\d+) 已验$/)
+      let badge
+      if (progress)
+        badge = progress[1] === progress[2] ? statusColors.passed : statusColors.pending
+      else if (['待你决定', '待核对', '需复核', '待验'].includes(n.state) || (n.kind === 'verify' && n.activity === 'ready'))
+        badge = statusColors.pending
+      if (badge) {
+        const width = widthOf(n.state, 10.5, 600) + 10
+        svg('rect', { x: right - width + 4, y: y + 5, width, height: 18, rx: 5, fill: badge.fill }, g)
+      }
       if (n.activity === 'active')
-        svg('circle', { cx: right - widthOf(n.state, 10.5, 600) - 6, cy: y + 14.6, r: 2.5, fill: '#12847a' }, g)
+        svg('circle', { cx: right - widthOf(n.state, 10.5, 600) - 6, cy: y + 14.6, r: 2.5, fill: '#28746a' }, g)
+      const ink = badge?.ink || (n.activity === 'done' ? statusColors.passed.ink : c.text)
       svg(
         'text',
         { 'x': right, 'y': y + 18.4, 'class': 'n-label', 'font-size': 10.5, 'fill': ink, 'text-anchor': 'end' },
@@ -493,32 +674,7 @@
   }
   function fittedScale(l) {
     const margin = boxSize.w < 500 ? 9 : 17
-    return Math.min((boxSize.w - margin * 2) / l.width, (boxSize.h - margin * 2) / l.height, 1.65)
-  }
-  function spreadLanes(base) {
-    const vertical = base.dir === 'TB'
-    const axis = vertical ? 'x' : 'y'
-    const span = vertical ? 'width' : 'height'
-    const size = vertical ? boxSize.w : boxSize.h
-    const scale = Math.min(2.6, Math.max(1, (size - 40) / (fittedScale(base) * base[span])))
-    if (scale <= 1.04)
-      return base
-    const positions = new Map()
-    for (const [id, p] of base.positions) positions.set(id, { ...p, [axis]: p[axis] * scale })
-    const routes = base.routes.map((r, i) => {
-      const e = graph.edges[i]
-      const first = base.positions.get(e.source)
-      const last = base.positions.get(e.target)
-      const points = r.points.map((p, j) => {
-        const owner = j === 0 ? first : j === r.points.length - 1 ? last : null
-        return { ...p, [axis]: owner ? owner[axis] * scale + p[axis] - owner[axis] : p[axis] * scale }
-      })
-      const out = { ...r, points }
-      if (Number.isFinite(r[axis]))
-        out[axis] = r[axis] * scale
-      return out
-    })
-    return { ...base, [span]: base[span] * scale, positions, routes }
+    return Math.min(Math.max(1, boxSize.w - margin * 2) / l.width, Math.max(1, boxSize.h - margin * 2) / l.height, 1)
   }
   function onResize(force = false) {
     const rect = map.getBoundingClientRect()
@@ -530,36 +686,98 @@
     ) {
       return
     }
+    const previous = layout
     boxSize = { w: rect.width, h: rect.height }
     measureBoxes(boxSize.w > 840)
-    const down = makeLayout('TB')
-    const across = makeLayout('LR')
-    const next = spreadLanes(fittedScale(across) > fittedScale(down) * 1.08 ? across : down)
+    let next
+    if (isOverview()) {
+      next = overviewLayout()
+    }
+    else {
+      const down = makeLayout('TB')
+      const across = makeLayout('LR')
+      next = fittedScale(across) > fittedScale(down) * 1.08 ? across : down
+    }
     if (layout !== next) {
       layout = next
       nodeEls.clear()
       edgeEls.length = 0
       for (const id of ['wires', 'wire-labels', 'stations']) $(id).replaceChildren()
-      graph.edges.forEach(drawWire)
+      if (isOverview())
+        drawOverviewWires()
+      else graph.edges.forEach(drawWire)
       graph.nodes.forEach(drawNode)
     }
-    fit()
+    fitted = fittedScale(layout)
+    if (!previous || force === true) {
+      // A new filter starts at its entrance. A whole-map thumbnail does not carry across views.
+      readingPosition(cameraMode === 'fit' ? 1 : camera.scale)
+    }
+    else if (cameraMode === 'fit') {
+      fit()
+    }
+    else if (cameraMode === 'reading') {
+      readingPosition(camera.scale)
+    }
+    else if (previous !== layout) {
+      // Anchor the same card when wrapping columns or rotating the diagram.
+      const nearest = [...previous.positions].reduce((best, entry) => {
+        const distance = p => Math.hypot(p.x - camera.x, p.y - camera.y)
+        return distance(entry[1]) < distance(best[1]) ? entry : best
+      })
+      const [id, before] = nearest
+      const after = layout.positions.get(id)
+      camera.x += after.x - before.x
+      camera.y += after.y - before.y
+      updateCamera()
+    }
+    else {
+      updateCamera()
+    }
     if (selected) {
-      restoreCamera = { ...camera }
       highlight(selected)
       reveal(selected)
     }
   }
+  function readingPosition(scale = 1) {
+    if (!layout)
+      return
+    cameraMode = 'reading'
+    const entry = layout.positions.get('@request')
+    const top = boxSize.h / (2 * scale)
+    camera = { x: layout.width / 2, y: top, scale }
+    if (!isOverview() && entry) {
+      if (layout.dir === 'LR') {
+        camera.x = Math.min(boxSize.w / (2 * scale), layout.width / 2)
+        camera.y = entry.y
+      }
+      else {
+        camera.x = entry.x
+      }
+    }
+    updateCamera()
+  }
   function fit() {
     if (!layout)
       return
-    fitted = fittedScale(layout)
+    cameraMode = 'fit'
     camera = { x: layout.width / 2, y: layout.height / 2, scale: fitted }
     updateCamera()
   }
   function updateCamera() {
     const w = boxSize.w / camera.scale
     const h = boxSize.h / camera.scale
+    // Manual movement ends at the diagram margins. The detail pane can borrow that space to reveal a card.
+    if (layout && !selected && cameraMode === 'manual') {
+      const margin = 24 / camera.scale
+      function withinContent(value, viewport, content) {
+        const start = viewport / 2 - margin
+        const end = content - viewport / 2 + margin
+        return Math.max(Math.min(start, end), Math.min(Math.max(start, end), value))
+      }
+      camera.x = withinContent(camera.x, w, layout.width)
+      camera.y = withinContent(camera.y, h, layout.height)
+    }
     map.setAttribute('viewBox', [camera.x - w / 2, camera.y - h / 2, w, h].join(' '))
     $('scale').textContent = `${Math.round(camera.scale * 100)}%`
     for (const [id, atLimit, title, limitTitle] of [
@@ -571,16 +789,17 @@
     }
   }
   function minZoom() {
-    return fitted * 0.4
+    return Math.min(0.25, fitted)
   }
   function maxZoom() {
-    return Math.max(3, fitted * 4)
+    return 3
   }
   function zoom(ratio, px = boxSize.w / 2, py = boxSize.h / 2) {
     if (!layout)
       return
     const old = camera.scale
     const next = Math.min(maxZoom(), Math.max(minZoom(), old * ratio))
+    cameraMode = 'manual'
     camera.x += (px - boxSize.w / 2) * (1 / old - 1 / next)
     camera.y += (py - boxSize.h / 2) * (1 / old - 1 / next)
     camera.scale = next
@@ -588,15 +807,17 @@
   }
   function highlight(key) {
     const related = new Set([key])
+    const tracedEdges = new Set()
     // Traverse each direction separately; a shared endpoint must not pull in a sibling story.
     for (const forward of [true, false]) {
       const pending = [key]
       const seen = new Set(pending)
       while (pending.length) {
         const curr = pending.pop()
-        graph.edges.forEach((e) => {
+        graph.edges.forEach((e, i) => {
           if ((forward ? e.source : e.target) !== curr)
             return
+          tracedEdges.add(i)
           const next = forward ? e.target : e.source
           if (!seen.has(next)) {
             seen.add(next)
@@ -611,23 +832,42 @@
       el.classList.toggle('selected', id === key)
       el.setAttribute('aria-expanded', String(id === key))
     }
-    graph.edges.forEach((e, i) =>
-      edgeEls[i].forEach(el => el?.classList.toggle('muted', !related.has(e.source) || !related.has(e.target))),
-    )
+    edgeEls.forEach((items, i) => {
+      const traced = tracedEdges.has(i)
+      for (const el of items) {
+        if (!el)
+          continue
+        el.classList.toggle('muted', !traced)
+        if (traced)
+          el.parentNode.append(el)
+      }
+    })
   }
   function reveal(key) {
-    const p = layout.positions.get(key)
-    const panel = $('inspector').getBoundingClientRect()
+    const p = layout?.positions.get(key)
+    if (!p)
+      return
     const frame = map.getBoundingClientRect()
-    const sx = (p.x - camera.x) * camera.scale + frame.left + frame.width / 2
-    const sy = (p.y - camera.y) * camera.scale + frame.top + frame.height / 2
-    if (sx >= panel.left - 40 && sy >= panel.top - 30 && sx <= panel.right + 40 && sy <= panel.bottom + 30) {
-      if (frame.width < 790)
-        camera.y = p.y + (frame.height / 2 - (panel.top - frame.top) / 2) / camera.scale
-      else camera.x = p.x + (frame.width / 2 - (panel.left - frame.left) / 2) / camera.scale
-      updateCamera()
+    const inspector = $('inspector')
+    const panel = inspector.getBoundingClientRect()
+    const right = !inspector.hidden && frame.width > 790 ? panel.left - frame.left : frame.width
+    const bottom = !inspector.hidden && frame.width <= 790 ? panel.top - frame.top : frame.height
+    const { width, height } = boxes.get(key)
+    function shift(pos, center, span, cardSize, space) {
+      const target = (pos - center) * camera.scale + span / 2
+      const margin = Math.min(space / 2, cardSize * camera.scale / 2 + 12)
+      const safe = Math.max(margin, Math.min(space - margin, target))
+      return (target - safe) / camera.scale
     }
+    camera.x += shift(p.x, camera.x, frame.width, width, right)
+    camera.y += shift(p.y, camera.y, frame.height, height, bottom)
+    updateCamera()
   }
+  map.addEventListener('focusin', (event) => {
+    const card = event.target.closest('[data-node]')
+    if (card?.matches(':focus-visible'))
+      reveal(card.dataset.node)
+  })
   const pointers = new Map()
   let pinch = null
   let dragging = false
@@ -636,7 +876,7 @@
     return { dist: Math.max(1, Math.hypot(a.x - b.x, a.y - b.y)), x: (a.x + b.x) / 2, y: (a.y + b.y) / 2 }
   }
   map.addEventListener('pointerdown', (e) => {
-    if (e.button !== 0 && e.pointerType === 'mouse')
+    if ((e.button !== 0 && e.pointerType === 'mouse') || pointers.size >= 2)
       return
     pointers.set(e.pointerId, { x: e.clientX, y: e.clientY, startX: e.clientX, startY: e.clientY })
     if (pointers.size === 2) {
@@ -655,6 +895,7 @@
     if (!dragging && Math.hypot(p.x - p.startX, p.y - p.startY) < 4)
       return
     dragging = true
+    cameraMode = 'manual'
     map.classList.add('dragging')
     if (!map.hasPointerCapture(e.pointerId))
       map.setPointerCapture(e.pointerId)
@@ -663,7 +904,9 @@
       const rect = map.getBoundingClientRect()
       camera.x -= (next.x - pinch.x) / camera.scale
       camera.y -= (next.y - pinch.y) / camera.scale
-      zoom(next.dist / pinch.dist, next.x - rect.left, next.y - rect.top)
+      if (gestureLocked)
+        updateCamera()
+      else zoom(next.dist / pinch.dist, next.x - rect.left, next.y - rect.top)
       pinch = next
     }
     else {
@@ -691,13 +934,67 @@
     'wheel',
     (e) => {
       e.preventDefault()
+      if (!layout)
+        return
+      const unit = e.deltaMode === 1 ? 16 : e.deltaMode === 2 ? boxSize.h : 1
+      if (gestureLocked) {
+        // Touchpad pinch is delivered as Ctrl+wheel by Chromium and Firefox.
+        if (e.ctrlKey || e.metaKey)
+          return
+        cameraMode = 'manual'
+        camera.x += (e.shiftKey && !e.deltaX ? e.deltaY : e.deltaX) * unit / camera.scale
+        camera.y += (e.shiftKey && !e.deltaX ? 0 : e.deltaY) * unit / camera.scale
+        updateCamera()
+        return
+      }
       const r = map.getBoundingClientRect()
-      zoom(Math.exp(Math.max(-0.6, Math.min(0.6, -e.deltaY * 0.002))), e.clientX - r.left, e.clientY - r.top)
+      zoom(Math.exp(Math.max(-0.6, Math.min(0.6, -e.deltaY * unit * 0.002))), e.clientX - r.left, e.clientY - r.top)
     },
     { passive: false },
   )
   $('plus').onclick = () => zoom(1.25)
   $('minus').onclick = () => zoom(0.8)
+  $('scale').onclick = () => {
+    closePanel(false)
+    readingPosition()
+  }
+  // Safari on macOS reports trackpad pinches as gesture events.
+  let gestureScale = 1
+  map.addEventListener('gesturestart', (e) => {
+    e.preventDefault()
+    gestureScale = e.scale
+  }, { passive: false })
+  map.addEventListener('gesturechange', (e) => {
+    e.preventDefault()
+    if (!gestureLocked && pointers.size < 2 && gestureScale > 0 && e.scale > 0) {
+      const rect = map.getBoundingClientRect()
+      const x = Number.isFinite(e.clientX) ? e.clientX - rect.left : boxSize.w / 2
+      const y = Number.isFinite(e.clientY) ? e.clientY - rect.top : boxSize.h / 2
+      zoom(e.scale / gestureScale, x, y)
+    }
+    gestureScale = e.scale
+  }, { passive: false })
+  map.addEventListener('gestureend', e => e.preventDefault(), { passive: false })
+
+  const lock = $('zoom-lock')
+  const lockKey = 'airules.requirement-flow.gesture-lock'
+  try {
+    gestureLocked = localStorage.getItem(lockKey) !== 'off'
+  }
+  catch { /* Storage can be disabled for offline handbooks. */ }
+  function showLock() {
+    lock.setAttribute('aria-pressed', String(gestureLocked))
+    lock.title = gestureLocked ? '手势缩放已锁定，点击后允许滚轮和双指缩放' : '手势缩放已开启，点击锁定当前比例'
+  }
+  showLock()
+  lock.onclick = () => {
+    gestureLocked = !gestureLocked
+    showLock()
+    try {
+      localStorage.setItem(lockKey, gestureLocked ? 'on' : 'off')
+    }
+    catch { /* The switch remains usable without storage. */ }
+  }
   $('fit').onclick = () => {
     closePanel(false)
     fit()
@@ -719,6 +1016,7 @@
     const move = { ArrowLeft: [-1, 0], ArrowRight: [1, 0], ArrowUp: [0, -1], ArrowDown: [0, 1] }[e.key]
     if (move) {
       e.preventDefault()
+      cameraMode = 'manual'
       camera.x += (move[0] * 44) / camera.scale
       camera.y += (move[1] * 44) / camera.scale
       updateCamera()
@@ -751,15 +1049,15 @@
   }
   function jump(parent, id, text) {
     const dest = graph.aliases[id] || id
-    if (!nodes.has(dest))
+    if (!chainNodes.has(dest))
       return
-    const btn = html('button', parent, text || nodes.get(dest).title, 'link-button')
+    const btn = html('button', parent, text || chainNodes.get(dest).title, 'link-button')
     btn.type = 'button'
     btn.onclick = () => openPanel(dest, true)
   }
   function related(parent, ids, title = '图中关联') {
     const destinations = [...new Set(ids.map(id => graph.aliases[id] || id))].filter(
-      id => id !== selected && nodes.has(id),
+      id => id !== selected && chainNodes.has(id),
     )
     if (destinations.length) {
       const group = section(title, parent)
@@ -816,8 +1114,8 @@
       history = history.filter(
         e =>
           visibleActions.has(e.action)
-          || nodes.has(e.decision)
-          || (e.changed || []).some(id => nodes.has(id) || visibleActions.has(id)),
+          || chainNodes.has(e.decision)
+          || (e.changed || []).some(id => chainNodes.has(id) || visibleActions.has(id)),
       )
     }
     if (!history.length)
@@ -1080,7 +1378,7 @@
         ['来源', work.kind],
       ])
       showLessons(detail, visibleStories, { all: !scoped })
-      showQueue(detail, visibleActions, nodes, visibleStories)
+      showQueue(detail, visibleActions, chainNodes, visibleStories)
       if (work.scope.length)
         list(section('本次范围'), work.scope)
       related(detail, Object.keys(work.stories), '用户故事')
@@ -1090,10 +1388,21 @@
     else if (n.kind === 'story') {
       const story = work.stories[key]
       html('p', detail, story.goal)
+      if (isOverview()) {
+        const inspect = html('button', detail, '查看此功能的实现链路', 'inspect-feature')
+        inspect.type = 'button'
+        inspect.onclick = () => {
+          viewPreference = 'detail'
+          picks.clear()
+          picks.add(key)
+          $('feature-query').value = ''
+          refreshFeatures()
+          map.focus({ preventScroll: true })
+        }
+      }
       pairs(detail, [
         ['角色', story.actor],
         ['前置', story.before],
-        ['依据', story.basis],
       ])
       showLessons(detail, [key])
       showQueue(detail, new Set(fullGraph.features[key].actions), featureNodes.get(key), [key])
@@ -1101,6 +1410,8 @@
         list(section('关键处理'), story.flow, true)
       showScenarios(detail, queue.scenarios.filter(ex => ex.story === key))
       showRetiredScenarios(detail, [key])
+      if (story.basis)
+        html('p', disclosure(detail, '需求与实现依据'), story.basis, 'source-note')
       const refs = Object.entries(work.actions).filter(([, a]) => a.stories.includes(key))
       related(
         detail,
@@ -1189,6 +1500,10 @@
     }
   }
   function openPanel(key, changeHash) {
+    if (isOverview() && !nodes.has(key) && chainNodes.has(key)) {
+      viewPreference = 'detail'
+      refreshFeatures(changeHash)
+    }
     if (!nodes.has(key))
       return
     if (!selected)
@@ -1241,20 +1556,20 @@
         : hash === 'agent'
           ? '@request'
           : null
-    if (key && nodes.has(key))
+    if (key && chainNodes.has(key))
       openPanel(key, false)
     else if (selected)
       closePanel(false)
   }
   $('close-panel').onclick = () => closePanel()
   window.addEventListener('keydown', (e) => {
-    if (e.key === 'Escape' && selected)
+    if (e.key === 'Escape' && !e.isComposing && !e.defaultPrevented && selected)
       closePanel()
   })
   $('inspector').setAttribute('role', 'dialog')
   window.addEventListener('hashchange', route)
   function exportMap() {
-    if (!layout)
+    if (!layout || $('export').getAttribute('aria-disabled') === 'true')
       return
     const copy = map.cloneNode(true)
     for (const el of copy.querySelectorAll('.muted,.selected')) el.classList.remove('muted', 'selected')
@@ -1267,7 +1582,7 @@
     copy.setAttribute('viewBox', rect.join(' '))
     copy.setAttribute('width', rect[2])
     copy.setAttribute('height', rect[3])
-    const bg = svg('rect', { x: rect[0], y: rect[1], width: rect[2], height: rect[3], fill: '#f5f8fb' })
+    const bg = svg('rect', { x: rect[0], y: rect[1], width: rect[2], height: rect[3], fill: canvasPaper })
     copy.insertBefore(bg, copy.firstChild)
     const subject = scoped ? visibleStories.map(id => work.stories[id].title).join('、') : work.title
     const title = svg('title', {}, null, `${subject} · ${work.kind} · v${work.revision}`)
@@ -1311,6 +1626,8 @@
   }
   function filterQuery() {
     const args = new URLSearchParams()
+    if (viewPreference)
+      args.set('view', viewPreference)
     const ids = storyIds.filter(id => picks.has(id))
     if (ids.length)
       args.set('features', ids.join(','))
@@ -1323,6 +1640,8 @@
 
   function readFilters() {
     const url = new URL(location.href)
+    const view = url.searchParams.get('view')
+    viewPreference = ['overview', 'detail'].includes(view) ? view : null
     const fromURL = new Set((url.searchParams.get('features') || '').split(','))
     picks.clear()
     for (const id of storyIds) {
@@ -1383,8 +1702,48 @@
         }
       }
     }
-    graph = { ...fullGraph, nodes: viewNodes, edges }
-    nodes = new Map(viewNodes.map(n => [n.id, n]))
+    chainNodes = new Map(viewNodes.map(n => [n.id, n]))
+    if (isOverview()) {
+      const shown = viewNodes.filter(n => n.kind === 'request' || n.kind === 'story').map((n) => {
+        if (n.kind === 'story')
+          return { ...n, label: '功能', caption: work.stories[n.id].goal || n.caption }
+        const cases = queue.scenarios.filter(ex => included.has(ex.story))
+        const passed = cases.filter(ex => ex.status === 'passed').length
+        const counts = [`${ids.length} 个功能`]
+        if (cases.length)
+          counts.push(`${passed}/${cases.length} 个场景已验`)
+        return { ...n, caption: counts.join(' · ') }
+      })
+      graph = { ...fullGraph, nodes: shown, edges: ids.map(target => ({ source: '@request', target, mode: 'story' })) }
+    }
+    else {
+      graph = { ...fullGraph, nodes: viewNodes, edges }
+    }
+    nodes = new Map(graph.nodes.map(n => [n.id, n]))
+  }
+
+  function summarizeFilter(ids, term) {
+    const toggle = $('filter-toggle')
+    const badge = $('filter-badge')
+    const active = Boolean(term || picks.size)
+    let summary = '筛选功能'
+    let description = `全部 ${storyIds.length} 个功能`
+    if (term) {
+      summary = term
+      description = `搜索「${term}」，匹配 ${ids.length} 个功能`
+    }
+    else if (picks.size) {
+      const titles = ids.map(id => work.stories[id].title)
+      summary = picks.size === 1 ? titles[0] : '已选功能'
+      description = `已选 ${ids.length} 个功能，${titles.join('、')}`
+    }
+    $('filter-summary').textContent = summary
+    badge.hidden = !term && picks.size <= 1
+    badge.textContent = badge.hidden ? '' : String(ids.length)
+    toggle.dataset.filtered = String(active)
+    toggle.title = `筛选功能 · ${description}`
+    toggle.setAttribute('aria-label', `筛选功能，${description}`)
+    $('filter-reset').hidden = !active
   }
 
   function refreshFeatures(changeUrl = true) {
@@ -1396,6 +1755,12 @@
     const matches = storyIds.filter(id => words.every(word => searchable.get(id).includes(word)))
     const ids = words.length ? matches : picks.size ? storyIds.filter(id => picks.has(id)) : storyIds
     selectGraph(ids)
+    summarizeFilter(ids, term)
+    $('map-modes').hidden = !storyIds.length
+    $('overview-mode').setAttribute('aria-pressed', String(isOverview()))
+    $('detail-mode').setAttribute('aria-pressed', String(!isOverview()))
+    $('relation-label').textContent = isOverview() ? '包含功能' : '关联'
+    $('branch-legend').hidden = !graph.edges.some(e => e.decision)
     for (const [id, btn] of chipButtons) {
       btn.hidden = Boolean(words.length) && !matches.includes(id)
       btn.setAttribute('aria-pressed', String(picks.has(id)))
@@ -1404,6 +1769,7 @@
     $('feature-count').textContent
       = `${(words.length ? '匹配 ' : picks.size ? '已选 ' : '显示 ') + ids.length} / ${storyIds.length}`
     const empty = Boolean(words.length) && !ids.length
+    $('filter-no-match').hidden = !empty
     $('empty-search').hidden = !empty
     $('empty-label').textContent = empty ? `没有匹配「${term}」的功能点` : ''
     map.style.visibility = empty ? 'hidden' : 'visible'
@@ -1411,7 +1777,7 @@
     document.querySelector('.app').classList.toggle('no-results', empty)
     $('export').setAttribute('aria-disabled', String(empty))
     $('export').title = empty ? '当前没有匹配的功能点，清空搜索或更换关键词后可导出' : '保存当前显示的节点与连线为 SVG'
-    $('export-caption').textContent = scoped ? '导出当前图' : '导出整图'
+    $('export-caption').textContent = isOverview() ? '导出总览' : scoped ? '导出当前图' : '导出整图'
     const ai = $('ai-record')
     const contextParams = new URLSearchParams()
     if (csrf && scoped && !empty) {
@@ -1424,6 +1790,7 @@
       const url = new URL(location.href)
       url.searchParams.delete('q')
       url.searchParams.delete('features')
+      url.searchParams.delete('view')
       for (const [k, v] of new URLSearchParams(filterQuery())) url.searchParams.set(k, v)
       recordHash(url.href)
     }
@@ -1441,13 +1808,55 @@
 
   function initializeFeatures() {
     const search = $('feature-query')
-    $('feature-bar').hidden = !storyIds.length
+    const bar = $('feature-bar')
+    const toggle = $('filter-toggle')
+    const popover = $('filter-popover')
+    function closeFilter(restoreFocus = false) {
+      if (popover.hidden)
+        return
+      popover.hidden = true
+      toggle.setAttribute('aria-expanded', 'false')
+      if (restoreFocus)
+        toggle.focus({ preventScroll: true })
+    }
+    function openFilter() {
+      popover.hidden = false
+      toggle.setAttribute('aria-expanded', 'true')
+      search.focus({ preventScroll: true })
+    }
+    toggle.onclick = () => popover.hidden ? openFilter() : closeFilter(true)
+    $('filter-done').onclick = () => closeFilter(true)
+    bar.addEventListener('keydown', (event) => {
+      if (event.key === 'Escape' && !event.isComposing && !popover.hidden) {
+        event.preventDefault()
+        event.stopPropagation()
+        closeFilter(true)
+      }
+    })
+    bar.addEventListener('focusout', (event) => {
+      if (event.relatedTarget && !bar.contains(event.relatedTarget))
+        closeFilter()
+    })
+    document.addEventListener('pointerdown', (event) => {
+      if (!bar.contains(event.target))
+        closeFilter()
+    }, true)
+    for (const mode of ['overview', 'detail']) {
+      $(`${mode}-mode`).onclick = () => {
+        if ((mode === 'overview') === isOverview())
+          return
+        viewPreference = mode
+        refreshFeatures()
+      }
+    }
+    bar.hidden = !storyIds.length
     for (const id of storyIds) {
       const btn = html('button', $('feature-list'), work.stories[id].title, 'feature-chip')
       btn.type = 'button'
       btn.setAttribute('aria-label', work.stories[id].title)
       chipButtons.set(id, btn)
       btn.onclick = () => {
+        viewPreference = null
         if (picks.has(id))
           picks.delete(id)
         else picks.add(id)
@@ -1456,17 +1865,25 @@
       }
     }
     $('all-features').setAttribute('aria-label', '全部功能')
-    $('all-features').onclick = () => {
+    function resetFilter() {
+      viewPreference = null
       picks.clear()
       search.value = ''
       refreshFeatures()
     }
+    $('all-features').onclick = resetFilter
+    $('filter-reset').onclick = () => {
+      search.focus({ preventScroll: true })
+      resetFilter()
+    }
     $('clear-search').onclick = () => {
+      viewPreference = null
       search.value = ''
       refreshFeatures()
-      search.focus()
+      openFilter()
     }
     search.addEventListener('input', (event) => {
+      viewPreference = null
       if (!event.isComposing)
         refreshFeatures()
     })
@@ -1474,6 +1891,7 @@
     readFilters()
     refreshFeatures(false)
     window.addEventListener('popstate', () => {
+      closeFilter()
       readFilters()
       refreshFeatures(false)
       route()
