@@ -22,9 +22,9 @@
     .edition {color:var(--muted);font:.74rem var(--mono);letter-spacing:.02em;margin-top:4px;display:block}
     .graph-crumb {display:flex;align-items:center;gap:7px;color:var(--muted);font-size:.72rem;line-height:1.2;margin-bottom:4px}
     .graph-crumb .edition {margin:0;font-size:.69rem}
-    header #catalog-home {display:inline-flex;align-items:center;gap:2px;padding:1px 2px 1px 0;color:var(--teal);font-weight:650}
-    #catalog-home::after {content:"";display:inline-block;height:11px;border-right:1px solid var(--line);margin-left:4px}
-    #catalog-home svg {width:13px;height:13px;fill:none;stroke:currentColor;stroke-width:1.7}
+    header .home-link {display:inline-flex;align-items:center;gap:2px;padding:1px 2px 1px 0;color:var(--teal);font-weight:650}
+    .home-link::after {content:"";display:inline-block;height:11px;border-right:1px solid var(--line);margin-left:4px}
+    .home-link svg {width:13px;height:13px;fill:none;stroke:currentColor;stroke-width:1.7}
     .tools {gap:4px}
     header button,header a,.controls button,.close,.link-button,.refresh {border:0;background:transparent;border-radius:7px;text-decoration:none;padding:.4rem .58rem}
     header button,header a {color:var(--text)} header button:hover,header a:hover,.controls button:hover,.close:hover,.link-button:hover {background:var(--surface-hover);color:var(--ink)}
@@ -88,6 +88,9 @@
     #panel-type {flex:none;font-size:.74rem;font-weight:650;color:var(--text);background:var(--surface-raised);border-radius:5px;padding:2px 6px}
     #panel-title {font-size:1.12rem;line-height:1.35;overflow-wrap:anywhere}
     .close,.drawer-tab {display:inline-flex;align-items:center;justify-content:center;gap:4px;color:var(--teal);font:600 .8rem/1.4 var(--ui)}
+    .drawer-home {margin-inline-start:auto;padding:5px 3px;color:var(--teal);font-size:.8rem;text-decoration:none;white-space:nowrap}
+    .drawer-home:hover {text-decoration:underline}
+    .panelbar .drawer-home+.close {margin-left:0}
     .close {flex:none;width:36px;height:36px;margin-left:auto;padding:6px;color:var(--muted)}
     .drawer-tab {position:absolute;top:12px;right:0;z-index:2;min-height:36px;padding:5px 10px;border:1px solid var(--line);border-right:0;border-radius:8px 0 0 8px;background:var(--surface);box-shadow:0 2px 6px #0005}
     .drawer-tab:hover,.close:hover {background:var(--surface-hover)}
@@ -277,7 +280,7 @@
 <div class="app">
 <div class="app-head">
 <header>
-  <div class="identity"><span class="mark" aria-hidden="true"><svg viewBox="0 0 28 28" fill="none"><path d="M5 14h7m0 0c3 0 1-7 6-7h5m-11 7c3 0 1 7 6 7h5" stroke="#b4e8da" stroke-width="2.1"/><circle cx="5" cy="14" r="3.1" fill="#fff"/><circle cx="23" cy="7" r="2.7" fill="#8cd5c7"/><circle cx="23" cy="21" r="2.7" fill="#8cdebb"/></svg></span><div><div class="graph-crumb"><a id="catalog-home" href="/" aria-label="返回需求中心" hidden><svg viewBox="0 0 16 16" aria-hidden="true"><path d="m9 4-4 4 4 4"/></svg>需求中心</a><span id="edition-kind">需求全景图 · @@KIND@@</span><span class="edition">v@@VERSION@@</span></div><h1 title="@@TITLE@@">@@TITLE@@</h1></div></div>
+  <div class="identity"><span class="mark" aria-hidden="true"><svg viewBox="0 0 28 28" fill="none"><path d="M5 14h7m0 0c3 0 1-7 6-7h5m-11 7c3 0 1 7 6 7h5" stroke="#b4e8da" stroke-width="2.1"/><circle cx="5" cy="14" r="3.1" fill="#fff"/><circle cx="23" cy="7" r="2.7" fill="#8cd5c7"/><circle cx="23" cy="21" r="2.7" fill="#8cdebb"/></svg></span><div><div class="graph-crumb"><a id="catalog-home" class="home-link" aria-label="首页" hidden><svg viewBox="0 0 16 16" aria-hidden="true"><path d="m2 7 6-5 6 5m-10-1v8h8V6M7 14V9h2v5"/></svg>首页</a><a id="catalog-return" class="home-link" hidden>返回筛选结果</a><span id="edition-kind">需求全景图 · @@KIND@@</span><span class="edition">v@@VERSION@@</span></div><h1 title="@@TITLE@@">@@TITLE@@</h1></div></div>
   <div class="tools"><button type="button" class="button-link" id="export" title="保存完整、可放大的 SVG 图"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 3v12m-4-4 4 4 4-4M4 15v4a1 1 0 0 0 1 1h14a1 1 0 0 0 1-1v-4"/></svg><span id="export-caption">导出整图</span></button><a id="ai-record" href="model.json" class="button-link" title="读取同一版需求的 JSON"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="m8 7-5 5 5 5m8-10 5 5-5 5m-3-13-2 16"/></svg>AI 记录</a></div>
 </header>
   <div class="map-bar">
@@ -347,5 +350,6 @@
 </div>
 <script type="application/json" id="data">@@DATA@@</script>
 <script>@@DAGRE@@</script>
+<script>@@TOOLTIP@@</script>
 <script>@@SCRIPT@@</script>
 </body></html>

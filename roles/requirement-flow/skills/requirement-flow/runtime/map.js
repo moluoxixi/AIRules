@@ -1,23 +1,40 @@
 ;(() => {
   'use strict'
   const $ = id => document.getElementById(id)
-  const { model, states, impacts, graph: fullGraph, csrf, queue, read_only: readOnly, lesson_version: lessonVersion, source_labels: sourceLabels = {} } = JSON.parse($('data').textContent)
+  const { model, states, impacts, graph: fullGraph, csrf, queue, read_only: readOnly, lesson_version: lessonVersion, source_labels: sourceLabels = {}, home_href: homeHref, catalog_card: catalogCard } = JSON.parse($('data').textContent)
   const { work, protocol } = model
   const projectView = Boolean(csrf && /^\/tasks\/[^/]+\/$/u.test(location.pathname))
-  if (projectView) {
+  const offlineHome = homeHref === '../../index.html'
+    && /\/\.requirements\/(?:active|archive)\/[^/]+\/handbook\.html$/u.test(location.pathname)
+  if (homeHref && (csrf || offlineHome)) {
     const home = $('catalog-home')
+    home.href = homeHref
     home.hidden = false
-    $('edition-kind').textContent = readOnly ? '已归档' : '需求全景图'
-    try {
-      const saved = JSON.parse(sessionStorage.getItem('requirement-flow:catalog-return'))
-      if (saved?.task === work.id) {
-        const from = new URL(saved.url, location.origin)
-        if (from.origin === location.origin && from.pathname === '/')
-          home.href = from.pathname + from.search
+    if (csrf) {
+      try {
+        const saved = JSON.parse(sessionStorage.getItem('requirement-flow:catalog-return'))
+        const from = saved?.task === work.id && new URL(saved.url, location.origin)
+        if (from && from.origin === location.origin && from.pathname === new URL(home.href).pathname && from.search) {
+          const filtered = $('catalog-return')
+          filtered.href = from.pathname + from.search
+          filtered.hidden = false
+        }
       }
+      catch { /* Direct home navigation works even when browser storage is unavailable. */ }
     }
-    catch { /* The directory remains accessible with browser storage disabled. */ }
   }
+  if (projectView)
+    $('edition-kind').textContent = readOnly ? '已归档' : '需求全景图'
+  function addDrawerHome(close) {
+    if ($('catalog-home').hidden)
+      return
+    const home = document.createElement('a')
+    home.className = 'drawer-home'
+    home.href = $('catalog-home').href
+    home.textContent = '首页'
+    close.before(home)
+  }
+  addDrawerHome($('close-panel'))
   const research = work.outcome === 'research'
   const evidenceKind = research ? '调研' : '验证'
   const map = $('map')
@@ -172,10 +189,8 @@
       // Cards keep a consistent reading width at each zoom.
       const width = n.kind === 'request' ? 216 : isOverview() ? 168 : n.kind === 'decision' ? 224 : 194
       const labels = linesOf(n.title, width - 2 * inset, 2, size, 680, n.mono)
-      const caps = linesOf(n.caption, width - 2 * inset, 1, 11.7, 450)
-      const shared = linesOf(n.sharedNote, width - 2 * inset, 1, 11.2, 600)
-      const height = Math.max(isOverview() ? 62 : 66, 30 + 18 * labels.length + (caps.length ? 14 : 0) + (shared.length ? 17 : 0))
-      boxes.set(n.id, { width, height, size, inset, labels, caps, shared })
+      const height = Math.max(48, 28 + 18 * labels.length + (n.kind === 'story' ? 4 : 0))
+      boxes.set(n.id, { width, height, size, inset, labels })
     }
     layouts.clear()
   }
@@ -527,7 +542,11 @@
       },
       $('stations'),
     )
-    svg('title', {}, g, [n.title, n.state, n.caption, n.sharedNote].filter(Boolean).join(' · '))
+    window.FlowTooltip.bind(g, () => ({
+      title: n.title,
+      summary: n.kind === 'story' ? work.stories[n.id]?.goal || n.caption : n.caption,
+      rows: [[n.label, n.state], ['关联', n.sharedNote]],
+    }))
     const x = -b.width / 2
     const y = -b.height / 2
     const groupColor = n.activity === 'active' ? '#8cdebb' : c.stroke
@@ -680,28 +699,14 @@
         label,
       ),
     )
-    b.caps.forEach((cap, i) =>
-      svg(
-        'text',
-        {
-          'x': lineX,
-          'y': y + 36 + b.labels.length * 18 - 2 + i * 14,
-          'fill': c.text,
-          'font-size': 11.7,
-          'text-anchor': center ? 'middle' : 'start',
-        },
-        g,
-        cap,
-      ),
-    )
-    if (b.shared.length) {
-      const baseline = -y - 9
-      svg(
-        'path',
-        { 'd': `M${left} ${baseline - 13}H${-x - b.inset}`, 'stroke': c.stroke, 'stroke-width': 0.6 },
-        g,
-      )
-      svg('text', { 'x': left, 'y': baseline, 'fill': c.title, 'font-size': 11.2, 'font-weight': 600 }, g, b.shared[0])
+    const progress = n.kind === 'story' && /^(\d+)\/(\d+) 已验$/u.exec(n.state)
+    if (progress && Number(progress[2]) > 0) {
+      const w = b.width - 2 * b.inset
+      const yBar = -y - 5
+      svg('rect', { x: left, y: yBar, width: w, height: 2, rx: 1, fill: c.stroke }, g)
+      const filled = w * Number(progress[1]) / Number(progress[2])
+      if (filled)
+        svg('rect', { x: left, y: yBar, width: filled, height: 2, rx: 1, fill: statusColors.passed.ink }, g)
     }
     g.addEventListener('click', () => {
       if (performance.now() > ignoreClicksUntil)
@@ -1176,6 +1181,7 @@
   sourceClose.title = '关闭原文预览（Esc）'
   sourceClose.setAttribute('aria-label', '关闭原文预览')
   sourceBar.append(sourceClose)
+  addDrawerHome(sourceClose)
   const sourceBody = html('div', sourceDrawer, null, 'source-reader-body')
   sourceBody.id = 'source-body'
   let activeSource = null
@@ -1448,6 +1454,7 @@
   endpointClose.setAttribute('aria-label', '关闭接口详情')
   endpointClose.title = '关闭接口详情（Esc）'
   endpointBar.append(endpointClose)
+  addDrawerHome(endpointClose)
   const endpointBody = html('div', endpointDrawer, null, 'endpoint-body')
   const endpointHeading = html('div', endpointBody, null, 'endpoint-heading')
   const endpointMethod = html('span', endpointHeading, null, 'endpoint-method')
@@ -2001,6 +2008,10 @@
       html('p', detail, work.goal || work.raw_request)
       if (work.goal && work.raw_request && work.raw_request !== work.goal)
         html('p', disclosure(detail, '需求原话'), work.raw_request)
+      if (catalogCard) {
+        const info = window.FlowTooltip.taskInfo(catalogCard)
+        pairs(detail, info.rows)
+      }
       if (work.scope.length)
         list(disclosure(detail, '本次范围'), work.scope)
       jump(detail, '@delivery', research ? '查看调研结论' : '查看验收结果')
@@ -2132,6 +2143,7 @@
   panelNav.hidden = true
   drawer.prepend(panelNav)
   function openPanel(key, trigger) {
+    window.FlowTooltip.hide()
     if (!selected)
       drawerTrigger = trigger || nodeEls.get(key)
     drawerVersion++
@@ -2191,6 +2203,7 @@
       returningFocus = true
       const target = focus && trigger ? trigger : map
       target.focus({ preventScroll: true })
+      window.FlowTooltip.hide()
       returningFocus = false
     }
     // Await only this drawer's exit. Reduced motion completes immediately.
@@ -2430,6 +2443,12 @@
     if (!layout || $('export').getAttribute('aria-disabled') === 'true')
       return
     const copy = map.cloneNode(true)
+    for (const element of copy.querySelectorAll('[data-node]')) {
+      const node = nodes.get(element.getAttribute('data-node'))
+      if (node)
+        svg('title', {}, element, [node.title, node.state, node.caption, node.sharedNote].filter(Boolean).join(' · '))
+      element.removeAttribute('data-card-reader')
+    }
     for (const el of copy.querySelectorAll('.muted,.selected')) el.classList.remove('muted', 'selected')
     for (const el of [copy, ...copy.querySelectorAll('[tabindex]')]) {
       for (const attr of ['id', 'tabindex', 'role', 'aria-describedby', 'aria-expanded', 'aria-haspopup'])
@@ -2594,6 +2613,7 @@
   }
 
   function selectGraph(ids) {
+    window.FlowTooltip.hide()
     visibleStories = ids
     scoped = ids.length < storyIds.length
     const featureSlices = ids.map(id => featureNodes.get(id))

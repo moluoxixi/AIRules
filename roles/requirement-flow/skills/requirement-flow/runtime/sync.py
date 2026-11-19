@@ -945,12 +945,24 @@ def impact(w, decision, choice, workspace=None):
             if before[k]["state"]!=after[k]["state"] or before[k]["reasons"]!=after[k]["reasons"]]
 
 
-def render(model, token=None, *, workspace=None, read_only=False):
+def offline_home_href(workspace):
+    workspace = Path(workspace)
+    store = workspace.parent.parent
+    if store.name != ".requirements" or workspace.parent.name not in ("active", "archive"):
+        return None
+    index = store / "index.html"
+    if any(evidence.linked(path) for path in (store, workspace.parent, workspace, index)) or not index.is_file():
+        return None
+    return "../../index.html"
+
+
+def render(model, token=None, *, workspace=None, read_only=False, home_href=None):
     work = model["work"]
     impacts = {key: {code: impact(work, key, code, workspace) for code in d["options"]}
                for key, d in work["decisions"].items()}
     return graph_view.render(model, evaluate(work,workspace), impacts, token, digest(model), LAYOUT,
                              queue=dispatch(work,workspace=workspace,for_map=True), read_only=read_only,
+                             home_href=home_href if token else offline_home_href(workspace or TASK_DIR),
                              source_labels=source_paths.SourcePaths.for_task(workspace or TASK_DIR).graph_labels(work))
 
 
@@ -992,6 +1004,7 @@ def new_workspace(path, raw):
 class TaskHandler(BaseHTTPRequestHandler):
     """A request is bound to one workspace before any model or evidence is read."""
     task_prefix = "/"
+    home_href = None
     task_id = None
     read_only = False
 
@@ -1082,7 +1095,8 @@ class TaskHandler(BaseHTTPRequestHandler):
             if card.get("approval_digest"):
                 reference["approval"] = card["approval_digest"]
             params = urlencode(reference)
-            self.send_content(200,graph_view.lesson_source_page(card,source,"lesson-evidence?" + params),"text/html")
+            page = graph_view.lesson_source_page(card, source, "lesson-evidence?" + params, home_href=self.home_href)
+            self.send_content(200, page, "text/html")
             return
         try:
             store = evidence.directory(self.workspace.parent.parent)
@@ -1110,7 +1124,8 @@ class TaskHandler(BaseHTTPRequestHandler):
         session = self.headers.get("X-Requirement-Flow", "")
         stale_session = bool(session) and not secrets.compare_digest(session.encode(), self.token.encode())
         if path in ("/","/handbook.html"):
-            self.send_content(200,render(model,self.token,workspace=self.workspace,read_only=self.read_only),"text/html")
+            page = render(model, self.token, workspace=self.workspace, read_only=self.read_only, home_href=self.home_href)
+            self.send_content(200, page, "text/html")
         elif path == "/source-location":
             if not same_origin or not session:
                 self.send_error(403)
@@ -1218,7 +1233,7 @@ def serve(port, source_root=None):
     run_server(port, Handler)
 
 
-def main(argv=None):
+def main(argv=None, *, serve_project=None):
     arguments = list(sys.argv[1:] if argv is None else argv)
     command_args = []
     if "verify-run" in arguments and "--" in arguments:
@@ -1315,7 +1330,10 @@ def main(argv=None):
             raise SystemExit(1)
     elif a.cmd=="serve":
         sync()
-        serve(a.port, a.source_root)
+        if serve_project:
+            serve_project(a)
+        else:
+            serve(a.port, a.source_root)
     else:
         actor=a.actor or "AI"
         if a.cmd=="decision":

@@ -20,3 +20,16 @@
   --ui: "Instrument Sans","PingFang SC","Microsoft YaHei",system-ui,sans-serif;
   --mono: "IBM Plex Mono","SFMono-Regular",Consolas,monospace;
 }
+.card-tooltip {
+  position:fixed; z-index:12; width:max-content; max-width:min(330px,calc(100vw - 16px));
+  max-height:min(54vh,320px); overflow:auto; box-sizing:border-box; overscroll-behavior:contain;
+  padding:13px 15px; border:1px solid var(--line-strong); border-radius:9px;
+  background:var(--surface-raised); color:var(--text); box-shadow:0 8px 28px #0007;
+  font: .87rem/1.48 var(--ui); overflow-wrap:anywhere;
+}
+.card-tooltip[hidden] { display:none }
+.card-tooltip strong { display:block; font-size:.98rem; color:var(--ink); line-height:1.4 }
+.card-tooltip p { margin:6px 0 0; color:var(--text) }
+.card-tooltip dl { display:grid; grid-template-columns:auto minmax(0,1fr); gap:3px 12px; margin:9px 0 0 }
+.card-tooltip dt { color:var(--muted) }
+.card-tooltip dd { margin:0 }

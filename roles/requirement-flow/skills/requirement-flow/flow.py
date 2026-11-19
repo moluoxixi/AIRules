@@ -248,14 +248,15 @@ def catalog_task(store, name):
         yield key, path
 
 
-def serve_catalog(store, args):
+def serve_catalog(store, args, *, root_task=None):
     import catalog_server
     with project_lock(store, ".project-viewer"):
-        if args.default_task:
-            with catalog_task(store, args.default_task):
+        default_task = root_task or args.default_task
+        if default_task:
+            with catalog_task(store, default_task):
                 pass
         cache = catalog_server.CardReader(task_report)
-        catalog_server.serve(store.parent, args.port, args.source_root, args.default_task,
+        catalog_server.serve(store.parent, args.port, args.source_root, default_task, task_at_root=bool(root_task),
                             inventory=lambda: inventory(store, cache),
                             open_task=lambda name: catalog_task(store, name))
 
@@ -416,7 +417,7 @@ def forward(store, args):
         if words and words[0] == "new":
             raise ValueError("创建独立需求请使用项目命令 new。")
         engine.bind_workspace(path)
-        engine.main(words)
+        engine.main(words, serve_project=lambda options: serve_catalog(store, options, root_task=args.id))
         if words[:1] == ["lesson-review"]:
             refresh_notes(store)
 

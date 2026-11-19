@@ -316,6 +316,7 @@ describe.skipIf(!executablePath)('generated handbook interactions in Chromium', 
       const href = new URL(await page.$eval(evidence, node => node.href))
       expect(href.searchParams.get('approval')).toMatch(/^[a-f0-9]{64}$/u)
       await Promise.all([page.waitForNavigation(), page.click(evidence)])
+      expect(await page.$eval('header a[aria-label="首页"]', node => new URL(node.href).pathname)).toBe('/')
       expect(await page.$eval('.download', node => node.href)).toContain('lesson-evidence')
       const bytes = await page.$eval('.download', async node => (await fetch(node.href)).text())
       expect(bytes).toContain('test_store_on_later_page')
@@ -390,13 +391,56 @@ describe.skipIf(!executablePath)('generated handbook interactions in Chromium', 
             }
           })
           expect(metrics.columns).toBe(expectedColumns)
-          expect(metrics.height).toBeLessThanOrEqual(175)
+          expect(metrics.height).toBeLessThanOrEqual(82)
           expect(metrics.titleSize).toBeGreaterThanOrEqual(15)
           expect(metrics.meterHeight).toBeGreaterThanOrEqual(4)
           expect(metrics.target).toBe(true)
           expect(metrics.overflow).toBe(0)
         }
-        expect(await page.$eval(linkFor(unplanned), link => link.title)).toBe(longTitle)
+        await page.hover(linkFor(unplanned))
+        await page.waitForSelector('#card-tooltip:not([hidden])')
+        expect(await page.$eval('#card-tooltip strong', tip => tip.textContent)).toBe(longTitle)
+      }
+      finally {
+        await page.close()
+      }
+    })
+
+    it('previews card details with mouse or keyboard and opens the same information on a touch screen', async () => {
+      const page = await browser.newPage()
+      const tip = '#card-tooltip:not([hidden])'
+      try {
+        await page.setViewport({ width: 665, height: 623 })
+        await page.goto(server.address)
+        const card = linkFor('plan')
+        await page.hover(card)
+        await page.waitForSelector(tip)
+        expect(await page.$eval(tip, el => el.textContent)).toContain('已验 2 / 11 个场景')
+        expect(await page.$eval(tip, el => el.textContent)).toContain('涉及功能')
+        const fits = await page.$eval(tip, (el) => {
+          const r = el.getBoundingClientRect()
+          return r.left >= 0 && r.top >= 0 && r.right <= innerWidth && r.bottom <= innerHeight
+        })
+        expect(fits).toBe(true)
+        await page.keyboard.press('Escape')
+        await page.waitForSelector(tip, { hidden: true })
+        await page.keyboard.press('Tab')
+        await page.focus(card)
+        await page.waitForSelector(tip)
+        expect(await page.$eval(card, el => el.getAttribute('aria-describedby'))).toBe('card-tooltip')
+        await page.keyboard.press('Escape')
+        await page.waitForSelector(tip, { hidden: true })
+        await page.setViewport({ width: 390, height: 720, hasTouch: true })
+        await Promise.all([page.waitForNavigation(), page.tap(card)])
+        await drawerReady(page)
+        expect(await visibleDetail(page)).toContain('已验 2 / 11 个场景')
+        expect(await visibleDetail(page)).toContain('涉及功能')
+        await follow(page, '#inspector .drawer-home')
+        await waitForCards(page, [archived, unplanned, 'plan', research])
+        await page.click('button[data-scope="archive"]')
+        await follow(page, '#catalog-home')
+        expect(new URL(page.url()).search).toBe('')
+        await waitForCards(page, [archived, unplanned, 'plan', research])
       }
       finally {
         await page.close()
@@ -458,7 +502,8 @@ describe.skipIf(!executablePath)('generated handbook interactions in Chromium', 
         await waitForCards(page, [archived])
         expect(page.url()).toBe(filteredUrl)
         await follow(page, linkFor(archived))
-        await follow(page, '#catalog-home')
+        expect(await page.$eval('#catalog-home', a => a.pathname + a.search)).toBe('/')
+        await follow(page, '#catalog-return')
         await waitForCards(page, [archived])
         expect(page.url()).toBe(filteredUrl)
         await page.waitForFunction(y => Math.abs(scrollY - y) < 2, { timeout: 3_000 }, scroll)
@@ -590,6 +635,39 @@ describe.skipIf(!executablePath)('generated handbook interactions in Chromium', 
         await viewer.stop()
       }
     })
+  })
+
+  it('keeps graph captions in a keyboard-accessible tooltip and closes it before opening the drawer', async () => {
+    const page = await open(665, 623, '?view=overview&features=S-4')
+    const node = '[data-node="S-4"]'
+    const tip = '#card-tooltip:not([hidden])'
+    try {
+      await page.hover(node)
+      await page.waitForSelector(tip)
+      const body = await page.$eval(tip, el => el.textContent)
+      expect(body).toContain('跨页选择门店类型后统一确认')
+      expect(await page.$eval(node, el => el.textContent)).not.toContain('跨页选择门店类型后统一确认')
+      await page.keyboard.press('Escape')
+      await page.waitForSelector(tip, { hidden: true })
+      const bounds = await (await page.$(node)).boundingBox()
+      await page.mouse.move(bounds.x + 20, bounds.y + 10)
+      await page.mouse.down()
+      await page.mouse.move(bounds.x + 48, bounds.y + 18, { steps: 4 })
+      expect(await page.$(tip)).toBeNull()
+      await page.mouse.up()
+      await page.mouse.move(0, 0)
+      await page.$eval('[data-node="@request"]', group => group.focus())
+      await page.keyboard.press('Tab')
+      expect(await page.evaluate(() => document.activeElement.getAttribute('data-node'))).toBe('S-4')
+      await page.waitForSelector(tip)
+      await page.keyboard.press('Enter')
+      await drawerReady(page)
+      expect(await page.$(tip)).toBeNull()
+      expect(await visibleDetail(page)).toContain('跨页选择门店类型后统一确认')
+    }
+    finally {
+      await page.close()
+    }
   })
 
   it('starts with readable cards and protects zoom from mouse, trackpad and touch gestures', async () => {

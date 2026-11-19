@@ -63,24 +63,19 @@
     .card { position: relative; display: flex; flex-direction: column; min-width: 0; background: var(--surface); color: var(--text); border: 1px solid var(--line); border-radius: 9px; padding: 10px 13px; box-shadow: 0 2px 4px #0004; isolation: isolate }
     .card:has(a):hover { border-color: var(--accent); background:var(--surface-raised); box-shadow: 0 5px 16px #0004 }
     .card:focus-within { outline: 3px solid var(--focus-ring); outline-offset: 3px }
-    .card-head, .card-foot, .progress-head { display: flex; align-items: center; justify-content: space-between; gap: 8px; min-width: 0 }
-    .category { display: inline-flex; gap: 6px; align-items: center; font-size: .76rem; font-weight: 600; color: var(--muted) }
-    .category .glyph { width: 16px; height: 16px; color: var(--teal) }
-    .state { display: inline-flex; align-items: center; gap: 5px; border-radius: 12px; font-size: .73rem; font-weight: 600; padding: 1px 7px; color: var(--teal); background: var(--success-bg) }
-    .state::before { content: ""; width: 5px; height: 5px; border-radius: 50%; background: currentColor }
-    .state[data-tone=amber] { background: var(--accent-bg); color: var(--accent) }
-    .state[data-tone=neutral] { background: var(--surface-hover); color: var(--muted) }
-    .date { font-size: .75rem; color: var(--muted); white-space: nowrap; font-variant-numeric: tabular-nums }
-    .card h3 { margin: 5px 0 2px; font-size: 1.04rem; line-height: 1.37; font-weight: 650; letter-spacing: -.035em; color: var(--ink); overflow-wrap: anywhere }
-    .card h3 a { display:block; color: inherit; text-decoration: none; outline: none }
-    .card h3 .card-title { display:-webkit-box; -webkit-line-clamp:2; -webkit-box-orient:vertical; overflow:hidden }
-    .card h3 a::after { content: ""; position: absolute; inset: 0; z-index: 1; border-radius: 9px }
-    .card h3 a:focus { outline: none }
-    .description { display: -webkit-box; -webkit-line-clamp: 1; -webkit-box-orient: vertical; overflow: hidden; overflow-wrap: anywhere; color: var(--muted); font-size: .84rem; line-height: 1.42 }
-    .reading { margin-top: auto; padding-top: 7px }
-    .progress-head { margin-bottom: 3px; font-size: .78rem; color: var(--muted) }
-    .progress-head b { font: 600 .8rem var(--number); color: var(--teal); font-variant-numeric: tabular-nums }
-    .meter { height: 5px; position: relative; border-radius: 3px; overflow: hidden; --track: var(--line); --fill: var(--teal); --gap: var(--surface) }
+    .brand {text-decoration:none}
+    .card h3 {margin:0;color:var(--ink);font-size:1.04rem;line-height:1.4;font-weight:650;overflow-wrap:anywhere}
+    .card h3 a {display:block;color:inherit;text-decoration:none;outline:none}
+    .card h3 .card-title {display:block;white-space:nowrap;text-overflow:ellipsis;overflow:hidden}
+    .card h3 a::after {content:"";position:absolute;inset:0;z-index:1;border-radius:8px}
+    .card-line {display:flex;align-items:center;gap:6px;min-width:0;margin:5px 0}
+    .state {display:flex;align-items:center;gap:5px;color:var(--teal);font-size:.73rem;line-height:1.3}
+    .state::before {content:"";width:5px;height:5px;border-radius:50%;background:currentColor;flex:none}
+    .state[data-tone=amber] {color:var(--amber)}
+    .state[data-tone=neutral],.fraction {color:var(--muted)}
+    .fraction {margin-left:auto;font:.72rem/1.3 var(--mono)}
+    .card-error {color:var(--muted);margin-top:8px;font-size:.84rem}
+    .meter { height: 4px; position: relative; border-radius: 3px; overflow: hidden; --track: var(--line); --fill: var(--teal); --gap: var(--surface) }
     .meter progress { display: block; width: 100%; height: 100%; margin: 0; border: none; appearance: none; -webkit-appearance: none; background: var(--track); color: var(--fill) }
     .meter progress::-webkit-progress-bar { background: var(--track) }
     .meter progress::-webkit-progress-value { background: var(--fill) }
@@ -89,11 +84,6 @@
     .meter[data-known=false] { background: repeating-linear-gradient(120deg,var(--paper) 0 5px,var(--line) 5px 7px) }
     .meter[data-known=false] progress { opacity: 0 }
     .meter[data-known=false]::after { display: none }
-    .card-foot { margin-top: 6px; padding-top: 0; color: var(--muted); font-size: .76rem }
-    .card-foot .glyph { width: 15px; height: 15px; color: var(--green) }
-    .card-foot .action { display: inline-flex; align-items: center; gap: 4px; margin-inline-start: auto; color: var(--green); font-weight: 600 }
-    .section[data-bucket=archive] .card { box-shadow: none }
-    .section[data-bucket=archive] .category .glyph { color: var(--muted) }
     .empty { padding: 34px 18px; background: var(--surface-raised); border: 1px dashed var(--line); border-radius: 12px; text-align: center }
     .empty h2 { font-size: 1.05rem; margin-bottom: 5px }
     .empty p { color: var(--muted); font-size: .9rem }
@@ -101,7 +91,6 @@
     .sr { position: absolute; width: 1px; height: 1px; padding: 0; overflow: hidden; clip-path: inset(50%); white-space: nowrap }
     @media (max-width:720px) {
       .desk { border-radius: 14px; grid-template-columns: minmax(0,1fr) minmax(155px,40%); gap: 16px }
-      .card-foot { flex-wrap: wrap }
     }
     @media (max-width:560px) {
       main { padding-block-start: 16px }
@@ -135,7 +124,7 @@
     <symbol id="clear" viewBox="0 0 24 24"><path d="m7 7 10 10m0-10L7 17"/></symbol>
   </defs></svg>
   <header class="masthead"><div class="wrap">
-    <span class="brand"><span class="brand-mark" aria-hidden="true"><svg viewBox="0 0 32 32" fill="none"><path d="M6 16h7c6 0 3-8 10-8h3m-14 8c6 0 4 8 10 8h4" stroke="#ffc184" stroke-width="2.5" stroke-linecap="round"/><circle cx="5" cy="16" r="3" fill="#fff"/><circle cx="26" cy="8" r="3" fill="#9cdccc"/><circle cx="26" cy="24" r="3" fill="#8cdebb"/></svg></span>需求全景图</span>
+    <a class="brand" id="catalog-home" href="?" aria-label="首页"><span class="brand-mark" aria-hidden="true"><svg viewBox="0 0 32 32" fill="none"><path d="M6 16h7c6 0 3-8 10-8h3m-14 8c6 0 4 8 10 8h4" stroke="#ffc184" stroke-width="2.5" stroke-linecap="round"/><circle cx="5" cy="16" r="3" fill="#fff"/><circle cx="26" cy="8" r="3" fill="#9cdccc"/><circle cx="26" cy="24" r="3" fill="#8cdebb"/></svg></span>首页</a>
     <span class="workspace"><svg class="glyph" aria-hidden="true"><use href="#folder"/></svg><span id="project-name"></span></span>
   </div></header>
   <main class="wrap">
@@ -160,6 +149,7 @@
     <div id="empty" class="empty" hidden><h2></h2><p></p><button type="button">清除筛选</button></div>
     <noscript>请启用 JavaScript 查看需求卡片和验收进度。</noscript>
   </main>
+  <script>@@TOOLTIP@@</script>
   <script type="application/json" id="catalog-data">@@CATALOG_DATA@@</script>
   <script>
   (() => {
@@ -183,7 +173,6 @@
     const search = $('catalog-query')
     const scopeButtons = [...document.querySelectorAll('[data-scope]')]
     const titles = { active: '进行中', archive: '已归档' }
-    const states = { ready: '可推进', resume: '推进中', waiting: '待处理', complete: '已完成 · 待归档', unplanned: '待规划' }
     const scrollKey = () => 'requirement-flow:catalog-reading:' + data.project
     let scope = 'all'
 
@@ -201,33 +190,6 @@
       use.setAttribute('href', '#' + name)
       node.append(use)
       return node
-    }
-    function known(task) {
-      return !task.error && ['research', 'scenarios'].includes(task.basis) && Number.isInteger(task.total) && task.total > 0 && Number.isInteger(task.passed) && task.passed >= 0 && task.passed <= task.total
-    }
-    function unavailable(task) {
-      if (task.error) return '记录无法读取'
-      if (task.basis === 'history') return '历史记录待复验'
-      return task.outcome === 'research' ? '待定义调研项' : '待定义验收场景'
-    }
-    function statusBadge(task) {
-      let text = states[task.state] || '进行中'
-      let tone = 'green'
-      if (task.error) text = '读取异常'
-      else if (task.failed) text = task.failed + ' 项验收未通过'
-      else if (task.stale) text = task.stale + ' 项需复验'
-      else if (task.state === 'ready' && task.passed > 0) text = '待继续'
-      if (task.error || task.failed || task.stale || task.state === 'waiting') tone = 'amber'
-      else if (task.state === 'unplanned') tone = 'neutral'
-      const badge = el('span', 'state', text)
-      badge.dataset.tone = tone
-      return badge
-    }
-    function updatedTime(task) {
-      const day = updateDay(task)
-      const time = el('time', 'date', '更新于 ' + day)
-      time.dateTime = day
-      return time
     }
     function meter(passed, total, label) {
       const wrap = el('div', 'meter')
@@ -253,7 +215,7 @@
         entry.append(el('b', '', n), ' 项' + label)
         $('inventory').append(entry)
       }
-      const measured = active.filter(t => t.basis === 'scenarios' && known(t))
+      const measured = active.filter(t => t.basis === 'scenarios' && window.FlowTooltip.taskInfo(t).measured)
       const block = $('overview')
       block.replaceChildren()
       block.hidden = !measured.length
@@ -269,54 +231,38 @@
       const article = el('article', 'card')
       article.dataset.taskId = task.id
       article.dataset.bucket = task.bucket
-      const archive = task.bucket === 'archive'
-      const head = el('div', 'card-head')
-      const category = el('span', 'category')
-      const categoryText = task.error ? '需求记录' : task.basis === 'history' ? '历史需求' : task.outcome === 'research' ? '调研需求' : '交付需求'
-      category.append(glyph(archive ? 'archive' : task.outcome === 'research' ? 'research' : 'feature'), categoryText)
-      head.append(category)
-      if (!archive || task.error || task.failed || task.stale) head.append(statusBadge(task))
-      else if (updateDay(task)) head.append(updatedTime(task))
+      const info = window.FlowTooltip.taskInfo(task)
       const title = el('h3')
       title.id = 'requirement-' + index
       article.setAttribute('aria-labelledby', title.id)
+      let target = article
       if (task.href && !task.error) {
-        const link = el('a')
-        link.append(el('span', 'card-title', task.title || task.id))
-        link.href = task.href
-        link.title = task.title || task.id
-        title.append(link)
-      } else title.append(el('span', 'card-title', task.title || task.id))
-      article.append(head, title)
-      const description = task.error || task.summary
-      if (description && description !== title.textContent) article.append(el('p', 'description', description))
-      const group = el('div', 'reading')
-      const caption = el('div', 'progress-head')
-      const measured = known(task)
-      const count = `${task.passed} / ${task.total}`
-      const label = !measured ? unavailable(task) : task.basis === 'research' ? count + ' 项调研有依据' : '已验 ' + count + ' 个场景'
-      caption.append(el('span', '', label))
-      if (measured) {
-        const percent = task.passed === task.total ? 100 : Math.min(99, Math.round(100 * task.passed / task.total))
-        caption.append(el('b', '', percent + '%'))
+        target = el('a')
+        target.href = task.href
+        target.append(el('span', 'card-title', info.title))
+        title.append(target)
+      } else {
+        title.append(el('span', 'card-title', info.title))
+        target.tabIndex = 0
       }
-      group.append(caption, meter(measured ? task.passed : 0, measured ? task.total : 0, label))
-      article.append(group)
-      const foot = el('div', 'card-foot')
-      const meta = el('span', 'meta')
-      if (!task.error && Number.isInteger(task.stories) && task.basis !== 'history') meta.textContent = `${task.stories} 个功能`
-      if (!archive && updateDay(task)) {
-        if (meta.textContent) meta.append(' · ')
-        meta.append(updatedTime(task))
+      const status = el('span', 'state', info.state)
+      status.dataset.tone = info.tone
+      const line = el('div', 'card-line')
+      line.append(status)
+      if (info.measured)
+        line.append(el('span', 'fraction', task.passed + '/' + task.total))
+      article.append(title, line, meter(info.measured ? task.passed : 0, info.measured ? task.total : 0, info.measure))
+      window.FlowTooltip.bind(target, () => info, article)
+      if (task.error) {
+        // A broken record has no destination. Touch readers can still inspect the cause.
+        article.addEventListener('click', () => {
+          let explanation = article.querySelector('.card-error')
+          if (!explanation) {
+            explanation = el('p', 'card-error', task.error)
+            article.append(explanation)
+          } else explanation.hidden = !explanation.hidden
+        })
       }
-      if (meta.textContent) foot.append(meta)
-      if (task.href && !task.error) {
-        const action = el('span', 'action')
-        action.setAttribute('aria-hidden','true')
-        action.append(glyph('arrow'))
-        foot.append(action)
-      }
-      if (foot.childElementCount) article.append(foot)
       return article
     }
     const normalize = value => String(value || '').normalize('NFKC').toLocaleLowerCase()
@@ -338,6 +284,7 @@
     }
     let searchTexts = searchIndex()
     function render() {
+      window.FlowTooltip.hide()
       const terms = normalize(search.value).trim().split(/\s+/u).filter(Boolean)
       const matching = tasks.filter(t => (scope === 'all' || scope === t.bucket) && terms.every(term => searchTexts.get(t).includes(term)))
       const sections = []
@@ -376,15 +323,27 @@
     $('clear-query').addEventListener('click', () => { search.value = ''; refresh(); search.focus() })
     $('empty').querySelector('button').addEventListener('click', () => { scope = 'all'; search.value = ''; refresh(); search.focus() })
     window.addEventListener('popstate', () => { readUrl(); render() })
+    let touchLink = null
+    $('results').addEventListener('touchend', (event) => {
+      touchLink = { link: event.target.closest('a'), time: performance.now() }
+    }, { passive: true })
     $('results').addEventListener('click', e => {
       const link = e.target.closest('a')
       if (!link || e.defaultPrevented || e.button !== 0 || e.ctrlKey || e.metaKey || e.shiftKey || e.altKey) return
       const task = link.closest('article').dataset.taskId
       const url = location.pathname + location.search
+      const touch = e.pointerType === 'touch' || (e.detail > 0 && touchLink?.link === link && performance.now() - touchLink.time < 800)
+      touchLink = null
       try {
         sessionStorage.setItem('requirement-flow:catalog-return',JSON.stringify({url,task}))
         sessionStorage.setItem(scrollKey(),JSON.stringify({url,task,scroll:scrollY}))
       } catch { /* Navigation still works when storage is unavailable. */ }
+      if (touch) {
+        e.preventDefault()
+        const destination = new URL(link.href)
+        destination.hash = 'node=%40request'
+        location.assign(destination.href)
+      }
     })
     function restoreReading() {
       try {

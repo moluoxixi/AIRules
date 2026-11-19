@@ -27,7 +27,7 @@ LOCAL_PATTERNS = (b".receipt-key", b".receipt-key-*", b".workflow.lock", b".capt
 ARCHIVE = Path(".requirements/migrations/moluoxixi")
 ROOT_FILES = {"SKILL.md", "flow.py", "install_project.py", "references/model.md", "agents/openai.yaml"}
 RUNTIME_FILES = {"basic_memory.py", "catalog.html", "catalog_server.py", "dagre.min.js", "evidence.py", "graph_view.py", "knowledge.py", "lesson_retirement.py",
-                 "layout.html", "map.js", "protocol.json", "source_paths.py", "sync.py", "theme.css"}
+                 "layout.html", "map.js", "protocol.json", "source_paths.py", "sync.py", "theme.css", "tooltip.js"}
 LEGACY_SKILLS = {
     "before-dev", "brainstorm", "break-loop", "channel", "check", "continue", "finish-work",
     "knowledge", "meta", "session-insight", "spec-bootstrap", "start", "update-spec",

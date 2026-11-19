@@ -225,7 +225,7 @@ def lesson_version(queue):
     return hashlib.sha256(json.dumps(cards, sort_keys=True, ensure_ascii=False).encode()).hexdigest()
 
 
-def lesson_source_page(card, source, download_url):
+def lesson_source_page(card, source, download_url, home_href=None):
     proof = source["proof"]
     review = card.get("approval") or card.get("review") or {}
     def rows(pairs):
@@ -244,6 +244,7 @@ def lesson_source_page(card, source, download_url):
     review_info = rows([("经验版本", f"{card['id']} · v{card['version']}"),
                         ("适用条件", card["when"]), ("做法", card["practice"]), ("边界", card["boundary"]),
                         ("审查人", review.get("actor")), ("审查意见", review.get("reason"))])
+    home_link = f'<a href="{escape(home_href, quote=True)}" aria-label="首页">首页</a>' if home_href else ""
     return_script = """<script>
 const back = document.getElementById('return-map')
 const from = new URLSearchParams(location.hash.slice(1))
@@ -277,15 +278,15 @@ h2{{font-size:1.1rem;margin:0 0 14px}}dl{{display:grid;grid-template-columns:min
 dt{{color:var(--muted)}}dd{{margin:0;overflow-wrap:anywhere;color:var(--text)}}
 pre{{white-space:pre-wrap;overflow-wrap:anywhere;background:var(--paper);padding:12px;border-radius:6px;font:.86rem/1.65 var(--mono)}}
 a{{color:var(--accent);text-underline-offset:3px}}a:focus-visible{{outline:2px solid var(--focus-ring);outline-offset:3px}}
-.download{{display:inline-block;margin-top:10px}}</style><main>
-<a id="return-map" href="./">← 返回需求详情</a><h1>{escape(card["observation"])}</h1>
+nav{{display:flex;gap:16px;align-items:center}}.download{{display:inline-block;margin-top:10px}}</style><main>
+<header><nav>{home_link}<a id="return-map" href="./">← 返回需求详情</a></nav></header><h1>{escape(card["observation"])}</h1>
 <section><h2>来源场景</h2><dl>{context}</dl></section>
 <section><h2>实际证据</h2><dl>{receipt}</dl><pre>{escape(proof["actual"])}</pre>
 <a class="download" href="{escape(download_url, quote=True)}" download>下载原始证据</a></section>
 <section><h2>经验与审查</h2><dl>{review_info}</dl></section></main>{return_script}</html>"""
 
 
-def render(model, states, impacts, token, checksum, template, *, queue, source_labels=None, read_only=False):
+def render(model, states, impacts, token, checksum, template, *, queue, source_labels=None, read_only=False, home_href=None):
     work = model["work"]
     graph = make_graph(work, states, queue.get("scenarios", []))
     for node in graph["nodes"]:
@@ -298,6 +299,14 @@ def render(model, states, impacts, token, checksum, template, *, queue, source_l
                 node["sharedNote"] = f"推荐 {count} 条经验"
     payload = dict(model=model, states=states, impacts=impacts, graph=graph, csrf=token, queue=queue,
                    lesson_version=lesson_version(queue))
+    if __package__:
+        from . import catalog_server
+    else:
+        import catalog_server
+    card = catalog_server.task_card(work, queue)
+    card.pop("href", None)
+    payload["catalog_card"] = dict(card, bucket="archive" if read_only else "active")
+    payload["home_href"] = home_href
     if read_only:
         payload["read_only"] = True
     if source_labels:
@@ -307,9 +316,10 @@ def render(model, states, impacts, token, checksum, template, *, queue, source_l
     substitutions = {
         "TITLE": escape(work["title"],quote=True), "KIND":escape(work["kind"],quote=True),
         "VERSION": str(work["revision"]), "DIGEST":checksum, "DATA":safe_json,
+        "TOOLTIP":(here/"tooltip.js").read_text("utf-8"),
         "THEME":(here/"theme.css").read_text("utf-8"),
         "DAGRE":(here/"dagre.min.js").read_text("utf-8"),
         "SCRIPT":(here/"map.js").read_text("utf-8"),
     }
-    return re.sub(r"@@(TITLE|KIND|VERSION|DIGEST|DATA|THEME|DAGRE|SCRIPT)@@",
+    return re.sub(r"@@(TITLE|KIND|VERSION|DIGEST|DATA|THEME|TOOLTIP|DAGRE|SCRIPT)@@",
                   lambda match: substitutions[match.group(1)], Path(template).read_text("utf-8"))

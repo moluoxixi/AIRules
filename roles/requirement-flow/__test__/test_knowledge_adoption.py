@@ -67,7 +67,9 @@ class AdoptionTest(unittest.TestCase):
         query = urlencode({"task": SOURCE, "lesson": LESSON, "version": 1, "receipt": self.receipt["id"]})
         with p.serve() as url:
             with urlopen(url + "lesson-source?" + query, timeout=5) as page:
-                self.assertIn("AC-directory", page.read().decode())
+                body = page.read().decode()
+                self.assertIn("AC-directory", body)
+                self.assertIn('href="/home"', body)
             with urlopen(url + "lesson-evidence?" + query, timeout=5) as response:
                 self.assertIn(b"test_store_on_later_page", response.read())
             artifact = self.store / "archive" / SOURCE / self.receipt["artifact"]["path"]
