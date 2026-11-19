@@ -23,8 +23,7 @@
       catch { /* Direct home navigation works even when browser storage is unavailable. */ }
     }
   }
-  if (projectView)
-    $('edition-kind').textContent = readOnly ? '已归档' : '需求全景图'
+  $('archive-label').hidden = !readOnly
   function addDrawerHome(close) {
     if ($('catalog-home').hidden)
       return

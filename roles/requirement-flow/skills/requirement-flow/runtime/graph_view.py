@@ -314,12 +314,12 @@ def render(model, states, impacts, token, checksum, template, *, queue, source_l
     safe_json = json.dumps(payload, ensure_ascii=False, separators=(",",":")).replace("&","\\u0026").replace("<","\\u003c").replace(">","\\u003e")
     here = Path(template).parent
     substitutions = {
-        "TITLE": escape(work["title"],quote=True), "KIND":escape(work["kind"],quote=True),
-        "VERSION": str(work["revision"]), "DIGEST":checksum, "DATA":safe_json,
+        "TITLE": escape(work["title"],quote=True),
+        "DIGEST":checksum, "DATA":safe_json,
         "TOOLTIP":(here/"tooltip.js").read_text("utf-8"),
         "THEME":(here/"theme.css").read_text("utf-8"),
         "DAGRE":(here/"dagre.min.js").read_text("utf-8"),
         "SCRIPT":(here/"map.js").read_text("utf-8"),
     }
-    return re.sub(r"@@(TITLE|KIND|VERSION|DIGEST|DATA|THEME|TOOLTIP|DAGRE|SCRIPT)@@",
+    return re.sub(r"@@(TITLE|DIGEST|DATA|THEME|TOOLTIP|DAGRE|SCRIPT)@@",
                   lambda match: substitutions[match.group(1)], Path(template).read_text("utf-8"))
