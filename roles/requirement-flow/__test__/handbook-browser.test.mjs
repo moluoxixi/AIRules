@@ -130,10 +130,18 @@ describe.skipIf(!executablePath)('generated handbook interactions in Chromium', 
   })
   function drawerReady(page) {
     return page.waitForFunction(() => {
-      const drawer = document.querySelector('#inspector')
-      return !drawer.hidden && drawer.getAnimations().every(animation => animation.playState === 'finished')
-    })
+      const layer = document.querySelector('#drawer-layer')
+      return layer?.classList.contains('is-open') && !layer.hidden
+        && layer.getAnimations({ subtree: true }).every(animation => animation.playState === 'finished')
+    }, { timeout: 4_000 })
   }
+  function drawerClosed(page) {
+    return page.waitForFunction(() => document.querySelector('#drawer-layer').hidden && !document.querySelector('.app').inert, { timeout: 4_000 })
+  }
+  const canvasState = page => page.$eval('#map', (el) => {
+    const { x, y, width, height } = el.getBoundingClientRect()
+    return { x, y, width, height, viewBox: el.getAttribute('viewBox') }
+  })
   async function open(width, height, route = '') {
     const page = await browser.newPage()
     await page.setViewport({ width, height, hasTouch: true })
@@ -261,14 +269,16 @@ describe.skipIf(!executablePath)('generated handbook interactions in Chromium', 
       await page.click('[data-node="C-5"]')
       await page.waitForFunction(() => location.hash === '#node=C-5', { timeout: 5_000 })
       await page.reload()
-      expect(await page.$eval('#inspector', el => el.hidden)).toBe(false)
+      await drawerReady(page)
       expect(await page.$eval('#detail', el => el.textContent)).toContain('POST /display/5')
+      // The filter button sits underneath the backdrop on this desktop viewport.
       await page.click('#filter-toggle')
-      await page.keyboard.press('Escape')
-      expect(await page.$eval('#inspector', el => el.hidden)).toBe(false)
+      await drawerClosed(page)
       expect(await page.$eval('#filter-toggle', el => el.getAttribute('aria-expanded'))).toBe('false')
+      expect(await page.evaluate(() => document.activeElement.dataset.node)).toBe('C-5')
+      await page.click('#filter-toggle')
+      expect(await page.$eval('#filter-toggle', el => el.getAttribute('aria-expanded'))).toBe('true')
       await page.keyboard.press('Escape')
-      expect(await page.$eval('#inspector', el => el.hidden)).toBe(true)
       await page.click('#overview-mode')
       expect(await page.$eval('#overview-mode', el => el.getAttribute('aria-pressed'))).toBe('true')
       expect(await page.$eval('#reopen-panel', el => el.hidden)).toBe(true)
@@ -278,109 +288,89 @@ describe.skipIf(!executablePath)('generated handbook interactions in Chromium', 
     }
   })
 
-  it.each([665, 1160])('opens deep links in a right drawer alongside the usable canvas at %ipx', async (width) => {
-    const page = await open(width, 623, '?view=overview&features=S-4#node=S-4')
+  it.each([320, 375, 665, 1160])('overlays a full-viewport modal without moving the canvas at %ipx', async (width) => {
+    const page = await open(width, 623, '?view=overview&features=S-4')
     try {
-      await page.waitForFunction(() => {
-        const map = document.querySelector('#map').getBoundingClientRect()
-        const panel = document.querySelector('#inspector').getBoundingClientRect()
-        return panel.width > 0 && Math.abs(map.right - panel.left) < 2 && Math.abs(panel.right - innerWidth) < 2
-      }, { timeout: 3_000 })
+      await page.click('#plus')
+      const before = await canvasState(page)
+      const originalZoom = await scale(page)
+      await page.click('[data-node="S-4"]')
+      await drawerReady(page)
+      expect(await canvasState(page)).toEqual(before)
       const bounds = await page.evaluate(() => {
-        const map = document.querySelector('#map').getBoundingClientRect()
-        const panel = document.querySelector('#inspector').getBoundingClientRect()
-        const card = document.querySelector('[data-node="S-4"] .outline').getBoundingClientRect()
+        const drawer = document.querySelector('#inspector')
+        const panel = drawer.getBoundingClientRect()
+        const backdrop = document.querySelector('#drawer-backdrop').getBoundingClientRect()
         return {
-          canvasWidth: map.width,
-          drawerWidth: panel.width,
-          sharedTop: Math.abs(panel.top - map.top),
-          sharedBottom: Math.abs(panel.bottom - map.bottom),
-          cardFits: card.left >= map.left && card.right <= map.right && card.top >= map.top && card.bottom <= map.bottom,
-          hit: document.elementFromPoint(card.x + card.width / 2, card.y + card.height / 2)?.closest('[data-node]')?.dataset.node,
+          panel: { x: panel.x, top: panel.top, right: panel.right, height: panel.height, width: panel.width },
+          backdrop: { x: backdrop.x, y: backdrop.y, width: backdrop.width, height: backdrop.height },
+          hit: document.elementFromPoint(panel.x / 2, 10)?.id,
+          dialog: [drawer.getAttribute('role'), drawer.getAttribute('aria-modal')],
+          backgroundInert: document.querySelector('.app').inert,
+          overflows: document.documentElement.scrollWidth > innerWidth || drawer.scrollWidth > drawer.clientWidth + 1,
         }
       })
-      expect(bounds.canvasWidth).toBeGreaterThanOrEqual(width / 2)
-      expect(bounds.drawerWidth).toBeGreaterThanOrEqual(290)
-      expect(bounds.sharedTop).toBeLessThan(2)
-      expect(bounds.sharedBottom).toBeLessThan(2)
-      expect(bounds.cardFits).toBe(true)
-      expect(bounds.hit).toBe('S-4')
+      expect(bounds.dialog).toEqual(['dialog', 'true'])
+      expect(bounds.backgroundInert).toBe(true)
+      expect(bounds.backdrop).toEqual({ x: 0, y: 0, width, height: 623 })
+      expect(bounds.panel.top).toBe(0)
+      expect(bounds.panel.right).toBe(width)
+      expect(bounds.panel.height).toBe(623)
+      expect(bounds.panel.x).toBeGreaterThanOrEqual(24)
+      expect(bounds.panel.width).toBeGreaterThanOrEqual(Math.min(270, width - 48))
+      expect(bounds.hit).toBe('drawer-backdrop')
+      expect(bounds.overflows).toBe(false)
+
+      await page.mouse.move(bounds.panel.x / 2, 330)
+      await page.mouse.wheel({ deltaY: 120 })
+      await page.keyboard.press('ArrowRight')
+      expect(await canvasState(page)).toEqual(before)
+      expect(await scale(page)).toBe(originalZoom)
+      await page.mouse.click(bounds.panel.x / 2, 330)
+      await drawerClosed(page)
+      expect(await canvasState(page)).toEqual(before)
+      expect(await page.evaluate(() => document.activeElement.dataset.node)).toBe('S-4')
+      await page.click('#minus')
+      expect(await scale(page)).toBeLessThan(originalZoom)
     }
     finally {
       await page.close()
     }
   })
 
-  it('restores the original camera on collapse and preserves deliberate canvas changes and reading position on reopen', async () => {
-    const page = await open(665, 623, '?view=overview&features=S-4')
+  it('traps keyboard focus and returns it to the opener across Escape, reopen and the close button', async () => {
+    const page = await open(665, 623, '?view=overview&features=S-4#node=S-4')
     try {
-      const box = () => page.$eval('#map', el => el.getAttribute('viewBox'))
-      await page.click('#fit')
-      const before = await box()
-      await page.click('[data-node="S-4"]')
-      await page.waitForFunction(() => location.hash === '#node=S-4')
-      await page.keyboard.press('Escape')
-      await page.waitForFunction(() => document.querySelector('#inspector').hidden && document.activeElement.id === 'reopen-panel')
-      expect(await box()).toBe(before)
-      await page.keyboard.press('Enter')
-      await page.waitForFunction(() => document.activeElement.id === 'close-panel' && location.hash === '#node=S-4')
-      await drawerReady(page)
+      const trigger = '[data-node="S-4"]'
+      expect(await page.evaluate(() => document.activeElement.id)).toBe('close-panel')
+      await page.keyboard.down('Shift')
+      await page.keyboard.press('Tab')
+      await page.keyboard.up('Shift')
+      expect(await page.evaluate(() => document.querySelector('#inspector').contains(document.activeElement))).toBe(true)
+      expect(await page.evaluate(() => document.activeElement.id)).not.toBe('close-panel')
+      await page.keyboard.press('Tab')
+      expect(await page.evaluate(() => document.activeElement.id)).toBe('close-panel')
 
-      const details = '#detail .acceptance-group[data-state="passed"] details.case-proof'
-      await page.click(`${details} > summary`)
+      const proof = '#detail .acceptance-group[data-state="passed"] details.case-proof'
+      await page.click(`${proof} > summary`)
       const scrollPosition = await page.$eval('#detail', (el) => {
         el.scrollTop = 80
         return el.scrollTop
       })
       expect(scrollPosition).toBeGreaterThan(0)
-      await page.click('#plus')
-      const zoomed = await scale(page)
-      expect(zoomed).toBeGreaterThan(100)
-      const beforeDrag = await box()
-      const canvas = await (await page.$('#map')).boundingBox()
-      const x = canvas.x + 30
-      const y = canvas.y + canvas.height * 0.75
-      await page.mouse.move(x, y)
-      await page.mouse.down()
-      await page.mouse.move(x + 35, y + 20, { steps: 5 })
-      await page.mouse.up()
-      expect(await box()).not.toBe(beforeDrag)
-      expect(await page.$eval('#inspector', el => el.hidden)).toBe(false)
-      const center = () => page.$eval('#map', (el) => {
-        const { x, y, width, height } = el.viewBox.baseVal
-        return [x + width / 2, y + height / 2]
-      })
-      const afterDrag = await center()
-      await page.click('#close-panel')
-      expect(await scale(page)).toBe(zoomed)
-      expect(await page.$eval('#map', el => el.getBoundingClientRect().width)).toBe(665)
-      const afterCollapse = await center()
-      expect(afterCollapse[0]).toBeCloseTo(afterDrag[0], 3)
-      expect(afterCollapse[1]).toBeCloseTo(afterDrag[1], 3)
-      await page.click('#reopen-panel')
-      expect(await page.$eval('#panel-title', el => el.textContent)).toBe('批量确认')
-      expect(await page.$eval(details, el => el.open)).toBe(true)
-      expect(await page.$eval('#detail', el => el.scrollTop)).toBe(scrollPosition)
-      expect(await scale(page)).toBe(zoomed)
-    }
-    finally {
-      await page.close()
-    }
-  })
+      await page.keyboard.press('Escape')
+      await drawerClosed(page)
+      expect(await page.$eval(trigger, el => el === document.activeElement)).toBe(true)
+      expect(await page.evaluate(() => location.hash)).toBe('#work')
 
-  it.each([320, 375])('keeps the small-screen drawer readable and dismissible from the exposed canvas at %ipx', async (width) => {
-    const page = await open(width, 623, '?view=overview&features=S-4#node=S-4')
-    try {
-      const panel = await page.waitForSelector('#inspector', { visible: true })
-      await page.waitForFunction(() => Math.abs(document.querySelector('#inspector').getBoundingClientRect().right - innerWidth) < 2)
-      const bounds = await panel.boundingBox()
-      expect(bounds.x).toBeGreaterThanOrEqual(44)
-      expect(bounds.width).toBeGreaterThanOrEqual(width * 0.65)
-      expect(await page.evaluate(() => document.documentElement.scrollWidth)).toBe(width)
-      expect(await page.$eval('#detail', el => el.scrollWidth <= el.clientWidth + 1)).toBe(true)
-      await page.mouse.click(bounds.x / 2, bounds.y + bounds.height * 0.8)
-      await page.waitForFunction(() => document.querySelector('#inspector').hidden)
-      expect(await page.$eval('#reopen-panel', el => el.hidden)).toBe(false)
+      await page.click('#reopen-panel')
+      await drawerReady(page)
+      expect(await page.$eval('#panel-title', el => el.textContent)).toBe('批量确认')
+      expect(await page.$eval(proof, el => el.open)).toBe(true)
+      expect(await page.$eval('#detail', el => el.scrollTop)).toBe(scrollPosition)
+      await page.click('#close-panel')
+      await drawerClosed(page)
+      expect(await page.evaluate(() => document.activeElement.id)).toBe('reopen-panel')
     }
     finally {
       await page.close()
@@ -455,10 +445,14 @@ describe.skipIf(!executablePath)('generated handbook interactions in Chromium', 
       expect(await page.$eval(`${stale} .case-scope`, el => el.textContent)).toBe('证据无效，需补验')
       expect(await page.$('#detail .acceptance-group[data-state="passed"] .case-row')).toBeNull()
       expect(await visibleDetail(page)).not.toMatch(/raw-check-|批量确认规则\.md/u)
+      // A new node link can arrive while the previous drawer is sliding out.
+      await page.keyboard.press('Escape')
       await page.evaluate(() => {
         location.hash = 'node=S-4'
       })
       await page.waitForFunction(() => document.querySelector('#panel-title')?.textContent === '批量确认')
+      await drawerReady(page)
+      expect(await page.$eval('.app', el => el.inert)).toBe(true)
       expect(await page.$eval('#detail .source-list', el => el.open)).toBe(false)
     }
     finally {

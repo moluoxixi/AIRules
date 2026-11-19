@@ -6,7 +6,8 @@
   const research = work.outcome === 'research'
   const evidenceKind = research ? '调研' : '验证'
   const map = $('map')
-  const surface = map.closest('main')
+  const app = document.querySelector('.app')
+  const drawerLayer = $('drawer-layer')
   const drawer = $('inspector')
   const reopenPanel = $('reopen-panel')
   const dagre = window.dagre
@@ -344,7 +345,9 @@
   let gestureLocked = true
   let selected = null
   let recentNode = null
-  let restoreCamera = null
+  let drawerTrigger = null
+  let returningFocus = false
+  let drawerVersion = 0
   let boxSize = { w: 0, h: 0 }
   const nodeEls = new Map()
   const edgeEls = []
@@ -416,11 +419,11 @@
     return !picks.size && !$('feature-query').value.trim()
   }
 
-  function overviewLayout(graphWidth) {
+  function overviewLayout() {
     const rootBox = boxes.get('@request')
     const cardWidth = boxes.get(visibleStories[0]).width
     const pitch = cardWidth + 34
-    const columns = Math.min(visibleStories.length, Math.max(1, Math.min(3, Math.floor((graphWidth - 8) / pitch))))
+    const columns = Math.min(visibleStories.length, Math.max(1, Math.min(3, Math.floor((boxSize.w - 8) / pitch))))
     const width = Math.max(rootBox.width + 24, columns * pitch + 6)
     const root = { x: width / 2, y: 12 + rootBox.height / 2 }
     const positions = new Map([['@request', root]])
@@ -666,20 +669,20 @@
     }
     g.addEventListener('click', () => {
       if (performance.now() > ignoreClicksUntil)
-        openPanel(n.id, true)
+        openPanel(n.id, true, g)
     })
     g.addEventListener('keydown', (event) => {
       if (event.key === 'Enter' || event.key === ' ') {
         event.preventDefault()
         event.stopPropagation()
-        openPanel(n.id, true)
+        openPanel(n.id, true, g)
       }
     })
     nodeEls.set(n.id, g)
   }
-  function fittedScale(l, width = boxSize.w) {
-    const margin = width < 500 ? 9 : 17
-    return Math.min(Math.max(1, width - margin * 2) / l.width, Math.max(1, boxSize.h - margin * 2) / l.height, 1)
+  function fittedScale(l) {
+    const margin = boxSize.w < 500 ? 9 : 17
+    return Math.min(Math.max(1, boxSize.w - margin * 2) / l.width, Math.max(1, boxSize.h - margin * 2) / l.height, 1)
   }
   function onResize(force = false) {
     const rect = map.getBoundingClientRect()
@@ -693,17 +696,15 @@
     }
     const previous = layout
     boxSize = { w: rect.width, h: rect.height }
-    // Docking changes the visible area, while the graph keeps its original card positions.
-    const graphWidth = surface.clientWidth
-    measureBoxes(graphWidth > 840)
+    measureBoxes(boxSize.w > 840)
     let next
     if (isOverview()) {
-      next = overviewLayout(graphWidth)
+      next = overviewLayout()
     }
     else {
       const down = makeLayout('TB')
       const across = makeLayout('LR')
-      next = fittedScale(across, graphWidth) > fittedScale(down, graphWidth) * 1.08 ? across : down
+      next = fittedScale(across) > fittedScale(down) * 1.08 ? across : down
     }
     if (layout !== next) {
       layout = next
@@ -734,10 +735,8 @@
     else {
       updateCamera()
     }
-    if (selected) {
+    if (selected)
       highlight(selected)
-      reveal(selected)
-    }
   }
   function anchorCamera(previous) {
     const distance = p => Math.hypot(p.x - camera.x, p.y - camera.y)
@@ -746,10 +745,6 @@
     const after = layout.positions.get(id)
     camera.x += after.x - before.x
     camera.y += after.y - before.y
-  }
-  function manualCamera() {
-    cameraMode = 'manual'
-    restoreCamera = null
   }
   function readingPosition(scale = 1) {
     if (!layout)
@@ -779,8 +774,7 @@
   function updateCamera() {
     const w = boxSize.w / camera.scale
     const h = boxSize.h / camera.scale
-    // Manual movement ends at the diagram margins. The detail pane can borrow that space to reveal a card.
-    if (layout && !selected && cameraMode === 'manual') {
+    if (layout && cameraMode === 'manual') {
       const margin = 24 / camera.scale
       function withinContent(value, viewport, content) {
         const start = viewport / 2 - margin
@@ -815,7 +809,7 @@
       updateCamera()
       return
     }
-    manualCamera()
+    cameraMode = 'manual'
     camera.x += (px - boxSize.w / 2) * (1 / old - 1 / next)
     camera.y += (py - boxSize.h / 2) * (1 / old - 1 / next)
     camera.scale = next
@@ -876,7 +870,7 @@
   }
   map.addEventListener('focusin', (event) => {
     const card = event.target.closest('[data-node]')
-    if (card?.matches(':focus-visible'))
+    if (!returningFocus && card?.matches(':focus-visible'))
       reveal(card.dataset.node)
   })
   const pointers = new Map()
@@ -906,7 +900,7 @@
     if (!dragging && Math.hypot(p.x - p.startX, p.y - p.startY) < 4)
       return
     dragging = true
-    manualCamera()
+    cameraMode = 'manual'
     map.classList.add('dragging')
     if (!map.hasPointerCapture(e.pointerId))
       map.setPointerCapture(e.pointerId)
@@ -952,7 +946,7 @@
         // Touchpad pinch is delivered as Ctrl+wheel by Chromium and Firefox.
         if (e.ctrlKey || e.metaKey)
           return
-        manualCamera()
+        cameraMode = 'manual'
         camera.x += (e.shiftKey && !e.deltaX ? e.deltaY : e.deltaX) * unit / camera.scale
         camera.y += (e.shiftKey && !e.deltaX ? 0 : e.deltaY) * unit / camera.scale
         updateCamera()
@@ -1027,7 +1021,7 @@
     const move = { ArrowLeft: [-1, 0], ArrowRight: [1, 0], ArrowUp: [0, -1], ArrowDown: [0, 1] }[e.key]
     if (move) {
       e.preventDefault()
-      manualCamera()
+      cameraMode = 'manual'
       camera.x += (move[0] * 44) / camera.scale
       camera.y += (move[1] * 44) / camera.scale
       updateCamera()
@@ -1579,18 +1573,7 @@
       /* Some offline viewers disallow URL changes. */
     }
   }
-  function setDrawerOpen(open) {
-    drawer.hidden = !open
-    surface.classList.toggle('drawer-open', open)
-    reopenPanel.hidden = open || !recentNode
-    reopenPanel.setAttribute('aria-expanded', String(open))
-    // Read after the dock changes so pointer coordinates and the SVG viewBox agree immediately.
-    const rect = map.getBoundingClientRect()
-    boxSize = { w: rect.width, h: rect.height }
-    if (layout)
-      fitted = fittedScale(layout)
-  }
-  function openPanel(key, changeHash) {
+  function openPanel(key, changeHash, trigger) {
     if (isOverview() && !nodes.has(key) && chainNodes.has(key)) {
       viewPreference = 'detail'
       refreshFeatures(changeHash)
@@ -1598,11 +1581,21 @@
     if (!nodes.has(key))
       return
     if (!selected)
-      restoreCamera = { view: { ...camera }, mode: cameraMode, layout, size: boxSize }
+      drawerTrigger = trigger || nodeEls.get(key)
+    drawerVersion++
     selected = key
     const changed = recentNode !== key
     recentNode = key
-    setDrawerOpen(true)
+    app.inert = true
+    reopenPanel.hidden = true
+    reopenPanel.setAttribute('aria-expanded', 'true')
+    if (drawerLayer.hidden) {
+      drawerLayer.hidden = false
+      drawer.hidden = false
+      // Establish the off-screen position before starting the entrance transition.
+      drawer.getBoundingClientRect()
+    }
+    drawerLayer.classList.add('is-open')
     if (changed) {
       populate(key)
       detail.scrollTop = 0
@@ -1610,7 +1603,6 @@
     reopenPanel.title = `展开详情 · ${nodes.get(key).title}`
     reopenPanel.setAttribute('aria-label', reopenPanel.title)
     highlight(key)
-    reveal(key)
     if (changeHash)
       recordHash(`#node=${encodeURIComponent(key)}`)
     $('close-panel').focus({ preventScroll: true })
@@ -1618,8 +1610,11 @@
   function closePanel(focus = true, changeHash = true) {
     if (!selected)
       return
+    const previous = selected
+    const closing = ++drawerVersion
     selected = null
-    setDrawerOpen(false)
+    drawerLayer.classList.remove('is-open')
+    reopenPanel.setAttribute('aria-expanded', 'false')
     for (const el of nodeEls.values()) {
       el.classList.remove('selected', 'muted')
       el.setAttribute('aria-expanded', 'false')
@@ -1627,25 +1622,27 @@
     for (const items of edgeEls) {
       for (const el of items) el?.classList.remove('muted')
     }
-    if (restoreCamera) {
-      const previous = restoreCamera
-      restoreCamera = null
-      camera = previous.view
-      cameraMode = previous.mode
-      if (previous.size.w !== boxSize.w || previous.size.h !== boxSize.h) {
-        if (cameraMode === 'fit')
-          fit()
-        else if (cameraMode === 'reading')
-          readingPosition(camera.scale)
-        else if (previous.layout !== layout)
-          anchorCamera(previous.layout)
-      }
-    }
-    updateCamera()
     if (changeHash)
       recordHash('#work')
-    if (focus)
-      reopenPanel.focus({ preventScroll: true })
+    function finishClose() {
+      if (closing !== drawerVersion)
+        return
+      drawerLayer.hidden = true
+      drawer.hidden = true
+      app.inert = false
+      reopenPanel.hidden = !recentNode
+      const trigger = drawerTrigger?.isConnected ? drawerTrigger : nodeEls.get(previous)
+      drawerTrigger = null
+      returningFocus = true
+      const target = focus && trigger ? trigger : map
+      target.focus({ preventScroll: true })
+      returningFocus = false
+    }
+    // Await only this drawer's exit. Reduced motion completes immediately.
+    const animations = drawer.getAnimations?.() || []
+    if (animations.length)
+      Promise.allSettled(animations.map(animation => animation.finished)).then(finishClose)
+    else finishClose()
   }
   function route() {
     let hash
@@ -1668,18 +1665,40 @@
       closePanel(false)
   }
   $('close-panel').onclick = () => closePanel()
-  reopenPanel.onclick = () => openPanel(recentNode, true)
-  map.addEventListener('click', (e) => {
-    if (selected && performance.now() > ignoreClicksUntil && !e.target.closest('[data-node]')
-      && map.getBoundingClientRect().right > drawer.getBoundingClientRect().left + 1) {
+  reopenPanel.onclick = () => openPanel(recentNode, true, reopenPanel)
+  $('drawer-backdrop').onclick = () => closePanel()
+  function drawerTabStops() {
+    const candidates = drawer.querySelectorAll('a[href], button, input, select, textarea, summary, [tabindex]')
+    return [...candidates].filter((el) => {
+      if (el.matches(':disabled, [tabindex="-1"]') || !el.getClientRects().length)
+        return false
+      // Chromium can report a rect for descendants of a closed native disclosure.
+      for (let fold = el.closest('details:not([open])'); fold; fold = fold.parentElement.closest('details:not([open])')) {
+        if (!fold.querySelector(':scope > summary')?.contains(el))
+          return false
+      }
+      return true
+    })
+  }
+  window.addEventListener('keydown', (e) => {
+    if (drawerLayer.hidden || e.isComposing || e.defaultPrevented)
+      return
+    if (e.key === 'Escape') {
+      e.preventDefault()
       closePanel()
     }
+    if (e.key !== 'Tab')
+      return
+    const stops = drawerTabStops()
+    const first = stops[0]
+    const last = stops.at(-1)
+    const active = document.activeElement
+    if (!drawer.contains(active) || (e.shiftKey ? active === first : active === last)) {
+      e.preventDefault()
+      const target = e.shiftKey ? last : first
+      target?.focus({ preventScroll: true })
+    }
   })
-  window.addEventListener('keydown', (e) => {
-    if (e.key === 'Escape' && !e.isComposing && !e.defaultPrevented && selected)
-      closePanel()
-  })
-  $('inspector').setAttribute('role', 'dialog')
   window.addEventListener('hashchange', route)
   function exportMap() {
     if (!layout || $('export').getAttribute('aria-disabled') === 'true')
