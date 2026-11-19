@@ -6,11 +6,16 @@
   <title>@@TITLE@@ · 需求全景图</title>
   <style>
     @@THEME@@
-    :root { font:15px/1.5 var(--ui) }
+    :root { font:15px/1.5 var(--ui); --wire:#5b697b; --wire-branch:#c69a68 }
     * {box-sizing:border-box} body {margin:0;color:var(--ink);background:var(--paper)}
     button,a {font:inherit; color:inherit} button {cursor:pointer} a {color:var(--blue);text-underline-offset:.18em}
     button:focus-visible,a:focus-visible,[tabindex]:focus-visible {outline:3px solid var(--blue);outline-offset:3px}
     [hidden] {display:none!important}
+    #map .map-node:focus {outline:none}
+    #map .map-node:is(:hover,:active,:focus-visible,.selected) .outline {stroke:var(--accent)}
+    @media(forced-colors:active) {
+      #map .map-node:is(:hover,:active,:focus-visible,.selected) .outline {stroke:Highlight;forced-color-adjust:none}
+    }
     .app {height:100vh;height:100dvh;min-height:220px;display:grid;grid-template-columns:minmax(0,1fr);grid-template-rows:auto minmax(0,1fr) auto;overflow:hidden}
     header {display:flex;gap:12px;align-items:center;justify-content:space-between;min-height:48px;padding:3px clamp(12px,2.4vw,32px);background:var(--surface);border-bottom:1px solid var(--line)}
     .identity,.controls,.legend,.tools,.button-link {display:flex;align-items:center}
@@ -65,8 +70,8 @@
     footer {min-height:49px;padding:6px clamp(10px,2.2vw,30px);background:var(--surface);border-top:1px solid var(--line);display:flex;align-items:center;justify-content:space-between;gap:8px}
     .legend {gap:13px;flex-wrap:wrap;color:var(--text);font-size:.78rem}
     .legend span {display:inline-flex;align-items:center;gap:5px}
-    .rail {width:20px;display:inline-block;border-top:2px solid #7e899d}
-    .rail.branch {border-top:2px dashed var(--accent)}
+    .rail {width:20px;display:inline-block;border-top:1.5px solid var(--wire)}
+    .rail.branch {border-top:1.5px dashed var(--wire-branch)}
     .controls {gap:3px;flex:none;color:var(--text)}.controls button {padding:6px 7px;font-size:.84rem}
     .controls output {min-width:40px;text-align:center;font: .8rem var(--mono);font-variant-numeric:tabular-nums}
     .controls .fit {display:flex;gap:6px;align-items:center;margin-left:4px;border-left:1px solid var(--line);border-radius:0 6px 6px 0;padding-left:11px}
@@ -330,8 +335,7 @@
       .map-node .n-title{font-weight:680;letter-spacing:-.3px}.map-node .n-label{font-weight:600;letter-spacing:.15px}
       .map-node .mono{font-family:"IBM Plex Mono","SFMono-Regular",Consolas,monospace;letter-spacing:-.3px}
       .map-line {fill:none;stroke-linecap:round;stroke-linejoin:round}
-      .map-node:hover .outline,.map-node:focus-visible .outline,.map-node.selected .outline {stroke:#ffc184;stroke-width:3}
-      .map-node.muted,.map-edge.muted {opacity:.27}.map-node.selected .n-title {font-weight:760}
+      .map-node.muted,.map-edge.muted {opacity:.27}
     </style></defs>
     <g id="world"><g id="wires"></g><g id="wire-labels"></g><g id="stations"></g></g>
   </svg>
