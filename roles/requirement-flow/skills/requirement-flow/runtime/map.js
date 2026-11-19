@@ -799,7 +799,7 @@
       else if (!actionIds.size) {
         html('p', group, '还没有安排工作。')
       }
-      else if (research) {
+      else if (research && !queue.scenarios.some(ex => stories.includes(ex.story))) {
         const proved = [...actionIds].some(id => work.actions[id].kind === '调研' && states[id].proof)
         html('p', group, proved ? '当前范围的调研已完成，可查看结论和来源。' : '当前范围还需要有依据的调研结论。')
       }
@@ -823,7 +823,7 @@
     if (!history.length)
       return
     const group = disclosure(parent, `查看工作记录（${history.length}）`)
-    const names = { plan: '调整计划', start: '开始', finish: '完成', fail: '验证失败', decision: '业务决定' }
+    const names = { plan: '调整计划', start: '开始', finish: '完成', fail: '验证失败', decision: '业务决定', evidence: '采集场景证据' }
     for (const e of [...history].reverse()) {
       const item = html('div', group, null, 'record')
       html('strong', item, `${names[e.kind] || e.kind} · v${e.revision}`)
@@ -837,15 +837,54 @@
       ])
     }
   }
-  function examples(parent, s) {
+  const caseStates = { uncovered: '未覆盖', pending: '待验', failed: '未通过', stale: '需复核', invalid: '证据无效', passed: '已通过' }
+  function showScenarios(parent, cases) {
+    if (!cases.length)
+      return
     const group = section('验收场景', parent)
-    for (const ex of s.examples) {
+    for (const ex of cases) {
       const row = html('div', group, null, 'record')
+      html('strong', row, `${caseStates[ex.status] || ex.status} · ${ex.id}`)
       pairs(row, [
         ['给定', ex.given],
         ['当', ex.when],
         ['应当', ex.then],
+        ['判定', ex.reason],
       ])
+      for (const action of ex.actions) jump(row, action, work.actions[action].title)
+      for (const receipt of ex.receipts) {
+        const more = disclosure(row, `${receipt.level || '证据'} · ${receipt.environment || ''} · ${receipt.id}`)
+        pairs(more, [
+          ['记录人', receipt.actor],
+          ['命令参数', receipt.argv && JSON.stringify(receipt.argv)],
+          ['实际结果', receipt.actual],
+          ['退出码', receipt.exit_code],
+          ['文件', receipt.artifact?.path],
+          ['SHA-256', receipt.artifact?.sha256],
+        ])
+        const path = receipt.artifact?.path
+        if (typeof path === 'string' && /^evidence\/[\da-f]{32}\/(?:output\.log|artifact(?:\.[\w-]+)?)$/u.test(path)) {
+          const link = html('a', more, '下载证据文件', 'link-button')
+          link.href = csrf ? `/evidence/${encodeURIComponent(receipt.id)}` : `./${path}`
+          link.download = path.split('/').pop()
+        }
+      }
+    }
+  }
+  function showRetiredScenarios(parent, storyIds) {
+    const retired = (queue.retired_scenarios || []).filter(ex => storyIds.includes(ex.story))
+    if (!retired.length)
+      return
+    const group = disclosure(parent, `场景范围调整记录（${retired.length}）`)
+    for (const ex of retired) {
+      const row = html('div', group, null, 'record')
+      html('strong', row, `${ex.id} · v${ex.revision}`)
+      pairs(row, [
+        ['原验收条件', `${ex.given}，${ex.when}，应当${ex.then}`],
+        ['决定人', ex.answer.actor],
+        ['调整原因', ex.answer.reason],
+      ])
+      jump(row, ex.decision, work.decisions[ex.decision].title)
     }
   }
   function workDetails(parent, key) {
@@ -859,6 +898,12 @@
       list(section('下一步的条件', parent), status.reasons)
     if (a.accepts?.length)
       pairs(parent, [['验收依据', a.accepts.join('、')]])
+    if (a.kind === '验证') {
+      const cases = queue.scenarios.filter(ex => ex.actions.includes(key))
+      if (cases.length)
+        showScenarios(parent, cases)
+      else html('p', parent, '此动作还没有关联适用的验收场景。', 'dim')
+    }
     const input = a.depends_on.map((edge) => {
       const cond = edge.when
       return (
@@ -982,7 +1027,8 @@
       showQueue(detail, new Set(fullGraph.features[key].actions), featureNodes.get(key), [key])
       if (story.flow?.length)
         list(section('关键处理'), story.flow, true)
-      examples(detail, story)
+      showScenarios(detail, queue.scenarios.filter(ex => ex.story === key))
+      showRetiredScenarios(detail, [key])
       const refs = Object.entries(work.actions).filter(([, a]) => a.stories.includes(key))
       related(
         detail,
@@ -1021,8 +1067,14 @@
       const checks = Object.entries(work.actions).filter(
         ([id, a]) => a.kind === evidenceKind && states[id].state !== 'skipped' && visibleActions.has(id),
       )
-      if (checks.length) {
-        const group = section(research ? '调研产出与依据' : '逐项验收')
+      const cases = queue.scenarios.filter(ex => visibleStories.includes(ex.story))
+      if (cases.length)
+        showScenarios(detail, cases)
+      else if (!research)
+        html('p', detail, '待梳理可验收的业务场景。')
+      showRetiredScenarios(detail, visibleStories)
+      if (research && checks.length) {
+        const group = section('调研产出与依据')
         for (const [id, a] of checks) {
           const item = html('div', group, null, 'record')
           jump(item, id, a.title)
@@ -1034,9 +1086,6 @@
             ['依据', proof?.evidence],
           ])
         }
-      }
-      else {
-        html('p', detail, '沿图查看当前动作的产出和证据。')
       }
       const group = section('可复用的经验')
       if (!work.lessons.length)
@@ -1166,7 +1215,11 @@
         return
       try {
         const res = await fetch('/version', { cache: 'no-store' })
-        if (!res.ok || (await res.json()).revision === work.revision)
+        if (!res.ok)
+          return
+        const current = await res.json()
+        const displayed = queue.scenarios.map(ex => [ex.id, ex.status])
+        if (current.revision === work.revision && JSON.stringify(current.case_states) === JSON.stringify(displayed))
           return
         const note = detail.querySelector('input[name="reason"]')
         if (note && (note.value || note === document.activeElement))
@@ -1220,11 +1273,13 @@
       .filter(n => !scoped || visibleIds.has(n.id))
       .map((n) => {
         if (n.kind === 'delivery' && scoped) {
+          const cases = queue.scenarios.filter(ex => included.has(ex.story))
+          const passed = cases.filter(ex => ex.status === 'passed').length
+          if (cases.length)
+            return { ...n, caption: `${passed} / ${cases.length} 个场景通过` }
           return {
             ...n,
-            caption: checks.length
-              ? `${proven} / ${checks.length}${research ? ' 项调研有证据' : ' 项验收有证据'}`
-              : '查看已有产出与待办',
+            caption: research ? `${proven} / ${checks.length} 项调研有证据` : '待梳理验收场景',
           }
         }
         if (n.kind !== 'contract' || n.users.length < 2)

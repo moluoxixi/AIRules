@@ -12,11 +12,14 @@ import sys
 import tempfile
 
 SOURCE = Path(__file__).resolve().parent
-SKILL = Path(".agents/skills/requirement-flow")
+SKILLS = Path(".agents/skills")
+ROLE = "requirement-flow"
+SPECIALISTS = ("flow-requirements", "flow-contracts", "flow-implement", "flow-verify", "flow-review")
+SKILL = SKILLS / ROLE
 MANIFEST = Path(".requirements/installation.json")
 ARCHIVE = Path(".requirements/migrations/moluoxixi")
 ROOT_FILES = {"SKILL.md", "flow.py", "install_project.py", "references/model.md", "agents/openai.yaml"}
-RUNTIME_FILES = {"dagre.min.js", "graph_view.py", "layout.html", "map.js", "protocol.json", "sync.py"}
+RUNTIME_FILES = {"dagre.min.js", "evidence.py", "graph_view.py", "layout.html", "map.js", "protocol.json", "sync.py"}
 LEGACY_SKILLS = {
     "before-dev", "brainstorm", "break-loop", "channel", "check", "continue", "finish-work",
     "knowledge", "meta", "session-insight", "spec-bootstrap", "start", "update-spec",
@@ -61,8 +64,15 @@ def read_file(path):
 
 def owned_name(name):
     path = PurePosixPath(name)
+    if len(path.parts) < 2 or path.as_posix() != name:
+        return False
+    role, relative = path.parts[0], "/".join(path.parts[1:])
+    if role in SPECIALISTS:
+        return relative == "SKILL.md"
+    if role != ROLE:
+        return False
     # Accept old runtime names from a previous manifest so an upgrade can retire them.
-    return (name in ROOT_FILES or (len(path.parts) == 2 and path.parts[0] == "runtime"
+    return (relative in ROOT_FILES or (len(path.parts) == 3 and path.parts[1] == "runtime"
             and re.fullmatch(r"[a-zA-Z0-9][a-zA-Z0-9._-]*", path.name)))
 
 
@@ -72,7 +82,13 @@ def assets():
     missing = sorted(name for name in mandatory if not safe_path(SOURCE, name).is_file())
     require(not missing, f"发布资源缺失：{missing}")
     names.update(mandatory)
-    return {name: safe_path(SOURCE, name).read_bytes() for name in sorted(names)}
+    contents = {f"{ROLE}/{name}": safe_path(SOURCE, name).read_bytes() for name in sorted(names)}
+    for skill in SPECIALISTS:
+        name = f"{skill}/SKILL.md"
+        path = safe_path(SOURCE.parent, name)
+        require(path.is_file(), f"缺少专项 skill：{name}。请从完整的 AIRules requirement-flow 角色执行初始化。")
+        contents[name] = path.read_bytes()
+    return contents
 
 
 def marked(text, tag):
@@ -252,16 +268,21 @@ def install_locked(root, migrate):
     old_bytes = read_file(manifest_file)
     previous = json.loads(old_bytes) if old_bytes is not None else {}
     if old_bytes is not None:
-        require(isinstance(previous, dict) and previous.get("format") == 1
+        require(isinstance(previous, dict) and previous.get("format") in (1, 2)
                 and previous.get("role") == "requirement-flow" and isinstance(previous.get("files"), dict),
                 f"无法识别安装清单：{MANIFEST}")
-    skill_dir = safe_path(root, SKILL)
-    require(previous or not skill_dir.exists(), f"同名项目 skill 已存在且没有受管清单：{SKILL}")
     tracked = previous.get("files", {})
+    if previous.get("format") == 1:
+        # The 0.1.0 manifest indexed files relative to the sole requirement-flow skill.
+        tracked = {f"{ROLE}/{name}": value for name, value in tracked.items()}
+    for skill in (ROLE, *SPECIALISTS):
+        if not any(name.startswith(skill + "/") for name in tracked):
+            directory = safe_path(root, SKILLS / skill)
+            require(not directory.exists(), f"同名项目 skill 已存在且没有受管清单：{directory}")
     files = {}
     for name in sorted(set(tracked) | set(wanted)):
         require(isinstance(name, str) and owned_name(name), f"不支持的受管文件：{name}")
-        target = SKILL / name
+        target = SKILLS / name
         old = read_file(safe_path(root, target))
         if name in tracked:
             require(old is not None and digest(old) == tracked[name], f"受管文件已被修改或移除：{target}")
@@ -313,7 +334,7 @@ def install_locked(root, migrate):
                text + ("" if not text or text.endswith(("\n", "\r")) else line_break) + block + line_break)
     if updated.encode() != original:
         files[agents_path] = updated.encode()
-    manifest = {"format": 1, "role": "requirement-flow", "files": {k: digest(v) for k, v in wanted.items()},
+    manifest = {"format": 2, "role": ROLE, "files": {k: digest(v) for k, v in wanted.items()},
                 "agents_block": digest(block.encode()), "migrated": previously_migrated or migration}
     manifest_bytes = (json.dumps(manifest, sort_keys=True, indent=2) + "\n").encode()
     if manifest_bytes != old_bytes:

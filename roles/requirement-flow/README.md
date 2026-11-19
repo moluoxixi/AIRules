@@ -1,39 +1,47 @@
 # 需求编排
 
-`requirement-flow` 是 AIRules 的独立 Codex 角色。一项需求对应一张图；图上的故事、接口字段、业务决定、实现动作及验证证据来自同一份记录。执行者依据这些关系领取调研、开发或验证动作。
+`requirement-flow` 是 AIRules 的独立 Codex 角色。一项需求有一张可筛选的功能图，沿任一故事可以查到用户操作、接口与字段、关键处理、待决定事项和验收结果。人读页面和 AI 记录共用同一份需求数据。
 
-## 从本地 AIRules 开始试用
+## 安装与升级
 
-在本地 AIRules 检出的根目录执行，最后的参数填目标项目的目录。需要 Python 3.9 或以上。
+在包含本角色的 AIRules 检出中，可直接为项目初始化。需要 Python 3.9 或更高版本。
 
 ```bash
 python3 roles/requirement-flow/skills/requirement-flow/flow.py --project /path/to/project init
 ```
 
-初始化把可独立运行的 skill 安装到目标项目，并把新需求的入口写入该项目的 `AGENTS.md`。再用 Codex 打开项目，像平常一样提出需求或指明要接手的需求。所有业务分支、权限、联调以及发布约定继续以项目规则为准。
+包含本角色的 AIRules 版本发布后，也可先运行 `airules install requirement-flow --host codex` 和 `airules verify requirement-flow --host codex`，再执行 `python3 ~/.agents/skills/requirement-flow/flow.py --project /path/to/project init`。用户级安装让 Codex 发现六个 skills；每个项目各执行一次 `init`，才会有项目自己的六个 skill、一段 `AGENTS.md` 入口和 `.requirements/installation.json` 安装清单。
 
-试用多个项目时，对每个项目各执行一次初始化。以后从新的 AIRules 检出或已更新的用户级 skill 重新初始化，即可升级共用程序。安装器保留项目自己的记录；遇到使用者改过的受管文件会报告冲突。
+从新版本的 AIRules 或已更新的用户级 skill 再次 `init` 即可升级，也支持已使用 0.1.0 的项目。进行中与已归档的数据均保留。遇到团队改过的受管文件或已有同名 skill，安装器会指出冲突路径。现有 Moluoxixi 项目需显式加 `--migrate`，旧 Codex 入口备份在 `.requirements/migrations/moluoxixi/`，原任务、独立 skill、其他 hooks 和项目规则保留。
 
-## 在项目中使用
+## 一个入口与五个专项
 
-下列命令从已经初始化的项目根目录执行。需求 ID 由团队选定，同一个项目内唯一。
+项目的默认入口是 `requirement-flow`。它读当前需求图和授权范围，组合五种工作方法。动作可以跳过、重复或并行。例如，已确认字段的小修复可直接开发，接口待确认只影响使用该接口的故事。
+
+| 专项 skill | 使用时机和交付物 |
+| --- | --- |
+| `flow-requirements` | 需求边界或状态不清时，把原话拆成故事、具名场景和待决定问题。 |
+| `flow-contracts` | 核对操作到请求、响应和回显的字段链，记录来源和契约缺口。 |
+| `flow-implement` | 依据已确认范围开发，回写实际代码位置、关键处理和异常分支。 |
+| `flow-verify` | 按场景运行断言，或登记真实观察及附件，指出失败与未覆盖项。 |
+| `flow-review` | 独立复核需求、实现与证据是否一致，给出有依据的发现。 |
+
+## 查看和推进需求
+
+在已启用的项目中，可以直接告诉 Codex 要做什么。以下命令从项目根目录运行，`plan-search` 是示例需求 ID。
 
 ```bash
 FLOW=.agents/skills/requirement-flow/flow.py
 python3 "$FLOW" list
-python3 "$FLOW" new <需求ID> --request '需求原话'
-python3 "$FLOW" task <需求ID> next --actor <执行者>
-python3 "$FLOW" task <需求ID> serve
+python3 "$FLOW" new plan-search --request '门店人员可以按名称查找方案'
+python3 "$FLOW" task plan-search next --actor developer
+python3 "$FLOW" task plan-search serve
 ```
 
-`serve` 输出专属于这项需求的本机 URL。页面支持按功能筛选、查看当前进度与依赖、登记业务决定。离线查阅可直接打开 `.requirements/active/<需求ID>/handbook.html`。AI 可读取同目录的 `model.json`，也可运行 `task <需求ID> context <故事ID>` 获取该功能的上下文。所有改动通过带版次检查的命令或本机页面写回。
+`serve` 输出本机 URL，支持筛选、查看处理与证据、登记业务决定。离线可打开 `.requirements/active/plan-search/handbook.html`；AI 可读同目录 `model.json`，或用 `task plan-search context <故事ID>` 只读取一个功能。
 
-调研委托用 `new <需求ID> --outcome research --request '原话'` 建立，记录结论及依据后即可交付。开发交付按各故事的验收动作检查。业务决定改变时，受影响的实现与证据需要复核。失败验证可重开相关工作。结束后 `archive <需求ID>` 将整项记录移入 `.requirements/archive/`，仍可离线查阅或用 `context` 检索。
+## 验收与归档
 
-## 从旧 Codex 入口迁移
+为每个验收例子分配稳定 ID，用验证动作的 `covers` 指向它负责的场景。每个场景分别通过 `verify-run` 保存实际测试命令、输出与退出码，或通过 `verify-observe` 保存真实观察、环境和项目内的附件。测试须输出可核对的结果，执行者还要确认断言覆盖业务预期。所有相关场景有当前有效的通过凭据后才能结束验证动作。比如，“保存成功”的提示可以证明界面反馈，要证明数据已保存，还需重新进入页面核对回显。[命令与示例](skills/requirement-flow/references/model.md)
 
-已启用 Moluoxixi 的项目可以在初始化时明确加 `--migrate`。安装器将已识别的旧 Codex 入口备份到 `.requirements/migrations/moluoxixi/`，保留其他 hooks、项目规则、独立 skills 和旧任务材料。`migration.json` 记录移动与备份的相对路径。遇到无法确认归属的配置时，按提示核对后再运行。
-
-## 通过 AIRules 分发
-
-包含本角色的 AIRules 版本发布后，运行 `airules install requirement-flow --host codex` 和 `airules verify requirement-flow --host codex`。然后从 `~/.agents/skills/requirement-flow/flow.py` 初始化各项目。AIRules 的用户级角色切换会更新受管 skill 投影；从本地检出直接试用只针对指定的项目。
+交付型需求按场景检查完整性。确需撤出已承诺场景时，先记录本故事的业务决定，再在同一份计划补丁中登记撤出的场景和决定依据。原场景仍可查阅。只委托调研时，创建需求可加 `--outcome research`，按实际结论和依据收尾。调研中明确登记的验收场景也须逐条验证。结束后用 `archive <需求ID>` 将模型、图页和已采集的 `evidence/` 一起移入 `.requirements/archive/<需求ID>/`。若明确要冻结未完成工作，可用 `--allow-incomplete` 保留原状态。旧版自由文本记录可继续查阅；续做的旧交付需求须补上场景覆盖与实际证据。

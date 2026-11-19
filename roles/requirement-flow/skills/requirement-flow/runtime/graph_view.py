@@ -43,7 +43,7 @@ def contract_users(work):
     return {key:[story for story in work["stories"] if story in members] for key, members in users.items()}
 
 
-def make_graph(work, states):
+def make_graph(work, states, scenarios):
     stories = work["stories"]
     actions = work["actions"]
     decisions = work["decisions"]
@@ -77,8 +77,13 @@ def make_graph(work, states):
 
     node(ROOT_ID, "request", work["title"], label="原始需求")
     for key, story in stories.items():
+        cases = [case for case in scenarios if case["story"] == key]
+        badge = ""
+        if cases:
+            passed = sum(case["status"] == "passed" for case in cases)
+            badge = f"{passed}/{len(cases)} 已验"
         node(key, "story", story["title"], story["flow"][0] if story.get("flow") else story["actor"],
-             label="用户故事")
+             label="用户故事", state=badge)
         connect(ROOT_ID, key)
 
     for key, decision in decisions.items():
@@ -183,7 +188,11 @@ def make_graph(work, states):
     check_kind = "调研" if research else "验证"
     checks = [key for key,a in actions.items() if a["kind"] == check_kind and states[key]["state"] != "skipped"]
     proven = sum(states[key]["state"] == "done" for key in checks)
-    caption = f"{proven} / {len(checks)} 项{'调研' if research else '验收'}有证据" if checks else "查看已有产出与待办"
+    if research and not scenarios:
+        caption = f"{proven} / {len(checks)} 项调研有证据" if checks else "查看已有产出与待办"
+    else:
+        passed = sum(case["status"] == "passed" for case in scenarios)
+        caption = f"{passed} / {len(scenarios)} 个场景通过" if scenarios else "待梳理验收场景"
     node(DELIVERY_ID,"delivery","调研结论" if research else "交付与经验",caption,"调研依据" if research else "交付依据")
     terminal = [k for k in nodes if k != DELIVERY_ID and not any(e["source"] == k for e in edges.values())]
     for key in terminal:
@@ -202,7 +211,7 @@ def make_graph(work, states):
 
 def render(model, states, impacts, token, checksum, template, *, queue):
     work = model["work"]
-    graph = make_graph(work, states)
+    graph = make_graph(work, states, queue.get("scenarios", []))
     payload = dict(model=model, states=states, impacts=impacts, graph=graph, csrf=token, queue=queue)
     safe_json = json.dumps(payload, ensure_ascii=False, separators=(",",":")).replace("&","\\u0026").replace("<","\\u003c").replace(">","\\u003e")
     here = Path(template).parent

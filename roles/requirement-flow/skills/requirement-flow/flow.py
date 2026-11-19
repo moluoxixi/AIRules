@@ -140,7 +140,7 @@ def summary(path):
     work = model["work"]
     if work["id"] != unicodedata.normalize("NFC", path.name):
         raise ValueError(f"需求 ID 与目录不一致：{work['id']} / {path.name}")
-    queue = engine.dispatch(work)
+    queue = engine.dispatch(work, workspace=path)
     return {
         "id": work["id"], "title": work["title"], "outcome": work.get("outcome", "delivery"),
         "revision": work["revision"], "state": queue["state"], "progress": queue["progress"],
@@ -209,7 +209,7 @@ class SnapshotHTML(HTMLParser):
             self.payloads[-1] += content
 
 
-def check_snapshot(path):
+def check_snapshot(path, *, refresh_scenarios=False):
     model = engine.load(path / "model.json")
     if model["work"]["id"] != unicodedata.normalize("NFC", path.name):
         raise ValueError("归档模型与需求目录的 ID 不一致。")
@@ -218,10 +218,23 @@ def check_snapshot(path):
     page.close()
     if len(page.payloads) != 1 or len(page.checksums) != 1:
         raise ValueError("归档人读页缺少唯一的嵌入模型或 model-sha256 标记。")
-    embedded = json.loads(page.payloads[0], object_pairs_hook=engine.unique)["model"]
+    snapshot = json.loads(page.payloads[0], object_pairs_hook=engine.unique)
     checksum = engine.digest(model)
-    if checksum != engine.digest(embedded) or checksum != page.checksums[0]:
+    if checksum != engine.digest(snapshot["model"]) or checksum != page.checksums[0]:
         raise ValueError("归档人读页的嵌入模型或摘要与 model.json 不一致。")
+    saved_cases = snapshot.get("queue", {}).get("scenarios")
+    if saved_cases is not None or refresh_scenarios:
+        live_cases = engine.dispatch(model["work"], workspace=path)["scenarios"]
+        saved_states = {case["id"]: case["status"] for case in saved_cases or []}
+        live_states = {case["id"]: case["status"] for case in live_cases}
+        if saved_cases is None or saved_states != live_states:
+            if not refresh_scenarios:
+                changed = sorted(key for key in saved_states.keys() | live_states.keys()
+                                 if saved_states.get(key) != live_states.get(key))
+                raise ValueError("验收场景与归档快照不一致，请核对凭据：" + "、".join(changed))
+            # Only the active copy can be refreshed, while the archive operation holds its lock.
+            engine.bind_workspace(path)
+            engine.sync()
     return model["work"]["revision"]
 
 
@@ -238,7 +251,7 @@ def archive(store, args):
             info = summary(source)
             if info["state"] != "complete" and not args.allow_incomplete:
                 raise ValueError(f"需求 {args.id} 当前状态为 {info['state']}。如需保留当前进度并归档，请使用 --allow-incomplete。")
-            check_snapshot(source)
+            check_snapshot(source, refresh_scenarios=True)
             local_directory(target.parent, create=True)
             source.rename(target)
             info["handbook"] = str(target / "handbook.html")

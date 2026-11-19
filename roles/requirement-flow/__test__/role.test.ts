@@ -11,6 +11,7 @@ import { loadVendorManifest } from '../../../scripts/lib/vendors.js'
 import { verifyGlobalAgentSkills, verifyHost } from '../../../scripts/lib/verify.js'
 
 const role = 'requirement-flow'
+const skillNames = [role, 'flow-requirements', 'flow-contracts', 'flow-implement', 'flow-verify', 'flow-review']
 const tests = fileURLToPath(new URL('.', import.meta.url))
 const roleDirectory = path.resolve(tests, '..')
 const repo = path.resolve(roleDirectory, '../..')
@@ -51,6 +52,10 @@ it('installs the Codex role and upgrades its shared program without replacing ei
       expect(await verifyHost('codex', homeDir, userHome, role)).toBe(true)
     }
     await projectRole()
+    for (const name of skillNames) {
+      const relative = path.join('.agents', 'skills', name, 'SKILL.md')
+      expect(readFileSync(path.join(userHome, relative))).toEqual(readFileSync(path.join(checkout, 'skills', name, 'SKILL.md')))
+    }
     const globalScript = path.join(userHome, skill, 'flow.py')
     const py = python()
     function run(script: string, project: string, ...args: string[]) {
@@ -67,6 +72,10 @@ it('installs the Codex role and upgrades its shared program without replacing ei
       writeFileSync(path.join(project, 'AGENTS.md'), '# Existing project rules\n')
       run(globalScript, project, 'init')
       const localScript = path.join(project, skill, 'flow.py')
+      for (const name of skillNames) {
+        const relative = path.join('.agents', 'skills', name, 'SKILL.md')
+        expect(readFileSync(path.join(project, relative))).toEqual(readFileSync(path.join(userHome, relative)))
+      }
       expect(JSON.parse(run(localScript, project, 'list')).active).toEqual([])
       run(localScript, project, 'new', 'check', '--request', path.basename(project), '--outcome', 'research')
     }

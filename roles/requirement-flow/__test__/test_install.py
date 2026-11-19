@@ -1,5 +1,6 @@
 """Test project installation, upgrade and migration using only disposable directories."""
 import importlib.util
+import hashlib
 import json
 from pathlib import Path
 import shutil
@@ -94,8 +95,9 @@ class InstallProjectTest(unittest.TestCase):
         self.assertEqual(snapshot(self.project), migrated)
 
     def test_clean_install_and_upgrade_preserve_data_and_project_rules(self):
-        source = self.root / "next-version"
-        shutil.copytree(SKILL_SOURCE, source)
+        skills = self.root / "next-version" / "skills"
+        shutil.copytree(SKILL_SOURCE.parent, skills)
+        source = skills / "requirement-flow"
         write(source, "runtime/test_fake.py", "# should not enter business projects")
         write(source, "runtime/__pycache__/sync.cpython-311.pyc", b"cached")
         with patch.object(installer, "SOURCE", source):
@@ -103,6 +105,10 @@ class InstallProjectTest(unittest.TestCase):
             skill = self.project / ".agents/skills/requirement-flow"
             self.assertTrue((skill / "flow.py").is_file())
             self.assertTrue((skill / "references/model.md").is_file())
+            self.assertTrue((skill / "runtime/evidence.py").is_file())
+            for name in installer.SPECIALISTS:
+                self.assertEqual((skill.parent / name / "SKILL.md").read_bytes(),
+                                 (skills / name / "SKILL.md").read_bytes())
             self.assertFalse((skill / "runtime/test_fake.py").exists())
             self.assertFalse((skill / "runtime/__pycache__").exists())
             self.assertFalse(installer.install(self.project)["changed"])
@@ -121,6 +127,48 @@ class InstallProjectTest(unittest.TestCase):
             self.assertTrue(agents.read_bytes().endswith(b"Keep deployment review.\n"))
             self.assertFalse(installer.install(self.project)["changed"])
 
+    def test_upgrades_v010_manifest_into_six_skills_without_rewriting_project_data(self):
+        base = self.project / ".agents/skills/requirement-flow"
+        files = {}
+        # v0.1.0 keyed hashes relative to the orchestrator, with no sibling skills.
+        for name in sorted(installer.ROOT_FILES | {"runtime/" + n for n in installer.RUNTIME_FILES if n != "evidence.py"}):
+            old = ("previous release: " + name + "\n").encode()
+            write(base, name, old)
+            files[name] = hashlib.sha256(old).hexdigest()
+        old_block = "<!-- REQUIREMENT-FLOW:START -->\nold project instructions\n<!-- REQUIREMENT-FLOW:END -->"
+        manifest = {"format": 1, "role": "requirement-flow", "files": files, "migrated": False,
+                    "agents_block": hashlib.sha256(old_block.encode()).hexdigest()}
+        write(self.project, ".requirements/installation.json", json.dumps(manifest))
+        write(self.project, "AGENTS.md", "Use test portal.\n" + old_block + "\nPreserve project reviews.\n")
+        before = {}
+        for bucket in ("active", "archive"):
+            for asset in ("model.json", "handbook.html"):
+                relative = Path(".requirements") / bucket / "old" / asset
+                before[relative] = write(self.project, relative, "Persisted old story and verification results\n").read_bytes()
+
+        collision = write(self.project, ".agents/skills/flow-review/notes.md", "private team skill")
+        original = snapshot(self.project)
+        with self.assertRaisesRegex(ValueError, "同名"):
+            installer.install(self.project)
+        self.assertEqual(snapshot(self.project), original)
+        collision.unlink()
+        collision.parent.rmdir()
+        self.assertTrue(installer.install(self.project)["changed"])
+        new_manifest = json.loads((self.project / ".requirements/installation.json").read_bytes())
+        self.assertEqual(new_manifest["format"], 2)
+        for name in ("requirement-flow", *installer.SPECIALISTS):
+            self.assertIn(f"{name}/SKILL.md", new_manifest["files"])
+            self.assertEqual((base.parent / name / "SKILL.md").read_bytes(),
+                             (SKILL_SOURCE.parent / name / "SKILL.md").read_bytes())
+        self.assertIn("requirement-flow/runtime/evidence.py", new_manifest["files"])
+        for relative, data in before.items():
+            self.assertEqual((self.project / relative).read_bytes(), data)
+        rules = (self.project / "AGENTS.md").read_text()
+        self.assertEqual(rules.count("<!-- REQUIREMENT-FLOW:START -->"), 1)
+        self.assertTrue(rules.startswith("Use test portal.\n"))
+        self.assertTrue(rules.endswith("Preserve project reviews.\n"))
+        self.assertFalse(installer.install(self.project)["changed"])
+
     def test_refuses_unknown_same_name_without_writing(self):
         write(self.project, ".agents/skills/requirement-flow/SKILL.md", "project-owned")
         original = snapshot(self.project)
@@ -130,7 +178,7 @@ class InstallProjectTest(unittest.TestCase):
 
     def test_refuses_modified_managed_files_and_rules_without_writing(self):
         installer.install(self.project)
-        for relative in (".agents/skills/requirement-flow/flow.py", "AGENTS.md"):
+        for relative in (".agents/skills/requirement-flow/flow.py", ".agents/skills/flow-review/SKILL.md", "AGENTS.md"):
             with self.subTest(relative=relative):
                 target = self.project / relative
                 previous = target.read_bytes()

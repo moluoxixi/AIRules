@@ -73,7 +73,7 @@ class ProjectFlowTest(unittest.TestCase):
     def test_delivery_plan_decision_and_evidence(self):
         self.ok("new", "return", "--request", "加载失败时可以返回门店")
         story = {"title":"失败时返回", "actor":"门店", "goal":"恢复原门店",
-                 "examples":[{"given":"全国页面出错", "when":"点击返回", "then":"回到原门店"}]}
+                 "examples":[{"id":"SC-return","given":"全国页面出错", "when":"点击返回", "then":"回到原门店"}]}
         decision = {"title":"是否保留门店", "owner":"产品", "why":"返回入口",
                     "stories":["S-return"], "options":{"yes":{"label":"保留","consequence":"按原门店返回"},
                                                       "no":{"label":"全国","consequence":"返回全国"}}}
@@ -82,7 +82,7 @@ class ProjectFlowTest(unittest.TestCase):
                     "decisions":["D-return"],"contracts":[],"depends_on":[{"id":dependency}],"done":title}
         patch_data = {"stories":{"S-return":story}, "decisions":{"D-return":decision},
                       "actions":{"A-fix":action("开发","处理返回","A-intake"),
-                                 "A-verify":action("验证","核对返回位置","A-fix")}}
+                                 "A-verify":{**action("验证","核对返回位置","A-fix"),"covers":["SC-return"]}}}
         (self.project.parent / "change.json").write_text(json.dumps(patch_data), encoding="utf-8")
         def task(*args):
             return self.ok("task","return",*args)
@@ -93,11 +93,27 @@ class ProjectFlowTest(unittest.TestCase):
         receipt("finish","A-intake",2)
         task("decision","D-return","yes","--rev","3","--actor","业务负责人","--why","保持原门店")
         receipt("finish","A-fix",4)
-        verify = ("--level","自动化","--environment","受控浏览器","--expected","恢复原门店")
-        receipt("fail","A-verify",5,*verify,"--reopen","A-fix")
+        state = self.project / "return-state.json"
+        def run_check(revision):
+            checker = ("import json,sys; from pathlib import Path; "
+                       "row=json.loads(Path('return-state.json').read_text()); "
+                       "print(row['returned']); sys.exit(0 if row['returned']==row['entry'] else 1)")
+            return self.command("task","return","verify-run","A-verify","--scenario","SC-return",
+                                "--environment","隔离门店状态用例","--actor","执行人","--rev",str(revision),
+                                "--",sys.executable,"-c",checker)
+        state.write_text(json.dumps({"entry":"store-42","returned":"nationwide"}))
+        failed = run_check(5)
+        self.assertEqual(failed.returncode,1,failed.stderr)
+        self.assertFalse(json.loads(failed.stdout)["passed"])
+        verify = ("--level","自动化","--environment","隔离门店状态用例","--expected","恢复原门店")
+        receipt("fail","A-verify",6,*verify,"--reopen","A-fix")
         self.assertEqual(json.loads(task("next"))["next"]["id"], "A-fix")
-        receipt("finish","A-fix",6)
-        receipt("finish","A-verify",7,*verify)
+        state.write_text(json.dumps({"entry":"store-42","returned":"store-42"}))
+        receipt("finish","A-fix",7)
+        passed = run_check(8)
+        self.assertEqual(passed.returncode,0,passed.stderr)
+        self.assertTrue(json.loads(passed.stdout)["passed"])
+        receipt("finish","A-verify",9)
         self.assertEqual(json.loads(task("next"))["state"], "complete")
         self.ok("archive","return")
         self.ok("task","return","--check")

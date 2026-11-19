@@ -27,7 +27,7 @@ python3 ~/.agents/skills/requirement-flow/flow.py --project /path/to/project ini
 
 ### Features
 
-Each project owns its requirement records. People can explore features and evidence on the graph, and agents use the same dependencies to claim or resume work.
+One entry point selects among five specialist skills for requirements, API contracts, implementation, verification, and review. Teams can skip work already covered and advance independent stories in parallel. Each requirement has its own graph. Delivery is checked against named scenarios with test output or observed results and attachments, all archived with the requirement.
 
 ### Usage
 
