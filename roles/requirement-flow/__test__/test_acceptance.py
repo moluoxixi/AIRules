@@ -84,6 +84,27 @@ class AcceptanceTest(unittest.TestCase):
     def statuses(self):
         return {s['id']: s['status'] for s in self.queue()['scenarios']}
 
+    def test_repeated_failed_verification_routes_to_independent_diagnosis(self):
+        for step in ('diagnose', 'independent_review'):
+            self.collect('A-save', 'AC-save', ok=False, fail=True)
+            followup, = self.queue()['verification_followups']
+            self.assertEqual((followup['step'], followup['scenario']), (step, 'AC-save'))
+            packet = self.queue()['next']
+            self.assertEqual(packet['verification_followups'], [followup])
+            self.assertEqual(packet['skill'], followup['skill'])
+            if step == 'independent_review':
+                self.assertEqual(packet['handoff']['receipts'], followup['receipts'])
+                self.assertEqual(packet['handoff']['verification_actors'], ['验收者'])
+            self.assertNotEqual(self.queue()['state'], 'complete')
+        self.assertEqual(len(followup['receipts']), 2)
+        revision = self.queue()['revision']
+        handoff = json.loads(self.cli('task', 'save', 'claim', '--rev', revision, '--actor', '复核者').stdout)
+        self.assertEqual((handoff['outcome'], handoff['claimed'], handoff['revision']), ('review_requested', None, revision))
+        self.collect('A-save', 'AC-save')
+        self.finish('A-save')
+        self.assertFalse(self.queue()['verification_followups'])
+        self.assertEqual(self.statuses()['AC-retry'], 'uncovered')
+
     def test_removing_an_unverified_case_requires_a_recorded_scope_decision(self):
         self.collect('A-save', 'AC-save')
         self.finish('A-save')

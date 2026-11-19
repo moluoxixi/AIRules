@@ -1,4 +1,5 @@
 """Project the shared demand record into a readable graph, preserving its entity IDs."""
+import hashlib
 import json
 import re
 from html import escape
@@ -209,10 +210,54 @@ def make_graph(work, states, scenarios):
     return {"nodes":list(nodes.values()), "edges":list(edges.values()), "aliases":aliases, "features":features}
 
 
+def lesson_version(queue):
+    cards = [queue.get("lesson_cards", []), queue.get("related_lessons", [])]
+    return hashlib.sha256(json.dumps(cards, sort_keys=True, ensure_ascii=False).encode()).hexdigest()
+
+
+def lesson_source_page(card, source, download_url):
+    proof = source["proof"]
+    review = card.get("review") or {}
+    def rows(pairs):
+        return "".join("<dt>" + escape(label) + "</dt><dd>" + escape(str(value)) + "</dd>"
+                       for label, value in pairs if value is not None and value != "")
+    context = rows([("来源需求", card["task_title"] + " · " + card["task"]),
+                    ("功能", source["story_title"] + " · " + source["story"]),
+                    ("场景", source["scenario"]), ("给定", source["given"]),
+                    ("当", source["when"]), ("应当", source["then"])])
+    receipt = rows([("验证动作", source["action_title"] + " · " + source["action"]),
+                    ("回执", source["receipt"]), ("证据类型", proof["level"]),
+                    ("环境", proof["environment"]), ("记录人", proof["actor"]),
+                    ("命令参数", json.dumps(proof["argv"], ensure_ascii=False) if proof.get("argv") else None),
+                    ("退出码", proof.get("exit_code")), ("文件", proof["artifact"]["path"]),
+                    ("SHA-256", proof["artifact"]["sha256"])])
+    review_info = rows([("经验版本", f"{card['id']} · v{card['version']}"),
+                        ("适用条件", card["when"]), ("做法", card["practice"]), ("边界", card["boundary"]),
+                        ("审查人", review.get("actor")), ("审查意见", review.get("reason"))])
+    return f"""<!doctype html><html lang="zh-CN"><meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1"><title>经验来源 · {escape(source["scenario"])}</title>
+<style>body{{margin:0;background:#f2f6f8;color:#203d50;font:16px/1.55 system-ui,sans-serif}}main{{max-width:750px;margin:auto;padding:32px 20px 60px}}
+h1{{font-size:1.8rem;margin:16px 0 24px}}section{{padding:18px 22px;background:white;border:1px solid #cddbe3;border-radius:10px;margin:16px 0}}
+h2{{font-size:1.15rem;margin:0 0 14px}}dl{{display:grid;grid-template-columns:minmax(4.7em,auto) 1fr;gap:8px 16px;margin:0}}
+dt{{color:#526b79}}dd{{margin:0;overflow-wrap:anywhere}}pre{{white-space:pre-wrap;overflow-wrap:anywhere;background:#f1f5f7;padding:12px}}
+a{{color:#176269}}.download{{display:inline-block;margin-top:10px}}</style><main>
+<a href="/">返回当前需求图</a><h1>{escape(card["observation"])}</h1>
+<section><h2>来源场景</h2><dl>{context}</dl></section>
+<section><h2>实际证据</h2><dl>{receipt}</dl><pre>{escape(proof["actual"])}</pre>
+<a class="download" href="{escape(download_url, quote=True)}" download>下载原始证据</a></section>
+<section><h2>经验与审查</h2><dl>{review_info}</dl></section></main></html>"""
+
+
 def render(model, states, impacts, token, checksum, template, *, queue):
     work = model["work"]
     graph = make_graph(work, states, queue.get("scenarios", []))
-    payload = dict(model=model, states=states, impacts=impacts, graph=graph, csrf=token, queue=queue)
+    for node in graph["nodes"]:
+        if node["kind"] == "story":
+            count = sum(node["id"] in card["matched_stories"] for card in queue.get("related_lessons", []))
+            if count:
+                node["sharedNote"] = f"{count} 条相关项目经验"
+    payload = dict(model=model, states=states, impacts=impacts, graph=graph, csrf=token, queue=queue,
+                   lesson_version=lesson_version(queue))
     safe_json = json.dumps(payload, ensure_ascii=False, separators=(",",":")).replace("&","\\u0026").replace("<","\\u003c").replace(">","\\u003e")
     here = Path(template).parent
     substitutions = {

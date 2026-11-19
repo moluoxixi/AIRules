@@ -10,11 +10,13 @@ import secrets
 import shutil
 import sys
 import tempfile
+import unicodedata
 if __package__:
-    from . import evidence, graph_view
+    from . import evidence, graph_view, knowledge
 else:
     import evidence
     import graph_view
+    import knowledge
 from datetime import datetime, timezone
 from contextlib import contextmanager
 from functools import lru_cache
@@ -196,6 +198,7 @@ def validate(m):
             check_refs([e["reopen"]], "actions")
     for lesson in w["lessons"]:
         expect(all(lesson.get(k) for k in ("observation","when","practice","boundary","evidence","review")), "经验缺少使用条件或依据")
+    knowledge.validate_cards(w, sys.modules[__name__])
 
 
 def condition_value(w, condition):
@@ -584,7 +587,55 @@ def scenario_report(w, states, selected):
     return rows
 
 
-def dispatch(w, actor="AI", story=None, *, workspace=None):
+def verification_followups(work, scenarios):
+    """Surface unresolved real failures and repeated results to the actor taking the next step."""
+    followups = []
+    failures = {(case["id"],proof["action"]):proof for case in scenarios for proof in case["receipts"]
+                if proof.get("status") == "failed"}
+    if not failures:
+        return followups
+    history = {}
+    for event in work["events"]:
+        key = (event.get("scenario"), event.get("action"))
+        if event["kind"] == "evidence" and key in failures:
+            history.setdefault(key, []).append(event)
+    for (scenario, action), proof in failures.items():
+        attempts = history.get((scenario,action), [])
+        if not attempts or attempts[-1]["id"] != proof["id"]:
+            continue
+        def fingerprint(event):
+            receipt = event.get("receipt") or {}
+            if not isinstance(receipt,dict) or not isinstance(receipt.get("artifact"),dict):
+                return None
+            return (event.get("stamp"),event.get("scenario_stamp"),receipt.get("passed"),receipt.get("environment"),
+                    receipt.get("argv"),receipt.get("exit_code"),receipt["artifact"].get("sha256"))
+        current = fingerprint(attempts[-1])
+        repeated = []
+        for attempt in reversed(attempts):
+            if fingerprint(attempt) != current:
+                break
+            repeated.append(attempt["id"])
+        followups.append({"action":action,"scenario":scenario,"actor":proof.get("actor"),
+                          "receipts":list(reversed(repeated)),
+                          "step":"independent_review" if len(repeated)>1 else "diagnose",
+                          "skill":"flow-review" if len(repeated)>1 else "flow-verify"})
+    return followups
+
+
+def lesson_context(work, workspace, stories, packet=None, *, for_map=False):
+    cards = knowledge.project_cards(workspace, sys.modules[__name__], current_work=work, relevant_to=work, stories=stories)
+    own_cards = [card for card in cards if card["task"] == work["id"]
+                 and (not stories or any(s["story"] in stories for s in card["sources"]))]
+    if packet is not None:
+        packet["related_lessons"] = knowledge.match_cards(work, cards, stories=stories, action=packet["id"])
+    reviews = [{"id":card["id"], "version":card["version"], "author":card["author"], "skill":"flow-review",
+                "sources":[{k:s[k] for k in ("story","scenario","action","receipt")} for s in card["sources"]]}
+               for card in own_cards if card["state"] == "pending"]
+    return {"related_lessons":knowledge.match_cards(work,cards,stories=stories,limit=None if for_map else 5), "lesson_cards":own_cards,
+            "lesson_reviews":reviews}
+
+
+def dispatch(w, actor="AI", story=None, *, workspace=None, include_lessons=True, for_map=False):
     expect(isinstance(actor,str) and actor.strip(), "执行人不能为空")
     expect(story is None or story in w["stories"], "故事不存在")
     selected = {story} if story is not None else set()
@@ -642,11 +693,23 @@ def dispatch(w, actor="AI", story=None, *, workspace=None):
         state = "complete"
     else:
         state = "unplanned"
-    return {"revision":w["revision"],"actor":actor,"story":story,"outcome_type":w.get("outcome","delivery"),
+    lessons = lesson_context(w, workspace or TASK_DIR, selected, packet, for_map=for_map) if include_lessons else {}
+    followups = verification_followups(w,scenarios)
+    if packet is not None:
+        packet["verification_followups"] = [f for f in followups if f["action"] == packet["id"]]
+        repeats = [f for f in packet["verification_followups"] if f["step"] == "independent_review"]
+        if repeats:
+            packet["skill"] = "flow-review"
+            packet["handoff"] = {"reason":"相同输入重复得到相同失败，请独立诊断原因后再重测",
+                                 "scenarios":[f["scenario"] for f in repeats],
+                                 "receipts":[rid for f in repeats for rid in f["receipts"]],
+                                 "verification_actors":list(dict.fromkeys(f["actor"] for f in repeats))}
+    return {**lessons, "revision":w["revision"],"actor":actor,"story":story,"outcome_type":w.get("outcome","delivery"),
             "state":state,"next":packet,"ready":ready,
             "running":running,"pending_decisions":pending,"technical_blockers":technical,"waiting":waiting,"scenarios":scenarios,
-            "retired_scenarios":retirement_history(w,selected),
-            "review_skill":"flow-review" if (scenarios or not research) and not packet and (missing or state in ("unplanned","complete")) else None,
+            "retired_scenarios":retirement_history(w,selected), "verification_followups":followups,
+            "review_skill":"flow-review" if lessons.get("lesson_reviews") or (
+                (scenarios or not research) and not packet and (missing or state in ("unplanned","complete"))) else None,
             "progress":{"completed":completed,"verified_stories":[s for s in w["stories"] if s in verified and (not selected or s in selected)],
                         "unverified_stories":missing}}
 
@@ -654,8 +717,11 @@ def dispatch(w, actor="AI", story=None, *, workspace=None):
 def claim(revision, actor="AI", story=None):
     result = {}
     def reserve(w):
-        queue = dispatch(w, actor, story)
+        queue = dispatch(w, actor, story, include_lessons=False)
         packet = queue["next"]
+        if packet and packet.get("handoff"):
+            result.update(claimed=None, outcome="review_requested")
+            return False
         result["claimed"] = packet["id"] if packet else None
         if not packet or packet["mode"] == "resume":
             result["outcome"] = "resumed" if packet else queue["state"]
@@ -729,10 +795,12 @@ def context(m, story=None):
                   e.get("decision") in decisions or set(e.get("changed",[])) & (chosen|decisions|contracts|stories)]
     effective_ids = {status[k]["proof"] for k in chosen if status[k]["proof"]}
     usage = graph_view.contract_users(w)
+    scenarios = scenario_report(w,status,stories)
     return {
         "protocol_version":m["protocol"]["version"],"revision":w["revision"],"mode":w["kind"],"outcome_type":w.get("outcome","delivery"),
         "raw_request":w["raw_request"],"goal":w["goal"],"scope":w["scope"],"contract_routes":routes,
-        "scenarios":scenario_report(w,status,stories),"retired_scenarios":retirement_history(w,stories),
+        "scenarios":scenarios, "verification_followups":verification_followups(w,scenarios),
+        "retired_scenarios":retirement_history(w,stories),
         "stories":story_context(w,[k for k in w["stories"] if not stories or k in stories]),
         "decisions":{k:{**w["decisions"][k],"answer":w["answers"].get(k)} for k in w["decisions"] if k in decisions},
         "contracts":{k:v for k,v in w["contracts"].items() if k in contracts},
@@ -741,7 +809,7 @@ def context(m, story=None):
         "currently_running":[k for k in w["actions"] if k in chosen and status[k]["state"]=="active"],
         "ready":[k for k in w["actions"] if k in chosen and status[k]["state"] != "active" and executable(status[k])],
         "effective_outputs":[e for e in w["events"] if e["id"] in effective_ids],
-        "recent_events":all_events[-12:], "lessons":w["lessons"]
+        "recent_events":all_events[-12:], "lessons":w["lessons"], **lesson_context(w,TASK_DIR,stories)
     }
 
 
@@ -828,11 +896,12 @@ def impact(w, decision, choice):
             if before[k]["state"]!=after[k]["state"] or before[k]["reasons"]!=after[k]["reasons"]]
 
 
-def render(model, token=None):
+def render(model, token=None, *, workspace=None):
     work = model["work"]
     impacts = {key: {code: impact(work, key, code) for code in d["options"]}
                for key, d in work["decisions"].items()}
-    return graph_view.render(model, evaluate(work), impacts, token, digest(model), LAYOUT, queue=dispatch(work))
+    return graph_view.render(model, evaluate(work,workspace), impacts, token, digest(model), LAYOUT,
+                             queue=dispatch(work,workspace=workspace,for_map=True))
 
 
 def initialize_task(path, raw, *, key, title=None, outcome="delivery"):
@@ -860,7 +929,7 @@ def initialize_task(path, raw, *, key, title=None, outcome="delivery"):
         staging=Path(temp)/"new"
         staging.mkdir()
         (staging/"model.json").write_bytes(encoded(model))
-        (staging/"handbook.html").write_bytes(render(model).encode("utf-8"))
+        (staging/"handbook.html").write_bytes(render(model,workspace=dest).encode("utf-8"))
         expect(not dest.exists(),"目标目录已由其他流程创建")
         staging.rename(dest)
     return dest
@@ -887,20 +956,35 @@ def serve(port):
             self.wfile.write(data)
         def host(self):
             return "127.0.0.1:"+str(self.server.server_port)
-        def download_evidence(self, model, event_id):
+        def download_evidence(self, model, event_id, *, workspace=None, source=None):
             event = next((e for e in model["work"]["events"] if e["id"]==event_id and e["kind"]=="evidence"),None)
             if not event:
                 self.send_error(404)
                 return
             try:
+                root = TASK_DIR if workspace is None else workspace
                 stamp = proof_stamp(event["stamp"],event["scenario_stamp"],event["id"],event["revision"])
-                receipt = verified_receipt(TASK_DIR,event,stamp)
-                path = evidence.artifact_path(TASK_DIR,receipt)
-                stream = path.open("rb")
+                receipt = verified_receipt(root,event,stamp)
+                if source is not None:
+                    expect(receipt["action"] == source["action"] and receipt["scenario"] == source["scenario"]
+                           and receipt["artifact"] == source["proof"]["artifact"], "经验引用的回执已改变")
+                path = evidence.artifact_path(root,receipt)
+                snapshot = tempfile.SpooledTemporaryFile(max_size=512*1024)
+                try:
+                    checksum = hashlib.sha256()
+                    with path.open("rb") as stream:
+                        for chunk in iter(lambda: stream.read(256*1024), b""):
+                            checksum.update(chunk)
+                            snapshot.write(chunk)
+                    expect(checksum.hexdigest() == receipt["artifact"]["sha256"], "读取中的证据已改变")
+                    snapshot.seek(0)
+                except BaseException:
+                    snapshot.close()
+                    raise
             except (OSError,ValueError,KeyError,TypeError) as error:
                 self.send_content(409,"凭据产物核验失败：" + str(error),"text/plain")
                 return
-            with stream:
+            with snapshot:
                 self.send_response(200)
                 self.send_header("Content-Type","application/octet-stream")
                 self.send_header("Content-Disposition",'attachment; filename="' + path.name + '"')
@@ -908,7 +992,45 @@ def serve(port):
                 self.send_header("Cache-Control","no-store")
                 self.send_header("X-Content-Type-Options","nosniff")
                 self.end_headers()
-                shutil.copyfileobj(stream,self.wfile)
+                shutil.copyfileobj(snapshot,self.wfile)
+        def lesson_source(self, model, path):
+            try:
+                query = parse_qs(urlsplit(self.path).query, max_num_fields=4, strict_parsing=True, keep_blank_values=True)
+                if set(query) - {"version"} != {"task","lesson","receipt"} or any(len(values) != 1 for values in query.values()):
+                    raise ValueError
+                task, lesson, rid = (query[name][0] for name in ("task","lesson","receipt"))
+                task = unicodedata.normalize("NFC", task)
+                version = query.get("version",[None])[0]
+                if not re.fullmatch(r"E[0-9]+",rid) or (version is not None and not re.fullmatch(r"[1-9][0-9]*",version)):
+                    raise ValueError
+            except ValueError:
+                self.send_error(400)
+                return
+            queue = dispatch(model["work"],for_map=True)
+            cards = queue.get("lesson_cards", []) if task == model["work"]["id"] else queue.get("related_lessons", [])
+            matches = [(card, source) for card in cards if (card["task"],card["id"]) == (task,lesson)
+                       and (version is None or str(card["version"]) == version)
+                       for source in card["sources"] if source["receipt"] == rid and source["valid"]]
+            if len(matches) != 1:
+                self.send_content(404,"该场景来源已失效或未关联到当前需求。","text/plain")
+                return
+            card, source = matches[0]
+            if path == "/lesson-source":
+                params = urlencode({"task":task,"lesson":lesson,"version":card["version"],"receipt":rid})
+                self.send_content(200,graph_view.lesson_source_page(card,source,"/lesson-evidence?" + params),"text/html")
+                return
+            try:
+                store = evidence.directory(TASK_DIR.parent.parent)
+                expect(store.name == ".requirements" and card["bucket"] in ("active","archive")
+                       and task not in (".","..") and Path(task).name == task, "来源位置无效")
+                bucket = evidence.directory(store / card["bucket"])
+                root = evidence.directory(bucket / task)
+                origin = load(evidence.regular(root / "model.json"))
+                expect(origin["work"]["id"] == task, "来源需求与目录不一致")
+            except (OSError,ValueError,KeyError,TypeError):
+                self.send_content(409,"来源已变化，请重新打开证据。","text/plain")
+                return
+            self.download_evidence(origin,rid,workspace=root,source=source)
         def do_GET(self):
             if self.headers.get("Host") != self.host():
                 self.send_error(403); return
@@ -920,11 +1042,13 @@ def serve(port):
                 self.send_content(200,encoded(model),"application/json")
             elif re.fullmatch(r"/evidence/E[0-9]+",path):
                 self.download_evidence(model,path.split("/")[-1])
+            elif path in ("/lesson-source","/lesson-evidence"):
+                self.lesson_source(model,path)
             elif path=="/version":
                 work = model["work"]
-                cases = scenario_report(work,evaluate(work),set())
-                self.send_content(200,encoded({"revision":work["revision"],
-                                  "case_states":[[c["id"],c["status"]] for c in cases]}),"application/json")
+                queue = dispatch(work,for_map=True)
+                self.send_content(200,encoded({"revision":work["revision"],"lesson_version":graph_view.lesson_version(queue),
+                                  "case_states":[[c["id"],c["status"]] for c in queue["scenarios"]]}),"application/json")
             elif path in ("/context","/dispatch"):
                 try:
                     query=parse_qs(urlsplit(self.path).query,keep_blank_values=True)
@@ -997,6 +1121,17 @@ def main(argv=None):
     q.add_argument("--key"); q.add_argument("--title")
     q.add_argument("--outcome",choices=("delivery","research"),default="delivery")
     q=sub.add_parser("serve"); q.add_argument("--port",type=int,default=0)
+    for name in ("lesson-propose", "lesson-review"):
+        q = sub.add_parser(name)
+        q.add_argument("--rev", type=int, required=True)
+        q.add_argument("--actor", required=True)
+        if name == "lesson-propose":
+            q.add_argument("file", type=Path, help="包含经验做法、边界、主题词和场景回执的 JSON 文件")
+        else:
+            q.add_argument("id")
+            q.add_argument("verdict", choices=("approve","reject","retire"))
+            q.add_argument("--version", type=int, help="审查者实际查阅的经验版本")
+            q.add_argument("--why", required=True, help="对照来源与适用边界后的审查结论")
     for name in ("verify-run","verify-observe"):
         q=sub.add_parser(name)
         q.add_argument("id")
@@ -1061,6 +1196,11 @@ def main(argv=None):
         elif a.cmd=="plan":
             patch=load(Path(a.file))
             op=lambda w:apply_plan(w,patch,actor,a.why)
+        elif a.cmd == "lesson-propose":
+            card = load(a.file)
+            op = lambda w: knowledge.propose(w, TASK_DIR, card, actor, sys.modules[__name__])
+        elif a.cmd == "lesson-review":
+            op = lambda w: knowledge.review(w, TASK_DIR, a.id, a.verdict, actor, a.why, sys.modules[__name__], version=a.version)
         else:
             op=lambda w:progress(w,a.cmd,a.id,actor,a.output,getattr(a,"evidence",""),
                                  getattr(a,"level",""),getattr(a,"environment",""),getattr(a,"expected",""),getattr(a,"reopen",None))

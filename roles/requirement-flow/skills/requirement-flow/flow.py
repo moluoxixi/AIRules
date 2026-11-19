@@ -2,6 +2,7 @@
 """在项目内创建、查阅、推进和归档需求。"""
 import argparse
 from contextlib import contextmanager, ExitStack
+from datetime import datetime, timezone
 import hashlib
 from html.parser import HTMLParser
 import json
@@ -15,6 +16,7 @@ import unicodedata
 sys.dont_write_bytecode = True
 sys.path.insert(0, str(Path(__file__).resolve().parent / "runtime"))
 import sync as engine
+from lesson_retirement import decision_file, read_retirement
 
 
 def identifier(value):
@@ -140,7 +142,7 @@ def summary(path):
     work = model["work"]
     if work["id"] != unicodedata.normalize("NFC", path.name):
         raise ValueError(f"需求 ID 与目录不一致：{work['id']} / {path.name}")
-    queue = engine.dispatch(work, workspace=path)
+    queue = engine.dispatch(work, workspace=path, include_lessons=False)
     return {
         "id": work["id"], "title": work["title"], "outcome": work.get("outcome", "delivery"),
         "revision": work["revision"], "state": queue["state"], "progress": queue["progress"],
@@ -152,6 +154,34 @@ def summary(path):
 
 def emit(value):
     print(json.dumps(value, ensure_ascii=False, indent=2))
+
+
+def list_lessons(store, include_all):
+    with project_lock(store):
+        cards = engine.knowledge.project_cards(store, engine)
+        emit({"lessons":[c for c in cards if include_all or c["state"] == "approved"]})
+
+
+def retire_lesson(store, args):
+    if args.version < 1 or not args.actor.strip() or not args.why.strip():
+        raise ValueError("请填写经验版本、决定人及退役理由")
+    with project_lock(store, exclusive=True):
+        existing(locations(store, args.task), args.task)
+        prior = read_retirement(store, args.task, args.lesson, args.version)
+        if prior:
+            if prior["actor"] == args.actor and prior["reason"] == args.why:
+                emit(prior)
+                return
+            raise ValueError("本版本已有退役决定，请查看原决定")
+        card = next((row for row in engine.knowledge.project_cards(store, engine)
+                     if (row["task"],row["id"],row["version"]) == (args.task,args.lesson,args.version)), None)
+        if not card or card["state"] not in ("approved", "stale") or (card["review"] or {}).get("verdict") != "approve":
+            raise ValueError("请核对经验 ID、已批准版本和当前状态")
+        record = {"task":args.task,"id":args.lesson,"version":args.version,"actor":args.actor,"reason":args.why,
+                  "at":datetime.now(timezone.utc).isoformat(timespec="seconds")}
+        target = decision_file(store,args.task,args.lesson,args.version,create=True)
+        engine.atomic(target,engine.encoded(record))
+        emit(record)
 
 
 def list_tasks(store):
@@ -222,12 +252,17 @@ def check_snapshot(path, *, refresh_scenarios=False):
     checksum = engine.digest(model)
     if checksum != engine.digest(snapshot["model"]) or checksum != page.checksums[0]:
         raise ValueError("归档人读页的嵌入模型或摘要与 model.json 不一致。")
-    saved_cases = snapshot.get("queue", {}).get("scenarios")
+    saved_queue = snapshot.get("queue", {})
+    if "lesson_version" in snapshot and snapshot["lesson_version"] != engine.graph_view.lesson_version(saved_queue):
+        raise ValueError("归档人读页的经验记录与摘要不一致。")
+    saved_cases = saved_queue.get("scenarios")
     if saved_cases is not None or refresh_scenarios:
-        live_cases = engine.dispatch(model["work"], workspace=path)["scenarios"]
+        live_queue = engine.dispatch(model["work"], workspace=path, include_lessons=refresh_scenarios, for_map=True)
+        live_cases = live_queue["scenarios"]
         saved_states = {case["id"]: case["status"] for case in saved_cases or []}
         live_states = {case["id"]: case["status"] for case in live_cases}
-        if saved_cases is None or saved_states != live_states:
+        lessons_changed = refresh_scenarios and snapshot.get("lesson_version") != engine.graph_view.lesson_version(live_queue)
+        if saved_cases is None or saved_states != live_states or lessons_changed:
             if not refresh_scenarios:
                 changed = sorted(key for key in saved_states.keys() | live_states.keys()
                                  if saved_states.get(key) != live_states.get(key))
@@ -251,6 +286,11 @@ def archive(store, args):
             info = summary(source)
             if info["state"] != "complete" and not args.allow_incomplete:
                 raise ValueError(f"需求 {args.id} 当前状态为 {info['state']}。如需保留当前进度并归档，请使用 --allow-incomplete。")
+            pending = [key for key, card in engine.load(source / "model.json")["work"].get("lesson_cards", {}).items()
+                       if card["state"] == "pending"]
+            if pending and not args.allow_incomplete:
+                raise ValueError("归档会冻结待审经验 " + "、".join(pending)
+                                 + "。请先完成审查；如需按当前状态保存草稿，使用 --allow-incomplete。")
             check_snapshot(source, refresh_scenarios=True)
             local_directory(target.parent, create=True)
             source.rename(target)
@@ -262,7 +302,13 @@ def forward(store, args):
     if not store.exists():
         raise ValueError(f"需求不存在：{args.id}")
     with ExitStack() as handle:
-        with project_lock(store):
+        # Reviewing a replacement and retiring that version are one project-wide decision.
+        reviewing = args.arguments[:1] == ["lesson-review"]
+        if reviewing:
+            handle.enter_context(project_lock(store, exclusive=True))
+        with ExitStack() as lookup:
+            if not reviewing:
+                lookup.enter_context(project_lock(store))
             active, archived = locations(store, args.id)
             path = existing([active, archived], args.id)
             handle.enter_context(project_lock(store, args.id))
@@ -292,6 +338,14 @@ def main():
     init = commands.add_parser("init", help="接入当前项目，迁移时归档旧流程入口")
     init.add_argument("--migrate", action="store_true", help="迁移已有项目编排配置")
     commands.add_parser("list", help="查看项目的进行中与已归档需求")
+    lessons = commands.add_parser("lessons", help="查看本项目经审查且依据仍有效的经验")
+    lessons.add_argument("--all", action="store_true", help="同时列出待审、退役及需要重新核验的经验")
+    retire = commands.add_parser("lesson-retire", help="在项目经验库退役一个已批准版本，可用于归档需求")
+    retire.add_argument("task", type=identifier)
+    retire.add_argument("lesson", type=identifier)
+    retire.add_argument("--version", required=True, type=int)
+    retire.add_argument("--actor", required=True)
+    retire.add_argument("--why", required=True)
     arch = commands.add_parser("archive", help="保留当前模型和人读页并归档")
     arch.add_argument("id", type=identifier)
     arch.add_argument("--allow-incomplete", action="store_true", help="按当前未完成状态归档")
@@ -309,6 +363,10 @@ def main():
     store = local_directory(project / ".requirements")
     if args.command == "list":
         list_tasks(store)
+    elif args.command == "lessons":
+        list_lessons(store,args.all)
+    elif args.command == "lesson-retire":
+        retire_lesson(store,args)
     elif args.command == "new":
         create(store, args)
     elif args.command == "archive":

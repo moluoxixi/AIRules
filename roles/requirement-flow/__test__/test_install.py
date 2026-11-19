@@ -131,7 +131,8 @@ class InstallProjectTest(unittest.TestCase):
         base = self.project / ".agents/skills/requirement-flow"
         files = {}
         # v0.1.0 keyed hashes relative to the orchestrator, with no sibling skills.
-        for name in sorted(installer.ROOT_FILES | {"runtime/" + n for n in installer.RUNTIME_FILES if n != "evidence.py"}):
+        legacy_runtime = {"dagre.min.js", "graph_view.py", "layout.html", "map.js", "protocol.json", "sync.py"}
+        for name in sorted(installer.ROOT_FILES | {"runtime/" + n for n in legacy_runtime}):
             old = ("previous release: " + name + "\n").encode()
             write(base, name, old)
             files[name] = hashlib.sha256(old).hexdigest()

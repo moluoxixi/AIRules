@@ -1,7 +1,7 @@
 ;(() => {
   'use strict'
   const $ = id => document.getElementById(id)
-  const { model, states, impacts, graph: fullGraph, csrf, queue } = JSON.parse($('data').textContent)
+  const { model, states, impacts, graph: fullGraph, csrf, queue, lesson_version: lessonVersion } = JSON.parse($('data').textContent)
   const { work, protocol } = model
   const research = work.outcome === 'research'
   const evidenceKind = research ? '调研' : '验证'
@@ -838,6 +838,75 @@
     }
   }
   const caseStates = { uncovered: '未覆盖', pending: '待验', failed: '未通过', stale: '需复核', invalid: '证据无效', passed: '已通过' }
+  const lessonStates = { pending: '待审查', approved: '已通过', rejected: '已驳回', revised: '草案已修订', retired: '已退役', superseded: '已替代', stale: '需复核' }
+  function sourceLink(parent, title, url) {
+    const link = html('a', parent, title, 'link-button')
+    link.href = url
+    return link
+  }
+  function showLessonSource(parent, card, source) {
+    const proof = source.proof
+    const row = disclosure(parent, `${source.scenario} · ${source.story_title}`)
+    pairs(row, [
+      ['来源需求', card.task_title],
+      ['给定', source.given],
+      ['当', source.when],
+      ['应当', source.then],
+      ['动作与回执', `${source.action_title} · ${source.receipt}`],
+      ['环境', proof?.environment],
+      ['实际记录', proof?.actual],
+    ])
+    if (!source.valid) {
+      html('p', row, '原始依据当前需复核。', 'dim')
+      return
+    }
+    if (csrf) {
+      const query = new URLSearchParams({ task: card.task, lesson: card.id, version: card.version, receipt: source.receipt })
+      sourceLink(row, '查看原始场景与证据', `/lesson-source?${query}`)
+      return
+    }
+    if (!/^[\p{L}\p{N}][\p{L}\p{N}_-]*$/u.test(card.task) || !['active', 'archive'].includes(card.bucket))
+      return
+    const buckets = card.bucket === 'active' ? ['active', 'archive'] : ['archive']
+    for (const bucket of buckets) {
+      const base = `../../${bucket}/${encodeURIComponent(card.task)}`
+      const label = bucket === 'active' ? '进行中' : '已归档'
+      sourceLink(row, `${label} · 来源功能图`, `${base}/handbook.html#node=${encodeURIComponent(source.story)}`)
+      const path = proof?.artifact?.path
+      if (typeof path === 'string' && /^evidence\/[\da-f]{32}\/(?:output\.log|artifact\.[a-z0-9]{1,12})$/u.test(path))
+        sourceLink(row, `${label} · 原始证据`, `${base}/${path}`).download = path.split('/').pop()
+    }
+  }
+  function showLessons(parent, storyIds, { all = false } = {}) {
+    const own = (queue.lesson_cards || []).filter(card => all || card.sources.some(source => storyIds.includes(source.story)))
+    const related = (queue.related_lessons || []).filter(card => all || card.matched_stories.some(id => storyIds.includes(id)))
+    for (const [title, cards] of [['相关项目经验', related], ['本需求的经验', own]]) {
+      if (!cards.length)
+        continue
+      const group = section(title, parent)
+      if (!csrf)
+        html('p', group, `需求 v${work.revision} 的离线快照。来源依据的状态记录于生成此页时。`, 'dim')
+      for (const card of cards) {
+        const item = html('div', group, null, 'record')
+        html('strong', item, card.observation)
+        pairs(item, [
+          ['命中原因', card.match_reasons?.join('；')],
+          ['适用条件', card.when],
+          ['做法', card.practice],
+          ['边界', card.boundary],
+          ['状态', lessonStates[card.state]],
+          ['经验版本', `${card.id} · v${card.version}`],
+          ['审查人', card.review?.actor],
+          ['审查意见', card.review?.reason],
+          ['复核事项', card.issues?.join('；')],
+          ['替代为', card.replaced_by && `${card.replaced_by.task} / ${card.replaced_by.id}`],
+          ['退役原因', card.retirement?.reason],
+        ])
+        for (const source of card.sources)
+          showLessonSource(item, card, source)
+      }
+    }
+  }
   function showScenarios(parent, cases) {
     if (!cases.length)
       return
@@ -896,6 +965,7 @@
     ])
     if (status.reasons.length)
       list(section('下一步的条件', parent), status.reasons)
+    showLessons(parent, [...a.stories, ...a.read_stories])
     if (a.accepts?.length)
       pairs(parent, [['验收依据', a.accepts.join('、')]])
     if (a.kind === '验证') {
@@ -1009,6 +1079,7 @@
         ['目标', work.goal],
         ['来源', work.kind],
       ])
+      showLessons(detail, visibleStories, { all: !scoped })
       showQueue(detail, visibleActions, nodes, visibleStories)
       if (work.scope.length)
         list(section('本次范围'), work.scope)
@@ -1024,6 +1095,7 @@
         ['前置', story.before],
         ['依据', story.basis],
       ])
+      showLessons(detail, [key])
       showQueue(detail, new Set(fullGraph.features[key].actions), featureNodes.get(key), [key])
       if (story.flow?.length)
         list(section('关键处理'), story.flow, true)
@@ -1047,6 +1119,7 @@
       ])
       if (n.users.length)
         pairs(detail, [['关联功能', n.users.map(id => work.stories[id].title).join('、')]])
+      showLessons(detail, n.users.filter(id => visibleStories.includes(id)))
       const fields = section('字段与处理')
       for (const f of c.fields) {
         const item = html('div', fields, null, 'field')
@@ -1064,6 +1137,7 @@
       related(detail, users, '使用这份契约的工作')
     }
     else if (n.kind === 'delivery') {
+      showLessons(detail, visibleStories, { all: !scoped })
       const checks = Object.entries(work.actions).filter(
         ([id, a]) => a.kind === evidenceKind && states[id].state !== 'skipped' && visibleActions.has(id),
       )
@@ -1087,18 +1161,18 @@
           ])
         }
       }
-      const group = section('可复用的经验')
-      if (!work.lessons.length)
-        html('p', group, '这项需求还没有登记可复用的经验。', 'dim')
-      for (const l of work.lessons) {
-        const more = disclosure(group, l.observation)
-        pairs(more, [
-          ['触发条件', l.when],
-          ['做法', l.practice],
-          ['适用边界', l.boundary],
-          ['证据', l.evidence],
-          ['复核时机', l.review],
-        ])
+      if (work.lessons.length) {
+        const group = section('历史经验记录')
+        for (const l of work.lessons) {
+          const more = disclosure(group, l.observation)
+          pairs(more, [
+            ['触发条件', l.when],
+            ['做法', l.practice],
+            ['适用边界', l.boundary],
+            ['证据', l.evidence],
+            ['复核时机', l.review],
+          ])
+        }
       }
       events(detail, work.events)
     }
@@ -1219,8 +1293,10 @@
           return
         const current = await res.json()
         const displayed = queue.scenarios.map(ex => [ex.id, ex.status])
-        if (current.revision === work.revision && JSON.stringify(current.case_states) === JSON.stringify(displayed))
+        if (current.revision === work.revision && current.lesson_version === lessonVersion
+          && JSON.stringify(current.case_states) === JSON.stringify(displayed)) {
           return
+        }
         const note = detail.querySelector('input[name="reason"]')
         if (note && (note.value || note === document.activeElement))
           $('notice').hidden = false

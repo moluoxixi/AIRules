@@ -19,7 +19,8 @@ SKILL = SKILLS / ROLE
 MANIFEST = Path(".requirements/installation.json")
 ARCHIVE = Path(".requirements/migrations/moluoxixi")
 ROOT_FILES = {"SKILL.md", "flow.py", "install_project.py", "references/model.md", "agents/openai.yaml"}
-RUNTIME_FILES = {"dagre.min.js", "evidence.py", "graph_view.py", "layout.html", "map.js", "protocol.json", "sync.py"}
+RUNTIME_FILES = {"dagre.min.js", "evidence.py", "graph_view.py", "knowledge.py", "lesson_retirement.py",
+                 "layout.html", "map.js", "protocol.json", "sync.py"}
 LEGACY_SKILLS = {
     "before-dev", "brainstorm", "break-loop", "channel", "check", "continue", "finish-work",
     "knowledge", "meta", "session-insight", "spec-bootstrap", "start", "update-spec",

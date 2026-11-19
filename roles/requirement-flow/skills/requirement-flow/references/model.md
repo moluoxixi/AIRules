@@ -58,6 +58,40 @@ python3 "$FLOW" task stock-save finish A-check --rev "$REV" --actor qa --output 
 - **实测观察。** `verify-observe` 默认类型为 `人工核对`，也支持 `真实环境`。填写实际观察、环境并提供项目内本次实测产生的非空普通文件。观察失败时加 `--failed`。程序可核对附件和回执完整性，业务结果由观察者据实填写。只有样例页面截图时，真实接口的行为仍待验证。
 - **完成或返工。** `finish` 从每个覆盖场景的成功回执取证。单独填写 `--evidence '已验证'` 无法补上缺失场景。失败采集写入记录并返回非零；用 `fail` 指定确需返工的 `--reopen` 动作、环境、预期和失败依据。场景、所读输入或依赖产出改变时，重新采集相关场景。调研和开发的 `finish` 写 `--output`、`--evidence`，即可留下结论与位置。
 
+## 可在项目内复用的经验
+
+第一次提出经验时，从该需求的 `next.scenarios[].receipts` 选取实际回执。提案 JSON 至少包含下列字段。故事、场景、验证动作和回执四个 ID 都必须指向同一次核验。
+
+```json
+{
+  "id": "L-page-search",
+  "observation": "只过滤首屏会遗漏后续门店",
+  "when": "门店选择器使用分页目录",
+  "practice": "先把关键词传给目录再分页，用首屏之外的门店验收",
+  "boundary": "目录接口具备关键词查询能力",
+  "tags": ["门店选择器", "/directory/stores"],
+  "sources": [{ "story": "S-directory", "scenario": "AC-directory", "action": "A-check", "receipt": "E3" }]
+}
+```
+
+项目根目录使用下列命令，每次写入前从 `next` 读取最新的 `REV`。独立审查者核对原始证据后用自己的身份写明结论。
+
+```bash
+FLOW=.agents/skills/requirement-flow/flow.py
+python3 "$FLOW" task store-picker lesson-propose lesson.json --rev "$REV" --actor implementer
+python3 "$FLOW" task store-picker lesson-review L-page-search approve --version 1 --rev "$REV" --actor reviewer --why '已复核查询与断言，首屏过滤时会漏搜'
+python3 "$FLOW" lessons
+python3 "$FLOW" task inspection-route next --story S-route-stop
+```
+
+`lessons` 返回本项目有效的已批准经验，`--all` 一并列出各版本、待审、驳回、待复核、替代和退役记录。模型中的 `lesson_cards` 与审查事件保存原始提案和版本，`lessons[]` 保留旧版笔记。项目清单从进行中和归档需求一起读取。项目级退役决定保存在 `.requirements/knowledge/retired/`，可在来源归档后执行：
+
+```bash
+python3 "$FLOW" lesson-retire store-picker L-page-search --version 1 --actor reviewer --why '门店目录已取消分页'
+```
+
+修改同卡后重新提案；新版本批准前，原有有效版本仍可使用。跨需求以新经验取代旧结论时，提案增加 `supersedes`，写原卡的 `task`、`id` 和 `version`。来源失效或结论被取代后，下次读取会更新推荐。功能图沿经验可打开来源场景和原始附件，离线页保留生成时的状态。
+
 ## 留存与旧需求
 
 `model.json` 中的 `work.events` 记录执行者、版次和采集事件。该需求目录的 `evidence/<回执ID>/` 保存回执和命令日志或附件副本。归档会移动整个需求目录。请一并保留 `evidence/`，在当前需求或归档上运行 `task <ID> --check` 可核对图页和记录。
