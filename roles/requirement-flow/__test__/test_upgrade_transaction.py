@@ -154,6 +154,50 @@ class UpgradeTransactionTest(unittest.TestCase):
         self.assertEqual((peer / ".requirements/active/save/handbook.html").read_bytes(), (task / "handbook.html").read_bytes())
         self.assertEqual((peer / ".requirements/active/save/model.json").read_bytes(), model)
 
+    def test_signed_collection_error_keeps_original_text_after_code_restore_and_copy(self):
+        case = self.fixture(test_code_inputs.CodeInputsTest)
+        case.cli("init")
+        with (case.project / ".gitignore").open("a", encoding="utf-8") as ignored:
+            ignored.write("app/\n")
+        case.init_git()
+        child = case.project / "app"
+        child.mkdir()
+        (child / "code.py").write_text("value = 1\n", encoding="utf-8")
+        case.git("init", "-q", project=child)
+        case.git("add", ".", project=child)
+        case.git("commit", "-qm", "child code", project=child)
+        installed = case.project / ".agents/skills/requirement-flow/flow.py"
+        with patch.object(test_code_inputs, "FLOW", installed):
+            case.prepare()
+            command = [sys.executable, "-B", "-c",
+                       "from pathlib import Path; Path('app/.git').rename('.requirements/app-git'); "
+                       "Path('app/.git').write_text('gitdir: missing-git\\n'); print('assertion output')"]
+            case.collect(argv=command, ok=False)
+            task = case.project / ".requirements/active/save"
+            model = (task / "model.json").read_bytes()
+            protected = {path.relative_to(task):path.read_bytes() for path in (task / "evidence").rglob("*") if path.is_file()}
+            event = next(e for e in json.loads(model)["work"]["events"] if e["kind"] == "evidence")
+            original_error = event["receipt"]["code_inputs_error"]
+            self.assertFalse(event["receipt"]["code_inputs_unchanged"])
+            self.assertIn(str(child), original_error)
+            (child / ".git").unlink()
+            (case.project / ".requirements/app-git").rename(child / ".git")
+            case.cli("task", "save")
+            before = case.queue()
+            self.assertEqual(before["scenarios"][0]["status"], "stale")
+            peer = case.base / "copied-project"
+            shutil.copytree(case.project, peer)
+        with patch.object(test_code_inputs, "FLOW", peer / ".agents/skills/requirement-flow/flow.py"):
+            case.cli("task", "save", "--check", project=peer)
+            self.assertEqual(case.queue(peer)["scenarios"], before["scenarios"])
+        self.assertEqual(before["scenarios"][0]["reason"], original_error)
+        copied_task = peer / ".requirements/active/save"
+        self.assertEqual((copied_task / "handbook.html").read_bytes(), (task / "handbook.html").read_bytes())
+        self.assertEqual((copied_task / "model.json").read_bytes(), model)
+        self.assertEqual((task / "model.json").read_bytes(), model)
+        for folder in (task, copied_task):
+            self.assertEqual({path:(folder / path).read_bytes() for path in protected}, protected)
+
     def test_corrupt_retirement_diagnostic_remains_portable_and_preserves_records(self):
         case = self.fixture(test_code_inputs.CodeInputsTest)
         project = test_knowledge_flow.Project(case.project)

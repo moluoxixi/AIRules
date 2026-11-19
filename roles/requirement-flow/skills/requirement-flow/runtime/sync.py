@@ -394,6 +394,11 @@ def inspect_proof(workspace, event, action_id, scenario, action_stamp, scenario_
     if manifest["kind"] == "run":
         summary["argv"] = manifest["argv"]
         summary["exit_code"] = manifest["exit_code"]
+    if manifest.get("code_inputs_unchanged") is False:
+        # This failure belongs to the signed collection, even after its original
+        # code is restored. Do not reinterpret its paths in the current checkout.
+        return {"status":"stale", "reason":manifest.get("code_inputs_error") or "采集期间代码输入未保持一致，请重新验收",
+                "receipt":summary}
     try:
         evidence.validate_current_inputs(manifest, project, code_paths, cache=input_cache)
     except (OSError, ValueError) as error:
