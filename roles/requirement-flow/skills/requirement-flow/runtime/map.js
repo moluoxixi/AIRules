@@ -6,6 +6,9 @@
   const research = work.outcome === 'research'
   const evidenceKind = research ? '调研' : '验证'
   const map = $('map')
+  const surface = map.closest('main')
+  const drawer = $('inspector')
+  const reopenPanel = $('reopen-panel')
   const dagre = window.dagre
   const layouts = new Map()
   let ignoreClicksUntil = 0
@@ -340,6 +343,7 @@
   let cameraMode = 'reading'
   let gestureLocked = true
   let selected = null
+  let recentNode = null
   let restoreCamera = null
   let boxSize = { w: 0, h: 0 }
   const nodeEls = new Map()
@@ -412,11 +416,11 @@
     return !picks.size && !$('feature-query').value.trim()
   }
 
-  function overviewLayout() {
+  function overviewLayout(graphWidth) {
     const rootBox = boxes.get('@request')
     const cardWidth = boxes.get(visibleStories[0]).width
     const pitch = cardWidth + 34
-    const columns = Math.min(visibleStories.length, Math.max(1, Math.min(3, Math.floor((boxSize.w - 8) / pitch))))
+    const columns = Math.min(visibleStories.length, Math.max(1, Math.min(3, Math.floor((graphWidth - 8) / pitch))))
     const width = Math.max(rootBox.width + 24, columns * pitch + 6)
     const root = { x: width / 2, y: 12 + rootBox.height / 2 }
     const positions = new Map([['@request', root]])
@@ -477,6 +481,7 @@
         'tabindex': '0',
         'aria-label': [n.label, n.title, n.state, n.sharedNote].filter(Boolean).join('，'),
         'aria-haspopup': 'dialog',
+        'aria-controls': 'inspector',
         'aria-expanded': 'false',
         'data-node': n.id,
         'transform': `translate(${p.x} ${p.y})`,
@@ -672,9 +677,9 @@
     })
     nodeEls.set(n.id, g)
   }
-  function fittedScale(l) {
-    const margin = boxSize.w < 500 ? 9 : 17
-    return Math.min(Math.max(1, boxSize.w - margin * 2) / l.width, Math.max(1, boxSize.h - margin * 2) / l.height, 1)
+  function fittedScale(l, width = boxSize.w) {
+    const margin = width < 500 ? 9 : 17
+    return Math.min(Math.max(1, width - margin * 2) / l.width, Math.max(1, boxSize.h - margin * 2) / l.height, 1)
   }
   function onResize(force = false) {
     const rect = map.getBoundingClientRect()
@@ -688,15 +693,17 @@
     }
     const previous = layout
     boxSize = { w: rect.width, h: rect.height }
-    measureBoxes(boxSize.w > 840)
+    // Docking changes the visible area, while the graph keeps its original card positions.
+    const graphWidth = surface.clientWidth
+    measureBoxes(graphWidth > 840)
     let next
     if (isOverview()) {
-      next = overviewLayout()
+      next = overviewLayout(graphWidth)
     }
     else {
       const down = makeLayout('TB')
       const across = makeLayout('LR')
-      next = fittedScale(across) > fittedScale(down) * 1.08 ? across : down
+      next = fittedScale(across, graphWidth) > fittedScale(down, graphWidth) * 1.08 ? across : down
     }
     if (layout !== next) {
       layout = next
@@ -721,14 +728,7 @@
     }
     else if (previous !== layout) {
       // Anchor the same card when wrapping columns or rotating the diagram.
-      const nearest = [...previous.positions].reduce((best, entry) => {
-        const distance = p => Math.hypot(p.x - camera.x, p.y - camera.y)
-        return distance(entry[1]) < distance(best[1]) ? entry : best
-      })
-      const [id, before] = nearest
-      const after = layout.positions.get(id)
-      camera.x += after.x - before.x
-      camera.y += after.y - before.y
+      anchorCamera(previous)
       updateCamera()
     }
     else {
@@ -738,6 +738,18 @@
       highlight(selected)
       reveal(selected)
     }
+  }
+  function anchorCamera(previous) {
+    const distance = p => Math.hypot(p.x - camera.x, p.y - camera.y)
+    const [id, before] = [...previous.positions].reduce((best, entry) =>
+      distance(entry[1]) < distance(best[1]) ? entry : best)
+    const after = layout.positions.get(id)
+    camera.x += after.x - before.x
+    camera.y += after.y - before.y
+  }
+  function manualCamera() {
+    cameraMode = 'manual'
+    restoreCamera = null
   }
   function readingPosition(scale = 1) {
     if (!layout)
@@ -799,7 +811,11 @@
       return
     const old = camera.scale
     const next = Math.min(maxZoom(), Math.max(minZoom(), old * ratio))
-    cameraMode = 'manual'
+    if (next === old) {
+      updateCamera()
+      return
+    }
+    manualCamera()
     camera.x += (px - boxSize.w / 2) * (1 / old - 1 / next)
     camera.y += (py - boxSize.h / 2) * (1 / old - 1 / next)
     camera.scale = next
@@ -847,20 +863,15 @@
     const p = layout?.positions.get(key)
     if (!p)
       return
-    const frame = map.getBoundingClientRect()
-    const inspector = $('inspector')
-    const panel = inspector.getBoundingClientRect()
-    const right = !inspector.hidden && frame.width > 790 ? panel.left - frame.left : frame.width
-    const bottom = !inspector.hidden && frame.width <= 790 ? panel.top - frame.top : frame.height
     const { width, height } = boxes.get(key)
-    function shift(pos, center, span, cardSize, space) {
+    function shift(pos, center, span, cardSize) {
       const target = (pos - center) * camera.scale + span / 2
-      const margin = Math.min(space / 2, cardSize * camera.scale / 2 + 12)
-      const safe = Math.max(margin, Math.min(space - margin, target))
+      const margin = Math.min(span / 2, cardSize * camera.scale / 2 + 12)
+      const safe = Math.max(margin, Math.min(span - margin, target))
       return (target - safe) / camera.scale
     }
-    camera.x += shift(p.x, camera.x, frame.width, width, right)
-    camera.y += shift(p.y, camera.y, frame.height, height, bottom)
+    camera.x += shift(p.x, camera.x, boxSize.w, width)
+    camera.y += shift(p.y, camera.y, boxSize.h, height)
     updateCamera()
   }
   map.addEventListener('focusin', (event) => {
@@ -895,7 +906,7 @@
     if (!dragging && Math.hypot(p.x - p.startX, p.y - p.startY) < 4)
       return
     dragging = true
-    cameraMode = 'manual'
+    manualCamera()
     map.classList.add('dragging')
     if (!map.hasPointerCapture(e.pointerId))
       map.setPointerCapture(e.pointerId)
@@ -941,7 +952,7 @@
         // Touchpad pinch is delivered as Ctrl+wheel by Chromium and Firefox.
         if (e.ctrlKey || e.metaKey)
           return
-        cameraMode = 'manual'
+        manualCamera()
         camera.x += (e.shiftKey && !e.deltaX ? e.deltaY : e.deltaX) * unit / camera.scale
         camera.y += (e.shiftKey && !e.deltaX ? 0 : e.deltaY) * unit / camera.scale
         updateCamera()
@@ -1016,7 +1027,7 @@
     const move = { ArrowLeft: [-1, 0], ArrowRight: [1, 0], ArrowUp: [0, -1], ArrowDown: [0, 1] }[e.key]
     if (move) {
       e.preventDefault()
-      cameraMode = 'manual'
+      manualCamera()
       camera.x += (move[0] * 44) / camera.scale
       camera.y += (move[1] * 44) / camera.scale
       updateCamera()
@@ -1568,6 +1579,17 @@
       /* Some offline viewers disallow URL changes. */
     }
   }
+  function setDrawerOpen(open) {
+    drawer.hidden = !open
+    surface.classList.toggle('drawer-open', open)
+    reopenPanel.hidden = open || !recentNode
+    reopenPanel.setAttribute('aria-expanded', String(open))
+    // Read after the dock changes so pointer coordinates and the SVG viewBox agree immediately.
+    const rect = map.getBoundingClientRect()
+    boxSize = { w: rect.width, h: rect.height }
+    if (layout)
+      fitted = fittedScale(layout)
+  }
   function openPanel(key, changeHash) {
     if (isOverview() && !nodes.has(key) && chainNodes.has(key)) {
       viewPreference = 'detail'
@@ -1576,11 +1598,17 @@
     if (!nodes.has(key))
       return
     if (!selected)
-      restoreCamera = { ...camera }
+      restoreCamera = { view: { ...camera }, mode: cameraMode, layout, size: boxSize }
     selected = key
-    populate(key)
-    $('inspector').hidden = false
-    detail.scrollTop = 0
+    const changed = recentNode !== key
+    recentNode = key
+    setDrawerOpen(true)
+    if (changed) {
+      populate(key)
+      detail.scrollTop = 0
+    }
+    reopenPanel.title = `展开详情 · ${nodes.get(key).title}`
+    reopenPanel.setAttribute('aria-label', reopenPanel.title)
     highlight(key)
     reveal(key)
     if (changeHash)
@@ -1590,9 +1618,8 @@
   function closePanel(focus = true, changeHash = true) {
     if (!selected)
       return
-    const previous = selected
     selected = null
-    $('inspector').hidden = true
+    setDrawerOpen(false)
     for (const el of nodeEls.values()) {
       el.classList.remove('selected', 'muted')
       el.setAttribute('aria-expanded', 'false')
@@ -1601,14 +1628,24 @@
       for (const el of items) el?.classList.remove('muted')
     }
     if (restoreCamera) {
-      camera = { ...restoreCamera }
+      const previous = restoreCamera
       restoreCamera = null
-      updateCamera()
+      camera = previous.view
+      cameraMode = previous.mode
+      if (previous.size.w !== boxSize.w || previous.size.h !== boxSize.h) {
+        if (cameraMode === 'fit')
+          fit()
+        else if (cameraMode === 'reading')
+          readingPosition(camera.scale)
+        else if (previous.layout !== layout)
+          anchorCamera(previous.layout)
+      }
     }
+    updateCamera()
     if (changeHash)
       recordHash('#work')
     if (focus)
-      nodeEls.get(previous)?.focus({ preventScroll: true })
+      reopenPanel.focus({ preventScroll: true })
   }
   function route() {
     let hash
@@ -1631,6 +1668,13 @@
       closePanel(false)
   }
   $('close-panel').onclick = () => closePanel()
+  reopenPanel.onclick = () => openPanel(recentNode, true)
+  map.addEventListener('click', (e) => {
+    if (selected && performance.now() > ignoreClicksUntil && !e.target.closest('[data-node]')
+      && map.getBoundingClientRect().right > drawer.getBoundingClientRect().left + 1) {
+      closePanel()
+    }
+  })
   window.addEventListener('keydown', (e) => {
     if (e.key === 'Escape' && !e.isComposing && !e.defaultPrevented && selected)
       closePanel()
@@ -1818,6 +1862,8 @@
   function refreshFeatures(changeUrl = true) {
     if (selected)
       closePanel(false, changeUrl)
+    recentNode = null
+    reopenPanel.hidden = true
     const search = $('feature-query')
     const term = search.value.trim()
     const words = term.normalize('NFKC').toLowerCase().split(/\s+/).filter(Boolean)
