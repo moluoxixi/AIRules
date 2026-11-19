@@ -66,7 +66,7 @@ class AcceptanceTest(unittest.TestCase):
     def check(self, scenario):
         return {'title': '核对 ' + scenario, 'kind': '验证', 'stories': ['S-save'], 'read_stories': ['S-save'],
                 'decisions': [], 'contracts': [], 'depends_on': [{'id': 'A-intake'}], 'done': '符合预期',
-                'covers': [scenario], 'accepts': ['自动化']}
+                'covers': [scenario], 'accepts': ['自动化'], 'code_paths': ['save_checks.py']}
 
     def finish(self, action, ok=True):
         extras = () if ok else ('--evidence', 'missing-report.log', '--level', '自动化',
@@ -139,7 +139,13 @@ class AcceptanceTest(unittest.TestCase):
         self.assertEqual(len(followup['receipts']), 2)
         revision = self.queue()['revision']
         handoff = json.loads(self.cli('task', 'save', 'claim', '--rev', revision, '--actor', '复核者').stdout)
-        self.assertEqual((handoff['outcome'], handoff['claimed'], handoff['revision']), ('review_requested', None, revision))
+        self.assertEqual(handoff['outcome'], 'claimed')
+        self.assertEqual(handoff['next']['skill'], 'flow-review')
+        self.assertEqual(handoff['next']['review_for']['receipts'], followup['receipts'])
+        self.assertGreater(handoff['revision'], revision)
+        self.collect('A-save', 'AC-save', ok=False)
+        self.cli('task', 'save', 'finish', handoff['claimed'], '--rev', self.queue()['revision'], '--actor', '复核者',
+                 '--output', '失败命令始终抛错，复核真实断网重试用例后改用对应测试', '--evidence', '原失败回执及 save_checks.py')
         self.collect('A-save', 'AC-save')
         self.finish('A-save')
         self.assertFalse(self.queue()['verification_followups'])

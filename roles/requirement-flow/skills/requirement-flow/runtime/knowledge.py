@@ -187,7 +187,28 @@ def propose(work, workspace, card, actor, engine):
     return True
 
 
-def live_row(row, work, cases, bucket):
+def historical_source(original, work, workspace, engine):
+    """Read an immutable source without treating old inputs as current acceptance."""
+    event = next((event for event in work["events"] if event["kind"] == "evidence"
+                  and event["id"] == original["receipt"]), None)
+    try:
+        engine.expect(event and event["action"] == original["action"]
+                      and event["scenario"] == original["scenario"], "原始回执与经验来源不符")
+        stamp = engine.proof_stamp(event["stamp"], event["scenario_stamp"], event["id"], event["revision"])
+        receipt = engine.verified_receipt(workspace, event, stamp)
+        proof = {"id": event["id"], "action": event["action"], "scenario": event["scenario"],
+                 **{key: receipt[key] for key in ("kind", "actor", "level", "environment", "passed", "artifact")},
+                 "actual": receipt["actual"][:500]}
+        if receipt["kind"] == "run":
+            proof.update(argv=receipt["argv"], exit_code=receipt["exit_code"])
+        engine.expect(all(proof.get(key) == value for key, value in original["proof"].items()),
+                      "回执内容与提交审查时不符")
+    except (OSError, ValueError, KeyError, TypeError):
+        return False
+    return True
+
+
+def live_row(row, work, cases, bucket, workspace, engine):
     sources, issues = [], []
     for original in row["sources"]:
         current, issue = source_result(original, cases, work)
@@ -195,7 +216,8 @@ def live_row(row, work, cases, bucket):
             issue = "回执内容与提交审查时不符"
         if issue:
             issues.append(f"{original['scenario']}/{original['receipt']}：{issue}")
-        sources.append({**original, "valid": not issue})
+        sources.append({**original, "valid": not issue,
+                        "readable": not issue or historical_source(original, work, workspace, engine)})
     result = {**row, "task": work["id"], "task_title": work["title"], "bucket": bucket,
               "sources": sources, "issues": issues}
     if issues and row["state"] == "approved":
@@ -212,7 +234,7 @@ def review(work, workspace, key, verdict, actor, reason, engine, *, version=None
     engine.expect(row["state"] == "pending" or verdict == "retire" and row["state"] == "approved",
                   "当前经验版本已审查，修订后可重新提交")
     if verdict == "approve":
-        item = live_row(row, work, case_index(work, workspace, engine), "active")
+        item = live_row(row, work, case_index(work, workspace, engine), "active", workspace, engine)
         engine.expect(not item["issues"], "经验来源需要复核：" + "；".join(item["issues"]))
         if row.get("supersedes"):
             ref = row["supersedes"]
@@ -404,6 +426,12 @@ def load_tasks(store, workspace, current_work, engine):
 
 def project_cards(workspace, engine, *, current_work=None, relevant_to=None, stories=None, action=None, include_keys=()):
     """Build the project projection from current and archived tasks; no duplicated approval ledger."""
+    with engine.input_scope():
+        return _project_cards(workspace, engine, current_work=current_work, relevant_to=relevant_to,
+                              stories=stories, action=action, include_keys=include_keys)
+
+
+def _project_cards(workspace, engine, *, current_work=None, relevant_to=None, stories=None, action=None, include_keys=()):
     workspace = Path(workspace)
     store = workspace if workspace.name == ".requirements" else workspace.parent.parent
     if store.name != ".requirements" or linked(store) or not store.is_dir():
@@ -442,7 +470,7 @@ def project_cards(workspace, engine, *, current_work=None, relevant_to=None, sto
                     continue
             if cases is None:
                 cases = case_index(work, folder, engine)
-            item = live_row(row, work, cases, folder.parent.name)
+            item = live_row(row, work, cases, folder.parent.name, folder, engine)
             edition = (row["id"], row["version"])
             if edition in approvals:
                 item["approval_digest"], item["approval"] = approvals[edition]
@@ -526,7 +554,7 @@ def adopted_cards(events, cards):
             card = current
         else:
             card = {**ref, "state": "missing", "issues": ["当前工作树缺少采用时的原始审查版本"],
-                    "sources": [{**s, "valid": False} for s in ref["sources"]]}
+                    "sources": [{**s, "valid": False, "readable": False} for s in ref["sources"]]}
         history.append({**card, "adoption": {"story": event["story"], "actor": event["actor"],
                                              "reason": event["reason"], "at": event["time"]}})
     return history

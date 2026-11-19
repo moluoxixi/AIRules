@@ -12,14 +12,16 @@ import sys
 import tempfile
 import unicodedata
 if __package__:
-    from . import evidence, graph_view, knowledge, source_paths
+    from . import evidence, graph_view, knowledge, source_paths, story_scope
 else:
     import evidence
     import graph_view
     import knowledge
     import source_paths
+    import story_scope
 from datetime import datetime, timezone
 from contextlib import contextmanager
+from contextvars import ContextVar
 from functools import lru_cache
 from html import escape
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
@@ -37,6 +39,18 @@ PLANNABLE = ("stories", "contracts", "decisions", "actions")
 SKILLS = ("flow-requirements","flow-contracts","flow-implement","flow-verify","flow-review")
 STATES = {"ready":"可推进","active":"进行中","blocked":"等待输入","dormant":"按条件启用",
           "skipped":"本次跳过","done":"已完成","stale":"需复核"}
+_render_input_cache = ContextVar("requirement_flow_render_inputs", default=None)
+
+
+@contextmanager
+def input_scope():
+    """Share hashes within one request, never across requests or concurrent threads."""
+    token = _render_input_cache.set({}) if _render_input_cache.get() is None else None
+    try:
+        yield
+    finally:
+        if token is not None:
+            _render_input_cache.reset(token)
 
 
 class Invalid(ValueError):
@@ -182,8 +196,10 @@ def validate(m):
         pairs.add((d,o,c))
     for d, ans in w["answers"].items():
         expect(d in w["decisions"] and ans["choice"] in w["decisions"][d]["options"] and ans["version"] > 0, "答案失效 " + d)
-    for story in w["stories"].values():
-        expect(story["actor"] and story["goal"] and story["examples"], "故事缺少角色、目标或验收例子")
+    retired_owners = {case["story"] for case in retirement_history(w, set())}
+    for key, story in w["stories"].items():
+        expect(story["actor"] and story["goal"] and isinstance(story["examples"], list)
+               and (story["examples"] or key in retired_owners), "故事缺少角色、目标或验收例子")
         for ex in story["examples"]:
             expect(all(ex.get(k) for k in ("given","when","then")), "验收例子缺少前提、操作或预期")
     scenarios = scenario_definitions(w)
@@ -198,6 +214,9 @@ def validate(m):
     for key, action in w["actions"].items():
         expect(not action.get("skill") or action["skill"] in SKILLS, "未知专项 skill：" + key)
         expect(action["kind"] in ("调研","开发","验证") and action["done"].strip(), "动作类型或完成条件无效 " + key)
+        if "code_paths" in action:
+            expect(action["kind"] == "验证", "只有验证动作可指定代码输入：" + key)
+            evidence.code_inputs.normalize_paths(action["code_paths"])
         for prop, group in (("stories","stories"),("read_stories","stories"),("contracts","contracts"),("decisions","decisions")):
             check_refs(action[prop], group)
         check_refs(action.get("closes_contracts", []), "contracts")
@@ -232,8 +251,81 @@ def validate(m):
             check_refs([e["reopen"]], "actions")
     for lesson in w["lessons"]:
         expect(all(lesson.get(k) for k in ("observation","when","practice","boundary","evidence","review")), "经验缺少使用条件或依据")
+    validate_reviews(w)
     knowledge.validate_adoptions(w, sys.modules[__name__])
     return knowledge.validate_cards(w, sys.modules[__name__])
+
+
+def review_scope_active(w, action):
+    origin = action.get("review_for")
+    if not origin:
+        return True
+    current = scenario_definitions(w)
+    retired = latest_retirements(w, set())
+    # Moving a cover to a different action or editing its expectation is not withdrawal.
+    return any(current.get(case["id"], {}).get("story") == case["story"]
+               or (case["story"],case["id"]) not in retired
+               or not story_scope.retirement_applies(w, retired[(case["story"],case["id"])])
+               for case in origin["scenarios"])
+
+
+def dependency_active(w, edge):
+    return condition_value(w, edge.get("when")) is True and review_scope_active(w, w["actions"][edge["id"]])
+
+
+def independent_actor(action, actor):
+    return knowledge.normalized(actor) not in {knowledge.normalized(name) for name in action["review_for"]["verification_actors"]}
+
+
+def validate_reviews(w):
+    events = {event["id"]: event for event in w["events"]}
+    created = {event["review_created"]["id"]: event["review_created"]["review_for"]
+               for event in w["events"] if event.get("review_created")}
+    current = scenario_definitions(w)
+    for key, action in w["actions"].items():
+        origin = action.get("review_for")
+        expect(bool(origin) == (key in created), "诊断来源必须由重复失败的领取操作生成：" + key)
+        if not origin:
+            continue
+        expect(origin == created[key], "诊断来源不可改写：" + key)
+        expect(set(origin) == {"action","scenarios","receipts","verification_actors","source_digests"}, "诊断来源格式无效")
+        target = w["actions"].get(origin["action"])
+        expect(target and target["kind"] == "验证", "诊断需要保留原验证动作")
+        expect(action["kind"] == "调研" and action.get("skill") == "flow-review"
+               and not action.get("when") and not action["depends_on"] and not action["read_stories"]
+               and not action["contracts"] and not action["decisions"] and not action.get("closes_contracts"),
+               "独立诊断必须保持无前置门槛的审查动作：" + key)
+        expect(action["stories"] == list(dict.fromkeys(case["story"] for case in origin["scenarios"])),
+               "诊断必须保留原场景所属故事")
+        expect({"id":key} in target["depends_on"], "原验证必须保留独立诊断依赖：" + key)
+        active = {case["id"] for case in origin["scenarios"]
+                  if current.get(case["id"],{}).get("story") == case["story"]}
+        expect(active <= set(target.get("covers",[])), "未撤下的失败场景不能移除原验证覆盖以绕过诊断")
+        sources = [events.get(rid) for rid in origin["receipts"]]
+        expect(sources and all(event and event["kind"] == "evidence" and event["action"] == origin["action"]
+                              and event["scenario"] in {case["id"] for case in origin["scenarios"]}
+                              and event.get("receipt",{}).get("passed") is False
+                              and digest(event) == origin["source_digests"].get(event["id"]) for event in sources),
+               "诊断引用的原失败记录已改变")
+        expect(origin["verification_actors"] == list(dict.fromkeys(event["actor"] for event in sources)),
+               "诊断必须保留原失败执行者")
+        expect(all(independent_actor(action,event["actor"]) for event in w["events"]
+                   if event.get("action") == key and event["kind"] in ("start","finish")),
+               "原失败执行者不能担任独立诊断者")
+
+
+def review_receipts(w, action, workspace=None):
+    origin = action["review_for"]
+    events = {event["id"]:event for event in w["events"]}
+    sources = []
+    for key in origin["receipts"]:
+        event = events[key]
+        expect(digest(event) == origin["source_digests"][key], "诊断引用的原失败记录已改变")
+        stamp = proof_stamp(event["stamp"],event["scenario_stamp"],event["id"],event["revision"])
+        receipt = verified_receipt(TASK_DIR if workspace is None else Path(workspace),event,stamp)
+        expect(receipt["passed"] is False, "诊断来源不是失败回执")
+        sources.append(event)
+    return sources
 
 
 def condition_value(w, condition):
@@ -261,7 +353,8 @@ def verified_receipt(workspace, event, stamp):
     return manifest
 
 
-def inspect_proof(workspace, event, action_id, scenario, action_stamp, scenario_stamp, accepts, replays):
+def inspect_proof(workspace, event, action_id, scenario, action_stamp, scenario_stamp, accepts, replays,
+                  code_paths=None, input_cache=None):
     if not event:
         return {"status":"pending", "reason":"尚未采集本场景的验收凭据", "receipt":None}
     stored = event.get("receipt")
@@ -284,6 +377,12 @@ def inspect_proof(workspace, event, action_id, scenario, action_stamp, scenario_
     if manifest["kind"] == "run":
         summary["argv"] = manifest["argv"]
         summary["exit_code"] = manifest["exit_code"]
+    store = Path(workspace).parent.parent
+    project = store.parent if store.name == ".requirements" else Path.cwd()
+    try:
+        evidence.validate_current_inputs(manifest, project, code_paths, cache=input_cache)
+    except (OSError, ValueError) as error:
+        return {"status":"stale", "reason":str(error), "receipt":summary}
     if accepts and manifest["level"] not in accepts:
         return {"status":"stale","invalid_receipt":True,"reason":"凭据类型不符合本动作的验收要求","receipt":summary}
     if not manifest["passed"]:
@@ -293,8 +392,12 @@ def inspect_proof(workspace, event, action_id, scenario, action_stamp, scenario_
 
 def evaluate(w, workspace=None):
     workspace = TASK_DIR if workspace is None else Path(workspace)
+    input_cache = _render_input_cache.get()
+    if input_cache is None:
+        input_cache = {}
     definitions = scenario_definitions(w)
     retired = latest_retirements(w,set())
+    withdrawn = story_scope.withdrawn_stories(w)
     latest = {}
     finishes = {}
     reopened = {}
@@ -319,6 +422,12 @@ def evaluate(w, workspace=None):
     @lru_cache(maxsize=None)
     def visit(key):
         action = w["actions"][key]
+        if action.get("review_for") and not review_scope_active(w,action):
+            return {"state":"skipped", "reasons":["原失败场景已按仍有效的范围决定撤下"],
+                    "stamp":None, "proof":None, "blockers":[], "actor":None, "cases":{}}
+        if action["stories"] and set(action["stories"]) <= withdrawn:
+            return {"state":"skipped", "reasons":["关联功能已按业务决定移出本期范围"],
+                    "stamp":None, "proof":None, "blockers":[], "actor":None, "cases":{}}
         last = latest.get(key, {})
         condition = action.get("when")
         gate = condition_value(w, condition)
@@ -335,11 +444,19 @@ def evaluate(w, workspace=None):
         for edge in action["depends_on"]:
             if edge.get("when"):
                 decisions.add(edge["when"]["decision"])
-            if condition_value(w, edge.get("when")) is True:
+            if dependency_active(w, edge):
                 deps.append(edge["id"])
         blockers = [{"kind":"decision","id":d} for d in sorted(decisions) if d not in w["answers"]]
+        review_error = None
+        if action.get("review_for"):
+            try:
+                review_receipts(w,action,workspace)
+            except (OSError,ValueError,KeyError,TypeError) as error:
+                review_error = str(error)
+                blockers.append({"kind":"review_evidence","id":key})
+        contracts = dict.fromkeys([*action["contracts"], *action.get("closes_contracts", [])])
         if action["kind"] != "调研":
-            blockers.extend({"kind":"contract","id":i} for i in action["contracts"] if w["contracts"][i]["state"] == "open")
+            blockers.extend({"kind":"contract","id":i} for i in contracts if w["contracts"][i]["state"] == "open")
         verify = action["kind"] == "验证"
         if verify and not action.get("covers"):
             blockers.append({"kind":"coverage","id":key})
@@ -350,8 +467,11 @@ def evaluate(w, workspace=None):
                 blockers.append({"kind":"dependency","id":dep})
             inputs[dep] = status["proof"]
         labels = {"decision":("待决定 · ", "decisions"),"contract":("待契约 · ", "contracts"),
-                  "dependency":("等待 · ", "actions"),"coverage":("待关联验收场景 · ","actions")}
+                  "dependency":("等待 · ", "actions"),"coverage":("待关联验收场景 · ","actions"),
+                  "review_evidence":("诊断失败回执不可读 · ","actions")}
         reasons = [labels[b["kind"]][0] + w[labels[b["kind"]][1]][b["id"]]["title"] for b in blockers]
+        if review_error:
+            reasons.append(review_error)
         stories = {i:w["stories"][i] for i in action["read_stories"]}
         if verify:
             # Evidence binds the particular covered example separately from shared story inputs.
@@ -360,11 +480,12 @@ def evaluate(w, workspace=None):
         stamp = digest({
             "action":definition, "dependency_outputs":inputs, "reopen":reopened.get(key),
             "stories":stories,
-            "contracts":{i:w["contracts"][i] for i in action["contracts"]},
+            "contracts":{i:w["contracts"][i] for i in contracts},
             "decisions":{i:{"definition":w["decisions"][i],"answer":w["answers"].get(i)} for i in sorted(decisions)}
         })
         cases = {s:inspect_proof(workspace, proof_events.get((key,s)), key, definitions[s], stamp,
-                                 case_stamp(definitions[s],retired),action.get("accepts"),replays)
+                                 case_stamp(definitions[s],retired),action.get("accepts"),replays,
+                                 action.get("code_paths"), input_cache)
                  for s in action.get("covers", [])}
         last_finish = finishes.get(key,{})
         for s,c in cases.items():
@@ -451,13 +572,11 @@ def retirements(w, patch):
 
 
 def retirement_history(w, selected):
-    return [{**case, "event":event["id"], "revision":event["revision"]}
-            for event in w["events"] if event["kind"] == "plan" for case in event.get("retired_scenarios",[])
-            if not selected or case["story"] in selected]
+    return story_scope.retirement_history(w, selected)
 
 
 def latest_retirements(w, selected):
-    return {(case["story"],case["id"]):case for case in retirement_history(w,selected)}
+    return story_scope.latest_retirements(w, selected)
 
 
 def apply_plan(w, patch, actor, reason):
@@ -472,6 +591,11 @@ def apply_plan(w, patch, actor, reason):
             expect(isinstance(val,dict), "按 ID 提交局部记录")
             for key,obj in val.items():
                 if w[group].get(key) != obj:
+                    if group == "actions":
+                        expect(not obj.get("review_for") or w[group].get(key,{}).get("review_for") == obj["review_for"],
+                               "独立诊断必须由重复失败的领取操作生成，来源不可改写")
+                        expect(not w[group].get(key,{}).get("review_for") or obj.get("review_for") == w[group][key]["review_for"],
+                               "独立诊断来源不可移除或改写")
                     if group == "stories":
                         previous = list(w[group].get(key,{}).get("examples",[]))
                         for example in obj["examples"]:
@@ -504,7 +628,7 @@ def active_ancestors(w, key):
         item = todo.pop()
         if item not in result:
             result.add(item)
-            todo.extend(edge["id"] for edge in w["actions"][item]["depends_on"] if condition_value(w,edge.get("when")) is True)
+            todo.extend(edge["id"] for edge in w["actions"][item]["depends_on"] if dependency_active(w,edge))
     return result
 
 
@@ -512,11 +636,21 @@ def executable(status):
     return status["state"] in ("ready","stale","active") and not status["blockers"]
 
 
+def needs_independent_review(w, key, status):
+    cases = [{"id":scenario,"receipts":[{**case["receipt"],"status":case["status"]}]}
+             for scenario,case in status["cases"].items() if case["receipt"]]
+    return any(item["step"] == "independent_review" for item in verification_followups(w,cases))
+
+
 def progress(w, mode, key, actor, output="", evidence="", level="", environment="", expected="", reopen=None):
     expect(key in w["actions"] and actor.strip(), "动作或记录人无效")
     action = w["actions"][key]
+    if action.get("review_for"):
+        expect(independent_actor(action,actor), "原失败执行者不能担任独立诊断者，请使用独立执行者的稳定身份")
+        review_receipts(w,action)
     status = evaluate(w)[key]
     state = status["state"]
+    expect(not needs_independent_review(w,key,status), "重复失败须先用 claim 安排独立诊断，再继续原验证")
     expect(executable(status), "当前动作不可执行：" + " / ".join(status["reasons"] or [STATES[state]]))
     expect(state != "active" or actor == status["actor"], "该动作已由 " + str(status["actor"]) + " 领取")
     proof_fields = {}
@@ -556,7 +690,7 @@ def progress(w, mode, key, actor, output="", evidence="", level="", environment=
     return True
 
 
-def action_packet(w, states, key, mode):
+def action_packet(w, states, key, mode, workspace=None):
     action = w["actions"][key]
     stories = dict.fromkeys([*action["stories"], *action["read_stories"]])
     decisions = dict.fromkeys(action["decisions"])
@@ -569,14 +703,22 @@ def action_packet(w, states, key, mode):
                      (event.get("action")==key or event.get("reopen")==key)), None)
     dependencies = {}
     for edge in action["depends_on"]:
-        if condition_value(w, edge.get("when")) is True:
+        if dependency_active(w, edge):
             dep = edge["id"]
             dependencies[dep] = {"title":w["actions"][dep]["title"], "proof":receipts.get(states[dep]["proof"])}
     default_skill = {"调研":"flow-contracts" if contracts else "flow-requirements", "开发":"flow-implement", "验证":"flow-verify"}
+    verification = {}
+    if action["kind"] == "验证":
+        task = TASK_DIR if workspace is None else Path(workspace)
+        store = task.parent.parent
+        project = store.parent if store.name == ".requirements" else Path.cwd()
+        verification = {"code_paths":action.get("code_paths"), "verification_project_root":str(project.resolve())}
+    if action.get("review_for"):
+        verification = {"review_for":action["review_for"], "failed_evidence":review_receipts(w,action,workspace)}
     return {"id":key, "title":action["title"], "kind":action["kind"], "mode":mode, "stories":action["stories"],
             "skill":action.get("skill") or default_skill[action["kind"]], "covers":action.get("covers",[]),
             "goal":w["goal"], "scope":w["scope"], "done":action["done"], "accepts":action.get("accepts", []),
-            "closes_contracts":action.get("closes_contracts", []), "prior_result":previous,
+            "closes_contracts":action.get("closes_contracts", []), "prior_result":previous, **verification,
             "inputs":{"stories":story_context(w,stories), "contracts":{i:w["contracts"][i] for i in contracts},
                       "decisions":{i:{**w["decisions"][i],"answer":w["answers"].get(i)} for i in decisions},
                       "dependencies":dependencies}}
@@ -613,9 +755,7 @@ def scenario_report(w, states, selected):
     for identity, case in latest_retirements(w,selected).items():
         if identity in active:
             continue
-        decision = w["decisions"].get(case["decision"],{})
-        choice = w["answers"].get(case["decision"],{}).get("choice")
-        if choice != case["is"] or case["story"] not in decision.get("stories",[]):
+        if not story_scope.retirement_applies(w, case):
             rows.append({**{k:case[k] for k in ("id","story","given","when","then")},
                          "status":"uncovered","reason":"撤下场景的范围决定已变更，请补回场景或重新确认原选项",
                          "actions":[],"receipts":[],"retirement":case["event"],"decision":case["decision"]})
@@ -642,8 +782,11 @@ def verification_followups(work, scenarios):
             receipt = event.get("receipt") or {}
             if not isinstance(receipt,dict) or not isinstance(receipt.get("artifact"),dict):
                 return None
-            return (event.get("stamp"),event.get("scenario_stamp"),receipt.get("passed"),receipt.get("environment"),
-                    receipt.get("argv"),receipt.get("exit_code"),receipt["artifact"].get("sha256"))
+            # Logs retain their integrity hash, but elapsed times and timestamps are
+            # not new inputs. Repeated failures on unchanged inputs need review.
+            return (event.get("stamp"),event.get("scenario_stamp"),receipt.get("code_inputs"),
+                    receipt.get("passed"),receipt.get("environment"),receipt.get("kind"),
+                    receipt.get("argv"),receipt.get("exit_code"))
         current = fingerprint(attempts[-1])
         repeated = []
         for attempt in reversed(attempts):
@@ -655,6 +798,45 @@ def verification_followups(work, scenarios):
                           "step":"independent_review" if len(repeated)>1 else "diagnose",
                           "skill":"flow-review" if len(repeated)>1 else "flow-verify"})
     return followups
+
+
+def materialize_reviews(w, actor, story=None):
+    """Turn a repeated failure into ordinary, independently claimable research work."""
+    chosen = set(w["actions"]) if story is None else set().union(
+        *(active_ancestors(w,key) for key,action in w["actions"].items() if story in action["stories"]))
+    # A shared verification finishes all its covers together, even when claimed from one story.
+    followups = verification_followups(w, scenario_report(w,evaluate(w),set()))
+    groups = {}
+    for followup in followups:
+        if followup["action"] in chosen and followup["step"] == "independent_review":
+            groups.setdefault(followup["action"],[]).append(followup)
+    events = {event["id"]:event for event in w["events"]}
+    definitions = scenario_definitions(w)
+    occupied = set().union(*(set(w[group]) for group in PLANNABLE))
+    for target, cases in groups.items():
+        receipts = list(dict.fromkeys(rid for case in cases for rid in case["receipts"]))
+        source = [events[rid] for rid in receipts]
+        origin = {"action":target, "scenarios":[copy.deepcopy(definitions[case["scenario"]]) for case in cases],
+                  "receipts":receipts, "verification_actors":list(dict.fromkeys(event["actor"] for event in source)),
+                  "source_digests":{event["id"]:digest(event) for event in source}}
+        base = "A-review-" + receipts[-1]
+        key, suffix = base, 1
+        while key in occupied:
+            suffix += 1
+            key = base + "-" + str(suffix)
+        occupied.add(key)
+        action = {"title":"独立诊断 · " + w["actions"][target]["title"], "kind":"调研", "skill":"flow-review",
+                  "stories":list(dict.fromkeys(case["story"] for case in origin["scenarios"])),
+                  "read_stories":[], "contracts":[], "decisions":[], "depends_on":[],
+                  "done":"逐项说明原失败原因、测试前提、处理建议及可复核依据，再交回原验证。",
+                  "review_for":origin}
+        review_receipts(w,action)
+        w["actions"][key] = action
+        w["actions"][target]["depends_on"].append({"id":key})
+        w["revision"] += 1
+        append_event(w,"plan",actor,output="相同输入重复失败，安排独立诊断后再验证",changed=[key,target],
+                     review_created={"id":key,"review_for":copy.deepcopy(origin)})
+    return bool(groups)
 
 
 def lesson_context(work, workspace, stories, packet=None, *, for_map=False):
@@ -677,18 +859,22 @@ def lesson_context(work, workspace, stories, packet=None, *, for_map=False):
             "lesson_cards": own_cards, "lesson_reviews": reviews, "adopted_lessons": adopted}
 
 
+@input_scope()
 def dispatch(w, actor="AI", story=None, *, workspace=None, include_lessons=True, for_map=False):
     expect(isinstance(actor,str) and actor.strip(), "执行人不能为空")
     expect(story is None or story in w["stories"], "故事不存在")
     selected = {story} if story is not None else set()
+    withdrawn = story_scope.withdrawn_stories(w)
     chosen = {key for key, action in w["actions"].items() if not selected or selected.intersection(action["stories"])}
     to_visit = list(chosen)
     while to_visit:
         action = w["actions"][to_visit.pop()]
+        if action["stories"] and set(action["stories"]) <= withdrawn:
+            continue
         if condition_value(w, action.get("when")) is not True:
             continue
         for edge in action["depends_on"]:
-            if edge["id"] not in chosen and condition_value(w, edge.get("when")) is True:
+            if edge["id"] not in chosen and dependency_active(w, edge):
                 chosen.add(edge["id"])
                 to_visit.append(edge["id"])
     states = evaluate(w, workspace)
@@ -701,6 +887,10 @@ def dispatch(w, actor="AI", story=None, *, workspace=None, include_lessons=True,
         state = status["state"]
         if state == "done":
             completed.append({"id":key,"proof":status["proof"]})
+        elif executable(status) and action.get("review_for") and not independent_actor(action,actor):
+            waiting.append({"id":key,"title":action["title"],"state":state,
+                            "blockers":[{"kind":"independent_reviewer","id":key}]})
+            blocked_by.setdefault(("independent_reviewer",key),[]).append(key)
         elif state == "active":
             running.append({"id":key,"title":action["title"],"actor":status["actor"]})
         elif executable(status):
@@ -712,12 +902,15 @@ def dispatch(w, actor="AI", story=None, *, workspace=None, include_lessons=True,
 
     pending = [{"id":key,**definition,"actions":blocked_by.get(("decision",key),[])}
                for key, definition in w["decisions"].items() if key not in w["answers"] and
+               (not definition["stories"] or not set(definition["stories"]) <= withdrawn
+                or ("decision",key) in blocked_by) and
                (not selected or selected.intersection(definition["stories"]) or ("decision",key) in blocked_by)]
     technical = [{"kind":kind,"id":key,"title":w["contracts" if kind=="contract" else "actions"][key]["title"],"actions":actions}
                  for (kind,key), actions in blocked_by.items() if kind != "decision"]
     own = next((item["id"] for item in running if item["actor"] == actor), None)
-    next_key = own or next(iter(ready),None)
-    packet = action_packet(w, states, next_key, "resume" if own else "start") if next_key else None
+    review_ready = next((key for key in ready if w["actions"][key].get("review_for")), None)
+    next_key = own or review_ready or next(iter(ready),None)
+    packet = action_packet(w, states, next_key, "resume" if own else "start", workspace) if next_key else None
     if packet is not None and include_lessons:
         packet = source_paths.SourcePaths.for_task(workspace or TASK_DIR).reading_context(packet)
     scenarios = scenario_report(w, states, selected)
@@ -726,14 +919,16 @@ def dispatch(w, actor="AI", story=None, *, workspace=None, include_lessons=True,
     for i in chosen:
         if w["actions"][i]["kind"] == "验证" and states[i]["state"] not in ("done","skipped"):
             verified.difference_update(w["actions"][i]["stories"])
-    missing = [s for s in w["stories"] if (not selected or s in selected) and s not in verified]
+    withdrawn = withdrawn & selected if selected else withdrawn
+    missing = [s for s in w["stories"] if (not selected or s in selected) and s not in verified | withdrawn]
     research = w.get("outcome") == "research"
     research_proved = any(w["actions"][r["id"]]["kind"] == "调研" for r in completed)
     if next_key:
         state = "resume" if own else "ready"
     elif waiting or running or pending:
         state = "waiting"
-    elif (research and research_proved and not missing) or (not research and completed and verified and not missing):
+    elif ((research and (research_proved or withdrawn) and not missing)
+          or (not research and (completed or withdrawn) and (verified or withdrawn) and not missing)):
         state = "complete"
     else:
         state = "unplanned"
@@ -755,23 +950,24 @@ def dispatch(w, actor="AI", story=None, *, workspace=None, include_lessons=True,
             "review_skill":"flow-review" if lessons.get("lesson_reviews") or (
                 (scenarios or not research) and not packet and (missing or state in ("unplanned","complete"))) else None,
             "progress":{"completed":completed,"verified_stories":[s for s in w["stories"] if s in verified and (not selected or s in selected)],
+                        "withdrawn_stories":[s for s in w["stories"] if s in withdrawn],
                         "unverified_stories":missing}}
 
 
+@input_scope()
 def claim(revision, actor="AI", story=None):
     result = {}
     def reserve(w):
+        expect(story is None or story in w["stories"], "故事不存在")
+        changed = materialize_reviews(w,actor,story)
         queue = dispatch(w, actor, story, include_lessons=False)
         packet = queue["next"]
-        if packet and packet.get("handoff"):
-            result.update(claimed=None, outcome="review_requested")
-            return False
         result["claimed"] = packet["id"] if packet else None
         if not packet or packet["mode"] == "resume":
             result["outcome"] = "resumed" if packet else queue["state"]
-            return False
+            return changed
         result["outcome"] = "claimed"
-        return progress(w, "start", packet["id"], actor, packet["title"])
+        return progress(w, "start", packet["id"], actor, packet["title"]) or changed
     model = commit(revision, reserve)
     return {**dispatch(model["work"], actor, story), **result}
 
@@ -787,6 +983,7 @@ def capture(mode, key, scenario_id, revision, actor, environment, *, argv=None, 
                "指定验证动作未关联此场景")
         expect(not action.get("accepts") or level in action["accepts"],"该证据类型不满足验收条件")
         state = evaluate(w)[key]
+        expect(not needs_independent_review(w,key,state), "重复失败须先用 claim 安排独立诊断，再继续原验证")
         expect(executable(state) or state["state"] == "done","前置条件或当前分支不允许采集")
         expect(state["state"] != "active" or state["actor"] == actor, "该动作已由其他执行人领取")
         case = scenario_definitions(w)[scenario_id]
@@ -803,7 +1000,8 @@ def capture(mode, key, scenario_id, revision, actor, environment, *, argv=None, 
     # Project commands run outside the model lock, from the task's owning project.
     store = TASK_DIR.parent.parent
     project = store.parent if store.name == ".requirements" else Path.cwd()
-    binding = dict(action=key,scenario=scenario_id,stamp=combined,actor=actor,environment=environment)
+    binding = dict(action=key,scenario=scenario_id,stamp=combined,actor=actor,environment=environment,
+                   code_paths=model["work"]["actions"][key].get("code_paths"))
     if mode == "verify-run":
         receipt = evidence.run(TASK_DIR, project, argv, **binding)
     else:
@@ -828,6 +1026,7 @@ def capture(mode, key, scenario_id, revision, actor, environment, *, argv=None, 
             "actual":receipt["actual"],"artifact":receipt["artifact"]}
 
 
+@input_scope()
 def context(m, story=None, *, workspace=None):
     workspace = workspace or TASK_DIR
     w = m["work"]
@@ -841,11 +1040,13 @@ def context(m, story=None, *, workspace=None):
     effective_ids = {status[k]["proof"] for k in chosen if status[k]["proof"]}
     usage = graph_view.contract_users(w)
     scenarios = scenario_report(w,status,stories)
+    withdrawn = story_scope.withdrawn_stories(w)
     result = {
         "protocol_version":m["protocol"]["version"],"revision":w["revision"],"mode":w["kind"],"outcome_type":w.get("outcome","delivery"),
         "raw_request":w["raw_request"],"goal":w["goal"],"scope":w["scope"],"contract_routes":routes,
         "scenarios":scenarios, "verification_followups":verification_followups(w,scenarios),
         "retired_scenarios":retirement_history(w,stories),
+        "withdrawn_stories":[k for k in w["stories"] if k in withdrawn and (not stories or k in stories)],
         "stories":story_context(w,[k for k in w["stories"] if not stories or k in stories]),
         "decisions":{k:{**w["decisions"][k],"answer":w["answers"].get(k)} for k in w["decisions"] if k in decisions},
         "contracts":{k:v for k,v in w["contracts"].items() if k in contracts},
@@ -956,6 +1157,7 @@ def offline_home_href(workspace):
     return "../../index.html"
 
 
+@input_scope()
 def render(model, token=None, *, workspace=None, read_only=False, home_href=None):
     work = model["work"]
     impacts = {key: {code: impact(work, key, code, workspace) for code in d["options"]}
@@ -1081,11 +1283,11 @@ class TaskHandler(BaseHTTPRequestHandler):
         else:
             # The same signed version can be recommended and adopted by multiple stories.
             cards = {knowledge.card_key(card): card for card in (*queue["related_lessons"], *queue["adopted_lessons"])
-                     if any(s["valid"] for s in card["sources"])}.values()
+                     if any(s.get("readable", s["valid"]) for s in card["sources"])}.values()
         matches = [(card, source) for card in cards if (card["task"],card["id"]) == (task,lesson)
                    and (version is None or str(card["version"]) == version)
                    and (approval is None or card.get("approval_digest") == approval)
-                   for source in card["sources"] if source["receipt"] == rid and source["valid"]]
+                   for source in card["sources"] if source["receipt"] == rid and source.get("readable", source["valid"])]
         if len(matches) != 1:
             self.send_content(404,"该场景来源已失效或未关联到当前需求。","text/plain")
             return

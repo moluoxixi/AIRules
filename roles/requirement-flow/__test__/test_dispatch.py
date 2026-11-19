@@ -27,7 +27,8 @@ RETRY = ("SC-retry", "失败后重试保存", "保留原重量并恢复成功")
 
 def action(title, kind, feature, **inputs):
     return {"title": title, "kind": kind, "stories": [feature], "read_stories": [feature],
-            "contracts": [], "decisions": [], "depends_on": [], "done": title + "有可复核的结果", **inputs}
+            "contracts": [], "decisions": [], "depends_on": [], "done": title + "有可复核的结果",
+            **({"code_paths": ["records-check.py"]} if kind == "验证" else {}), **inputs}
 
 
 class DispatchTest(unittest.TestCase):
@@ -38,6 +39,11 @@ class DispatchTest(unittest.TestCase):
         self.addCleanup(sync.bind_workspace, sync.TASK_DIR)
         self.fixture = self.root / "records.json"
         self.fixture.write_text(json.dumps({"note":"已复核","weight":2.5,"retried":False}),encoding="utf-8")
+        (self.root / "records-check.py").write_text(
+            "import json,sys; from pathlib import Path; "
+            "row=json.loads(Path('records.json').read_text(encoding='utf-8')); "
+            "observed=row[sys.argv[1]]; print(repr(observed)); "
+            "sys.exit(0 if observed==json.loads(sys.argv[2]) else 1)", encoding="utf-8")
         self.open_task("delivery")
         self.finish("A-intake")
 
@@ -80,12 +86,8 @@ class DispatchTest(unittest.TestCase):
         scenario = self.work()["actions"][key]["covers"][0]
         field, expected = {"SC-note":("note","已复核"), "SC-retry":("retried",True),
                            "SC-display":("weight",2.5), "SC-weight":("weight",2.5)}[scenario]
-        checker = ("import json,sys; from pathlib import Path; "
-                   "row=json.loads(Path('records.json').read_text(encoding='utf-8')); "
-                   "observed=row[sys.argv[1]]; print(repr(observed)); "
-                   "sys.exit(0 if observed==json.loads(sys.argv[2]) else 1)")
         return sync.capture("verify-run", key, scenario, self.work()["revision"], "执行者", "临时收货项目",
-                            argv=[sys.executable,"-c",checker,field,json.dumps(expected)])
+                            argv=[sys.executable,"-B","records-check.py",field,json.dumps(expected)])
 
     def verify(self, key):
         result = self.collect(key)

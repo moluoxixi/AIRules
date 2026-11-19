@@ -282,7 +282,7 @@ def upgrade(project, migrate=False):
         if not safe_path(project, MANIFEST).is_file():
             raise ValueError("尚未安装 requirement-flow，请先运行 init。")
         locks.enter_context(project_lock(store, ".project-viewer", exclusive=True, nonblocking=True))
-        pages = {}
+        tasks = []
         active = local_directory(store / "active")
         for folder in sorted(active.iterdir()) if active.exists() else ():
             if folder.name.startswith(".") or not (folder.is_dir() or engine.evidence.linked(folder)):
@@ -297,12 +297,19 @@ def upgrade(project, migrate=False):
             engine.validate(model)
             if model["work"]["id"] != key:
                 raise ValueError(f"需求 ID 与目录不一致：{key}")
-            book = path / "handbook.html"
-            rendered = engine.render(model, workspace=path).encode()
-            if not book.exists() or book.read_bytes() != rendered:
-                pages[book.relative_to(project)] = rendered
-        result = install_locked(project, migrate, pages=pages)
-        result["refreshed"] = [page.parent.name for page in pages]
+            tasks.append((path, model))
+        refreshed = []
+        def render_pages():
+            # Installed files (including AGENTS.md and ignore rules) are now final;
+            # the installer still holds its undo stack if any render/write fails.
+            for path, model in tasks:
+                book = path / "handbook.html"
+                rendered = engine.render(model, workspace=path).encode()
+                if not book.exists() or book.read_bytes() != rendered:
+                    yield book.relative_to(project), rendered
+                    refreshed.append(path.name)
+        result = install_locked(project, migrate, after_apply=render_pages)
+        result["refreshed"] = refreshed
         result["memory"] = refresh_notes(store)
         return result
 

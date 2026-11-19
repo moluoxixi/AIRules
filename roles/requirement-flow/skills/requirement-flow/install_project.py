@@ -18,16 +18,16 @@ from evidence import linked
 
 SKILLS = Path(".agents/skills")
 ROLE = "requirement-flow"
-ROLE_VERSION = "0.8.1"
+ROLE_VERSION = "0.9.0"
 SPECIALISTS = ("flow-requirements", "flow-contracts", "flow-implement", "flow-verify", "flow-review")
 SKILL = SKILLS / ROLE
 MANIFEST = Path(".requirements/installation.json")
 IGNORE = Path(".requirements/.gitignore")
-LOCAL_PATTERNS = (b".receipt-key", b".receipt-key-*", b".workflow.lock", b".capture-*/", b".model.json.*", b".handbook.html.*", b".basic-memory/")
+LOCAL_PATTERNS = (b".receipt-key", b".receipt-key-*", b".workflow.lock", b".capture-*/", b".install-*/", b".model.json.*", b".handbook.html.*", b".basic-memory/")
 ARCHIVE = Path(".requirements/migrations/moluoxixi")
 ROOT_FILES = {"SKILL.md", "flow.py", "install_project.py", "references/model.md", "agents/openai.yaml"}
-RUNTIME_FILES = {"basic_memory.py", "catalog.html", "catalog_server.py", "dagre.min.js", "evidence.py", "graph_view.py", "knowledge.py", "lesson_retirement.py",
-                 "layout.html", "map.js", "protocol.json", "source_paths.py", "sync.py", "theme.css", "tooltip.js"}
+RUNTIME_FILES = {"basic_memory.py", "catalog.html", "catalog_server.py", "code_inputs.py", "dagre.min.js", "evidence.py", "graph_view.py", "knowledge.py", "lesson_retirement.py",
+                 "layout.html", "map.js", "protocol.json", "source_paths.py", "story_scope.py", "sync.py", "theme.css", "tooltip.js"}
 LEGACY_SKILLS = {
     "before-dev", "brainstorm", "break-loop", "channel", "check", "continue", "finish-work",
     "knowledge", "meta", "session-insight", "spec-bootstrap", "start", "update-spec",
@@ -227,39 +227,67 @@ def project_lock(root):
         yield
 
 
-def apply(root, files, moves):
-    """Pre-stage all bytes, then replace files and register undo steps in reverse order."""
-    with tempfile.TemporaryDirectory(prefix=".requirement-flow-install-", dir=root) as tmp, ExitStack() as undo:
-        stage = Path(tmp)
-        def parent(path):
-            if not path.exists():
-                parent(path.parent)
-                path.mkdir()
-                undo.callback(path.rmdir)
-        for n, (relative, data) in enumerate(files.items()):
-            target = safe_path(root, relative)
-            if data is not None:
-                staged = stage / f"new-{n}"
-                staged.write_bytes(data)
-                if target.is_file():
-                    os.chmod(staged, target.stat().st_mode & 0o777)
-        for source, destination in moves:
-            src, dest = safe_path(root, source), safe_path(root, destination)
-            require(not dest.exists(), f"旧入口归档路径已存在：{dest}")
-            parent(dest.parent)
-            src.rename(dest)
-            undo.callback(dest.rename, src)
-        for n, (relative, data) in enumerate(files.items()):
-            target = safe_path(root, relative)
-            parent(target.parent)
-            if target.exists():
-                old = stage / f"old-{n}"
-                target.replace(old)
-                undo.callback(old.replace, target)
-            if data is not None:
-                (stage / f"new-{n}").replace(target)
-                undo.callback(target.unlink)
-        undo.pop_all()
+def apply(root, files, moves, after_apply=None):
+    """Install assets and derived pages in one reversible, same-filesystem transaction."""
+    # Staging is metadata, never a temporary application-code input. Keep it on the
+    # project's filesystem without requiring write access to the project's parent.
+    with ExitStack() as directory_undo:
+        store = safe_path(root, ".requirements")
+        if not store.exists():
+            store.mkdir()
+            directory_undo.callback(store.rmdir)
+        require(store.is_dir(), f"预期目录：{store}")
+        with tempfile.TemporaryDirectory(prefix=".install-", dir=store) as tmp, ExitStack() as undo:
+            changed = _apply_files(root, files, moves, after_apply, Path(tmp), undo)
+            undo.pop_all()
+        directory_undo.pop_all()
+    return changed
+
+
+def _apply_files(root, files, moves, after_apply, stage, undo):
+    """All replacements, including pages rendered from installed assets, share undo."""
+    def parent(path):
+        if not path.exists():
+            parent(path.parent)
+            path.mkdir()
+            undo.callback(path.rmdir)
+
+    def prepare(relative, data, n):
+        target = safe_path(root, relative)
+        if data is not None:
+            staged = stage / f"new-{n}"
+            staged.write_bytes(data)
+            if target.is_file():
+                os.chmod(staged, target.stat().st_mode & 0o777)
+
+    def replace(relative, data, n):
+        target = safe_path(root, relative)
+        parent(target.parent)
+        if target.exists():
+            old = stage / f"old-{n}"
+            target.replace(old)
+            undo.callback(old.replace, target)
+        if data is not None:
+            (stage / f"new-{n}").replace(target)
+            undo.callback(target.unlink)
+
+    for n, (relative, data) in enumerate(files.items()):
+        prepare(relative, data, n)
+    for source, destination in moves:
+        src, dest = safe_path(root, source), safe_path(root, destination)
+        require(not dest.exists(), f"旧入口归档路径已存在：{dest}")
+        parent(dest.parent)
+        src.rename(dest)
+        undo.callback(dest.rename, src)
+    for n, (relative, data) in enumerate(files.items()):
+        replace(relative, data, n)
+    changed = bool(files or moves)
+    if after_apply is not None:
+        for n, (relative, data) in enumerate(after_apply(), start=len(files)):
+            prepare(relative, data, n)
+            replace(relative, data, n)
+            changed = True
+    return changed
 
 
 def install(project, migrate=False):
@@ -270,7 +298,7 @@ def install(project, migrate=False):
         return install_locked(root, migrate)
 
 
-def install_locked(root, migrate, *, pages=None):
+def install_locked(root, migrate, *, after_apply=None):
     wanted = assets()
     manifest_file = safe_path(root, MANIFEST)
     old_bytes = read_file(manifest_file)
@@ -360,11 +388,8 @@ def install_locked(root, migrate, *, pages=None):
     manifest_bytes = (json.dumps(manifest, sort_keys=True, indent=2) + "\n").encode()
     if manifest_bytes != old_bytes:
         files[MANIFEST] = manifest_bytes
-    if pages:
-        files.update(pages)
-    if files or moves:
-        apply(root, files, moves)
-    return {"project": str(root), "skill": str(root / SKILL), "role_version": ROLE_VERSION, "changed": bool(files or moves),
+    changed = apply(root, files, moves, after_apply) if files or moves or after_apply is not None else False
+    return {"project": str(root), "skill": str(root / SKILL), "role_version": ROLE_VERSION, "changed": changed,
             "migrated": migration, "archive": str(root / archive) if archive else None}
 
 
