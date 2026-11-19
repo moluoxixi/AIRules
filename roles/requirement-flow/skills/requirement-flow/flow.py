@@ -1,0 +1,313 @@
+#!/usr/bin/env python3
+"""在项目内创建、查阅、推进和归档需求。"""
+import argparse
+from contextlib import contextmanager, ExitStack
+import hashlib
+from html.parser import HTMLParser
+import json
+import os
+from pathlib import Path
+import re
+import sys
+import tempfile
+import unicodedata
+
+sys.dont_write_bytecode = True
+sys.path.insert(0, str(Path(__file__).resolve().parent / "runtime"))
+import sync as engine
+
+
+def identifier(value):
+    value = unicodedata.normalize("NFC", value)
+    if (not value or not value[0].isalnum() or len(value.encode("utf-8")) > 255
+            or any(not c.isalnum() and c not in "_-" for c in value)):
+        raise argparse.ArgumentTypeError("需求 ID 可用汉字、字母、数字、连字符和下划线，首位须为文字或数字。")
+
+    if re.fullmatch(r"CON|PRN|AUX|NUL|COM[1-9]|LPT[1-9]", value, re.IGNORECASE):
+        raise argparse.ArgumentTypeError("需求 ID 不能使用操作系统保留名称")
+    return value
+
+
+def project_root(explicit):
+    if explicit is not None:
+        path = explicit.expanduser().resolve()
+        if not path.is_dir():
+            raise ValueError(f"项目目录不存在：{path}")
+        return path
+    current = Path.cwd().resolve()
+    for candidate in (current, *current.parents):
+        if ((candidate / ".requirements").exists() or (candidate / ".git").exists()
+                or (candidate / ".agents/skills/requirement-flow").is_dir()):
+            return candidate
+    return current
+
+
+def local_directory(path, *, create=False):
+    if path.is_symlink():
+        raise ValueError(f"需求存储目录不能使用符号链接：{path}")
+    if create:
+        path.mkdir(exist_ok=True)
+    if path.exists() and not path.is_dir():
+        raise ValueError(f"需求存储路径不是目录：{path}")
+    return path
+
+
+def lock_path(store, key=None):
+    uid = str(os.getuid()) if hasattr(os, "getuid") else "user"
+    directory = Path(tempfile.gettempdir()) / f"requirement-flow-locks-{uid}"
+    if directory.is_symlink():
+        raise ValueError(f"锁目录不能使用符号链接：{directory}")
+    directory.mkdir(mode=0o700, exist_ok=True)
+    # A lock stays at the same path before and after archiving the task.
+    resource = str(store.resolve()) + "\0" + (key or "")
+    if sys.platform in ("darwin", "win32"):
+        resource = resource.casefold()
+    name = hashlib.sha256(resource.encode("utf-8")).hexdigest()
+    return directory / (name + ".lock")
+
+
+@contextmanager
+def windows_lock(stream, exclusive, nonblocking):
+    import ctypes
+    from ctypes import wintypes as wt
+    import msvcrt
+
+    class Overlapped(ctypes.Structure):
+        _fields_ = [("internal", ctypes.c_size_t), ("internal_high", ctypes.c_size_t),
+                    ("offset", wt.DWORD), ("offset_high", wt.DWORD), ("event", wt.HANDLE)]
+
+    kernel = ctypes.WinDLL("kernel32", use_last_error=True)
+    pointer = ctypes.POINTER(Overlapped)
+    kernel.LockFileEx.argtypes = [wt.HANDLE, wt.DWORD, wt.DWORD, wt.DWORD, wt.DWORD, pointer]
+    kernel.LockFileEx.restype = wt.BOOL
+    kernel.UnlockFileEx.argtypes = [wt.HANDLE, wt.DWORD, wt.DWORD, wt.DWORD, pointer]
+    kernel.UnlockFileEx.restype = wt.BOOL
+    position = ctypes.byref(Overlapped())
+    handle = msvcrt.get_osfhandle(stream.fileno())
+    # LockFileEx on a synchronous handle blocks by default and allows shared readers.
+    flags = (2 if exclusive else 0) | (1 if nonblocking else 0)
+    if not kernel.LockFileEx(handle, flags, 0, 1, 0, position):
+        error = ctypes.get_last_error()
+        if nonblocking and error == 33:  # ERROR_LOCK_VIOLATION
+            raise BlockingIOError(error, "lock occupied")
+        raise ctypes.WinError(error)
+    try:
+        yield
+    finally:
+        if not kernel.UnlockFileEx(handle, 0, 1, 0, position):
+            raise ctypes.WinError(ctypes.get_last_error())
+
+
+@contextmanager
+def project_lock(store, key=None, *, exclusive=False, nonblocking=False):
+    path = lock_path(store, key)
+    if path.is_symlink():
+        raise ValueError(f"锁文件不能使用符号链接：{path}")
+    with path.open("a+b") as stream:
+        if os.name == "nt":
+            with windows_lock(stream, exclusive, nonblocking):
+                yield
+        else:
+            import fcntl
+            operation = fcntl.LOCK_EX if exclusive else fcntl.LOCK_SH
+            fcntl.flock(stream.fileno(), operation | (fcntl.LOCK_NB if nonblocking else 0))
+            try:
+                yield
+            finally:
+                fcntl.flock(stream.fileno(), fcntl.LOCK_UN)
+
+
+def locations(store, key):
+    return [local_directory(local_directory(store / bucket) / key) for bucket in ("active", "archive")]
+
+
+def existing(paths, key):
+    found = [path for path in paths if path.is_dir()]
+    if not found:
+        raise ValueError(f"需求不存在：{key}")
+    if len(found) != 1:
+        raise ValueError(f"需求 ID 在进行中和归档目录重复：{key}")
+    path = found[0]
+    for name in ("model.json", "handbook.html", ".workflow.lock"):
+        if (path / name).is_symlink():
+            raise ValueError(f"需求数据不能使用符号链接：{path / name}")
+    return path
+
+
+def summary(path):
+    model = engine.load(path / "model.json")
+    engine.validate(model)
+    work = model["work"]
+    if work["id"] != unicodedata.normalize("NFC", path.name):
+        raise ValueError(f"需求 ID 与目录不一致：{work['id']} / {path.name}")
+    queue = engine.dispatch(work)
+    return {
+        "id": work["id"], "title": work["title"], "outcome": work.get("outcome", "delivery"),
+        "revision": work["revision"], "state": queue["state"], "progress": queue["progress"],
+        "next": queue["next"]["id"] if queue["next"] else None, "running": queue["running"],
+        "pending_decisions": [item["id"] for item in queue["pending_decisions"]],
+        "handbook": str(path / "handbook.html"),
+    }
+
+
+def emit(value):
+    print(json.dumps(value, ensure_ascii=False, indent=2))
+
+
+def list_tasks(store):
+    result = {"active":[], "archive":[]}
+    if store.exists():
+        with project_lock(store):
+            for bucket, entries in result.items():
+                folder = local_directory(store / bucket)
+                if not folder.exists():
+                    continue
+                for path in sorted(folder.iterdir()):
+                    if path.name.startswith(".") or not (path.is_dir() or path.is_symlink()):
+                        continue
+                    try:
+                        entries.append(summary(existing(locations(store, identifier(path.name)), path.name)))
+                    except (ValueError, OSError, KeyError, TypeError, argparse.ArgumentTypeError) as error:
+                        entries.append({"id":path.name, "error":str(error)})
+    emit(result)
+
+
+def create(store, args):
+    if not args.request.strip():
+        raise ValueError("请提供需求原话")
+    local_directory(store, create=True)
+    with project_lock(store, exclusive=True):
+        active, archive = locations(store, args.id)
+        if active.exists() or archive.exists():
+            raise ValueError(f"需求 ID 已使用：{args.id}")
+        local_directory(active.parent, create=True)
+        engine.initialize_task(active, args.request, key=args.id, title=args.title, outcome=args.outcome)
+        emit(summary(active))
+
+
+class SnapshotHTML(HTMLParser):
+    def __init__(self):
+        super().__init__()
+        self.checksums = []
+        self.payloads = []
+        self.reading_payload = False
+
+    def handle_starttag(self, tag, attrs):
+        values = dict(attrs)
+        if tag == "meta" and values.get("name") == "model-sha256":
+            self.checksums.append(values.get("content"))
+        if tag == "script" and values.get("id") == "data" and values.get("type") == "application/json":
+            self.reading_payload = True
+            self.payloads.append("")
+
+    def handle_endtag(self, tag):
+        if tag == "script":
+            self.reading_payload = False
+
+    def handle_data(self, content):
+        if self.reading_payload:
+            self.payloads[-1] += content
+
+
+def check_snapshot(path):
+    model = engine.load(path / "model.json")
+    if model["work"]["id"] != unicodedata.normalize("NFC", path.name):
+        raise ValueError("归档模型与需求目录的 ID 不一致。")
+    page = SnapshotHTML()
+    page.feed((path / "handbook.html").read_text(encoding="utf-8"))
+    page.close()
+    if len(page.payloads) != 1 or len(page.checksums) != 1:
+        raise ValueError("归档人读页缺少唯一的嵌入模型或 model-sha256 标记。")
+    embedded = json.loads(page.payloads[0], object_pairs_hook=engine.unique)["model"]
+    checksum = engine.digest(model)
+    if checksum != engine.digest(embedded) or checksum != page.checksums[0]:
+        raise ValueError("归档人读页的嵌入模型或摘要与 model.json 不一致。")
+    return model["work"]["revision"]
+
+
+def archive(store, args):
+    if not store.exists():
+        raise ValueError(f"需求不存在：{args.id}")
+    with project_lock(store, exclusive=True):
+        active, target = locations(store, args.id)
+        source = existing([active, target], args.id)
+        if source == target:
+            emit(summary(target))
+            return
+        with project_lock(store, args.id, exclusive=True, nonblocking=True):
+            info = summary(source)
+            if info["state"] != "complete" and not args.allow_incomplete:
+                raise ValueError(f"需求 {args.id} 当前状态为 {info['state']}。如需保留当前进度并归档，请使用 --allow-incomplete。")
+            check_snapshot(source)
+            local_directory(target.parent, create=True)
+            source.rename(target)
+            info["handbook"] = str(target / "handbook.html")
+            emit(info)
+
+
+def forward(store, args):
+    if not store.exists():
+        raise ValueError(f"需求不存在：{args.id}")
+    with ExitStack() as handle:
+        with project_lock(store):
+            active, archived = locations(store, args.id)
+            path = existing([active, archived], args.id)
+            handle.enter_context(project_lock(store, args.id))
+        words = args.arguments
+        if words and words[0].startswith("-") and words not in (["--check"], ["--help"], ["-h"]):
+            raise ValueError("请在 task ID 后直接指定动作，或使用 --check 检查该需求。")
+        if path == archived and (not words or words[0] not in {"--check", "context", "next", "-h", "--help"}):
+            raise ValueError("需求已归档，可通过 context、next、--check 和人读页查阅。")
+        if path == archived and words == ["--check"]:
+            print(f"归档快照一致 · v{check_snapshot(path)}")
+            return
+        if words and words[0] == "new":
+            raise ValueError("创建独立需求请使用项目命令 new。")
+        engine.bind_workspace(path)
+        engine.main(words)
+
+
+def main():
+    p = argparse.ArgumentParser(description=__doc__)
+    p.add_argument("--project", type=Path, help="目标项目根目录。默认从当前目录查找。")
+    commands = p.add_subparsers(dest="command", required=True)
+    new = commands.add_parser("new", help="按原话创建需求")
+    new.add_argument("id", type=identifier)
+    new.add_argument("--request", required=True)
+    new.add_argument("--title")
+    new.add_argument("--outcome", choices=("delivery","research"), default="delivery")
+    init = commands.add_parser("init", help="接入当前项目，迁移时归档旧流程入口")
+    init.add_argument("--migrate", action="store_true", help="迁移已有项目编排配置")
+    commands.add_parser("list", help="查看项目的进行中与已归档需求")
+    arch = commands.add_parser("archive", help="保留当前模型和人读页并归档")
+    arch.add_argument("id", type=identifier)
+    arch.add_argument("--allow-incomplete", action="store_true", help="按当前未完成状态归档")
+    task = commands.add_parser("task", help="执行指定需求的编排命令")
+    task.add_argument("id", type=identifier)
+    task.add_argument("arguments", nargs=argparse.REMAINDER)
+    args = p.parse_args()
+    project = project_root(args.project)
+    if args.command == "init":
+        from install_project import install
+        result = install(project, migrate=args.migrate)
+        if result is not None:
+            print(json.dumps(result, ensure_ascii=False, indent=2, default=str))
+        return
+    store = local_directory(project / ".requirements")
+    if args.command == "list":
+        list_tasks(store)
+    elif args.command == "new":
+        create(store, args)
+    elif args.command == "archive":
+        archive(store, args)
+    else:
+        forward(store, args)
+
+
+if __name__ == "__main__":
+    try:
+        main()
+    except BlockingIOError:
+        sys.exit("需求正在使用，请先结束核验服务或等待当前操作结束。")
+    except (OSError, ValueError, KeyError, TypeError) as error:
+        sys.exit(str(error))

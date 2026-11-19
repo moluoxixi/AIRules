@@ -1,0 +1,130 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+  <meta name="model-sha256" content="@@DIGEST@@">
+  <title>@@TITLE@@ · 需求全景图</title>
+  <style>
+    :root { color-scheme:light; --ink:#172e46; --muted:#50677b; --line:#d5e0e8; --paper:#f5f8fb; --teal:#08726d; --blue:#275da0; --amber:#915319; --violet:#684f94;
+      --ui:"Instrument Sans","PingFang SC","Microsoft YaHei",system-ui,sans-serif; --mono:"IBM Plex Mono","SFMono-Regular",Consolas,monospace; font:15px/1.5 var(--ui); }
+    * {box-sizing:border-box} body {margin:0;color:var(--ink);background:var(--paper)}
+    button,a {font:inherit; color:inherit} button {cursor:pointer} a {color:var(--blue);text-underline-offset:.18em}
+    button:focus-visible,a:focus-visible,[tabindex]:focus-visible {outline:3px solid #347ab6;outline-offset:3px}
+    [hidden] {display:none!important}
+    .app {height:100vh;height:100dvh;min-height:220px;display:grid;grid-template-rows:auto minmax(0,1fr) auto;overflow:hidden}
+    header {display:flex;gap:12px;align-items:center;justify-content:space-between;min-height:64px;padding:10px clamp(12px,2.4vw,32px);background:white;border-bottom:1px solid var(--line)}
+    .identity,.controls,.legend,.tools,.button-link {display:flex;align-items:center}
+    .identity {gap:11px;min-width:0}
+    .mark {position:relative;display:grid;place-items:center;flex:none;width:38px;height:38px;background:#17374a;border-radius:11px;color:white}
+    .mark svg {width:27px;height:27px}
+    h1,h2,h3,h4,p,ol,ul,dl {margin:0}
+    h1 {font-size:clamp(1.03rem,2vw,1.33rem);font-weight:730;line-height:1.25;letter-spacing:-.035em;white-space:nowrap}
+    .edition {color:var(--muted);font:.74rem var(--mono);letter-spacing:.02em;margin-top:4px;display:block}
+    .tools {gap:4px}
+    header button,header a,.controls button,.close,.link-button,.refresh {border:0;background:transparent;border-radius:7px;text-decoration:none;padding:.4rem .58rem}
+    header button,header a {color:#36556d} header button:hover,header a:hover,.controls button:hover,.close:hover,.link-button:hover {background:#edf3f7;color:var(--ink)}
+    .button-link {gap:6px;white-space:nowrap;font-weight:550;font-size:.85rem}
+    .button-link svg,.controls svg,.close svg {width:17px;height:17px;display:block;fill:none;stroke:currentColor;stroke-width:1.65;stroke-linecap:round;stroke-linejoin:round}
+    .feature-bar {display:grid;grid-template-columns:clamp(134px,18vw,205px) minmax(0,1fr) auto;align-items:center;gap:12px;padding:7px clamp(12px,2.4vw,32px);border-bottom:1px solid var(--line);background:#fdfefe}
+    .feature-search {display:flex;align-items:center;gap:6px;border:1px solid #bdcdd8;border-radius:6px;padding:4px 8px;background:white;color:var(--muted)}
+    .feature-search:focus-within {outline:2px solid var(--blue);outline-offset:1px}
+    .feature-search svg {width:15px;height:15px;flex:none;fill:none;stroke:currentColor;stroke-width:1.8;stroke-linecap:round}
+    .feature-search input {font:inherit;font-size:.83rem;min-width:0;width:100%;border:0;background:transparent;color:var(--ink);outline:none}
+    .feature-list {display:flex;align-items:center;gap:6px;min-width:0;overflow-x:auto;padding:3px;scrollbar-width:thin}
+    .feature-chip,.reset-search {border:1px solid #c9d6df;border-radius:6px;background:white;color:#385269;padding:4px 9px;font:550 .81rem/1.55 var(--ui);white-space:nowrap}
+    .feature-chip:hover,.reset-search:hover {border-color:#658ba5;background:#f1f6f9}
+    .feature-chip[aria-pressed=true] {background:#e5f0f2;color:#11545b;border-color:#648f94}
+    .feature-chip[aria-pressed=true]::before {content:"✓";display:inline-block;margin-right:4px}
+    .feature-count {font:.76rem var(--ui);color:var(--muted);white-space:nowrap;font-variant-numeric:tabular-nums}
+    .no-results footer>* {visibility:hidden}
+    .button-link[aria-disabled=true] {color:#728391;cursor:default}
+    .empty-search {position:absolute;inset:0;display:grid;align-content:center;justify-items:center;gap:10px;padding:20px;text-align:center;overflow-wrap:anywhere}
+    .surface {position:relative;min-height:0;overflow:hidden;background-color:var(--paper);background-image:radial-gradient(#ccdae4 .8px,transparent .85px);background-size:18px 18px}
+    #map {display:block;width:100%;height:100%;touch-action:none;user-select:none;cursor:grab} #map.dragging {cursor:grabbing}
+    footer {min-height:49px;padding:6px clamp(10px,2.2vw,30px);background:white;border-top:1px solid var(--line);display:flex;align-items:center;justify-content:space-between;gap:8px}
+    .legend {gap:13px;flex-wrap:wrap;color:#485e73;font-size:.78rem}
+    .legend span {display:inline-flex;align-items:center;gap:5px}
+    .rail {width:20px;display:inline-block;border-top:2px solid #738da3}
+    .rail.branch {border-top:2px dashed #a66c28}
+    .controls {gap:3px;flex:none;color:#35526b}.controls button {padding:6px 7px;font-size:.84rem}
+    .controls output {min-width:40px;text-align:center;font: .8rem var(--mono);font-variant-numeric:tabular-nums}
+    .controls .fit {display:flex;gap:6px;align-items:center;margin-left:4px;border-left:1px solid var(--line);border-radius:0 6px 6px 0;padding-left:11px}
+    .controls [aria-disabled=true] {color:#8594a0;cursor:default}
+    #inspector {position:absolute;top:12px;right:12px;bottom:12px;width:min(365px,55%);background:#fff;border:1px solid #bed0dd;border-radius:13px;box-shadow:0 13px 42px #243b5626;z-index:3;overflow:hidden;display:flex;flex-direction:column}
+    .panelbar {display:flex;align-items:center;justify-content:space-between;gap:8px;padding:9px 12px 7px 16px;border-bottom:1px solid var(--line)}
+    .panelbar span {font-size:.78rem;font-weight:650;color:var(--muted)}.close {color:var(--muted);padding:6px}
+    #detail {overflow:auto;overscroll-behavior:contain;padding:16px;line-height:1.58;overflow-wrap:anywhere;user-select:text}
+    #detail h2 {font-size:1.23rem;line-height:1.4;margin-bottom:8px} #detail h3 {font-size:.92rem;margin:17px 0 6px;color:#35526b}
+    #detail h4 {font-size:.9rem;margin:8px 0 4px} #detail p+ p {margin-top:6px} #detail p,#detail li,#detail dd {font-size:.9rem}
+    #detail ul,#detail ol {padding-left:1.3rem} #detail li+li {margin-top:3px}
+    #detail code {font: .86rem var(--mono);background:#edf4f6;border-radius:4px;padding:.1rem .27rem;color:#265365}
+    #detail dl {display:grid;grid-template-columns:minmax(50px,auto) minmax(0,1fr);gap:5px 10px;margin-top:9px}
+    #detail dt {font-size:.8rem;color:var(--muted)} #detail dd {margin:0}
+    .record,.field,.choice {border-top:1px solid var(--line);padding:8px 0 5px}
+    .queue-item {display:flex;align-items:baseline;flex-wrap:wrap;gap:3px 8px;font-size:.82rem}
+    .field strong {display:block;margin:0 0 4px} .dim {color:var(--muted)}
+    .choice strong {color:var(--amber)} .choice details,.compact-fold {font-size:.86rem;color:var(--muted);margin-top:6px}
+    summary {cursor:pointer;color:var(--blue);width:fit-content}
+    .link-button {color:var(--blue);padding:.25rem .5rem;background:#f0f5fa;margin:3px 4px 0 0;font-size:.84rem}
+    form {margin-top:15px} form label {display:grid;gap:4px;font-size:.83rem;color:var(--muted)}
+    form input {font:inherit;border:1px solid #acc0d0;border-radius:6px;padding:7px}
+    .choose,.refresh {background:#173e60;color:white;border:0;border-radius:6px;padding:6px 9px;font:inherit;font-size:.83rem;margin:6px 6px 0 0}
+    .notice {position:absolute;top:8px;left:50%;transform:translateX(-50%);background:#fff8e9;border:1px solid #d2a157;padding:5px 10px;border-radius:7px;z-index:4;font-size:.84rem}
+    .notice button {margin:0 0 0 6px} .sr {position:absolute;width:1px;height:1px;clip-path:inset(50%);overflow:hidden}
+    @media(max-width:790px) {
+      #inspector {inset:auto 8px 8px;width:auto;max-height:56%;min-height:100px}
+      header {min-height:59px}.tools {gap:0}
+    }
+    @media(max-width:510px) {
+      header {min-height:54px;padding:7px 10px;gap:4px}.identity {gap:7px}.mark{width:33px;height:33px}.edition{font-size:.68rem}
+      .button-link {gap:3px;padding:6px;font-size:.78rem} footer {min-height:45px;gap:4px}
+      .legend {gap:6px;font-size:.7rem}.rail {width:13px}.controls {gap:0}.controls button{padding:5px}.controls output{min-width:31px;font-size:.73rem}
+      .feature-bar {grid-template-columns:minmax(0,1fr) auto;gap:4px 9px;padding:5px 10px}
+      .feature-search {grid-row:1;grid-column:1}.feature-count {grid-row:1;grid-column:2}.feature-list {grid-column:1/-1;grid-row:2}
+    }
+    @media(max-width:365px) {.tools .extra {position:absolute;clip-path:inset(50%);width:1px;height:1px;overflow:hidden}}
+    @media(prefers-reduced-motion:reduce) {*{scroll-behavior:auto!important}}
+  </style>
+</head>
+<body>
+<div class="app">
+<div class="app-head">
+<header>
+  <div class="identity"><span class="mark" aria-hidden="true"><svg viewBox="0 0 28 28" fill="none"><path d="M5 14h7m0 0c3 0 1-7 6-7h5m-11 7c3 0 1 7 6 7h5" stroke="#b4e8da" stroke-width="2.1"/><circle cx="5" cy="14" r="3.1" fill="#fff"/><circle cx="23" cy="7" r="2.7" fill="#8cd5c7"/><circle cx="23" cy="21" r="2.7" fill="#f8c875"/></svg></span><div><h1>需求全景图</h1><span class="edition">@@KIND@@ · v@@VERSION@@</span></div></div>
+  <div class="tools"><button type="button" class="button-link" id="export" title="保存完整、可放大的 SVG 图"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 3v12m-4-4 4 4 4-4M4 15v4a1 1 0 0 0 1 1h14a1 1 0 0 0 1-1v-4"/></svg><span id="export-caption">导出整图</span></button><a id="ai-record" href="model.json" class="button-link" title="读取同一版需求的 JSON"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="m8 7-5 5 5 5m8-10 5 5-5 5m-3-13-2 16"/></svg>AI 记录</a></div>
+</header>
+<section class="feature-bar" id="feature-bar" aria-label="按功能点筛选" hidden>
+  <label class="feature-search"><svg viewBox="0 0 20 20" aria-hidden="true"><circle cx="8" cy="8" r="5"/><path d="m12 12 4.5 4.5"/></svg><input type="search" id="feature-query" aria-label="搜索功能点" placeholder="搜索功能点" autocomplete="off" maxlength="80"></label>
+  <div id="feature-list" class="feature-list" role="group" aria-label="选择功能点，可多选"><button type="button" id="all-features" class="feature-chip" aria-pressed="true">全部功能</button></div>
+  <output id="feature-count" class="feature-count" aria-live="polite"></output>
+</section>
+</div>
+<main class="surface" aria-label="需求关系画布">
+  <p id="map-help" class="sr">箭头连接故事、接口、处理和验收。点击节点或按回车查看详情。拖动空白处平移，滚轮缩放。</p>
+  <svg id="map" xmlns="http://www.w3.org/2000/svg" tabindex="0" role="group" aria-label="需求关系图" aria-describedby="map-help">
+    <defs id="drawing-defs"><style id="graph-style">
+      .map-node {cursor:pointer;outline:none}.map-node text,.map-label {font-family:"Instrument Sans","PingFang SC","Microsoft YaHei",system-ui,sans-serif;pointer-events:none}
+      .map-node .n-title{font-weight:680;letter-spacing:-.3px}.map-node .n-label{font-weight:600;letter-spacing:.15px}
+      .map-node .mono{font-family:"IBM Plex Mono","SFMono-Regular",Consolas,monospace;letter-spacing:-.3px}
+      .map-line {fill:none;stroke-linecap:round;stroke-linejoin:round}
+      .map-node:hover .outline,.map-node:focus-visible .outline,.map-node.selected .outline {stroke:#147bb0;stroke-width:3}
+      .map-node.muted,.map-edge.muted {opacity:.27}.map-node.selected .n-title {font-weight:760}
+    </style></defs>
+    <g id="world"><g id="wires"></g><g id="wire-labels"></g><g id="stations"></g></g>
+  </svg>
+  <div class="empty-search" id="empty-search" hidden><strong id="empty-label"></strong><button type="button" class="reset-search" id="clear-search">清空搜索</button></div>
+  <noscript>打开交互图需要启用 JavaScript。可以从页头读取同一版 AI 记录。</noscript>
+  <aside id="inspector" aria-label="节点详情" hidden><div class="panelbar"><span id="panel-type"></span><button class="close" id="close-panel" type="button" aria-label="关闭详情" title="关闭详情（Esc）"><svg viewBox="0 0 24 24"><path d="m6 6 12 12M6 18 18 6"/></svg></button></div><div id="detail"></div></aside>
+  <div id="notice" hidden class="notice" role="status">记录已更新。<button class="refresh" id="refresh" type="button">读取最新版</button></div>
+</main>
+<footer>
+  <div class="legend" aria-label="连线图例"><span><i class="rail"></i>关联</span><span><i class="rail branch"></i>条件分支</span></div>
+  <div class="controls" aria-label="画布工具">
+    <button id="minus" type="button" aria-label="缩小" title="缩小"><svg viewBox="0 0 24 24"><path d="M5 12h14"/></svg></button><output id="scale" aria-label="缩放比例">100%</output><button id="plus" type="button" aria-label="放大" title="放大"><svg viewBox="0 0 24 24"><path d="M5 12h14m-7-7v14"/></svg></button><button class="fit" id="fit" type="button" title="把当前显示的图放入画布"><svg viewBox="0 0 24 24"><path d="M9 4H4v5m11-5h5v5M4 15v5h5m11-5v5h-5"/></svg>适应画布</button>
+  </div>
+</footer>
+</div>
+<script type="application/json" id="data">@@DATA@@</script>
+<script>@@DAGRE@@</script>
+<script>@@SCRIPT@@</script>
+</body></html>

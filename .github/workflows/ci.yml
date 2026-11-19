@@ -105,6 +105,7 @@ jobs:
           roles/development/__test__/development-role.test.ts
           roles/matt/__test__/matt-role.test.ts
           roles/memory-superpowers/__test__/role.test.ts
+          roles/requirement-flow/__test__/role.test.ts
 
   discover-role-packages:
     name: Discover role package workspaces

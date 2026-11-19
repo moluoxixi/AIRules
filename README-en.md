@@ -9,7 +9,29 @@ There are two installation layers:
 - `airules install <role>` installs user-level assets. It checks out pinned vendors, composes capabilities, projects skills through `~/.agents/skills`, merges host MCP configuration, and installs declared role CLI packages.
 - `init-project` installs project-level assets. It invokes the native role CLI to generate `.moluoxixi/` or `.trellis/`, then adds the AIRules knowledge and Simplified Chinese compatibility extensions.
 
-The AIRules installer handles user-level package setup, asset distribution, and managed skill/MCP verification, but it does not dispatch agents. The initialized Moluoxixi or Trellis main workflow owns dispatch, hooks inject state and context, and skills perform semantic work and file changes.
+The AIRules installer handles user-level package setup, asset distribution, and managed skill/MCP verification, but it does not dispatch agents. Each initialized project runs the workflow provided by its selected role.
+
+## `requirement-flow`
+
+This Codex role maps features, API fields, processing steps and verification evidence on a filterable graph.
+
+### Install
+
+Project initialization requires Python 3.9 or newer.
+
+```bash
+airules install requirement-flow --host codex
+airules verify requirement-flow --host codex
+python3 ~/.agents/skills/requirement-flow/flow.py --project /path/to/project init
+```
+
+### Features
+
+Each project owns its requirement records. People can explore features and evidence on the graph, and agents use the same dependencies to claim or resume work.
+
+### Usage
+
+Run initialization for each project and repeat it after updating the role. Open the project in Codex or use its local `.agents/skills/requirement-flow/flow.py` to work with requirements. [Role guide](roles/requirement-flow/README.md)
 
 ## `general`
 
