@@ -170,7 +170,7 @@ describe.skipIf(!executablePath)('generated handbook interactions in Chromium', 
     await browser?.close()
     if (project)
       rmSync(project, { recursive: true, force: true })
-  })
+  }, 30_000)
   function drawerReady(page) {
     return page.waitForFunction(() => {
       const layer = document.querySelector('#drawer-layer')
@@ -326,6 +326,19 @@ describe.skipIf(!executablePath)('generated handbook interactions in Chromium', 
       await page.click('#overview-mode')
       expect(await page.$eval('#overview-mode', el => el.getAttribute('aria-pressed'))).toBe('true')
       expect(await page.$eval('#reopen-panel', el => el.hidden)).toBe(true)
+      await page.click('[data-node="S-5"]')
+      await drawerReady(page)
+      const overview = page.url()
+      await page.click('#detail .inspect-feature')
+      await drawerClosed(page)
+      expect(await page.$eval('#detail-mode', el => el.getAttribute('aria-pressed'))).toBe('true')
+      await page.goBack()
+      await drawerReady(page)
+      expect(page.url()).toBe(overview)
+      expect(await page.$eval('#detail .inspect-feature', el => el === document.activeElement)).toBe(true)
+      await page.goForward()
+      await drawerClosed(page)
+      expect(new URL(page.url()).searchParams.get('features')).toBe('S-5')
     }
     finally {
       await page.close()
@@ -484,6 +497,22 @@ describe.skipIf(!executablePath)('generated handbook interactions in Chromium', 
   function endpointClosed(page) {
     return page.waitForFunction(() => !document.querySelector('#endpoint-drawer').open && !location.hash.includes('&endpoint='))
   }
+  const sourceDialog = '#source-drawer[open]'
+  const previewTrigger = 'button.source-preview-trigger'
+  async function expectSourceLine(page, text) {
+    await page.waitForFunction(wanted => document.querySelector('#source-drawer[open] .source-target-line')?.textContent === wanted, { timeout: 6_000 }, text)
+    await page.waitForFunction(() => document.querySelector('#source-drawer').getAnimations().every(animation => animation.playState === 'finished'))
+    expect(await page.$eval(sourceDialog, el => el.matches(':modal'))).toBe(true)
+  }
+  function sourceClosed(page) {
+    return page.waitForFunction(() => !document.querySelector('#source-drawer[open]') && !new URLSearchParams(location.hash.slice(1)).has('source'))
+  }
+  function drawerPath(page) {
+    return page.evaluate(() => {
+      const params = new URLSearchParams(location.hash.slice(1))
+      return { via: params.getAll('via'), node: params.get('node'), endpoint: params.get('endpoint'), source: params.get('source'), side: params.get('side') }
+    })
+  }
   it.each([320, 615, 1160])('reads a single API in a nested modal and returns to the same list at %ipx', async (width) => {
     const page = await open(width, 350, '?view=detail&features=S-4#node=C-4')
     try {
@@ -587,6 +616,168 @@ describe.skipIf(!executablePath)('generated handbook interactions in Chromium', 
       await page.waitForFunction(() => !document.querySelector('#endpoint-drawer').open && document.querySelector('#panel-title').textContent === '批量确认')
       expect(await page.$eval('#inspector', el => el.inert)).toBe(false)
       expect(await page.evaluate(() => document.activeElement.id)).toBe('close-panel')
+    }
+    finally {
+      await page.close()
+    }
+  })
+
+  it('follows a feature through the related contract, endpoint and source with browser and drawer navigation', async () => {
+    const server = await startViewer(project)
+    const page = await browser.newPage()
+    let shared
+    const relation = '#detail .link-button[data-dest="C-4"]'
+    const group = '#endpoint-drawer .source-list'
+    const save = '.endpoint-list button.endpoint'
+    const endpointName = 'POST /api/orders/bulk/confirmation/selection/save-confirm'
+    const citation = '.requirements/history/tasks/plan-batch/prd.md:6'
+    page.setDefaultTimeout(5_000)
+    try {
+      await page.setViewport({ width: 375, height: 520 })
+      await page.goto(`${server.address}?view=overview&features=S-4`)
+      const canvas = await canvasState(page)
+      await page.click('[data-node="S-4"]')
+      await drawerReady(page)
+      const storyRoute = page.url()
+      const relations = '#detail details:has(> .link-button[data-dest="C-4"])'
+      await page.click(`${relations} > summary`)
+      await page.focus(relation)
+      const storyScroll = await page.$eval('#detail', el => el.scrollTop)
+      await page.keyboard.press('Enter')
+      await page.waitForSelector(save)
+      const contractRoute = page.url()
+      expect(await drawerPath(page)).toMatchObject({ via: ['S-4'], node: 'C-4' })
+      await page.click(save)
+      await endpointReady(page)
+      await page.click('#endpoint-drawer [data-side="response"]')
+      await page.click(`${group} > summary`)
+      await page.waitForSelector(`${group} ${previewTrigger}`)
+      await page.click(`${group} ${previewTrigger}`)
+      await expectSourceLine(page, '6保留原有位置方案')
+      expect(await drawerPath(page)).toEqual({ via: ['S-4'], node: 'C-4', endpoint: endpointName, side: 'response', source: citation })
+      const sourceRoute = page.url()
+      expect(new URL(sourceRoute).search).toBe(new URL(storyRoute).search)
+      expect(await page.$eval('#source-body', el => el.scrollWidth <= el.clientWidth + 1)).toBe(true)
+      for (let i = 0; i < 6; i++) {
+        await page.keyboard.press('Tab')
+        expect(await page.$eval(sourceDialog, el => el.contains(document.activeElement))).toBe(true)
+      }
+
+      await page.goBack()
+      await sourceClosed(page)
+      expect(await page.$eval(`${group} ${previewTrigger}`, el => el === document.activeElement)).toBe(true)
+      expect(await page.$eval('#endpoint-fields', el => el.textContent)).toContain('confirmedCount')
+      await page.goForward()
+      await expectSourceLine(page, '6保留原有位置方案')
+      expect(page.url()).toBe(sourceRoute)
+      await page.keyboard.press('Escape')
+      await sourceClosed(page)
+      await page.keyboard.press('Escape')
+      await endpointClosed(page)
+      expect(page.url()).toBe(contractRoute)
+      expect(await page.$eval(save, el => el === document.activeElement)).toBe(true)
+      await page.click('#panel-back')
+      await page.waitForSelector(relation, { visible: true })
+      expect(page.url()).toBe(storyRoute)
+      expect(await page.$eval(relations, el => el.open)).toBe(true)
+      expect(await page.$eval(relation, el => el === document.activeElement)).toBe(true)
+      expect(await page.$eval('#detail', el => el.scrollTop)).toBe(storyScroll)
+      expect(await canvasState(page)).toEqual(canvas)
+      await page.keyboard.press('Escape')
+      await drawerClosed(page)
+      expect(await page.evaluate(() => document.activeElement.dataset.node)).toBe('S-4')
+
+      // A copied URL has no parent entries in the new tab's browser history.
+      shared = await browser.newPage()
+      shared.setDefaultTimeout(5_000)
+      await shared.goto(sourceRoute)
+      await expectSourceLine(shared, '6保留原有位置方案')
+      await shared.reload()
+      await expectSourceLine(shared, '6保留原有位置方案')
+      await shared.click('#source-back')
+      await sourceClosed(shared)
+      expect(await shared.$eval('#endpoint-fields', el => el.textContent)).toContain('confirmedCount')
+      await shared.click('#endpoint-drawer .endpoint-back')
+      await endpointClosed(shared)
+      await shared.click('#panel-back')
+      await shared.waitForSelector('#detail .acceptance-group')
+      expect(shared.url()).toBe(storyRoute)
+    }
+    finally {
+      await shared?.close()
+      await page.close()
+      await server.stop()
+    }
+  })
+
+  it('falls back to the nearest valid route without requesting a citation absent from the panel', async () => {
+    const server = await startViewer(project)
+    const page = await browser.newPage()
+    const lookups = []
+    page.setDefaultTimeout(5_000)
+    page.on('request', (request) => {
+      const address = new URL(request.url())
+      if (address.pathname === '/source-location')
+        lookups.push(address.searchParams.get('ref'))
+    })
+    try {
+      const parent = new URL(`${server.address}?view=detail&features=S-4#node=C-4`)
+      const route = new URL(parent)
+      const hash = new URLSearchParams(parent.hash.slice(1))
+      const endpoint = 'POST /api/orders/bulk/confirmation/selection/save-confirm'
+      hash.set('endpoint', endpoint)
+      hash.set('source', 'docs/retired.md:1')
+      route.hash = hash.toString()
+      await page.goto(route.href)
+      await endpointReady(page)
+      await sourceClosed(page)
+      expect(await drawerPath(page)).toMatchObject({ node: 'C-4', endpoint, source: null })
+      hash.set('endpoint', 'POST /retired')
+      route.hash = hash.toString()
+      await page.goto(route.href)
+      await endpointClosed(page)
+      await drawerReady(page)
+      expect(page.url()).toBe(parent.href)
+      expect(lookups).not.toContain('docs/retired.md:1')
+
+      // An allowed source with a line beyond EOF stays readable as a broken reference.
+      hash.delete('endpoint')
+      hash.set('node', 'S-4')
+      hash.set('source', '.requirements/history/tasks/plan-batch/prd.md:12')
+      route.hash = hash.toString()
+      await page.goto(route.href)
+      await page.waitForFunction(() => document.querySelector('#source-drawer[open] [role="status"]')?.textContent.includes('当前工作区无法定位'))
+      expect(await page.$(`${sourceDialog} a.source-open`)).toBeNull()
+      await page.mouse.click(4, 120)
+      await sourceClosed(page)
+      expect(await drawerPath(page)).toMatchObject({ node: 'S-4', source: null })
+    }
+    finally {
+      await page.close()
+      await server.stop()
+    }
+  })
+
+  it('opens legacy contract anchors and unwinds a repeated relation to its existing ancestor', async () => {
+    const page = await open(615, 623, '?view=overview&features=S-4#contract-C-4')
+    try {
+      await drawerReady(page)
+      expect(await page.$eval('#detail-mode', el => el.getAttribute('aria-pressed'))).toBe('true')
+      expect(await page.$eval('#detail .endpoint-method', el => el.textContent)).toBe('POST')
+      const deep = new URL(url)
+      deep.search = '?view=overview&features=S-4'
+      deep.hash = 'node=C-4&via=S-4&via=C-4&via=S-4'
+      await page.goto(deep.href)
+      await drawerReady(page)
+      expect(await drawerPath(page)).toMatchObject({ node: 'C-4', via: ['S-4'] })
+      const relation = '#detail .link-button[data-dest="S-4"]'
+      await page.click('#detail details:has(> .link-button[data-dest="S-4"]) > summary')
+      await page.click(relation)
+      await page.waitForSelector('#detail .acceptance-group')
+      expect(await drawerPath(page)).toMatchObject({ node: 'S-4', via: [] })
+      await page.keyboard.press('Escape')
+      await drawerClosed(page)
+      expect(await page.$eval('#overview-mode', el => el.getAttribute('aria-pressed'))).toBe('true')
     }
     finally {
       await page.close()
@@ -789,18 +980,23 @@ describe.skipIf(!executablePath)('generated handbook interactions in Chromium', 
   it('previews a cited line on demand and remembers the editor for live source references', async () => {
     const target = path.resolve(project, batchSource.slice(0, -4))
     mkdirSync(path.dirname(target), { recursive: true })
-    writeFileSync(target, Array.from({ length: 345 }, (_, index) => index === 339 ? '<b>用户选中的原文</b>' : '相邻行').join('\n'))
+    const lines = Array.from({ length: 345 }).fill('相邻行')
+    lines.fill('展开前文用于核对窄屏换行。'.repeat(30), 336, 339)
+    lines[339] = '<b>用户选中的原文</b>'
+    writeFileSync(target, lines.join('\n'))
     const server = await startViewer(project)
     const page = await browser.newPage()
     const route = '?view=overview&features=S-4#node=S-4'
     const list = '#detail .source-list'
-    const entry = `${list} .source-entry`
+    const entry = `${list} .source-entry:has(> .source-file[data-ref="${batchSource}"])`
+    const missingEntry = `${list} .source-entry:has(> .source-file[data-ref$="/prd.md:12"])`
     const requests = []
     page.on('request', (request) => {
       if (request.url().includes('/source-location?'))
         requests.push(request)
     })
     try {
+      await page.setViewport({ width: 375, height: 550 })
       await page.goto(server.address + route)
       await drawerReady(page)
       expect(requests).toHaveLength(0)
@@ -818,20 +1014,33 @@ describe.skipIf(!executablePath)('generated handbook interactions in Chromium', 
       }))
       await page.click(`${entry} button[aria-label^="复制当前工作树"]`)
       expect(await page.$eval('body', el => el.dataset.copied)).toBe(`${realpathSync(target)}:340`)
-      expect(await page.$eval(`${entry} pre`, el => el.hidden)).toBe(true)
-      await page.click(`${entry} button[aria-expanded]`)
-      expect(await page.$eval(`${entry} .source-target-line`, el => el.textContent)).toBe('340<b>用户选中的原文</b>')
-      expect(await page.$(`${entry} pre b`)).toBeNull()
+      expect(await page.$(`${entry} pre`)).toBeNull()
+      await page.click(`${entry} ${previewTrigger}`)
+      await expectSourceLine(page, '340<b>用户选中的原文</b>')
+      const targetVisible = await page.$eval(`${sourceDialog} .source-target-line .source-line-number`, (number) => {
+        const rect = number.getBoundingClientRect()
+        const reader = number.closest('#source-body')
+        const bounds = reader.getBoundingClientRect()
+        return reader.scrollTop > 0 && rect.top >= bounds.top && rect.bottom <= bounds.bottom
+      })
+      expect(targetVisible).toBe(true)
+      expect(await page.$(`${sourceDialog} .source-target-line b`)).toBeNull()
+      expect((await drawerPath(page)).source).toBe(batchSource)
+      expect(decodeURIComponent(page.url())).not.toContain(realpathSync(project))
+      await page.click('#source-back')
+      await sourceClosed(page)
+      expect(await page.$eval(`${entry} ${previewTrigger}`, el => el === document.activeElement)).toBe(true)
       await page.select(`${list} select`, 'vscode')
       expect(decodeURIComponent(await page.$eval(link, a => a.href))).toContain('批量确认规则.md:340:1')
       await page.reload()
-      await page.click(`${list} > summary`)
-      await page.waitForSelector(link)
+      if (!await page.$eval(list, el => el.open))
+        await page.click(`${list} > summary`)
+      await page.waitForSelector(link, { visible: true })
       expect(await page.$eval(link, a => a.protocol)).toBe('vscode:')
       // The mapped prd.md exists but is shorter than the cited line; copying remains available.
-      await page.click(`${entry}:nth-last-of-type(1) .source-file > summary`)
-      await page.waitForSelector(`${entry} .source-unavailable`)
-      const missing = await page.$eval(`${entry} .source-unavailable`, el => el.closest('.source-entry').querySelector('button').getAttribute('aria-label'))
+      await page.click(`${missingEntry} .source-file > summary`)
+      await page.waitForSelector(`${missingEntry} .source-unavailable`)
+      const missing = await page.$eval(`${missingEntry} .source-unavailable`, el => el.closest('.source-entry').querySelector('button').getAttribute('aria-label'))
       expect(missing).toContain('复制文件引用')
     }
     finally {
@@ -845,16 +1054,16 @@ describe.skipIf(!executablePath)('generated handbook interactions in Chromium', 
     let server = await startViewer(project)
     const page = await browser.newPage()
     const list = '#endpoint-drawer .source-list'
-    const target = `${list}[open] .source-file[open] pre:not([hidden]) .source-target-line`
+    const target = `${sourceDialog} .source-target-line`
     try {
       await page.goto(`${server.address}?view=detail&features=S-4#node=C-4`)
       await page.click('.endpoint-list .endpoint')
       await endpointReady(page)
-      const route = page.url()
       await page.click(`${list} > summary`)
       await page.waitForSelector(`${list} a.source-open`)
-      await page.click(`${list} button[aria-expanded]`)
-      expect(await page.$eval(target, el => el.textContent)).toBe('6保留原有位置方案')
+      await page.click(`${list} ${previewTrigger}`)
+      await expectSourceLine(page, '6保留原有位置方案')
+      const route = page.url()
       await server.stop()
       writeFileSync(source, original.replace('保留原有位置方案', '重新连接后读取的第六行'))
       server = await startViewer(project, new URL(route).port)
@@ -862,6 +1071,8 @@ describe.skipIf(!executablePath)('generated handbook interactions in Chromium', 
       await page.evaluate(() => document.dispatchEvent(new Event('visibilitychange')))
       await page.waitForFunction(selector => document.querySelector(selector)?.textContent === '6重新连接后读取的第六行', { timeout: 7_000 }, target)
       expect(page.url()).toBe(route)
+      await page.keyboard.press('Escape')
+      await sourceClosed(page)
       expect(await page.$eval(`${list} a.source-open`, a => a.href)).toContain('prd.md')
       await endpointReady(page)
       expect(await page.$eval('#endpoint-title', el => el.textContent)).toBe('保存批量确认')
@@ -873,6 +1084,82 @@ describe.skipIf(!executablePath)('generated handbook interactions in Chromium', 
       await page.close()
       await server.stop()
       writeFileSync(source, original)
+    }
+  })
+
+  it('upgrades a 0.5.1 tab with an inline source preview to the original response and citation', async () => {
+    const server = await startViewer(project)
+    const page = await browser.newPage()
+    const ref = '.requirements/history/tasks/plan-batch/prd.md:6'
+    try {
+      await page.goto(`${server.address}?view=detail&features=S-4#node=C-4`)
+      await page.click('.endpoint-list .endpoint')
+      await endpointReady(page)
+      const oldUrl = page.url()
+      // 0.5.1 kept the active tab and its inline preview in flowReader, outside the URL.
+      await page.evaluate(({ ref, oldUrl }) => {
+        const folds = [...document.querySelectorAll('#endpoint-drawer .endpoint-body details')]
+        const source = folds.find(fold => fold.dataset.ref === ref)
+        const group = source.closest('.source-list')
+        history.replaceState({
+          endpointHash: location.hash,
+          flowReader: {
+            work: 'plan',
+            url: oldUrl,
+            notes: [],
+            confirmDecision: null,
+            panel: { open: [], scroll: 0 },
+            endpoint: {
+              open: [
+                { index: folds.indexOf(group), key: group.querySelector('summary').textContent, preview: false },
+                { index: folds.indexOf(source), key: ref, preview: true },
+              ],
+              scroll: 0,
+            },
+            side: 'response',
+          },
+        }, '', oldUrl)
+      }, { ref, oldUrl })
+      await page.reload()
+      await expectSourceLine(page, '6保留原有位置方案')
+      expect(await drawerPath(page)).toMatchObject({ source: ref, side: 'response' })
+      await page.click('#source-back')
+      await sourceClosed(page)
+      expect(await page.$eval('#endpoint-fields', el => el.textContent)).toContain('confirmedCount')
+      await page.click('#endpoint-drawer .endpoint-back')
+      await endpointClosed(page)
+      expect(await drawerPath(page)).toMatchObject({ node: 'C-4', source: null })
+    }
+    finally {
+      await page.close()
+      await server.stop()
+    }
+  })
+
+  it('retains a pending decision draft in its own tab after refreshing a related contract', async () => {
+    const server = await startViewer(project)
+    const page = await browser.newPage()
+    const reason = '先核对范围再确定'
+    try {
+      await page.goto(`${server.address}?view=detail#node=D-scope`)
+      await drawerReady(page)
+      await page.type('input[name="reason"]', reason)
+      const contract = '#detail [data-dest="C-8"]'
+      await page.click(contract)
+      await page.waitForSelector('.endpoint-list')
+      const contractUrl = page.url()
+      expect(await drawerPath(page)).toMatchObject({ node: 'C-8', via: ['D-scope'] })
+      expect(decodeURIComponent(contractUrl)).not.toContain(reason)
+      await page.reload()
+      await drawerReady(page)
+      await page.click('#panel-back')
+      await page.waitForSelector('input[name="reason"]')
+      expect(await page.$eval('input[name="reason"]', el => el.value)).toBe(reason)
+      expect(await page.$eval(contract, el => document.activeElement === el)).toBe(true)
+    }
+    finally {
+      await page.close()
+      await server.stop()
     }
   })
 
@@ -980,17 +1267,17 @@ describe.skipIf(!executablePath)('generated handbook interactions in Chromium', 
       const retry = await validRow.$('.source-unavailable button')
       await retry.click()
       await validRow.waitForSelector('a.source-open')
-      const retryPreview = await validRow.waitForSelector('button[aria-expanded]')
-      await retryPreview.click()
-      expect(await validRow.$eval('.source-target-line', el => el.textContent)).toBe('6保留原有位置方案')
+      await (await validRow.waitForSelector(previewTrigger)).click()
+      await expectSourceLine(page, '6保留原有位置方案')
+      await page.click('#source-close')
+      await sourceClosed(page)
       writeFileSync(source, [original, '', '', '', '', '', '补齐的第十二行'].join('\n'))
       await page.click('#detail .source-list > summary')
       await page.waitForSelector('#detail .source-list:not([open])')
       await page.click('#detail .source-list > summary')
       await missingRow.waitForSelector('a.source-open')
-      const newPreview = await missingRow.waitForSelector('button[aria-expanded]')
-      await newPreview.click()
-      expect(await missingRow.$eval('.source-target-line', el => el.textContent)).toBe('12补齐的第十二行')
+      await (await missingRow.waitForSelector(previewTrigger)).click()
+      await expectSourceLine(page, '12补齐的第十二行')
     }
     finally {
       await page.close()

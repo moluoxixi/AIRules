@@ -27,7 +27,6 @@
   const picks = new Set()
   const chipButtons = new Map()
   const decisionNotes = new Map()
-  const resumePreview = new WeakMap()
   const restored = csrf && history.state?.flowReader
   const resume = restored?.work === work.id && restored.url === location.href ? restored : null
   let confirmingSession = Boolean(resume)
@@ -352,6 +351,8 @@
   let selected = null
   let recentNode = null
   let drawerTrigger = null
+  let readerRoute = { nodes: [] }
+  let waitingForBack = false
   let returningFocus = false
   let drawerVersion = 0
   let boxSize = { w: 0, h: 0 }
@@ -675,13 +676,13 @@
     }
     g.addEventListener('click', () => {
       if (performance.now() > ignoreClicksUntil)
-        openPanel(n.id, true, g)
+        enterDrawer({ nodes: [n.id] }, g)
     })
     g.addEventListener('keydown', (event) => {
       if (event.key === 'Enter' || event.key === ' ') {
         event.preventDefault()
         event.stopPropagation()
-        openPanel(n.id, true, g)
+        enterDrawer({ nodes: [n.id] }, g)
       }
     })
     nodeEls.set(n.id, g)
@@ -822,6 +823,10 @@
     updateCamera()
   }
   function highlight(key) {
+    // An overview can keep its story selected while a related implementation
+    // node is being read, including after the canvas is resized.
+    if (!nodes.has(key))
+      key = [...readerRoute.nodes].reverse().find(id => nodes.has(id))
     const related = new Set([key])
     const tracedEdges = new Set()
     // Traverse each direction separately; a shared endpoint must not pull in a sibling story.
@@ -1071,6 +1076,8 @@
 
   function setEditorLink(link) {
     const url = link.dataset[preferredEditor]
+    if (link.classList.contains('source-reader-editor'))
+      link.textContent = `在 ${sourceEditors[preferredEditor]} 中打开`
     if (url) {
       link.href = url
       link.title = `在 ${sourceEditors[preferredEditor]} 中打开 ${link.dataset.ref}`
@@ -1112,7 +1119,8 @@
       button.textContent = '已复制'
     }
     catch {
-      file.open = true
+      if (file.tagName === 'DETAILS')
+        file.open = true
       let input = file.querySelector('input.source-manual-copy')
       if (!input) {
         input = html('input', file, null, 'source-manual-copy')
@@ -1125,6 +1133,141 @@
       button.textContent = '请手动复制'
     }
   }
+  const sourceEntries = new WeakMap()
+  const sourceDrawer = html('dialog', document.body)
+  sourceDrawer.id = 'source-drawer'
+  sourceDrawer.setAttribute('aria-labelledby', 'source-title')
+  sourceDrawer.setAttribute('aria-modal', 'true')
+  const sourceBar = html('div', sourceDrawer, null, 'panelbar')
+  const sourceBack = html('button', sourceBar, '← 返回上一级', 'endpoint-back')
+  sourceBack.id = 'source-back'
+  sourceBack.type = 'button'
+  const sourceClose = $('close-panel').cloneNode(true)
+  sourceClose.id = 'source-close'
+  sourceClose.title = '关闭原文预览（Esc）'
+  sourceClose.setAttribute('aria-label', '关闭原文预览')
+  sourceBar.append(sourceClose)
+  const sourceBody = html('div', sourceDrawer, null, 'source-reader-body')
+  sourceBody.id = 'source-body'
+  let activeSource = null
+  sourceBack.onclick = sourceClose.onclick = () => backDrawer()
+  sourceDrawer.addEventListener('cancel', (event) => {
+    event.preventDefault()
+    backDrawer()
+  })
+  sourceDrawer.addEventListener('click', (event) => {
+    if (event.target !== sourceDrawer)
+      return
+    const r = sourceDrawer.getBoundingClientRect()
+    if (event.clientX < r.left || event.clientX > r.right || event.clientY < r.top || event.clientY > r.bottom)
+      backDrawer()
+  })
+
+  function revealSourceLine() {
+    const target = sourceBody.querySelector('.source-target-line')
+    if (!sourceDrawer.open || !target)
+      return
+    const pane = sourceBody.getBoundingClientRect()
+    const line = target.getBoundingClientRect()
+    if (line.top >= pane.bottom - 24 || line.bottom <= pane.top)
+      sourceBody.scrollTop += line.top - pane.top - Math.min(64, pane.height / 4)
+  }
+
+  function drawSourceReader(entry) {
+    if (activeSource?.entry !== entry)
+      return
+    const { name, ref, location, error } = entry
+    sourceBody.replaceChildren()
+    html('h2', sourceBody, name.replace(/:\d.*$/u, '')).id = 'source-title'
+    html('p', sourceBody, ref, 'source-reader-path')
+    const tools = html('div', sourceBody, null, 'source-reader-tools')
+    if (entry.editorLink) {
+      const editorLink = entry.editorLink.cloneNode(false)
+      editorLink.classList.add('source-reader-editor')
+      setEditorLink(editorLink)
+      tools.append(editorLink)
+    }
+    const copy = html('button', tools, '复制文件引用')
+    copy.type = 'button'
+    copy.setAttribute('aria-live', 'polite')
+    copy.onclick = () => copySource(copy, entry.copyRef, sourceBody)
+    if (!location) {
+      const message = error?.message || (csrf ? '正在读取原文…' : '离线页仅保留文件引用，可在本机需求图查看原文。')
+      const status = html('p', sourceBody, message, 'source-reader-status')
+      status.setAttribute('role', 'status')
+      if (error?.retry) {
+        const retry = html('button', status, '重试', 'link-button')
+        retry.type = 'button'
+        retry.onclick = entry.load
+      }
+      return
+    }
+    const { preview, line } = location
+    if (!preview?.lines?.length || !Number.isSafeInteger(preview.startLine)) {
+      html('p', sourceBody, '此引用未提供可显示的原文片段。', 'source-reader-status')
+      return
+    }
+    html('h3', sourceBody, `原文 · 第 ${line} 行`, 'source-reader-position')
+    const code = html('pre', sourceBody, null, 'source-preview')
+    for (const [offset, content] of preview.lines.entries()) {
+      const number = preview.startLine + offset
+      const codeLine = html('span', code, null, 'source-code-line')
+      if (number === line)
+        codeLine.classList.add('source-target-line')
+      html('span', codeLine, number, 'source-line-number')
+      html('span', codeLine, content)
+    }
+    revealSourceLine()
+  }
+
+  function renderSourceRoute(ref, parent, trigger) {
+    if (typeof ref !== 'string' || !sourceFilename(ref))
+      return false
+    // Only use citations rendered by this node or endpoint, even on a shared link.
+    const files = [...parent.querySelectorAll('.source-file[data-ref]')]
+    const file = files.find(f => f.dataset.ref === ref && f.parentElement.contains(trigger || null))
+      || files.find(f => f.dataset.ref === ref)
+    const entry = sourceEntries.get(file)
+    if (!entry)
+      return false
+    if (activeSource?.entry === entry)
+      return true
+    hideSourceRoute(false)
+    for (let fold = file.parentElement.closest('details'); fold && parent.contains(fold); fold = fold.parentElement.closest('details'))
+      fold.open = true
+    activeSource = { entry, ref, trigger, parent, scroll: parent.scrollTop }
+    const parentDialog = parent.closest('[aria-labelledby]')
+    const parentTitle = $(parentDialog.getAttribute('aria-labelledby')).textContent
+    sourceBack.textContent = `← ${parentTitle}`
+    sourceBack.title = `返回${parentTitle}`
+    sourceBack.setAttribute('aria-label', sourceBack.title)
+    entry.previewButton?.setAttribute('aria-expanded', 'true')
+    drawSourceReader(entry)
+    sourceDrawer.showModal()
+    placeUpdateNotice()
+    sourceBody.scrollTop = 0
+    revealSourceLine()
+    sourceBack.focus({ preventScroll: true })
+    if (csrf && !entry.location && !entry.error)
+      entry.load()
+    return true
+  }
+
+  function hideSourceRoute(restoreFocus = true) {
+    if (!activeSource)
+      return
+    const { entry, parent, trigger, scroll } = activeSource
+    activeSource = null
+    entry.previewButton?.setAttribute('aria-expanded', 'false')
+    sourceDrawer.close()
+    placeUpdateNotice()
+    if (restoreFocus && parent.isConnected) {
+      parent.scrollTop = scroll
+      const backTo = trigger?.isConnected ? trigger : entry.previewButton || entry.file.querySelector('summary')
+      backTo.focus({ preventScroll: true })
+    }
+  }
+
   function showFileSource(group, ref, name) {
     const row = html('div', group, null, 'source-entry')
     const file = disclosure(row, name)
@@ -1137,17 +1280,19 @@
     copy.title = `复制文件引用 ${ref}`
     copy.setAttribute('aria-label', copy.title)
     copy.setAttribute('aria-live', 'polite')
-    let copyRef = ref
-    copy.onclick = () => copySource(copy, copyRef, file)
+    const entry = { name, ref, file, copyRef: ref, location: null, error: null, editorLink: null, previewButton: null, load }
+    sourceEntries.set(file, entry)
+    copy.onclick = () => copySource(copy, entry.copyRef, file)
     if (!csrf)
       return
-    const summary = file.querySelector('summary')
-    let requested = false
+    let loading = false
     async function load() {
-      if (!group.open || requested)
+      if (!group.open || loading || entry.location || entry.error?.denied)
         return
-      requested = true
+      loading = true
+      entry.error = null
       file.querySelector('.source-unavailable')?.remove()
+      drawSourceReader(entry)
       let status
       try {
         const reply = await fetch(`/source-location?${new URLSearchParams({ ref })}`, {
@@ -1162,12 +1307,13 @@
         }
         if (!reply.ok)
           throw new Error('Source request failed')
-        const { editors, preview, line, path } = await reply.json()
+        const result = await reply.json()
+        const { editors, preview, path } = result
         confirmingSession = false
         if (typeof path === 'string' && path) {
           const position = ref.match(/:\d+(?::\d+)?(?:-\d+)?$/u)?.[0] || ''
-          copyRef = path + position
-          copy.title = `复制当前工作树的文件引用 ${copyRef}`
+          entry.copyRef = path + position
+          copy.title = `复制当前工作树的文件引用 ${entry.copyRef}`
           copy.setAttribute('aria-label', copy.title)
         }
         const choices = Object.entries(editors || {}).filter(([editor, value]) => {
@@ -1184,61 +1330,41 @@
           link.dataset.ref = ref
           for (const [editor, url] of choices) link.dataset[editor] = url
           setEditorLink(link)
-          summary.replaceChildren(link)
+          file.querySelector('summary').replaceChildren(link)
+          entry.editorLink = link
         }
         if (preview?.lines?.length && Number.isSafeInteger(preview.startLine)) {
-          const toggle = html('button', null, '预览')
-          toggle.type = 'button'
-          toggle.title = `预览 ${name} 附近的原文`
-          toggle.setAttribute('aria-expanded', 'false')
-          actions.prepend(toggle)
-          const code = html('pre', file, null, 'source-preview')
-          code.hidden = true
-          for (const [offset, content] of preview.lines.entries()) {
-            const number = preview.startLine + offset
-            const codeLine = html('span', code, null, 'source-code-line')
-            if (number === line)
-              codeLine.classList.add('source-target-line')
-            html('span', codeLine, number, 'source-line-number')
-            html('span', codeLine, content)
-          }
-          toggle.onclick = () => {
-            const show = !file.open || code.hidden
-            if (show)
-              file.open = true
-            code.hidden = !show
-            toggle.setAttribute('aria-expanded', String(show))
-          }
-          file.addEventListener('toggle', () => {
-            if (!file.open) {
-              code.hidden = true
-              toggle.setAttribute('aria-expanded', 'false')
-            }
-          })
-          if (resumePreview.has(file)) {
-            if (file.open) {
-              toggle.click()
-              resumePreview.get(file)()
-            }
-            resumePreview.delete(file)
-          }
+          const open = html('button', null, '预览', 'source-preview-trigger')
+          open.type = 'button'
+          open.title = `预览 ${name} 附近的原文`
+          open.setAttribute('aria-haspopup', 'dialog')
+          open.setAttribute('aria-controls', sourceDrawer.id)
+          open.setAttribute('aria-expanded', String(activeSource?.entry === entry))
+          open.onclick = () => navigateSource(ref, open)
+          actions.prepend(open)
+          entry.previewButton = open
         }
+        entry.location = result
       }
       catch {
         const missing = status === 404
         const denied = status === 403
-        requested = denied
         const message = missing
           ? '当前工作区无法定位此文件或引用行，可复制引用。'
           : denied
             ? '当前页面无权读取本地文件，请从本机需求页打开。'
             : '暂时无法连接文件服务。'
+        entry.error = { message, denied, retry: !denied }
         const warning = html('p', file, message, 'source-unavailable')
         if (!missing && !denied) {
           const retry = html('button', warning, '重试', 'link-button')
           retry.type = 'button'
           retry.onclick = load
         }
+      }
+      finally {
+        loading = false
+        drawSourceReader(entry)
       }
     }
     group.addEventListener('toggle', load)
@@ -1315,12 +1441,12 @@
       html('p', endpointFields, note || '字段未记录。', 'endpoint-note')
     showContractFields(endpointFields, fields)
   }
-  function openEndpoint(row, navigate) {
+  function openEndpoint(row) {
     if (activeEndpoint?.button === row.button)
       return
     const { button, endpoint } = row
     activeEndpoint?.button.setAttribute('aria-expanded', 'false')
-    activeEndpoint = { button, scrollTop: detail.scrollTop }
+    activeEndpoint = { key: row.key, button, scrollTop: detail.scrollTop }
     endpointMethod.textContent = endpoint.method
     endpointTitle.textContent = endpoint.purpose || '用途待补充'
     endpointPath.textContent = endpoint.path
@@ -1338,6 +1464,8 @@
         tab.onclick = () => {
           showEndpointFields(endpoint, side)
           endpointBody.scrollTop = 0
+          readerRoute = { ...readerRoute, side }
+          writeRoute(readerRoute, 'replaceState', history.state)
         }
       }
       showEndpointFields(endpoint, 'request')
@@ -1352,15 +1480,6 @@
     placeUpdateNotice()
     endpointBody.scrollTop = 0
     endpointClose.focus({ preventScroll: true })
-    if (navigate) {
-      const hash = `#node=${encodeURIComponent(selected)}&endpoint=${encodeURIComponent(row.key)}`
-      try {
-        history.pushState({ endpointHash: hash }, '', hash)
-      }
-      catch {
-        // Some local readers restrict URL updates. The dialog still works.
-      }
-    }
   }
   function hideEndpoint(restoreFocus = true) {
     if (!activeEndpoint)
@@ -1376,26 +1495,17 @@
       button.focus({ preventScroll: true })
     }
   }
-  function dismissEndpoint() {
-    if (!activeEndpoint)
-      return
-    hideEndpoint()
-    if (history.state?.endpointHash === location.hash)
-      history.back()
-    else
-      recordHash(`#node=${encodeURIComponent(selected)}`)
-  }
-  endpointBack.onclick = endpointClose.onclick = dismissEndpoint
+  endpointBack.onclick = endpointClose.onclick = backDrawer
   endpointDrawer.addEventListener('cancel', (event) => {
     event.preventDefault()
-    dismissEndpoint()
+    backDrawer()
   })
   endpointDrawer.addEventListener('click', (event) => {
     if (event.target !== endpointDrawer)
       return
     const bounds = endpointDrawer.getBoundingClientRect()
     if (event.clientX < bounds.left || event.clientX > bounds.right || event.clientY < bounds.top || event.clientY > bounds.bottom)
-      dismissEndpoint()
+      backDrawer()
   })
   function showEndpoint(parent, endpoint) {
     const button = html('button', parent, null, 'endpoint')
@@ -1409,7 +1519,7 @@
     const key = `${endpoint.method} ${endpoint.path}`
     const row = { key, button, endpoint }
     endpointRows.set(key, row)
-    button.onclick = () => openEndpoint(row, true)
+    button.onclick = () => enterDrawer({ nodes: readerRoute.nodes, endpoint: key }, button)
   }
   function showContract(parent, contract) {
     const endpoints = new Map((contract.endpoints || []).map(endpoint => [`${endpoint.method} ${endpoint.path}`, endpoint]))
@@ -1451,7 +1561,11 @@
       return
     const btn = html('button', parent, text || chainNodes.get(dest).title, 'link-button')
     btn.type = 'button'
-    btn.onclick = () => openPanel(dest, true)
+    btn.dataset.dest = dest
+    btn.onclick = () => {
+      if (dest !== selected)
+        enterDrawer({ nodes: [...readerRoute.nodes, dest] }, btn)
+    }
   }
   function related(parent, ids, title = '图中关联') {
     const destinations = [...new Set(ids.map(id => graph.aliases[id] || id))].filter(
@@ -1811,7 +1925,7 @@
     )
   }
   function populate(key) {
-    const n = nodes.get(key)
+    const n = nodes.get(key) || chainNodes.get(key)
     detail.replaceChildren()
     endpointRows.clear()
     const showState = n.state && n.kind !== 'story' && (n.kind !== 'contract' || n.state !== work.contracts[key].status)
@@ -1844,11 +1958,18 @@
         const inspect = html('button', more, '查看实现链路', 'inspect-feature')
         inspect.type = 'button'
         inspect.onclick = () => {
+          rememberDrawer(inspect)
           viewPreference = 'detail'
           picks.clear()
           picks.add(key)
           $('feature-query').value = ''
-          refreshFeatures()
+          const url = filterUrl()
+          url.hash = 'work'
+          try {
+            history.pushState(null, '', url)
+          }
+          catch { /* Continue to the feature graph even in an offline reader. */ }
+          refreshFeatures(false)
           map.focus({ preventScroll: true })
         }
       }
@@ -1936,15 +2057,15 @@
       /* Some offline viewers disallow URL changes. */
     }
   }
-  function openPanel(key, changeHash, trigger) {
-    if (isOverview() && !nodes.has(key) && chainNodes.has(key)) {
-      viewPreference = 'detail'
-      refreshFeatures(changeHash)
-    }
-    if (!nodes.has(key))
-      return
-    if (key !== selected)
-      hideEndpoint(false)
+  const panelNav = html('nav', null, null, 'drawer-nav')
+  panelNav.setAttribute('aria-label', '详情导航')
+  const panelBack = html('button', panelNav, null, 'drawer-back')
+  panelBack.id = 'panel-back'
+  panelBack.type = 'button'
+  panelBack.onclick = backDrawer
+  panelNav.hidden = true
+  drawer.prepend(panelNav)
+  function openPanel(key, trigger) {
     if (!selected)
       drawerTrigger = trigger || nodeEls.get(key)
     drawerVersion++
@@ -1966,17 +2087,17 @@
       populate(key)
       detail.scrollTop = 0
     }
-    reopenPanel.title = `展开详情 · ${nodes.get(key).title}`
+    reopenPanel.title = `展开详情 · ${chainNodes.get(key).title}`
     reopenPanel.setAttribute('aria-label', reopenPanel.title)
     highlight(key)
-    if (changeHash)
-      recordHash(`#node=${encodeURIComponent(key)}`)
     $('close-panel').focus({ preventScroll: true })
   }
   function closePanel(focus = true, changeHash = true) {
     if (!selected)
       return
+    hideSourceRoute(false)
     hideEndpoint(false)
+    readerRoute = { nodes: [] }
     const previous = selected
     const closing = ++drawerVersion
     selected = null
@@ -2012,37 +2133,197 @@
       Promise.allSettled(animations.map(animation => animation.finished)).then(finishClose)
     else finishClose()
   }
-  function route() {
-    let hash
+  function routeHash(frame) {
+    if (!frame.nodes.length)
+      return '#work'
+    const parts = [['node', frame.nodes.at(-1)], ...frame.nodes.slice(0, -1).map(id => ['via', id])]
+    if (frame.endpoint) {
+      parts.push(['endpoint', frame.endpoint])
+      if (frame.side === 'response')
+        parts.push(['side', 'response'])
+    }
+    if (frame.source)
+      parts.push(['source', frame.source])
+    return `#${parts.map(([key, value]) => `${key}=${encodeURIComponent(value)}`).join('&')}`
+  }
+  function parentRoute(frame) {
+    if (frame.source)
+      return { nodes: frame.nodes, endpoint: frame.endpoint, side: frame.side }
+    if (frame.endpoint)
+      return { nodes: frame.nodes }
+    return { nodes: frame.nodes.slice(0, -1) }
+  }
+  function writeRoute(frame, method, state) {
     try {
-      hash = decodeURIComponent(location.hash.slice(1))
+      history[method](state, '', routeHash(frame))
     }
-    catch {
-      hash = ''
+    catch { /* The drawer remains usable in offline readers with restricted history. */ }
+  }
+  function rememberDrawer(trigger) {
+    const state = { ...history.state }
+    if (selected && trigger) {
+      const panel = activeEndpoint ? endpointBody : detail
+      const links = Array.from(panel.querySelectorAll('[data-dest], .inspect-feature'))
+      state.drawerReading = { work: work.id, hash: routeHash(readerRoute), panel: readPanel(panel), link: links.indexOf(trigger), draft: decisionNotes.get(selected) }
     }
-    const params = new URLSearchParams(location.hash.slice(1))
-    const key = params.get('node') || (hash.startsWith('contract-') ? hash.slice(9) : hash === 'agent' ? '@request' : null)
-    if (key && chainNodes.has(key)) {
-      if (key !== selected)
-        openPanel(key, false)
-      const requested = params.get('endpoint')
-      const row = endpointRows.get(requested)
-      if (row) {
-        openEndpoint(row, false)
+    writeRoute(readerRoute, 'replaceState', state)
+  }
+  function enterDrawer(next, trigger) {
+    const parent = routeHash(readerRoute)
+    const steps = history.state?.drawerSteps || 0
+    const ancestor = !next.endpoint && !next.source ? readerRoute.nodes.indexOf(next.nodes.at(-1)) : -1
+    if (ancestor >= 0) {
+      const count = readerRoute.nodes.length - ancestor - 1
+      if (count && steps >= count && location.hash === parent) {
+        waitingForBack = true
+        history.go(-count)
       }
       else {
-        hideEndpoint()
-        if (requested)
-          recordHash(`#node=${encodeURIComponent(key)}`)
+        const earlier = { nodes: readerRoute.nodes.slice(0, ancestor + 1) }
+        writeRoute(earlier, 'replaceState', null)
+        applyRoute(earlier)
+      }
+      return
+    }
+    rememberDrawer(trigger)
+    writeRoute(next, 'pushState', { drawerParent: parent, drawerSteps: steps + 1 })
+    applyRoute(next, trigger)
+  }
+  function navigateSource(ref, trigger) {
+    enterDrawer({ ...readerRoute, source: ref }, trigger)
+  }
+  function backDrawer() {
+    if (!readerRoute.nodes.length || waitingForBack)
+      return
+    const parent = parentRoute(readerRoute)
+    if (history.state?.drawerParent === routeHash(parent) && location.hash === routeHash(readerRoute)) {
+      waitingForBack = true
+      history.back()
+    }
+    else {
+      writeRoute(parent, 'replaceState', null)
+      applyRoute(parent)
+    }
+  }
+  function applyRoute(requested, trigger) {
+    const next = { nodes: requested.nodes, endpoint: requested.endpoint || null, source: requested.source || null, side: requested.side === 'response' ? 'response' : 'request' }
+    const old = readerRoute
+    const invalid = next.nodes.findIndex(id => !chainNodes.has(id))
+    if (invalid >= 0) {
+      next.nodes = next.nodes.slice(0, invalid)
+      next.endpoint = next.source = null
+    }
+    // A relation may point back to any ancestor. A shared link represents
+    // the resulting path, just as following that relation in the UI does.
+    if (new Set(next.nodes).size !== next.nodes.length) {
+      const path = []
+      for (const id of next.nodes) {
+        const ancestor = path.indexOf(id)
+        if (ancestor >= 0)
+          path.length = ancestor + 1
+        else path.push(id)
+      }
+      next.nodes = path
+    }
+    const key = next.nodes.at(-1)
+    if (key && isOverview() && !next.nodes.some(id => nodes.has(id))) {
+      viewPreference = 'detail'
+      const url = new URL(location.href)
+      url.searchParams.set('view', 'detail')
+      try {
+        history.replaceState(history.state, '', url)
+      }
+      catch { /* Offline readers can still show the implementation graph. */ }
+      refreshFeatures(false)
+    }
+    const changed = key !== selected
+    const reading = history.state?.drawerReading
+    const returning = reading?.work === work.id && reading.hash === routeHash(next)
+      && (changed || old.endpoint !== next.endpoint || old.source !== next.source)
+    if (old.source && (old.source !== next.source || changed || old.endpoint !== next.endpoint))
+      hideSourceRoute(!changed && old.endpoint === next.endpoint)
+    if (old.endpoint && (old.endpoint !== next.endpoint || changed))
+      hideEndpoint(!changed)
+    readerRoute = next
+    if (key) {
+      const parent = next.nodes.at(-2)
+      panelNav.hidden = !parent
+      if (parent) {
+        panelBack.textContent = `← ${chainNodes.get(parent).title}`
+        panelBack.setAttribute('aria-label', `返回${chainNodes.get(parent).title}`)
+      }
+      if (changed) {
+        if (returning && reading.draft !== undefined && !decisionNotes.has(key))
+          decisionNotes.set(key, reading.draft)
+        openPanel(key, selected ? undefined : (trigger || nodeEls.get(next.nodes[0])))
+        if (!returning && old.nodes.length > next.nodes.length && old.nodes[next.nodes.length - 1] === key) {
+          const link = Array.from(detail.querySelectorAll('[data-dest]')).find(el => el.dataset.dest === old.nodes[next.nodes.length])
+          for (let fold = link?.closest('details'); fold; fold = fold.parentElement.closest('details'))
+            fold.open = true
+          link?.focus()
+        }
+      }
+      if (next.endpoint) {
+        const row = endpointRows.get(next.endpoint)
+        if (row) {
+          openEndpoint(row)
+          const side = next.side === 'response' ? 'response' : 'request'
+          if (row.endpoint.purpose && endpointTabs.querySelector('[aria-pressed="true"]')?.dataset.side !== side)
+            showEndpointFields(row.endpoint, side)
+        }
+        else {
+          next.endpoint = next.source = null
+        }
+      }
+      if (next.source && !renderSourceRoute(next.source, next.endpoint ? endpointBody : detail, trigger))
+        next.source = null
+      if (returning && !next.source) {
+        const panel = next.endpoint ? endpointBody : detail
+        restorePanel(panel, reading.panel)
+        panel.querySelectorAll('[data-dest], .inspect-feature')[reading.link]?.focus({ preventScroll: true })
       }
     }
     else if (selected) {
-      closePanel(false)
+      closePanel(true, false)
+    }
+    if (routeHash(requested) !== routeHash(next))
+      writeRoute(next, 'replaceState', null)
+  }
+  function route() {
+    waitingForBack = false
+    const fragment = location.hash.slice(1)
+    const params = new URLSearchParams(fragment)
+    let node = params.get('node')
+    if (!node && fragment.startsWith('contract-')) {
+      try {
+        node = decodeURIComponent(fragment.slice(9))
+      }
+      catch { /* An incomplete legacy fragment opens the canvas. */ }
+    }
+    if (!node && fragment === 'agent')
+      node = '@request'
+    const path = node ? [...params.getAll('via'), node] : []
+    applyRoute({ nodes: path, endpoint: params.get('endpoint'), side: params.get('side'), source: params.get('source') })
+  }
+  // A shared deep link has no local history yet. Materialize its parent entries
+  // so that browser Back and the drawer's own Back follow the same reading path.
+  function seedDrawerHistory() {
+    if (!readerRoute.nodes.length || history.state?.drawerParent)
+      return
+    const ancestors = []
+    for (let frame = readerRoute; frame.nodes.length; frame = parentRoute(frame))
+      ancestors.unshift(frame)
+    const root = { nodes: [] }
+    writeRoute(root, 'replaceState', null)
+    let parent = root
+    for (const [index, frame] of ancestors.entries()) {
+      writeRoute(frame, 'pushState', { drawerParent: routeHash(parent), drawerSteps: index + 1 })
+      parent = frame
     }
   }
-  $('close-panel').onclick = () => closePanel()
-  reopenPanel.onclick = () => openPanel(recentNode, true, reopenPanel)
-  $('drawer-backdrop').onclick = () => closePanel()
+  $('close-panel').onclick = backDrawer
+  reopenPanel.onclick = () => enterDrawer({ nodes: [recentNode] }, reopenPanel)
+  $('drawer-backdrop').onclick = backDrawer
   function drawerTabStops(panel) {
     const candidates = panel.querySelectorAll('a[href], button, input, select, textarea, summary, [tabindex]')
     return [...candidates].filter((el) => {
@@ -2063,13 +2344,11 @@
       e.preventDefault()
       if (e.repeat)
         return
-      if (endpointDrawer.open)
-        dismissEndpoint()
-      else closePanel()
+      backDrawer()
     }
     if (e.key !== 'Tab')
       return
-    const topPanel = endpointDrawer.open ? endpointDrawer : drawer
+    const topPanel = sourceDrawer.open ? sourceDrawer : endpointDrawer.open ? endpointDrawer : drawer
     const stops = drawerTabStops(topPanel)
     const first = stops[0]
     const last = stops.at(-1)
@@ -2120,7 +2399,7 @@
     const open = []
     for (const [index, fold] of Array.from(panel.querySelectorAll('details')).entries()) {
       if (fold.open)
-        open.push({ index, key: foldKey(fold), preview: Boolean(fold.querySelector(':scope > .source-preview:not([hidden])')) })
+        open.push({ index, key: foldKey(fold) })
     }
     return { open, scroll: panel.scrollTop }
   }
@@ -2129,13 +2408,10 @@
     const scroll = () => {
       panel.scrollTop = state.scroll
     }
-    for (const { index, key, preview } of state.open) {
+    for (const { index, key } of state.open) {
       const fold = folds[index]
-      if (fold && foldKey(fold) === key) {
+      if (fold && foldKey(fold) === key)
         fold.open = true
-        if (preview)
-          resumePreview.set(fold, scroll)
-      }
     }
     scroll()
   }
@@ -2168,7 +2444,9 @@
     const notice = $('notice')
     if (notice.hidden)
       return
-    if (endpointDrawer.open)
+    if (sourceDrawer.open)
+      sourceBody.before(notice)
+    else if (endpointDrawer.open)
       endpointBody.before(notice)
     else if (selected)
       detail.before(notice)
@@ -2344,6 +2622,12 @@
     $('filter-reset').hidden = !active
   }
 
+  function filterUrl() {
+    const url = new URL(location.href)
+    for (const key of ['q', 'features', 'view']) url.searchParams.delete(key)
+    for (const [key, value] of new URLSearchParams(filterQuery())) url.searchParams.set(key, value)
+    return url
+  }
   function refreshFeatures(changeUrl = true) {
     if (selected)
       closePanel(false, changeUrl)
@@ -2386,14 +2670,8 @@
     const contextQuery = contextParams.toString()
     ai.href = contextQuery ? `/context?${contextQuery}` : 'model.json'
     ai.title = contextQuery ? '读取当前功能的 AI 记录' : '读取完整需求的 AI 记录'
-    if (changeUrl) {
-      const url = new URL(location.href)
-      url.searchParams.delete('q')
-      url.searchParams.delete('features')
-      url.searchParams.delete('view')
-      for (const [k, v] of new URLSearchParams(filterQuery())) url.searchParams.set(k, v)
-      recordHash(url.href)
-    }
+    if (changeUrl)
+      recordHash(filterUrl().href)
     displayedSearch = location.search
     roomy = undefined
     layout = null
@@ -2513,9 +2791,21 @@
     restorePanel(detail, resume.panel)
     if (activeEndpoint && resume.endpoint) {
       activeEndpoint.scrollTop = resume.panel.scroll
-      endpointTabs.querySelector(`[data-side="${resume.side === 'response' ? 'response' : 'request'}"]`)?.click()
       restorePanel(endpointBody, resume.endpoint)
     }
+    // Older viewers kept the active direction and inline preview in the
+    // reconnect snapshot. Migrate only references visible in this drawer.
+    const original = new URLSearchParams(new URL(resume.url).hash.slice(1))
+    const side = activeEndpoint && !original.has('side') && resume.side === 'response' ? 'response' : readerRoute.side
+    const folds = (activeEndpoint ? resume.endpoint : resume.panel)?.open || []
+    if (selected && (side !== readerRoute.side || (!original.has('source') && folds.some(fold => fold.preview)))) {
+      const panel = activeEndpoint ? endpointBody : detail
+      const listed = new Set(Array.from(panel.querySelectorAll('.source-file[data-ref]'), file => file.dataset.ref))
+      const source = original.has('source') ? readerRoute.source : folds.find(fold => fold.preview && listed.has(fold.key))?.key
+      applyRoute({ ...readerRoute, side, source })
+      writeRoute(readerRoute, 'replaceState', history.state)
+    }
   }
+  seedDrawerHistory()
   new ResizeObserver(onResize).observe(map)
 })()
