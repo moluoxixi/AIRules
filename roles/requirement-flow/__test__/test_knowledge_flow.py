@@ -108,10 +108,11 @@ def story(title, goal, case, given, when, then):
     ]}
 
 
-def check(title, feature, case, contracts=()):
+def check(title, feature, case, contracts=(), code_paths=()):
     return {'title': title, 'kind': '验证', 'stories': [feature], 'read_stories': [feature],
             'covers': [case], 'accepts': ['自动化'], 'decisions': [], 'contracts': list(contracts),
-            'depends_on': [{'id': 'A-intake'}], 'done': '断言实际结果符合场景预期'}
+            'depends_on': [{'id': 'A-intake'}], 'done': '断言实际结果符合场景预期',
+            **({'code_paths': list(code_paths)} if code_paths else {})}
 
 
 class Project:
@@ -164,7 +165,8 @@ class Project:
                                                 '南桥门店不在首屏', '搜索南桥', '返回南桥门店'),
                                         **({'basis': basis} if basis else {})}},
             'contracts': {'C-directory': contract},
-            'actions': {'A-check': check('验证门店关键词搜索', 'S-directory', 'AC-directory', ['C-directory'])},
+            'actions': {'A-check': check('验证门店关键词搜索', 'S-directory', 'AC-directory', ['C-directory'],
+                                         ['directory.py', 'test_directory.py'])},
             'lessons': [old_note],
         }, '--why', '明确目录分页与关键词契约')
         self.cli('new', TARGET, '--request', '规划巡店路线，选择目的门店并设置路线标签')
@@ -174,8 +176,10 @@ class Project:
                         NOTE: story('设置路线标签字号', '放大路线标签字号', 'AC-label',
                                     '标签使用默认字号', '切换大字', '字号随设置更新')},
             'contracts': {'C-directory': contract},
-            'actions': {'A-stop': check('核对目的门店搜索与路线记录', SEARCH, 'AC-stop', ['C-directory']),
-                        'A-label': check('核对标签字号', NOTE, 'AC-label')},
+            'actions': {'A-stop': check('核对目的门店搜索与路线记录', SEARCH, 'AC-stop', ['C-directory'],
+                                        ['directory.py', 'test_directory.py']),
+                        'A-label': check('核对标签字号', NOTE, 'AC-label',
+                                         code_paths=['route_display.py', 'test_route_display.py'])},
         }, '--why', '分别验证停靠点与标签')
         for task in (SOURCE, TARGET):
             self.write(task, 'finish', 'A-intake', '--output', '已确认故事与验收场景', '--evidence', '需求原话')

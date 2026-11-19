@@ -1683,10 +1683,12 @@
     const sourceTitle = [source.story_title || source.story, source.scenario].filter(Boolean).join(' · ')
     const row = html('div', parent, null, 'lesson-origin')
     html('span', row, sourceTitle, 'dim')
-    if (!source.valid) {
+    if (!source.valid && !source.readable) {
       html('p', row, '原始依据当前需复核。', 'dim')
       return
     }
+    if (!source.valid)
+      html('p', row, '历史依据可查阅；当前验收需复核。', 'dim')
     if (csrf) {
       const query = new URLSearchParams({ task: card.task, lesson: card.id, version: card.version, receipt: source.receipt })
       if (card.approval_digest)
@@ -2028,6 +2030,8 @@
       const cases = queue.scenarios.filter(ex => ex.story === key)
       if (cases.length)
         showScenarios(detail, cases)
+      else if ((queue.progress.withdrawn_stories || []).includes(key))
+        html('p', detail, '本功能已按业务决定移出本期范围，原场景和调整原因保留在验收范围调整中。', 'dim')
       else if (!research)
         html('p', detail, '当前没有验收场景。', 'dim')
       const more = html('div', detail, null, 'story-tools')
@@ -2634,6 +2638,8 @@
           const passed = cases.filter(ex => ex.status === 'passed').length
           if (cases.length)
             return { ...n, caption: `${passed} / ${cases.length} 个场景通过` }
+          if (included.size && [...included].every(id => (queue.progress.withdrawn_stories || []).includes(id)))
+            return { ...n, caption: '所选功能已按业务决定移出本期范围' }
           return {
             ...n,
             caption: research ? `${proven} / ${checks.length} 项调研有证据` : '待梳理验收场景',
@@ -2674,6 +2680,9 @@
         const counts = [`${ids.length} 个功能`]
         if (cases.length)
           counts.push(`${passed}/${cases.length} 个场景已验`)
+        const withdrawn = ids.filter(id => (queue.progress.withdrawn_stories || []).includes(id)).length
+        if (withdrawn)
+          counts.push(`${withdrawn} 个本期已撤出`)
         return { ...n, caption: counts.join(' · ') }
       })
       graph = { ...fullGraph, nodes: shown, edges: ids.map(target => ({ source: '@request', target, mode: 'story' })) }

@@ -1,5 +1,7 @@
 """An adopted version must outlive search, retirement and archival without granting unverified evidence."""
 from concurrent.futures import ThreadPoolExecutor
+import hashlib
+import hmac
 import json
 import os
 from pathlib import Path
@@ -29,6 +31,82 @@ class AdoptionTest(unittest.TestCase):
         self.p = Project(Path(temp.name))
         self.store = self.p.root / ".requirements"
         self.receipt = self.p.prepare_review()
+
+    def adopt_source(self):
+        self.p.review()
+        self.p.write(TARGET, "lesson-adopt", SOURCE, LESSON, "--version", 1,
+                     "--story", SEARCH, "--why", REASON)
+
+    def assert_stale_source_remains_readable(self):
+        p = self.p
+        context = p.data("task", TARGET, "context", SEARCH)
+        self.assertEqual(context["related_lessons"], [])
+        card, = context["adopted_lessons"]
+        self.assertEqual(card["state"], "stale")
+        self.assertEqual(card["adoption"]["reason"], REASON)
+        source, = card["sources"]
+        self.assertFalse(source["valid"])
+        self.assertTrue(source["readable"])
+        query = urlencode({"task": SOURCE, "lesson": LESSON, "version": 1,
+                           "receipt": self.receipt["id"], "approval": card["approval_digest"]})
+        with p.serve() as url:
+            with urlopen(url + "lesson-source?" + query, timeout=5) as page:
+                body = page.read().decode()
+                self.assertIn("历史依据", body)
+                self.assertIn("AC-directory", body)
+                self.assertIn("返回南桥门店", body)
+            with urlopen(url + "lesson-evidence?" + query, timeout=5) as response:
+                self.assertIn(b"test_store_on_later_page", response.read())
+            with self.assertRaises(HTTPError) as result:
+                urlopen(url + "evidence/" + self.receipt["id"], timeout=5)
+            self.assertEqual(result.exception.code, 404)
+            artifact = self.store / "active" / SOURCE / self.receipt["artifact"]["path"]
+            artifact.write_bytes(b"changed historical attachment")
+            for route in ("lesson-source", "lesson-evidence"):
+                with self.assertRaises(HTTPError) as result:
+                    urlopen(url + route + "?" + query, timeout=5)
+                self.assertIn(result.exception.code, (404, 409))
+        historical = p.data("task", TARGET, "context", SEARCH)["adopted_lessons"][0]
+        self.assertEqual(historical["adoption"]["reason"], REASON)
+        self.assertFalse(historical["sources"][0]["readable"])
+
+    def test_changed_scenario_keeps_adopted_original_evidence_readable(self):
+        self.adopt_source()
+        p = self.p
+        model_path = self.store / "active" / SOURCE / "model.json"
+        story = json.loads(model_path.read_text())["work"]["stories"]["S-directory"]
+        story["examples"][0]["then"] = "返回所有匹配门店以及总数"
+        p.with_json(SOURCE, "plan", {"stories": {"S-directory": story}}, "--why", "目录增加总数验收")
+        self.assert_stale_source_remains_readable()
+
+    def test_old_signed_receipt_keeps_adoption_history_after_upgrade(self):
+        self.adopt_source()
+        workspace = self.store / "active" / SOURCE
+        path = workspace / "model.json"
+        model = json.loads(path.read_text())
+        event = next(e for e in model["work"]["events"] if e["id"] == self.receipt["id"])
+        # A pre-upgrade producer did not bind the checked-out code into its signed receipt.
+        receipt = event["receipt"]
+        for key in ("code_inputs", "code_inputs_unchanged", "code_inputs_error"):
+            receipt.pop(key, None)
+        signature = hmac.new(sync.evidence.local_key(workspace / "evidence"),
+                             sync.evidence.canonical(receipt), hashlib.sha256).hexdigest()
+        (workspace / receipt["path"]).write_bytes(sync.evidence.canonical(
+            {"receipt": receipt, "signature": signature}) + b"\n")
+        path.write_text(json.dumps(model), encoding="utf-8")
+        self.assert_stale_source_remains_readable()
+
+    def test_changed_code_does_not_expose_unadopted_stale_lesson(self):
+        self.p.review()
+        code = self.p.root / "directory.py"
+        code.write_text(code.read_text() + "\n# updated directory behavior\n", encoding="utf-8")
+        self.assertEqual(self.p.next(TARGET, SEARCH)["related_lessons"], [])
+        query = urlencode({"task": SOURCE, "lesson": LESSON, "version": 1, "receipt": self.receipt["id"]})
+        with self.p.serve() as url:
+            for route in ("lesson-source", "lesson-evidence"):
+                with self.assertRaises(HTTPError) as result:
+                    urlopen(url + route + "?" + query, timeout=5)
+                self.assertEqual(result.exception.code, 404)
 
     def test_pinned_version_reason_and_evidence_survive_retirement(self):
         p = self.p

@@ -21,6 +21,7 @@ def task_href(key):
 
 def task_card(work, queue):
     cases = queue["scenarios"]
+    withdrawn = queue["progress"].get("withdrawn_stories", [])
     history = work.get("history") or {}
     basis = "scenarios" if cases else "none"
     total = len(cases)
@@ -28,6 +29,8 @@ def task_card(work, queue):
     if history and not work["actions"] and not work["events"]:
         # Migrated notes are useful to read but contain no executable acceptance record.
         basis, passed, total = "history", 0, 0
+    elif work["stories"] and len(withdrawn) == len(work["stories"]):
+        basis = "withdrawn"
     elif not cases and work.get("outcome") == "research":
         checks = {key for key, action in work["actions"].items()
                   if action["kind"] == "调研" and engine.condition_value(work, action.get("when")) is not False}
@@ -39,7 +42,7 @@ def task_card(work, queue):
         "id":work["id"], "title":work["title"], "summary":(work.get("goal") or work["raw_request"])[:360],
         "stories":len(work["stories"]), "state":queue["state"], "outcome":work.get("outcome","delivery"),
         "updatedAt":updated or history.get("completed_at") or history.get("created_at"),
-        "basis":basis, "passed":passed, "total":total,
+        "basis":basis, "passed":passed, "total":total, "withdrawnStories":len(withdrawn),
         "stale":sum(case["status"] == "stale" for case in cases),
         "failed":sum(case["status"] == "failed" for case in cases), "href":task_href(work["id"]),
     }

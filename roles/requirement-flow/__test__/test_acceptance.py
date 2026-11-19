@@ -66,7 +66,7 @@ class AcceptanceTest(unittest.TestCase):
     def check(self, scenario):
         return {'title': '核对 ' + scenario, 'kind': '验证', 'stories': ['S-save'], 'read_stories': ['S-save'],
                 'decisions': [], 'contracts': [], 'depends_on': [{'id': 'A-intake'}], 'done': '符合预期',
-                'covers': [scenario], 'accepts': ['自动化']}
+                'covers': [scenario], 'accepts': ['自动化'], 'code_paths': ['save_checks.py']}
 
     def finish(self, action, ok=True):
         extras = () if ok else ('--evidence', 'missing-report.log', '--level', '自动化',

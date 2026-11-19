@@ -174,21 +174,25 @@
       state = `${task.stale} 项需复验`
     else if (task.bucket === 'archive')
       state = '已归档'
+    else if (task.basis === 'withdrawn' && task.state === 'complete')
+      state = '本期范围已撤出'
     else if (task.state === 'ready' && task.passed > 0)
       state = '待继续'
     const tone = task.error || task.failed || task.stale || task.state === 'waiting'
       ? 'amber'
-      : task.bucket === 'archive' || task.state === 'unplanned' ? 'neutral' : 'green'
+      : task.bucket === 'archive' || task.state === 'unplanned' || task.basis === 'withdrawn' ? 'neutral' : 'green'
     const measured = !task.error && ['research', 'scenarios'].includes(task.basis) && Number.isInteger(task.total)
       && task.total > 0 && Number.isInteger(task.passed) && task.passed >= 0 && task.passed <= task.total
     const count = `${task.passed} / ${task.total}`
     const measure = measured
       ? (task.basis === 'research' ? `${count} 项调研有依据` : `已验 ${count} 个场景`)
-      : task.error ? '记录无法读取' : task.basis === 'history' ? '历史记录待复验' : task.outcome === 'research' ? '待定义调研项' : '待定义验收场景'
+      : task.error ? '记录无法读取' : task.basis === 'withdrawn' ? '本期无待验场景，原范围及决定可追溯' : task.basis === 'history' ? '历史记录待复验' : task.outcome === 'research' ? '待定义调研项' : '待定义验收场景'
     const kind = task.basis === 'history' ? '历史需求' : task.outcome === 'research' ? '调研需求' : '交付需求'
     const rows = [['需求类型', kind], ['当前状态', state], ['验收进度', measure]]
     if (!task.error && Number.isInteger(task.stories) && task.basis !== 'history')
       rows.push(['涉及功能', `${task.stories} 个`])
+    if (task.withdrawnStories)
+      rows.push(['本期已撤出', `${task.withdrawnStories} 个功能`])
     if (task.updatedAt)
       rows.push(['更新日期', String(task.updatedAt).slice(0, 10)])
     return { title: task.title || task.id, summary: task.error || task.summary, state, tone, measured, measure, rows }

@@ -5,6 +5,11 @@ import re
 from html import escape
 from pathlib import Path
 
+if __package__:
+    from . import story_scope
+else:
+    import story_scope
+
 ROOT_ID = "@request"
 DELIVERY_ID = "@delivery"
 
@@ -50,6 +55,7 @@ def make_graph(work, states, scenarios):
     decisions = work["decisions"]
     contracts = work["contracts"]
     routes = work.get("contract_routes", [])
+    withdrawn = story_scope.withdrawn_stories(work)
     nodes = {}
     edges = {}
 
@@ -79,7 +85,7 @@ def make_graph(work, states, scenarios):
     node(ROOT_ID, "request", work["title"], label="原始需求")
     for key, story in stories.items():
         cases = [case for case in scenarios if case["story"] == key]
-        badge = ""
+        badge = "本期已撤出" if key in withdrawn else ""
         if cases:
             passed = sum(case["status"] == "passed" for case in cases)
             badge = f"{passed}/{len(cases)} 已验"
@@ -196,7 +202,9 @@ def make_graph(work, states, scenarios):
     check_kind = "调研" if research else "验证"
     checks = [key for key,a in actions.items() if a["kind"] == check_kind and states[key]["state"] != "skipped"]
     proven = sum(states[key]["state"] == "done" for key in checks)
-    if research and not scenarios:
+    if stories and len(withdrawn) == len(stories):
+        caption = "全部功能已按业务决定移出本期范围"
+    elif research and not scenarios:
         caption = f"{proven} / {len(checks)} 项调研有证据" if checks else "查看已有产出与待办"
     else:
         passed = sum(case["status"] == "passed" for case in scenarios)
@@ -245,6 +253,8 @@ def lesson_source_page(card, source, download_url, home_href=None):
                         ("适用条件", card["when"]), ("做法", card["practice"]), ("边界", card["boundary"]),
                         ("审查人", review.get("actor")), ("审查意见", review.get("reason"))])
     home_link = f'<a href="{escape(home_href, quote=True)}" aria-label="首页">首页</a>' if home_href else ""
+    historical = ('<p role="status">历史依据：原始回执与附件完整，但不能证明当前输入，需重新验收。</p>'
+                  if not source.get("valid", True) else "")
     return_script = """<script>
 const back = document.getElementById('return-map')
 const from = new URLSearchParams(location.hash.slice(1))
@@ -280,7 +290,7 @@ pre{{white-space:pre-wrap;overflow-wrap:anywhere;background:var(--paper);padding
 a{{color:var(--accent);text-underline-offset:3px}}a:focus-visible{{outline:2px solid var(--focus-ring);outline-offset:3px}}
 nav{{display:flex;gap:16px;align-items:center}}.download{{display:inline-block;margin-top:10px}}</style><main>
 <header><nav>{home_link}<a id="return-map" href="./">← 返回需求详情</a></nav></header><h1>{escape(card["observation"])}</h1>
-<section><h2>来源场景</h2><dl>{context}</dl></section>
+{historical}<section><h2>来源场景</h2><dl>{context}</dl></section>
 <section><h2>实际证据</h2><dl>{receipt}</dl><pre>{escape(proof["actual"])}</pre>
 <a class="download" href="{escape(download_url, quote=True)}" download>下载原始证据</a></section>
 <section><h2>经验与审查</h2><dl>{review_info}</dl></section></main>{return_script}</html>"""

@@ -12,14 +12,16 @@ import sys
 import tempfile
 import unicodedata
 if __package__:
-    from . import evidence, graph_view, knowledge, source_paths
+    from . import evidence, graph_view, knowledge, source_paths, story_scope
 else:
     import evidence
     import graph_view
     import knowledge
     import source_paths
+    import story_scope
 from datetime import datetime, timezone
 from contextlib import contextmanager
+from contextvars import ContextVar
 from functools import lru_cache
 from html import escape
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
@@ -37,6 +39,7 @@ PLANNABLE = ("stories", "contracts", "decisions", "actions")
 SKILLS = ("flow-requirements","flow-contracts","flow-implement","flow-verify","flow-review")
 STATES = {"ready":"可推进","active":"进行中","blocked":"等待输入","dormant":"按条件启用",
           "skipped":"本次跳过","done":"已完成","stale":"需复核"}
+_render_input_cache = ContextVar("requirement_flow_render_inputs", default=None)
 
 
 class Invalid(ValueError):
@@ -182,8 +185,10 @@ def validate(m):
         pairs.add((d,o,c))
     for d, ans in w["answers"].items():
         expect(d in w["decisions"] and ans["choice"] in w["decisions"][d]["options"] and ans["version"] > 0, "答案失效 " + d)
-    for story in w["stories"].values():
-        expect(story["actor"] and story["goal"] and story["examples"], "故事缺少角色、目标或验收例子")
+    retired_owners = {case["story"] for case in retirement_history(w, set())}
+    for key, story in w["stories"].items():
+        expect(story["actor"] and story["goal"] and isinstance(story["examples"], list)
+               and (story["examples"] or key in retired_owners), "故事缺少角色、目标或验收例子")
         for ex in story["examples"]:
             expect(all(ex.get(k) for k in ("given","when","then")), "验收例子缺少前提、操作或预期")
     scenarios = scenario_definitions(w)
@@ -198,6 +203,9 @@ def validate(m):
     for key, action in w["actions"].items():
         expect(not action.get("skill") or action["skill"] in SKILLS, "未知专项 skill：" + key)
         expect(action["kind"] in ("调研","开发","验证") and action["done"].strip(), "动作类型或完成条件无效 " + key)
+        if "code_paths" in action:
+            expect(action["kind"] == "验证", "只有验证动作可指定代码输入：" + key)
+            evidence.code_inputs.normalize_paths(action["code_paths"])
         for prop, group in (("stories","stories"),("read_stories","stories"),("contracts","contracts"),("decisions","decisions")):
             check_refs(action[prop], group)
         check_refs(action.get("closes_contracts", []), "contracts")
@@ -261,7 +269,8 @@ def verified_receipt(workspace, event, stamp):
     return manifest
 
 
-def inspect_proof(workspace, event, action_id, scenario, action_stamp, scenario_stamp, accepts, replays):
+def inspect_proof(workspace, event, action_id, scenario, action_stamp, scenario_stamp, accepts, replays,
+                  code_paths=None, input_cache=None):
     if not event:
         return {"status":"pending", "reason":"尚未采集本场景的验收凭据", "receipt":None}
     stored = event.get("receipt")
@@ -284,6 +293,12 @@ def inspect_proof(workspace, event, action_id, scenario, action_stamp, scenario_
     if manifest["kind"] == "run":
         summary["argv"] = manifest["argv"]
         summary["exit_code"] = manifest["exit_code"]
+    store = Path(workspace).parent.parent
+    project = store.parent if store.name == ".requirements" else Path.cwd()
+    try:
+        evidence.validate_current_inputs(manifest, project, code_paths, cache=input_cache)
+    except (OSError, ValueError) as error:
+        return {"status":"stale", "reason":str(error), "receipt":summary}
     if accepts and manifest["level"] not in accepts:
         return {"status":"stale","invalid_receipt":True,"reason":"凭据类型不符合本动作的验收要求","receipt":summary}
     if not manifest["passed"]:
@@ -293,8 +308,12 @@ def inspect_proof(workspace, event, action_id, scenario, action_stamp, scenario_
 
 def evaluate(w, workspace=None):
     workspace = TASK_DIR if workspace is None else Path(workspace)
+    input_cache = _render_input_cache.get()
+    if input_cache is None:
+        input_cache = {}
     definitions = scenario_definitions(w)
     retired = latest_retirements(w,set())
+    withdrawn = story_scope.withdrawn_stories(w)
     latest = {}
     finishes = {}
     reopened = {}
@@ -319,6 +338,9 @@ def evaluate(w, workspace=None):
     @lru_cache(maxsize=None)
     def visit(key):
         action = w["actions"][key]
+        if action["stories"] and set(action["stories"]) <= withdrawn:
+            return {"state":"skipped", "reasons":["关联功能已按业务决定移出本期范围"],
+                    "stamp":None, "proof":None, "blockers":[], "actor":None, "cases":{}}
         last = latest.get(key, {})
         condition = action.get("when")
         gate = condition_value(w, condition)
@@ -364,7 +386,8 @@ def evaluate(w, workspace=None):
             "decisions":{i:{"definition":w["decisions"][i],"answer":w["answers"].get(i)} for i in sorted(decisions)}
         })
         cases = {s:inspect_proof(workspace, proof_events.get((key,s)), key, definitions[s], stamp,
-                                 case_stamp(definitions[s],retired),action.get("accepts"),replays)
+                                 case_stamp(definitions[s],retired),action.get("accepts"),replays,
+                                 action.get("code_paths"), input_cache)
                  for s in action.get("covers", [])}
         last_finish = finishes.get(key,{})
         for s,c in cases.items():
@@ -451,13 +474,11 @@ def retirements(w, patch):
 
 
 def retirement_history(w, selected):
-    return [{**case, "event":event["id"], "revision":event["revision"]}
-            for event in w["events"] if event["kind"] == "plan" for case in event.get("retired_scenarios",[])
-            if not selected or case["story"] in selected]
+    return story_scope.retirement_history(w, selected)
 
 
 def latest_retirements(w, selected):
-    return {(case["story"],case["id"]):case for case in retirement_history(w,selected)}
+    return story_scope.latest_retirements(w, selected)
 
 
 def apply_plan(w, patch, actor, reason):
@@ -613,9 +634,7 @@ def scenario_report(w, states, selected):
     for identity, case in latest_retirements(w,selected).items():
         if identity in active:
             continue
-        decision = w["decisions"].get(case["decision"],{})
-        choice = w["answers"].get(case["decision"],{}).get("choice")
-        if choice != case["is"] or case["story"] not in decision.get("stories",[]):
+        if not story_scope.retirement_applies(w, case):
             rows.append({**{k:case[k] for k in ("id","story","given","when","then")},
                          "status":"uncovered","reason":"撤下场景的范围决定已变更，请补回场景或重新确认原选项",
                          "actions":[],"receipts":[],"retirement":case["event"],"decision":case["decision"]})
@@ -642,8 +661,11 @@ def verification_followups(work, scenarios):
             receipt = event.get("receipt") or {}
             if not isinstance(receipt,dict) or not isinstance(receipt.get("artifact"),dict):
                 return None
-            return (event.get("stamp"),event.get("scenario_stamp"),receipt.get("passed"),receipt.get("environment"),
-                    receipt.get("argv"),receipt.get("exit_code"),receipt["artifact"].get("sha256"))
+            # Logs retain their integrity hash, but elapsed times and timestamps are
+            # not new inputs. Repeated failures on unchanged inputs need review.
+            return (event.get("stamp"),event.get("scenario_stamp"),receipt.get("code_inputs"),
+                    receipt.get("passed"),receipt.get("environment"),receipt.get("kind"),
+                    receipt.get("argv"),receipt.get("exit_code"))
         current = fingerprint(attempts[-1])
         repeated = []
         for attempt in reversed(attempts):
@@ -681,10 +703,13 @@ def dispatch(w, actor="AI", story=None, *, workspace=None, include_lessons=True,
     expect(isinstance(actor,str) and actor.strip(), "执行人不能为空")
     expect(story is None or story in w["stories"], "故事不存在")
     selected = {story} if story is not None else set()
+    withdrawn = story_scope.withdrawn_stories(w)
     chosen = {key for key, action in w["actions"].items() if not selected or selected.intersection(action["stories"])}
     to_visit = list(chosen)
     while to_visit:
         action = w["actions"][to_visit.pop()]
+        if action["stories"] and set(action["stories"]) <= withdrawn:
+            continue
         if condition_value(w, action.get("when")) is not True:
             continue
         for edge in action["depends_on"]:
@@ -712,6 +737,8 @@ def dispatch(w, actor="AI", story=None, *, workspace=None, include_lessons=True,
 
     pending = [{"id":key,**definition,"actions":blocked_by.get(("decision",key),[])}
                for key, definition in w["decisions"].items() if key not in w["answers"] and
+               (not definition["stories"] or not set(definition["stories"]) <= withdrawn
+                or ("decision",key) in blocked_by) and
                (not selected or selected.intersection(definition["stories"]) or ("decision",key) in blocked_by)]
     technical = [{"kind":kind,"id":key,"title":w["contracts" if kind=="contract" else "actions"][key]["title"],"actions":actions}
                  for (kind,key), actions in blocked_by.items() if kind != "decision"]
@@ -726,14 +753,16 @@ def dispatch(w, actor="AI", story=None, *, workspace=None, include_lessons=True,
     for i in chosen:
         if w["actions"][i]["kind"] == "验证" and states[i]["state"] not in ("done","skipped"):
             verified.difference_update(w["actions"][i]["stories"])
-    missing = [s for s in w["stories"] if (not selected or s in selected) and s not in verified]
+    withdrawn = withdrawn & selected if selected else withdrawn
+    missing = [s for s in w["stories"] if (not selected or s in selected) and s not in verified | withdrawn]
     research = w.get("outcome") == "research"
     research_proved = any(w["actions"][r["id"]]["kind"] == "调研" for r in completed)
     if next_key:
         state = "resume" if own else "ready"
     elif waiting or running or pending:
         state = "waiting"
-    elif (research and research_proved and not missing) or (not research and completed and verified and not missing):
+    elif ((research and (research_proved or withdrawn) and not missing)
+          or (not research and (completed or withdrawn) and (verified or withdrawn) and not missing)):
         state = "complete"
     else:
         state = "unplanned"
@@ -755,6 +784,7 @@ def dispatch(w, actor="AI", story=None, *, workspace=None, include_lessons=True,
             "review_skill":"flow-review" if lessons.get("lesson_reviews") or (
                 (scenarios or not research) and not packet and (missing or state in ("unplanned","complete"))) else None,
             "progress":{"completed":completed,"verified_stories":[s for s in w["stories"] if s in verified and (not selected or s in selected)],
+                        "withdrawn_stories":[s for s in w["stories"] if s in withdrawn],
                         "unverified_stories":missing}}
 
 
@@ -803,7 +833,8 @@ def capture(mode, key, scenario_id, revision, actor, environment, *, argv=None, 
     # Project commands run outside the model lock, from the task's owning project.
     store = TASK_DIR.parent.parent
     project = store.parent if store.name == ".requirements" else Path.cwd()
-    binding = dict(action=key,scenario=scenario_id,stamp=combined,actor=actor,environment=environment)
+    binding = dict(action=key,scenario=scenario_id,stamp=combined,actor=actor,environment=environment,
+                   code_paths=model["work"]["actions"][key].get("code_paths"))
     if mode == "verify-run":
         receipt = evidence.run(TASK_DIR, project, argv, **binding)
     else:
@@ -841,11 +872,13 @@ def context(m, story=None, *, workspace=None):
     effective_ids = {status[k]["proof"] for k in chosen if status[k]["proof"]}
     usage = graph_view.contract_users(w)
     scenarios = scenario_report(w,status,stories)
+    withdrawn = story_scope.withdrawn_stories(w)
     result = {
         "protocol_version":m["protocol"]["version"],"revision":w["revision"],"mode":w["kind"],"outcome_type":w.get("outcome","delivery"),
         "raw_request":w["raw_request"],"goal":w["goal"],"scope":w["scope"],"contract_routes":routes,
         "scenarios":scenarios, "verification_followups":verification_followups(w,scenarios),
         "retired_scenarios":retirement_history(w,stories),
+        "withdrawn_stories":[k for k in w["stories"] if k in withdrawn and (not stories or k in stories)],
         "stories":story_context(w,[k for k in w["stories"] if not stories or k in stories]),
         "decisions":{k:{**w["decisions"][k],"answer":w["answers"].get(k)} for k in w["decisions"] if k in decisions},
         "contracts":{k:v for k,v in w["contracts"].items() if k in contracts},
@@ -957,13 +990,20 @@ def offline_home_href(workspace):
 
 
 def render(model, token=None, *, workspace=None, read_only=False, home_href=None):
-    work = model["work"]
-    impacts = {key: {code: impact(work, key, code, workspace) for code in d["options"]}
-               for key, d in work["decisions"].items()}
-    return graph_view.render(model, evaluate(work,workspace), impacts, token, digest(model), LAYOUT,
-                             queue=dispatch(work,workspace=workspace,for_map=True), read_only=read_only,
-                             home_href=home_href if token else offline_home_href(workspace or TASK_DIR),
-                             source_labels=source_paths.SourcePaths.for_task(workspace or TASK_DIR).graph_labels(work))
+    # One render includes branch previews and lesson lookups. Reuse code reads
+    # only within this request; ContextVar keeps concurrent HTTP requests isolated.
+    token_cache = _render_input_cache.set({}) if _render_input_cache.get() is None else None
+    try:
+        work = model["work"]
+        impacts = {key: {code: impact(work, key, code, workspace) for code in d["options"]}
+                   for key, d in work["decisions"].items()}
+        return graph_view.render(model, evaluate(work,workspace), impacts, token, digest(model), LAYOUT,
+                                 queue=dispatch(work,workspace=workspace,for_map=True), read_only=read_only,
+                                 home_href=home_href if token else offline_home_href(workspace or TASK_DIR),
+                                 source_labels=source_paths.SourcePaths.for_task(workspace or TASK_DIR).graph_labels(work))
+    finally:
+        if token_cache is not None:
+            _render_input_cache.reset(token_cache)
 
 
 def initialize_task(path, raw, *, key, title=None, outcome="delivery"):
@@ -1081,11 +1121,11 @@ class TaskHandler(BaseHTTPRequestHandler):
         else:
             # The same signed version can be recommended and adopted by multiple stories.
             cards = {knowledge.card_key(card): card for card in (*queue["related_lessons"], *queue["adopted_lessons"])
-                     if any(s["valid"] for s in card["sources"])}.values()
+                     if any(s.get("readable", s["valid"]) for s in card["sources"])}.values()
         matches = [(card, source) for card in cards if (card["task"],card["id"]) == (task,lesson)
                    and (version is None or str(card["version"]) == version)
                    and (approval is None or card.get("approval_digest") == approval)
-                   for source in card["sources"] if source["receipt"] == rid and source["valid"]]
+                   for source in card["sources"] if source["receipt"] == rid and source.get("readable", source["valid"])]
         if len(matches) != 1:
             self.send_content(404,"该场景来源已失效或未关联到当前需求。","text/plain")
             return

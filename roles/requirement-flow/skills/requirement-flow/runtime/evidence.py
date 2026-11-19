@@ -15,6 +15,11 @@ import subprocess
 import tempfile
 import unicodedata
 
+try:
+    from . import code_inputs
+except ImportError:
+    import code_inputs
+
 
 def require(value, message):
     if not value:
@@ -181,7 +186,7 @@ def log_excerpt(path):
         return decoder.decode(b"", final=True).strip()
 
 
-def run(workspace, project_root, argv, *, action, scenario, stamp, actor, environment):
+def run(workspace, project_root, argv, *, action, scenario, stamp, actor, environment, code_paths=None):
     """Run the explicit argv from the project, preserving merged stdout/stderr and exit status."""
     project = directory(project_root)
     require(isinstance(argv, (list,tuple)) and argv and isinstance(argv[0],str) and argv[0].strip()
@@ -190,6 +195,7 @@ def run(workspace, project_root, argv, *, action, scenario, stamp, actor, enviro
         executable = shutil.which(argv[0]) or argv[0]
         require(Path(executable).suffix.lower() not in (".bat",".cmd"), "请直接指定可执行文件，避免隐式命令解释器")
     receipt = binding(workspace, action, scenario, stamp, actor, environment)
+    receipt["code_inputs"] = code_inputs.snapshot(project, code_paths)
     root = storage(workspace, create=True)
     with tempfile.TemporaryDirectory(prefix=".capture-", dir=root) as temp:
         staged = Path(temp) / "record"
@@ -204,9 +210,29 @@ def run(workspace, project_root, argv, *, action, scenario, stamp, actor, enviro
             actual += "\n" + preview
         elif result.returncode == 0:
             actual += "，日志为空或仅含空白。请运行会输出断言结果的验证命令。"
-        receipt.update(kind="run", level="自动化", passed=result.returncode == 0 and bool(preview), actual=actual,
+        unchanged, change_reason = check_after_capture(project, receipt["code_inputs"], code_paths)
+        if not unchanged:
+            actual += "\n" + change_reason
+        receipt.update(kind="run", level="自动化", passed=result.returncode == 0 and bool(preview) and unchanged, actual=actual,
+                       code_inputs_unchanged=unchanged, code_inputs_error=change_reason,
                        exit_code=result.returncode, argv=list(argv), cwd=str(project))
         return publish(root, staged, receipt, "output.log")
+
+
+def check_after_capture(project_root, inputs, code_paths):
+    try:
+        code_inputs.verify_current(project_root, inputs, code_paths)
+    except (OSError, ValueError) as exc:
+        return False, "采集期间代码输入发生变化或无法复核：" + str(exc)
+    return True, ""
+
+
+def validate_current_inputs(receipt, project_root, code_paths=None, *, cache=None):
+    """Check freshness separately, so historical signed attachments remain readable."""
+    code_inputs.verify_current(project_root, receipt.get("code_inputs"), code_paths, cache=cache)
+    require(receipt.get("code_inputs_unchanged") is True,
+            receipt.get("code_inputs_error") or "采集期间代码输入未保持一致，请重新验收")
+    return receipt
 
 
 def observation_source(project, artifact, alias):
@@ -229,7 +255,8 @@ def observation_source(project, artifact, alias):
     return regular(current), relative.as_posix()
 
 
-def observe(workspace, project_root, artifact, *, action, scenario, stamp, actor, actual, environment, level, passed=True):
+def observe(workspace, project_root, artifact, *, action, scenario, stamp, actor, actual, environment, level, passed=True,
+            code_paths=None):
     """Archive the observer's actual file and statement. A file does not establish its own meaning."""
     require(level in ("人工核对","真实环境"), "人工观察证据类型无效")
     require(type(passed) is bool, "观察结果必须明确为通过或失败")
@@ -242,6 +269,7 @@ def observe(workspace, project_root, artifact, *, action, scenario, stamp, actor
         require(parts[0] not in ("evidence","model.json","handbook.html",".workflow.lock"),
                 "不能将当前需求的数据或历史回执作为新观察附件")
     receipt = binding(workspace, action, scenario, stamp, actor, environment)
+    receipt["code_inputs"] = code_inputs.snapshot(project, code_paths)
     root = storage(workspace, create=True)
     suffix = source.suffix.lower()
     filename = "artifact" + (suffix if re.fullmatch(r"\.[a-z0-9]{1,12}",suffix) else ".bin")
@@ -256,7 +284,11 @@ def observe(workspace, project_root, artifact, *, action, scenario, stamp, actor
             after = os.fstat(stream.fileno())
             require(before.st_size == after.st_size and before.st_mtime_ns == after.st_mtime_ns
                     and target.tell() == before.st_size, "采集期间观察附件发生变化")
-        receipt.update(kind="observe", level=level, passed=passed, actual=actual, exit_code=None, source=relative)
+        unchanged, change_reason = check_after_capture(project, receipt["code_inputs"], code_paths)
+        if not unchanged:
+            actual += "\n" + change_reason
+        receipt.update(kind="observe", level=level, passed=passed and unchanged, actual=actual, exit_code=None, source=relative,
+                       code_inputs_unchanged=unchanged, code_inputs_error=change_reason)
         return publish(root, staged, receipt, filename)
 
 
@@ -301,6 +333,9 @@ def validate(workspace, receipt, *, action, scenario, stamp):
         if receipt["kind"] == "run":
             require(type(receipt["exit_code"]) is int, "命令退出码无效")
             effective = receipt["exit_code"] == 0 and bool(log_excerpt(file))
+            if "code_inputs" in receipt:
+                require(type(receipt.get("code_inputs_unchanged")) is bool, "缺少代码输入采集结果")
+                effective = effective and receipt["code_inputs_unchanged"]
             require(receipt["passed"] == effective, "命令退出码、实际日志与记录的结果不一致")
         else:
             require(size > 0 and receipt["actual"].strip(), "观察附件或观察结果缺失")
