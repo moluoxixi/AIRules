@@ -2,7 +2,6 @@
 import json
 from pathlib import Path
 import re
-import shutil
 import subprocess
 import sys
 import tempfile
@@ -170,7 +169,7 @@ class CodeInputsTest(unittest.TestCase):
         self.assertEqual(self.queue()["state"], "complete")
         clone = self.base / "same-app"
         self.git("clone", "-q", str(child), str(clone))
-        shutil.rmtree(child)
+        child.rename(self.base / "original-app")
         clone.rename(child)
         self.assertEqual(self.queue()["state"], "complete")
         (child / "service.py").write_text("value = 'BROKEN'\n")

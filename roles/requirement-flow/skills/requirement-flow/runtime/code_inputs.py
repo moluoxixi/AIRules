@@ -4,6 +4,7 @@ Git's index selects files; their working-tree bytes, not HEAD/index blobs, are
 hashed. Explicit paths also include ignored files. Requirement records and Git
 metadata never become inputs to their own receipts.
 """
+import errno
 import hashlib
 import json
 import os
@@ -85,8 +86,10 @@ def snapshot(project_root, code_paths=None):
         name = relative.as_posix()
         try:
             parent = path.parent.resolve()
-        except RuntimeError as exc:
-            raise ValueError("代码输入的父路径形成循环：" + name) from exc
+        except (OSError, RuntimeError) as exc:
+            if isinstance(exc, RuntimeError) or exc.errno == errno.ELOOP:
+                raise ValueError("代码输入的父路径形成循环：" + name) from exc
+            raise
         require(path == project or parent == project or project in parent.parents,
                 "代码输入经过项目外部链接：" + name)
         if path != project:
@@ -96,6 +99,12 @@ def snapshot(project_root, code_paths=None):
         except FileNotFoundError:
             records[(name, "missing")] = []
             return
+        except OSError as exc:
+            # Newer pathlib can leave a loop unresolved in non-strict mode;
+            # the real filesystem operation then reports the same cycle.
+            if exc.errno == errno.ELOOP:
+                raise ValueError("代码输入的父路径形成循环：" + name) from exc
+            raise
         if linked(info):
             try:
                 target = path.resolve(strict=True)
