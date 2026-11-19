@@ -133,16 +133,22 @@ def existing(paths, key):
     for name in ("model.json", "handbook.html", ".workflow.lock"):
         if engine.evidence.linked(path / name):
             raise ValueError(f"需求数据不能使用符号链接：{path / name}")
+    if not (path / "model.json").is_file():
+        raise ValueError(f"缺少可读取的需求模型：{key}")
     return path
 
 
-def summary(path):
+def task_report(path):
     model = engine.load(path / "model.json")
     engine.validate(model)
     work = model["work"]
     if work["id"] != unicodedata.normalize("NFC", path.name):
         raise ValueError(f"需求 ID 与目录不一致：{work['id']} / {path.name}")
-    queue = engine.dispatch(work, workspace=path, include_lessons=False)
+    return work, engine.dispatch(work, workspace=path, include_lessons=False)
+
+
+def summary(path):
+    work, queue = task_report(path)
     return {
         "id": work["id"], "title": work["title"], "outcome": work.get("outcome", "delivery"),
         "revision": work["revision"], "state": queue["state"], "progress": queue["progress"],
@@ -184,22 +190,52 @@ def retire_lesson(store, args):
         emit(record)
 
 
-def list_tasks(store):
+def inventory(store, reader):
+    local_directory(store)
     result = {"active":[], "archive":[]}
     if store.exists():
         with project_lock(store):
             for bucket, entries in result.items():
-                folder = local_directory(store / bucket)
-                if not folder.exists():
+                try:
+                    folder = local_directory(store / bucket)
+                    paths = sorted(folder.iterdir()) if folder.exists() else []
+                except (ValueError, OSError) as error:
+                    entries.append({"id":bucket, "error":str(error)})
                     continue
-                for path in sorted(folder.iterdir()):
+                for path in paths:
                     if path.name.startswith(".") or not (path.is_dir() or path.is_symlink()):
                         continue
                     try:
-                        entries.append(summary(existing(locations(store, identifier(path.name)), path.name)))
-                    except (ValueError, OSError, KeyError, TypeError, argparse.ArgumentTypeError) as error:
+                        entries.append(reader(existing(locations(store, identifier(path.name)), path.name)))
+                    except (ValueError, OSError, KeyError, TypeError, AttributeError, IndexError, RecursionError, argparse.ArgumentTypeError) as error:
                         entries.append({"id":path.name, "error":str(error)})
-    emit(result)
+    return result
+
+
+@contextmanager
+def catalog_task(store, name):
+    try:
+        key = identifier(name)
+    except argparse.ArgumentTypeError as error:
+        raise ValueError("无效的需求 ID") from error
+    with ExitStack() as lease:
+        with project_lock(store):
+            local_directory(store)
+            path = existing(locations(store, key), key)
+            lease.enter_context(project_lock(store, key))
+        yield key, path
+
+
+def serve_catalog(store, args):
+    import catalog_server
+    with project_lock(store, ".project-viewer"):
+        if args.default_task:
+            with catalog_task(store, args.default_task):
+                pass
+        cache = catalog_server.CardReader(task_report)
+        catalog_server.serve(store.parent, args.port, args.source_root, args.default_task,
+                            inventory=lambda: inventory(store, cache),
+                            open_task=lambda name: catalog_task(store, name))
 
 
 def create(store, args):
@@ -222,6 +258,7 @@ def upgrade(project, migrate=False):
     with installation_lock(project), project_lock(store, exclusive=True), ExitStack() as locks:
         if not safe_path(project, MANIFEST).is_file():
             raise ValueError("尚未安装 requirement-flow，请先运行 init。")
+        locks.enter_context(project_lock(store, ".project-viewer", exclusive=True, nonblocking=True))
         pages = {}
         active = local_directory(store / "active")
         for folder in sorted(active.iterdir()) if active.exists() else ():
@@ -370,6 +407,10 @@ def main():
     init.add_argument("--migrate", action="store_true", help="迁移已有项目编排配置")
     commands.add_parser("upgrade", help="从此版本升级项目技能并刷新进行中需求图，保留历史归档")
     commands.add_parser("list", help="查看项目的进行中与已归档需求")
+    viewer = commands.add_parser("serve", help="在本地查看项目内的全部需求")
+    viewer.add_argument("--port", type=int, default=0, help="本机端口，默认自动分配")
+    viewer.add_argument("--source-root", type=Path, help="定位来源文件的本项目工作树")
+    viewer.add_argument("--default-task", type=identifier, help="旧图链接指向的需求 ID")
     lessons = commands.add_parser("lessons", help="查看本项目经审查且依据仍有效的经验")
     lessons.add_argument("--all", action="store_true", help="同时列出待审、退役及需要重新核验的经验")
     retire = commands.add_parser("lesson-retire", help="在项目经验库退役一个已批准版本，可用于归档需求")
@@ -396,7 +437,9 @@ def main():
         return
     store = local_directory(project / ".requirements")
     if args.command == "list":
-        list_tasks(store)
+        emit(inventory(store, summary))
+    elif args.command == "serve":
+        serve_catalog(store, args)
     elif args.command == "lessons":
         list_lessons(store,args.all)
     elif args.command == "lesson-retire":

@@ -14,7 +14,7 @@ python3 roles/requirement-flow/skills/requirement-flow/flow.py --project /path/t
 
 升级已有项目时，从更新后的 AIRules 分发目录运行 `python3 roles/requirement-flow/skills/requirement-flow/flow.py --project /path/to/project upgrade`。使用用户级安装时，先更新该安装，再从其 skill 目录运行同一条 `upgrade`。关闭该项目正在运行的需求图服务，升级后可沿用原端口重启。已有项目重复执行新版 `init` 也会走升级流程。
 
-升级校验受管文件，并将新技能与进行中需求的离线页面一起更新。安装清单记录角色版本；命令列出实际刷新的需求 ID。原始模型、回执、项目规则和归档快照均保留。旧契约中的接口地址可以直接展开，共用字段保留在契约层。按来源补齐接口用途与各自的请求、响应后，可在接口行查看。通过 `plan` 修改契约会触发相关场景复核。
+升级校验受管文件，并将新技能与进行中需求的离线页面一起更新。安装清单记录角色版本；命令列出实际刷新的需求 ID。原始模型、回执、项目规则和归档快照均保留。将已有单需求端口改作项目首页时，用 `serve --port <原端口> --default-task <原需求ID>` 启动，旧收藏和已打开的图页仍能找到原需求。旧契约中的接口地址可以直接展开，共用字段保留在契约层。按来源补齐接口用途与各自的请求、响应后，可在接口行查看。通过 `plan` 修改契约会触发相关场景复核。
 
 现有 Moluoxixi 项目需显式加 `--migrate`，旧 Codex 入口备份在 `.requirements/migrations/moluoxixi/`，原任务、独立 skill、其他 hooks 和项目规则保留。
 
@@ -41,10 +41,12 @@ FLOW=.agents/skills/requirement-flow/flow.py
 python3 "$FLOW" list
 python3 "$FLOW" new plan-search --request '门店人员可以按名称查找方案'
 python3 "$FLOW" task plan-search next --actor developer
-python3 "$FLOW" task plan-search serve
+python3 "$FLOW" serve
 ```
 
-`serve` 输出本机 URL，支持筛选、查看处理与证据、登记业务决定。离线可打开 `.requirements/active/plan-search/handbook.html`；AI 可读同目录 `model.json`，或用 `task plan-search context <故事ID>` 只读取一个功能。
+`serve` 输出项目需求中心的本机 URL。可以搜索需求、切换进行中和归档，在卡片上查看已有证据支持的进度。点击卡片进入需求图，点左上角「需求中心」回到刚才浏览的位置。需要专门打开一张图时，使用 `task plan-search serve`。离线可打开 `.requirements/active/plan-search/handbook.html`；AI 可读同目录 `model.json`，或用 `task plan-search context <故事ID>` 只读取一个功能。
+
+有验收场景的卡片按「有有效通过证据的场景数 / 当前场景数」计算。仅调研且没有场景的需求按调研项计量。迁移的历史记录缺少可复核的验收证据时显示「历史记录待复验」。进入归档卡片可只读查阅原始记录。
 
 图页默认以 100% 展示功能卡和各自的验收进度。点「筛选功能」可搜索或多选，收起浮层后仍保留筛选范围。选择功能或切换「实现链路」，可以沿连线查看接口、处理、业务决定和验证记录。右上角的锁控制滚轮与双指缩放，初始锁定；锁定时仍可平移、手动加减。点击百分比恢复原大小，点击「适应画布」查看当前图的全貌。
 
@@ -53,7 +55,7 @@ python3 "$FLOW" task plan-search serve
 “涉及文件与依据”提供 WebStorm、VS Code 和复制引用入口。复制到 Codex 或 Claude 对话的引用包含已定位工作树的完整路径和原始行号。离线页面或缺少文件时，复制的是项目相对引用。代码和需求图在不同 worktree 时，可在启动图服务时指定代码所在的同仓库检出。
 
 ```bash
-python3 .agents/skills/requirement-flow/flow.py task plan-search serve --source-root /path/to/project-worktree
+python3 .agents/skills/requirement-flow/flow.py serve --source-root /path/to/project-worktree
 ```
 
 ## 验收与归档

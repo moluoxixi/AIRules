@@ -1,8 +1,23 @@
 ;(() => {
   'use strict'
   const $ = id => document.getElementById(id)
-  const { model, states, impacts, graph: fullGraph, csrf, queue, lesson_version: lessonVersion, source_labels: sourceLabels = {} } = JSON.parse($('data').textContent)
+  const { model, states, impacts, graph: fullGraph, csrf, queue, read_only: readOnly, lesson_version: lessonVersion, source_labels: sourceLabels = {} } = JSON.parse($('data').textContent)
   const { work, protocol } = model
+  const projectView = Boolean(csrf && /^\/tasks\/[^/]+\/$/u.test(location.pathname))
+  if (projectView) {
+    const home = $('catalog-home')
+    home.hidden = false
+    $('edition-kind').textContent = readOnly ? '已归档' : '需求全景图'
+    try {
+      const saved = JSON.parse(sessionStorage.getItem('requirement-flow:catalog-return'))
+      if (saved?.task === work.id) {
+        const from = new URL(saved.url, location.origin)
+        if (from.origin === location.origin && from.pathname === '/')
+          home.href = from.pathname + from.search
+      }
+    }
+    catch { /* The directory remains accessible with browser storage disabled. */ }
+  }
   const research = work.outcome === 'research'
   const evidenceKind = research ? '调研' : '验证'
   const map = $('map')
@@ -28,7 +43,20 @@
   const chipButtons = new Map()
   const decisionNotes = new Map()
   const restored = csrf && history.state?.flowReader
-  const resume = restored?.work === work.id && restored.url === location.href ? restored : null
+  function savedReading() {
+    if (restored?.work !== work.id)
+      return null
+    if (restored.url === location.href)
+      return restored
+    if (projectView) {
+      const suffix = location.search + location.hash
+      const previousPaths = ['/', '/handbook.html']
+      if (previousPaths.some(path => restored.url === location.origin + path + suffix))
+        return restored
+    }
+    return null
+  }
+  const resume = savedReading()
   let confirmingSession = Boolean(resume)
   let updatePending = false
   let reloading = false
@@ -39,14 +67,14 @@
   let visibleActions = new Set()
   let visibleStories = []
   let scoped = false
-  const canvasPaper = '#f8f8f4'
+  const canvasPaper = '#f3f6f4'
   const styles = {
-    request: { fill: '#193c4a', stroke: '#193c4a', title: '#fffdf5', text: '#cce4e2', icon: '#9ad4c5' },
-    story: { fill: '#edf3f9', stroke: '#718b9f', title: '#1c3d57', text: '#425d70', icon: '#395f81' },
+    request: { fill: '#163e38', stroke: '#163e38', title: '#fafcf9', text: '#d0e9df', icon: '#a4dbad' },
+    story: { fill: '#f3f7fb', stroke: '#8ca6b5', title: '#1c3d57', text: '#425d70', icon: '#395f81' },
     decision: { fill: '#fbf2e1', stroke: '#a6814e', title: '#603e1c', text: '#765734', icon: '#855624' },
-    contract: { fill: '#e7f3ed', stroke: '#668c80', title: '#174a45', text: '#385f57', icon: '#246d61' },
+    contract: { fill: '#eaf5ed', stroke: '#668c80', title: '#174a45', text: '#385f57', icon: '#246d61' },
     research: { fill: '#eaf3f2', stroke: '#668a88', title: '#244b50', text: '#446065', icon: '#346a6c' },
-    develop: { fill: '#eff2f3', stroke: '#7d8d96', title: '#293e4c', text: '#4d5f69', icon: '#4d6675' },
+    develop: { fill: '#f9faf8', stroke: '#7d8d96', title: '#293e4c', text: '#4d5f69', icon: '#4d6675' },
     verify: { fill: '#f2edf7', stroke: '#907d9b', title: '#493852', text: '#67546e', icon: '#795b87' },
     delivery: { fill: '#e8eeeb', stroke: '#738981', title: '#304a43', text: '#486358', icon: '#4c6a60' },
   }
@@ -65,9 +93,9 @@
     delivery: 'M2 5h12v8H2zM1 2.5h14V5H1zM6 8h4',
   }
   const lineColors = {
-    normal: '#65808a',
+    normal: '#708981',
     story: '#6484a0',
-    done: '#537e70',
+    done: '#56836c',
     possible: '#a16c2d',
     chosen: '#83531e',
     skipped: '#7c8986',
@@ -1295,7 +1323,7 @@
       drawSourceReader(entry)
       let status
       try {
-        const reply = await fetch(`/source-location?${new URLSearchParams({ ref })}`, {
+        const reply = await fetch(`./source-location?${new URLSearchParams({ ref })}`, {
           headers: { 'X-Requirement-Flow': csrf },
           cache: 'no-store',
           redirect: 'error',
@@ -1661,7 +1689,7 @@
     }
     if (csrf) {
       const query = new URLSearchParams({ task: card.task, lesson: card.id, version: card.version, receipt: source.receipt })
-      sourceLink(row, '查看原始场景与证据', `/lesson-source?${query}`)
+      sourceLink(row, '查看原始场景与证据', `./lesson-source?${query}`)
       return
     }
     if (!/^[\p{L}\p{N}][\p{L}\p{N}_-]*$/u.test(card.task) || !['active', 'archive'].includes(card.bucket))
@@ -1762,7 +1790,7 @@
       const path = receipt.artifact?.path
       if (typeof path === 'string' && /^evidence\/[\da-f]{32}\/(?:output\.log|artifact(?:\.[\w-]+)?)$/u.test(path)) {
         const link = html('a', item, '下载证据文件', 'link-button')
-        link.href = csrf ? `/evidence/${encodeURIComponent(receipt.id)}` : `./${path}`
+        link.href = csrf ? `./evidence/${encodeURIComponent(receipt.id)}` : `./${path}`
         link.download = path.split('/').pop()
       }
     }
@@ -1882,10 +1910,10 @@
         )
       }
     }
-    if (csrf) {
+    if (csrf && !readOnly) {
       const form = html('form', parent)
       form.method = 'post'
-      form.action = `/decision${filterQuery()}`
+      form.action = `./decision${filterQuery()}`
       if (resume?.confirmDecision === key)
         html('p', form, '已读取最新版，请核对选项后再次确认决定。', 'dim').setAttribute('role', 'status')
       form.addEventListener('submit', (event) => {
@@ -1917,7 +1945,7 @@
       }
     }
     else {
-      html('p', parent, '离线图保留当时的记录。可在本机协作页或聊天中登记决定。', 'dim')
+      html('p', parent, readOnly ? '这个需求已归档。此处可查阅当时的决定和依据。' : '离线图保留当时的记录。可在本机协作页或聊天中登记决定。', 'dim')
     }
     events(
       parent,
@@ -2477,7 +2505,7 @@
       if (document.hidden)
         return
       try {
-        const res = await fetch('/version', { headers: { 'X-Requirement-Flow': csrf }, cache: 'no-store', redirect: 'error' })
+        const res = await fetch('./version', { headers: { 'X-Requirement-Flow': csrf }, cache: 'no-store', redirect: 'error' })
         if (!res.ok)
           return
         const current = await res.json()
@@ -2668,7 +2696,7 @@
       for (const id of ids) contextParams.append('story', id)
     }
     const contextQuery = contextParams.toString()
-    ai.href = contextQuery ? `/context?${contextQuery}` : 'model.json'
+    ai.href = contextQuery ? `./context?${contextQuery}` : 'model.json'
     ai.title = contextQuery ? '读取当前功能的 AI 记录' : '读取完整需求的 AI 记录'
     if (changeUrl)
       recordHash(filterUrl().href)

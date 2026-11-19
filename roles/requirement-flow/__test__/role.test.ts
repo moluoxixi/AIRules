@@ -1,5 +1,5 @@
 import { execFileSync, spawnSync } from 'node:child_process'
-import { appendFileSync, cpSync, existsSync, mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from 'node:fs'
+import { appendFileSync, cpSync, existsSync, mkdirSync, mkdtempSync, readdirSync, readFileSync, rmSync, writeFileSync } from 'node:fs'
 import os from 'node:os'
 import path from 'node:path'
 import { fileURLToPath } from 'node:url'
@@ -112,16 +112,17 @@ it('installs the Codex role and upgrades its shared program without replacing ei
   }
 }, 60_000)
 
-// This invocation runs the entire Python suite, including real CLI processes on each host.
-const pythonSuiteTimeout = 5 * 60_000
+// Time each module independently on native runners. Adding another suite must
+// not consume the time available to existing CLI and browser-server regressions.
+const pythonModules = readdirSync(tests).filter(name => /^test_.*\.py$/u.test(name)).sort()
+const moduleTimeout = 5 * 60_000
 
-it('runs the project and runtime Python regressions in the repository test suite', () => {
-  expect(existsSync(path.join(tests, 'test_flow.py'))).toBe(true)
+it.each(pythonModules)('runs the Python regressions in %s', (name) => {
   const py = python()
-  execFileSync(py.command, [...py.prefix, '-m', 'unittest', 'discover', '-s', tests, '-p', 'test_*.py'], {
+  execFileSync(py.command, [...py.prefix, '-m', 'unittest', 'discover', '-s', tests, '-p', name], {
     cwd: repo,
     env: { ...process.env, PYTHONUTF8: '1', PYTHONDONTWRITEBYTECODE: '1' },
     stdio: 'pipe',
-    timeout: pythonSuiteTimeout,
+    timeout: moduleTimeout,
   })
-}, pythonSuiteTimeout + 5_000)
+}, moduleTimeout + 5_000)
