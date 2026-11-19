@@ -353,6 +353,21 @@ def verified_receipt(workspace, event, stamp):
     return manifest
 
 
+def local_diagnostic(error, project):
+    """Make fresh diagnostic paths portable without changing signed historical fields."""
+    root = str(project).rstrip("/\\")
+    prefixes = {root + separator for separator in ("/", "\\")}
+    # OSError formats filenames with repr(), including escaped Windows separators.
+    prefixes.update(repr(prefix)[1:-1] for prefix in tuple(prefixes))
+    message = str(error)
+    for prefix in sorted(prefixes, key=len, reverse=True):
+        message = message.replace(prefix, "")
+    if root:
+        for spelling in sorted({root, repr(root)[1:-1]}, key=len, reverse=True):
+            message = re.sub(r"(?<![\w/\\.-])" + re.escape(spelling) + r"(?=$|[\s'\"),;:!?，。；：！？\]}])", ".", message)
+    return message
+
+
 def inspect_proof(workspace, event, action_id, scenario, action_stamp, scenario_stamp, accepts, replays,
                   code_paths=None, input_cache=None):
     if not event:
@@ -368,21 +383,21 @@ def inspect_proof(workspace, event, action_id, scenario, action_stamp, scenario_
     stamp = proof_stamp(action_stamp,scenario_stamp,event["id"],event["revision"])
     if event.get("stamp") != action_stamp or event.get("scenario_stamp") != scenario_stamp:
         return {"status":"stale", "reason":"场景、输入或前置产出已改变，需要重新采集", "receipt":summary}
+    store = Path(workspace).parent.parent
+    project = store.parent if store.name == ".requirements" else Path.cwd()
     try:
         manifest = verified_receipt(workspace,event,stamp)
     except (KeyError, OSError, TypeError, ValueError) as error:
-        return {"status":"stale", "invalid_receipt":True, "reason":"凭据产物核验失败：" + str(error), "receipt":summary}
+        return {"status":"stale", "invalid_receipt":True, "reason":"凭据产物核验失败：" + local_diagnostic(error,project), "receipt":summary}
     summary.update({key:manifest[key] for key in ("kind","actor","level","environment","passed","artifact")})
     summary["actual"] = manifest["actual"][:500]
     if manifest["kind"] == "run":
         summary["argv"] = manifest["argv"]
         summary["exit_code"] = manifest["exit_code"]
-    store = Path(workspace).parent.parent
-    project = store.parent if store.name == ".requirements" else Path.cwd()
     try:
         evidence.validate_current_inputs(manifest, project, code_paths, cache=input_cache)
     except (OSError, ValueError) as error:
-        return {"status":"stale", "reason":str(error), "receipt":summary}
+        return {"status":"stale", "reason":local_diagnostic(error,project), "receipt":summary}
     if accepts and manifest["level"] not in accepts:
         return {"status":"stale","invalid_receipt":True,"reason":"凭据类型不符合本动作的验收要求","receipt":summary}
     if not manifest["passed"]:
@@ -452,7 +467,9 @@ def evaluate(w, workspace=None):
             try:
                 review_receipts(w,action,workspace)
             except (OSError,ValueError,KeyError,TypeError) as error:
-                review_error = str(error)
+                store = Path(workspace).parent.parent
+                project = store.parent if store.name == ".requirements" else Path.cwd()
+                review_error = local_diagnostic(error,project)
                 blockers.append({"kind":"review_evidence","id":key})
         contracts = dict.fromkeys([*action["contracts"], *action.get("closes_contracts", [])])
         if action["kind"] != "调研":
@@ -841,7 +858,7 @@ def materialize_reviews(w, actor, story=None):
 
 def lesson_context(work, workspace, stories, packet=None, *, for_map=False):
     events = knowledge.adoption_events(work, stories)
-    hits = knowledge.memory_hits(workspace, knowledge.query_contexts(work, stories, None))
+    hits = {} if for_map else knowledge.memory_hits(workspace, knowledge.query_contexts(work, stories, None))
     keys = set(hits) | {knowledge.card_key(event["origin"]) for event in events}
     cards = knowledge.project_cards(workspace, sys.modules[__name__], current_work=work, relevant_to=work,
                                     stories=stories, include_keys=keys)
@@ -911,6 +928,9 @@ def dispatch(w, actor="AI", story=None, *, workspace=None, include_lessons=True,
     review_ready = next((key for key in ready if w["actions"][key].get("review_for")), None)
     next_key = own or review_ready or next(iter(ready),None)
     packet = action_packet(w, states, next_key, "resume" if own else "start", workspace) if next_key else None
+    if packet is not None and for_map:
+        # Versioned pages travel between worktrees; execution context belongs to live packets.
+        packet.pop("verification_project_root", None)
     if packet is not None and include_lessons:
         packet = source_paths.SourcePaths.for_task(workspace or TASK_DIR).reading_context(packet)
     scenarios = scenario_report(w, states, selected)
