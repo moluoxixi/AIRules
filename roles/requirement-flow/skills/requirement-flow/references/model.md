@@ -105,6 +105,7 @@ python3 "$FLOW" task store-picker lesson-propose lesson.json --rev "$REV" --acto
 python3 "$FLOW" task store-picker lesson-review L-page-search approve --version 1 --rev "$REV" --actor reviewer --why '已复核查询与断言，首屏过滤时会漏搜'
 python3 "$FLOW" lessons
 python3 "$FLOW" task inspection-route next --story S-route-stop
+python3 "$FLOW" task inspection-route lesson-adopt store-picker L-page-search --version 1 --story S-route-stop --why '路线选店也使用分页目录，回归增加首屏之外的匹配门店。' --actor developer --rev "$REV"
 ```
 
 `lessons` 返回本项目有效的已批准经验，`--all` 一并列出各版本、待审、驳回、待复核、替代和退役记录。模型中的 `lesson_cards` 与审查事件保存原始提案和版本，`lessons[]` 保留旧版笔记。项目清单从进行中和归档需求一起读取。项目级退役决定保存在 `.requirements/knowledge/retired/`，可在来源归档后执行：
@@ -112,6 +113,8 @@ python3 "$FLOW" task inspection-route next --story S-route-stop
 ```bash
 python3 "$FLOW" lesson-retire store-picker L-page-search --version 1 --actor reviewer --why '门店目录已取消分页'
 ```
+
+采用命令使用目标需求的当前版次。历史采用保留当时的理由、执行者和来源版本，可从目标故事打开来源场景与回执。
 
 修改同卡后重新提案；新版本批准前，原有有效版本仍可使用。跨需求以新经验取代旧结论时，提案增加 `supersedes`，写原卡的 `task`、`id` 和 `version`。来源失效或结论被取代后，下次读取会更新推荐。功能图沿经验可打开来源场景和原始附件，离线页保留生成时的状态。
 

@@ -32,8 +32,9 @@ class CatalogServerTest(unittest.TestCase):
         self.assertNotEqual(r.returncode, 0, r.stdout)
         return r.stderr
 
-    def start(self, *options):
-        server = subprocess.Popen(self.cli + ["serve", *options], cwd=self.project,
+    def start(self, *options, task=None):
+        command = ["task", task, "serve"] if task else ["serve"]
+        server = subprocess.Popen(self.cli + [*command, *options], cwd=self.project,
                                   stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True)
         def close():
             server.terminate()
@@ -139,6 +140,52 @@ class CatalogServerTest(unittest.TestCase):
         self.assertEqual(self.fetch(a + "decision", form={**form,"revision":"3"})[0], 405)
         self.assertEqual(self.cards()[names[0]]["bucket"], "archive")
         self.assertEqual(files, {p.name:p.read_bytes() for p in folder.iterdir() if p.is_file()})
+
+    def test_single_task_root_keeps_legacy_routes_and_opens_the_project_home(self):
+        for task in ("chosen", "other"):
+            self.command("new", task, "--request", "验收" + task)
+        decision = {"title": "提交方式", "why": "需明确", "owner": "运营", "stories": [],
+                    "options": {"save": {"label": "保存", "consequence": "保留草稿"},
+                                "send": {"label": "提交", "consequence": "提交审核"}}}
+        (self.project / "plan.json").write_text(json.dumps({"decisions": {"D": decision}}))
+        self.command("task", "chosen", "plan", "plan.json", "--rev", "1", "--why", "明确提交方式")
+        self.start(task="chosen")
+        graph = self.graph("/")
+        self.assertEqual(graph["model"]["work"]["id"], "chosen")
+        self.assertEqual(self.graph("/handbook.html?view=detail")["home_href"], "/home")
+        self.assertEqual(json.loads(self.fetch("/model.json")[2])["work"]["id"], "chosen")
+        self.assertEqual(json.loads(self.fetch("/dispatch")[2])["revision"], 2)
+        status, headers, _ = self.fetch("/decision", form={"csrf": graph["csrf"], "decision": "D",
+                                                           "choice": "save", "revision": "2"})
+        self.assertEqual((status, headers.get("Location")), (303, "/#work"))
+        status, _, home = self.fetch("/home?scope=active")
+        self.assertEqual(status, 200)
+        self.assertIn(b'id="catalog-data"', home)
+        cards = self.cards()
+        self.assertEqual(set(cards), {"chosen", "other"})
+        second = self.graph(cards["other"]["href"])
+        self.assertEqual((second["model"]["work"]["id"], second["home_href"]), ("other", "/home"))
+        self.assertNotEqual(self.graph("/")["csrf"], second["csrf"])
+
+    def test_offline_snapshot_links_only_to_a_project_local_index(self):
+        self.command("new", "demo", "--request", "独立图")
+        workspace = self.store / "active" / "demo"
+        def home():
+            page = (workspace / "handbook.html").read_bytes()
+            payload = json.loads(re.search(rb'<script type="application/json" id="data">(.+?)</script>', page)[1])
+            return payload.get("home_href")
+        self.assertIsNone(home())
+        index = self.store / "index.html"
+        index.write_text("<title>项目需求首页</title>", encoding="utf-8")
+        self.command("task", "demo")
+        self.assertEqual(home(), "../../index.html")
+        index.unlink()
+        if os.name != "nt":
+            outside = self.project.parent / "outside.html"
+            outside.write_text("unrelated", encoding="utf-8")
+            index.symlink_to(outside)
+        self.command("task", "demo")
+        self.assertIsNone(home())
 
     def test_research_and_revoked_receipts_show_current_progress(self):
         self.command("new", "research", "--request", "确认可用接口", "--outcome", "research")

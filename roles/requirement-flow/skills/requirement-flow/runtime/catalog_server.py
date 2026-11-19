@@ -9,7 +9,10 @@ import secrets
 from threading import Lock
 from urllib.parse import parse_qs, quote, unquote, urlsplit
 
-import sync as engine
+if __package__:
+    from . import sync as engine
+else:
+    import sync as engine
 
 
 def task_href(key):
@@ -86,17 +89,20 @@ def catalog_data(project, groups, default_task):
     return {"project":name, "tasks":tasks, "defaultHref":task_href(default_task) if default_task else None}
 
 
-def serve(project, port, source_root, default_task, *, inventory, open_task):
+def serve(project, port, source_root, default_task, *, inventory, open_task, task_at_root=False):
     if not 0 <= port <= 65535:
         raise ValueError("端口应在 0 至 65535 之间。")
     checkout_root = engine.source_paths.select_source_root(project, source_root)
     template = (engine.RUNTIME / "catalog.html").read_text(encoding="utf-8")
+    for marker, asset in (("@@THEME@@", "theme.css"), ("@@TOOLTIP@@", "tooltip.js")):
+        template = template.replace(marker, (engine.RUNTIME / asset).read_text(encoding="utf-8"))
     signing_key = secrets.token_bytes(32)
     legacy_reads = {"/version","/source-location","/context","/dispatch","/model.json","/lesson-source","/lesson-evidence"}
 
     class ProjectHandler(engine.TaskHandler):
         checkout = checkout_root
         timeout = 15
+        home_href = "/home" if task_at_root else "/"
 
         def redirect(self, target):
             self.send_response(302)
@@ -138,7 +144,7 @@ def serve(project, port, source_root, default_task, *, inventory, open_task):
                 self.send_error(403)
                 return
             url = urlsplit(self.path)
-            if not write and url.path in ("/","/catalog.json"):
+            if not write and url.path in (self.home_href, "/catalog.json"):
                 self.show_catalog(url)
                 return
             match = re.fullmatch(r"/tasks/([^/]+)(/.*)?", url.path)
@@ -149,6 +155,8 @@ def serve(project, port, source_root, default_task, *, inventory, open_task):
                     self.send_error(404)
                     return
                 endpoint = match[2]
+            elif task_at_root and not write and url.path in ("/", "/handbook.html"):
+                key, endpoint = default_task, "/"
             elif default_task and not write and url.path == "/handbook.html":
                 self.resume_legacy_page()
                 return
@@ -165,7 +173,7 @@ def serve(project, port, source_root, default_task, *, inventory, open_task):
                 except (ValueError, OSError):
                     self.send_error(404)
                     return
-                self.task_prefix = task_href(self.task_id)
+                self.task_prefix = "/" if task_at_root and not match else task_href(self.task_id)
                 if endpoint in (None, "/handbook.html"):
                     if write:
                         self.send_error(404)

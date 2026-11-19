@@ -246,6 +246,92 @@ describe.skipIf(!executablePath)('generated handbook interactions in Chromium', 
     }
   }
 
+  it('embeds readable node colors and a canvas background in standalone SVG exports', async () => {
+    const page = await open(390, 700, '?view=detail')
+    try {
+      const svg = await page.evaluate(async () => {
+        const download = new Promise((resolve) => {
+          HTMLAnchorElement.prototype.click = function () {
+            resolve(this.href)
+          }
+        })
+        document.getElementById('export').click()
+        const doc = new DOMParser().parseFromString(await (await fetch(await download)).text(), 'image/svg+xml')
+        const luminance = (hex) => {
+          const light = hex.slice(1).match(/../gu).map((value) => {
+            const srgb = Number.parseInt(value, 16) / 255
+            return srgb <= 0.04045 ? srgb / 12.92 : ((srgb + 0.055) / 1.055) ** 2.4
+          })
+          return light[0] * 0.2126 + light[1] * 0.7152 + light[2] * 0.0722
+        }
+        const nodes = [...doc.querySelectorAll('.map-node')]
+        const titleContrast = nodes.map((node) => {
+          const a = luminance(node.querySelector('.outline').getAttribute('fill'))
+          const b = luminance(node.querySelector('.n-title').getAttribute('fill'))
+          return (Math.max(a, b) + 0.05) / (Math.min(a, b) + 0.05)
+        })
+        const background = doc.querySelector('svg > rect').getAttribute('fill')
+        return { count: nodes.length, minContrast: Math.min(...titleContrast), background: luminance(background) }
+      })
+      expect(svg.count).toBeGreaterThan(5)
+      expect(svg.minContrast).toBeGreaterThanOrEqual(4.5)
+      expect(svg.background).toBeLessThan(0.08)
+    }
+    finally {
+      await page.close()
+    }
+  })
+
+  it('follows a retired adoption to its original receipt and returns to the open reading position', async () => {
+    const root = mkdtempSync(path.join(tmpdir(), 'airules-adoption-reader-'))
+    const page = await browser.newPage()
+    let server
+    try {
+      // Use the shared CLI fixtures so this includes the actual evidence authorization and retirement.
+      const setup = [
+        'from pathlib import Path',
+        'import sys',
+        'from test_knowledge_flow import Project, SOURCE, TARGET, LESSON, SEARCH',
+        'p = Project(Path(sys.argv[1]))',
+        'p.prepare_review()',
+        'p.review()',
+        'p.write(TARGET, "lesson-adopt", SOURCE, LESSON, "--version", 1, "--story", SEARCH, "--why", "路线中包含第二页的门店")',
+        'p.cli("lesson-retire", SOURCE, LESSON, "--version", 1, "--actor", "审查员", "--why", "原接口已退役")',
+      ].join('\n')
+      execFileSync(python, [...pythonArgs.slice(0, -1), '-c', setup, root], {
+        cwd: fileURLToPath(new URL('.', import.meta.url)),
+      })
+      server = await startServer(root, 'serve', '--port', '0')
+      const graph = new URL('tasks/inspection-route/?view=overview&features=S-route-stop#node=S-route-stop', server.address).href
+      await page.setViewport({ width: 390, height: 700 })
+      await page.goto(graph)
+      await drawerReady(page)
+      const group = '#detail details.lesson-group'
+      await page.click(`${group} > summary`)
+      expect(await visibleDetail(page)).toContain('采用理由')
+      expect(await visibleDetail(page)).toContain('路线中包含第二页的门店')
+      expect(await visibleDetail(page)).toContain('已退役')
+      expect(await visibleDetail(page)).not.toContain('推荐经验')
+      const evidence = '.lesson-evidence-link'
+      const href = new URL(await page.$eval(evidence, node => node.href))
+      expect(href.searchParams.get('approval')).toMatch(/^[a-f0-9]{64}$/u)
+      await Promise.all([page.waitForNavigation(), page.click(evidence)])
+      expect(await page.$eval('header a[aria-label="首页"]', node => new URL(node.href).pathname)).toBe('/')
+      expect(await page.$eval('.download', node => node.href)).toContain('lesson-evidence')
+      const bytes = await page.$eval('.download', async node => (await fetch(node.href)).text())
+      expect(bytes).toContain('test_store_on_later_page')
+      await Promise.all([page.waitForNavigation(), page.click('#return-map')])
+      await drawerReady(page)
+      expect(page.url()).toBe(graph)
+      expect(await page.$eval(group, node => node.open)).toBe(true)
+    }
+    finally {
+      await page.close()
+      await server?.stop()
+      rmSync(root, { recursive: true, force: true })
+    }
+  }, 30_000)
+
   describe('project requirement catalog', () => {
     const archived = '历史草案'
     const archivedTitle = '目录检索旧规范'
@@ -281,6 +367,85 @@ describe.skipIf(!executablePath)('generated handbook interactions in Chromium', 
     async function follow(page, selector) {
       await Promise.all([page.waitForNavigation({ waitUntil: 'domcontentloaded' }), page.click(selector)])
     }
+
+    it('fits compact requirement cards to the viewport with a readable meter and a full-card target', async () => {
+      const page = await browser.newPage()
+      try {
+        await page.goto(server.address)
+        await waitForCards(page, ['plan', unplanned, archived, research])
+        for (const [width, expectedColumns] of [[1440, 5], [1200, 4], [960, 3], [665, 2], [390, 1], [320, 1]]) {
+          await page.setViewport({ width, height: 820 })
+          const metrics = await page.$eval('article[data-task-id="plan"]', (card) => {
+            card.scrollIntoView({ block: 'center' })
+            const bounds = card.getBoundingClientRect()
+            const corner = document.elementFromPoint(bounds.left + 5, bounds.bottom - 5)
+            const title = card.querySelector('h3')
+            const meter = card.querySelector('progress')
+            return {
+              columns: getComputedStyle(card.parentElement).gridTemplateColumns.split(' ').length,
+              height: bounds.height,
+              titleSize: Number.parseFloat(getComputedStyle(title).fontSize),
+              meterHeight: meter.getBoundingClientRect().height,
+              target: corner?.closest('a') === title.querySelector('a'),
+              overflow: document.documentElement.scrollWidth - innerWidth,
+            }
+          })
+          expect(metrics.columns).toBe(expectedColumns)
+          expect(metrics.height).toBeLessThanOrEqual(82)
+          expect(metrics.titleSize).toBeGreaterThanOrEqual(15)
+          expect(metrics.meterHeight).toBeGreaterThanOrEqual(4)
+          expect(metrics.target).toBe(true)
+          expect(metrics.overflow).toBe(0)
+        }
+        await page.hover(linkFor(unplanned))
+        await page.waitForSelector('#card-tooltip:not([hidden])')
+        expect(await page.$eval('#card-tooltip strong', tip => tip.textContent)).toBe(longTitle)
+      }
+      finally {
+        await page.close()
+      }
+    })
+
+    it('previews card details with mouse or keyboard and opens the same information on a touch screen', async () => {
+      const page = await browser.newPage()
+      const tip = '#card-tooltip:not([hidden])'
+      try {
+        await page.setViewport({ width: 665, height: 623 })
+        await page.goto(server.address)
+        const card = linkFor('plan')
+        await page.hover(card)
+        await page.waitForSelector(tip)
+        expect(await page.$eval(tip, el => el.textContent)).toContain('已验 2 / 11 个场景')
+        expect(await page.$eval(tip, el => el.textContent)).toContain('涉及功能')
+        const fits = await page.$eval(tip, (el) => {
+          const r = el.getBoundingClientRect()
+          return r.left >= 0 && r.top >= 0 && r.right <= innerWidth && r.bottom <= innerHeight
+        })
+        expect(fits).toBe(true)
+        await page.keyboard.press('Escape')
+        await page.waitForSelector(tip, { hidden: true })
+        await page.keyboard.press('Tab')
+        await page.focus(card)
+        await page.waitForSelector(tip)
+        expect(await page.$eval(card, el => el.getAttribute('aria-describedby'))).toBe('card-tooltip')
+        await page.keyboard.press('Escape')
+        await page.waitForSelector(tip, { hidden: true })
+        await page.setViewport({ width: 390, height: 720, hasTouch: true })
+        await Promise.all([page.waitForNavigation(), page.tap(card)])
+        await drawerReady(page)
+        expect(await visibleDetail(page)).toContain('已验 2 / 11 个场景')
+        expect(await visibleDetail(page)).toContain('涉及功能')
+        await follow(page, '#inspector .drawer-home')
+        await waitForCards(page, [archived, unplanned, 'plan', research])
+        await page.click('button[data-scope="archive"]')
+        await follow(page, '#catalog-home')
+        expect(new URL(page.url()).search).toBe('')
+        await waitForCards(page, [archived, unplanned, 'plan', research])
+      }
+      finally {
+        await page.close()
+      }
+    })
 
     it('lists active and archived requirements with only currently verifiable scenario progress', async () => {
       const page = await browser.newPage()
@@ -322,7 +487,8 @@ describe.skipIf(!executablePath)('generated handbook interactions in Chromium', 
         await page.click('button[data-scope="archive"]')
         await waitForCards(page, [archived])
         await waitForFilterLink(page, 'scope', 'archive')
-        await page.setViewport({ width: 375, height: 430, hasTouch: true })
+        // The on-screen keyboard leaves a short scrolling viewport even with compact cards.
+        await page.setViewport({ width: 375, height: 300, hasTouch: true })
         await page.$eval(linkFor(archived), link => link.scrollIntoView({ block: 'center' }))
         const scroll = await page.evaluate(() => scrollY)
         expect(scroll).toBeGreaterThan(0)
@@ -336,7 +502,8 @@ describe.skipIf(!executablePath)('generated handbook interactions in Chromium', 
         await waitForCards(page, [archived])
         expect(page.url()).toBe(filteredUrl)
         await follow(page, linkFor(archived))
-        await follow(page, '#catalog-home')
+        expect(await page.$eval('#catalog-home', a => a.pathname + a.search)).toBe('/')
+        await follow(page, '#catalog-return')
         await waitForCards(page, [archived])
         expect(page.url()).toBe(filteredUrl)
         await page.waitForFunction(y => Math.abs(scrollY - y) < 2, { timeout: 3_000 }, scroll)
@@ -470,6 +637,39 @@ describe.skipIf(!executablePath)('generated handbook interactions in Chromium', 
     })
   })
 
+  it('keeps graph captions in a keyboard-accessible tooltip and closes it before opening the drawer', async () => {
+    const page = await open(665, 623, '?view=overview&features=S-4')
+    const node = '[data-node="S-4"]'
+    const tip = '#card-tooltip:not([hidden])'
+    try {
+      await page.hover(node)
+      await page.waitForSelector(tip)
+      const body = await page.$eval(tip, el => el.textContent)
+      expect(body).toContain('跨页选择门店类型后统一确认')
+      expect(await page.$eval(node, el => el.textContent)).not.toContain('跨页选择门店类型后统一确认')
+      await page.keyboard.press('Escape')
+      await page.waitForSelector(tip, { hidden: true })
+      const bounds = await (await page.$(node)).boundingBox()
+      await page.mouse.move(bounds.x + 20, bounds.y + 10)
+      await page.mouse.down()
+      await page.mouse.move(bounds.x + 48, bounds.y + 18, { steps: 4 })
+      expect(await page.$(tip)).toBeNull()
+      await page.mouse.up()
+      await page.mouse.move(0, 0)
+      await page.$eval('[data-node="@request"]', group => group.focus())
+      await page.keyboard.press('Tab')
+      expect(await page.evaluate(() => document.activeElement.getAttribute('data-node'))).toBe('S-4')
+      await page.waitForSelector(tip)
+      await page.keyboard.press('Enter')
+      await drawerReady(page)
+      expect(await page.$(tip)).toBeNull()
+      expect(await visibleDetail(page)).toContain('跨页选择门店类型后统一确认')
+    }
+    finally {
+      await page.close()
+    }
+  })
+
   it('starts with readable cards and protects zoom from mouse, trackpad and touch gestures', async () => {
     const page = await open(476, 623)
     try {
@@ -483,6 +683,13 @@ describe.skipIf(!executablePath)('generated handbook interactions in Chromium', 
         })
       })
       expect(storyVisibleAtReadingSize).toBe(true)
+      const box = await page.$eval('[data-node="S-4"]', (node) => {
+        const card = node.querySelector('.outline').getBBox()
+        return [card.width, card.height, Number(node.querySelector('.n-title').getAttribute('font-size'))]
+      })
+      expect(box[0]).toBeLessThanOrEqual(175)
+      expect(box[1]).toBeLessThanOrEqual(66)
+      expect(box[2]).toBeGreaterThanOrEqual(15)
       const controls = await page.evaluate(() => {
         const canvas = document.querySelector('#map').getBoundingClientRect()
         const lock = document.querySelector('#zoom-lock').getBoundingClientRect()

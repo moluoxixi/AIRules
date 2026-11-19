@@ -1,16 +1,19 @@
 """Reviewed project lessons, derived from task records and their live evidence."""
 import copy
 from collections import OrderedDict
+from functools import lru_cache
 from pathlib import Path
 import re
 from threading import Lock
 import unicodedata
 
 if __package__:
+    from . import basic_memory
     from .evidence import linked
     from .source_paths import SourcePaths
     from .lesson_retirement import read_retirement
 else:
+    import basic_memory
     from evidence import linked
     from source_paths import SourcePaths
     from lesson_retirement import read_retirement
@@ -302,17 +305,63 @@ def match_info(card, contexts):
     return sum(reasons.values()), matched_stories, list(reasons)
 
 
-def match_cards(work, cards, *, stories=None, action=None, limit=5):
+def card_key(card):
+    return (card["task"], card["id"], card.get("version"))
+
+
+def memory_hits(workspace, contexts):
+    """Keep the search engine's identity and query scope. The task ledger supplies all displayed facts."""
+    store = Path(workspace).parent.parent
+    hits = {}
+    if store.name != ".requirements":
+        return hits
+    for story, corpus, _, _ in contexts:
+        if not corpus.strip():
+            continue
+        try:
+            candidates = basic_memory.search(store, corpus)
+        except (OSError, ValueError, RuntimeError):
+            continue
+        for rank, hit in enumerate(candidates):
+            if not isinstance(hit, dict) or not all(text(hit.get(k)) for k in ("task", "id")) or type(hit.get("version")) is not int:
+                continue
+            key = card_key(hit)
+            reason = hit.get("reason") if text(hit.get("reason")) else "Basic Memory 命中该需求的经验笔记"
+            hits.setdefault(key, {}).setdefault(story, (rank, reason))
+    return hits
+
+
+def match_cards(work, cards, *, stories=None, action=None, limit=5, hits=None):
     contexts = query_contexts(work, stories, action)
     matches = []
     for card in cards:
         if card["task"] == work["id"] or card["state"] != "approved":
             continue
         score, matched_stories, reasons = match_info(card, contexts)
+        story_hits = (hits or {}).get(card_key(card), {})
+        relevant = [sid for sid, *_ in contexts if sid in story_hits]
+        if relevant:
+            reasons.extend(dict.fromkeys(story_hits[sid][1] for sid in relevant))
+            matched_stories = list(dict.fromkeys([*matched_stories, *(sid for sid in relevant if sid is not None)]))
+            # The index orders FTS results by relevance; keep this ordering within each structural score.
+            score += 2 + 1 / (1 + min(story_hits[sid][0] for sid in relevant))
         if score:
             matches.append((score, {**card, "matched_stories": matched_stories, "match_reasons": reasons}))
     matches.sort(key=lambda row: (-row[0], row[1]["task"], row[1]["id"]))
     return [card for _, card in matches[:limit]]
+
+
+@lru_cache(maxsize=32)
+def read_source_model(path, stamp, engine):
+    """Cache ledger parsing only. Evidence files, source aliases and retirements are rechecked on every read."""
+    model = engine.load(path)
+    work = model["work"]
+    if not isinstance(work, dict) or not work.get("lesson_cards"):
+        if stamp == fingerprint(path):
+            remember_empty(path, stamp)
+        return None
+    versions = engine.validate(model)
+    return work, versions
 
 
 def load_tasks(store, workspace, current_work, engine):
@@ -334,28 +383,26 @@ def load_tasks(store, workspace, current_work, engine):
         try:
             if folder == workspace and current_work is not None:
                 work = current_work
+                if not work.get("lesson_cards"):
+                    continue
+                versions = validate_cards(work, engine)
             else:
                 model_file = model_file.absolute()
                 stamp = fingerprint(model_file)
                 if known_empty(model_file, stamp):
                     continue
-                model = engine.load(model_file)
-                work = model["work"]
-                if not isinstance(work, dict):
+                record = read_source_model(model_file, stamp, engine)
+                if record is None:
                     continue
-                if not work.get("lesson_cards"):
-                    if task == work.get("id") and stamp == fingerprint(model_file):
-                        remember_empty(model_file, stamp)
-                    continue
-                engine.validate(model)
-            if task == work["id"] and work.get("lesson_cards"):
-                yield folder, work, validate_cards(work, engine)
+                work, versions = record
+            if task == work["id"]:
+                yield folder, work, versions
         except (OSError, ValueError, TypeError, KeyError, IndexError, AttributeError):
             # Invalid unrelated or concurrently archived records cannot enter the catalogue.
             continue
 
 
-def project_cards(workspace, engine, *, current_work=None, relevant_to=None, stories=None, action=None):
+def project_cards(workspace, engine, *, current_work=None, relevant_to=None, stories=None, action=None, include_keys=()):
     """Build the project projection from current and archived tasks; no duplicated approval ledger."""
     workspace = Path(workspace)
     store = workspace if workspace.name == ".requirements" else workspace.parent.parent
@@ -366,7 +413,7 @@ def project_cards(workspace, engine, *, current_work=None, relevant_to=None, sto
     paths = None
     for folder, work, versions in load_tasks(store, workspace, current_work, engine):
         # A later rejection/retirement of the replacement cannot resurrect its predecessor.
-        published = {}
+        published, approvals, retired = {}, {}, {}
         for event in work["events"]:
             if event["kind"] == "lesson-propose":
                 key, version = event["lesson"], event["card"]["version"]
@@ -375,6 +422,8 @@ def project_cards(workspace, engine, *, current_work=None, relevant_to=None, sto
                     replacements[work["id"], key, version - 1] = {"task": work["id"], "id": key, "version": version}
             elif event["kind"] == "lesson-review" and event["verdict"] == "approve":
                 key, version = event["lesson"], event["version"]
+                approvals[key, version] = (engine.digest(event), {
+                    "event": event["id"], "actor": event["actor"], "reason": event["reason"], "at": event.get("time")})
                 successor = {"task": work["id"], "id": key, "version": version}
                 if key in published:
                     replacements[work["id"], key, published[key]] = successor
@@ -382,14 +431,23 @@ def project_cards(workspace, engine, *, current_work=None, relevant_to=None, sto
                 ref = versions[key, version].get("supersedes")
                 if ref:
                     replacements[ref["task"], ref["id"], ref["version"]] = successor
+            elif event["kind"] == "lesson-review" and event["verdict"] == "retire":
+                retired[event["lesson"], event["version"]] = {
+                    "actor": event["actor"], "reason": event["reason"], "at": event.get("time")}
         cases = None
         for row in versions.values():
-            if contexts is not None and work["id"] != relevant_to["id"]:
+            identity = (work["id"], row["id"], row["version"])
+            if contexts is not None and work["id"] != relevant_to["id"] and identity not in include_keys:
                 if row["state"] != "approved" or not match_info(row, contexts)[0]:
                     continue
             if cases is None:
                 cases = case_index(work, folder, engine)
             item = live_row(row, work, cases, folder.parent.name)
+            edition = (row["id"], row["version"])
+            if edition in approvals:
+                item["approval_digest"], item["approval"] = approvals[edition]
+            if edition in retired:
+                item["retirement"] = retired[edition]
             if paths is None:
                 paths = SourcePaths(store)
             for source in item["sources"]:
@@ -411,3 +469,64 @@ def project_cards(workspace, engine, *, current_work=None, relevant_to=None, sto
         if replacement:
             item.update(state="superseded", replaced_by=replacement)
     return sorted(results, key=lambda item: (item["task"], item["id"], item["version"]))
+
+
+def adoption_events(work, stories=()):
+    return [event for event in work["events"] if event["kind"] == "lesson-adopt"
+            and (not stories or event["story"] in stories)]
+
+
+def validate_adoptions(work, engine):
+    seen = set()
+    for event in adoption_events(work):
+        ref = event["origin"]
+        engine.expect(event["story"] in work["stories"] and text(event["actor"]) and text(event["reason"])
+                      and text(event["time"]), "经验采用缺少故事、署名、时间或理由")
+        engine.expect(text(ref["task"]) and ref["task"] != work["id"] and text(ref["id"])
+                      and type(ref["version"]) is int and ref["version"] > 0
+                      and re.fullmatch(r"[0-9a-f]{64}", ref["approval_digest"]), "经验采用需要锁定来源及审查版本")
+        engine.expect(all(text(ref.get(k)) for k in FIELDS), "经验采用缺少原始做法或边界")
+        sources = ref.get("sources")
+        engine.expect(isinstance(sources, list) and sources and all(
+            isinstance(source, dict) and all(text(source.get(k)) for k in REF) for source in sources),
+            "经验采用需要保留原场景及回执编号")
+        key = (event["story"], *card_key(ref))
+        engine.expect(key not in seen, "同一故事重复采用经验版本")
+        seen.add(key)
+
+
+def adopt(work, workspace, story, task, lesson, version, reason, actor, engine):
+    engine.expect(story in work["stories"] and text(reason) and text(actor), "请选择已有故事并填写采用理由和执行人")
+    task = unicodedata.normalize("NFC", task)
+    key = (task, lesson, version)
+    previous = next((e for e in adoption_events(work, {story}) if card_key(e["origin"]) == key), None)
+    if previous:
+        engine.expect(previous["actor"] == actor.strip() and previous["reason"] == reason.strip(),
+                      "此故事已经记录该版本的采用理由，请查阅原决定")
+        return False
+    engine.expect(task != work["id"] and version > 0, "请选择其他需求中已批准的具体经验版本")
+    cards = project_cards(workspace, engine, current_work=work, relevant_to=work, stories={story}, include_keys={key})
+    card = next((c for c in cards if card_key(c) == key), None)
+    engine.expect(card and card["state"] == "approved", "来源经验尚未批准、已失效或已退役，请重新查阅")
+    # Store the adopted conclusion and immutable proof IDs, so a missing origin never erases the decision.
+    origin = {k: card[k] for k in ("task", "task_title", "id", "version", "approval_digest", "approval", *FIELDS)}
+    origin["sources"] = [{k: source[k] for k in REF} for source in card["sources"]]
+    work["revision"] += 1
+    engine.append_event(work, "lesson-adopt", actor.strip(), story=story, reason=reason.strip(), origin=origin)
+    return True
+
+
+def adopted_cards(events, cards):
+    ledger = {card_key(c): c for c in cards}
+    history = []
+    for event in events:
+        ref = event["origin"]
+        current = ledger.get(card_key(ref))
+        if current and current.get("approval_digest") == ref["approval_digest"]:
+            card = current
+        else:
+            card = {**ref, "state": "missing", "issues": ["当前工作树缺少采用时的原始审查版本"],
+                    "sources": [{**s, "valid": False} for s in ref["sources"]]}
+        history.append({**card, "adoption": {"story": event["story"], "actor": event["actor"],
+                                             "reason": event["reason"], "at": event["time"]}})
+    return history

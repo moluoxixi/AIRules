@@ -219,12 +219,15 @@ def make_graph(work, states, scenarios):
 
 def lesson_version(queue):
     cards = [queue.get("lesson_cards", []), queue.get("related_lessons", [])]
+    # An empty adoption ledger hashes exactly as pre-0.8 snapshots did.
+    if queue.get("adopted_lessons"):
+        cards.append(queue["adopted_lessons"])
     return hashlib.sha256(json.dumps(cards, sort_keys=True, ensure_ascii=False).encode()).hexdigest()
 
 
-def lesson_source_page(card, source, download_url):
+def lesson_source_page(card, source, download_url, home_href=None):
     proof = source["proof"]
-    review = card.get("review") or {}
+    review = card.get("approval") or card.get("review") or {}
     def rows(pairs):
         return "".join("<dt>" + escape(label) + "</dt><dd>" + escape(str(value)) + "</dd>"
                        for label, value in pairs if value is not None and value != "")
@@ -241,30 +244,69 @@ def lesson_source_page(card, source, download_url):
     review_info = rows([("经验版本", f"{card['id']} · v{card['version']}"),
                         ("适用条件", card["when"]), ("做法", card["practice"]), ("边界", card["boundary"]),
                         ("审查人", review.get("actor")), ("审查意见", review.get("reason"))])
+    home_link = f'<a href="{escape(home_href, quote=True)}" aria-label="首页">首页</a>' if home_href else ""
+    return_script = """<script>
+const back = document.getElementById('return-map')
+const from = new URLSearchParams(location.hash.slice(1))
+const drawer = from.get('drawer')
+if (drawer && drawer.startsWith('#node=')) {
+  const url = new URL('./', location.href)
+  url.search = from.get('view') || ''
+  url.hash = drawer
+  back.href = url.href
+  if (document.referrer) {
+    const previous = new URL(document.referrer)
+    if (previous.origin === url.origin && previous.pathname === url.pathname && previous.search === url.search) {
+      back.addEventListener('click', event => {
+        if (!event.ctrlKey && !event.metaKey && !event.shiftKey && !event.altKey && history.length > 1) {
+          event.preventDefault()
+          history.back()
+        }
+      })
+    }
+  }
+}
+</script>"""
     return f"""<!doctype html><html lang="zh-CN"><meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1"><title>经验来源 · {escape(source["scenario"])}</title>
-<style>body{{margin:0;background:#f2f6f8;color:#203d50;font:16px/1.55 system-ui,sans-serif}}main{{max-width:750px;margin:auto;padding:32px 20px 60px}}
-h1{{font-size:1.8rem;margin:16px 0 24px}}section{{padding:18px 22px;background:white;border:1px solid #cddbe3;border-radius:10px;margin:16px 0}}
-h2{{font-size:1.15rem;margin:0 0 14px}}dl{{display:grid;grid-template-columns:minmax(4.7em,auto) 1fr;gap:8px 16px;margin:0}}
-dt{{color:#526b79}}dd{{margin:0;overflow-wrap:anywhere}}pre{{white-space:pre-wrap;overflow-wrap:anywhere;background:#f1f5f7;padding:12px}}
-a{{color:#176269}}.download{{display:inline-block;margin-top:10px}}</style><main>
-<a href="./">返回当前需求图</a><h1>{escape(card["observation"])}</h1>
+<style>{Path(__file__).with_name("theme.css").read_text("utf-8")}
+*{{box-sizing:border-box}}body{{margin:0;background:var(--paper);color:var(--ink);font:16px/1.6 var(--ui)}}
+main{{max-width:780px;margin:auto;padding:32px clamp(16px,4vw,32px) 60px}}
+h1{{font-size:clamp(1.35rem,3.5vw,2rem);line-height:1.4;margin:20px 0 24px}}
+section{{padding:clamp(15px,3vw,24px);background:var(--surface);border:1px solid var(--line);border-radius:12px;margin:16px 0}}
+h2{{font-size:1.1rem;margin:0 0 14px}}dl{{display:grid;grid-template-columns:minmax(4.7em,auto) minmax(0,1fr);gap:8px 16px;margin:0}}
+dt{{color:var(--muted)}}dd{{margin:0;overflow-wrap:anywhere;color:var(--text)}}
+pre{{white-space:pre-wrap;overflow-wrap:anywhere;background:var(--paper);padding:12px;border-radius:6px;font:.86rem/1.65 var(--mono)}}
+a{{color:var(--accent);text-underline-offset:3px}}a:focus-visible{{outline:2px solid var(--focus-ring);outline-offset:3px}}
+nav{{display:flex;gap:16px;align-items:center}}.download{{display:inline-block;margin-top:10px}}</style><main>
+<header><nav>{home_link}<a id="return-map" href="./">← 返回需求详情</a></nav></header><h1>{escape(card["observation"])}</h1>
 <section><h2>来源场景</h2><dl>{context}</dl></section>
 <section><h2>实际证据</h2><dl>{receipt}</dl><pre>{escape(proof["actual"])}</pre>
 <a class="download" href="{escape(download_url, quote=True)}" download>下载原始证据</a></section>
-<section><h2>经验与审查</h2><dl>{review_info}</dl></section></main></html>"""
+<section><h2>经验与审查</h2><dl>{review_info}</dl></section></main>{return_script}</html>"""
 
 
-def render(model, states, impacts, token, checksum, template, *, queue, source_labels=None, read_only=False):
+def render(model, states, impacts, token, checksum, template, *, queue, source_labels=None, read_only=False, home_href=None):
     work = model["work"]
     graph = make_graph(work, states, queue.get("scenarios", []))
     for node in graph["nodes"]:
         if node["kind"] == "story":
             count = sum(node["id"] in card["matched_stories"] for card in queue.get("related_lessons", []))
-            if count:
-                node["sharedNote"] = f"{count} 条相关项目经验"
+            adopted = sum(node["id"] == card["adoption"]["story"] for card in queue.get("adopted_lessons", []))
+            if adopted:
+                node["sharedNote"] = f"已采用 {adopted} 条经验"
+            elif count:
+                node["sharedNote"] = f"推荐 {count} 条经验"
     payload = dict(model=model, states=states, impacts=impacts, graph=graph, csrf=token, queue=queue,
                    lesson_version=lesson_version(queue))
+    if __package__:
+        from . import catalog_server
+    else:
+        import catalog_server
+    card = catalog_server.task_card(work, queue)
+    card.pop("href", None)
+    payload["catalog_card"] = dict(card, bucket="archive" if read_only else "active")
+    payload["home_href"] = home_href
     if read_only:
         payload["read_only"] = True
     if source_labels:
@@ -274,8 +316,10 @@ def render(model, states, impacts, token, checksum, template, *, queue, source_l
     substitutions = {
         "TITLE": escape(work["title"],quote=True), "KIND":escape(work["kind"],quote=True),
         "VERSION": str(work["revision"]), "DIGEST":checksum, "DATA":safe_json,
+        "TOOLTIP":(here/"tooltip.js").read_text("utf-8"),
+        "THEME":(here/"theme.css").read_text("utf-8"),
         "DAGRE":(here/"dagre.min.js").read_text("utf-8"),
         "SCRIPT":(here/"map.js").read_text("utf-8"),
     }
-    return re.sub(r"@@(TITLE|KIND|VERSION|DIGEST|DATA|DAGRE|SCRIPT)@@",
+    return re.sub(r"@@(TITLE|KIND|VERSION|DIGEST|DATA|THEME|TOOLTIP|DAGRE|SCRIPT)@@",
                   lambda match: substitutions[match.group(1)], Path(template).read_text("utf-8"))
