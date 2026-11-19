@@ -67,20 +67,21 @@
   let visibleActions = new Set()
   let visibleStories = []
   let scoped = false
-  const canvasPaper = '#f3f6f4'
+  // Keep explicit SVG paints so an exported diagram renders identically outside this page.
+  const canvasPaper = '#111319'
   const styles = {
-    request: { fill: '#163e38', stroke: '#163e38', title: '#fafcf9', text: '#d0e9df', icon: '#a4dbad' },
-    story: { fill: '#f3f7fb', stroke: '#8ca6b5', title: '#1c3d57', text: '#425d70', icon: '#395f81' },
-    decision: { fill: '#fbf2e1', stroke: '#a6814e', title: '#603e1c', text: '#765734', icon: '#855624' },
-    contract: { fill: '#eaf5ed', stroke: '#668c80', title: '#174a45', text: '#385f57', icon: '#246d61' },
-    research: { fill: '#eaf3f2', stroke: '#668a88', title: '#244b50', text: '#446065', icon: '#346a6c' },
-    develop: { fill: '#f9faf8', stroke: '#7d8d96', title: '#293e4c', text: '#4d5f69', icon: '#4d6675' },
-    verify: { fill: '#f2edf7', stroke: '#907d9b', title: '#493852', text: '#67546e', icon: '#795b87' },
-    delivery: { fill: '#e8eeeb', stroke: '#738981', title: '#304a43', text: '#486358', icon: '#4c6a60' },
+    request: { fill: '#33291f', stroke: '#ad8259', title: '#fff1de', text: '#f0d3b2', icon: '#ffc184' },
+    story: { fill: '#202632', stroke: '#616f88', title: '#eaf1ff', text: '#b9c7df', icon: '#a4c7ff' },
+    decision: { fill: '#302820', stroke: '#94744d', title: '#f9e0bb', text: '#d4bfa4', icon: '#ffc184' },
+    contract: { fill: '#1d2b2c', stroke: '#577d79', title: '#e3f5ed', text: '#b2cec2', icon: '#8cdebb' },
+    research: { fill: '#1f2a30', stroke: '#587786', title: '#e1edf4', text: '#b3c9d1', icon: '#9ed1db' },
+    develop: { fill: '#22262e', stroke: '#626e82', title: '#f0f1f4', text: '#bec6d4', icon: '#bbc9dc' },
+    verify: { fill: '#2a2632', stroke: '#7d7191', title: '#f2e8fc', text: '#ccbdda', icon: '#ccb2ea' },
+    delivery: { fill: '#212a26', stroke: '#677c6e', title: '#edf4ed', text: '#bdcec1', icon: '#a8d5b7' },
   }
   const statusColors = {
-    passed: { fill: '#d8ebdd', ink: '#24593a' },
-    pending: { fill: '#f8e8c9', ink: '#714b17' },
+    passed: { fill: '#294337', ink: '#a1e7bd' },
+    pending: { fill: '#4a3826', ink: '#ffd29f' },
   }
   const glyph = {
     request: 'M2 8h5m0 0c3 0 1-5 5-5h2M7 8c3 0 1 5 5 5h2',
@@ -93,12 +94,12 @@
     delivery: 'M2 5h12v8H2zM1 2.5h14V5H1zM6 8h4',
   }
   const lineColors = {
-    normal: '#708981',
-    story: '#6484a0',
-    done: '#56836c',
-    possible: '#a16c2d',
-    chosen: '#83531e',
-    skipped: '#7c8986',
+    normal: '#818b9d',
+    story: '#8ca1c5',
+    done: '#8ab69f',
+    possible: '#b08b68',
+    chosen: '#ffc184',
+    skipped: '#7b8390',
   }
   const activeName = {
     ready: '可推进',
@@ -167,13 +168,13 @@
     boxes.clear()
     for (const n of nodes.values()) {
       const size = n.kind === 'request' ? 17 : n.mono ? 14 : 15.5
-      const inset = n.kind === 'decision' ? 23 : 14
+      const inset = n.kind === 'decision' ? 22 : 12
       // Cards keep a consistent reading width at each zoom.
-      const width = n.kind === 'request' ? 228 : isOverview() ? 198 : n.kind === 'decision' ? 238 : 216
+      const width = n.kind === 'request' ? 216 : isOverview() ? 168 : n.kind === 'decision' ? 224 : 194
       const labels = linesOf(n.title, width - 2 * inset, 2, size, 680, n.mono)
       const caps = linesOf(n.caption, width - 2 * inset, 1, 11.7, 450)
       const shared = linesOf(n.sharedNote, width - 2 * inset, 1, 11.2, 600)
-      const height = Math.max(isOverview() ? 74 : 78, 36 + 18 * labels.length + (caps.length ? 14 : 0) + (shared.length ? 17 : 0))
+      const height = Math.max(isOverview() ? 62 : 66, 30 + 18 * labels.length + (caps.length ? 14 : 0) + (shared.length ? 17 : 0))
       boxes.set(n.id, { width, height, size, inset, labels, caps, shared })
     }
     layouts.clear()
@@ -457,8 +458,8 @@
   function overviewLayout() {
     const rootBox = boxes.get('@request')
     const cardWidth = boxes.get(visibleStories[0]).width
-    const pitch = cardWidth + 34
-    const columns = Math.min(visibleStories.length, Math.max(1, Math.min(3, Math.floor((boxSize.w - 8) / pitch))))
+    const pitch = cardWidth + 26
+    const columns = Math.min(visibleStories.length, Math.max(1, Math.min(5, Math.floor((boxSize.w - 8) / pitch))))
     const width = Math.max(rootBox.width + 24, columns * pitch + 6)
     const root = { x: width / 2, y: 12 + rootBox.height / 2 }
     const positions = new Map([['@request', root]])
@@ -478,7 +479,7 @@
         const end = x + (left ? 1 : -1) * b.width / 2
         branches.push({ y, end, rail: columns === 2 ? root.x : end - 15 })
       })
-      top += rowHeight + 14
+      top += rowHeight + 12
     }
     return { dir: 'TB', width, height: top, positions, branches }
   }
@@ -529,7 +530,7 @@
     svg('title', {}, g, [n.title, n.state, n.caption, n.sharedNote].filter(Boolean).join(' · '))
     const x = -b.width / 2
     const y = -b.height / 2
-    const groupColor = n.activity === 'active' ? '#28746a' : c.stroke
+    const groupColor = n.activity === 'active' ? '#8cdebb' : c.stroke
     const shape = {
       'fill': c.fill,
       'stroke': groupColor,
@@ -653,7 +654,7 @@
         svg('rect', { x: right - width + 4, y: y + 5, width, height: 18, rx: 5, fill: badge.fill }, g)
       }
       if (n.activity === 'active')
-        svg('circle', { cx: right - widthOf(n.state, 10.5, 600) - 6, cy: y + 14.6, r: 2.5, fill: '#28746a' }, g)
+        svg('circle', { cx: right - widthOf(n.state, 10.5, 600) - 6, cy: y + 14.6, r: 2.5, fill: '#8cdebb' }, g)
       const ink = badge?.ink || (n.activity === 'done' ? statusColors.passed.ink : c.text)
       svg(
         'text',
@@ -669,7 +670,7 @@
         'text',
         {
           'x': lineX,
-          'y': y + 39 + i * 18,
+          'y': y + 36 + i * 18,
           'class': `n-title${n.mono ? ' mono' : ''}`,
           'fill': c.title,
           'font-size': b.size,
@@ -684,7 +685,7 @@
         'text',
         {
           'x': lineX,
-          'y': y + 39 + b.labels.length * 18 - 2 + i * 14,
+          'y': y + 36 + b.labels.length * 18 - 2 + i * 14,
           'fill': c.text,
           'font-size': 11.7,
           'text-anchor': center ? 'middle' : 'start',
@@ -1664,7 +1665,7 @@
     }
   }
   const proofLevels = { 自动化: '自动化测试', 人工核对: '人工核对', 真实环境: '真实环境' }
-  const lessonStates = { pending: '待审查', approved: '已通过', rejected: '已驳回', revised: '草案已修订', retired: '已退役', superseded: '已替代', stale: '需复核' }
+  const lessonStates = { pending: '待审查', approved: '已通过', rejected: '已驳回', revised: '草案已修订', retired: '已退役', superseded: '已替代', stale: '需复核', missing: '来源暂不可用' }
   function sourceLink(parent, title, url) {
     const link = html('a', parent, title, 'link-button')
     link.href = url
@@ -1672,8 +1673,25 @@
   }
   function showLessonSource(parent, card, source) {
     const proof = source.proof
-    const row = disclosure(parent, `${source.scenario} · ${source.story_title}`)
-    pairs(row, [
+    const sourceTitle = [source.story_title || source.story, source.scenario].filter(Boolean).join(' · ')
+    const row = html('div', parent, null, 'lesson-origin')
+    html('span', row, sourceTitle, 'dim')
+    if (!source.valid) {
+      html('p', row, '原始依据当前需复核。', 'dim')
+      return
+    }
+    if (csrf) {
+      const query = new URLSearchParams({ task: card.task, lesson: card.id, version: card.version, receipt: source.receipt })
+      if (card.approval_digest)
+        query.set('approval', card.approval_digest)
+      const from = new URLSearchParams({ view: location.search, drawer: location.hash })
+      const evidence = sourceLink(row, '查看原始场景与证据', `./lesson-source?${query}#${from}`)
+      evidence.classList.add('lesson-evidence-link')
+      evidence.addEventListener('click', () => rememberDrawer(evidence))
+      return
+    }
+    const context = disclosure(row, '来源场景与验证记录')
+    pairs(context, [
       ['来源需求', card.task_title],
       ['给定', source.given],
       ['当', source.when],
@@ -1682,16 +1700,7 @@
       ['环境', proof?.environment],
       ['实际记录', proof?.actual],
     ])
-    showSources(row, source.current_basis, '来源文件', {})
-    if (!source.valid) {
-      html('p', row, '原始依据当前需复核。', 'dim')
-      return
-    }
-    if (csrf) {
-      const query = new URLSearchParams({ task: card.task, lesson: card.id, version: card.version, receipt: source.receipt })
-      sourceLink(row, '查看原始场景与证据', `./lesson-source?${query}`)
-      return
-    }
+    showSources(context, source.current_basis, '来源文件', {})
     if (!/^[\p{L}\p{N}][\p{L}\p{N}_-]*$/u.test(card.task) || !['active', 'archive'].includes(card.bucket))
       return
     const buckets = card.bucket === 'active' ? ['active', 'archive'] : ['archive']
@@ -1705,35 +1714,64 @@
     }
   }
   function showLessons(parent, storyIds, { all = false } = {}) {
-    const own = (queue.lesson_cards || []).filter(card => all || card.sources.some(source => storyIds.includes(source.story)))
-    const related = (queue.related_lessons || []).filter(card => all || card.matched_stories.some(id => storyIds.includes(id)))
-    for (const [title, cards] of [['相关项目经验', related], ['本需求的经验', own]]) {
+    const inScope = id => all || storyIds.includes(id)
+    const adopted = (queue.adopted_lessons || []).filter(card => inScope(card.adoption.story))
+    const own = (queue.lesson_cards || []).filter(card => all || card.sources.some(source => inScope(source.story)))
+    const related = (queue.related_lessons || []).filter((card) => {
+      if (!card.matched_stories.length)
+        return all
+      return card.matched_stories.some(id => inScope(id) && !adopted.some(used =>
+        used.task === card.task && used.id === card.id && used.version === card.version
+        && used.approval_digest === card.approval_digest && used.adoption.story === id))
+    })
+    for (const [title, cards] of [['已采用的经验', adopted], ['推荐经验', related], ['本需求的经验', own]]) {
       if (!cards.length)
         continue
       const group = disclosure(parent, `${title}（${cards.length}）`)
+      group.classList.add('lesson-group')
       if (!csrf)
-        html('p', group, `需求 v${work.revision} 的离线快照。来源依据的状态记录于生成此页时。`, 'dim')
+        html('p', group, `离线快照 · 需求 v${work.revision}，来源状态以生成时间为准。`, 'dim')
       for (const card of cards) {
-        const item = html('div', group, null, 'record')
-        html('strong', item, card.observation)
-        pairs(item, [
-          ['命中原因', card.match_reasons?.join('；')],
+        const item = html('article', group, null, 'lesson-record')
+        const meta = html('div', item, null, 'lesson-meta')
+        html('span', meta, card.task_title || card.task)
+        html('span', meta, `v${card.version}`, 'lesson-version')
+        const state = html('span', meta, lessonStates[card.state] || card.state, 'lesson-state')
+        state.dataset.state = card.state
+        html('strong', item, card.observation || card.id, 'lesson-title')
+        if (card.adoption) {
+          const why = html('div', item, null, 'lesson-reason')
+          html('strong', why, '采用理由')
+          html('p', why, card.adoption.reason)
+          if (card.retirement?.reason)
+            html('p', item, `退役原因 · ${card.retirement.reason}`, 'lesson-lifecycle')
+        }
+        else if (card.match_reasons?.length) {
+          html('p', item, `推荐理由 · ${card.match_reasons.join('、')}`, 'dim')
+        }
+        if (card.practice)
+          html('p', item, card.practice)
+        for (const source of card.sources || [])
+          showLessonSource(item, card, source)
+        const review = card.approval || card.review
+        const info = disclosure(item, '适用范围与审查记录')
+        pairs(info, [
           ['适用条件', card.when],
-          ['做法', card.practice],
           ['边界', card.boundary],
-          ['状态', lessonStates[card.state]],
+          ['采用功能', work.stories[card.adoption?.story]?.title],
+          ['采用人', card.adoption?.actor],
+          ['采用时间', card.adoption?.at],
           ['经验版本', `${card.id} · v${card.version}`],
-          ['审查人', card.review?.actor],
-          ['审查意见', card.review?.reason],
+          ['审查人', review?.actor],
+          ['审查意见', review?.reason],
           ['复核事项', card.issues?.join('；')],
           ['替代为', card.replaced_by && `${card.replaced_by.task} / ${card.replaced_by.id}`],
-          ['退役原因', card.retirement?.reason],
+          ['退役原因', !card.adoption && card.retirement?.reason],
         ])
-        for (const source of card.sources)
-          showLessonSource(item, card, source)
       }
     }
   }
+
   function actionCaseScope(ex, id) {
     const result = states[id].cases[ex.id]
     const receipt = result?.receipt
@@ -2191,7 +2229,7 @@
     const state = { ...history.state }
     if (selected && trigger) {
       const panel = activeEndpoint ? endpointBody : detail
-      const links = Array.from(panel.querySelectorAll('[data-dest], .inspect-feature'))
+      const links = Array.from(panel.querySelectorAll('[data-dest], .inspect-feature, .lesson-evidence-link'))
       state.drawerReading = { work: work.id, hash: routeHash(readerRoute), panel: readPanel(panel), link: links.indexOf(trigger), draft: decisionNotes.get(selected) }
     }
     writeRoute(readerRoute, 'replaceState', state)
@@ -2308,7 +2346,7 @@
       if (returning && !next.source) {
         const panel = next.endpoint ? endpointBody : detail
         restorePanel(panel, reading.panel)
-        panel.querySelectorAll('[data-dest], .inspect-feature')[reading.link]?.focus({ preventScroll: true })
+        panel.querySelectorAll('[data-dest], .inspect-feature, .lesson-evidence-link')[reading.link]?.focus({ preventScroll: true })
       }
     }
     else if (selected) {

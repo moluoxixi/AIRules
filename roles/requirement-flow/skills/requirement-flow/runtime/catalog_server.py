@@ -90,7 +90,8 @@ def serve(project, port, source_root, default_task, *, inventory, open_task):
     if not 0 <= port <= 65535:
         raise ValueError("端口应在 0 至 65535 之间。")
     checkout_root = engine.source_paths.select_source_root(project, source_root)
-    template = (engine.RUNTIME / "catalog.html").read_text(encoding="utf-8")
+    template = (engine.RUNTIME / "catalog.html").read_text(encoding="utf-8").replace(
+        "@@THEME@@", (engine.RUNTIME / "theme.css").read_text(encoding="utf-8"))
     signing_key = secrets.token_bytes(32)
     legacy_reads = {"/version","/source-location","/context","/dispatch","/model.json","/lesson-source","/lesson-evidence"}
 

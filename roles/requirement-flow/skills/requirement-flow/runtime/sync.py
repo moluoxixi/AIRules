@@ -232,7 +232,8 @@ def validate(m):
             check_refs([e["reopen"]], "actions")
     for lesson in w["lessons"]:
         expect(all(lesson.get(k) for k in ("observation","when","practice","boundary","evidence","review")), "经验缺少使用条件或依据")
-    knowledge.validate_cards(w, sys.modules[__name__])
+    knowledge.validate_adoptions(w, sys.modules[__name__])
+    return knowledge.validate_cards(w, sys.modules[__name__])
 
 
 def condition_value(w, condition):
@@ -657,16 +658,23 @@ def verification_followups(work, scenarios):
 
 
 def lesson_context(work, workspace, stories, packet=None, *, for_map=False):
-    cards = knowledge.project_cards(workspace, sys.modules[__name__], current_work=work, relevant_to=work, stories=stories)
+    events = knowledge.adoption_events(work, stories)
+    hits = knowledge.memory_hits(workspace, knowledge.query_contexts(work, stories, None))
+    keys = set(hits) | {knowledge.card_key(event["origin"]) for event in events}
+    cards = knowledge.project_cards(workspace, sys.modules[__name__], current_work=work, relevant_to=work,
+                                    stories=stories, include_keys=keys)
+    adopted = knowledge.adopted_cards(events, cards)
     own_cards = [card for card in cards if card["task"] == work["id"]
                  and (not stories or any(s["story"] in stories for s in card["sources"]))]
     if packet is not None:
-        packet["related_lessons"] = knowledge.match_cards(work, cards, stories=stories, action=packet["id"])
+        packet["related_lessons"] = knowledge.match_cards(work, cards, stories=stories, action=packet["id"], hits=hits)
+        owners = {sid for sid, *_ in knowledge.query_contexts(work, stories, packet["id"])}
+        packet["adopted_lessons"] = [card for card in adopted if card["adoption"]["story"] in owners]
     reviews = [{"id":card["id"], "version":card["version"], "author":card["author"], "skill":"flow-review",
                 "sources":[{k:s[k] for k in ("story","scenario","action","receipt")} for s in card["sources"]]}
                for card in own_cards if card["state"] == "pending"]
-    return {"related_lessons":knowledge.match_cards(work,cards,stories=stories,limit=None if for_map else 5), "lesson_cards":own_cards,
-            "lesson_reviews":reviews}
+    return {"related_lessons": knowledge.match_cards(work, cards, stories=stories, hits=hits, limit=None if for_map else 5),
+            "lesson_cards": own_cards, "lesson_reviews": reviews, "adopted_lessons": adopted}
 
 
 def dispatch(w, actor="AI", story=None, *, workspace=None, include_lessons=True, for_map=False):
@@ -829,7 +837,7 @@ def context(m, story=None, *, workspace=None):
     chosen, decisions, contracts = graph_view.feature_scope(w, stories)
     routes = [r for r in w.get("contract_routes", []) if r["decision"] in decisions]
     all_events = [e for e in w["events"] if not stories or e.get("action") in chosen or
-                  e.get("decision") in decisions or set(e.get("changed",[])) & (chosen|decisions|contracts|stories)]
+                  e.get("decision") in decisions or e.get("story") in stories or set(e.get("changed",[])) & (chosen|decisions|contracts|stories)]
     effective_ids = {status[k]["proof"] for k in chosen if status[k]["proof"]}
     usage = graph_view.contract_users(w)
     scenarios = scenario_report(w,status,stories)
@@ -1040,28 +1048,40 @@ class TaskHandler(BaseHTTPRequestHandler):
             shutil.copyfileobj(snapshot,self.wfile)
     def lesson_source(self, model, path):
         try:
-            query = parse_qs(urlsplit(self.path).query, max_num_fields=4, strict_parsing=True, keep_blank_values=True)
-            if set(query) - {"version"} != {"task","lesson","receipt"} or any(len(values) != 1 for values in query.values()):
+            query = parse_qs(urlsplit(self.path).query, max_num_fields=5, strict_parsing=True, keep_blank_values=True)
+            if set(query) - {"version", "approval"} != {"task","lesson","receipt"} or any(len(values) != 1 for values in query.values()):
                 raise ValueError
             task, lesson, rid = (query[name][0] for name in ("task","lesson","receipt"))
             task = unicodedata.normalize("NFC", task)
             version = query.get("version",[None])[0]
+            approval = query.get("approval", [None])[0]
+            if approval is not None and not re.fullmatch(r"[0-9a-f]{64}", approval):
+                raise ValueError
             if not re.fullmatch(r"E[0-9]+",rid) or (version is not None and not re.fullmatch(r"[1-9][0-9]*",version)):
                 raise ValueError
         except ValueError:
             self.send_error(400)
             return
         queue = dispatch(model["work"],workspace=self.workspace,for_map=True)
-        cards = queue.get("lesson_cards", []) if task == model["work"]["id"] else queue.get("related_lessons", [])
+        if task == model["work"]["id"]:
+            cards = queue["lesson_cards"]
+        else:
+            # The same signed version can be recommended and adopted by multiple stories.
+            cards = {knowledge.card_key(card): card for card in (*queue["related_lessons"], *queue["adopted_lessons"])
+                     if any(s["valid"] for s in card["sources"])}.values()
         matches = [(card, source) for card in cards if (card["task"],card["id"]) == (task,lesson)
                    and (version is None or str(card["version"]) == version)
+                   and (approval is None or card.get("approval_digest") == approval)
                    for source in card["sources"] if source["receipt"] == rid and source["valid"]]
         if len(matches) != 1:
             self.send_content(404,"该场景来源已失效或未关联到当前需求。","text/plain")
             return
         card, source = matches[0]
         if path == "/lesson-source":
-            params = urlencode({"task":task,"lesson":lesson,"version":card["version"],"receipt":rid})
+            reference = {"task": task, "lesson": lesson, "version": card["version"], "receipt": rid}
+            if card.get("approval_digest"):
+                reference["approval"] = card["approval_digest"]
+            params = urlencode(reference)
             self.send_content(200,graph_view.lesson_source_page(card,source,"lesson-evidence?" + params),"text/html")
             return
         try:
@@ -1231,6 +1251,14 @@ def main(argv=None):
             q.add_argument("verdict", choices=("approve","reject","retire"))
             q.add_argument("--version", type=int, help="审查者实际查阅的经验版本")
             q.add_argument("--why", required=True, help="对照来源与适用边界后的审查结论")
+    q = sub.add_parser("lesson-adopt", help="记录一个故事采用的项目经验版本、原始依据与理由")
+    q.add_argument("source", help="经验来源需求 ID")
+    q.add_argument("lesson", help="经验 ID")
+    q.add_argument("--version", required=True, type=int)
+    q.add_argument("--story", required=True)
+    q.add_argument("--why", required=True)
+    q.add_argument("--rev", required=True, type=int)
+    q.add_argument("--actor", required=True)
     for name in ("verify-run","verify-observe"):
         q=sub.add_parser(name)
         q.add_argument("id")
@@ -1298,6 +1326,9 @@ def main(argv=None):
         elif a.cmd == "lesson-propose":
             card = load(a.file)
             op = lambda w: knowledge.propose(w, TASK_DIR, card, actor, sys.modules[__name__])
+        elif a.cmd == "lesson-adopt":
+            op = lambda w: knowledge.adopt(w, TASK_DIR, a.story, a.source, a.lesson, a.version, a.why,
+                                          a.actor, sys.modules[__name__])
         elif a.cmd == "lesson-review":
             op = lambda w: knowledge.review(w, TASK_DIR, a.id, a.verdict, actor, a.why, sys.modules[__name__], version=a.version)
         else:

@@ -138,23 +138,24 @@ def existing(paths, key):
     return path
 
 
-def task_report(path):
+def task_report(path, *, include_lessons=False):
     model = engine.load(path / "model.json")
     engine.validate(model)
     work = model["work"]
     if work["id"] != unicodedata.normalize("NFC", path.name):
         raise ValueError(f"需求 ID 与目录不一致：{work['id']} / {path.name}")
-    return work, engine.dispatch(work, workspace=path, include_lessons=False)
+    return work, engine.dispatch(work, workspace=path, include_lessons=include_lessons)
 
 
-def summary(path):
-    work, queue = task_report(path)
+def summary(path, *, include_lessons=False):
+    work, queue = task_report(path, include_lessons=include_lessons)
     return {
         "id": work["id"], "title": work["title"], "outcome": work.get("outcome", "delivery"),
         "revision": work["revision"], "state": queue["state"], "progress": queue["progress"],
         "next": queue["next"]["id"] if queue["next"] else None, "running": queue["running"],
         "pending_decisions": [item["id"] for item in queue["pending_decisions"]],
         "handbook": str(path / "handbook.html"),
+        **({"related_lessons": queue["related_lessons"]} if include_lessons else {}),
     }
 
 
@@ -168,6 +169,25 @@ def list_lessons(store, include_all):
         emit({"lessons":[c for c in cards if include_all or c["state"] == "approved"]})
 
 
+def memory_command(store, operation):
+    memory = engine.knowledge.basic_memory
+    if operation == "status":
+        return memory.status(store)
+    cards = engine.knowledge.project_cards(store, engine)
+    if operation == "enable" or (operation == "sync" and memory.status(store)["enabled"]):
+        return memory.enable(store, cards)
+    return memory.project(store, cards)
+
+
+def refresh_notes(store):
+    # The review ledger is authoritative. A failed derivative can always be rebuilt with memory sync.
+    try:
+        return memory_command(store, "project")
+    except (OSError, ValueError, RuntimeError) as error:
+        print(f"经验记录已保存，笔记需要运行 memory sync 重建：{error}", file=sys.stderr)
+        return {"state": "needs_sync", "reason": str(error)}
+
+
 def retire_lesson(store, args):
     if args.version < 1 or not args.actor.strip() or not args.why.strip():
         raise ValueError("请填写经验版本、决定人及退役理由")
@@ -176,6 +196,7 @@ def retire_lesson(store, args):
         prior = read_retirement(store, args.task, args.lesson, args.version)
         if prior:
             if prior["actor"] == args.actor and prior["reason"] == args.why:
+                refresh_notes(store)
                 emit(prior)
                 return
             raise ValueError("本版本已有退役决定，请查看原决定")
@@ -187,6 +208,7 @@ def retire_lesson(store, args):
                   "at":datetime.now(timezone.utc).isoformat(timespec="seconds")}
         target = decision_file(store,args.task,args.lesson,args.version,create=True)
         engine.atomic(target,engine.encoded(record))
+        refresh_notes(store)
         emit(record)
 
 
@@ -248,7 +270,7 @@ def create(store, args):
             raise ValueError(f"需求 ID 已使用：{args.id}")
         local_directory(active.parent, create=True)
         engine.initialize_task(active, args.request, key=args.id, title=args.title, outcome=args.outcome)
-        emit(summary(active))
+        emit(summary(active, include_lessons=True))
 
 
 def upgrade(project, migrate=False):
@@ -280,6 +302,7 @@ def upgrade(project, migrate=False):
                 pages[book.relative_to(project)] = rendered
         result = install_locked(project, migrate, pages=pages)
         result["refreshed"] = [page.parent.name for page in pages]
+        result["memory"] = refresh_notes(store)
         return result
 
 
@@ -354,14 +377,16 @@ def archive(store, args):
             info = summary(source)
             if info["state"] != "complete" and not args.allow_incomplete:
                 raise ValueError(f"需求 {args.id} 当前状态为 {info['state']}。如需保留当前进度并归档，请使用 --allow-incomplete。")
-            pending = [key for key, card in engine.load(source / "model.json")["work"].get("lesson_cards", {}).items()
-                       if card["state"] == "pending"]
+            own_cards = engine.load(source / "model.json")["work"].get("lesson_cards", {})
+            pending = [key for key, card in own_cards.items() if card["state"] == "pending"]
             if pending and not args.allow_incomplete:
                 raise ValueError("归档会冻结待审经验 " + "、".join(pending)
                                  + "。请先完成审查；如需按当前状态保存草稿，使用 --allow-incomplete。")
             check_snapshot(source, refresh_scenarios=True)
             local_directory(target.parent, create=True)
             source.rename(target)
+            if own_cards:
+                refresh_notes(store)
             info["handbook"] = str(target / "handbook.html")
             emit(info)
 
@@ -370,12 +395,12 @@ def forward(store, args):
     if not store.exists():
         raise ValueError(f"需求不存在：{args.id}")
     with ExitStack() as handle:
-        # Reviewing a replacement and retiring that version are one project-wide decision.
-        reviewing = args.arguments[:1] == ["lesson-review"]
-        if reviewing:
+        # Selecting and adopting a published version must serialize with replacement and retirement.
+        knowledge_write = args.arguments[:1] in (["lesson-review"], ["lesson-adopt"])
+        if knowledge_write:
             handle.enter_context(project_lock(store, exclusive=True))
         with ExitStack() as lookup:
-            if not reviewing:
+            if not knowledge_write:
                 lookup.enter_context(project_lock(store))
             active, archived = locations(store, args.id)
             path = existing([active, archived], args.id)
@@ -392,6 +417,8 @@ def forward(store, args):
             raise ValueError("创建独立需求请使用项目命令 new。")
         engine.bind_workspace(path)
         engine.main(words)
+        if words[:1] == ["lesson-review"]:
+            refresh_notes(store)
 
 
 def main():
@@ -411,6 +438,8 @@ def main():
     viewer.add_argument("--port", type=int, default=0, help="本机端口，默认自动分配")
     viewer.add_argument("--source-root", type=Path, help="定位来源文件的本项目工作树")
     viewer.add_argument("--default-task", type=identifier, help="旧图链接指向的需求 ID")
+    memory = commands.add_parser("memory", help="管理当前项目的 Basic Memory 经验笔记与本地索引")
+    memory.add_argument("operation", choices=("enable", "sync", "status"))
     lessons = commands.add_parser("lessons", help="查看本项目经审查且依据仍有效的经验")
     lessons.add_argument("--all", action="store_true", help="同时列出待审、退役及需要重新核验的经验")
     retire = commands.add_parser("lesson-retire", help="在项目经验库退役一个已批准版本，可用于归档需求")
@@ -440,6 +469,13 @@ def main():
         emit(inventory(store, summary))
     elif args.command == "serve":
         serve_catalog(store, args)
+    elif args.command == "memory":
+        with project_lock(store, exclusive=args.operation != "status"):
+            result = memory_command(store, args.operation)
+            emit(result)
+            requested_index = args.operation == "enable" or (args.operation == "sync" and "ready" in result)
+            if requested_index and not result.get("ready"):
+                raise SystemExit(result.get("error") or "Basic Memory 索引未就绪，请查看 memory status 后重试。")
     elif args.command == "lessons":
         list_lessons(store,args.all)
     elif args.command == "lesson-retire":

@@ -68,9 +68,17 @@ python3 .agents/skills/requirement-flow/flow.py serve --source-root /path/to/pro
 
 ### 项目经验
 
-一个需求里发现可复用做法时，提案引用原故事、场景、验证动作和有效回执，并写明适用范围。通过独立审查的版本进入本项目经验库。下次读取 `next`、`claim` 或 `context` 时，AI 按功能标签、接口操作及字段取得相关经验和命中原因。每个新需求仍须用自己的证据交付。图上点开功能的“相关项目经验”，可查看适用条件、审查理由，沿原场景打开来源与日志，来源归档后也可访问。
+将经验提案绑定到原故事、验收场景和回执。另一位审查者通过后，需求模型保存批准记录，并在 `.requirements/knowledge/lessons/` 生成可读的 Markdown。把需求、证据和经验随同项目提交。每个 worktree 接收这些文件后，可以启用自己的 Basic Memory 本地全文索引。首次启用需安装 uv，并能取得 Python 3.12 和固定版本 `basic-memory==1.0.0`。后续查询直接读取本机索引，支持中文。
 
-`flow.py lessons` 查看本项目可复用的版本，`--all` 可追溯历次提案和审查。改版、替代和退役都有版本记录。旧版 `lessons[]` 作为历史笔记保留。安装器升级角色时保留项目经验与回执。提案字段与命令见[记录格式](skills/requirement-flow/references/model.md)。
+```bash
+FLOW=.agents/skills/requirement-flow/flow.py
+python3 "$FLOW" memory enable
+python3 "$FLOW" memory status
+```
+
+`new` 根据需求原话查经验，`next`、`context` 和 `claim` 按当前故事或动作查。AI 核对推荐理由、适用范围和原始证据，再用 `lesson-adopt` 记录这次采用的理由及具体版本。每个需求用自己的场景证据验收。图上从采用记录可回到原需求、场景和附件。退役后新需求停止收到该版本，历史采用仍能查到当时的理由。
+
+索引和配置保存在各工作区本机。同步项目文件后可执行 `memory sync` 重建索引；只有经过当前模型和原始回执复核的版本能进入推荐。索引不可用时仍可按项目标签、接口和字段查询。`lessons --all` 可以追溯历史审查、替代和退役。提案字段、采用及退役命令见[记录格式](skills/requirement-flow/references/model.md#可在项目内复用的经验)。
 
 ### 场景证据
 

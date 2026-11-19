@@ -1,0 +1,22 @@
+:root {
+  color-scheme: dark;
+  --paper: #111319;
+  --surface: #191c24;
+  --surface-raised: #20242e;
+  --surface-hover: #292e39;
+  --ink: #f0f1f4;
+  --text: #d5d9e1;
+  --muted: #a6afc0;
+  --line: #373d4b;
+  --line-strong: #596476;
+  --accent: #ffc184;
+  --accent-bg: #403023;
+  --on-accent: #24180e;
+  --teal: #8cdebb;
+  --success-bg: #20382e;
+  --blue: #a4c7ff;
+  --amber: #ffc184;
+  --focus-ring: #ffcb97;
+  --ui: "Instrument Sans","PingFang SC","Microsoft YaHei",system-ui,sans-serif;
+  --mono: "IBM Plex Mono","SFMono-Regular",Consolas,monospace;
+}
