@@ -1,4 +1,5 @@
 import { execFileSync, spawn } from 'node:child_process'
+import { once } from 'node:events'
 import { existsSync, mkdirSync, mkdtempSync, readFileSync, realpathSync, rmSync, writeFileSync } from 'node:fs'
 import { createRequire } from 'node:module'
 import { tmpdir } from 'node:os'
@@ -123,13 +124,34 @@ function createHandbook(project) {
   record('finish', 'V-4', '--output', '跨页与超时场景均已完成本机验证')
   const relocated = path.join(project, '.requirements/history/tasks/plan-batch')
   mkdirSync(relocated, { recursive: true })
-  writeFileSync(path.join(relocated, 'prd.md'), '批量确认与撤销')
+  writeFileSync(path.join(relocated, 'prd.md'), ['批量确认与撤销', '范围', '', '流程', '', '保留原有位置方案'].join('\n'))
   writeFileSync(path.join(project, '.requirements/source-paths.json'), JSON.stringify({
     version: 1,
     directories: { '.moluoxixi/tasks/': '.requirements/history/tasks/' },
   }))
   flow('task', 'plan')
   return pathToFileURL(handbook).href
+}
+
+async function startViewer(project, port = '0') {
+  const cli = fileURLToPath(new URL('../skills/requirement-flow/flow.py', import.meta.url))
+  const windows = process.platform === 'win32'
+  const child = spawn(windows ? 'py' : 'python3', [...(windows ? ['-3'] : []), '-B', cli, '--project', project, 'task', 'plan', 'serve', '--port', port])
+  const address = await new Promise((resolve, reject) => {
+    child.once('error', reject)
+    child.once('exit', code => reject(new Error(`viewer exited with ${code}`)))
+    child.stdout.once('data', chunk => resolve(chunk.toString().trim()))
+  })
+  return {
+    address,
+    async stop() {
+      if (child.exitCode !== null || child.signalCode !== null)
+        return
+      const exited = once(child, 'exit')
+      child.kill()
+      await exited
+    },
+  }
 }
 
 const executablePath = await localChrome()
@@ -143,7 +165,7 @@ describe.skipIf(!executablePath)('generated handbook interactions in Chromium', 
       headless: true,
       args: process.platform === 'linux' && (process.env.CI || process.getuid() === 0) ? ['--no-sandbox'] : [],
     })
-  }, 20_000)
+  }, 60_000)
   afterAll(async () => {
     await browser?.close()
     if (project)
@@ -765,12 +787,10 @@ describe.skipIf(!executablePath)('generated handbook interactions in Chromium', 
     }
   })
   it('previews a cited line on demand and remembers the editor for live source references', async () => {
-    const cli = fileURLToPath(new URL('../skills/requirement-flow/flow.py', import.meta.url))
-    const windows = process.platform === 'win32'
     const target = path.resolve(project, batchSource.slice(0, -4))
     mkdirSync(path.dirname(target), { recursive: true })
     writeFileSync(target, Array.from({ length: 345 }, (_, index) => index === 339 ? '<b>用户选中的原文</b>' : '相邻行').join('\n'))
-    const server = spawn(windows ? 'py' : 'python3', [...(windows ? ['-3'] : []), '-B', cli, '--project', project, 'task', 'plan', 'serve'])
+    const server = await startViewer(project)
     const page = await browser.newPage()
     const route = '?view=overview&features=S-4#node=S-4'
     const list = '#detail .source-list'
@@ -781,12 +801,7 @@ describe.skipIf(!executablePath)('generated handbook interactions in Chromium', 
         requests.push(request)
     })
     try {
-      const address = await new Promise((resolve, reject) => {
-        server.once('error', reject)
-        server.once('exit', code => reject(new Error(`source server exited with ${code}`)))
-        server.stdout.once('data', chunk => resolve(chunk.toString().trim()))
-      })
-      await page.goto(address + route)
+      await page.goto(server.address + route)
       await drawerReady(page)
       expect(requests).toHaveLength(0)
       await page.click(`${list} > summary`)
@@ -821,9 +836,169 @@ describe.skipIf(!executablePath)('generated handbook interactions in Chromium', 
     }
     finally {
       await page.close()
-      server.kill()
+      await server.stop()
     }
   })
+  it('reconnects the same tab to a restarted viewer and restores its nested citation preview', async () => {
+    const source = path.join(project, '.requirements/history/tasks/plan-batch/prd.md')
+    const original = readFileSync(source, 'utf8')
+    let server = await startViewer(project)
+    const page = await browser.newPage()
+    const list = '#endpoint-drawer .source-list'
+    const target = `${list}[open] .source-file[open] pre:not([hidden]) .source-target-line`
+    try {
+      await page.goto(`${server.address}?view=detail&features=S-4#node=C-4`)
+      await page.click('.endpoint-list .endpoint')
+      await endpointReady(page)
+      const route = page.url()
+      await page.click(`${list} > summary`)
+      await page.waitForSelector(`${list} a.source-open`)
+      await page.click(`${list} button[aria-expanded]`)
+      expect(await page.$eval(target, el => el.textContent)).toBe('6保留原有位置方案')
+      await server.stop()
+      writeFileSync(source, original.replace('保留原有位置方案', '重新连接后读取的第六行'))
+      server = await startViewer(project, new URL(route).port)
+      // Trigger the normal version check without waiting for the polling interval.
+      await page.evaluate(() => document.dispatchEvent(new Event('visibilitychange')))
+      await page.waitForFunction(selector => document.querySelector(selector)?.textContent === '6重新连接后读取的第六行', { timeout: 7_000 }, target)
+      expect(page.url()).toBe(route)
+      expect(await page.$eval(`${list} a.source-open`, a => a.href)).toContain('prd.md')
+      await endpointReady(page)
+      expect(await page.$eval('#endpoint-title', el => el.textContent)).toBe('保存批量确认')
+      await page.keyboard.press('Escape')
+      await endpointClosed(page)
+      expect(await page.$eval('#panel-title', el => el.textContent)).toBe('批量确认')
+    }
+    finally {
+      await page.close()
+      await server.stop()
+      writeFileSync(source, original)
+    }
+  })
+
+  it('keeps a pending decision note while recovering a stale citation opened on a different node', async () => {
+    let server = await startViewer(project)
+    const page = await browser.newPage()
+    const note = '等门店核对现行方案后再决定'
+    const list = '#detail .source-list'
+    try {
+      await page.goto(`${server.address}?view=detail#node=D-scope`)
+      await drawerReady(page)
+      await page.type('input[name="reason"]', note)
+      await page.evaluate(() => {
+        location.hash = 'node=S-4'
+      })
+      await page.waitForSelector(`${list} > summary`)
+      const route = page.url()
+      await server.stop()
+      server = await startViewer(project, new URL(route).port)
+      await Promise.all([
+        page.waitForResponse(response => response.url().includes('/source-location?') && response.status() === 409, { timeout: 5_000 }),
+        page.click(`${list} > summary`),
+      ])
+      await page.waitForSelector('#notice:not([hidden]) #refresh', { visible: true, timeout: 5_000 })
+      const loaded = page.waitForNavigation({ waitUntil: 'domcontentloaded' })
+      await page.click('#refresh')
+      await loaded
+      await page.waitForSelector(`${list}[open] a.source-open`)
+      expect(page.url()).toBe(route)
+      await page.evaluate(() => {
+        location.hash = 'node=D-scope'
+      })
+      await page.waitForSelector('input[name="reason"]')
+      expect(await page.$eval('input[name="reason"]', el => el.value)).toBe(note)
+      // A known-stale form must reload for a second confirmation before any write.
+      const submitted = []
+      page.on('request', (request) => {
+        if (request.method() === 'POST')
+          submitted.push(new URL(request.url()).pathname)
+      })
+      await server.stop()
+      server = await startViewer(project, new URL(route).port)
+      await page.evaluate(() => document.dispatchEvent(new Event('visibilitychange')))
+      await page.waitForSelector('#notice:not([hidden]) #refresh', { visible: true, timeout: 5_000 })
+      await Promise.all([
+        page.waitForNavigation({ waitUntil: 'domcontentloaded' }),
+        page.click('button.choose'),
+      ])
+      await drawerReady(page)
+      expect(await page.$eval('input[name="reason"]', el => el.value)).toBe(note)
+      expect(new URL(page.url()).hash).toBe('#node=D-scope')
+      expect(submitted).toEqual([])
+    }
+    finally {
+      await page.close()
+      await server.stop()
+    }
+  })
+
+  it('distinguishes denied and missing citations and recovers from transient failure and restored files', async () => {
+    const server = await startViewer(project)
+    const page = await browser.newPage()
+    const entry = '#detail .source-entry'
+    const source = path.join(project, '.requirements/history/tasks/plan-batch/prd.md')
+    const original = readFileSync(source, 'utf8')
+    page.setDefaultTimeout(4_000)
+    try {
+      await page.setRequestInterception(true)
+      let failOnce = true
+      page.on('request', async (request) => {
+        const url = new URL(request.url())
+        const ref = url.pathname === '/source-location' && url.searchParams.get('ref')
+        if (ref === batchSource) {
+          await request.respond({ status: 403, contentType: 'application/json', body: '{}' })
+        }
+        else if (failOnce && ref && ref.endsWith('prd.md:6')) {
+          failOnce = false
+          await request.respond({ status: 503, contentType: 'application/json', body: '{}' })
+        }
+        else {
+          await request.continue()
+        }
+      })
+      await page.goto(`${server.address}?view=overview&features=S-4#node=S-4`)
+      await drawerReady(page)
+      await page.click('#detail .source-list > summary')
+      const findRow = async ref => page.waitForFunction((selector, suffix) => [...document.querySelectorAll(selector)].find(
+        row => row.querySelector('.source-note')?.textContent.endsWith(suffix),
+      ), {}, entry, ref)
+      const deniedRow = (await findRow(batchSource)).asElement()
+      const validRow = (await findRow('prd.md:6')).asElement()
+      const missingRow = (await findRow('prd.md:12')).asElement()
+      await validRow.$eval('.source-file', (file) => {
+        file.open = true
+      })
+      await missingRow.$eval('.source-file', (file) => {
+        file.open = true
+      })
+      await page.waitForFunction(row => row.textContent.includes('无权'), {}, deniedRow)
+      expect(await deniedRow.$('.source-unavailable button, a.source-open')).toBeNull()
+      await page.waitForFunction(row => row.textContent.includes('暂时无法连接'), {}, validRow)
+      await page.waitForFunction(row => row.textContent.includes('当前工作区无法定位'), { timeout: 4_000 }, missingRow)
+      expect(await missingRow.$('a.source-open')).toBeNull()
+      expect(await validRow.$eval('.source-unavailable button', button => button.textContent)).toBe('重试')
+      const retry = await validRow.$('.source-unavailable button')
+      await retry.click()
+      await validRow.waitForSelector('a.source-open')
+      const retryPreview = await validRow.waitForSelector('button[aria-expanded]')
+      await retryPreview.click()
+      expect(await validRow.$eval('.source-target-line', el => el.textContent)).toBe('6保留原有位置方案')
+      writeFileSync(source, [original, '', '', '', '', '', '补齐的第十二行'].join('\n'))
+      await page.click('#detail .source-list > summary')
+      await page.waitForSelector('#detail .source-list:not([open])')
+      await page.click('#detail .source-list > summary')
+      await missingRow.waitForSelector('a.source-open')
+      const newPreview = await missingRow.waitForSelector('button[aria-expanded]')
+      await newPreview.click()
+      expect(await missingRow.$eval('.source-target-line', el => el.textContent)).toBe('12补齐的第十二行')
+    }
+    finally {
+      await page.close()
+      await server.stop()
+      writeFileSync(source, original)
+    }
+  })
+
   it('keeps offline source references copyable when clipboard permissions are unavailable', async () => {
     const page = await open(375, 667, '?view=overview&features=S-4#node=S-4')
     try {

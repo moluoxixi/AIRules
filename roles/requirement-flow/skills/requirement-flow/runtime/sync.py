@@ -1075,22 +1075,33 @@ def serve(port, source_root=None):
                 self.send_error(403); return
             path=urlsplit(self.path).path
             model=load()
+            origin = "http://" + self.host()
+            same_origin = (self.headers.get("Origin", origin) == origin
+                           and self.headers.get("Sec-Fetch-Site") != "cross-site")
+            session = self.headers.get("X-Requirement-Flow", "")
+            stale_session = bool(session) and not secrets.compare_digest(session.encode(), token.encode())
             if path in ("/","/handbook.html"):
                 self.send_content(200,render(model,token),"text/html")
             elif path == "/source-location":
-                if (self.headers.get("Origin", "http://" + self.host()) != "http://" + self.host()
-                        or self.headers.get("Sec-Fetch-Site") == "cross-site"
-                        or not secrets.compare_digest(self.headers.get("X-Requirement-Flow", "").encode(), token.encode())):
+                if not same_origin or not session:
                     self.send_error(403)
+                    return
+                if stale_session:
+                    self.send_content(409, "图服务已重启，请重新连接。", "text/plain")
                     return
                 try:
                     query = parse_qs(urlsplit(self.path).query, strict_parsing=True, max_num_fields=1)
                     if set(query) != {"ref"} or len(query["ref"]) != 1 or len(query["ref"][0]) > 4096:
                         raise ValueError
+                except ValueError:
+                    self.send_error(400)
+                    return
+                try:
                     aliases = source_paths.SourcePaths.for_task(TASK_DIR)
                     location = source_paths.source_location(model["work"], aliases, checkout, query["ref"][0])
                 except (OSError, ValueError):
-                    location = None
+                    self.send_content(503, "暂时无法读取工作区来源，请重试。", "text/plain")
+                    return
                 if location is None:
                     self.send_content(404, "当前检出中无法定位这条来源。", "text/plain")
                 else:
@@ -1104,8 +1115,11 @@ def serve(port, source_root=None):
             elif path=="/version":
                 work = model["work"]
                 queue = dispatch(work,for_map=True)
-                self.send_content(200,encoded({"revision":work["revision"],"lesson_version":graph_view.lesson_version(queue),
-                                  "case_states":[[c["id"],c["status"]] for c in queue["scenarios"]]}),"application/json")
+                version = {"revision":work["revision"],"lesson_version":graph_view.lesson_version(queue),
+                           "case_states":[[c["id"],c["status"]] for c in queue["scenarios"]]}
+                if same_origin and stale_session:
+                    version["session_changed"] = True
+                self.send_content(200,encoded(version),"application/json")
             elif path in ("/context","/dispatch"):
                 try:
                     query=parse_qs(urlsplit(self.path).query,keep_blank_values=True)

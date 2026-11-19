@@ -27,6 +27,12 @@
   const picks = new Set()
   const chipButtons = new Map()
   const decisionNotes = new Map()
+  const resumePreview = new WeakMap()
+  const restored = csrf && history.state?.flowReader
+  const resume = restored?.work === work.id && restored.url === location.href ? restored : null
+  let confirmingSession = Boolean(resume)
+  let updatePending = false
+  let reloading = false
   let viewPreference = null
   let chainNodes = new Map()
   let graph = fullGraph
@@ -1123,6 +1129,7 @@
     const row = html('div', group, null, 'source-entry')
     const file = disclosure(row, name)
     file.classList.add('source-file')
+    file.dataset.ref = ref
     html('p', file, ref, 'source-note')
     const actions = html('div', row, null, 'source-actions')
     const copy = html('button', actions, '复制')
@@ -1135,20 +1142,28 @@
     if (!csrf)
       return
     const summary = file.querySelector('summary')
-    let loading = false
-    group.addEventListener('toggle', async () => {
-      if (!group.open || loading)
+    let requested = false
+    async function load() {
+      if (!group.open || requested)
         return
-      loading = true
+      requested = true
+      file.querySelector('.source-unavailable')?.remove()
+      let status
       try {
         const reply = await fetch(`/source-location?${new URLSearchParams({ ref })}`, {
           headers: { 'X-Requirement-Flow': csrf },
           cache: 'no-store',
           redirect: 'error',
         })
+        status = reply.status
+        if (status === 409) {
+          requestUpdate(true)
+          return
+        }
         if (!reply.ok)
-          throw new Error('unavailable')
+          throw new Error('Source request failed')
         const { editors, preview, line, path } = await reply.json()
+        confirmingSession = false
         if (typeof path === 'string' && path) {
           const position = ref.match(/:\d+(?::\d+)?(?:-\d+)?$/u)?.[0] || ''
           copyRef = path + position
@@ -1200,15 +1215,33 @@
               toggle.setAttribute('aria-expanded', 'false')
             }
           })
+          if (resumePreview.has(file)) {
+            if (file.open) {
+              toggle.click()
+              resumePreview.get(file)()
+            }
+            resumePreview.delete(file)
+          }
         }
-        row.querySelector('.source-unavailable')?.remove()
       }
       catch {
-        loading = false
-        if (!file.querySelector('.source-unavailable'))
-          html('p', file, '当前工作区无法定位此文件，可复制引用。', 'source-unavailable')
+        const missing = status === 404
+        const denied = status === 403
+        requested = denied
+        const message = missing
+          ? '当前工作区无法定位此文件或引用行，可复制引用。'
+          : denied
+            ? '当前页面无权读取本地文件，请从本机需求页打开。'
+            : '暂时无法连接文件服务。'
+        const warning = html('p', file, message, 'source-unavailable')
+        if (!missing && !denied) {
+          const retry = html('button', warning, '重试', 'link-button')
+          retry.type = 'button'
+          retry.onclick = load
+        }
       }
-    })
+    }
+    group.addEventListener('toggle', load)
   }
   function showSources(parent, source, title = '涉及文件与依据', labels = sourceLabels) {
     const content = Array.isArray(source) ? source.join('\n') : String(source ?? '')
@@ -1316,6 +1349,7 @@
     button.setAttribute('aria-expanded', 'true')
     if (!endpointDrawer.open)
       endpointDrawer.showModal()
+    placeUpdateNotice()
     endpointBody.scrollTop = 0
     endpointClose.focus({ preventScroll: true })
     if (navigate) {
@@ -1336,6 +1370,7 @@
     button.setAttribute('aria-expanded', 'false')
     endpointDrawer.close()
     drawer.inert = false
+    placeUpdateNotice()
     if (restoreFocus && button.isConnected) {
       detail.scrollTop = scrollTop
       button.focus({ preventScroll: true })
@@ -1737,6 +1772,14 @@
       const form = html('form', parent)
       form.method = 'post'
       form.action = `/decision${filterQuery()}`
+      if (resume?.confirmDecision === key)
+        html('p', form, '已读取最新版，请核对选项后再次确认决定。', 'dim').setAttribute('role', 'status')
+      form.addEventListener('submit', (event) => {
+        if (updatePending) {
+          event.preventDefault()
+          reloadPage(key)
+        }
+      })
       for (const [name, value] of Object.entries({ csrf, revision: work.revision, decision: key })) {
         const field = html('input', form)
         field.type = 'hidden'
@@ -1918,6 +1961,7 @@
       drawer.getBoundingClientRect()
     }
     drawerLayer.classList.add('is-open')
+    placeUpdateNotice()
     if (changed) {
       populate(key)
       detail.scrollTop = 0
@@ -1936,6 +1980,7 @@
     const previous = selected
     const closing = ++drawerVersion
     selected = null
+    placeUpdateNotice()
     drawerLayer.classList.remove('is-open')
     reopenPanel.setAttribute('aria-expanded', 'false')
     for (const el of nodeEls.values()) {
@@ -2065,25 +2110,110 @@
     setTimeout(() => URL.revokeObjectURL(url), 30000)
   }
   $('export').onclick = exportMap
-  $('refresh').onclick = () => location.reload()
+
+  // Carry only reading position and unsent reasons across this tab's own reload.
+  // The URL already identifies both drawers; keep its history entry for Back.
+  function foldKey(fold) {
+    return fold.dataset.ref || fold.querySelector(':scope > summary')?.textContent
+  }
+  function readPanel(panel) {
+    const open = []
+    for (const [index, fold] of Array.from(panel.querySelectorAll('details')).entries()) {
+      if (fold.open)
+        open.push({ index, key: foldKey(fold), preview: Boolean(fold.querySelector(':scope > .source-preview:not([hidden])')) })
+    }
+    return { open, scroll: panel.scrollTop }
+  }
+  function restorePanel(panel, state) {
+    const folds = Array.from(panel.querySelectorAll('details'))
+    const scroll = () => {
+      panel.scrollTop = state.scroll
+    }
+    for (const { index, key, preview } of state.open) {
+      const fold = folds[index]
+      if (fold && foldKey(fold) === key) {
+        fold.open = true
+        if (preview)
+          resumePreview.set(fold, scroll)
+      }
+    }
+    scroll()
+  }
+  function reloadPage(confirmDecision = null) {
+    if (reloading)
+      return
+    const snapshot = {
+      work: work.id,
+      url: location.href,
+      notes: Array.from(decisionNotes).filter(([, value]) => value.trim()),
+      confirmDecision,
+      panel: readPanel(detail),
+      endpoint: activeEndpoint && readPanel(endpointBody),
+      side: endpointTabs.querySelector('[aria-pressed="true"]')?.dataset.side,
+    }
+    try {
+      history.replaceState({ ...history.state, flowReader: snapshot }, '')
+    }
+    catch {
+      // Retain drafts if this browser refuses to transfer them across a reload.
+      if (snapshot.notes.length) {
+        showUpdateNotice('当前浏览器无法保留草稿，请先复制决定理由。')
+        return
+      }
+    }
+    reloading = true
+    location.reload()
+  }
+  function placeUpdateNotice() {
+    const notice = $('notice')
+    if (notice.hidden)
+      return
+    if (endpointDrawer.open)
+      endpointBody.before(notice)
+    else if (selected)
+      detail.before(notice)
+    else map.parentNode.append(notice)
+  }
+  function showUpdateNotice(message) {
+    $('notice').firstChild.textContent = message
+    $('notice').hidden = false
+    placeUpdateNotice()
+  }
+  function requestUpdate(sessionChanged) {
+    if (reloading)
+      return
+    updatePending = true
+    const reason = detail.querySelector('input[name="reason"]')
+    const drafting = Array.from(decisionNotes.values()).some(value => value.trim()) || (reason && reason === document.activeElement)
+    if (drafting || (sessionChanged && confirmingSession)) {
+      const message = sessionChanged ? '本机查看服务已重启。' : '记录已更新。'
+      showUpdateNotice(message + (drafting ? '读取最新版会保留已填理由。' : '请重新读取页面。'))
+    }
+    else {
+      reloadPage()
+    }
+  }
+  $('refresh').onclick = () => reloadPage()
   if (csrf) {
     async function poll() {
       if (document.hidden)
         return
       try {
-        const res = await fetch('/version', { cache: 'no-store' })
+        const res = await fetch('/version', { headers: { 'X-Requirement-Flow': csrf }, cache: 'no-store', redirect: 'error' })
         if (!res.ok)
           return
         const current = await res.json()
         const displayed = queue.scenarios.map(ex => [ex.id, ex.status])
+        if (current.session_changed) {
+          requestUpdate(true)
+          return
+        }
+        confirmingSession = false
         if (current.revision === work.revision && current.lesson_version === lessonVersion
           && JSON.stringify(current.case_states) === JSON.stringify(displayed)) {
           return
         }
-        const note = detail.querySelector('input[name="reason"]')
-        if (note && (note.value || note === document.activeElement))
-          $('notice').hidden = false
-        else location.reload()
+        requestUpdate(false)
       }
       catch {
         /* The map retains its last locally rendered revision. */
@@ -2371,7 +2501,21 @@
     })
   }
 
+  if (restored) {
+    const { flowReader: _, ...navigation } = history.state
+    history.replaceState(navigation, '')
+    for (const [key, value] of resume?.notes || [])
+      decisionNotes.set(key, value)
+  }
   initializeFeatures()
   route()
+  if (resume) {
+    restorePanel(detail, resume.panel)
+    if (activeEndpoint && resume.endpoint) {
+      activeEndpoint.scrollTop = resume.panel.scroll
+      endpointTabs.querySelector(`[data-side="${resume.side === 'response' ? 'response' : 'request'}"]`)?.click()
+      restorePanel(endpointBody, resume.endpoint)
+    }
+  }
   new ResizeObserver(onResize).observe(map)
 })()

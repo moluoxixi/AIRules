@@ -87,12 +87,31 @@ class SourceLocationTest(unittest.TestCase):
             self.assertEqual(unquote(urlsplit(result["editors"]["vscode"]).path).lstrip("/"),
                              expected.as_posix().lstrip("/") + ":2:3")
             self.assertEqual(get(old + ":2", header), get(moved + ":2", header))
+            stale = {"X-Requirement-Flow": "previous-session"}
+            for headers, changed in ((header, False), ({}, False), (stale, True),
+                                     ({**stale, "Sec-Fetch-Site": "cross-site"}, False)):
+                with urlopen(Request(url + "version", headers=headers), timeout=5) as response:
+                    body = response.read()
+                self.assertEqual(json.loads(body).get("session_changed", False), changed)
+                self.assertNotIn(token.encode(), body)
             for ref, headers, status in ((code + ":1", header, 404), ("root-only.ts:1", header, 404),
-                    (code + ":2:3", {}, 403), (code + ":2:3", {**header, "Origin": "http://unrelated.invalid"}, 403)):
+                    ("", header, 400), (code + ":2:3", stale, 409), (code + ":2:3", {}, 403),
+                    (code + ":2:3", {**stale, "Sec-Fetch-Site": "cross-site"}, 403),
+                    (code + ":2:3", {**header, "Origin": "http://unrelated.invalid"}, 403)):
                 with self.subTest(ref=ref, headers=list(headers)), self.assertRaises(HTTPError) as caught:
                     get(ref, headers)
                 self.assertEqual(caught.exception.code, status)
-                self.assertNotIn(str(tree).encode(), caught.exception.read())
+                body = caught.exception.read()
+                self.assertNotIn(str(tree).encode(), body)
+                self.assertNotIn(token.encode(), body)
+            mapping = self.store / "source-paths.json"
+            original = mapping.read_bytes()
+            mapping.write_text("{", encoding="utf-8")
+            with self.assertRaises(HTTPError) as unavailable:
+                get(old + ":2", header)
+            self.assertEqual(unavailable.exception.code, 503)
+            mapping.write_bytes(original)
+            self.assertEqual(get(old + ":2", header)["line"], 2)
             snapshot = (active / "handbook.html").read_bytes()
             self.assertNotIn(str(tree).encode(), snapshot)
             self.assertNotIn(token.encode(), snapshot)
