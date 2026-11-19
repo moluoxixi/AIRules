@@ -140,8 +140,10 @@ def project(store, cards, *, refresh_index=True):
             if not linked(target) and target.relative_to(notes) not in desired and managed(target):
                 target.unlink()
                 counts["removed"] += 1
-    if refresh_index and (counts["written"] or counts["removed"]) and registration(state, notes):
-        refresh(notes, state, explicit=False)
+    if refresh_index and registration(state, notes):
+        result = refresh(notes, state, purpose="publish")
+        if result.get("error"):
+            raise ValueError("经验笔记已保存，Basic Memory 索引更新失败：" + result["error"])
     return counts
 
 
@@ -225,7 +227,7 @@ def launch(args, cwd, env, timeout):
     return result.stdout.strip()
 
 
-def binary(state, *, offline):
+def binary(state, *, offline, timeout):
     uv = shutil.which("uv")
     if not uv:
         raise ValueError("未找到 uv；安装 uv 后重新执行 memory enable")
@@ -234,22 +236,49 @@ def binary(state, *, offline):
         args.append("--offline")
     args += ["--python", "3.12", "--from", PACKAGE, "python", "-I", "-c",
              "from pathlib import Path; import sys,os; print(Path(sys.executable).parent / ('basic-memory.exe' if os.name=='nt' else 'basic-memory'))"]
-    path = Path(launch(args, state, dict(os.environ), 12 if offline else 240))
+    path = Path(launch(args, state, dict(os.environ), timeout))
     if not path.is_absolute() or not path.is_file():
         raise ValueError("Basic Memory 可执行文件缺失，重新执行 memory enable")
     return str(path)
 
 
-def rebuild(notes, state, row, files, *, explicit):
-    executable = binary(state, offline=not explicit)
+def project_id(db, name, notes):
+    """Basic Memory stores Path.as_posix(), including on Windows."""
+    entry = db.execute("SELECT id, path FROM project WHERE name=?", (name,)).fetchone()
+    if entry and isinstance(entry[1], str):
+        indexed = type(notes)(entry[1])
+        if indexed.is_absolute() and indexed == notes:
+            # Separators and drive-letter case may differ. For a difference in the
+            # actual components, check file identity (Windows supports case-sensitive dirs).
+            if indexed.parts[1:] == notes.parts[1:]:
+                return entry[0]
+            try:
+                if os.path.samefile(indexed, notes):
+                    return entry[0]
+            except OSError:
+                pass
+    raise ValueError("Basic Memory 项目未绑定到当前工作区的经验目录")
+
+
+def note_key(notes, indexed_path):
+    if not isinstance(indexed_path, str):
+        return None
+    path = type(notes)(indexed_path)
+    if path.anchor or len(path.parts) != 2 or ".." in path.parts:
+        return None
+    return unicodedata.normalize("NFC", path.as_posix())
+
+
+def rebuild(notes, state, row, files, *, purpose):
+    # A publication completes the write, including deletions. Only opportunistic
+    # refresh during a query uses a short budget; only enable may install packages.
+    reading = purpose == "search"
+    executable = binary(state, offline=purpose != "enable", timeout=12 if reading else 240)
     runtime = state / row.get("generation", "") if row.get("generation") else None
     if runtime:
         try:
             with closing(open_index(state, row)) as db:
-                bound = db.execute("SELECT 1 FROM project WHERE name=? AND path=?",
-                                   (row["project"], str(notes))).fetchone()
-            if not bound:
-                runtime = None
+                project_id(db, row["project"], notes)
         except ERRORS:
             runtime = None
     fresh = runtime is None
@@ -263,16 +292,20 @@ def rebuild(notes, state, row, files, *, explicit):
     try:
         if fresh:
             launch([executable, "project", "add", row["project"], str(notes), "--local", "--no-wait"],
-                   state, env, 100 if explicit else 8)
-        launch([executable, "reindex", "--project", row["project"], "--search"], state, env, 120 if explicit else 12)
+                   state, env, 8 if reading else 100)
+        launch([executable, "reindex", "--project", row["project"], "--search"], state, env, 12 if reading else 120)
         result = dict(row, generation=runtime.name)
         with closing(open_index(state, result)) as db:
             indexed = db.execute(
-                "SELECT file_path FROM search_index WHERE project_id=(SELECT id FROM project WHERE name=? AND path=?) AND type='entity'",
-                (row["project"], str(notes)))
-            found = {unicodedata.normalize("NFC", entry[0]) for entry in indexed}
-        if not files.keys() <= found:
-            raise ValueError("Basic Memory 索引缺少已批准的经验，等待重建")
+                "SELECT file_path FROM search_index WHERE project_id=? AND type='entity'",
+                (project_id(db, row["project"], notes),))
+            found = {note_key(notes, entry[0]) for entry in indexed}
+        missing = files.keys() - found
+        if missing:
+            raise ValueError("Basic Memory 索引缺少已批准的经验：" + "、".join(sorted(missing)[:3]))
+        stale = sorted(key for key in found - files.keys() if key and not (notes / key).is_file())
+        if stale:
+            raise ValueError("Basic Memory 索引仍包含已删除的笔记：" + "、".join(stale[:3]))
         return result
     except BaseException:
         if fresh:
@@ -280,25 +313,25 @@ def rebuild(notes, state, row, files, *, explicit):
         raise
 
 
-def refresh(notes, state, *, explicit, force=False):
+def refresh(notes, state, *, purpose, force=False):
     """Serialize rebuilds. A reader racing another rebuild uses structured matches immediately."""
     try:
         directory(state, create=True)
-        with closing(sqlite3.connect(regular(state / "writer.sqlite"), timeout=120 if explicit else 0)) as lock:
+        with closing(sqlite3.connect(regular(state / "writer.sqlite"), timeout=0 if purpose == "search" else 120)) as lock:
             lock.execute("BEGIN IMMEDIATE")
             row = registration(state, notes)
             if not row:
-                if not explicit:
+                if purpose != "enable":
                     return {}
                 row = {"package": PACKAGE, "project": binding_id(notes)}
             stamp, files = snapshot(notes)
             if not force and row.get("stamp") == stamp and row.get("generation") and not row.get("error"):
                 return row
-            if not explicit and time.time() < row.get("retry_after", 0):
+            if purpose == "search" and time.time() < row.get("retry_after", 0):
                 return {}
             old = row.get("generation")
             try:
-                row = rebuild(notes, state, row, files, explicit=explicit)
+                row = rebuild(notes, state, row, files, purpose=purpose)
             except ERRORS as exc:
                 row.update(error=str(exc), retry_after=time.time() + 30, stamp=None)
                 write_state(state, row)
@@ -308,9 +341,9 @@ def refresh(notes, state, *, explicit, force=False):
             if old and old != row["generation"] and re.fullmatch(r"index-[a-z0-9_]+", old):
                 shutil.rmtree(directory(state / old), ignore_errors=True)
             return row
-    except ERRORS:
-        if explicit:
-            raise
+    except ERRORS as exc:
+        if purpose != "search":
+            raise ValueError("无法更新 Basic Memory 本地索引：" + str(exc)) from exc
         return {}
 
 
@@ -323,17 +356,20 @@ def status(store):
         if not row.get("error"):
             try:
                 with closing(open_index(state, row)) as db:
-                    db.execute("SELECT rowid FROM search_index LIMIT 1").fetchone()
+                    scope = project_id(db, row["project"], notes)
+                    db.execute("SELECT rowid FROM search_index WHERE project_id=? LIMIT 1", (scope,)).fetchone()
                 result["ready"] = row.get("stamp") == snapshot(notes)[0]
-            except ERRORS:
-                pass
+                if not result["ready"]:
+                    result["error"] = "本地经验笔记已变更，索引尚未同步"
+            except ERRORS as exc:
+                result["error"] = "无法读取本地经验索引：" + str(exc)
     return result
 
 
 def enable(store, cards):
     project(store, cards, refresh_index=False)
     notes, state = paths(store, create_notes=True)
-    refresh(notes, state, explicit=True, force=True)
+    refresh(notes, state, purpose="enable", force=True)
     return status(store)
 
 
@@ -358,28 +394,29 @@ def search(store, query):
         if not files:
             return []
         if row.get("stamp") != stamp:
-            row = refresh(notes, state, explicit=False)
+            row = refresh(notes, state, purpose="search")
         if row.get("stamp") != stamp:
             return []
         clauses = [f'script_ngrams:"{term}"' for term in chinese] + [f'"{word}"' for word in words]
         sql = """SELECT file_path, script_ngrams, content_snippet, rank FROM search_index
                  WHERE search_index MATCH ? AND type='entity'
-                   AND project_id=(SELECT id FROM project WHERE name=? AND path=?)
+                   AND project_id=?
                  ORDER BY rank, file_path LIMIT 20"""
         def read(current):
             with closing(open_index(state, current)) as db:
-                return db.execute(sql, (" OR ".join(clauses), current["project"], str(notes))).fetchall()
+                scope = project_id(db, current["project"], notes)
+                return db.execute(sql, (" OR ".join(clauses), scope)).fetchall()
 
         try:
             rows = read(row)
         except (ValueError, sqlite3.Error):
-            row = refresh(notes, state, explicit=False, force=True)
+            row = refresh(notes, state, purpose="search", force=True)
             if row.get("stamp") != stamp:
                 return []
             rows = read(row)
         matches = []
         for file, grams, snippet, rank in rows:
-            file = unicodedata.normalize("NFC", file)
+            file = note_key(notes, file)
             if file not in files:
                 continue
             hits = (set(chinese) & set((grams or "").split())) | (set(words) & set(WORDS.findall((snippet or "").lower())))
