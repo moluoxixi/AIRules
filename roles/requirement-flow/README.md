@@ -50,7 +50,7 @@ python3 "$FLOW" task plan-search serve
 
 在接口节点中，每行显示请求方法和业务用途。点击接口进入第二层抽屉，切换“请求字段”和“响应字段”查看该调用的字段、约束和来源。关闭后回到原接口列表。
 
-“涉及文件与依据”可以预览引用行附近的源码，或用 WebStorm、VS Code 打开文件。也可以复制文件与行号到 Codex 或 Claude 对话。直接打开离线 HTML 时可以复制引用。代码和需求图在不同 worktree 时，可在启动图服务时指定代码所在的同仓库检出：
+“涉及文件与依据”可以预览引用行附近的源码，或用 WebStorm、VS Code 打开文件。复制到 Codex 或 Claude 对话的引用包含已定位工作树的完整路径和原始行号。离线页面或缺少文件时，复制的是项目相对引用。代码和需求图在不同 worktree 时，可在启动图服务时指定代码所在的同仓库检出：
 
 ```bash
 python3 .agents/skills/requirement-flow/flow.py task plan-search serve --source-root /path/to/project-worktree

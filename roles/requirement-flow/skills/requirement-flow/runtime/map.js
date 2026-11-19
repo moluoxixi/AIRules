@@ -1112,8 +1112,8 @@
         input = html('input', file, null, 'source-manual-copy')
         input.readOnly = true
         input.setAttribute('aria-label', '手动复制文件引用')
-        input.value = ref
       }
+      input.value = ref
       input.focus()
       input.select()
       button.textContent = '请手动复制'
@@ -1130,7 +1130,8 @@
     copy.title = `复制文件引用 ${ref}`
     copy.setAttribute('aria-label', copy.title)
     copy.setAttribute('aria-live', 'polite')
-    copy.onclick = () => copySource(copy, ref, file)
+    let copyRef = ref
+    copy.onclick = () => copySource(copy, copyRef, file)
     if (!csrf)
       return
     const summary = file.querySelector('summary')
@@ -1147,7 +1148,13 @@
         })
         if (!reply.ok)
           throw new Error('unavailable')
-        const { editors, preview, line } = await reply.json()
+        const { editors, preview, line, path } = await reply.json()
+        if (typeof path === 'string' && path) {
+          const position = ref.match(/:\d+(?::\d+)?(?:-\d+)?$/u)?.[0] || ''
+          copyRef = path + position
+          copy.title = `复制当前工作树的文件引用 ${copyRef}`
+          copy.setAttribute('aria-label', copy.title)
+        }
         const choices = Object.entries(editors || {}).filter(([editor, value]) => {
           if (!Object.hasOwn(sourceEditors, editor) || typeof value !== 'string')
             return false

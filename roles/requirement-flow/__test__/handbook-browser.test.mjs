@@ -797,6 +797,12 @@ describe.skipIf(!executablePath)('generated handbook interactions in Chromium', 
       expect(webstorm.protocol).toBe('webstorm:')
       expect(webstorm.searchParams.get('file')).toBe(realpathSync(target))
       expect(webstorm.searchParams.get('line')).toBe('340')
+      await page.evaluate(() => Object.defineProperty(navigator, 'clipboard', {
+        configurable: true,
+        value: { writeText: async (text) => { document.body.dataset.copied = text } },
+      }))
+      await page.click(`${entry} button[aria-label^="复制当前工作树"]`)
+      expect(await page.$eval('body', el => el.dataset.copied)).toBe(`${realpathSync(target)}:340`)
       expect(await page.$eval(`${entry} pre`, el => el.hidden)).toBe(true)
       await page.click(`${entry} button[aria-expanded]`)
       expect(await page.$eval(`${entry} .source-target-line`, el => el.textContent)).toBe('340<b>用户选中的原文</b>')
