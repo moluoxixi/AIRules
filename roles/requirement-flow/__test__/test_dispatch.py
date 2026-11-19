@@ -1,6 +1,7 @@
 """Exercise dependency routing and evidence validity against fresh on-disk tasks."""
 import sys
 import json
+import re
 import tempfile
 import unittest
 from pathlib import Path
@@ -91,6 +92,64 @@ class DispatchTest(unittest.TestCase):
         self.assertTrue(result["passed"], result)
         self.assertTrue((sync.TASK_DIR / result["artifact"]["path"]).is_file())
         return self.finish(key)
+
+    def test_legacy_contract_rerender_preserves_proof_and_endpoint_revision_requires_recheck(self):
+        field = {"name": "weight", "type": "number", "constraint": "千克", "use": "显示秤重"}
+        contract = {"title": "收货称重", "operation": "GET /scale", "state": "confirmed",
+                    "status": "已核对", "source": "称重台", "fields": [field]}
+        self.plan(stories={"S-weight": story("核对秤重", WEIGHT)},
+                  actions={"A-weight": action("核对重量", "验证", "S-weight", contracts=["C-scale"], covers=["SC-weight"])},
+                  contracts={"C-scale": contract})
+        old = self.verify("A-weight")
+        old_model = sync.MODEL.read_bytes()
+        evidence_files = {p: p.read_bytes() for p in (sync.TASK_DIR / "evidence").glob("*/*")}
+        sync.sync()
+        self.assertEqual(sync.MODEL.read_bytes(), old_model)
+        self.assertEqual(sync.dispatch(self.work())["state"], "complete")
+
+        # Structured routes can share a path or fields across directions.
+        occupied = {"name": "dock", "type": "string", "constraint": "必填", "use": "定位称重台"}
+        query = {"method": "GET", "path": "/scale", "purpose": "读取秤重", "source": "old/scale.md:3",
+                 "request": [occupied], "response": [field, occupied]}
+        save = {"method": "POST", "path": "/scale", "purpose": "保存秤重", "source": "称重服务接口约定",
+                "request": [field], "response": [], "responseNote": "成功返回 204，无正文"}
+        (self.root / "docs").mkdir()
+        (self.root / "docs/scale.md").write_text("称重接口", encoding="utf-8")
+        (self.root / ".requirements/source-paths.json").write_text(json.dumps(
+            {"version": 1, "directories": {"old/": "docs/"}}))
+        updated = self.plan(contracts={"C-scale": {**contract, "endpoints": [query, save]}})
+        self.assertEqual(updated["events"][:-1], old["events"])
+        self.assertEqual(evidence_files, {p: p.read_bytes() for p in evidence_files})
+        self.assertEqual(sync.dispatch(updated)["scenarios"][0]["status"], "stale")
+        ctx = sync.context(sync.load(), "S-weight")
+        self.assertEqual(ctx["contracts"]["C-scale"]["endpoints"], [{**query, "source": "docs/scale.md:3"}, save])
+        page = sync.BOOK.read_text(encoding="utf-8")
+        payload = json.loads(re.search(r'<script type="application/json" id="data">(.+?)</script>', page).group(1))
+        self.assertEqual(payload["model"]["work"]["contracts"]["C-scale"]["endpoints"], [query, save])
+        self.assertEqual(payload["source_labels"][query["source"]], "docs/scale.md:3")
+        node = next(n for n in payload["graph"]["nodes"] if n["id"] == "C-scale")
+        self.assertEqual((node["title"], node["caption"]), ("收货称重", "读取秤重 · 保存秤重"))
+        ops, names = sync.knowledge.contract_keys(updated, [updated["actions"]["A-weight"]])
+        self.assertEqual(ops, {"GET /scale", "POST /scale"})
+        self.assertEqual(names, {"weight", "dock"})
+
+    def test_malformed_endpoints_do_not_replace_last_valid_record(self):
+        field = {"name": "weight", "type": "number", "constraint": "千克", "use": "显示秤重"}
+        query = {"method": "GET", "path": "/scale", "purpose": "读取秤重", "source": "接口手册",
+                 "request": [], "requestNote": "无参数", "response": [field]}
+        contract = {"title": "读取称重", "operation": "获取重量", "state": "open",
+                    "status": "待核对", "source": "现场口径", "fields": [], "endpoints": [query]}
+        self.plan(contracts={"C-scale": contract})
+        model, book = sync.MODEL.read_bytes(), sync.BOOK.read_bytes()
+        for endpoints in (
+                None, [None], [query, query], [{**query, "method": " "}], [{**query, "path": "not a route"}],
+                [{**query, "purpose": " "}], [{**query, "source": None}], [{**query, "responseNote": []}],
+                [{k: v for k, v in query.items() if k != "request"}], [{**query, "response": {}}],
+                [{**query, "response": [field, field]}], [{**query, "request": [{**field, "type": " "}]}]):
+            with self.subTest(endpoints=endpoints):
+                with self.assertRaisesRegex(sync.Invalid, "C-scale"):
+                    self.plan(contracts={"C-scale": {**contract, "endpoints": endpoints}})
+        self.assertEqual((sync.MODEL.read_bytes(), sync.BOOK.read_bytes()), (model, book))
 
     def test_decisions_select_the_path_and_missing_fields_block_only_their_consumers(self):
         manual = {"decision": "D-source", "is": "manual"}

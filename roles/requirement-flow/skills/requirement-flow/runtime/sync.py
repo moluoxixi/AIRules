@@ -114,6 +114,37 @@ def story_context(w, keys):
     return result
 
 
+def validate_endpoints(contract_id, endpoints):
+    def has_text(value):
+        return isinstance(value, str) and bool(value.strip())
+
+    expect(isinstance(endpoints, list), contract_id + " 的 endpoints 应为接口列表")
+    seen = set()
+    for i, endpoint in enumerate(endpoints):
+        label = f"{contract_id} 的第 {i + 1} 个接口"
+        expect(isinstance(endpoint, dict), label + " 应为对象")
+        method, path = endpoint.get("method"), endpoint.get("path")
+        expect(has_text(method) and re.fullmatch(r"[A-Z][A-Z0-9-]*", method), label + " 需要大写 HTTP 方法")
+        expect(has_text(path) and re.fullmatch(r"(?:/|https?://[^/\s]+)\S*", path),
+               label + " 需要请求路径或完整 HTTP 地址")
+        label = f"{contract_id} 的 {method} {path}"
+        expect((method, path) not in seen, label + " 重复")
+        seen.add((method, path))
+        expect(has_text(endpoint.get("purpose")) and has_text(endpoint.get("source")), label + " 缺少业务用途或来源")
+        for side, title in (("request", "请求"), ("response", "响应")):
+            fields = endpoint.get(side)
+            expect(isinstance(fields, list), label + " 的" + title + "字段应为列表")
+            note_key = side + "Note"
+            expect(note_key not in endpoint or has_text(endpoint[note_key]), label + " 的" + title + "说明应为非空文字")
+            names = set()
+            for field in fields:
+                expect(isinstance(field, dict) and all(has_text(field.get(k)) for k in ("name", "type", "constraint", "use")),
+                       label + " 的" + title + "字段缺少名称、类型、口径或用途")
+                name = field["name"].strip()
+                expect(name not in names, f"{label} 的{title}字段 {name} 重复")
+                names.add(name)
+
+
 def validate(m):
     w = m["work"]
     expect(m["protocol"]["version"] == "2.0", "不支持的协议版本")
@@ -156,12 +187,14 @@ def validate(m):
         for ex in story["examples"]:
             expect(all(ex.get(k) for k in ("given","when","then")), "验收例子缺少前提、操作或预期")
     scenarios = scenario_definitions(w)
-    for c in w["contracts"].values():
+    for contract_id, c in w["contracts"].items():
         expect(c["state"] in ("open","confirmed","fixture") and c["source"] and isinstance(c["fields"], list), "契约缺少已知状态或来源")
         if c["state"] == "fixture":
             expect(w["kind"] == "合成推演", "真实需求需要真实来源")
         for field in c["fields"]:
             expect(all(field.get(k) for k in ("name","type","constraint","use")), "字段缺少口径或用途")
+        if "endpoints" in c:
+            validate_endpoints(contract_id, c["endpoints"])
     for key, action in w["actions"].items():
         expect(not action.get("skill") or action["skill"] in SKILLS, "未知专项 skill：" + key)
         expect(action["kind"] in ("调研","开发","验证") and action["done"].strip(), "动作类型或完成条件无效 " + key)
@@ -944,8 +977,9 @@ def new_workspace(path, raw):
     return initialize_task(path, raw, key=Path(path).resolve().name)
 
 
-def serve(port):
+def serve(port, source_root=None):
     token=secrets.token_urlsafe(32)
+    checkout = source_paths.select_source_root(source_paths.SourcePaths.for_task(TASK_DIR).root, source_root)
     class Handler(BaseHTTPRequestHandler):
         def log_message(self,*args):
             pass
@@ -1043,6 +1077,24 @@ def serve(port):
             model=load()
             if path in ("/","/handbook.html"):
                 self.send_content(200,render(model,token),"text/html")
+            elif path == "/source-location":
+                if (self.headers.get("Origin", "http://" + self.host()) != "http://" + self.host()
+                        or self.headers.get("Sec-Fetch-Site") == "cross-site"
+                        or not secrets.compare_digest(self.headers.get("X-Requirement-Flow", "").encode(), token.encode())):
+                    self.send_error(403)
+                    return
+                try:
+                    query = parse_qs(urlsplit(self.path).query, strict_parsing=True, max_num_fields=1)
+                    if set(query) != {"ref"} or len(query["ref"]) != 1 or len(query["ref"][0]) > 4096:
+                        raise ValueError
+                    aliases = source_paths.SourcePaths.for_task(TASK_DIR)
+                    location = source_paths.source_location(model["work"], aliases, checkout, query["ref"][0])
+                except (OSError, ValueError):
+                    location = None
+                if location is None:
+                    self.send_content(404, "当前检出中无法定位这条来源。", "text/plain")
+                else:
+                    self.send_content(200, encoded(location), "application/json")
             elif path=="/model.json":
                 self.send_content(200,encoded(model),"application/json")
             elif re.fullmatch(r"/evidence/E[0-9]+",path):
@@ -1126,6 +1178,7 @@ def main(argv=None):
     q.add_argument("--key"); q.add_argument("--title")
     q.add_argument("--outcome",choices=("delivery","research"),default="delivery")
     q=sub.add_parser("serve"); q.add_argument("--port",type=int,default=0)
+    q.add_argument("--source-root", type=Path, help="从当前项目的指定 Git 工作树定位来源文件")
     for name in ("lesson-propose", "lesson-review"):
         q = sub.add_parser(name)
         q.add_argument("--rev", type=int, required=True)
@@ -1193,7 +1246,7 @@ def main(argv=None):
             raise SystemExit(1)
     elif a.cmd=="serve":
         sync()
-        serve(a.port)
+        serve(a.port, a.source_root)
     else:
         actor=a.actor or "AI"
         if a.cmd=="decision":

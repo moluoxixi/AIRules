@@ -5,12 +5,35 @@
 | 栏目 | 要记录的内容 |
 | --- | --- |
 | `stories` | `title`、`actor`、`goal`、`before`、有序的关键处理 `flow`、来源 `basis` 和验收 `examples`。每个新增或改写的例子含本需求内唯一的 `id` 及具体的 `given`、`when`、`then`。 |
-| `contracts` | `title`、`operation`、`state`（`open` 或 `confirmed`）、`status`、`source`、`fields`。每个字段写 `name`、`type`、`constraint`、`use`，对照必填、枚举、空值、提交与回显。 |
+| `contracts` | `title`、`operation`、`state`（`open` 或 `confirmed`）、`status`、`source`、`fields`。HTTP 契约可在 `endpoints` 中[按接口记录字段](#按接口记录字段)。 |
 | `decisions` | `title`、`why`、`owner`、`stories`、`options`。每个选项有 `label` 和 `consequence`，收到实际决定后通过 `decision` 写回。 |
 | `actions` | `title`、`kind`（调研、开发、验证）、`stories`、`read_stories`、`contracts`、`decisions`、`depends_on`、`done`。无对应关系时填空数组。`read_stories` 表示哪些故事改动会影响该动作产出。 |
 | `lessons` | `observation`、`when`、`practice`、`boundary`、`evidence`、`review`。确认有复用价值后，将适用条件、边界和依据写入当前需求。 |
 
 动作或依赖边可加 `when: {"decision":"D-range","is":"all"}` 指定生效条件。接口调研用 `closes_contracts` 声明负责确认的契约。调度默认依动作分配专项工作方法；需要时用动作的 `skill` 指定五个专项之一。`next` 返回建议动作的 `skill`，待复核的交付还可返回 `review_skill`。
+
+## 按接口记录字段
+
+`operation` 写契约涉及的业务流程。`endpoints` 的每一条对应一个 HTTP 方法和路径组合。将下面这样的条目放入数组，用 `purpose` 说明点击后能了解哪个业务操作。`source` 指向本接口的定义、调用点或实测记录，多条引用分行书写。
+
+```json
+{
+  "method": "POST",
+  "path": "/stock/save",
+  "purpose": "保存盘点数量",
+  "request": [
+    { "name": "quantity", "type": "integer", "constraint": "必填，允许 0", "use": "提交本次实盘数量" }
+  ],
+  "response": [
+    { "name": "recordId", "type": "string", "constraint": "保存成功时返回", "use": "重新打开本次盘点记录" }
+  ],
+  "source": "src/api/stock.ts:18"
+}
+```
+
+每个方向分别写 `name`、`type`、`constraint`、`use`。嵌套字段写完整路径，如 `items[].storeId`。空列表表示该方向尚未列出字段。已确认空请求、无响应正文或缺少字段依据时，用 `requestNote`、`responseNote` 写明具体情况。不同接口可复用同名字段，每条只收录本接口实际收发的字段。
+
+契约级 `fields` 用于共享口径或尚未定位到具体接口的旧字段。新记录中没有这类字段时填 `[]`。旧记录可继续按原格式读取。用 `plan` 显式补录接口会修订契约，按 `next` 提示复核受影响的动作和场景。
 
 ## 缩小已确认的范围
 

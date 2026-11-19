@@ -232,6 +232,10 @@ def contract_keys(work, actions):
         if text(contract.get("operation")):
             operations.add(contract["operation"])
         fields.update(f["name"] for f in contract.get("fields", []) if usable_tag(f["name"]))
+        for endpoint in contract.get("endpoints", []):
+            operations.add(endpoint["method"] + " " + endpoint["path"])
+            for side in ("request", "response"):
+                fields.update(f["name"] for f in endpoint[side] if usable_tag(f["name"]))
     return operations, fields
 
 

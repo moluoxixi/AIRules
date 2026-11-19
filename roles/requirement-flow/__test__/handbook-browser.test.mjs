@@ -1,5 +1,5 @@
-import { execFileSync } from 'node:child_process'
-import { existsSync, mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from 'node:fs'
+import { execFileSync, spawn } from 'node:child_process'
+import { existsSync, mkdirSync, mkdtempSync, readFileSync, realpathSync, rmSync, writeFileSync } from 'node:fs'
 import { createRequire } from 'node:module'
 import { tmpdir } from 'node:os'
 import path from 'node:path'
@@ -56,6 +56,27 @@ function createHandbook(project) {
     patch.actions[`V-${i}`] = { ...action, title: `核对${name}`, kind: '验证', depends_on: [{ id: `A-${i}` }], covers: [scenario] }
   })
   const batch = patch.stories['S-4']
+  const savePath = '/api/orders/bulk/confirmation/selection/save-confirm'
+  const undoPath = '/api/orders/bulk/confirmation/selection/undo-confirm'
+  patch.contracts['C-4'].operation = `调用与职责\nPOST ${savePath}\nPOST ${undoPath}\n确认后重新查询列表。`
+  patch.contracts['C-4'].endpoints = [{
+    method: 'POST',
+    path: savePath,
+    purpose: '保存批量确认',
+    request: [{ name: 'operations', type: 'BatchOperation[]', constraint: '本期传 []', use: '保留已有配置' }],
+    response: [{ name: 'confirmedCount', type: 'number', constraint: '允许为 0', use: '显示确认数量' }],
+    source: '.moluoxixi/tasks/plan-batch/prd.md:6',
+  }, {
+    method: 'POST',
+    path: undoPath,
+    purpose: '撤销批量确认',
+    request: [{ name: 'typeIds', type: 'number[]', constraint: '必填', use: '标识需要撤销的条目' }],
+    response: [],
+    responseNote: '调用方仅检查业务成功状态。',
+    source: '撤销接口类型定义',
+  }]
+  patch.contracts['C-5'].fields = [{ name: 'sharedKey', type: 'string', constraint: '沿用原记录', use: '旧契约的共用字段' }]
+  patch.contracts['C-5'].operation += '\nGET /display/5/view\n共享数据需按门店核对。'
   batch.basis = [batchSource, '.moluoxixi/tasks/plan-batch/prd.md:6', '.moluoxixi/tasks/plan-batch/prd.md:12', '沿用运营确认的门店范围'].join('\n')
   batch.goal = '跨页选择门店类型后统一确认，保留已有位置方案。'
   batch.examples = [
@@ -270,7 +291,8 @@ describe.skipIf(!executablePath)('generated handbook interactions in Chromium', 
       await page.waitForFunction(() => location.hash === '#node=C-5', { timeout: 5_000 })
       await page.reload()
       await drawerReady(page)
-      expect(await page.$eval('#detail', el => el.textContent)).toContain('POST /display/5')
+      expect(await page.$eval('.endpoint-method', el => el.textContent)).toBe('POST')
+      expect(await page.$eval('.endpoint-path', el => el.textContent)).toBe('/display/5')
       // The filter button sits underneath the backdrop on this desktop viewport.
       await page.click('#filter-toggle')
       await drawerClosed(page)
@@ -425,6 +447,144 @@ describe.skipIf(!executablePath)('generated handbook interactions in Chromium', 
       expect(await visibleDetail(page)).not.toContain('.moluoxixi/tasks/')
       await page.click(`${files} > summary`)
       expect(await visibleDetail(page)).not.toContain(batchSource)
+    }
+    finally {
+      await page.close()
+    }
+  })
+
+  async function endpointReady(page) {
+    await page.waitForFunction(() => {
+      const dialog = document.querySelector('#endpoint-drawer')
+      return dialog.open && dialog.getAnimations().every(animation => animation.playState === 'finished')
+    })
+  }
+  function endpointClosed(page) {
+    return page.waitForFunction(() => !document.querySelector('#endpoint-drawer').open && !location.hash.includes('&endpoint='))
+  }
+  it.each([320, 615, 1160])('reads a single API in a nested modal and returns to the same list at %ipx', async (width) => {
+    const page = await open(width, 350, '?view=detail&features=S-4#node=C-4')
+    try {
+      const cards = '.endpoint-list > button.endpoint'
+      expect(await page.$$eval(cards, rows => rows.map(row => [
+        row.querySelector('.endpoint-method').textContent,
+        row.querySelector('strong').textContent,
+        row.querySelector('.endpoint-path').textContent,
+      ]))).toEqual([
+        ['POST', '保存批量确认', '/api/orders/bulk/confirmation/selection/save-confirm'],
+        ['POST', '撤销批量确认', '/api/orders/bulk/confirmation/selection/undo-confirm'],
+      ])
+      expect(await visibleDetail(page)).toContain('确认后重新查询列表。')
+      expect(await visibleDetail(page)).not.toMatch(/operations|confirmedCount|typeIds|调用与职责/u)
+      const [save, undo] = await page.$$(cards)
+      const originalView = await canvasState(page)
+      const originalScroll = await page.$eval('#detail', (el) => {
+        el.scrollTop = 25
+        return el.scrollTop
+      })
+      expect(originalScroll).toBeGreaterThan(0)
+      await save.focus()
+      await page.keyboard.press('Enter')
+      await endpointReady(page)
+      const child = '#endpoint-drawer'
+      const fields = '#endpoint-fields'
+      const tabs = '#endpoint-drawer .endpoint-tabs > button'
+      const [request, response] = await page.$$(tabs)
+      expect(await page.$eval(child, el => el.matches(':modal'))).toBe(true)
+      expect(await page.$eval('#inspector', el => el.inert)).toBe(true)
+      expect(await page.evaluate(() => document.activeElement.id)).toBe('endpoint-close')
+      expect(await page.$$eval(tabs, buttons => buttons.map(b => b.textContent))).toEqual(['请求字段（1）', '响应字段（1）'])
+      expect(await page.$eval(fields, el => el.textContent)).toContain('本期传 []')
+      expect(await page.$eval(fields, el => el.textContent)).not.toContain('confirmedCount')
+      await response.click()
+      expect(await page.$eval(fields, el => el.textContent)).toContain('confirmedCount')
+      expect(await page.$eval(fields, el => el.textContent)).not.toContain('operations')
+      await request.click()
+      expect(await page.$eval(fields, el => el.textContent)).toContain('operations')
+      expect(await page.$eval(`${child} details.source-list`, el => el.open)).toBe(false)
+      expect(await page.$eval(`${child} .endpoint-body`, el => el.scrollWidth <= el.clientWidth + 1)).toBe(true)
+      await page.focus('#endpoint-drawer .endpoint-back')
+      await page.keyboard.down('Shift')
+      await page.keyboard.press('Tab')
+      await page.keyboard.up('Shift')
+      expect(await page.evaluate(() => document.querySelector('#endpoint-drawer').contains(document.activeElement))).toBe(true)
+      expect(await page.evaluate(() => document.activeElement.dataset.side)).toBe('response')
+      await page.keyboard.press('Tab')
+      expect(await page.evaluate(() => document.activeElement.className)).toBe('endpoint-back')
+
+      await page.keyboard.press('Escape')
+      await endpointClosed(page)
+      expect(await page.$eval('#inspector', el => el.inert)).toBe(false)
+      expect(await page.$eval('.app', el => el.inert)).toBe(true)
+      expect(await save.evaluate(el => el === document.activeElement)).toBe(true)
+      expect(await page.$eval('#detail', el => el.scrollTop)).toBe(originalScroll)
+      expect(await canvasState(page)).toEqual(originalView)
+      await undo.click()
+      await endpointReady(page)
+      expect(await page.$eval('#endpoint-fields', el => el.textContent)).toContain('typeIds')
+      await page.click(`${tabs}[data-side="response"]`)
+      expect(await page.$eval(fields, el => el.textContent)).toContain('调用方仅检查业务成功状态。')
+      await page.mouse.click(5, 100)
+      await endpointClosed(page)
+      expect(await undo.evaluate(el => el === document.activeElement)).toBe(true)
+      await undo.click()
+      await endpointReady(page)
+      await page.click('#endpoint-close')
+      await endpointClosed(page)
+      expect(await page.$eval('#drawer-layer', el => el.hidden)).toBe(false)
+    }
+    finally {
+      await page.close()
+    }
+  })
+
+  it('restores both drawer levels from offline links, browser history and parent node changes', async () => {
+    const page = await open(615, 623, '?view=detail&features=S-4#node=C-4')
+    try {
+      await page.click('.endpoint-list .endpoint')
+      await endpointReady(page)
+      const apiUrl = page.url()
+      expect(apiUrl).toContain('&endpoint=')
+      await page.goBack()
+      await endpointClosed(page)
+      expect(await page.evaluate(() => document.activeElement.classList.contains('endpoint'))).toBe(true)
+      await page.goForward()
+      await endpointReady(page)
+      expect(await page.$eval('#endpoint-title', el => el.textContent)).toBe('保存批量确认')
+      await page.reload()
+      await endpointReady(page)
+      expect(await page.$eval('#endpoint-fields .field-heading code', el => el.textContent)).toBe('operations')
+      await page.click('#endpoint-drawer .endpoint-back')
+      await endpointClosed(page)
+      expect(await page.evaluate(() => location.hash)).toBe('#node=C-4')
+      await page.goto(apiUrl)
+      await endpointReady(page)
+      await page.evaluate(() => {
+        location.hash = 'node=S-4'
+      })
+      await page.waitForFunction(() => !document.querySelector('#endpoint-drawer').open && document.querySelector('#panel-title').textContent === '批量确认')
+      expect(await page.$eval('#inspector', el => el.inert)).toBe(false)
+      expect(await page.evaluate(() => document.activeElement.id)).toBe('close-panel')
+    }
+    finally {
+      await page.close()
+    }
+  })
+
+  it('keeps legacy routes readable without assigning shared fields to individual APIs', async () => {
+    const page = await open(375, 623, '?view=detail&features=S-5#node=C-5')
+    try {
+      const rows = '#detail .endpoint'
+      expect(await page.$$eval(`${rows} strong`, labels => labels.map(el => el.textContent))).toEqual(['用途待补充', '用途待补充'])
+      expect(await visibleDetail(page)).toContain('共享数据需按门店核对。')
+      await page.click(rows)
+      await endpointReady(page)
+      expect(await page.$eval('#endpoint-fields', el => el.textContent)).toContain('字段未按接口整理')
+      expect(await page.$eval('#endpoint-drawer', el => el.textContent)).not.toContain('sharedKey')
+      await page.click('#endpoint-close')
+      await endpointClosed(page)
+      await page.click('#detail > details.compact-fold > summary')
+      expect(await visibleDetail(page)).toContain('sharedKey')
     }
     finally {
       await page.close()
@@ -599,6 +759,87 @@ describe.skipIf(!executablePath)('generated handbook interactions in Chromium', 
       })
       expect(edges).toBeGreaterThan(featureTitles.length)
       expect(overlaps).toEqual([])
+    }
+    finally {
+      await page.close()
+    }
+  })
+  it('previews a cited line on demand and remembers the editor for live source references', async () => {
+    const cli = fileURLToPath(new URL('../skills/requirement-flow/flow.py', import.meta.url))
+    const windows = process.platform === 'win32'
+    const target = path.resolve(project, batchSource.slice(0, -4))
+    mkdirSync(path.dirname(target), { recursive: true })
+    writeFileSync(target, Array.from({ length: 345 }, (_, index) => index === 339 ? '<b>用户选中的原文</b>' : '相邻行').join('\n'))
+    const server = spawn(windows ? 'py' : 'python3', [...(windows ? ['-3'] : []), '-B', cli, '--project', project, 'task', 'plan', 'serve'])
+    const page = await browser.newPage()
+    const route = '?view=overview&features=S-4#node=S-4'
+    const list = '#detail .source-list'
+    const entry = `${list} .source-entry`
+    const requests = []
+    page.on('request', (request) => {
+      if (request.url().includes('/source-location?'))
+        requests.push(request)
+    })
+    try {
+      const address = await new Promise((resolve, reject) => {
+        server.once('error', reject)
+        server.once('exit', code => reject(new Error(`source server exited with ${code}`)))
+        server.stdout.once('data', chunk => resolve(chunk.toString().trim()))
+      })
+      await page.goto(address + route)
+      await drawerReady(page)
+      expect(requests).toHaveLength(0)
+      await page.click(`${list} > summary`)
+      const link = `${entry} a.source-open`
+      await page.waitForSelector(link)
+      expect(requests.every(request => request.headers()['x-requirement-flow'])).toBe(true)
+      const webstorm = new URL(await page.$eval(link, a => a.href))
+      expect(webstorm.protocol).toBe('webstorm:')
+      expect(webstorm.searchParams.get('file')).toBe(realpathSync(target))
+      expect(webstorm.searchParams.get('line')).toBe('340')
+      await page.evaluate(() => Object.defineProperty(navigator, 'clipboard', {
+        configurable: true,
+        value: { writeText: async (text) => { document.body.dataset.copied = text } },
+      }))
+      await page.click(`${entry} button[aria-label^="复制当前工作树"]`)
+      expect(await page.$eval('body', el => el.dataset.copied)).toBe(`${realpathSync(target)}:340`)
+      expect(await page.$eval(`${entry} pre`, el => el.hidden)).toBe(true)
+      await page.click(`${entry} button[aria-expanded]`)
+      expect(await page.$eval(`${entry} .source-target-line`, el => el.textContent)).toBe('340<b>用户选中的原文</b>')
+      expect(await page.$(`${entry} pre b`)).toBeNull()
+      await page.select(`${list} select`, 'vscode')
+      expect(decodeURIComponent(await page.$eval(link, a => a.href))).toContain('批量确认规则.md:340:1')
+      await page.reload()
+      await page.click(`${list} > summary`)
+      await page.waitForSelector(link)
+      expect(await page.$eval(link, a => a.protocol)).toBe('vscode:')
+      // The mapped prd.md exists but is shorter than the cited line; copying remains available.
+      await page.click(`${entry}:nth-last-of-type(1) .source-file > summary`)
+      await page.waitForSelector(`${entry} .source-unavailable`)
+      const missing = await page.$eval(`${entry} .source-unavailable`, el => el.closest('.source-entry').querySelector('button').getAttribute('aria-label'))
+      expect(missing).toContain('复制文件引用')
+    }
+    finally {
+      await page.close()
+      server.kill()
+    }
+  })
+  it('keeps offline source references copyable when clipboard permissions are unavailable', async () => {
+    const page = await open(375, 667, '?view=overview&features=S-4#node=S-4')
+    try {
+      await page.evaluate(() => Object.defineProperty(navigator, 'clipboard', {
+        configurable: true,
+        value: { writeText: () => Promise.reject(new Error('clipboard permission denied')) },
+      }))
+      const group = '#detail .source-list'
+      await page.click(`${group} > summary`)
+      expect(await page.$(`${group} a.source-open, ${group} select.source-editor`)).toBeNull()
+      await page.click(`${group} .source-actions button`)
+      const selection = await page.$eval('.source-manual-copy', el => ({
+        value: el.value.slice(el.selectionStart, el.selectionEnd),
+        focused: document.activeElement === el,
+      }))
+      expect(selection).toEqual({ value: batchSource, focused: true })
     }
     finally {
       await page.close()

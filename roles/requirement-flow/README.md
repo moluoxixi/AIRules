@@ -12,7 +12,11 @@ python3 roles/requirement-flow/skills/requirement-flow/flow.py --project /path/t
 
 包含本角色的 AIRules 版本发布后，也可先运行 `airules install requirement-flow --host codex` 和 `airules verify requirement-flow --host codex`，再执行 `python3 ~/.agents/skills/requirement-flow/flow.py --project /path/to/project init`。用户级安装让 Codex 发现六个 skills；每个项目各执行一次 `init`，才会有项目自己的六个 skill、一段 `AGENTS.md` 入口和 `.requirements/installation.json` 安装清单。
 
-从新版本的 AIRules 或已更新的用户级 skill 再次 `init` 即可升级，也支持已使用 0.1.0 的项目。进行中与已归档的数据均保留。遇到团队改过的受管文件或已有同名 skill，安装器会指出冲突路径。现有 Moluoxixi 项目需显式加 `--migrate`，旧 Codex 入口备份在 `.requirements/migrations/moluoxixi/`，原任务、独立 skill、其他 hooks 和项目规则保留。
+升级已有项目时，从更新后的 AIRules 分发目录运行 `python3 roles/requirement-flow/skills/requirement-flow/flow.py --project /path/to/project upgrade`。使用用户级安装时，先更新该安装，再从其 skill 目录运行同一条 `upgrade`。关闭该项目正在运行的需求图服务，升级后可沿用原端口重启。已有项目重复执行新版 `init` 也会走升级流程。
+
+升级校验受管文件，并将新技能与进行中需求的离线页面一起更新。安装清单记录角色版本；命令列出实际刷新的需求 ID。原始模型、回执、项目规则和归档快照均保留。旧契约中的接口地址可以直接展开，共用字段保留在契约层。按来源补齐接口用途与各自的请求、响应后，可在接口行查看。通过 `plan` 修改契约会触发相关场景复核。
+
+现有 Moluoxixi 项目需显式加 `--migrate`，旧 Codex 入口备份在 `.requirements/migrations/moluoxixi/`，原任务、独立 skill、其他 hooks 和项目规则保留。
 
 使用本机 Git worktree 的项目可以在主工作区安装并提交，再按项目原有流程同步分支。需求的 `model.json`、`handbook.html` 和 `evidence/` 中的回执与附件一起保存。同一仓库的工作区通过 Git 公共目录里的本机密钥复核回执。备份仓库或迁移机器时应单独保管这些密钥，新克隆需要恢复密钥才能复核原始回执。
 
@@ -43,6 +47,14 @@ python3 "$FLOW" task plan-search serve
 `serve` 输出本机 URL，支持筛选、查看处理与证据、登记业务决定。离线可打开 `.requirements/active/plan-search/handbook.html`；AI 可读同目录 `model.json`，或用 `task plan-search context <故事ID>` 只读取一个功能。
 
 图页默认以 100% 展示功能卡和各自的验收进度。点「筛选功能」可搜索或多选，收起浮层后仍保留筛选范围。选择功能或切换「实现链路」，可以沿连线查看接口、处理、业务决定和验证记录。右上角的锁控制滚轮与双指缩放，初始锁定；锁定时仍可平移、手动加减。点击百分比恢复原大小，点击「适应画布」查看当前图的全貌。
+
+在接口节点中，每行显示请求方法和业务用途。点击接口进入第二层抽屉，切换“请求字段”和“响应字段”查看该调用的字段、约束和来源。关闭后回到原接口列表。
+
+“涉及文件与依据”可以预览引用行附近的源码，或用 WebStorm、VS Code 打开文件。复制到 Codex 或 Claude 对话的引用包含已定位工作树的完整路径和原始行号。离线页面或缺少文件时，复制的是项目相对引用。代码和需求图在不同 worktree 时，可在启动图服务时指定代码所在的同仓库检出：
+
+```bash
+python3 .agents/skills/requirement-flow/flow.py task plan-search serve --source-root /path/to/project-worktree
+```
 
 ## 验收与归档
 

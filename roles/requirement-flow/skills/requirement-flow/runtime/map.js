@@ -1052,6 +1052,164 @@
     html('summary', more, title)
     return more
   }
+  const sourceEditors = { webstorm: 'WebStorm', vscode: 'VS Code' }
+  const editorKey = 'requirement-flow-editor'
+  let preferredEditor = 'webstorm'
+  try {
+    // A new serve session can use a different port on the same loopback host.
+    const stored = document.cookie.split('; ').find(value => value.startsWith(`${editorKey}=`))?.slice(editorKey.length + 1) || localStorage.getItem(editorKey)
+    if (Object.hasOwn(sourceEditors, stored))
+      preferredEditor = stored
+  }
+  catch { /* Storage can be unavailable for local files. */ }
+
+  function setEditorLink(link) {
+    const url = link.dataset[preferredEditor]
+    if (url) {
+      link.href = url
+      link.title = `在 ${sourceEditors[preferredEditor]} 中打开 ${link.dataset.ref}`
+    }
+    else {
+      link.removeAttribute('href')
+      link.title = '所选编辑器没有此文件的打开链接，可复制文件引用'
+    }
+  }
+  function sourceEditorPicker(group) {
+    const label = html('label', group, '打开文件使用', 'source-editor-label')
+    const select = html('select', label, null, 'source-editor')
+    for (const [id, name] of Object.entries(sourceEditors)) html('option', select, name).value = id
+    select.value = preferredEditor
+    select.onchange = () => {
+      preferredEditor = select.value
+      try {
+        localStorage.setItem(editorKey, preferredEditor)
+        document.cookie = `${editorKey}=${preferredEditor}; Path=/; Max-Age=31536000; SameSite=Strict`
+      }
+      catch { /* Keep using the choice for this page. */ }
+      for (const picker of document.querySelectorAll('select.source-editor')) picker.value = preferredEditor
+      for (const link of document.querySelectorAll('.source-open')) setEditorLink(link)
+    }
+  }
+  function sourceFilename(ref) {
+    // Descriptive prose, schemes and references outside the project remain plain text.
+    if (/^[\\/]|[:\\]\/\/|[\p{Cc}<>"|?*]/u.test(ref))
+      return ''
+    const parts = ref.split(/[/\\]/u)
+    if (parts.some(part => !part || part === '..') || parts.slice(0, -1).some(part => part.includes(':')))
+      return ''
+    const name = parts.at(-1)
+    return /^(?:[^:]+\.[\p{L}\d_-]+|Makefile|Dockerfile|LICENSE|README)(?::\d+(?::\d+)?(?:-\d+)?)?$/u.test(name) ? name : ''
+  }
+  async function copySource(button, ref, file) {
+    try {
+      await navigator.clipboard.writeText(ref)
+      button.textContent = '已复制'
+    }
+    catch {
+      file.open = true
+      let input = file.querySelector('input.source-manual-copy')
+      if (!input) {
+        input = html('input', file, null, 'source-manual-copy')
+        input.readOnly = true
+        input.setAttribute('aria-label', '手动复制文件引用')
+      }
+      input.value = ref
+      input.focus()
+      input.select()
+      button.textContent = '请手动复制'
+    }
+  }
+  function showFileSource(group, ref, name) {
+    const row = html('div', group, null, 'source-entry')
+    const file = disclosure(row, name)
+    file.classList.add('source-file')
+    html('p', file, ref, 'source-note')
+    const actions = html('div', row, null, 'source-actions')
+    const copy = html('button', actions, '复制')
+    copy.type = 'button'
+    copy.title = `复制文件引用 ${ref}`
+    copy.setAttribute('aria-label', copy.title)
+    copy.setAttribute('aria-live', 'polite')
+    let copyRef = ref
+    copy.onclick = () => copySource(copy, copyRef, file)
+    if (!csrf)
+      return
+    const summary = file.querySelector('summary')
+    let loading = false
+    group.addEventListener('toggle', async () => {
+      if (!group.open || loading)
+        return
+      loading = true
+      try {
+        const reply = await fetch(`/source-location?${new URLSearchParams({ ref })}`, {
+          headers: { 'X-Requirement-Flow': csrf },
+          cache: 'no-store',
+          redirect: 'error',
+        })
+        if (!reply.ok)
+          throw new Error('unavailable')
+        const { editors, preview, line, path } = await reply.json()
+        if (typeof path === 'string' && path) {
+          const position = ref.match(/:\d+(?::\d+)?(?:-\d+)?$/u)?.[0] || ''
+          copyRef = path + position
+          copy.title = `复制当前工作树的文件引用 ${copyRef}`
+          copy.setAttribute('aria-label', copy.title)
+        }
+        const choices = Object.entries(editors || {}).filter(([editor, value]) => {
+          if (!Object.hasOwn(sourceEditors, editor) || typeof value !== 'string')
+            return false
+          try {
+            const url = new URL(value)
+            return url.protocol === `${editor}:` && url.host === (editor === 'webstorm' ? 'open' : 'file')
+          }
+          catch { return false }
+        })
+        if (choices.length) {
+          const link = html('a', null, name, 'source-open')
+          link.dataset.ref = ref
+          for (const [editor, url] of choices) link.dataset[editor] = url
+          setEditorLink(link)
+          summary.replaceChildren(link)
+        }
+        if (preview?.lines?.length && Number.isSafeInteger(preview.startLine)) {
+          const toggle = html('button', null, '预览')
+          toggle.type = 'button'
+          toggle.title = `预览 ${name} 附近的原文`
+          toggle.setAttribute('aria-expanded', 'false')
+          actions.prepend(toggle)
+          const code = html('pre', file, null, 'source-preview')
+          code.hidden = true
+          for (const [offset, content] of preview.lines.entries()) {
+            const number = preview.startLine + offset
+            const codeLine = html('span', code, null, 'source-code-line')
+            if (number === line)
+              codeLine.classList.add('source-target-line')
+            html('span', codeLine, number, 'source-line-number')
+            html('span', codeLine, content)
+          }
+          toggle.onclick = () => {
+            const show = !file.open || code.hidden
+            if (show)
+              file.open = true
+            code.hidden = !show
+            toggle.setAttribute('aria-expanded', String(show))
+          }
+          file.addEventListener('toggle', () => {
+            if (!file.open) {
+              code.hidden = true
+              toggle.setAttribute('aria-expanded', 'false')
+            }
+          })
+        }
+        row.querySelector('.source-unavailable')?.remove()
+      }
+      catch {
+        loading = false
+        if (!file.querySelector('.source-unavailable'))
+          html('p', file, '当前工作区无法定位此文件，可复制引用。', 'source-unavailable')
+      }
+    })
+  }
   function showSources(parent, source, title = '涉及文件与依据', labels = sourceLabels) {
     const content = Array.isArray(source) ? source.join('\n') : String(source ?? '')
     const lines = content.split(/\r?\n/u).map(line => line.trim()).filter(Boolean)
@@ -1059,23 +1217,197 @@
       return
     const group = disclosure(parent, `${title}（${lines.length}）`)
     group.classList.add('source-list')
+    if (csrf && lines.some(line => sourceFilename(line)))
+      sourceEditorPicker(group)
     for (const original of lines) {
       const line = Object.hasOwn(labels, original) ? labels[original] : original
       if (/^https?:\/\/\S+$/iu.test(line)) {
         sourceLink(group, line, line)
         continue
       }
-      const parts = line.split(/[/\\]/u)
-      const name = parts[parts.length - 1]
-      const isFile = /^[^/\\]+\.[a-z\d]+(?::\d+(?::\d+)?(?:-\d+)?)?$/iu.test(name)
-      if (isFile && !/[\s，。；：]/u.test(parts[0])) {
-        const file = disclosure(group, name)
-        file.classList.add('source-file')
-        html('p', file, line, 'source-note')
+      const name = sourceFilename(line)
+      if (name) {
+        showFileSource(group, line, name)
       }
       else {
         html('p', group, line, 'source-note')
       }
+    }
+  }
+  function showContractFields(parent, fields) {
+    for (const field of fields) {
+      const item = html('div', parent, null, 'contract-field')
+      const heading = html('div', item, null, 'field-heading')
+      html('code', heading, field.name)
+      html('span', heading, field.type, 'field-type')
+      html('p', item, field.use)
+      html('p', item, field.constraint, 'field-constraint')
+    }
+  }
+  const endpointRows = new Map()
+  let activeEndpoint = null
+  let displayedSearch = location.search
+  // Keep the second dialog outside the inert graph and its parent dialog. Older offline shells can use it too.
+  const endpointDrawer = html('dialog', document.body)
+  endpointDrawer.id = 'endpoint-drawer'
+  endpointDrawer.setAttribute('aria-labelledby', 'endpoint-title')
+  endpointDrawer.setAttribute('aria-modal', 'true')
+  const endpointBar = html('div', endpointDrawer, null, 'panelbar')
+  const endpointBack = html('button', endpointBar, '← 接口列表', 'endpoint-back')
+  endpointBack.type = 'button'
+  const endpointClose = $('close-panel').cloneNode(true)
+  endpointClose.id = 'endpoint-close'
+  endpointClose.setAttribute('aria-label', '关闭接口详情')
+  endpointClose.title = '关闭接口详情（Esc）'
+  endpointBar.append(endpointClose)
+  const endpointBody = html('div', endpointDrawer, null, 'endpoint-body')
+  const endpointHeading = html('div', endpointBody, null, 'endpoint-heading')
+  const endpointMethod = html('span', endpointHeading, null, 'endpoint-method')
+  const endpointTitle = html('h2', endpointHeading)
+  endpointTitle.id = 'endpoint-title'
+  const endpointPath = html('code', endpointBody, null, 'endpoint-path')
+  const endpointSources = html('div', endpointBody)
+  const endpointTabs = html('div', endpointBody, null, 'endpoint-tabs')
+  endpointTabs.setAttribute('role', 'group')
+  endpointTabs.setAttribute('aria-label', '字段方向')
+  const endpointFields = html('div', endpointBody)
+  endpointFields.id = 'endpoint-fields'
+  function showEndpointFields(endpoint, side) {
+    for (const button of endpointTabs.children)
+      button.setAttribute('aria-pressed', String(button.dataset.side === side))
+    endpointFields.replaceChildren()
+    const fields = endpoint[side]
+    const note = endpoint[`${side}Note`]
+    if (note || !fields.length)
+      html('p', endpointFields, note || '字段未记录。', 'endpoint-note')
+    showContractFields(endpointFields, fields)
+  }
+  function openEndpoint(row, navigate) {
+    if (activeEndpoint?.button === row.button)
+      return
+    const { button, endpoint } = row
+    activeEndpoint?.button.setAttribute('aria-expanded', 'false')
+    activeEndpoint = { button, scrollTop: detail.scrollTop }
+    endpointMethod.textContent = endpoint.method
+    endpointTitle.textContent = endpoint.purpose || '用途待补充'
+    endpointPath.textContent = endpoint.path
+    endpointSources.replaceChildren()
+    endpointTabs.replaceChildren()
+    endpointFields.replaceChildren()
+    endpointTabs.hidden = !endpoint.purpose
+    if (endpoint.purpose) {
+      showSources(endpointSources, endpoint.source, '接口依据')
+      for (const [side, label] of [['request', '请求字段'], ['response', '响应字段']]) {
+        const tab = html('button', endpointTabs, `${label}（${endpoint[side].length}）`)
+        tab.type = 'button'
+        tab.dataset.side = side
+        tab.setAttribute('aria-controls', endpointFields.id)
+        tab.onclick = () => {
+          showEndpointFields(endpoint, side)
+          endpointBody.scrollTop = 0
+        }
+      }
+      showEndpointFields(endpoint, 'request')
+    }
+    else {
+      html('p', endpointFields, '原记录的字段未按接口整理。', 'dim')
+    }
+    drawer.inert = true
+    button.setAttribute('aria-expanded', 'true')
+    if (!endpointDrawer.open)
+      endpointDrawer.showModal()
+    endpointBody.scrollTop = 0
+    endpointClose.focus({ preventScroll: true })
+    if (navigate) {
+      const hash = `#node=${encodeURIComponent(selected)}&endpoint=${encodeURIComponent(row.key)}`
+      try {
+        history.pushState({ endpointHash: hash }, '', hash)
+      }
+      catch {
+        // Some local readers restrict URL updates. The dialog still works.
+      }
+    }
+  }
+  function hideEndpoint(restoreFocus = true) {
+    if (!activeEndpoint)
+      return
+    const { button, scrollTop } = activeEndpoint
+    activeEndpoint = null
+    button.setAttribute('aria-expanded', 'false')
+    endpointDrawer.close()
+    drawer.inert = false
+    if (restoreFocus && button.isConnected) {
+      detail.scrollTop = scrollTop
+      button.focus({ preventScroll: true })
+    }
+  }
+  function dismissEndpoint() {
+    if (!activeEndpoint)
+      return
+    hideEndpoint()
+    if (history.state?.endpointHash === location.hash)
+      history.back()
+    else
+      recordHash(`#node=${encodeURIComponent(selected)}`)
+  }
+  endpointBack.onclick = endpointClose.onclick = dismissEndpoint
+  endpointDrawer.addEventListener('cancel', (event) => {
+    event.preventDefault()
+    dismissEndpoint()
+  })
+  endpointDrawer.addEventListener('click', (event) => {
+    if (event.target !== endpointDrawer)
+      return
+    const bounds = endpointDrawer.getBoundingClientRect()
+    if (event.clientX < bounds.left || event.clientX > bounds.right || event.clientY < bounds.top || event.clientY > bounds.bottom)
+      dismissEndpoint()
+  })
+  function showEndpoint(parent, endpoint) {
+    const button = html('button', parent, null, 'endpoint')
+    button.type = 'button'
+    button.setAttribute('aria-haspopup', 'dialog')
+    button.setAttribute('aria-controls', endpointDrawer.id)
+    button.setAttribute('aria-expanded', 'false')
+    html('span', button, endpoint.method, 'endpoint-method')
+    html('strong', button, endpoint.purpose || '用途待补充')
+    html('code', button, endpoint.path, 'endpoint-path')
+    const key = `${endpoint.method} ${endpoint.path}`
+    const row = { key, button, endpoint }
+    endpointRows.set(key, row)
+    button.onclick = () => openEndpoint(row, true)
+  }
+  function showContract(parent, contract) {
+    const endpoints = new Map((contract.endpoints || []).map(endpoint => [`${endpoint.method} ${endpoint.path}`, endpoint]))
+    const notes = []
+    for (const line of (contract.operation || '').split(/\r?\n/u).map(line => line.trim()).filter(Boolean)) {
+      const match = /^(GET|POST|PUT|PATCH|DELETE|HEAD|OPTIONS|CONNECT|TRACE)\s+((?:\/|https?:\/\/)\S*)$/iu.exec(line)
+      if (!match) {
+        notes.push(line)
+        continue
+      }
+      const method = match[1].toUpperCase()
+      const path = match[2]
+      const key = `${method} ${path}`
+      if (!endpoints.has(key))
+        endpoints.set(key, { method, path })
+    }
+    if (endpoints.size) {
+      const group = section(`接口（${endpoints.size}）`, parent)
+      group.classList.add('endpoint-list')
+      for (const endpoint of endpoints.values()) showEndpoint(group, endpoint)
+    }
+    for (const note of notes) {
+      if (!endpoints.size || note !== '调用与职责')
+        html('p', parent, note)
+    }
+    if (contract.status)
+      pairs(parent, [['核对情况', contract.status]])
+    if (contract.fields.length) {
+      const title = endpoints.size ? '契约字段与处理' : '字段与处理'
+      showContractFields(disclosure(parent, `${title}（${contract.fields.length}）`), contract.fields)
+    }
+    else if (!endpoints.size) {
+      html('p', parent, '接口字段待补充。', 'dim')
     }
   }
   function jump(parent, id, text) {
@@ -1438,7 +1770,9 @@
   function populate(key) {
     const n = nodes.get(key)
     detail.replaceChildren()
-    $('panel-type').textContent = n.kind === 'story' || !n.state ? n.label : `${n.label} · ${n.state}`
+    endpointRows.clear()
+    const showState = n.state && n.kind !== 'story' && (n.kind !== 'contract' || n.state !== work.contracts[key].status)
+    $('panel-type').textContent = showState ? `${n.label} · ${n.state}` : n.label
     $('panel-title').textContent = n.kind === 'contract' ? work.contracts[key].title : n.title
     if (n.kind === 'request') {
       html('p', detail, work.goal || work.raw_request)
@@ -1496,21 +1830,7 @@
     }
     else if (n.kind === 'contract') {
       const c = work.contracts[key]
-      html('code', detail, c.operation)
-      if (c.status)
-        pairs(detail, [['核对情况', c.status]])
-      if (c.fields.length) {
-        const fields = disclosure(detail, `字段与处理（${c.fields.length}）`)
-        for (const f of c.fields) {
-          const item = html('div', fields, null, 'field')
-          html('strong', item, `${f.name} · ${f.type}`)
-          html('p', item, f.use)
-          html('p', item, f.constraint, 'dim')
-        }
-      }
-      else {
-        html('p', detail, '接口字段待补充。', 'dim')
-      }
+      showContract(detail, c)
       const stories = n.users.filter(id => visibleStories.includes(id))
       related(detail, stories, '关联功能')
       showSources(detail, c.source)
@@ -1580,6 +1900,8 @@
     }
     if (!nodes.has(key))
       return
+    if (key !== selected)
+      hideEndpoint(false)
     if (!selected)
       drawerTrigger = trigger || nodeEls.get(key)
     drawerVersion++
@@ -1610,6 +1932,7 @@
   function closePanel(focus = true, changeHash = true) {
     if (!selected)
       return
+    hideEndpoint(false)
     const previous = selected
     const closing = ++drawerVersion
     selected = null
@@ -1652,23 +1975,31 @@
     catch {
       hash = ''
     }
-    const key = hash.startsWith('node=')
-      ? hash.slice(5)
-      : hash.startsWith('contract-')
-        ? hash.slice(9)
-        : hash === 'agent'
-          ? '@request'
-          : null
-    if (key && chainNodes.has(key))
-      openPanel(key, false)
-    else if (selected)
+    const params = new URLSearchParams(location.hash.slice(1))
+    const key = params.get('node') || (hash.startsWith('contract-') ? hash.slice(9) : hash === 'agent' ? '@request' : null)
+    if (key && chainNodes.has(key)) {
+      if (key !== selected)
+        openPanel(key, false)
+      const requested = params.get('endpoint')
+      const row = endpointRows.get(requested)
+      if (row) {
+        openEndpoint(row, false)
+      }
+      else {
+        hideEndpoint()
+        if (requested)
+          recordHash(`#node=${encodeURIComponent(key)}`)
+      }
+    }
+    else if (selected) {
       closePanel(false)
+    }
   }
   $('close-panel').onclick = () => closePanel()
   reopenPanel.onclick = () => openPanel(recentNode, true, reopenPanel)
   $('drawer-backdrop').onclick = () => closePanel()
-  function drawerTabStops() {
-    const candidates = drawer.querySelectorAll('a[href], button, input, select, textarea, summary, [tabindex]')
+  function drawerTabStops(panel) {
+    const candidates = panel.querySelectorAll('a[href], button, input, select, textarea, summary, [tabindex]')
     return [...candidates].filter((el) => {
       if (el.matches(':disabled, [tabindex="-1"]') || !el.getClientRects().length)
         return false
@@ -1685,15 +2016,20 @@
       return
     if (e.key === 'Escape') {
       e.preventDefault()
-      closePanel()
+      if (e.repeat)
+        return
+      if (endpointDrawer.open)
+        dismissEndpoint()
+      else closePanel()
     }
     if (e.key !== 'Tab')
       return
-    const stops = drawerTabStops()
+    const topPanel = endpointDrawer.open ? endpointDrawer : drawer
+    const stops = drawerTabStops(topPanel)
     const first = stops[0]
     const last = stops.at(-1)
     const active = document.activeElement
-    if (!drawer.contains(active) || (e.shiftKey ? active === first : active === last)) {
+    if (!topPanel.contains(active) || (e.shiftKey ? active === first : active === last)) {
       e.preventDefault()
       const target = e.shiftKey ? last : first
       target?.focus({ preventScroll: true })
@@ -1928,6 +2264,7 @@
       for (const [k, v] of new URLSearchParams(filterQuery())) url.searchParams.set(k, v)
       recordHash(url.href)
     }
+    displayedSearch = location.search
     roomy = undefined
     layout = null
     layouts.clear()
@@ -2026,8 +2363,10 @@
     refreshFeatures(false)
     window.addEventListener('popstate', () => {
       closeFilter()
-      readFilters()
-      refreshFeatures(false)
+      if (location.search !== displayedSearch) {
+        readFilters()
+        refreshFeatures(false)
+      }
       route()
     })
   }
