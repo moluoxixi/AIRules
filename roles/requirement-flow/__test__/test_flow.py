@@ -44,6 +44,68 @@ class ProjectFlowTest(unittest.TestCase):
         self.assertNotEqual(result.returncode, 0)
         return result.stderr
 
+    def test_upgrade_refreshes_active_pages_together_and_preserves_project_records(self):
+        self.ok("init")
+        for key in ("a", "b", "frozen"):
+            self.ok("new", key, "--request", "查看接口用途")
+        self.ok("archive", "frozen", "--allow-incomplete")
+        frozen = self.store / "archive/frozen/handbook.html"
+        original_archive = frozen.read_bytes()
+        first, second = (self.store / "active" / key for key in ("a", "b"))
+        first_page = first / "handbook.html"
+        first_page.write_bytes(b"old renderer")
+        model = second / "model.json"
+        original = model.read_bytes()
+        model.write_bytes(b"invalid model")
+        self.no("upgrade")
+        self.assertEqual(first_page.read_bytes(), b"old renderer")
+        model.write_bytes(original)
+        result = json.loads(self.ok("upgrade"))
+        self.assertEqual(result["refreshed"], ["a"])
+        self.assertEqual(json.loads((self.store / "installation.json").read_text())["role_version"],
+                         result["role_version"])
+        self.assertIn("role_version: " + result["role_version"], (FLOW.parents[2] / "role.yaml").read_text())
+        self.assertEqual(model.read_bytes(), original)
+        self.assertEqual(frozen.read_bytes(), original_archive)
+        self.ok("task", "a", "--check")
+        self.assertFalse(json.loads(self.ok("init"))["changed"])
+
+    def test_upgrade_rejects_linked_active_task_and_preserves_its_external_page(self):
+        self.ok("init")
+        self.ok("new", "linked", "--request", "保留独立项目的图页")
+        task = self.store / "active/linked"
+        external = self.project.parent / "other-project"
+        task.rename(external)
+        page = external / "handbook.html"
+        page.write_bytes(b"original external handbook")
+        if os.name == "nt":
+            subprocess.run(["cmd.exe", "/d", "/c", "mklink", "/J", str(task), str(external)],
+                           stdout=subprocess.DEVNULL, check=True)
+            self.addCleanup(task.rmdir)
+        else:
+            task.symlink_to(external, target_is_directory=True)
+            self.addCleanup(task.unlink)
+        self.no("upgrade")
+        self.assertEqual(page.read_bytes(), b"original external handbook")
+
+    def test_upgrade_checks_managed_edits_and_rejects_an_older_distribution(self):
+        self.ok("init")
+        self.ok("new", "work", "--request", "保留旧证据")
+        book = self.store / "active/work/handbook.html"
+        book.write_bytes(b"prior offline view")
+        skill = self.project / ".agents/skills/flow-contracts/SKILL.md"
+        old = skill.read_bytes()
+        skill.write_bytes(b"team edits")
+        self.assertIn("受管文件", self.no("upgrade"))
+        self.assertEqual(book.read_bytes(), b"prior offline view")
+        skill.write_bytes(old)
+        manifest = self.store / "installation.json"
+        state = json.loads(manifest.read_bytes())
+        state["role_version"] = "100.0.0"
+        manifest.write_text(json.dumps(state))
+        self.assertIn("100.0.0", self.no("upgrade"))
+        self.assertEqual(book.read_bytes(), b"prior offline view")
+
     def test_create_in_project_and_forward(self):
         self.assertEqual(json.loads(self.ok("list")), {"active":[], "archive":[]})
         self.assertFalse(self.store.exists())

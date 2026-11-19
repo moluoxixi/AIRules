@@ -5,7 +5,7 @@ description: 在 Codex 项目中启用需求全景图，或在新需求、续做
 
 # 需求编排
 
-首次启用项目，从 AIRules 分发的本 skill 运行 `python3 <技能目录>/flow.py --project <项目目录> init`。之后从项目根目录运行 `python3 .agents/skills/requirement-flow/flow.py` 加下列子命令。先用 `list` 找已有需求。新需求用 `new <ID> --request '原话'`，仅调研或出方案时加 `--outcome research`。项目对分支、权限、联调和发布的约定始终适用。
+首次启用项目，从 AIRules 分发的本 skill 运行 `python3 <技能目录>/flow.py --project <项目目录> init`。升级已有项目时从新版分发目录运行同一脚本的 `upgrade`，同步六个技能及进行中需求的离线页面；关闭正在运行的需求图服务，升级后用原端口重启。之后从项目根目录运行 `python3 .agents/skills/requirement-flow/flow.py` 加下列子命令。先用 `list` 找已有需求。新需求用 `new <ID> --request '原话'`，仅调研或出方案时加 `--outcome research`。项目对分支、权限、联调和发布的约定始终适用。
 
 从项目根的 `AGENTS.md` 读取工作约定。有 `.requirements/rules/index.md` 时，按本次涉及的业务包和操作查对应规则。追查历史需求时，可从 `.requirements/history/index.md` 按标题查原始材料，再用 `task <ID> context` 查看归档模型。旧记录里的完成状态、截图和勾选项作为历史来源，当前验收结论以对应场景的有效凭据为准。
 

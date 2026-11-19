@@ -156,7 +156,7 @@ class InstallProjectTest(unittest.TestCase):
         collision.parent.rmdir()
         self.assertTrue(installer.install(self.project)["changed"])
         new_manifest = json.loads((self.project / ".requirements/installation.json").read_bytes())
-        self.assertEqual(new_manifest["format"], 2)
+        self.assertEqual(new_manifest["format"], 3)
         for name in ("requirement-flow", *installer.SPECIALISTS):
             self.assertIn(f"{name}/SKILL.md", new_manifest["files"])
             self.assertEqual((base.parent / name / "SKILL.md").read_bytes(),

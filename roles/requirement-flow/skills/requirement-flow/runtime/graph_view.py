@@ -104,8 +104,10 @@ def make_graph(work, states, scenarios):
             researchers[sources[0]].append(key)
 
     for key, contract in contracts.items():
-        has_endpoint = re.match(r"^(GET|POST|PUT|DELETE|PATCH|HEAD)\s+\S+", contract["operation"], re.I)
-        names = [field["name"] for field in contract["fields"]]
+        endpoints = contract.get("endpoints", [])
+        has_endpoint = not endpoints and re.match(r"^(GET|POST|PUT|DELETE|PATCH|HEAD)\s+\S+", contract["operation"], re.I)
+        caption = " · ".join(e["purpose"] for e in endpoints[:2]) if endpoints else " · ".join(
+            field["name"] for field in contract["fields"][-2:])
         label = "调研 · 接口" if researchers[key] else "接口与字段"
         state = "待核对" if contract["state"] == "open" else contract["status"]
         research_states = [states[i]["state"] for i in researchers[key]]
@@ -116,7 +118,7 @@ def make_graph(work, states, scenarios):
         elif research_states and all(st == "done" for st in research_states):
             state = "已梳理"
         node(key, "contract", contract["operation"] if has_endpoint else contract["title"],
-             " · ".join(names[-2:]), label, state, mono=bool(has_endpoint),
+             caption, label, state, mono=bool(has_endpoint),
              research=researchers[key])
 
     kind_of = {"开发":"develop", "验证":"verify", "调研":"research"}

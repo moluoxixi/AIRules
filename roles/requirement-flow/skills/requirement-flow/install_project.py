@@ -12,8 +12,13 @@ import sys
 import tempfile
 
 SOURCE = Path(__file__).resolve().parent
+sys.dont_write_bytecode = True
+sys.path.insert(0, str(SOURCE / "runtime"))
+from evidence import linked
+
 SKILLS = Path(".agents/skills")
 ROLE = "requirement-flow"
+ROLE_VERSION = "0.5.0"
 SPECIALISTS = ("flow-requirements", "flow-contracts", "flow-implement", "flow-verify", "flow-review")
 SKILL = SKILLS / ROLE
 MANIFEST = Path(".requirements/installation.json")
@@ -54,7 +59,7 @@ def safe_path(root, relative):
     for part in Path(relative).parts:
         require(part not in ("..", ".", "") and not Path(part).is_absolute(), f"无效安装路径：{relative}")
         path = path / part
-        require(not path.is_symlink(), f"安装路径不能经过符号链接：{path}")
+        require(not linked(path), f"安装路径不能经过符号链接或目录联接：{path}")
     return path
 
 
@@ -259,21 +264,27 @@ def apply(root, files, moves):
 
 def install(project, migrate=False):
     path = Path(project).expanduser()
-    require(path.is_dir() and not path.is_symlink(), f"目标应是已有的真实项目目录：{path}")
+    require(path.is_dir() and not linked(path), f"目标应是已有的真实项目目录：{path}")
     root = path.resolve()
     with project_lock(root):
         return install_locked(root, migrate)
 
 
-def install_locked(root, migrate):
+def install_locked(root, migrate, *, pages=None):
     wanted = assets()
     manifest_file = safe_path(root, MANIFEST)
     old_bytes = read_file(manifest_file)
     previous = json.loads(old_bytes) if old_bytes is not None else {}
     if old_bytes is not None:
-        require(isinstance(previous, dict) and previous.get("format") in (1, 2)
+        require(isinstance(previous, dict) and previous.get("format") in (1, 2, 3)
                 and previous.get("role") == "requirement-flow" and isinstance(previous.get("files"), dict),
                 f"无法识别安装清单：{MANIFEST}")
+        version = previous.get("role_version")
+        if previous["format"] == 3 or version is not None:
+            require(isinstance(version, str) and re.fullmatch(r"\d+\.\d+\.\d+", version),
+                    f"无法识别安装版本：{version}")
+            require(tuple(map(int, version.split("."))) <= tuple(map(int, ROLE_VERSION.split("."))),
+                    f"项目已安装 {version}，请从该版本或更新的 AIRules 执行升级。")
     tracked = previous.get("files", {})
     if previous.get("format") == 1:
         # The 0.1.0 manifest indexed files relative to the sole requirement-flow skill.
@@ -343,14 +354,17 @@ def install_locked(root, migrate):
         newline = b"\r\n" if b"\r\n" in ignored else b"\n"
         prefix = newline if ignored and not ignored.endswith(b"\n") else b""
         files[IGNORE] = ignored + prefix + newline.join(missing) + newline
-    manifest = {"format": 2, "role": ROLE, "files": {k: digest(v) for k, v in wanted.items()},
+    # A pre-versioned installer only accepts 1/2 and must refuse to downgrade this runtime.
+    manifest = {"format": 3, "role": ROLE, "role_version": ROLE_VERSION, "files": {k: digest(v) for k, v in wanted.items()},
                 "agents_block": digest(block.encode()), "migrated": previously_migrated or migration}
     manifest_bytes = (json.dumps(manifest, sort_keys=True, indent=2) + "\n").encode()
     if manifest_bytes != old_bytes:
         files[MANIFEST] = manifest_bytes
+    if pages:
+        files.update(pages)
     if files or moves:
         apply(root, files, moves)
-    return {"project": str(root), "skill": str(root / SKILL), "changed": bool(files or moves),
+    return {"project": str(root), "skill": str(root / SKILL), "role_version": ROLE_VERSION, "changed": bool(files or moves),
             "migrated": migration, "archive": str(root / archive) if archive else None}
 
 
@@ -360,6 +374,11 @@ if __name__ == "__main__":
     parser.add_argument("--migrate", action="store_true")
     args = parser.parse_args()
     try:
-        print(json.dumps(install(args.project, args.migrate), ensure_ascii=False, indent=2))
+        if (args.project / MANIFEST).exists():
+            from flow import upgrade
+            result = upgrade(args.project.resolve(), args.migrate)
+        else:
+            result = install(args.project, args.migrate)
+        print(json.dumps(result, ensure_ascii=False, indent=2))
     except (OSError, ValueError, TypeError) as exc:
         parser.exit(1, str(exc) + "\n")

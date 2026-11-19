@@ -45,7 +45,7 @@ def project_root(explicit):
 
 
 def local_directory(path, *, create=False):
-    if path.is_symlink():
+    if engine.evidence.linked(path):
         raise ValueError(f"需求存储目录不能使用符号链接：{path}")
     if create:
         path.mkdir(exist_ok=True)
@@ -131,7 +131,7 @@ def existing(paths, key):
         raise ValueError(f"需求 ID 在进行中和归档目录重复：{key}")
     path = found[0]
     for name in ("model.json", "handbook.html", ".workflow.lock"):
-        if (path / name).is_symlink():
+        if engine.evidence.linked(path / name):
             raise ValueError(f"需求数据不能使用符号链接：{path / name}")
     return path
 
@@ -213,6 +213,37 @@ def create(store, args):
         local_directory(active.parent, create=True)
         engine.initialize_task(active, args.request, key=args.id, title=args.title, outcome=args.outcome)
         emit(summary(active))
+
+
+def upgrade(project, migrate=False):
+    from install_project import MANIFEST, install_locked, project_lock as installation_lock, safe_path
+
+    store = local_directory(project / ".requirements")
+    with installation_lock(project), project_lock(store, exclusive=True), ExitStack() as locks:
+        if not safe_path(project, MANIFEST).is_file():
+            raise ValueError("尚未安装 requirement-flow，请先运行 init。")
+        pages = {}
+        active = local_directory(store / "active")
+        for folder in sorted(active.iterdir()) if active.exists() else ():
+            if folder.name.startswith(".") or not (folder.is_dir() or engine.evidence.linked(folder)):
+                continue
+            key = identifier(folder.name)
+            path = existing(locations(store, key), key)
+            # A running server holds a task lease and would keep writing with its old renderer.
+            locks.enter_context(project_lock(store, key, exclusive=True, nonblocking=True))
+            engine.bind_workspace(path)
+            locks.enter_context(engine.task_lock())
+            model = engine.load()
+            engine.validate(model)
+            if model["work"]["id"] != key:
+                raise ValueError(f"需求 ID 与目录不一致：{key}")
+            book = path / "handbook.html"
+            rendered = engine.render(model, workspace=path).encode()
+            if not book.exists() or book.read_bytes() != rendered:
+                pages[book.relative_to(project)] = rendered
+        result = install_locked(project, migrate, pages=pages)
+        result["refreshed"] = [page.parent.name for page in pages]
+        return result
 
 
 class SnapshotHTML(HTMLParser):
@@ -337,6 +368,7 @@ def main():
     new.add_argument("--outcome", choices=("delivery","research"), default="delivery")
     init = commands.add_parser("init", help="接入当前项目，迁移时归档旧流程入口")
     init.add_argument("--migrate", action="store_true", help="迁移已有项目编排配置")
+    commands.add_parser("upgrade", help="从此版本升级项目技能并刷新进行中需求图，保留历史归档")
     commands.add_parser("list", help="查看项目的进行中与已归档需求")
     lessons = commands.add_parser("lessons", help="查看本项目经审查且依据仍有效的经验")
     lessons.add_argument("--all", action="store_true", help="同时列出待审、退役及需要重新核验的经验")
@@ -354,11 +386,13 @@ def main():
     task.add_argument("arguments", nargs=argparse.REMAINDER)
     args = p.parse_args()
     project = project_root(args.project)
-    if args.command == "init":
-        from install_project import install
-        result = install(project, migrate=args.migrate)
-        if result is not None:
-            print(json.dumps(result, ensure_ascii=False, indent=2, default=str))
+    if args.command in ("init", "upgrade"):
+        from install_project import MANIFEST, install
+        if args.command == "upgrade" or (project / MANIFEST).exists():
+            result = upgrade(project, getattr(args, "migrate", False))
+        else:
+            result = install(project, migrate=args.migrate)
+        emit(result)
         return
     store = local_directory(project / ".requirements")
     if args.command == "list":
@@ -380,5 +414,5 @@ if __name__ == "__main__":
         main()
     except BlockingIOError:
         sys.exit("需求正在使用，请先结束核验服务或等待当前操作结束。")
-    except (OSError, ValueError, KeyError, TypeError) as error:
+    except (OSError, ValueError, KeyError, TypeError, argparse.ArgumentTypeError) as error:
         sys.exit(str(error))
