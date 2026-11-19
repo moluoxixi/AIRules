@@ -112,6 +112,9 @@ it('installs the Codex role and upgrades its shared program without replacing ei
   }
 }, 60_000)
 
+// This invocation runs the entire Python suite, including real CLI processes on each host.
+const pythonSuiteTimeout = 5 * 60_000
+
 it('runs the project and runtime Python regressions in the repository test suite', () => {
   expect(existsSync(path.join(tests, 'test_flow.py'))).toBe(true)
   const py = python()
@@ -119,5 +122,6 @@ it('runs the project and runtime Python regressions in the repository test suite
     cwd: repo,
     env: { ...process.env, PYTHONUTF8: '1', PYTHONDONTWRITEBYTECODE: '1' },
     stdio: 'pipe',
+    timeout: pythonSuiteTimeout,
   })
-}, 90_000)
+}, pythonSuiteTimeout + 5_000)

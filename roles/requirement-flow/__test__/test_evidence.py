@@ -62,13 +62,16 @@ class EvidenceTest(unittest.TestCase):
             self.command(str(self.project / "does-not-exist"))
 
     def test_zero_exit_with_no_assertion_output_is_recorded_as_insufficient(self):
+        sample = self.project / "command-output.bin"
+        code = "from pathlib import Path; import sys; sys.stdout.buffer.write(Path(sys.argv[1]).read_bytes())"
+        argv = [sys.executable, "-c", code, sample.name]
         for output in ("", " \t\n\r", "\u3000" * 3000):
             with self.subTest(bytes=len(output.encode("utf-8"))):
-                code = f"import sys; sys.stdout.buffer.write({output.encode('utf-8')!r})"
-                result = self.command(sys.executable,"-c",code)
+                sample.write_bytes(output.encode("utf-8"))
+                result = self.command(*argv)
                 self.assertFalse(self.check(result)["passed"])
                 self.assertEqual(result["exit_code"],0)
-                self.assertEqual(result["argv"],[sys.executable,"-c",code])
+                self.assertEqual(result["argv"],argv)
                 self.assertEqual(evidence.artifact_path(self.workspace,result).read_bytes(),output.encode("utf-8"))
                 self.assertIn("断言",result["actual"])
         # Whitespace may occupy more than one preview block before the real result.
