@@ -92,16 +92,25 @@ class BasicMemoryTests(unittest.TestCase):
             self.assertTrue(result["enabled"])
             self.assertFalse(result["ready"])
             self.assertEqual(result["error"], "offline")
+            notes, state = memory.paths(self.store)
+            memory.write_state(state, dict(memory.registration(state, notes), retry_after=0))
             for _ in range(2):
                 self.assertEqual(memory.search(self.store, "分页切换后要保留此前的勾选状态"), [])
             self.assertEqual(blocked.call_count, 1)
 
-    def test_retirement_retry_updates_index_even_when_notes_are_already_removed(self):
+    def test_retirement_needs_explicit_sync_after_index_failure(self):
         memory.project(self.store, [lesson()])
         notes, state = memory.paths(self.store)
         state.mkdir()
+        runtime = state / "index-ready"
+        runtime.mkdir()
+        with closing(sqlite3.connect(runtime / "memory.db")) as db:
+            db.execute("CREATE TABLE project(id INTEGER, name TEXT, path TEXT)")
+            db.execute("INSERT INTO project VALUES(1, ?, ?)", (memory.binding_id(notes), str(notes)))
+            db.execute("CREATE TABLE search_index(project_id INTEGER)")
+            db.commit()
         memory.write_state(state, {"project": memory.binding_id(notes), "package": memory.PACKAGE,
-                                   "indexed": 1, "stamp": memory.snapshot(notes)[0]})
+                                   "generation": runtime.name, "indexed": 1, "stamp": memory.snapshot(notes)[0]})
         with patch.object(memory, "rebuild", side_effect=TimeoutError("index unavailable")) as rebuild:
             with self.assertRaisesRegex(ValueError, "index unavailable"):
                 memory.project(self.store, [lesson(state="retired")])
@@ -110,10 +119,26 @@ class BasicMemoryTests(unittest.TestCase):
         self.assertFalse(status["ready"], status)
         self.assertIn("index unavailable", status["error"])
         self.assertEqual(memory.search(self.store, "跨页勾选"), [])
-        with patch.object(memory, "rebuild", side_effect=lambda notes, state, row, files, purpose: row) as retry:
-            self.assertEqual(memory.project(self.store, [lesson(state="retired")])["removed"], 0)
+        with patch.object(memory, "rebuild", side_effect=lambda notes, state, row, files, **options: row) as retry:
+            with self.assertRaisesRegex(ValueError, "index unavailable"):
+                memory.project(self.store, [lesson(state="retired")])
+            self.assertEqual(retry.call_count, 0)
+            memory.enable(self.store, [lesson(state="retired")])
             self.assertEqual(retry.call_count, 1)
+            self.assertEqual(retry.call_args.kwargs["purpose"], "enable")
         self.assertEqual(memory.registration(state, notes)["indexed"], 0)
+
+    def test_missing_registered_database_does_not_start_recovery_during_publication(self):
+        memory.project(self.store, [lesson()])
+        notes, state = memory.paths(self.store)
+        state.mkdir()
+        memory.write_state(state, {"project": memory.binding_id(notes), "package": memory.PACKAGE,
+                                  "generation": "index-missing", "stamp": memory.snapshot(notes)[0]})
+        with patch.object(memory, "launch", side_effect=AssertionError("explicit sync is required")):
+            with self.assertRaisesRegex(ValueError, "memory sync"):
+                memory.project(self.store, [lesson(2)])
+        self.assertIn("version: 2", self.note.read_text())
+        self.assertFalse(memory.status(self.store)["ready"])
 
     def test_shared_derived_files_cannot_escape_the_worktree(self):
         outside = self.store.parent / "private"

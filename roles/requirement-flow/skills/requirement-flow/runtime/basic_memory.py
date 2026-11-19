@@ -22,6 +22,7 @@ else:
 
 PACKAGE = "basic-memory==1.0.0"
 MODE = "basic-memory-fts5"
+AUTOMATIC_REFRESH_SECONDS = 5
 MARKER = "---\nairules: requirement-flow-lesson\n"
 ERRORS = (OSError, ValueError, sqlite3.Error, subprocess.SubprocessError)
 CJK = re.compile(r"[\u3040-\u30ff\u3400-\u9fff\uac00-\ud7a3\uf900-\ufaff]+")
@@ -269,11 +270,16 @@ def note_key(notes, indexed_path):
     return unicodedata.normalize("NFC", path.as_posix())
 
 
-def rebuild(notes, state, row, files, *, purpose):
-    # A publication completes the write, including deletions. Only opportunistic
-    # refresh during a query uses a short budget; only enable may install packages.
+def rebuild(notes, state, row, files, *, purpose, deadline=None):
+    # Automatic refresh shares one budget across discovery and both CLI calls.
+    # Explicit enable/sync can install packages and complete a longer rebuild.
     reading = purpose == "search"
-    executable = binary(state, offline=purpose != "enable", timeout=12 if reading else 240)
+    def budget(limit):
+        remaining = limit if deadline is None else min(limit, deadline - time.monotonic())
+        if remaining <= 0:
+            raise ValueError("Basic Memory 自动索引更新超时，请运行 memory sync")
+        return remaining
+    executable = binary(state, offline=purpose != "enable", timeout=budget(12 if reading else 240))
     runtime = state / row.get("generation", "") if row.get("generation") else None
     if runtime:
         try:
@@ -292,8 +298,9 @@ def rebuild(notes, state, row, files, *, purpose):
     try:
         if fresh:
             launch([executable, "project", "add", row["project"], str(notes), "--local", "--no-wait"],
-                   state, env, 8 if reading else 100)
-        launch([executable, "reindex", "--project", row["project"], "--search"], state, env, 12 if reading else 120)
+                   state, env, budget(8 if reading else 100))
+        launch([executable, "reindex", "--project", row["project"], "--search"], state, env,
+               budget(12 if reading else 120))
         result = dict(row, generation=runtime.name)
         with closing(open_index(state, result)) as db:
             indexed = db.execute(
@@ -315,15 +322,27 @@ def rebuild(notes, state, row, files, *, purpose):
 
 def refresh(notes, state, *, purpose, force=False):
     """Serialize rebuilds. A reader racing another rebuild uses structured matches immediately."""
+    deadline = time.monotonic() + AUTOMATIC_REFRESH_SECONDS if purpose in ("search", "publish") else None
     try:
         directory(state, create=True)
-        with closing(sqlite3.connect(regular(state / "writer.sqlite"), timeout=0 if purpose == "search" else 120)) as lock:
+        with closing(sqlite3.connect(regular(state / "writer.sqlite"), timeout=0 if deadline else 120)) as lock:
             lock.execute("BEGIN IMMEDIATE")
             row = registration(state, notes)
             if not row:
                 if purpose != "enable":
                     return {}
                 row = {"package": PACKAGE, "project": binding_id(notes)}
+            if purpose != "enable" and (row.get("error") or not row.get("generation")):
+                return dict(row, error=row.get("error") or "本地索引尚未就绪，请运行 memory sync")
+            if purpose != "enable":
+                try:
+                    with closing(open_index(state, row)) as db:
+                        scope = project_id(db, row["project"], notes)
+                        db.execute("SELECT rowid FROM search_index WHERE project_id=? LIMIT 1", (scope,)).fetchone()
+                except ERRORS as exc:
+                    row.update(error="本地索引不可用，请运行 memory sync：" + str(exc), stamp=None)
+                    write_state(state, row)
+                    return row
             stamp, files = snapshot(notes)
             if not force and row.get("stamp") == stamp and row.get("generation") and not row.get("error"):
                 return row
@@ -331,7 +350,7 @@ def refresh(notes, state, *, purpose, force=False):
                 return {}
             old = row.get("generation")
             try:
-                row = rebuild(notes, state, row, files, purpose=purpose)
+                row = rebuild(notes, state, row, files, purpose=purpose, deadline=deadline)
             except ERRORS as exc:
                 row.update(error=str(exc), retry_after=time.time() + 30, stamp=None)
                 write_state(state, row)
@@ -388,7 +407,7 @@ def search(store, query):
     try:
         notes, state = paths(store)
         row = registration(state, notes)
-        if not row:
+        if not row or row.get("error") or not row.get("generation"):
             return []
         stamp, files = snapshot(notes)
         if not files:

@@ -42,7 +42,7 @@ def feature_scope(work, stories):
 def contract_users(work):
     users = {key:set() for key in work["contracts"]}
     for action in work["actions"].values():
-        for key in action["contracts"]:
+        for key in set(action["contracts"]) | set(action.get("closes_contracts", [])):
             users[key].update(action["stories"])
     for route in work.get("contract_routes", []):
         users[route["contract"]].update(work["decisions"][route["decision"]]["stories"])
@@ -63,7 +63,7 @@ def make_graph(work, states, scenarios):
         nodes[key] = dict(id=key, kind=kind, title=title, caption=caption,
                           label=label, state=state, **attributes)
 
-    def connect(source, target, condition=None):
+    def connect(source, target, condition=None, *, inactive=False):
         if source == target:
             return
         decision, choice = (condition["decision"], condition["is"]) if condition else ("", "")
@@ -72,14 +72,16 @@ def make_graph(work, states, scenarios):
             return
         answer = work["answers"].get(decision)
         mode = ("chosen" if answer["choice"] == choice else "skipped") if answer else "possible"
-        label = decisions[decision]["options"][choice]["label"] if decision == source else ""
-        if label:
+        label = decisions[decision]["options"][choice]["label"] if condition else ""
+        if label and decision != source:
+            label = decisions[decision]["title"] + " · " + label
+        if label and decision == source:
             sample = next((r.get("example") for r in routes if r["decision"] == decision and
                            r["option"] == choice and r["contract"] == target), None)
             if sample:
                 label += " · " + sample
         edges[edge_key] = dict(source=source, target=target, label=label,
-                               mode=mode if condition else "normal",
+                               mode="skipped" if inactive else mode if condition else "normal",
                                decision=decision, choice=choice)
 
     node(ROOT_ID, "request", work["title"], label="原始需求")
@@ -103,9 +105,18 @@ def make_graph(work, states, scenarios):
 
     aliases = {}
     researchers = {key: [] for key in contracts}
+    research_users = {key: [] for key in contracts}
+    for key, action in actions.items():
+        if action["kind"] == "调研":
+            for source in set(action["contracts"]) | set(action.get("closes_contracts", [])):
+                research_users[source].append(key)
     for key, action in actions.items():
         sources = action["contracts"]
-        if action["kind"] == "调研" and len(sources) == 1:
+        # Folding must remain one-to-one: otherwise separate actions, their
+        # dependencies or their independent conditions would become one node.
+        if (action["kind"] == "调研" and not action.get("review_for") and len(sources) == 1
+                and len(research_users[sources[0]]) == 1
+                and set(action.get("closes_contracts", [])).issubset(sources)):
             aliases[key] = sources[0]
             researchers[sources[0]].append(key)
 
@@ -116,13 +127,10 @@ def make_graph(work, states, scenarios):
             field["name"] for field in contract["fields"][-2:])
         label = "调研 · 接口" if researchers[key] else "接口与字段"
         state = "待核对" if contract["state"] == "open" else contract["status"]
-        research_states = [states[i]["state"] for i in researchers[key]]
-        if "active" in research_states:
-            state = "AI 调研中"
-        elif research_states and all(st == "skipped" for st in research_states):
-            state = "本次跳过"
-        elif research_states and all(st == "done" for st in research_states):
-            state = "已梳理"
+        if researchers[key]:
+            research_state = states[researchers[key][0]]["state"]
+            state = {"active":"AI 调研中", "ready":"可调研", "blocked":"等待前置", "dormant":"按条件启用",
+                     "skipped":"本次跳过", "done":"已梳理", "stale":"需复核"}[research_state]
         node(key, "contract", contract["operation"] if has_endpoint else contract["title"],
              caption, label, state, mono=bool(has_endpoint),
              research=researchers[key])
@@ -158,32 +166,32 @@ def make_graph(work, states, scenarios):
     # link for other stories that use the very same interface independently.
     for key, action in actions.items():
         target = aliases.get(key, key)
-        if key in aliases:
+        before = []
+        for dep in action["depends_on"]:
+            pred = aliases.get(dep["id"], dep["id"])
+            before.append(pred)
+            inactive_review = bool(actions[dep["id"]].get("review_for") and states[dep["id"]]["state"] == "skipped")
+            connect(pred, target, dep.get("when"), inactive=inactive_review)
+        inputs = list(dict.fromkeys([*action["contracts"], *action.get("closes_contracts", [])]))
+        if key in aliases and not before:
             for story in action["stories"] or [ROOT_ID]:
                 via_choice = any(r["contract"] == target and story in decisions[r["decision"]]["stories"]
                                  for r in routes)
                 if not via_choice:
                     connect(story, target)
-            if action.get("when"):
-                cond = action["when"]
-                connect(cond["decision"], target, cond)
-            continue
-        before = []
-        for dep in action["depends_on"]:
-            pred = aliases.get(dep["id"], dep["id"])
-            before.append(pred)
-            connect(pred, target, dep.get("when"))
         if action["kind"] != "验证" or not before:
-            for contract in action["contracts"]:
+            for contract in inputs:
                 if contract not in before:
                     connect(contract, target)
-        for decision in action["decisions"]:
-            via_contract = any(r["decision"] == decision and r["contract"] in set(before + action["contracts"])
+        required_decisions = dict.fromkeys([*action["decisions"],
+            *(dep["when"]["decision"] for dep in action["depends_on"] if dep.get("when"))])
+        for decision in required_decisions:
+            via_contract = any(r["decision"] == decision and r["contract"] in set(before + inputs)
                                for r in routes)
-            if not via_contract and not any(decision in actions[d["id"]]["decisions"] for d in action["depends_on"]):
+            if not via_contract:
                 cond = action.get("when")
                 connect(decision, target, cond if cond and cond["decision"] == decision else None)
-        if not before and not action["contracts"] and not action["decisions"]:
+        if not before and not inputs and not action["decisions"]:
             for story in action["stories"] or [ROOT_ID]:
                 connect(story, target)
         if action.get("when"):
@@ -193,7 +201,7 @@ def make_graph(work, states, scenarios):
     # Isolated contracts and independent actions still appear as navigable facts.
     for key in list(nodes):
         if key != ROOT_ID and not any(e["target"] == key for e in edges.values()):
-            users = [a for a in actions.values() if key in a["contracts"]]
+            users = [a for a in actions.values() if key in set(a["contracts"]) | set(a.get("closes_contracts", []))]
             owners = list(dict.fromkeys(s for a in users for s in a["stories"]))
             for owner in owners or [ROOT_ID]:
                 connect(owner, key)

@@ -1905,6 +1905,36 @@
       ['完成条件', a.done],
       ['验收方式', a.accepts?.join('、')],
     ])
+    if (a.review_for) {
+      const review = a.review_for
+      const context = section('失败诊断依据', parent)
+      jump(context, review.action, work.actions[review.action].title)
+      pairs(context, [['原验证记录人', review.verification_actors.join('、')]])
+      html('p', context, '以下为本次诊断绑定的原始失败记录，保留原场景与执行者信息。', 'dim')
+      for (const scenario of review.scenarios) {
+        const row = html('div', context, null, 'record')
+        pairs(row, [['场景编号', scenario.id], ['前提', scenario.given], ['操作', scenario.when], ['原预期结果', scenario.then]])
+      }
+      for (const id of review.receipts) {
+        const event = work.events.find(item => item.id === id)
+        const receipt = event?.receipt
+        const row = html('div', context, null, 'record')
+        pairs(row, [
+          ['失败回执', id],
+          ['记录人', event?.actor],
+          ['环境', receipt?.environment],
+          ['命令参数', receipt?.argv && JSON.stringify(receipt.argv)],
+          ['实际结果', receipt?.actual],
+          ['退出码', receipt?.exit_code],
+        ])
+        const path = receipt?.artifact?.path
+        if (typeof path === 'string' && /^evidence\/[\da-f]{32}\/(?:output\.log|artifact(?:\.[\w-]+)?)$/u.test(path)) {
+          const link = html('a', row, '下载原始失败证据', 'link-button')
+          link.href = csrf ? `./evidence/${encodeURIComponent(id)}` : `./${path}`
+          link.download = path.split('/').pop()
+        }
+      }
+    }
     if (status.reasons.length)
       list(section('开始前需要', parent), status.reasons)
     showSources(parent, proof?.evidence)
@@ -1912,11 +1942,12 @@
       const cond = edge.when
       return (
         work.actions[edge.id].title + (cond ? `（${work.decisions[cond.decision].options[cond.is].label}时）` : '')
+        + (work.actions[edge.id].review_for && states[edge.id].state === 'skipped' ? '（关联场景已撤下，本期跳过）' : '')
       )
     })
     if (input.length)
       list(disclosure(parent, `前置工作（${input.length}）`), input)
-    related(parent, [...a.stories, ...a.read_stories, ...a.contracts, ...a.decisions], '关联功能、接口与决定')
+    related(parent, [...a.stories, ...a.read_stories, ...a.contracts, ...(a.closes_contracts || []), ...a.decisions], '关联功能、接口与决定')
     showLessons(parent, [...a.stories, ...a.read_stories])
     events(parent, records)
   }
@@ -2562,11 +2593,15 @@
   }
   $('refresh').onclick = () => reloadPage()
   if (csrf) {
+    let pendingPoll = null
     async function poll() {
-      if (document.hidden)
+      if (document.hidden || pendingPoll || reloading)
         return
+      const controller = new AbortController()
+      pendingPoll = controller
+      const timeout = setTimeout(() => controller.abort(), 15000)
       try {
-        const res = await fetch('./version', { headers: { 'X-Requirement-Flow': csrf }, cache: 'no-store', redirect: 'error' })
+        const res = await fetch('./version', { headers: { 'X-Requirement-Flow': csrf }, cache: 'no-store', redirect: 'error', signal: controller.signal })
         if (!res.ok)
           return
         const current = await res.json()
@@ -2585,9 +2620,28 @@
       catch {
         /* The map retains its last locally rendered revision. */
       }
+      finally {
+        clearTimeout(timeout)
+        if (pendingPoll === controller)
+          pendingPoll = null
+      }
     }
-    setInterval(poll, 3500)
-    document.addEventListener('visibilitychange', poll)
+    let pollTimer = setInterval(poll, 3500)
+    function stopPolling() {
+      clearInterval(pollTimer)
+      pollTimer = null
+      pendingPoll?.abort()
+    }
+    function resumePolling() {
+      if (document.hidden)
+        return
+      if (pollTimer === null)
+        pollTimer = setInterval(poll, 3500)
+      poll()
+    }
+    document.addEventListener('visibilitychange', () => document.hidden ? stopPolling() : resumePolling())
+    window.addEventListener('pagehide', stopPolling)
+    window.addEventListener('pageshow', resumePolling)
   }
   function filterQuery() {
     const args = new URLSearchParams()

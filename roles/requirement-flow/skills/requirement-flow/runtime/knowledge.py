@@ -426,6 +426,12 @@ def load_tasks(store, workspace, current_work, engine):
 
 def project_cards(workspace, engine, *, current_work=None, relevant_to=None, stories=None, action=None, include_keys=()):
     """Build the project projection from current and archived tasks; no duplicated approval ledger."""
+    with engine.input_scope():
+        return _project_cards(workspace, engine, current_work=current_work, relevant_to=relevant_to,
+                              stories=stories, action=action, include_keys=include_keys)
+
+
+def _project_cards(workspace, engine, *, current_work=None, relevant_to=None, stories=None, action=None, include_keys=()):
     workspace = Path(workspace)
     store = workspace if workspace.name == ".requirements" else workspace.parent.parent
     if store.name != ".requirements" or linked(store) or not store.is_dir():

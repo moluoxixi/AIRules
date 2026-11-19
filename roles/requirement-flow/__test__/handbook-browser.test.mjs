@@ -1,4 +1,4 @@
-import { execFileSync, spawn } from 'node:child_process'
+import { execFileSync, spawn, spawnSync } from 'node:child_process'
 import { once } from 'node:events'
 import { existsSync, mkdirSync, mkdtempSync, readFileSync, realpathSync, rmSync, writeFileSync } from 'node:fs'
 import { createRequire } from 'node:module'
@@ -1597,6 +1597,140 @@ describe.skipIf(!executablePath)('generated handbook interactions in Chromium', 
       await server.stop()
     }
   })
+  it('opens an independent diagnosis with the original failed scenarios and downloadable evidence', async () => {
+    const reviewProject = mkdtempSync(path.join(tmpdir(), 'airules-review-reader-'))
+    let server, page
+    try {
+      const flow = (...args) => runFlow(reviewProject, ...args)
+      flow('new', 'plan', '--request', '保存后可以回读')
+      writeFileSync(path.join(reviewProject, 'check.cjs'), 'require("node:assert/strict").equal("missing-original-record", "saved")\n')
+      const plan = {
+        stories: { S: { title: '保存', actor: '用户', goal: '回读结果', examples: [{ id: 'SC', given: '有效输入', when: '保存后重开', then: '回读保存值' }] } },
+        actions: { V: { title: '核验保存', kind: '验证', stories: ['S'], read_stories: ['S'], contracts: [], decisions: [], depends_on: [], covers: ['SC'], code_paths: ['check.cjs'], done: '回读一致' } },
+      }
+      writeFileSync(path.join(reviewProject, 'plan.json'), JSON.stringify(plan))
+      flow('task', 'plan', 'plan', path.join(reviewProject, 'plan.json'), '--rev', '1', '--why', '核对保存场景')
+      flow('task', 'plan', 'finish', 'A-intake', '--rev', '2', '--actor', 'planner', '--output', '范围已核对', '--evidence', '用户原话')
+      const receipts = []
+      for (let i = 0; i < 2; i++) {
+        const { revision } = JSON.parse(flow('task', 'plan', 'next'))
+        const result = spawnSync(python, [
+          ...pythonArgs,
+          '--project',
+          reviewProject,
+          'task',
+          'plan',
+          'verify-run',
+          'V',
+          '--scenario',
+          'SC',
+          '--rev',
+          String(revision),
+          '--actor',
+          'original-qa',
+          '--environment',
+          '真实本机断言',
+          '--',
+          process.execPath,
+          'check.cjs',
+        ], { encoding: 'utf8' })
+        expect(result.status, result.stderr).toBe(1)
+        receipts.push(JSON.parse(result.stdout).id)
+      }
+      const { revision } = JSON.parse(flow('task', 'plan', 'next'))
+      const claimed = JSON.parse(flow('task', 'plan', 'claim', '--rev', String(revision), '--actor', 'independent-reviewer'))
+      const model = JSON.parse(readFileSync(path.join(reviewProject, '.requirements/active/plan/model.json'), 'utf8'))
+      const action = model.work.actions[claimed.claimed]
+      expect(action.review_for.receipts).toEqual(receipts)
+      server = await startViewer(reviewProject)
+      page = await browser.newPage()
+      await page.goto(`${server.address}?view=detail#node=${claimed.claimed}`)
+      await drawerReady(page)
+      const text = await page.$eval('#detail', el => el.textContent)
+      for (const expected of ['失败诊断依据', 'original-qa', 'SC', '有效输入', '保存后重开', '回读保存值', ...receipts])
+        expect(text).toContain(expected)
+      const downloads = await page.$$eval('#detail a[download]', links => links.map(link => link.href))
+      expect(downloads).toHaveLength(2)
+      for (const url of downloads) {
+        const content = await page.evaluate(async url => (await fetch(url)).text(), url)
+        expect(content).toContain('missing-original-record')
+        expect(content).toContain('AssertionError')
+      }
+    }
+    finally {
+      await page?.close()
+      await server?.stop()
+      rmSync(reviewProject, { recursive: true, force: true })
+    }
+  }, 30_000)
+
+  it('keeps one version request, cancels hidden polls and recovers after a real timeout', async () => {
+    const server = await startViewer(project)
+    const page = await browser.newPage()
+    const held = []
+    let versionRequests = 0
+    try {
+      await page.evaluateOnNewDocument(() => {
+        const networkFetch = window.fetch
+        const stats = { started: 0, active: 0, max: 0, aborted: 0, completed: 0 }
+        window.versionNetwork = stats
+        window.fetch = async (input, options) => {
+          if (!String(input).endsWith('/version'))
+            return networkFetch(input, options)
+          stats.started++
+          stats.active++
+          stats.max = Math.max(stats.max, stats.active)
+          try {
+            const response = await networkFetch(input, options)
+            stats.completed++
+            return response
+          }
+          catch (error) {
+            if (error.name === 'AbortError')
+              stats.aborted++
+            throw error
+          }
+          finally {
+            stats.active--
+          }
+        }
+      })
+      await page.setRequestInterception(true)
+      page.on('request', (request) => {
+        if (new URL(request.url()).pathname.endsWith('/version') && ++versionRequests <= 2)
+          held.push(request)
+        else void request.continue()
+      })
+      await page.goto(server.address)
+      await page.evaluate(() => {
+        for (let i = 0; i < 20; i++) document.dispatchEvent(new Event('visibilitychange'))
+      })
+      await page.waitForFunction(() => window.versionNetwork.started === 1)
+      // A real interval fires while the response remains pending.
+      await new Promise(resolve => setTimeout(resolve, 4000))
+      expect(await page.evaluate(() => window.versionNetwork)).toMatchObject({ started: 1, active: 1, max: 1 })
+      await page.evaluate(() => {
+        Object.defineProperty(document, 'hidden', { configurable: true, value: true })
+        document.dispatchEvent(new Event('visibilitychange'))
+      })
+      await page.waitForFunction(() => window.versionNetwork.aborted === 1 && window.versionNetwork.active === 0)
+      await page.evaluate(() => {
+        Object.defineProperty(document, 'hidden', { configurable: true, value: false })
+        document.dispatchEvent(new Event('visibilitychange'))
+      })
+      await page.waitForFunction(() => window.versionNetwork.started === 2)
+      await page.waitForFunction(() => window.versionNetwork.aborted === 2, { timeout: 17_000 })
+      await page.evaluate(() => document.dispatchEvent(new Event('visibilitychange')))
+      await page.waitForFunction(() => window.versionNetwork.completed >= 1)
+      expect(await page.evaluate(() => window.versionNetwork.max)).toBe(1)
+    }
+    finally {
+      await Promise.allSettled(held.map(request => request.abort()))
+      await page.close()
+      await server.stop()
+    }
+  }, 30_000)
+
   it('reconnects the same tab to a restarted viewer and restores its nested citation preview', async () => {
     const source = path.join(project, '.requirements/history/tasks/plan-batch/prd.md')
     const original = readFileSync(source, 'utf8')

@@ -202,6 +202,29 @@ class CodeInputsTest(unittest.TestCase):
         (self.project / "cache/source.py").write_text("value = 2\n")
         self.assert_stale()
 
+    def test_declared_code_scope_keeps_multiple_observation_artifacts_out_of_inputs(self):
+        self.prepare(["business.py", "check.py"])
+        model = json.loads((self.project / ".requirements/active/save/model.json").read_bytes())["work"]
+        story = model["stories"]["S-save"]
+        story["examples"].append({"id": "AC-reopen", "given": "已保存", "when": "重新打开", "then": "读取到结果"})
+        action = model["actions"]["A-check"]
+        action.update(covers=["AC-save", "AC-reopen"], accepts=["人工核对"])
+        patch = self.base / "observe-plan.json"
+        patch.write_text(json.dumps({"stories": {"S-save": story}, "actions": {"A-check": action}}))
+        self.write("plan", patch, "--why", "按场景记录观察，代码和运行产物各自留存")
+        artifacts = self.project / "artifacts"
+        artifacts.mkdir()
+        for scenario in action["covers"]:
+            observed = subprocess.check_output([sys.executable, "-B", "check.py"], cwd=self.project)
+            (artifacts / (scenario + ".txt")).write_bytes(observed)
+            self.write("verify-observe", "A-check", "--scenario", scenario,
+                       "--environment", "本机操作观察", "--artifact", f"artifacts/{scenario}.txt",
+                       "--actual", "实际读取到保存结果")
+        self.write("finish", "A-check", "--output", "保存和重新打开均已核对")
+        self.assertEqual([row["status"] for row in self.queue()["scenarios"]], ["passed", "passed"])
+        (self.project / "business.py").write_text("def value(): return 'BROKEN'\n")
+        self.assertEqual([row["status"] for row in self.queue()["scenarios"]], ["stale", "stale"])
+
     def test_code_change_during_successful_command_is_preserved_as_failed_receipt(self):
         self.prepare(["business.py", "check.py"])
         argv = [sys.executable, "-B", "-c", "from pathlib import Path; Path('business.py').write_text(\"def value(): return 'BROKEN'\\n\"); print('assertion output')"]
