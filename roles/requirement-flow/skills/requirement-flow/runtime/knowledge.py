@@ -487,7 +487,7 @@ def _project_cards(workspace, engine, *, current_work=None, relevant_to=None, st
                 retirement = read_retirement(store, work["id"], row["id"], row["version"])
             except (OSError, ValueError) as error:
                 item["state"] = "stale"
-                item["issues"].append("项目退役决定需要复核：" + str(error))
+                item["issues"].append("项目退役决定需要复核：" + engine.local_diagnostic(error, store.parent))
             else:
                 if retirement:
                     item.update(state="retired", retirement=retirement)

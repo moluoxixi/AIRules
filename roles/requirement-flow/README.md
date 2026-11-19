@@ -70,7 +70,7 @@ python3 .agents/skills/requirement-flow/flow.py serve --source-root /path/to/pro
 
 ### 项目经验
 
-将经验提案绑定到原故事、验收场景和回执。另一位审查者通过后，需求模型保存批准记录，并在 `.requirements/knowledge/lessons/` 生成可读的 Markdown。把需求、证据和经验随同项目提交。每个 worktree 接收这些文件后，可以启用自己的 Basic Memory 本地全文索引。首次启用需安装 uv，并能取得 Python 3.12 和固定版本 `basic-memory==1.0.0`。后续查询直接读取本机索引，支持中文。
+将经验提案绑定到原故事、验收场景和回执。另一位审查者通过后，需求模型保存批准记录，并在 `.requirements/knowledge/lessons/` 生成可读的 Markdown。把需求、证据和经验随同项目提交。每个 worktree 接收这些文件后，可以启用自己的 Basic Memory 本地全文索引。首次启用需安装 uv，并能取得 Python 3.12 和固定版本 `basic-memory==1.0.0`。CLI 的 `new`、`next`、`context` 和 `claim` 查询本机索引，支持中文。共享图页按标签、接口和字段匹配经验，采用记录仍按原版本展示。
 
 ```bash
 FLOW=.agents/skills/requirement-flow/flow.py
