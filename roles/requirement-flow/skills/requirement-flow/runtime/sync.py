@@ -820,11 +820,12 @@ def capture(mode, key, scenario_id, revision, actor, environment, *, argv=None, 
             "actual":receipt["actual"],"artifact":receipt["artifact"]}
 
 
-def context(m, story=None):
+def context(m, story=None, *, workspace=None):
+    workspace = workspace or TASK_DIR
     w = m["work"]
     stories = {story} if isinstance(story, str) and story else set(story or ())
     expect(stories <= w["stories"].keys(), "故事不存在")
-    status = evaluate(w)
+    status = evaluate(w, workspace)
     chosen, decisions, contracts = graph_view.feature_scope(w, stories)
     routes = [r for r in w.get("contract_routes", []) if r["decision"] in decisions]
     all_events = [e for e in w["events"] if not stories or e.get("action") in chosen or
@@ -845,9 +846,9 @@ def context(m, story=None):
         "currently_running":[k for k in w["actions"] if k in chosen and status[k]["state"]=="active"],
         "ready":[k for k in w["actions"] if k in chosen and status[k]["state"] != "active" and executable(status[k])],
         "effective_outputs":[e for e in w["events"] if e["id"] in effective_ids],
-        "recent_events":all_events[-12:], "lessons":w["lessons"], **lesson_context(w,TASK_DIR,stories)
+        "recent_events":all_events[-12:], "lessons":w["lessons"], **lesson_context(w,workspace,stories)
     }
-    return source_paths.SourcePaths.for_task(TASK_DIR).reading_context(result)
+    return source_paths.SourcePaths.for_task(workspace).reading_context(result)
 
 
 def atomic(path, content):
@@ -863,8 +864,9 @@ def atomic(path, content):
 
 
 @contextmanager
-def task_lock(shared=False):
-    with LOCK.open("a+b") as stream:
+def task_lock(shared=False, *, workspace=None):
+    path = workspace / ".workflow.lock" if workspace is not None else LOCK
+    with path.open("a+b") as stream:
         if os.fstat(stream.fileno()).st_size == 0:
             stream.write(b"\0")
             stream.flush()
@@ -886,24 +888,26 @@ def task_lock(shared=False):
                 fcntl.flock(stream.fileno(), fcntl.LOCK_UN)
 
 
-def commit(revision, operation):
-    with task_lock():
-        model = load()
+def commit(revision, operation, *, workspace=None):
+    root = workspace or TASK_DIR
+    model_path, book = root / "model.json", root / "handbook.html"
+    with task_lock(workspace=root):
+        model = load(model_path)
         validate(model)
         if revision != model["work"]["revision"]:
             raise Conflict("版本已更新，请读取最新记录再提交。")
         if operation(model["work"]):
             validate(model)
-            html = render(model).encode()
-            previous_page = BOOK.read_bytes() if BOOK.exists() else None
-            atomic(BOOK, html)
+            html = render(model,workspace=root).encode()
+            previous_page = book.read_bytes() if book.exists() else None
+            atomic(book, html)
             try:
-                atomic(MODEL, encoded(model))
+                atomic(model_path, encoded(model))
             except OSError:
                 if previous_page is None:
-                    BOOK.unlink(missing_ok=True)
+                    book.unlink(missing_ok=True)
                 else:
-                    atomic(BOOK, previous_page)
+                    atomic(book, previous_page)
                 raise
         return model
 
@@ -924,21 +928,21 @@ def h(value):
     return escape(str(value),quote=True)
 
 
-def impact(w, decision, choice):
+def impact(w, decision, choice, workspace=None):
     simulated=copy.deepcopy(w)
-    before=evaluate(w)
+    before=evaluate(w,workspace)
     decide(simulated,decision,choice,"比较选项","推演")
-    after=evaluate(simulated)
+    after=evaluate(simulated,workspace)
     return [(a["title"],STATES[before[k]["state"]],STATES[after[k]["state"]]) for k,a in w["actions"].items()
             if before[k]["state"]!=after[k]["state"] or before[k]["reasons"]!=after[k]["reasons"]]
 
 
-def render(model, token=None, *, workspace=None):
+def render(model, token=None, *, workspace=None, read_only=False):
     work = model["work"]
-    impacts = {key: {code: impact(work, key, code) for code in d["options"]}
+    impacts = {key: {code: impact(work, key, code, workspace) for code in d["options"]}
                for key, d in work["decisions"].items()}
     return graph_view.render(model, evaluate(work,workspace), impacts, token, digest(model), LAYOUT,
-                             queue=dispatch(work,workspace=workspace,for_map=True),
+                             queue=dispatch(work,workspace=workspace,for_map=True), read_only=read_only,
                              source_labels=source_paths.SourcePaths.for_task(workspace or TASK_DIR).graph_labels(work))
 
 
@@ -977,198 +981,221 @@ def new_workspace(path, raw):
     return initialize_task(path, raw, key=Path(path).resolve().name)
 
 
-def serve(port, source_root=None):
-    token=secrets.token_urlsafe(32)
-    checkout = source_paths.select_source_root(source_paths.SourcePaths.for_task(TASK_DIR).root, source_root)
-    class Handler(BaseHTTPRequestHandler):
-        def log_message(self,*args):
-            pass
-        def send_content(self, status, content, mime):
-            data=content.encode() if isinstance(content,str) else content
-            self.send_response(status)
-            self.send_header("Content-Type",mime+"; charset=utf-8")
-            self.send_header("Content-Length",str(len(data)))
+class TaskHandler(BaseHTTPRequestHandler):
+    """A request is bound to one workspace before any model or evidence is read."""
+    task_prefix = "/"
+    task_id = None
+    read_only = False
+
+    def log_message(self,*args):
+        pass
+    def send_content(self, status, content, mime):
+        data=content.encode() if isinstance(content,str) else content
+        self.send_response(status)
+        self.send_header("Content-Type",mime+"; charset=utf-8")
+        self.send_header("Content-Length",str(len(data)))
+        self.send_header("Cache-Control","no-store")
+        self.send_header("X-Content-Type-Options","nosniff")
+        self.send_header("Content-Security-Policy","default-src 'none'; script-src 'unsafe-inline'; style-src 'unsafe-inline'; form-action 'self'; connect-src 'self'; frame-ancestors 'none'; base-uri 'none'")
+        self.end_headers()
+        self.wfile.write(data)
+    def host(self):
+        return "127.0.0.1:"+str(self.server.server_port)
+    def download_evidence(self, model, event_id, *, workspace=None, source=None):
+        event = next((e for e in model["work"]["events"] if e["id"]==event_id and e["kind"]=="evidence"),None)
+        if not event:
+            self.send_error(404)
+            return
+        try:
+            root = self.workspace if workspace is None else workspace
+            stamp = proof_stamp(event["stamp"],event["scenario_stamp"],event["id"],event["revision"])
+            receipt = verified_receipt(root,event,stamp)
+            if source is not None:
+                expect(receipt["action"] == source["action"] and receipt["scenario"] == source["scenario"]
+                       and receipt["artifact"] == source["proof"]["artifact"], "经验引用的回执已改变")
+            path = evidence.artifact_path(root,receipt)
+            snapshot = tempfile.SpooledTemporaryFile(max_size=512*1024)
+            try:
+                checksum = hashlib.sha256()
+                with path.open("rb") as stream:
+                    for chunk in iter(lambda: stream.read(256*1024), b""):
+                        checksum.update(chunk)
+                        snapshot.write(chunk)
+                expect(checksum.hexdigest() == receipt["artifact"]["sha256"], "读取中的证据已改变")
+                snapshot.seek(0)
+            except BaseException:
+                snapshot.close()
+                raise
+        except (OSError,ValueError,KeyError,TypeError) as error:
+            self.send_content(409,"凭据产物核验失败：" + str(error),"text/plain")
+            return
+        with snapshot:
+            self.send_response(200)
+            self.send_header("Content-Type","application/octet-stream")
+            self.send_header("Content-Disposition",'attachment; filename="' + path.name + '"')
+            self.send_header("Content-Length",str(receipt["artifact"]["size"]))
             self.send_header("Cache-Control","no-store")
             self.send_header("X-Content-Type-Options","nosniff")
-            self.send_header("Content-Security-Policy","default-src 'none'; script-src 'unsafe-inline'; style-src 'unsafe-inline'; form-action 'self'; connect-src 'self'; frame-ancestors 'none'; base-uri 'none'")
             self.end_headers()
-            self.wfile.write(data)
-        def host(self):
-            return "127.0.0.1:"+str(self.server.server_port)
-        def download_evidence(self, model, event_id, *, workspace=None, source=None):
-            event = next((e for e in model["work"]["events"] if e["id"]==event_id and e["kind"]=="evidence"),None)
-            if not event:
-                self.send_error(404)
+            shutil.copyfileobj(snapshot,self.wfile)
+    def lesson_source(self, model, path):
+        try:
+            query = parse_qs(urlsplit(self.path).query, max_num_fields=4, strict_parsing=True, keep_blank_values=True)
+            if set(query) - {"version"} != {"task","lesson","receipt"} or any(len(values) != 1 for values in query.values()):
+                raise ValueError
+            task, lesson, rid = (query[name][0] for name in ("task","lesson","receipt"))
+            task = unicodedata.normalize("NFC", task)
+            version = query.get("version",[None])[0]
+            if not re.fullmatch(r"E[0-9]+",rid) or (version is not None and not re.fullmatch(r"[1-9][0-9]*",version)):
+                raise ValueError
+        except ValueError:
+            self.send_error(400)
+            return
+        queue = dispatch(model["work"],workspace=self.workspace,for_map=True)
+        cards = queue.get("lesson_cards", []) if task == model["work"]["id"] else queue.get("related_lessons", [])
+        matches = [(card, source) for card in cards if (card["task"],card["id"]) == (task,lesson)
+                   and (version is None or str(card["version"]) == version)
+                   for source in card["sources"] if source["receipt"] == rid and source["valid"]]
+        if len(matches) != 1:
+            self.send_content(404,"该场景来源已失效或未关联到当前需求。","text/plain")
+            return
+        card, source = matches[0]
+        if path == "/lesson-source":
+            params = urlencode({"task":task,"lesson":lesson,"version":card["version"],"receipt":rid})
+            self.send_content(200,graph_view.lesson_source_page(card,source,"lesson-evidence?" + params),"text/html")
+            return
+        try:
+            store = evidence.directory(self.workspace.parent.parent)
+            expect(store.name == ".requirements" and card["bucket"] in ("active","archive")
+                   and task not in (".","..") and Path(task).name == task, "来源位置无效")
+            bucket = evidence.directory(store / card["bucket"])
+            root = evidence.directory(bucket / task)
+            origin = load(evidence.regular(root / "model.json"))
+            expect(origin["work"]["id"] == task, "来源需求与目录不一致")
+        except (OSError,ValueError,KeyError,TypeError):
+            self.send_content(409,"来源已变化，请重新打开证据。","text/plain")
+            return
+        self.download_evidence(origin,rid,workspace=root,source=source)
+    def do_GET(self):
+        if self.headers.get("Host") != self.host():
+            self.send_error(403); return
+        path=urlsplit(self.path).path
+        model=load(self.workspace / "model.json")
+        if self.task_id is not None:
+            validate(model)
+            expect(model["work"]["id"] == self.task_id, "需求 ID 与目录不一致")
+        origin = "http://" + self.host()
+        same_origin = (self.headers.get("Origin", origin) == origin
+                       and self.headers.get("Sec-Fetch-Site") != "cross-site")
+        session = self.headers.get("X-Requirement-Flow", "")
+        stale_session = bool(session) and not secrets.compare_digest(session.encode(), self.token.encode())
+        if path in ("/","/handbook.html"):
+            self.send_content(200,render(model,self.token,workspace=self.workspace,read_only=self.read_only),"text/html")
+        elif path == "/source-location":
+            if not same_origin or not session:
+                self.send_error(403)
+                return
+            if stale_session:
+                self.send_content(409, "图服务已重启，请重新连接。", "text/plain")
                 return
             try:
-                root = TASK_DIR if workspace is None else workspace
-                stamp = proof_stamp(event["stamp"],event["scenario_stamp"],event["id"],event["revision"])
-                receipt = verified_receipt(root,event,stamp)
-                if source is not None:
-                    expect(receipt["action"] == source["action"] and receipt["scenario"] == source["scenario"]
-                           and receipt["artifact"] == source["proof"]["artifact"], "经验引用的回执已改变")
-                path = evidence.artifact_path(root,receipt)
-                snapshot = tempfile.SpooledTemporaryFile(max_size=512*1024)
-                try:
-                    checksum = hashlib.sha256()
-                    with path.open("rb") as stream:
-                        for chunk in iter(lambda: stream.read(256*1024), b""):
-                            checksum.update(chunk)
-                            snapshot.write(chunk)
-                    expect(checksum.hexdigest() == receipt["artifact"]["sha256"], "读取中的证据已改变")
-                    snapshot.seek(0)
-                except BaseException:
-                    snapshot.close()
-                    raise
-            except (OSError,ValueError,KeyError,TypeError) as error:
-                self.send_content(409,"凭据产物核验失败：" + str(error),"text/plain")
-                return
-            with snapshot:
-                self.send_response(200)
-                self.send_header("Content-Type","application/octet-stream")
-                self.send_header("Content-Disposition",'attachment; filename="' + path.name + '"')
-                self.send_header("Content-Length",str(receipt["artifact"]["size"]))
-                self.send_header("Cache-Control","no-store")
-                self.send_header("X-Content-Type-Options","nosniff")
-                self.end_headers()
-                shutil.copyfileobj(snapshot,self.wfile)
-        def lesson_source(self, model, path):
-            try:
-                query = parse_qs(urlsplit(self.path).query, max_num_fields=4, strict_parsing=True, keep_blank_values=True)
-                if set(query) - {"version"} != {"task","lesson","receipt"} or any(len(values) != 1 for values in query.values()):
-                    raise ValueError
-                task, lesson, rid = (query[name][0] for name in ("task","lesson","receipt"))
-                task = unicodedata.normalize("NFC", task)
-                version = query.get("version",[None])[0]
-                if not re.fullmatch(r"E[0-9]+",rid) or (version is not None and not re.fullmatch(r"[1-9][0-9]*",version)):
+                query = parse_qs(urlsplit(self.path).query, strict_parsing=True, max_num_fields=1)
+                if set(query) != {"ref"} or len(query["ref"]) != 1 or len(query["ref"][0]) > 4096:
                     raise ValueError
             except ValueError:
                 self.send_error(400)
                 return
-            queue = dispatch(model["work"],for_map=True)
-            cards = queue.get("lesson_cards", []) if task == model["work"]["id"] else queue.get("related_lessons", [])
-            matches = [(card, source) for card in cards if (card["task"],card["id"]) == (task,lesson)
-                       and (version is None or str(card["version"]) == version)
-                       for source in card["sources"] if source["receipt"] == rid and source["valid"]]
-            if len(matches) != 1:
-                self.send_content(404,"该场景来源已失效或未关联到当前需求。","text/plain")
-                return
-            card, source = matches[0]
-            if path == "/lesson-source":
-                params = urlencode({"task":task,"lesson":lesson,"version":card["version"],"receipt":rid})
-                self.send_content(200,graph_view.lesson_source_page(card,source,"/lesson-evidence?" + params),"text/html")
-                return
             try:
-                store = evidence.directory(TASK_DIR.parent.parent)
-                expect(store.name == ".requirements" and card["bucket"] in ("active","archive")
-                       and task not in (".","..") and Path(task).name == task, "来源位置无效")
-                bucket = evidence.directory(store / card["bucket"])
-                root = evidence.directory(bucket / task)
-                origin = load(evidence.regular(root / "model.json"))
-                expect(origin["work"]["id"] == task, "来源需求与目录不一致")
-            except (OSError,ValueError,KeyError,TypeError):
-                self.send_content(409,"来源已变化，请重新打开证据。","text/plain")
+                aliases = source_paths.SourcePaths.for_task(self.workspace)
+                location = source_paths.source_location(model["work"], aliases, self.checkout, query["ref"][0])
+            except (OSError, ValueError):
+                self.send_content(503, "暂时无法读取工作区来源，请重试。", "text/plain")
                 return
-            self.download_evidence(origin,rid,workspace=root,source=source)
-        def do_GET(self):
-            if self.headers.get("Host") != self.host():
-                self.send_error(403); return
-            path=urlsplit(self.path).path
-            model=load()
-            origin = "http://" + self.host()
-            same_origin = (self.headers.get("Origin", origin) == origin
-                           and self.headers.get("Sec-Fetch-Site") != "cross-site")
-            session = self.headers.get("X-Requirement-Flow", "")
-            stale_session = bool(session) and not secrets.compare_digest(session.encode(), token.encode())
-            if path in ("/","/handbook.html"):
-                self.send_content(200,render(model,token),"text/html")
-            elif path == "/source-location":
-                if not same_origin or not session:
-                    self.send_error(403)
-                    return
-                if stale_session:
-                    self.send_content(409, "图服务已重启，请重新连接。", "text/plain")
-                    return
-                try:
-                    query = parse_qs(urlsplit(self.path).query, strict_parsing=True, max_num_fields=1)
-                    if set(query) != {"ref"} or len(query["ref"]) != 1 or len(query["ref"][0]) > 4096:
-                        raise ValueError
-                except ValueError:
-                    self.send_error(400)
-                    return
-                try:
-                    aliases = source_paths.SourcePaths.for_task(TASK_DIR)
-                    location = source_paths.source_location(model["work"], aliases, checkout, query["ref"][0])
-                except (OSError, ValueError):
-                    self.send_content(503, "暂时无法读取工作区来源，请重试。", "text/plain")
-                    return
-                if location is None:
-                    self.send_content(404, "当前检出中无法定位这条来源。", "text/plain")
-                else:
-                    self.send_content(200, encoded(location), "application/json")
-            elif path=="/model.json":
-                self.send_content(200,encoded(model),"application/json")
-            elif re.fullmatch(r"/evidence/E[0-9]+",path):
-                self.download_evidence(model,path.split("/")[-1])
-            elif path in ("/lesson-source","/lesson-evidence"):
-                self.lesson_source(model,path)
-            elif path=="/version":
-                work = model["work"]
-                queue = dispatch(work,for_map=True)
-                version = {"revision":work["revision"],"lesson_version":graph_view.lesson_version(queue),
-                           "case_states":[[c["id"],c["status"]] for c in queue["scenarios"]]}
-                if same_origin and stale_session:
-                    version["session_changed"] = True
-                self.send_content(200,encoded(version),"application/json")
-            elif path in ("/context","/dispatch"):
-                try:
-                    query=parse_qs(urlsplit(self.path).query,keep_blank_values=True)
-                    if path == "/dispatch":
-                        expect(all(len(query.get(name,[])) <= 1 for name in ("story","actor")), "每次调度传一个故事与执行人")
-                        data=dispatch(model["work"],query.get("actor",["AI"])[0],query.get("story",[None])[0])
-                    else:
-                        data=context(model,query.get("story"))
-                    self.send_content(200,encoded(data),"application/json")
-                except Invalid as err:
-                    self.send_content(400,str(err),"text/plain")
+            if location is None:
+                self.send_content(404, "当前检出中无法定位这条来源。", "text/plain")
             else:
-                self.send_error(404)
-        def do_POST(self):
-            request_url = urlsplit(self.path)
-            if request_url.path!="/decision":
-                self.send_error(404); return
-            if self.headers.get("Host") != self.host() or self.headers.get("Origin") not in (None,"http://"+self.host()):
-                self.send_error(403); return
+                self.send_content(200, encoded(location), "application/json")
+        elif path=="/model.json":
+            self.send_content(200,encoded(model),"application/json")
+        elif re.fullmatch(r"/evidence/E[0-9]+",path):
+            self.download_evidence(model,path.split("/")[-1])
+        elif path in ("/lesson-source","/lesson-evidence"):
+            self.lesson_source(model,path)
+        elif path=="/version":
+            work = model["work"]
+            queue = dispatch(work,workspace=self.workspace,for_map=True)
+            version = {"revision":work["revision"],"lesson_version":graph_view.lesson_version(queue),
+                       "case_states":[[c["id"],c["status"]] for c in queue["scenarios"]]}
+            if same_origin and stale_session:
+                version["session_changed"] = True
+            self.send_content(200,encoded(version),"application/json")
+        elif path in ("/context","/dispatch"):
             try:
-                size=int(self.headers.get("Content-Length") or 0)
-                expect(0<size<=8192 and self.headers.get_content_type()=="application/x-www-form-urlencoded","表单格式无效")
-                form=parse_qs(self.rfile.read(size).decode(),max_num_fields=6)
-                if not secrets.compare_digest(form.get("csrf",[""])[0],token):
-                    self.send_error(403); return
-                rev=int(form["revision"][0])
-                key,choice=form["decision"][0],form["choice"][0]
-                reason=form.get("reason",["需求发起人在本地页选择此口径。"])[0].strip() or "需求发起人在本地页选择此口径。"
-                updated = commit(rev,lambda w:decide(w,key,choice,reason,"本地需求发起人"))
-            except (KeyError,ValueError,IndexError) as err:
-                code=409 if isinstance(err,Conflict) else 400
-                self.send_content(code,"<!doctype html><meta charset='utf-8'><p>"+h(err)+"</p><a href='/#work'>返回最新需求</a>","text/html"); return
-            self.send_response(303)
-            previous = parse_qs(request_url.query)
-            picked = set(previous.get("features", [""])[0].split(","))
-            known = [key for key in updated["work"]["stories"] if key in picked]
-            query = {}
-            if known:
-                query["features"] = ",".join(known)
-            if previous.get("q"):
-                query["q"] = previous["q"][0][:80]
-            self.send_header("Location", "/" + ("?" + urlencode(query) if query else "") + "#work")
-            self.end_headers()
-    server=ThreadingHTTPServer(("127.0.0.1",port),Handler)
+                query=parse_qs(urlsplit(self.path).query,keep_blank_values=True)
+                if path == "/dispatch":
+                    expect(all(len(query.get(name,[])) <= 1 for name in ("story","actor")), "每次调度传一个故事与执行人")
+                    data=dispatch(model["work"],query.get("actor",["AI"])[0],query.get("story",[None])[0],workspace=self.workspace)
+                else:
+                    data=context(model,query.get("story"),workspace=self.workspace)
+                self.send_content(200,encoded(data),"application/json")
+            except Invalid as err:
+                self.send_content(400,str(err),"text/plain")
+        else:
+            self.send_error(404)
+    def do_POST(self):
+        request_url = urlsplit(self.path)
+        if request_url.path!="/decision":
+            self.send_error(404); return
+        if self.headers.get("Host") != self.host() or self.headers.get("Origin") not in (None,"http://"+self.host()):
+            self.send_error(403); return
+        if self.read_only:
+            self.send_content(405, "已归档需求仅供查阅。", "text/plain")
+            return
+        try:
+            size=int(self.headers.get("Content-Length") or 0)
+            expect(0<size<=8192 and self.headers.get_content_type()=="application/x-www-form-urlencoded","表单格式无效")
+            form=parse_qs(self.rfile.read(size).decode(),max_num_fields=6)
+            if not secrets.compare_digest(form.get("csrf",[""])[0].encode(),self.token.encode()):
+                self.send_error(403); return
+            rev=int(form["revision"][0])
+            key,choice=form["decision"][0],form["choice"][0]
+            reason=form.get("reason",["需求发起人在本地页选择此口径。"])[0].strip() or "需求发起人在本地页选择此口径。"
+            def save_decision(work):
+                expect(self.task_id is None or work["id"] == self.task_id, "需求 ID 与目录不一致")
+                return decide(work,key,choice,reason,"本地需求发起人")
+            updated = commit(rev,save_decision,workspace=self.workspace)
+        except (KeyError,ValueError,IndexError) as err:
+            code=409 if isinstance(err,Conflict) else 400
+            self.send_content(code,"<!doctype html><meta charset='utf-8'><p>"+h(err)+"</p><a href='./#work'>返回最新需求</a>","text/html"); return
+        self.send_response(303)
+        previous = parse_qs(request_url.query)
+        picked = set(previous.get("features", [""])[0].split(","))
+        known = [key for key in updated["work"]["stories"] if key in picked]
+        query = {}
+        if known:
+            query["features"] = ",".join(known)
+        if previous.get("q"):
+            query["q"] = previous["q"][0][:80]
+        self.send_header("Location", self.task_prefix + ("?" + urlencode(query) if query else "") + "#work")
+        self.end_headers()
+
+
+def run_server(port, handler):
+    server=ThreadingHTTPServer(("127.0.0.1",port),handler)
     print("http://127.0.0.1:"+str(server.server_port)+"/",flush=True)
     try:
         server.serve_forever()
     finally:
         server.server_close()
+
+
+def serve(port, source_root=None):
+    class Handler(TaskHandler):
+        workspace = TASK_DIR
+        checkout = source_paths.select_source_root(source_paths.SourcePaths.for_task(TASK_DIR).root, source_root)
+        token = secrets.token_urlsafe(32)
+
+    run_server(port, Handler)
 
 
 def main(argv=None):

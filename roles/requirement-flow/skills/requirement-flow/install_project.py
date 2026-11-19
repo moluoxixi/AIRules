@@ -18,7 +18,7 @@ from evidence import linked
 
 SKILLS = Path(".agents/skills")
 ROLE = "requirement-flow"
-ROLE_VERSION = "0.6.0"
+ROLE_VERSION = "0.7.0"
 SPECIALISTS = ("flow-requirements", "flow-contracts", "flow-implement", "flow-verify", "flow-review")
 SKILL = SKILLS / ROLE
 MANIFEST = Path(".requirements/installation.json")
@@ -26,7 +26,7 @@ IGNORE = Path(".requirements/.gitignore")
 LOCAL_PATTERNS = (b".receipt-key", b".receipt-key-*", b".workflow.lock", b".capture-*/", b".model.json.*", b".handbook.html.*")
 ARCHIVE = Path(".requirements/migrations/moluoxixi")
 ROOT_FILES = {"SKILL.md", "flow.py", "install_project.py", "references/model.md", "agents/openai.yaml"}
-RUNTIME_FILES = {"dagre.min.js", "evidence.py", "graph_view.py", "knowledge.py", "lesson_retirement.py",
+RUNTIME_FILES = {"catalog.html", "catalog_server.py", "dagre.min.js", "evidence.py", "graph_view.py", "knowledge.py", "lesson_retirement.py",
                  "layout.html", "map.js", "protocol.json", "source_paths.py", "sync.py"}
 LEGACY_SKILLS = {
     "before-dev", "brainstorm", "break-loop", "channel", "check", "continue", "finish-work",

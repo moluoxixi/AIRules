@@ -12,6 +12,9 @@ const requireMermaidPeer = createRequire(import.meta.resolve('@mermaid-js/mermai
 const { default: puppeteer } = await import(pathToFileURL(requireMermaidPeer.resolve('puppeteer')).href)
 const featureTitles = ['新建方案', '配置模板', '刷新门店资源', '单个确认', '批量确认', '维护位置图片', '详情', '方案状态', '门店指引']
 const batchSource = 'merchandising-spec/产品真源/陈列方案升级/批量确认规则.md:340'
+const flowCli = fileURLToPath(new URL('../skills/requirement-flow/flow.py', import.meta.url))
+const python = process.platform === 'win32' ? 'py' : 'python3'
+const pythonArgs = [...(process.platform === 'win32' ? ['-3'] : []), '-B', flowCli]
 
 async function localChrome() {
   for (const channel of [undefined, 'chrome']) {
@@ -26,12 +29,12 @@ async function localChrome() {
   }
 }
 
+function runFlow(project, ...args) {
+  return execFileSync(python, [...pythonArgs, '--project', project, ...args], { encoding: 'utf8' })
+}
+
 function createHandbook(project) {
-  const cli = fileURLToPath(new URL('../skills/requirement-flow/flow.py', import.meta.url))
-  function flow(...args) {
-    const windows = process.platform === 'win32'
-    return execFileSync(windows ? 'py' : 'python3', [...(windows ? ['-3'] : []), '-B', cli, '--project', project, ...args], { encoding: 'utf8' })
-  }
+  const flow = (...args) => runFlow(project, ...args)
   const { handbook } = JSON.parse(flow('new', 'plan', '--request', '陈列模板生成、确认及门店查阅'))
   const patch = { stories: {}, contracts: {}, actions: {} }
   featureTitles.forEach((name, i) => {
@@ -119,7 +122,7 @@ function createHandbook(project) {
   record('finish', 'V-3', '--output', '单选通过')
   // Corrupt this once-valid artifact before subsequent commands regenerate the shared handbook.
   writeFileSync(path.resolve(path.dirname(handbook), oldProof.artifact.path), 'changed after review')
-  capture('V-4', 'AC-pages', '本机跨页组件测试', 'assert.deepEqual([...new Set([1, 3, 1])], [1, 3])')
+  const batchProof = capture('V-4', 'AC-pages', '本机跨页组件测试', 'assert.deepEqual([...new Set([1, 3, 1])], [1, 3])')
   capture('V-4', 'AC-timeout', '本机超时恢复测试', 'const selected = [2]; assert.throws(() => { throw Error("timeout") }); assert.deepEqual(selected, [2])')
   record('finish', 'V-4', '--output', '跨页与超时场景均已完成本机验证')
   const relocated = path.join(project, '.requirements/history/tasks/plan-batch')
@@ -130,16 +133,16 @@ function createHandbook(project) {
     directories: { '.moluoxixi/tasks/': '.requirements/history/tasks/' },
   }))
   flow('task', 'plan')
-  return pathToFileURL(handbook).href
+  return { url: pathToFileURL(handbook).href, batchArtifact: path.resolve(path.dirname(handbook), batchProof.artifact.path) }
 }
 
-async function startViewer(project, port = '0') {
-  const cli = fileURLToPath(new URL('../skills/requirement-flow/flow.py', import.meta.url))
-  const windows = process.platform === 'win32'
-  const child = spawn(windows ? 'py' : 'python3', [...(windows ? ['-3'] : []), '-B', cli, '--project', project, 'task', 'plan', 'serve', '--port', port])
+async function startServer(project, ...args) {
+  const child = spawn(python, [...pythonArgs, '--project', project, ...args])
   const address = await new Promise((resolve, reject) => {
+    let stderr = ''
+    child.stderr.on('data', chunk => stderr += chunk)
     child.once('error', reject)
-    child.once('exit', code => reject(new Error(`viewer exited with ${code}`)))
+    child.once('exit', code => reject(new Error(`viewer exited with ${code}: ${stderr.trim()}`)))
     child.stdout.once('data', chunk => resolve(chunk.toString().trim()))
   })
   return {
@@ -154,12 +157,18 @@ async function startViewer(project, port = '0') {
   }
 }
 
+function startViewer(project, port = '0') {
+  return startServer(project, 'task', 'plan', 'serve', '--port', port)
+}
+
 const executablePath = await localChrome()
 describe.skipIf(!executablePath)('generated handbook interactions in Chromium', { timeout: 15_000 }, () => {
-  let project, browser, url
+  let project, browser, url, batchArtifact
   beforeAll(async () => {
     project = mkdtempSync(path.join(tmpdir(), 'airules-handbook-'))
-    url = createHandbook(project)
+    const fixture = createHandbook(project)
+    url = fixture.url
+    batchArtifact = fixture.batchArtifact
     browser = await puppeteer.launch({
       executablePath,
       headless: true,
@@ -185,6 +194,7 @@ describe.skipIf(!executablePath)('generated handbook interactions in Chromium', 
     const { x, y, width, height } = el.getBoundingClientRect()
     return { x, y, width, height, viewBox: el.getAttribute('viewBox') }
   })
+  const previewTrigger = 'button.source-preview-trigger'
   async function open(width, height, route = '') {
     const page = await browser.newPage()
     await page.setViewport({ width, height, hasTouch: true })
@@ -235,6 +245,230 @@ describe.skipIf(!executablePath)('generated handbook interactions in Chromium', 
       },
     }
   }
+
+  describe('project requirement catalog', () => {
+    const archived = '历史草案'
+    const archivedTitle = '目录检索旧规范'
+    const unplanned = 'unplanned'
+    const research = 'index-study'
+    const longTitle = `目录检索与资料编辑权限 \u2014 ${'DocumentIndex'.repeat(7)} 移动端查阅`
+    const cards = 'article[data-task-id]'
+    const search = 'input[type="search"][aria-label="搜索需求"]'
+    const linkFor = id => `${cards}[data-task-id="${id}"] a[href]`
+    let server
+
+    beforeAll(async () => {
+      runFlow(project, 'new', unplanned, '--request', '可查看哪些资料', '--title', longTitle)
+      runFlow(project, 'new', archived, '--request', '第一版资料库查阅规则', '--title', archivedTitle)
+      runFlow(project, 'archive', archived, '--allow-incomplete')
+      runFlow(project, 'new', research, '--request', '调研资料格式', '--outcome', 'research')
+      const archiveRecord = `.requirements/archive/${archived}/model.json`
+      expect(JSON.parse(readFileSync(path.join(project, archiveRecord), 'utf8')).work.id).toBe(archived)
+      const result = ['--output', '归档目录中的 model.json 可读取该需求的标识', '--evidence', archiveRecord]
+      runFlow(project, 'task', research, 'finish', 'A-intake', '--actor', '资料维护者', '--rev', '1', ...result)
+      server = await startServer(project, 'serve', '--port', '0', '--default-task', 'plan')
+    })
+    afterAll(async () => {
+      await server?.stop()
+    })
+
+    function waitForCards(page, expected) {
+      return page.waitForFunction((selector, ids) => {
+        const shown = [...document.querySelectorAll(selector)].filter(el => el.getClientRects().length)
+        return shown.length === ids.length && shown.every(el => ids.includes(el.dataset.taskId))
+      }, { timeout: 4_000 }, cards, expected)
+    }
+    async function follow(page, selector) {
+      await Promise.all([page.waitForNavigation({ waitUntil: 'domcontentloaded' }), page.click(selector)])
+    }
+
+    it('lists active and archived requirements with only currently verifiable scenario progress', async () => {
+      const page = await browser.newPage()
+      try {
+        await page.goto(server.address)
+        await waitForCards(page, ['plan', unplanned, archived, research])
+        expect(await page.$eval('button[data-scope="all"]', b => b.getAttribute('aria-pressed'))).toBe('true')
+        const rows = await page.$$eval(cards, elements => Object.fromEntries(elements.map((row) => {
+          const bar = row.querySelector('progress')
+          return [row.dataset.taskId, { bucket: row.dataset.bucket, fraction: bar.position, description: bar.getAttribute('aria-valuetext') }]
+        })))
+        // Two current receipts pass; the once-valid but edited artifact for SC-3 does not count.
+        expect(rows.plan.bucket).toBe('active')
+        expect(rows.plan.fraction).toBeCloseTo(2 / 11, 2)
+        expect(rows[research]).toMatchObject({ bucket: 'active', fraction: 1, description: expect.stringContaining('调研') })
+        expect(rows[unplanned]).toMatchObject({ bucket: 'active', fraction: -1 })
+        expect(rows[archived]).toMatchObject({ bucket: 'archive', fraction: -1 })
+        expect(rows[unplanned].description).toBeTruthy()
+        expect(rows[archived].description).toBeTruthy()
+      }
+      finally {
+        await page.close()
+      }
+    })
+
+    it('searches long titles on mobile and returns to the same filtered list from an archived graph', async () => {
+      const page = await browser.newPage()
+      try {
+        await page.setViewport({ width: 375, height: 667, hasTouch: true })
+        await page.goto(server.address)
+        await waitForCards(page, [archived, unplanned, 'plan', research])
+        expect(await page.$eval(linkFor(unplanned), a => a.textContent)).toContain(longTitle)
+        expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(true)
+        await page.click('button[data-scope="active"]')
+        await waitForCards(page, [unplanned, 'plan', research])
+        await page.click('button[data-scope="all"]')
+        await page.type(search, '目录检索')
+        await waitForCards(page, [unplanned, archived])
+        await page.click('button[data-scope="archive"]')
+        await waitForCards(page, [archived])
+        await waitForFilterLink(page, 'scope', 'archive')
+        await page.setViewport({ width: 375, height: 430, hasTouch: true })
+        await page.$eval(linkFor(archived), link => link.scrollIntoView({ block: 'center' }))
+        const scroll = await page.evaluate(() => scrollY)
+        expect(scroll).toBeGreaterThan(0)
+        const filteredUrl = page.url()
+        expect(new URL(filteredUrl).searchParams.get('q')).toBe('目录检索')
+        const href = await page.$eval(linkFor(archived), el => el.href)
+        expect(decodeURIComponent(new URL(href).pathname)).toBe(`/tasks/${archived}/`)
+        await follow(page, linkFor(archived))
+        expect(await page.$eval('h1', el => el.textContent)).toBe(archivedTitle)
+        await page.goBack({ waitUntil: 'domcontentloaded' })
+        await waitForCards(page, [archived])
+        expect(page.url()).toBe(filteredUrl)
+        await follow(page, linkFor(archived))
+        await follow(page, '#catalog-home')
+        await waitForCards(page, [archived])
+        expect(page.url()).toBe(filteredUrl)
+        await page.waitForFunction(y => Math.abs(scrollY - y) < 2, { timeout: 3_000 }, scroll)
+        expect(await page.$eval(search, input => input.value)).toBe('目录检索')
+        await page.type(search, '无匹配')
+        await waitForCards(page, [])
+        await page.waitForSelector('#empty', { visible: true })
+        expect(await page.$eval('#result-count', el => el.textContent)).toContain('0')
+      }
+      finally {
+        await page.close()
+      }
+    })
+
+    it('restores legacy links and keeps the graph, AI record and citations scoped to the selected task', async () => {
+      const [plan, draft] = await Promise.all([browser.newPage(), browser.newPage()])
+      try {
+        await Promise.all([
+          plan.goto(`${server.address}?view=detail&features=S-4#node=C-4`),
+          draft.goto(server.address),
+        ])
+        await follow(draft, linkFor(unplanned))
+        await plan.bringToFront()
+        expect(new URL(plan.url()).pathname).toBe('/tasks/plan/')
+        expect(await plan.evaluate(() => location.hash)).toBe('#node=C-4')
+        await drawerReady(plan)
+        expect(await plan.$eval('#panel-title', el => el.textContent)).toBe('批量确认')
+        expect(await draft.$eval('h1', el => el.textContent)).toBe(longTitle)
+        const aiRecord = page => page.$eval('#ai-record', async link => (await fetch(link.href)).json())
+        const [context, model] = await Promise.all([aiRecord(plan), aiRecord(draft)])
+        expect(Object.keys(context.stories)).toEqual(['S-4'])
+        expect(model.work.id).toBe(unplanned)
+        expect(model.work.stories).toEqual({})
+        await plan.click('.endpoint-list .endpoint')
+        await endpointReady(plan)
+        const sourceLookup = plan.waitForResponse((response) => {
+          const url = new URL(response.url())
+          return url.pathname === '/tasks/plan/source-location' && url.searchParams.get('ref')?.endsWith('prd.md:6') && response.ok()
+        }, { timeout: 4_000 })
+        const list = '#endpoint-drawer .source-list'
+        await Promise.all([sourceLookup, plan.click(`${list} > summary`)])
+        await (await plan.waitForSelector(`${list} ${previewTrigger}`, { visible: true })).click()
+        await expectSourceLine(plan, '6保留原有位置方案')
+        await draft.bringToFront()
+        await draft.goto(`${server.address}#node=S-4`)
+        await drawerReady(draft)
+        expect(new URL(draft.url()).pathname).toBe('/tasks/plan/')
+        expect(await draft.$eval('#panel-title', el => el.textContent)).toBe('批量确认')
+      }
+      finally {
+        await Promise.all([plan.close(), draft.close()])
+      }
+    })
+
+    it('shows an empty project without placeholder requirements', async () => {
+      const emptyProject = mkdtempSync(path.join(tmpdir(), 'airules-empty-'))
+      const page = await browser.newPage()
+      let emptyServer
+      try {
+        runFlow(emptyProject, 'init')
+        emptyServer = await startServer(emptyProject, 'serve', '--port', '0')
+        await page.goto(emptyServer.address)
+        await page.waitForSelector('#empty', { visible: true })
+        expect(await page.$$eval(cards, rows => rows.length)).toBe(0)
+        expect(await page.$eval('#result-count', el => el.textContent)).toContain('0')
+      }
+      finally {
+        await page.close()
+        await emptyServer?.stop()
+        rmSync(emptyProject, { recursive: true, force: true })
+      }
+    })
+
+    it('refreshes cards and total progress on return while preserving a focused search', async () => {
+      const page = await browser.newPage()
+      const artifact = readFileSync(batchArtifact)
+      const later = 'later-request'
+      let otherTab
+      try {
+        await page.goto(server.address)
+        await page.type(search, '确认')
+        await waitForCards(page, ['plan'])
+        expect(await page.$eval('#overview progress', bar => [bar.value, bar.max])).toEqual([2, 11])
+        otherTab = await browser.newPage()
+        await otherTab.bringToFront()
+        await page.waitForFunction(() => document.hidden, { polling: 100, timeout: 3_000 })
+        runFlow(project, 'new', later, '--request', '确认后是否可撤回')
+        writeFileSync(batchArtifact, 'updated since it was reviewed')
+        await page.bringToFront()
+        await waitForCards(page, ['plan', later])
+        expect(await page.$eval('#overview progress', bar => [bar.value, bar.max])).toEqual([1, 11])
+        expect(await page.$eval('article[data-task-id="plan"] progress', bar => [bar.value, bar.max])).toEqual([1, 11])
+        expect(await page.$eval(search, input => [input.value, document.activeElement === input])).toEqual(['确认', true])
+      }
+      finally {
+        await page.close()
+        await otherTab?.close()
+        writeFileSync(batchArtifact, artifact)
+        rmSync(path.join(project, '.requirements/active', later), { recursive: true, force: true })
+      }
+    })
+
+    it.each(['?view=detail#node=D-scope', '#node=D-scope'])('preserves a decision draft when upgrading the single-task port at %s', async (route) => {
+      let viewer = await startViewer(project)
+      const page = await browser.newPage()
+      const note = '等待核对两份资料的适用范围'
+      const writes = []
+      page.on('request', (request) => {
+        if (request.method() === 'POST')
+          writes.push(new URL(request.url()).pathname)
+      })
+      try {
+        await page.goto(viewer.address + route)
+        await drawerReady(page)
+        await page.type('input[name="reason"]', note)
+        const port = new URL(viewer.address).port
+        await viewer.stop()
+        viewer = await startServer(project, 'serve', '--port', port, '--default-task', 'plan')
+        await page.evaluate(() => document.dispatchEvent(new Event('visibilitychange')))
+        await page.waitForSelector('#notice:not([hidden]) #refresh', { visible: true, timeout: 5_000 })
+        await follow(page, '#refresh')
+        await drawerReady(page)
+        expect(await page.$eval('input[name="reason"]', input => input.value)).toBe(note)
+        expect(await page.evaluate(() => location.pathname + location.hash)).toBe('/tasks/plan/#node=D-scope')
+        expect(writes).toEqual([])
+      }
+      finally {
+        await page.close()
+        await viewer.stop()
+      }
+    })
+  })
 
   it('starts with readable cards and protects zoom from mouse, trackpad and touch gestures', async () => {
     const page = await open(476, 623)
@@ -498,7 +732,6 @@ describe.skipIf(!executablePath)('generated handbook interactions in Chromium', 
     return page.waitForFunction(() => !document.querySelector('#endpoint-drawer').open && !location.hash.includes('&endpoint='))
   }
   const sourceDialog = '#source-drawer[open]'
-  const previewTrigger = 'button.source-preview-trigger'
   async function expectSourceLine(page, text) {
     await page.waitForFunction(wanted => document.querySelector('#source-drawer[open] .source-target-line')?.textContent === wanted, { timeout: 6_000 }, text)
     await page.waitForFunction(() => document.querySelector('#source-drawer').getAnimations().every(animation => animation.playState === 'finished'))

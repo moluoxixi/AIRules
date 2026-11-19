@@ -248,14 +248,14 @@ h1{{font-size:1.8rem;margin:16px 0 24px}}section{{padding:18px 22px;background:w
 h2{{font-size:1.15rem;margin:0 0 14px}}dl{{display:grid;grid-template-columns:minmax(4.7em,auto) 1fr;gap:8px 16px;margin:0}}
 dt{{color:#526b79}}dd{{margin:0;overflow-wrap:anywhere}}pre{{white-space:pre-wrap;overflow-wrap:anywhere;background:#f1f5f7;padding:12px}}
 a{{color:#176269}}.download{{display:inline-block;margin-top:10px}}</style><main>
-<a href="/">返回当前需求图</a><h1>{escape(card["observation"])}</h1>
+<a href="./">返回当前需求图</a><h1>{escape(card["observation"])}</h1>
 <section><h2>来源场景</h2><dl>{context}</dl></section>
 <section><h2>实际证据</h2><dl>{receipt}</dl><pre>{escape(proof["actual"])}</pre>
 <a class="download" href="{escape(download_url, quote=True)}" download>下载原始证据</a></section>
 <section><h2>经验与审查</h2><dl>{review_info}</dl></section></main></html>"""
 
 
-def render(model, states, impacts, token, checksum, template, *, queue, source_labels=None):
+def render(model, states, impacts, token, checksum, template, *, queue, source_labels=None, read_only=False):
     work = model["work"]
     graph = make_graph(work, states, queue.get("scenarios", []))
     for node in graph["nodes"]:
@@ -265,6 +265,8 @@ def render(model, states, impacts, token, checksum, template, *, queue, source_l
                 node["sharedNote"] = f"{count} 条相关项目经验"
     payload = dict(model=model, states=states, impacts=impacts, graph=graph, csrf=token, queue=queue,
                    lesson_version=lesson_version(queue))
+    if read_only:
+        payload["read_only"] = True
     if source_labels:
         payload["source_labels"] = source_labels
     safe_json = json.dumps(payload, ensure_ascii=False, separators=(",",":")).replace("&","\\u0026").replace("<","\\u003c").replace(">","\\u003e")

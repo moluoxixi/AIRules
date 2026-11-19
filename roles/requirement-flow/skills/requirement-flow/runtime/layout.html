@@ -5,7 +5,7 @@
   <meta name="model-sha256" content="@@DIGEST@@">
   <title>@@TITLE@@ · 需求全景图</title>
   <style>
-    :root { color-scheme:light; --ink:#203c46; --muted:#52656a; --line:#d9dfd8; --paper:#f8f8f4; --teal:#20565c; --blue:#246482; --amber:#85581f;
+    :root { color-scheme:light; --ink:#1b3530; --muted:#53685f; --line:#d6e0d9; --paper:#f3f6f4; --teal:#23675a; --blue:#246482; --amber:#85581f;
       --ui:"Instrument Sans","PingFang SC","Microsoft YaHei",system-ui,sans-serif; --mono:"IBM Plex Mono","SFMono-Regular",Consolas,monospace; font:15px/1.5 var(--ui); }
     * {box-sizing:border-box} body {margin:0;color:var(--ink);background:var(--paper)}
     button,a {font:inherit; color:inherit} button {cursor:pointer} a {color:var(--blue);text-underline-offset:.18em}
@@ -15,14 +15,19 @@
     header {display:flex;gap:12px;align-items:center;justify-content:space-between;min-height:64px;padding:10px clamp(12px,2.4vw,32px);background:white;border-bottom:1px solid var(--line)}
     .identity,.controls,.legend,.tools,.button-link {display:flex;align-items:center}
     .identity {gap:11px;min-width:0}.identity>div {min-width:0}
-    .mark {position:relative;display:grid;place-items:center;flex:none;width:38px;height:38px;background:#193c4a;border-radius:11px;color:white}
+    .mark {position:relative;display:grid;place-items:center;flex:none;width:38px;height:38px;background:#163e38;border-radius:11px;color:white}
     .mark svg {width:27px;height:27px}
     h1,h2,h3,h4,p,ol,ul,dl {margin:0}
     h1 {font-size:clamp(1.03rem,2vw,1.33rem);font-weight:730;line-height:1.25;letter-spacing:-.035em;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
     .edition {color:var(--muted);font:.74rem var(--mono);letter-spacing:.02em;margin-top:4px;display:block}
+    .graph-crumb {display:flex;align-items:center;gap:7px;color:var(--muted);font-size:.72rem;line-height:1.2;margin-bottom:4px}
+    .graph-crumb .edition {margin:0;font-size:.69rem}
+    header #catalog-home {display:inline-flex;align-items:center;gap:2px;padding:1px 2px 1px 0;color:var(--teal);font-weight:650}
+    #catalog-home::after {content:"";display:inline-block;height:11px;border-right:1px solid #b7c9be;margin-left:4px}
+    #catalog-home svg {width:13px;height:13px;fill:none;stroke:currentColor;stroke-width:1.7}
     .tools {gap:4px}
     header button,header a,.controls button,.close,.link-button,.refresh {border:0;background:transparent;border-radius:7px;text-decoration:none;padding:.4rem .58rem}
-    header button,header a {color:#36556d} header button:hover,header a:hover,.controls button:hover,.close:hover,.link-button:hover {background:#edf3f7;color:var(--ink)}
+    header button,header a {color:#37594d} header button:hover,header a:hover,.controls button:hover,.close:hover,.link-button:hover {background:#edf3f7;color:var(--ink)}
     .button-link {gap:6px;white-space:nowrap;font-weight:550;font-size:.85rem}
     .button-link svg,.controls svg,.close svg,.drawer-tab svg {width:17px;height:17px;display:block;fill:none;stroke:currentColor;stroke-width:1.65;stroke-linecap:round;stroke-linejoin:round}
     .feature-bar {position:relative;min-width:0;max-width:260px;flex:0 1 auto}
@@ -58,20 +63,20 @@
     .no-results footer>* {visibility:hidden}
     .button-link[aria-disabled=true] {color:#728391;cursor:default}
     .empty-search {position:absolute;inset:0;display:grid;align-content:center;justify-items:center;gap:10px;padding:20px;text-align:center;overflow-wrap:anywhere}
-    .surface {position:relative;min-height:0;overflow:hidden;background-color:var(--paper);background-image:radial-gradient(#c4cdc1 .7px,transparent .85px);background-size:20px 20px}
+    .surface {position:relative;min-height:0;overflow:hidden;background-color:var(--paper);background-image:radial-gradient(#bccdc2 .7px,transparent .85px);background-size:20px 20px}
     .surface>noscript {position:absolute;inset:16px auto auto 16px}
     #map {display:block;width:100%;height:100%;touch-action:none;user-select:none;cursor:grab} #map.dragging {cursor:grabbing}
     footer {min-height:49px;padding:6px clamp(10px,2.2vw,30px);background:white;border-top:1px solid var(--line);display:flex;align-items:center;justify-content:space-between;gap:8px}
     .legend {gap:13px;flex-wrap:wrap;color:#485e73;font-size:.78rem}
     .legend span {display:inline-flex;align-items:center;gap:5px}
-    .rail {width:20px;display:inline-block;border-top:2px solid #65808a}
+    .rail {width:20px;display:inline-block;border-top:2px solid #708981}
     .rail.branch {border-top:2px dashed #a16c2d}
     .controls {gap:3px;flex:none;color:#35526b}.controls button {padding:6px 7px;font-size:.84rem}
     .controls output {min-width:40px;text-align:center;font: .8rem var(--mono);font-variant-numeric:tabular-nums}
     .controls .fit {display:flex;gap:6px;align-items:center;margin-left:4px;border-left:1px solid var(--line);border-radius:0 6px 6px 0;padding-left:11px}
     .controls [aria-disabled=true] {color:#8594a0;cursor:default}
     #drawer-layer {position:fixed;inset:0;z-index:20;isolation:isolate;overflow:hidden}
-    #drawer-backdrop {position:absolute;inset:0;background:rgba(22,36,40,.47);opacity:0}
+    #drawer-backdrop {position:absolute;inset:0;background:rgba(23,47,38,.40);opacity:0}
     #inspector {position:absolute;inset:0 0 0 auto;width:min(88%,clamp(360px,38vw,480px));background:#fff;box-shadow:-5px 0 26px #182a332d;overflow:hidden;display:flex;flex-direction:column;container-type:inline-size;transform:translateX(100%)}
     #drawer-layer.is-open #drawer-backdrop {opacity:1}
     #drawer-layer.is-open #inspector {transform:translateX(0)}
@@ -79,8 +84,8 @@
       #drawer-backdrop {transition:opacity .22s ease}
       #inspector {transition:transform .22s cubic-bezier(.24,.71,.28,1)}
     }
-    .panelbar {display:flex;align-items:center;gap:9px;flex:none;min-height:62px;padding:12px 14px 12px 20px;background:#fff;border-bottom:1px solid var(--line)}
-    #panel-type {flex:none;font-size:.74rem;font-weight:650;color:#425e58;background:#edf2ee;border-radius:5px;padding:2px 6px}
+    .panelbar {display:flex;align-items:center;gap:9px;flex:none;min-height:62px;padding:12px 14px 12px 20px;background:#f8fbf8;border-bottom:1px solid var(--line)}
+    #panel-type {flex:none;font-size:.74rem;font-weight:650;color:#425e58;background:#e5efe7;border-radius:5px;padding:2px 6px}
     #panel-title {font-size:1.12rem;line-height:1.35;overflow-wrap:anywhere}
     .close,.drawer-tab {display:inline-flex;align-items:center;justify-content:center;gap:4px;color:var(--teal);font:600 .8rem/1.4 var(--ui)}
     .close {flex:none;width:36px;height:36px;margin-left:auto;padding:6px;color:var(--muted)}
@@ -98,10 +103,10 @@
     .dim {color:var(--muted)}
     .choice strong {color:var(--amber)} .choice details,.compact-fold {font-size:.86rem;color:var(--muted);margin-top:6px}
     summary {cursor:pointer;color:var(--blue);width:fit-content}
-    .link-button {color:var(--blue);padding:.25rem .5rem;background:#f0f5fa;margin:3px 4px 0 0;font-size:.84rem}
+    .link-button {color:var(--blue);padding:.25rem .5rem;background:#edf5ef;margin:3px 4px 0 0;font-size:.84rem}
     form {margin-top:15px} form label {display:grid;gap:4px;font-size:.83rem;color:var(--muted)}
-    form input {font:inherit;border:1px solid #acc0d0;border-radius:6px;padding:7px}
-    .choose,.refresh {background:#173e60;color:white;border:0;border-radius:6px;padding:6px 9px;font:inherit;font-size:.83rem;margin:6px 6px 0 0}
+    form input {font:inherit;border:1px solid #acc3b5;border-radius:6px;padding:7px}
+    .choose,.refresh {background:#23675a;color:white;border:0;border-radius:6px;padding:6px 9px;font:inherit;font-size:.83rem;margin:6px 6px 0 0}
     .notice {position:absolute;top:8px;left:50%;transform:translateX(-50%);background:#fff8e9;border:1px solid #d2a157;padding:5px 10px;border-radius:7px;z-index:4;font-size:.84rem}
     #inspector>.notice,#endpoint-drawer>.notice,#source-drawer>.notice {position:static;transform:none;flex:none;margin:8px 12px}
     .notice button {margin:0 0 0 6px} .sr {position:absolute;width:1px;height:1px;clip-path:inset(50%);overflow:hidden}
@@ -114,11 +119,11 @@
       .legend {gap:6px;font-size:.7rem}.rail {width:13px}.controls {gap:0}.controls button{padding:5px}.controls output{min-width:31px;font-size:.73rem}
     }
     @media(max-width:365px) {.tools .extra {position:absolute;clip-path:inset(50%);width:1px;height:1px;overflow:hidden}}
-    .map-bar {position:relative;z-index:5;display:flex;align-items:center;gap:10px;padding:5px clamp(10px,2.4vw,32px);background:#fffffc;border-bottom:1px solid var(--line)}
-    .map-modes {display:inline-flex;gap:2px;background:#eef1ec;border-radius:8px;padding:3px;flex:none}
+    .map-bar {position:relative;z-index:5;display:flex;align-items:center;gap:10px;padding:5px clamp(10px,2.4vw,32px);background:#fafcf9;border-bottom:1px solid var(--line)}
+    .map-modes {display:inline-flex;gap:2px;background:#eef3ef;border-radius:8px;padding:3px;flex:none}
     .map-modes button {background:none;border:1px solid transparent;border-radius:6px;color:#42595c;white-space:nowrap;padding:4px 10px;font:600 .84rem/1.5 var(--ui)}
     .map-modes button:hover {background:#dfe9e3}
-    .map-modes button[aria-pressed=true] {color:#fff;background:#244b53;border-color:#244b53}
+    .map-modes button[aria-pressed=true] {color:#fff;background:#1f5045;border-color:#1f5045}
     .controls {margin-left:auto;gap:2px}
     .controls button {display:grid;place-items:center;min-width:32px;min-height:32px;padding:5px}
     .controls .fit {display:flex;margin-left:3px;padding-inline:9px 3px;border-left:1px solid var(--line)}
@@ -258,7 +263,7 @@
 <div class="app">
 <div class="app-head">
 <header>
-  <div class="identity"><span class="mark" aria-hidden="true"><svg viewBox="0 0 28 28" fill="none"><path d="M5 14h7m0 0c3 0 1-7 6-7h5m-11 7c3 0 1 7 6 7h5" stroke="#b4e8da" stroke-width="2.1"/><circle cx="5" cy="14" r="3.1" fill="#fff"/><circle cx="23" cy="7" r="2.7" fill="#8cd5c7"/><circle cx="23" cy="21" r="2.7" fill="#f8c875"/></svg></span><div><h1 title="@@TITLE@@">@@TITLE@@</h1><span class="edition">需求全景图 · @@KIND@@ · v@@VERSION@@</span></div></div>
+  <div class="identity"><span class="mark" aria-hidden="true"><svg viewBox="0 0 28 28" fill="none"><path d="M5 14h7m0 0c3 0 1-7 6-7h5m-11 7c3 0 1 7 6 7h5" stroke="#b4e8da" stroke-width="2.1"/><circle cx="5" cy="14" r="3.1" fill="#fff"/><circle cx="23" cy="7" r="2.7" fill="#8cd5c7"/><circle cx="23" cy="21" r="2.7" fill="#f8c875"/></svg></span><div><div class="graph-crumb"><a id="catalog-home" href="/" aria-label="返回需求中心" hidden><svg viewBox="0 0 16 16" aria-hidden="true"><path d="m9 4-4 4 4 4"/></svg>需求中心</a><span id="edition-kind">需求全景图 · @@KIND@@</span><span class="edition">v@@VERSION@@</span></div><h1 title="@@TITLE@@">@@TITLE@@</h1></div></div>
   <div class="tools"><button type="button" class="button-link" id="export" title="保存完整、可放大的 SVG 图"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 3v12m-4-4 4 4 4-4M4 15v4a1 1 0 0 0 1 1h14a1 1 0 0 0 1-1v-4"/></svg><span id="export-caption">导出整图</span></button><a id="ai-record" href="model.json" class="button-link" title="读取同一版需求的 JSON"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="m8 7-5 5 5 5m8-10 5 5-5 5m-3-13-2 16"/></svg>AI 记录</a></div>
 </header>
   <div class="map-bar">
@@ -302,7 +307,7 @@
       .map-node .n-title{font-weight:680;letter-spacing:-.3px}.map-node .n-label{font-weight:600;letter-spacing:.15px}
       .map-node .mono{font-family:"IBM Plex Mono","SFMono-Regular",Consolas,monospace;letter-spacing:-.3px}
       .map-line {fill:none;stroke-linecap:round;stroke-linejoin:round}
-      .map-node:hover .outline,.map-node:focus-visible .outline,.map-node.selected .outline {stroke:#205773;stroke-width:3}
+      .map-node:hover .outline,.map-node:focus-visible .outline,.map-node.selected .outline {stroke:#23675a;stroke-width:3}
       .map-node.muted,.map-edge.muted {opacity:.27}.map-node.selected .n-title {font-weight:760}
     </style></defs>
     <g id="world"><g id="wires"></g><g id="wire-labels"></g><g id="stations"></g></g>

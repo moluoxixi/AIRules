@@ -1,0 +1,487 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <meta name="color-scheme" content="light">
+  <title>需求中心 · 需求全景图</title>
+  <style>
+    :root {
+      --ink: #193e38; --text: #304e48; --muted: #526a61; --line: #d6e0d9; --green: #23675a;
+      --surface: #f3f6f4; --mint: #dcefe3; --amber: #986525;
+      --ui: "Instrument Sans","PingFang SC","Microsoft YaHei",system-ui,sans-serif;
+      --number: "IBM Plex Mono","SFMono-Regular",Consolas,monospace;
+      color-scheme: light; font: 15px/1.5 var(--ui); color: var(--ink); background: var(--surface);
+    }
+    * { box-sizing: border-box }
+    body, h1, h2, h3, p { margin: 0 }
+    [hidden] { display: none !important }
+    button, input { font: inherit; color: inherit }
+    button, a { -webkit-tap-highlight-color: transparent }
+    button { cursor: pointer }
+    :focus-visible { outline: 3px solid #266b81; outline-offset: 3px }
+    .wrap { width: calc(100% - clamp(32px,8.6vw,140px)); max-width: 1240px; margin-inline: auto }
+    .masthead { background: #fbfdfb; border-bottom: 1px solid var(--line) }
+    .masthead .wrap { display: flex; align-items: center; justify-content: space-between; gap: 20px; min-height: 56px }
+    .brand, .workspace { display: inline-flex; align-items: center; gap: 10px; min-width: 0 }
+    .brand { flex: none; font-size: .94rem; font-weight: 700; color: var(--ink) }
+    .brand-mark { width: 32px; height: 32px; display: grid; place-items: center; background: #193e38; border-radius: 9px }
+    .brand-mark svg { width: 23px; height: 23px }
+    .workspace { font-size: .84rem; color: var(--muted); font-weight: 600 }
+    .workspace .glyph { width: 16px; height: 16px }
+    .workspace span { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap }
+    .glyph { display: block; flex: none; width: 18px; height: 18px; fill: none; stroke: currentColor; stroke-width: 1.65; stroke-linecap: round; stroke-linejoin: round }
+    .icon-defs { display: none }
+    main { padding-block: clamp(22px,3vw,44px) 48px }
+    .desk { display: grid; grid-template-columns: minmax(0,1fr) minmax(230px,38%); align-items: center; gap: clamp(20px,5vw,80px); padding: clamp(22px,3vw,36px) clamp(22px,3.4vw,44px); border-radius: 18px; background: linear-gradient(107deg,#173e36,#21574a 78%,#285d4d); color: #f4faf5; box-shadow: 0 4px 10px #233f3310 }
+    .desk h1 { font-size: clamp(2.1rem,3.5vw,3.45rem); line-height: 1.16; font-weight: 650; letter-spacing: -.05em }
+    .inventory { display: flex; align-items: center; flex-wrap: wrap; gap: 0; margin-top: 11px; color: #c8dfd2; font-size: .85rem }
+    .inventory b { font: 600 .87rem var(--number); color: #f3faf5 }
+    .inventory span+span::before { content: ""; display: inline-block; vertical-align: middle; margin-inline: 11px; width: 1px; height: 10px; background: #739787 }
+    .overview { display: grid; grid-template-columns: 1fr auto; column-gap: 12px; align-items: baseline; padding: 2px 0 }
+    .overview-label { font-size: .78rem; font-weight: 550; color: #e0eee4 }
+    .overview-count { font-family: var(--number); font-size: .86rem; color: #c7dece; white-space: nowrap }
+    .overview-count b { color: white; font-size: 1.32rem; font-weight: 550 }
+    .overview .meter { grid-column: 1/-1; margin-top: 10px; height: 9px; --track: #477361; --fill: #b0e5ba; --gap: #225546 }
+    .toolbar { display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 12px; margin: clamp(19px,2.4vw,30px) 0 22px }
+    .filters { display: inline-flex; padding: 3px; gap: 2px; align-items: center; border: 1px solid var(--line); border-radius: 10px; background: #e9efea }
+    .filters button { display: inline-flex; align-items: center; gap: 6px; justify-content: center; font-size: .86rem; font-weight: 600; padding: 6px 13px; min-height: 34px; border: none; border-radius: 7px; background: transparent; white-space: nowrap; color: #496159 }
+    .filters button:hover { background: #deeadf }
+    .filters button[aria-pressed=true] { background: #fff; color: #173f36; box-shadow: 0 1px 4px #173e3626 }
+    .search { display: flex; align-items: center; gap: 8px; background: #fff; border: 1px solid #c9d7cc; border-radius: 9px; padding: 0 12px; min-width: 0; width: min(260px,100%); height: 41px; color: var(--muted) }
+    .search:focus-within { outline: 2px solid #327968; outline-offset: 1px }
+    .search input { width: 100%; min-width: 0; padding: 0; background: transparent; border: none; appearance: none; font: 400 .9rem var(--ui); outline: none }
+    .search input::placeholder { color: #687b71 }
+    .search input::-webkit-search-cancel-button { display: none }
+    .search button { display: grid; place-items: center; border: 0; border-radius: 4px; background: transparent; color: var(--muted); padding: 4px }
+    .search button:hover { background: #edf3ee }
+    .search button .glyph { width: 15px; height: 15px }
+    .refresh-notice { display: flex; align-items: center; gap: 8px; margin: -6px 0 16px; font-size: .84rem; color: #775322 }
+    .refresh-notice button { padding: 2px 5px; color: var(--green); text-underline-offset: 3px; text-decoration: underline; font-weight: 600; border: 0; border-radius: 3px; background: transparent }
+    .results { scroll-margin-top: 16px }
+    .section+.section { margin-top: clamp(26px,3vw,40px) }
+    .section-head { display: flex; align-items: center; justify-content: flex-start; gap: 9px; margin: 0 0 12px }
+    .section-head h2 { font-size: 1.13rem; font-weight: 670; letter-spacing: -.025em }
+    .section-total { color: #597067; font: 500 .76rem var(--number); background: #e4ebe5; padding: 2px 6px; border-radius: 5px }
+    .cards { display: grid; gap: clamp(10px,1.4vw,18px); grid-template-columns: repeat(auto-fill,minmax(min(100%,286px),1fr)) }
+    .section[data-bucket=active] .cards { grid-template-columns: repeat(auto-fit,minmax(min(100%,320px),1fr)) }
+    .card { position: relative; display: flex; flex-direction: column; min-width: 0; background: #fff; color: var(--text); border: 1px solid var(--line); border-radius: 13px; padding: clamp(16px,1.9vw,24px); box-shadow: 0 2px 4px #163c3210; isolation: isolate }
+    .card:has(a):hover { border-color: #8cae9c; box-shadow: 0 5px 16px #204c3b14 }
+    .card:focus-within { outline: 3px solid #266b81; outline-offset: 3px }
+    .card-head, .card-foot, .progress-head { display: flex; align-items: center; justify-content: space-between; gap: 8px; min-width: 0 }
+    .category { display: inline-flex; gap: 6px; align-items: center; font-size: .76rem; font-weight: 600; color: #4d6a60 }
+    .category .glyph { width: 16px; height: 16px; color: #42765e }
+    .state { display: inline-flex; align-items: center; gap: 5px; border-radius: 12px; font-size: .73rem; font-weight: 600; padding: 2px 8px; color: #3d6956; background: #e8f2e9 }
+    .state::before { content: ""; width: 5px; height: 5px; border-radius: 50%; background: currentColor }
+    .state[data-tone=amber] { background: #f9efdb; color: #885b20 }
+    .state[data-tone=neutral] { background: #edf1ee; color: #5c6c63 }
+    .date { font-size: .75rem; color: var(--muted); white-space: nowrap; font-variant-numeric: tabular-nums }
+    .card h3 { margin: 13px 0 5px; font-size: clamp(1.08rem,1.5vw,1.42rem); line-height: 1.38; font-weight: 650; letter-spacing: -.035em; color: var(--ink); overflow-wrap: anywhere }
+    .card h3 a { color: inherit; text-decoration: none; outline: none }
+    .card h3 a::after { content: ""; position: absolute; inset: 0; z-index: 1; border-radius: 12px }
+    .card h3 a:focus { outline: none }
+    .description { display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; overflow-wrap: anywhere; color: #53675e; font-size: .87rem; line-height: 1.55 }
+    .reading { margin-top: auto; padding-top: 18px }
+    .progress-head { margin-bottom: 6px; font-size: .8rem; color: var(--muted) }
+    .progress-head b { font: 600 .8rem var(--number); color: #315c49; font-variant-numeric: tabular-nums }
+    .meter { height: 8px; position: relative; border-radius: 2px; overflow: hidden; --track: #e2e9e3; --fill: #488572; --gap: #fff }
+    .meter progress { display: block; width: 100%; height: 100%; margin: 0; border: none; appearance: none; -webkit-appearance: none; background: var(--track); color: var(--fill) }
+    .meter progress::-webkit-progress-bar { background: var(--track) }
+    .meter progress::-webkit-progress-value { background: var(--fill) }
+    .meter progress::-moz-progress-bar { background: var(--fill) }
+    .meter::after { content: ""; position: absolute; inset: 0; pointer-events: none; background: repeating-linear-gradient(90deg,transparent 0 calc(var(--step) - 2px),var(--gap) calc(var(--step) - 2px) var(--step)) }
+    .meter[data-known=false] { background: repeating-linear-gradient(120deg,#f0f3ef 0 5px,#dce4dd 5px 7px) }
+    .meter[data-known=false] progress { opacity: 0 }
+    .meter[data-known=false]::after { display: none }
+    .card-foot { margin-top: 13px; padding-top: 10px; border-top: 1px solid #edf1ed; color: var(--muted); font-size: .76rem }
+    .card-foot .glyph { width: 15px; height: 15px; color: var(--green) }
+    .card-foot .action { display: inline-flex; align-items: center; gap: 4px; margin-inline-start: auto; color: var(--green); font-weight: 600 }
+    .section[data-bucket=archive] .card { box-shadow: none; padding: 16px 18px }
+    .section[data-bucket=archive] .card h3 { font-size: 1.03rem; margin-top: 10px }
+    .section[data-bucket=archive] .category .glyph { color: #64756c }
+    .section[data-bucket=archive] .reading { padding-top: 13px }
+    .section[data-bucket=archive] .meter { height: 6px }
+    .section[data-bucket=archive] .card-foot { margin-top: 10px; padding-top: 8px }
+    .empty { padding: 34px 18px; background: white; border: 1px dashed #bdcfc2; border-radius: 12px; text-align: center }
+    .empty h2 { font-size: 1.05rem; margin-bottom: 5px }
+    .empty p { color: var(--muted); font-size: .9rem }
+    .empty button { background: white; border: 1px solid #a6bfb1; color: var(--green); font-size: .86rem; font-weight: 600; border-radius: 6px; margin-top: 14px; padding: 6px 12px }
+    .sr { position: absolute; width: 1px; height: 1px; padding: 0; overflow: hidden; clip-path: inset(50%); white-space: nowrap }
+    @media (min-width:1120px) { .section[data-bucket=active] .cards { grid-template-columns: repeat(2,minmax(0,1fr)) } }
+    @media (max-width:720px) {
+      .cards,.section[data-bucket=active] .cards { grid-template-columns: repeat(2,minmax(0,1fr)) }
+      .desk { border-radius: 14px; grid-template-columns: minmax(0,1fr) minmax(155px,40%); gap: 16px }
+      .card-foot { flex-wrap: wrap }
+    }
+    @media (max-width:560px) {
+      main { padding-block-start: 16px }
+      .masthead .wrap { min-height: 48px }
+      .desk { padding: 18px; grid-template-columns: minmax(0,1fr); gap: 14px }
+      .overview { border-top: 1px solid #5b8271; padding-top: 10px }
+      .overview .meter { margin-top: 6px; height: 6px }
+      .overview-count b { font-size: 1rem }
+      .toolbar { gap: 7px; flex-wrap: nowrap; margin: 16px 0 18px }
+      .filters { padding: 2px }
+      .filters button { padding: 4px 7px; min-height: 30px; font-size: .8rem }
+      .search { flex: 1; height: 36px; padding: 0 7px; gap: 4px }
+      .search .glyph { width: 15px; height: 15px }
+      .search input { font-size: .81rem }
+      .cards,.section[data-bucket=active] .cards { grid-template-columns: 1fr }
+      .card { padding: 15px 16px }
+      .section-head { margin-bottom: 9px }
+    }
+    @media (prefers-reduced-motion:no-preference) { .card { transition: box-shadow .16s ease,border-color .16s ease } }
+    @media (forced-colors:active) { .meter { border: 1px solid CanvasText }.meter[data-known=false] { border-style: dashed }.meter[data-known=true] progress { appearance: auto }.meter::after { display: none } }
+  </style>
+</head>
+<body>
+  <svg class="icon-defs" xmlns="http://www.w3.org/2000/svg" aria-hidden="true"><defs>
+    <symbol id="folder" viewBox="0 0 24 24"><path d="M3 7a2 2 0 0 1 2-2h5l2 2h7a2 2 0 0 1 2 2v9a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/></symbol>
+    <symbol id="feature" viewBox="0 0 24 24"><path d="m12 3 9 5-9 5-9-5 9-5zm-9 9 9 5 9-5M3 16l9 5 9-5"/></symbol>
+    <symbol id="research" viewBox="0 0 24 24"><circle cx="10.5" cy="10.5" r="6.5"/><path d="m15.5 15.5 5 5"/></symbol>
+    <symbol id="archive" viewBox="0 0 24 24"><rect x="3" y="4" width="18" height="5" rx="1.5"/><path d="M5 9v10h14V9m-9 4h4"/></symbol>
+    <symbol id="arrow" viewBox="0 0 24 24"><path d="M5 12h13m-5-5 5 5-5 5"/></symbol>
+    <symbol id="clear" viewBox="0 0 24 24"><path d="m7 7 10 10m0-10L7 17"/></symbol>
+  </defs></svg>
+  <header class="masthead"><div class="wrap">
+    <span class="brand"><span class="brand-mark" aria-hidden="true"><svg viewBox="0 0 32 32" fill="none"><path d="M6 16h7c6 0 3-8 10-8h3m-14 8c6 0 4 8 10 8h4" stroke="#9cdccc" stroke-width="2.5" stroke-linecap="round"/><circle cx="5" cy="16" r="3" fill="#fff"/><circle cx="26" cy="8" r="3" fill="#9cdccc"/><circle cx="26" cy="24" r="3" fill="#efbd70"/></svg></span>需求全景图</span>
+    <span class="workspace"><svg class="glyph" aria-hidden="true"><use href="#folder"/></svg><span id="project-name"></span></span>
+  </div></header>
+  <main class="wrap">
+    <section class="desk" aria-labelledby="page-title">
+      <div><h1 id="page-title">需求中心</h1><p class="inventory" id="inventory"></p></div>
+      <div id="overview" class="overview" hidden></div>
+    </section>
+    <div class="toolbar">
+      <div class="filters" role="group" aria-label="需求范围">
+        <button type="button" data-scope="all" aria-pressed="true">全部</button>
+        <button type="button" data-scope="active" aria-pressed="false">进行中</button>
+        <button type="button" data-scope="archive" aria-pressed="false">已归档</button>
+      </div>
+      <div class="search"><svg class="glyph" aria-hidden="true"><use href="#research"/></svg>
+        <input id="catalog-query" type="search" aria-label="搜索需求" placeholder="搜索需求" autocomplete="off">
+        <button id="clear-query" type="button" aria-label="清除搜索" hidden><svg class="glyph" aria-hidden="true"><use href="#clear"/></svg></button>
+      </div>
+    </div>
+    <div class="refresh-notice" id="refresh-notice" hidden><span role="status">暂时无法更新，正在显示上次读取的需求。</span><button id="retry" type="button">重试</button></div>
+    <p class="sr" id="result-count" role="status" aria-live="polite"></p>
+    <div id="results" class="results"></div>
+    <div id="empty" class="empty" hidden><h2></h2><p></p><button type="button">清除筛选</button></div>
+    <noscript>请启用 JavaScript 查看需求卡片和验收进度。</noscript>
+  </main>
+  <script type="application/json" id="catalog-data">@@CATALOG_DATA@@</script>
+  <script>
+  (() => {
+    'use strict'
+    let data = JSON.parse(document.getElementById('catalog-data').textContent)
+    function updateDay(task) {
+      const date = task.updatedAt
+      return typeof date === 'string' && /^\d{4}-\d{2}-\d{2}/u.test(date) ? date.slice(0,10) : ''
+    }
+    // Compare the displayed day. Ties retain the inventory's stable task-ID order.
+    const sorted = rows => rows.slice().sort((a,b) => updateDay(b).localeCompare(updateDay(a)))
+    let tasks = sorted(data.tasks)
+    const oldReader = history.state?.flowReader
+    const withDraft = oldReader?.url === location.href && tasks.some(t => t.id === oldReader.work && t.href === data.defaultHref)
+    if (data.defaultHref && (withDraft || /^#(?:work$|agent$|contract-|node=)/u.test(location.hash))) {
+      history.replaceState(history.state, '', data.defaultHref + location.search + location.hash)
+      location.reload()
+      return
+    }
+    const $ = id => document.getElementById(id)
+    const search = $('catalog-query')
+    const scopeButtons = [...document.querySelectorAll('[data-scope]')]
+    const titles = { active: '进行中', archive: '已归档' }
+    const states = { ready: '可推进', resume: '推进中', waiting: '待处理', complete: '已完成 · 待归档', unplanned: '待规划' }
+    const scrollKey = () => 'requirement-flow:catalog-reading:' + data.project
+    let scope = 'all'
+
+    function el(tag, className, content) {
+      const node = document.createElement(tag)
+      if (className) node.className = className
+      if (content !== undefined) node.textContent = content
+      return node
+    }
+    function glyph(name) {
+      const node = document.createElementNS('http://www.w3.org/2000/svg', 'svg')
+      node.setAttribute('class', 'glyph')
+      node.setAttribute('aria-hidden', 'true')
+      const use = document.createElementNS(node.namespaceURI, 'use')
+      use.setAttribute('href', '#' + name)
+      node.append(use)
+      return node
+    }
+    function known(task) {
+      return !task.error && ['research', 'scenarios'].includes(task.basis) && Number.isInteger(task.total) && task.total > 0 && Number.isInteger(task.passed) && task.passed >= 0 && task.passed <= task.total
+    }
+    function unavailable(task) {
+      if (task.error) return '记录无法读取'
+      if (task.basis === 'history') return '历史记录待复验'
+      return task.outcome === 'research' ? '待定义调研项' : '待定义验收场景'
+    }
+    function statusBadge(task) {
+      let text = states[task.state] || '进行中'
+      let tone = 'green'
+      if (task.error) text = '读取异常'
+      else if (task.failed) text = task.failed + ' 项验收未通过'
+      else if (task.stale) text = task.stale + ' 项需复验'
+      else if (task.state === 'ready' && task.passed > 0) text = '待继续'
+      if (task.error || task.failed || task.stale || task.state === 'waiting') tone = 'amber'
+      else if (task.state === 'unplanned') tone = 'neutral'
+      const badge = el('span', 'state', text)
+      badge.dataset.tone = tone
+      return badge
+    }
+    function updatedTime(task) {
+      const day = updateDay(task)
+      const time = el('time', 'date', '更新于 ' + day)
+      time.dateTime = day
+      return time
+    }
+    function meter(passed, total, label) {
+      const wrap = el('div', 'meter')
+      const bar = el('progress')
+      bar.setAttribute('aria-label', label)
+      wrap.dataset.known = String(total > 0)
+      if (total > 0) {
+        bar.max = total
+        bar.value = passed
+        wrap.style.setProperty('--step', 100 / Math.min(total, 25) + '%')
+      }
+      bar.setAttribute('aria-valuetext', label)
+      wrap.append(bar)
+      return wrap
+    }
+    function heading() {
+      $('project-name').textContent = data.project
+      document.title = data.project + ' · 需求中心'
+      const active = tasks.filter(t => t.bucket === 'active')
+      $('inventory').replaceChildren()
+      for (const [n, label] of [[active.length, '进行中'], [tasks.length - active.length, '已归档']]) {
+        const entry = el('span')
+        entry.append(el('b', '', n), ' 项' + label)
+        $('inventory').append(entry)
+      }
+      const measured = active.filter(t => t.basis === 'scenarios' && known(t))
+      const block = $('overview')
+      block.replaceChildren()
+      block.hidden = !measured.length
+      if (measured.length) {
+        const total = measured.reduce((sum, t) => sum + t.total, 0)
+        const passed = measured.reduce((sum, t) => sum + t.passed, 0)
+        const count = el('span', 'overview-count')
+        count.append(el('b', '', passed), ' / ' + total)
+        block.append(el('span', 'overview-label', '进行中 · 场景已验'), count, meter(passed, total, `进行中需求已验证 ${passed} / ${total} 个场景`))
+      }
+    }
+    function card(task, index) {
+      const article = el('article', 'card')
+      article.dataset.taskId = task.id
+      article.dataset.bucket = task.bucket
+      const archive = task.bucket === 'archive'
+      const head = el('div', 'card-head')
+      const category = el('span', 'category')
+      const categoryText = task.error ? '需求记录' : task.basis === 'history' ? '历史需求' : task.outcome === 'research' ? '调研需求' : '交付需求'
+      category.append(glyph(archive ? 'archive' : task.outcome === 'research' ? 'research' : 'feature'), categoryText)
+      head.append(category)
+      if (!archive || task.error || task.failed || task.stale) head.append(statusBadge(task))
+      else if (updateDay(task)) head.append(updatedTime(task))
+      const title = el('h3')
+      title.id = 'requirement-' + index
+      article.setAttribute('aria-labelledby', title.id)
+      if (task.href && !task.error) {
+        const link = el('a', '', task.title || task.id)
+        link.href = task.href
+        title.append(link)
+      } else title.textContent = task.title || task.id
+      article.append(head, title)
+      const description = task.error || task.summary
+      if (description && description !== title.textContent) article.append(el('p', 'description', description))
+      const group = el('div', 'reading')
+      const caption = el('div', 'progress-head')
+      const measured = known(task)
+      const count = `${task.passed} / ${task.total}`
+      const label = !measured ? unavailable(task) : task.basis === 'research' ? count + ' 项调研有依据' : '已验 ' + count + ' 个场景'
+      caption.append(el('span', '', label))
+      if (measured) {
+        const percent = task.passed === task.total ? 100 : Math.min(99, Math.round(100 * task.passed / task.total))
+        caption.append(el('b', '', percent + '%'))
+      }
+      group.append(caption, meter(measured ? task.passed : 0, measured ? task.total : 0, label))
+      article.append(group)
+      const foot = el('div', 'card-foot')
+      const meta = el('span', 'meta')
+      if (!task.error && Number.isInteger(task.stories) && task.basis !== 'history') meta.textContent = `${task.stories} 个功能`
+      if (!archive && updateDay(task)) {
+        if (meta.textContent) meta.append(' · ')
+        meta.append(updatedTime(task))
+      }
+      if (meta.textContent) foot.append(meta)
+      if (task.href && !task.error) {
+        const action = el('span', 'action', '查看全景图')
+        action.setAttribute('aria-hidden','true')
+        action.append(glyph('arrow'))
+        foot.append(action)
+      }
+      if (foot.childElementCount) article.append(foot)
+      return article
+    }
+    const normalize = value => String(value || '').normalize('NFKC').toLocaleLowerCase()
+    function readUrl() {
+      const params = new URL(location.href).searchParams
+      scope = Object.hasOwn(titles, params.get('scope')) ? params.get('scope') : 'all'
+      search.value = params.get('q') || ''
+    }
+    function writeUrl() {
+      const url = new URL(location.href)
+      if (scope !== 'all' || search.value) url.searchParams.set('scope', scope)
+      else url.searchParams.delete('scope')
+      if (search.value) url.searchParams.set('q', search.value)
+      else url.searchParams.delete('q')
+      history.replaceState(history.state, '', url)
+    }
+    function searchIndex() {
+      return new Map(tasks.map(t => [t,normalize([t.id,t.title,t.summary].join(' '))]))
+    }
+    let searchTexts = searchIndex()
+    function render() {
+      const terms = normalize(search.value).trim().split(/\s+/u).filter(Boolean)
+      const matching = tasks.filter(t => (scope === 'all' || scope === t.bucket) && terms.every(term => searchTexts.get(t).includes(term)))
+      const sections = []
+      let index = 0
+      for (const [bucket, label] of Object.entries(titles)) {
+        const rows = matching.filter(t => t.bucket === bucket)
+        if (!rows.length) continue
+        const section = el('section','section')
+        section.dataset.bucket = bucket
+        section.setAttribute('aria-labelledby','group-' + bucket)
+        const top = el('div','section-head')
+        const title = el('h2','',label)
+        title.id = 'group-' + bucket
+        top.append(title,el('span','section-total',rows.length))
+        const grid = el('div','cards')
+        for (const task of rows) grid.append(card(task,++index))
+        section.append(top,grid)
+        sections.push(section)
+      }
+      $('results').replaceChildren(...sections)
+      $('result-count').textContent = `显示 ${matching.length} 项需求`
+      $('clear-query').hidden = !search.value
+      for (const b of scopeButtons) b.setAttribute('aria-pressed',String(b.dataset.scope === scope))
+      const empty = $('empty')
+      empty.hidden = matching.length > 0
+      if (!matching.length) {
+        empty.querySelector('h2').textContent = !tasks.length ? '暂无需求' : terms.length ? '没有匹配的需求' : '暂无' + titles[scope] + '需求'
+        empty.querySelector('p').textContent = !tasks.length ? '项目新增需求后会显示在这里。' : terms.length ? '换一个关键词，或清除筛选查看全部需求。' : '切换到全部可查看其他需求。'
+        empty.querySelector('button').hidden = !tasks.length
+      }
+    }
+    function refresh() { writeUrl(); render() }
+    scopeButtons.forEach(b => b.addEventListener('click', () => { scope = b.dataset.scope; refresh() }))
+    search.addEventListener('input', e => { if (!e.isComposing) refresh() })
+    search.addEventListener('compositionend',refresh)
+    $('clear-query').addEventListener('click', () => { search.value = ''; refresh(); search.focus() })
+    $('empty').querySelector('button').addEventListener('click', () => { scope = 'all'; search.value = ''; refresh(); search.focus() })
+    window.addEventListener('popstate', () => { readUrl(); render() })
+    $('results').addEventListener('click', e => {
+      const link = e.target.closest('a')
+      if (!link || e.defaultPrevented || e.button !== 0 || e.ctrlKey || e.metaKey || e.shiftKey || e.altKey) return
+      const task = link.closest('article').dataset.taskId
+      const url = location.pathname + location.search
+      try {
+        sessionStorage.setItem('requirement-flow:catalog-return',JSON.stringify({url,task}))
+        sessionStorage.setItem(scrollKey(),JSON.stringify({url,task,scroll:scrollY}))
+      } catch { /* Navigation still works when storage is unavailable. */ }
+    })
+    function restoreReading() {
+      try {
+        const snapshot = JSON.parse(sessionStorage.getItem(scrollKey()))
+        if (!snapshot) return
+        sessionStorage.removeItem(scrollKey())
+        if (snapshot.url !== location.pathname + location.search) return
+        const row = [...$('results').querySelectorAll('article')].find(item => item.dataset.taskId === snapshot.task)
+        row?.querySelector('a')?.focus({preventScroll:true})
+        if (row && Number.isFinite(snapshot.scroll)) scrollTo(0,snapshot.scroll)
+      } catch { /* The page does not require storage. */ }
+    }
+    // A refresh can insert new cards above the reader or move the focused card to the archive.
+    function keepReading(update) {
+      const results = $('results')
+      const focused = document.activeElement
+      const focusId = focused?.closest('article')?.dataset.taskId
+      const top = results.getBoundingClientRect().top
+      const anchor = top < 0 && [...results.querySelectorAll('article')].find(row => row.getBoundingClientRect().bottom > 0)
+      const oldOffset = anchor && anchor.getBoundingClientRect().top
+      update()
+      const rows = [...results.querySelectorAll('article')]
+      if (focusId || (focused === $('retry') && $('refresh-notice').hidden)) {
+        const link = rows.find(row => row.dataset.taskId === focusId)?.querySelector('a')
+        const next = link || scopeButtons.find(b => b.dataset.scope === scope)
+        next.focus({preventScroll:true})
+      }
+      if (anchor) {
+        const newAnchor = rows.find(row => row.dataset.taskId === anchor.dataset.taskId)
+        if (newAnchor) scrollBy(0,newAnchor.getBoundingClientRect().top - oldOffset)
+      }
+    }
+    let fingerprint = JSON.stringify(data)
+    let timer = 0
+    let pending
+    function stopUpdates() {
+      clearInterval(timer)
+      timer = 0
+      pending?.abort()
+      pending = undefined
+    }
+    async function updateCatalog() {
+      if (document.hidden || pending) return
+      const request = new AbortController()
+      pending = request
+      const timeout = setTimeout(() => request.abort(),15000)
+      try {
+        const response = await fetch('/catalog.json',{cache:'no-store',signal:request.signal})
+        if (!response.ok) throw new Error('catalog unavailable')
+        const next = await response.json()
+        if (typeof next?.project !== 'string' || !Array.isArray(next.tasks)
+          || !next.tasks.every(t => typeof t?.id === 'string' && typeof t.title === 'string' && Object.hasOwn(titles,t.bucket)))
+          throw new Error('invalid catalog')
+        if (pending !== request || document.hidden) return
+        const nextFingerprint = JSON.stringify(next)
+        if (fingerprint === nextFingerprint && $('refresh-notice').hidden) return
+        keepReading(() => {
+          $('refresh-notice').hidden = true
+          if (fingerprint === nextFingerprint) return
+          data = next
+          tasks = sorted(data.tasks)
+          searchTexts = searchIndex()
+          heading()
+          render()
+          fingerprint = nextFingerprint
+        })
+      } catch {
+        if (pending === request && !document.hidden && $('refresh-notice').hidden)
+          keepReading(() => { $('refresh-notice').hidden = false })
+      } finally {
+        clearTimeout(timeout)
+        if (pending === request) pending = undefined
+      }
+    }
+    function startUpdates(checkNow) {
+      if (document.hidden) return
+      if (!timer) timer = setInterval(updateCatalog,30000)
+      if (checkNow) updateCatalog()
+    }
+    heading()
+    readUrl()
+    render()
+    $('retry').addEventListener('click',updateCatalog)
+    window.addEventListener('pageshow',e => { restoreReading(); startUpdates(e.persisted) })
+    window.addEventListener('pagehide',stopUpdates)
+    document.addEventListener('visibilitychange',() => {
+      if (document.hidden) stopUpdates()
+      else startUpdates(true)
+    })
+  })()
+  </script>
+</body>
+</html>
