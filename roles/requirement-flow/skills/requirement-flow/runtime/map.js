@@ -1,7 +1,7 @@
 ;(() => {
   'use strict'
   const $ = id => document.getElementById(id)
-  const { model, states, impacts, graph: fullGraph, csrf, queue, lesson_version: lessonVersion } = JSON.parse($('data').textContent)
+  const { model, states, impacts, graph: fullGraph, csrf, queue, lesson_version: lessonVersion, source_labels: sourceLabels = {} } = JSON.parse($('data').textContent)
   const { work, protocol } = model
   const research = work.outcome === 'research'
   const evidenceKind = research ? '调研' : '验证'
@@ -1047,14 +1047,15 @@
     html('summary', more, title)
     return more
   }
-  function showSources(parent, source, title = '涉及文件与依据') {
+  function showSources(parent, source, title = '涉及文件与依据', labels = sourceLabels) {
     const content = Array.isArray(source) ? source.join('\n') : String(source ?? '')
     const lines = content.split(/\r?\n/u).map(line => line.trim()).filter(Boolean)
     if (!lines.length)
       return
     const group = disclosure(parent, `${title}（${lines.length}）`)
     group.classList.add('source-list')
-    for (const line of lines) {
+    for (const original of lines) {
+      const line = Object.hasOwn(labels, original) ? labels[original] : original
       if (/^https?:\/\/\S+$/iu.test(line)) {
         sourceLink(group, line, line)
         continue
@@ -1167,6 +1168,7 @@
       ['环境', proof?.environment],
       ['实际记录', proof?.actual],
     ])
+    showSources(row, source.current_basis, '来源文件', {})
     if (!source.valid) {
       html('p', row, '原始依据当前需复核。', 'dim')
       return

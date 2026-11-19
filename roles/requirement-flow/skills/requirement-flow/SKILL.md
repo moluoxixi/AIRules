@@ -7,6 +7,8 @@ description: 在 Codex 项目中启用需求全景图，或在新需求、续做
 
 首次启用项目，从 AIRules 分发的本 skill 运行 `python3 <技能目录>/flow.py --project <项目目录> init`。之后从项目根目录运行 `python3 .agents/skills/requirement-flow/flow.py` 加下列子命令。先用 `list` 找已有需求。新需求用 `new <ID> --request '原话'`，仅调研或出方案时加 `--outcome research`。项目对分支、权限、联调和发布的约定始终适用。
 
+从项目根的 `AGENTS.md` 读取工作约定。有 `.requirements/rules/index.md` 时，按本次涉及的业务包和操作查对应规则。追查历史需求时，可从 `.requirements/history/index.md` 按标题查原始材料，再用 `task <ID> context` 查看归档模型。旧记录里的完成状态、截图和勾选项作为历史来源，当前验收结论以对应场景的有效凭据为准。
+
 ## 选择工作方法
 
 用 `task <ID> next --actor <执行者>` 查看待办、依赖与当前版次，用 `task <ID> context <故事ID>` 核对选定功能。返回动作的 `skill` 指明适用方法；结合用户授权和已有材料打开对应专项。若返回 `review_skill`，先复核未覆盖的验收或交付问题。计划中的动作可用 `skill` 指定更合适的方法。

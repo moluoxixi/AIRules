@@ -8,9 +8,11 @@ import unicodedata
 
 if __package__:
     from .evidence import linked
+    from .source_paths import SourcePaths
     from .lesson_retirement import read_retirement
 else:
     from evidence import linked
+    from source_paths import SourcePaths
     from lesson_retirement import read_retirement
 
 
@@ -357,6 +359,7 @@ def project_cards(workspace, engine, *, current_work=None, relevant_to=None, sto
         return []
     contexts = query_contexts(relevant_to, stories, action) if relevant_to is not None else None
     results, replacements = [], {}
+    paths = None
     for folder, work, versions in load_tasks(store, workspace, current_work, engine):
         # A later rejection/retirement of the replacement cannot resurrect its predecessor.
         published = {}
@@ -383,6 +386,13 @@ def project_cards(workspace, engine, *, current_work=None, relevant_to=None, sto
             if cases is None:
                 cases = case_index(work, folder, engine)
             item = live_row(row, work, cases, folder.parent.name)
+            if paths is None:
+                paths = SourcePaths(store)
+            for source in item["sources"]:
+                basis = work["stories"].get(source["story"], {}).get("basis")
+                current = paths.text(basis)
+                if current != basis:
+                    source["current_basis"] = current
             try:
                 retirement = read_retirement(store, work["id"], row["id"], row["version"])
             except (OSError, ValueError) as error:

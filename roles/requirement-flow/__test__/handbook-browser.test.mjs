@@ -1,5 +1,5 @@
 import { execFileSync } from 'node:child_process'
-import { existsSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from 'node:fs'
+import { existsSync, mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from 'node:fs'
 import { createRequire } from 'node:module'
 import { tmpdir } from 'node:os'
 import path from 'node:path'
@@ -100,6 +100,14 @@ function createHandbook(project) {
   capture('V-4', 'AC-pages', '本机跨页组件测试', 'assert.deepEqual([...new Set([1, 3, 1])], [1, 3])')
   capture('V-4', 'AC-timeout', '本机超时恢复测试', 'const selected = [2]; assert.throws(() => { throw Error("timeout") }); assert.deepEqual(selected, [2])')
   record('finish', 'V-4', '--output', '跨页与超时场景均已完成本机验证')
+  const relocated = path.join(project, '.requirements/history/tasks/plan-batch')
+  mkdirSync(relocated, { recursive: true })
+  writeFileSync(path.join(relocated, 'prd.md'), '批量确认与撤销')
+  writeFileSync(path.join(project, '.requirements/source-paths.json'), JSON.stringify({
+    version: 1,
+    directories: { '.moluoxixi/tasks/': '.requirements/history/tasks/' },
+  }))
+  flow('task', 'plan')
   return pathToFileURL(handbook).href
 }
 
@@ -303,6 +311,10 @@ describe.skipIf(!executablePath)('generated handbook interactions in Chromium', 
       expect(await visibleDetail(page)).not.toContain(batchSource)
       await page.click(`${source} > summary`)
       expect(await visibleDetail(page)).toContain(batchSource)
+      const references = await page.$$(`${source} > summary`)
+      await references[1].click()
+      expect(await visibleDetail(page)).toContain('.requirements/history/tasks/plan-batch/prd.md:6')
+      expect(await visibleDetail(page)).not.toContain('.moluoxixi/tasks/')
       await page.click(`${files} > summary`)
       expect(await visibleDetail(page)).not.toContain(batchSource)
     }

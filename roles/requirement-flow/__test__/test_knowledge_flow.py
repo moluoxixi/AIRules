@@ -151,7 +151,7 @@ class Project:
         args = ['--story', feature] if feature else []
         return self.data('task', task, 'next', *args)
 
-    def requirements(self):
+    def requirements(self, basis=None):
         contract = {'title': '门店目录', 'operation': 'GET /directory/stores', 'state': 'confirmed',
                     'status': '已核对本地实现', 'source': 'directory.py / find_stores',
                     'fields': [{'name': 'keyword', 'type': 'string', 'constraint': '可选',
@@ -160,8 +160,9 @@ class Project:
                         evidence='文字说明', review='再次使用前复核')
         self.cli('new', SOURCE, '--request', '门店选择器支持搜索首屏以外的门店')
         self.with_json(SOURCE, 'plan', {
-            'stories': {'S-directory': story('门店选择器', '搜索所有符合条件的门店', 'AC-directory',
-                                             '南桥门店不在首屏', '搜索南桥', '返回南桥门店')},
+            'stories': {'S-directory': {**story('门店选择器', '搜索所有符合条件的门店', 'AC-directory',
+                                                '南桥门店不在首屏', '搜索南桥', '返回南桥门店'),
+                                        **({'basis': basis} if basis else {})}},
             'contracts': {'C-directory': contract},
             'actions': {'A-check': check('验证门店关键词搜索', 'S-directory', 'AC-directory', ['C-directory'])},
             'lessons': [old_note],
@@ -266,7 +267,7 @@ class KnowledgeFlowTest(unittest.TestCase):
             self.run_flow(project)
 
     def run_flow(self, p):
-        p.requirements()
+        p.requirements(basis='notes/search.md:8')
         self.assertEqual(p.data('lessons')['lessons'], [])
         self.assertEqual(p.next(TARGET, SEARCH)['related_lessons'], [])
         p.propose('E1', ok=False)
@@ -286,12 +287,17 @@ class KnowledgeFlowTest(unittest.TestCase):
         approved = 'L-search-reviewed'
         p.propose(receipt['id'], approved)
         p.review(approved)
+        (p.root / 'archive-docs').mkdir()
+        (p.root / 'archive-docs/search.md').write_text('关键词契约')
+        (p.root / '.requirements/source-paths.json').write_text(json.dumps(
+            {'version': 1, 'directories': {'notes/': 'archive-docs/'}}))
         published, = p.data('lessons')['lessons']
         self.assertEqual((published['id'], published['state'], published['task']), (approved, 'approved', SOURCE))
         for packet in (p.next(TARGET, SEARCH), p.data('task', TARGET, 'context', SEARCH)):
             match, = packet['related_lessons']
             self.assertEqual(match['id'], approved)
             self.assertEqual(match['matched_stories'], [SEARCH])
+            self.assertEqual(match['sources'][0]['current_basis'], 'archive-docs/search.md:8')
             self.assertTrue(match['match_reasons'])
         self.assertEqual(p.next(TARGET, NOTE)['next']['related_lessons'], [])
         self.assertEqual(p.data('task', TARGET, 'context', NOTE)['related_lessons'], [])
@@ -314,7 +320,9 @@ class KnowledgeFlowTest(unittest.TestCase):
             self.assertEqual(archived_version['revision'], active_version['revision'])
             self.assertNotEqual(archived_version['lesson_version'], active_version['lesson_version'])
             with urlopen(url + 'lesson-source?' + query, timeout=5) as page:
-                self.assertIn('AC-directory', page.read().decode())
+                archived_source = page.read().decode()
+                self.assertIn('AC-directory', archived_source)
+                self.assertIn('archive-docs/search.md:8', archived_source)
             with urlopen(url + 'lesson-evidence?' + query, timeout=5) as response:
                 log = response.read()
                 self.assertIn(b'test_store_on_later_page', log)

@@ -96,4 +96,6 @@ python3 "$FLOW" lesson-retire store-picker L-page-search --version 1 --actor rev
 
 `model.json` 中的 `work.events` 记录执行者、版次和采集事件。该需求目录的 `evidence/<回执ID>/` 保存回执和命令日志或附件副本。归档会移动整个需求目录。请一并保留 `evidence/`，在当前需求或归档上运行 `task <ID> --check` 可核对图页和记录。
 
+项目内的历史文档搬家时，可在 `.requirements/source-paths.json` 登记目录映射。例如 `{"version":1,"directories":{"old-notes/":"docs/history/"}}`。两个目录都写成以 `/` 结尾的项目相对路径。图页和动作上下文会把单独占一行的文件引用指向实际存在的新文件，保留行号和列号。完整命令、日志以及 `model.json` 中的原始依据仍可取证。给已有故事或契约提交 `plan` 时，从原始模型取完整记录并只改本次调整的字段，以保留无关场景的证据绑定。
+
 0.1.0 的无 ID 场景在 `context` 中显示派生的 `legacy-…` ID；续做时可将其用于 `covers`。新增或改写场景要给显式 ID。旧的完成文字保留为历史，当前验收按新采集的场景证据判断。已有归档快照保持只读。

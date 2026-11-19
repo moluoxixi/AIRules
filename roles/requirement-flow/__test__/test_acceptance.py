@@ -84,6 +84,46 @@ class AcceptanceTest(unittest.TestCase):
     def statuses(self):
         return {s['id']: s['status'] for s in self.queue()['scenarios']}
 
+    def test_relocated_sources_keep_evidence_and_archived_model_intact(self):
+        import re
+        old, new = 'notes/保存.md:9', 'history/保存.md:9'
+        story = json.loads((self.workdir / 'model.json').read_text())['work']['stories']['S-save']
+        case = self.check('AC-retry')
+        case['contracts'] = ['C-save']
+        contract = {'title': '保存服务', 'operation': 'POST /save', 'state': 'confirmed',
+                    'source': old, 'status': '已对接', 'fields': []}
+        self.plan(stories={'S-save': {**story, 'basis': old}}, contracts={'C-save': contract},
+                  actions={'A-retry': case})
+        self.collect('A-save', 'AC-save')
+        self.finish('A-save')
+        current = self.workdir / 'model.json'
+        immutable = {p: p.read_bytes() for p in [current, *(self.workdir / 'evidence').glob('*/*')]}
+        store = self.project / '.requirements'
+        (self.project / 'history').mkdir()
+        (self.project / 'history/保存.md').write_text('已迁移需求')
+        (store / 'source-paths.json').write_text(json.dumps({'version': 1, 'directories': {'notes/': 'history/'}}))
+        (store / 'rules').mkdir()
+        (store / 'rules/index.md').write_text('项目约定')
+        packet = self.queue()['next']
+        self.assertEqual(packet['inputs']['stories']['S-save']['basis'], new)
+        self.assertEqual(packet['inputs']['contracts']['C-save']['source'], new)
+        self.assertEqual(packet['project_rules'], '.requirements/rules/index.md')
+        self.assertEqual(self.statuses()['AC-save'], 'passed')
+        ctx = json.loads(self.cli('task', 'save', 'context').stdout)
+        self.assertEqual((ctx['stories']['S-save']['basis'], ctx['contracts']['C-save']['source']), (new, new))
+        self.assertEqual(ctx['project_rules'], packet['project_rules'])
+        self.cli('task', 'save')
+        page = (self.workdir / 'handbook.html').read_text()
+        payload = json.loads(re.search(r'<script type="application/json" id="data">(.+?)</script>', page).group(1))
+        self.assertEqual(payload['source_labels'][old], new)
+        self.assertEqual(payload['model'], json.loads(current.read_bytes()))
+        self.assertEqual(immutable, {p: p.read_bytes() for p in immutable})
+        self.cli('archive', 'save', '--allow-incomplete')
+        self.cli('task', 'save', '--check')
+        archived = json.loads(self.cli('task', 'save', 'context').stdout)
+        self.assertEqual(archived['stories']['S-save']['basis'], new)
+        self.assertEqual(archived['scenarios'][0]['status'], 'passed')
+
     def test_repeated_failed_verification_routes_to_independent_diagnosis(self):
         for step in ('diagnose', 'independent_review'):
             self.collect('A-save', 'AC-save', ok=False, fail=True)

@@ -229,7 +229,7 @@ def lesson_source_page(card, source, download_url):
     context = rows([("来源需求", card["task_title"] + " · " + card["task"]),
                     ("功能", source["story_title"] + " · " + source["story"]),
                     ("场景", source["scenario"]), ("给定", source["given"]),
-                    ("当", source["when"]), ("应当", source["then"])])
+                    ("当", source["when"]), ("应当", source["then"]), ("当前功能依据", source.get("current_basis"))])
     receipt = rows([("验证动作", source["action_title"] + " · " + source["action"]),
                     ("回执", source["receipt"]), ("证据类型", proof["level"]),
                     ("环境", proof["environment"]), ("记录人", proof["actor"]),
@@ -253,7 +253,7 @@ a{{color:#176269}}.download{{display:inline-block;margin-top:10px}}</style><main
 <section><h2>经验与审查</h2><dl>{review_info}</dl></section></main></html>"""
 
 
-def render(model, states, impacts, token, checksum, template, *, queue):
+def render(model, states, impacts, token, checksum, template, *, queue, source_labels=None):
     work = model["work"]
     graph = make_graph(work, states, queue.get("scenarios", []))
     for node in graph["nodes"]:
@@ -263,6 +263,8 @@ def render(model, states, impacts, token, checksum, template, *, queue):
                 node["sharedNote"] = f"{count} 条相关项目经验"
     payload = dict(model=model, states=states, impacts=impacts, graph=graph, csrf=token, queue=queue,
                    lesson_version=lesson_version(queue))
+    if source_labels:
+        payload["source_labels"] = source_labels
     safe_json = json.dumps(payload, ensure_ascii=False, separators=(",",":")).replace("&","\\u0026").replace("<","\\u003c").replace(">","\\u003e")
     here = Path(template).parent
     substitutions = {

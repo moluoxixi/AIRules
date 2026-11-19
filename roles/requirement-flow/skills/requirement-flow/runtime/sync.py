@@ -12,11 +12,12 @@ import sys
 import tempfile
 import unicodedata
 if __package__:
-    from . import evidence, graph_view, knowledge
+    from . import evidence, graph_view, knowledge, source_paths
 else:
     import evidence
     import graph_view
     import knowledge
+    import source_paths
 from datetime import datetime, timezone
 from contextlib import contextmanager
 from functools import lru_cache
@@ -676,6 +677,8 @@ def dispatch(w, actor="AI", story=None, *, workspace=None, include_lessons=True,
     own = next((item["id"] for item in running if item["actor"] == actor), None)
     next_key = own or next(iter(ready),None)
     packet = action_packet(w, states, next_key, "resume" if own else "start") if next_key else None
+    if packet is not None and include_lessons:
+        packet = source_paths.SourcePaths.for_task(workspace or TASK_DIR).reading_context(packet)
     scenarios = scenario_report(w, states, selected)
     verified = {row["story"] for row in scenarios}
     verified.difference_update(row["story"] for row in scenarios if row["status"] != "passed")
@@ -796,7 +799,7 @@ def context(m, story=None):
     effective_ids = {status[k]["proof"] for k in chosen if status[k]["proof"]}
     usage = graph_view.contract_users(w)
     scenarios = scenario_report(w,status,stories)
-    return {
+    result = {
         "protocol_version":m["protocol"]["version"],"revision":w["revision"],"mode":w["kind"],"outcome_type":w.get("outcome","delivery"),
         "raw_request":w["raw_request"],"goal":w["goal"],"scope":w["scope"],"contract_routes":routes,
         "scenarios":scenarios, "verification_followups":verification_followups(w,scenarios),
@@ -811,6 +814,7 @@ def context(m, story=None):
         "effective_outputs":[e for e in w["events"] if e["id"] in effective_ids],
         "recent_events":all_events[-12:], "lessons":w["lessons"], **lesson_context(w,TASK_DIR,stories)
     }
+    return source_paths.SourcePaths.for_task(TASK_DIR).reading_context(result)
 
 
 def atomic(path, content):
@@ -901,7 +905,8 @@ def render(model, token=None, *, workspace=None):
     impacts = {key: {code: impact(work, key, code) for code in d["options"]}
                for key, d in work["decisions"].items()}
     return graph_view.render(model, evaluate(work,workspace), impacts, token, digest(model), LAYOUT,
-                             queue=dispatch(work,workspace=workspace,for_map=True))
+                             queue=dispatch(work,workspace=workspace,for_map=True),
+                             source_labels=source_paths.SourcePaths.for_task(workspace or TASK_DIR).graph_labels(work))
 
 
 def initialize_task(path, raw, *, key, title=None, outcome="delivery"):
