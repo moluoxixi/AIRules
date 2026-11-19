@@ -69,11 +69,13 @@
     .controls output {min-width:40px;text-align:center;font: .8rem var(--mono);font-variant-numeric:tabular-nums}
     .controls .fit {display:flex;gap:6px;align-items:center;margin-left:4px;border-left:1px solid var(--line);border-radius:0 6px 6px 0;padding-left:11px}
     .controls [aria-disabled=true] {color:#8594a0;cursor:default}
-    #inspector {position:absolute;top:12px;right:12px;bottom:12px;width:min(365px,55%);background:#fff;border:1px solid #bed0dd;border-radius:13px;box-shadow:0 13px 42px #243b5626;z-index:3;overflow:hidden;display:flex;flex-direction:column}
-    .panelbar {display:flex;align-items:center;justify-content:space-between;gap:8px;padding:9px 12px 7px 16px;border-bottom:1px solid var(--line)}
-    .panelbar span {font-size:.78rem;font-weight:650;color:var(--muted)}.close {color:var(--muted);padding:6px}
-    #detail {overflow:auto;overscroll-behavior:contain;padding:16px;line-height:1.58;overflow-wrap:anywhere;user-select:text}
-    #detail h2 {font-size:1.23rem;line-height:1.4;margin-bottom:8px} #detail h3 {font-size:.92rem;margin:17px 0 6px;color:#35526b}
+    #inspector {position:absolute;top:12px;right:12px;bottom:12px;width:min(430px,52%);background:#fff;border:1px solid #bdcdc7;border-radius:14px;box-shadow:0 10px 38px #213c4530;z-index:3;overflow:hidden;display:flex;flex-direction:column}
+    .panelbar {display:flex;align-items:center;gap:10px;flex:none;padding:11px 12px 11px 16px;border-bottom:1px solid var(--line)}
+    #panel-type {flex:none;font-size:.74rem;font-weight:650;color:#425e58;background:#edf2ee;border-radius:5px;padding:2px 6px}
+    #panel-title {font-size:1.12rem;line-height:1.35;overflow-wrap:anywhere}
+    .close {flex:none;margin-left:auto;color:var(--muted);padding:6px}
+    #detail {overflow:auto;overscroll-behavior:contain;padding:12px 16px 16px;line-height:1.52;overflow-wrap:anywhere;user-select:text}
+    #detail h3 {font-size:.92rem;margin:17px 0 6px;color:#35526b}
     #detail h4 {font-size:.9rem;margin:8px 0 4px} #detail p+ p {margin-top:6px} #detail p,#detail li,#detail dd {font-size:.9rem}
     #detail ul,#detail ol {padding-left:1.3rem} #detail li+li {margin-top:3px}
     #detail code {font: .86rem var(--mono);background:#edf4f6;border-radius:4px;padding:.1rem .27rem;color:#265365}
@@ -91,7 +93,7 @@
     .notice {position:absolute;top:8px;left:50%;transform:translateX(-50%);background:#fff8e9;border:1px solid #d2a157;padding:5px 10px;border-radius:7px;z-index:4;font-size:.84rem}
     .notice button {margin:0 0 0 6px} .sr {position:absolute;width:1px;height:1px;clip-path:inset(50%);overflow:hidden}
     @media(max-width:790px) {
-      #inspector {inset:auto 8px 8px;width:auto;max-height:56%;min-height:100px}
+      #inspector {inset:auto 8px 8px;width:auto;max-height:calc(100% - 90px);min-height:100px}
       header {min-height:59px}.tools {gap:0}
     }
     @media(max-width:510px) {
@@ -114,8 +116,35 @@
     .controls [aria-disabled=true]:hover {color:#8594a0;background:transparent}
     footer {min-height:31px;padding-block:4px}.canvas-hint {color:#50677b;font-size:.74rem}
     .field dd,#detail code {white-space:pre-line}
-    .inspect-feature {display:block;background:#145958;color:#fff;border:0;border-radius:7px;padding:7px 13px;font:600 .86rem var(--ui);margin:12px 0}
-    .inspect-feature:hover {background:#104d4c}
+    .story-goal {color:var(--muted)}
+    #detail .acceptance-report>h3 {font-size:.92rem;color:var(--ink);margin:10px 0 6px}
+    .acceptance-group {--state-color:#805117;border-inline-start:3px solid #dab77d;padding:6px 10px;margin:5px 0 8px;background:#fcf8f0;border-radius:2px 8px 8px 2px}
+    .acceptance-group[data-state="passed"] {--state-color:#265e4c;border-color:#8fb6a1;background:#f2f7f3}
+    #detail .acceptance-group h4 {font-size:.8rem;color:var(--state-color);margin:0 0 3px;line-height:1.5}
+    .case-row {display:grid;grid-template-columns:minmax(0,1fr) auto;align-items:baseline;gap:0 10px;padding-block:3px}
+    .case-row+.case-row {border-top:1px solid #173d3817;margin-top:3px;padding-top:5px}
+    #detail .case-title {font-size:.94rem;line-height:1.45;font-weight:650;color:#203c46}
+    #detail .case-outcome {grid-column:1;font-size:.85rem;line-height:1.43;margin:1px 0;color:#405454}
+    #detail .case-scope {text-align:end;font-size:.76rem;font-weight:550;color:var(--state-color);max-width:12em}
+    .case-row .case-proof {font-size:.77rem;margin:0;justify-self:end}
+    .case-proof summary {color:#475f65}
+    .case-row .case-proof[open] {grid-column:1 / -1;justify-self:stretch;margin-top:4px}
+    .case-proof[open]>summary {margin-left:auto}
+    @media(max-width:440px) {
+      .case-row {grid-template-columns:minmax(0,1fr) auto}
+      #detail .case-title,#detail .case-outcome {grid-column:1 / -1}
+      #detail .case-scope {grid-column:1;grid-row:3;text-align:start}
+      .case-row .case-proof {grid-column:2;grid-row:3}
+      .case-row .case-proof[open] {grid-row:4}
+    }
+    .story-tools {display:flex;align-items:baseline;flex-wrap:wrap;gap:3px 12px;border-top:1px solid var(--line);margin-top:12px;padding-top:8px}
+    .story-tools>.compact-fold {margin:0}
+    .story-tools>.compact-fold[open] {flex-basis:100%;padding-bottom:6px}
+    .story-tools summary,.inspect-feature {font:550 .82rem/1.55 var(--ui);color:#2a6267;padding:3px 0}
+    .inspect-feature {background:none;border:0}
+    .inspect-feature::after {content:" →"}
+    .inspect-feature:hover,.story-tools summary:hover {text-decoration:underline}
+    details>summary:focus-visible {outline:2px solid var(--blue);outline-offset:2px;border-radius:3px}
     .source-note {white-space:pre-line;font: .78rem/1.65 var(--mono);overflow-wrap:anywhere}
     .no-results .controls,.no-results footer {visibility:hidden}
     @media(max-width:700px) {.controls .fit span {display:none}.controls .fit {padding:5px 7px}.tools .button-link {font-size:.77rem}}
@@ -202,7 +231,10 @@
   </svg>
   <div class="empty-search" id="empty-search" hidden><strong id="empty-label"></strong><button type="button" class="reset-search" id="clear-search">清空搜索</button></div>
   <noscript>打开交互图需要启用 JavaScript。可以从页头读取同一版 AI 记录。</noscript>
-  <aside id="inspector" aria-label="节点详情" hidden><div class="panelbar"><span id="panel-type"></span><button class="close" id="close-panel" type="button" aria-label="关闭详情" title="关闭详情（Esc）"><svg viewBox="0 0 24 24"><path d="m6 6 12 12M6 18 18 6"/></svg></button></div><div id="detail"></div></aside>
+  <aside id="inspector" aria-label="节点详情" hidden>
+    <div class="panelbar"><span id="panel-type"></span><h2 id="panel-title"></h2><button class="close" id="close-panel" type="button" aria-label="关闭详情" title="关闭详情（Esc）"><svg viewBox="0 0 24 24"><path d="m6 6 12 12M6 18 18 6"/></svg></button></div>
+    <div id="detail"></div>
+  </aside>
   <div id="notice" hidden class="notice" role="status">记录已更新。<button class="refresh" id="refresh" type="button">读取最新版</button></div>
 </main>
 <footer>

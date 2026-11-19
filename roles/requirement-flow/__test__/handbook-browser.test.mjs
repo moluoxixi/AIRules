@@ -1,5 +1,5 @@
 import { execFileSync } from 'node:child_process'
-import { existsSync, mkdtempSync, rmSync, writeFileSync } from 'node:fs'
+import { existsSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from 'node:fs'
 import { createRequire } from 'node:module'
 import { tmpdir } from 'node:os'
 import path from 'node:path'
@@ -10,6 +10,7 @@ import { afterAll, beforeAll, describe, expect, it } from 'vitest'
 const requireMermaidPeer = createRequire(import.meta.resolve('@mermaid-js/mermaid-cli'))
 const { default: puppeteer } = await import(pathToFileURL(requireMermaidPeer.resolve('puppeteer')).href)
 const featureTitles = ['新建方案', '配置模板', '刷新门店资源', '单个确认', '批量确认', '维护位置图片', '详情', '方案状态', '门店指引']
+const batchSource = 'merchandising-spec/产品真源/陈列方案升级/批量确认规则.md:340'
 
 async function localChrome() {
   for (const channel of [undefined, 'chrome']) {
@@ -54,6 +55,18 @@ function createHandbook(project) {
     patch.actions[`A-${i}`] = { ...action, title: name, kind: '开发', depends_on: i === 3 || i === 4 ? [{ id: 'A-1' }] : [] }
     patch.actions[`V-${i}`] = { ...action, title: `核对${name}`, kind: '验证', depends_on: [{ id: `A-${i}` }], covers: [scenario] }
   })
+  const batch = patch.stories['S-4']
+  batch.basis = [batchSource, '.moluoxixi/tasks/plan-batch/prd.md:6', '.moluoxixi/tasks/plan-batch/prd.md:12', '沿用运营确认的门店范围'].join('\n')
+  batch.goal = '跨页选择门店类型后统一确认，保留已有位置方案。'
+  batch.examples = [
+    { id: 'AC-pages', given: '两页各有选中类型', when: '跨页确认门店类型', then: '只提交选中的门店类型' },
+    { id: 'AC-timeout', given: '提交请求超时', when: '重试批量提交', then: '超时后保留原选择' },
+    { id: 'AC-write', given: '测试门户中有可编辑方案', when: '在门户回读批量写入结果', then: '重新进入方案后仍能看到已确认状态' },
+  ]
+  const verifyBatch = patch.actions['V-4']
+  verifyBatch.covers = ['AC-pages', 'AC-timeout']
+  verifyBatch.accepts = ['自动化']
+  patch.actions['V-portal'] = { ...verifyBatch, title: '验证门户写入', covers: ['AC-write'], accepts: ['真实环境'] }
   patch.decisions = {
     'D-scope': {
       title: '门店查看哪份方案',
@@ -70,6 +83,23 @@ function createHandbook(project) {
   const patchFile = path.join(project, 'plan.json')
   writeFileSync(patchFile, JSON.stringify(patch))
   flow('task', 'plan', 'plan', patchFile, '--rev', '1', '--why', '覆盖带有共享前置动作的九功能需求图')
+  function record(command, action, ...args) {
+    const { revision } = JSON.parse(flow('task', 'plan', 'next'))
+    return flow('task', 'plan', command, action, '--rev', String(revision), '--actor', '测试人员', ...args)
+  }
+  for (const action of ['A-1', 'A-3', 'A-4'])
+    record('finish', action, '--output', '提交门店类型确认处理', '--evidence', batchSource)
+  function capture(action, scenario, environment, assertion) {
+    const script = `const assert = require('node:assert/strict'); ${assertion}; console.log('raw-check-${scenario}')`
+    return JSON.parse(record('verify-run', action, '--scenario', scenario, '--environment', environment, '--', process.execPath, '-e', script))
+  }
+  const oldProof = capture('V-3', 'SC-3', '本机单选测试', 'assert.equal([1].length, 1)')
+  record('finish', 'V-3', '--output', '单选通过')
+  // Corrupt this once-valid artifact before subsequent commands regenerate the shared handbook.
+  writeFileSync(path.resolve(path.dirname(handbook), oldProof.artifact.path), 'changed after review')
+  capture('V-4', 'AC-pages', '本机跨页组件测试', 'assert.deepEqual([...new Set([1, 3, 1])], [1, 3])')
+  capture('V-4', 'AC-timeout', '本机超时恢复测试', 'const selected = [2]; assert.throws(() => { throw Error("timeout") }); assert.deepEqual(selected, [2])')
+  record('finish', 'V-4', '--output', '跨页与超时场景均已完成本机验证')
   return pathToFileURL(handbook).href
 }
 
@@ -90,14 +120,14 @@ describe.skipIf(!executablePath)('generated handbook interactions in Chromium', 
     if (project)
       rmSync(project, { recursive: true, force: true })
   })
-  async function open(width, height) {
+  async function open(width, height, route = '') {
     const page = await browser.newPage()
     await page.setViewport({ width, height, hasTouch: true })
     const failed = new Promise((_, reject) => page.once('pageerror', reject))
     try {
       await Promise.race([
         failed,
-        page.goto(url, { waitUntil: 'domcontentloaded' })
+        page.goto(url + route, { waitUntil: 'domcontentloaded' })
           .then(() => page.waitForSelector('#stations [data-node]', { timeout: 4_000 })),
       ])
       return page
@@ -108,6 +138,9 @@ describe.skipIf(!executablePath)('generated handbook interactions in Chromium', 
     }
   }
   const scale = page => page.$eval('#scale', el => Number.parseInt(el.textContent))
+  // textContent also includes evidence and paths behind closed disclosures.
+  // eslint-disable-next-line unicorn/prefer-dom-node-text-content
+  const visibleDetail = page => page.$eval('#detail', el => el.innerText)
   // replaceState updates the document before Puppeteer necessarily receives its same-document navigation event.
   function waitForFilterLink(page, key, value) {
     return page.waitForFunction((key, value) => new URLSearchParams(location.search).get(key) === value, { timeout: 5_000 }, key, value)
@@ -222,6 +255,81 @@ describe.skipIf(!executablePath)('generated handbook interactions in Chromium', 
       expect(await page.$eval('#inspector', el => el.hidden)).toBe(true)
       await page.click('#overview-mode')
       expect(await page.$eval('#overview-mode', el => el.getAttribute('aria-pressed'))).toBe('true')
+    }
+    finally {
+      await page.close()
+    }
+  })
+
+  it('shows the outstanding business check first and keeps the original evidence one click away from its scenario', async () => {
+    const page = await open(665, 623, '?view=overview&features=S-4#node=S-4')
+    try {
+      const panel = '#detail'
+      const pending = `${panel} .acceptance-group[data-state="open"]`
+      const passed = `${panel} .acceptance-group[data-state="passed"]`
+      const titles = group => page.$$eval(`${group} .case-title`, els => els.map(el => el.textContent))
+      expect(await titles(pending)).toEqual(['在门户回读批量写入结果'])
+      expect(await titles(passed)).toEqual(['跨页确认门店类型', '重试批量提交'])
+      expect(await page.$eval(`${pending} .case-scope`, el => el.textContent)).toBe('真实环境待验证')
+      expect(await page.$$eval(`${passed} .case-scope`, els => els.map(el => el.textContent)))
+        .toEqual(['自动化测试通过', '自动化测试通过'])
+      expect(await page.$$eval(`${passed} .case-outcome`, els => els.map(el => el.textContent)))
+        .toEqual(['只提交选中的门店类型', '超时后保留原选择'])
+      expect(await page.$eval(`${pending} .case-title`, (title) => {
+        const item = title.getBoundingClientRect()
+        const viewport = document.querySelector('#detail').getBoundingClientRect()
+        return item.top >= viewport.top && item.bottom <= viewport.bottom
+      })).toBe(true)
+      expect(await visibleDetail(page)).not.toMatch(/AC-pages|raw-check-|merchandising-spec\/|SHA-256/u)
+
+      const proof = await page.$(`${passed} .case-row details.case-proof`)
+      expect(await proof.evaluate(el => el.open)).toBe(false)
+      await (await proof.$('summary')).click()
+      expect(await visibleDetail(page)).toContain('raw-check-AC-pages')
+      expect(await visibleDetail(page)).toContain('本机跨页组件测试')
+      const download = await proof.$eval('a[download]', a => a.href)
+      expect(new URL(download).pathname).toMatch(/\/evidence\/[\da-f]{32}\/output\.log$/u)
+      expect(readFileSync(fileURLToPath(download), 'utf8')).toContain('raw-check-AC-pages')
+      expect(await proof.evaluate(el => el.open)).toBe(true)
+      await (await proof.$('summary')).click()
+
+      const files = `${panel} details.source-list`
+      expect(await page.$eval(files, el => el.open)).toBe(false)
+      await page.click(`${files} > summary`)
+      const source = `${files} details.source-file`
+      expect(await page.$$eval(`${source} > summary`, els => els.map(el => el.textContent)))
+        .toEqual(['批量确认规则.md:340', 'prd.md:6', 'prd.md:12'])
+      expect(await visibleDetail(page)).toContain('沿用运营确认的门店范围')
+      expect(await visibleDetail(page)).not.toContain(batchSource)
+      await page.click(`${source} > summary`)
+      expect(await visibleDetail(page)).toContain(batchSource)
+      await page.click(`${files} > summary`)
+      expect(await visibleDetail(page)).not.toContain(batchSource)
+    }
+    finally {
+      await page.close()
+    }
+  })
+
+  it('resets inspector scroll on selection and moves a previously passed check to follow-up when its artifact changes', async () => {
+    const page = await open(665, 623, '?view=overview#node=S-4')
+    try {
+      await page.click('#detail .source-list > summary')
+      await page.evaluate(() => {
+        location.hash = 'node=S-3'
+      })
+      await page.waitForFunction(() => document.querySelector('#panel-title')?.textContent === '单个确认')
+      expect(await page.$eval('#detail', el => el.scrollTop)).toBe(0)
+      const stale = '#detail .acceptance-group[data-state="open"] .case-row[data-status="stale"]'
+      expect(await page.$eval(stale, el => el.textContent)).toContain('单个确认')
+      expect(await page.$eval(`${stale} .case-scope`, el => el.textContent)).toBe('证据无效，需补验')
+      expect(await page.$('#detail .acceptance-group[data-state="passed"] .case-row')).toBeNull()
+      expect(await visibleDetail(page)).not.toMatch(/raw-check-|批量确认规则\.md/u)
+      await page.evaluate(() => {
+        location.hash = 'node=S-4'
+      })
+      await page.waitForFunction(() => document.querySelector('#panel-title')?.textContent === '批量确认')
+      expect(await page.$eval('#detail .source-list', el => el.open)).toBe(false)
     }
     finally {
       await page.close()

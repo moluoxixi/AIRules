@@ -231,26 +231,26 @@ def inspect_proof(workspace, event, action_id, scenario, action_stamp, scenario_
         return {"status":"pending", "reason":"尚未采集本场景的验收凭据", "receipt":None}
     stored = event.get("receipt")
     if not isinstance(stored,dict):
-        return {"status":"stale","reason":"凭据记录结构无效：" + event["id"],"receipt":None}
+        return {"status":"stale","invalid_receipt":True,"reason":"凭据记录结构无效：" + event["id"],"receipt":None}
     summary = {"id":event["id"],"action":action_id,"scenario":scenario["id"],"actor":None,
                "level":None,"environment":None,"actual":None,
                "passed":False,"artifact":None}
     if event["id"] in replays:
-        return {"status":"stale","reason":"同一凭据已用于此前的采集事件，不能重放","receipt":summary}
+        return {"status":"stale","invalid_receipt":True,"reason":"同一凭据已用于此前的采集事件，不能重放","receipt":summary}
     stamp = proof_stamp(action_stamp,scenario_stamp,event["id"],event["revision"])
     if event.get("stamp") != action_stamp or event.get("scenario_stamp") != scenario_stamp:
         return {"status":"stale", "reason":"场景、输入或前置产出已改变，需要重新采集", "receipt":summary}
     try:
         manifest = verified_receipt(workspace,event,stamp)
     except (KeyError, OSError, TypeError, ValueError) as error:
-        return {"status":"stale", "reason":"凭据产物核验失败：" + str(error), "receipt":summary}
+        return {"status":"stale", "invalid_receipt":True, "reason":"凭据产物核验失败：" + str(error), "receipt":summary}
     summary.update({key:manifest[key] for key in ("kind","actor","level","environment","passed","artifact")})
     summary["actual"] = manifest["actual"][:500]
     if manifest["kind"] == "run":
         summary["argv"] = manifest["argv"]
         summary["exit_code"] = manifest["exit_code"]
     if accepts and manifest["level"] not in accepts:
-        return {"status":"stale","reason":"凭据类型不符合本动作的验收要求","receipt":summary}
+        return {"status":"stale","invalid_receipt":True,"reason":"凭据类型不符合本动作的验收要求","receipt":summary}
     if not manifest["passed"]:
         return {"status":"failed","reason":"实际运行或观察未通过","receipt":summary}
     return {"status":"captured","reason":"已取得有效凭据，等待完成验证动作","receipt":summary}

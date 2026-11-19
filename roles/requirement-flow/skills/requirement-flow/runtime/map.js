@@ -1047,6 +1047,31 @@
     html('summary', more, title)
     return more
   }
+  function showSources(parent, source, title = '涉及文件与依据') {
+    const content = Array.isArray(source) ? source.join('\n') : String(source ?? '')
+    const lines = content.split(/\r?\n/u).map(line => line.trim()).filter(Boolean)
+    if (!lines.length)
+      return
+    const group = disclosure(parent, `${title}（${lines.length}）`)
+    group.classList.add('source-list')
+    for (const line of lines) {
+      if (/^https?:\/\/\S+$/iu.test(line)) {
+        sourceLink(group, line, line)
+        continue
+      }
+      const parts = line.split(/[/\\]/u)
+      const name = parts[parts.length - 1]
+      const isFile = /^[^/\\]+\.[a-z\d]+(?::\d+(?::\d+)?(?:-\d+)?)?$/iu.test(name)
+      if (isFile && !/[\s，。；：]/u.test(parts[0])) {
+        const file = disclosure(group, name)
+        file.classList.add('source-file')
+        html('p', file, line, 'source-note')
+      }
+      else {
+        html('p', group, line, 'source-note')
+      }
+    }
+  }
   function jump(parent, id, text) {
     const dest = graph.aliases[id] || id
     if (!chainNodes.has(dest))
@@ -1060,12 +1085,11 @@
       id => id !== selected && chainNodes.has(id),
     )
     if (destinations.length) {
-      const group = section(title, parent)
+      const group = disclosure(parent, `${title}（${destinations.length}）`)
       for (const id of destinations) jump(group, id)
     }
   }
-  function showQueue(parent, actionIds, nodeIds, stories) {
-    const group = section('工作进度', parent)
+  function showQueue(parent, actionIds, nodeIds) {
     const rows = []
     for (const item of queue.running) {
       if (actionIds.has(item.id))
@@ -1073,7 +1097,7 @@
     }
     for (const id of queue.ready) {
       if (actionIds.has(id))
-        rows.push([id, '可领取', work.actions[id].title])
+        rows.push([id, '可以开始', work.actions[id].title])
     }
     for (const item of queue.pending_decisions) {
       if (nodeIds.has(item.id))
@@ -1083,30 +1107,19 @@
       if (item.kind === 'contract' && item.actions.some(id => actionIds.has(id)))
         rows.push([item.id, '待核对接口', item.title])
     }
+    if (!rows.length) {
+      for (const id of actionIds) {
+        if (!['done', 'skipped'].includes(states[id].state))
+          rows.push([id, activeName[states[id].state], work.actions[id].title])
+      }
+    }
+    if (!rows.length)
+      return
+    const group = disclosure(parent, `待办工作（${rows.length}）`)
     for (const [id, status, title] of rows) {
       const row = html('div', group, null, 'record queue-item')
       html('span', row, status, 'dim')
       jump(row, id, title)
-    }
-    if (!rows.length) {
-      const unfinished = [...actionIds].filter(id => !['done', 'skipped'].includes(states[id].state))
-      if (unfinished.length) {
-        html('p', group, '等待前置条件。选择动作查看原因。')
-        for (const id of unfinished) jump(group, id, work.actions[id].title)
-      }
-      else if (!actionIds.size) {
-        html('p', group, '还没有安排工作。')
-      }
-      else if (research && !queue.scenarios.some(ex => stories.includes(ex.story))) {
-        const proved = [...actionIds].some(id => work.actions[id].kind === '调研' && states[id].proof)
-        html('p', group, proved ? '当前范围的调研已完成，可查看结论和来源。' : '当前范围还需要有依据的调研结论。')
-      }
-      else if (!stories.length || stories.some(id => queue.progress.unverified_stories.includes(id))) {
-        html('p', group, '已安排的动作已结束，还需要补充功能验收。')
-      }
-      else {
-        html('p', group, '当前范围内的工作与验收已完成。')
-      }
     }
   }
   function events(parent, history) {
@@ -1129,13 +1142,13 @@
         ['记录人', e.actor],
         ['结果', e.output],
         ['预期', e.expected],
-        ['依据', e.evidence],
         ['环境', e.environment],
         ['证据类型', e.level],
       ])
+      showSources(item, e.evidence, '记录依据')
     }
   }
-  const caseStates = { uncovered: '未覆盖', pending: '待验', failed: '未通过', stale: '需复核', invalid: '证据无效', passed: '已通过' }
+  const proofLevels = { 自动化: '自动化测试', 人工核对: '人工核对', 真实环境: '真实环境' }
   const lessonStates = { pending: '待审查', approved: '已通过', rejected: '已驳回', revised: '草案已修订', retired: '已退役', superseded: '已替代', stale: '需复核' }
   function sourceLink(parent, title, url) {
     const link = html('a', parent, title, 'link-button')
@@ -1181,7 +1194,7 @@
     for (const [title, cards] of [['相关项目经验', related], ['本需求的经验', own]]) {
       if (!cards.length)
         continue
-      const group = section(title, parent)
+      const group = disclosure(parent, `${title}（${cards.length}）`)
       if (!csrf)
         html('p', group, `需求 v${work.revision} 的离线快照。来源依据的状态记录于生成此页时。`, 'dim')
       for (const card of cards) {
@@ -1205,36 +1218,90 @@
       }
     }
   }
+  function actionCaseScope(ex, id) {
+    const result = states[id].cases[ex.id]
+    const receipt = result?.receipt
+    const level = proofLevels[receipt?.level] || receipt?.level || ''
+    if (result?.accepted)
+      return level ? `${level}通过` : '已验证'
+    if (result?.invalid_receipt)
+      return '证据无效，需补验'
+    if (result?.status === 'stale')
+      return '条件已变，需重验'
+    if (result?.status === 'failed')
+      return `${level}未通过`
+    if (result?.status === 'captured')
+      return `${level}已有证据，待确认`
+    if (states[id].state === 'dormant')
+      return '待确认是否适用'
+    const levels = (work.actions[id].accepts || []).map(value => proofLevels[value] || value)
+    return `${levels.join('或')}待验证`
+  }
+  function caseScope(ex) {
+    if (ex.status === 'uncovered') {
+      const skipped = Object.entries(work.actions).some(([id, a]) => a.covers?.includes(ex.id) && states[id].state === 'skipped')
+      if (ex.retirement)
+        return '范围已变，待确认'
+      return skipped ? '原验证已跳过，需安排验证' : '待安排验证'
+    }
+    return [...new Set(ex.actions.map(id => actionCaseScope(ex, id)))].join(' · ')
+  }
+  function showCaseProof(row, ex) {
+    const more = disclosure(row, ex.receipts.length ? `验收依据 · ${ex.receipts.length}` : '场景说明')
+    more.classList.add('case-proof')
+    pairs(more, [
+      ['场景编号', ex.id],
+      ['前提', ex.given],
+      ['操作', ex.when],
+      ['预期结果', ex.then],
+      ['判定', ex.reason],
+    ])
+    for (const action of ex.actions) jump(more, action, work.actions[action].title)
+    for (const receipt of ex.receipts) {
+      const item = html('div', more, null, 'record')
+      html('strong', item, `回执 ${receipt.id}`)
+      pairs(item, [
+        ['验证方式', proofLevels[receipt.level] || receipt.level],
+        ['环境', receipt.environment],
+        ['记录人', receipt.actor],
+        ['判定', states[receipt.action].cases[ex.id]?.accepted ? '已用于本项验收' : receipt.reason],
+        ['命令参数', receipt.argv && JSON.stringify(receipt.argv)],
+        ['实际结果', receipt.actual],
+        ['退出码', receipt.exit_code],
+        ['文件', receipt.artifact?.path],
+        ['SHA-256', receipt.artifact?.sha256],
+      ])
+      const path = receipt.artifact?.path
+      if (typeof path === 'string' && /^evidence\/[\da-f]{32}\/(?:output\.log|artifact(?:\.[\w-]+)?)$/u.test(path)) {
+        const link = html('a', item, '下载证据文件', 'link-button')
+        link.href = csrf ? `/evidence/${encodeURIComponent(receipt.id)}` : `./${path}`
+        link.download = path.split('/').pop()
+      }
+    }
+  }
   function showScenarios(parent, cases) {
     if (!cases.length)
       return
-    const group = section('验收场景', parent)
-    for (const ex of cases) {
-      const row = html('div', group, null, 'record')
-      html('strong', row, `${caseStates[ex.status] || ex.status} · ${ex.id}`)
-      pairs(row, [
-        ['给定', ex.given],
-        ['当', ex.when],
-        ['应当', ex.then],
-        ['判定', ex.reason],
-      ])
-      for (const action of ex.actions) jump(row, action, work.actions[action].title)
-      for (const receipt of ex.receipts) {
-        const more = disclosure(row, `${receipt.level || '证据'} · ${receipt.environment || ''} · ${receipt.id}`)
-        pairs(more, [
-          ['记录人', receipt.actor],
-          ['命令参数', receipt.argv && JSON.stringify(receipt.argv)],
-          ['实际结果', receipt.actual],
-          ['退出码', receipt.exit_code],
-          ['文件', receipt.artifact?.path],
-          ['SHA-256', receipt.artifact?.sha256],
-        ])
-        const path = receipt.artifact?.path
-        if (typeof path === 'string' && /^evidence\/[\da-f]{32}\/(?:output\.log|artifact(?:\.[\w-]+)?)$/u.test(path)) {
-          const link = html('a', more, '下载证据文件', 'link-button')
-          link.href = csrf ? `/evidence/${encodeURIComponent(receipt.id)}` : `./${path}`
-          link.download = path.split('/').pop()
-        }
+    const report = section('验收结果', parent)
+    report.classList.add('acceptance-report')
+    for (const [kind, heading] of [['open', '待跟进'], ['passed', '已验证']]) {
+      const rows = cases.filter(ex => (ex.status === 'passed') === (kind === 'passed'))
+      if (!rows.length)
+        continue
+      const group = html('div', report, null, 'acceptance-group')
+      group.dataset.state = kind
+      const awaitingProof = kind === 'open' && rows.every(ex => ex.status === 'pending' && !ex.receipts.length)
+      html('h4', group, `${awaitingProof ? '待验证' : heading} · ${rows.length} 项`)
+      for (const ex of rows) {
+        const row = html('div', group, null, 'case-row')
+        row.dataset.status = ex.status
+        html('strong', row, ex.when, 'case-title')
+        const scope = html('span', row, caseScope(ex), 'case-scope')
+        const environments = [...new Set(ex.receipts.map(proof => proof.environment).filter(Boolean))]
+        if (environments.length)
+          scope.title = environments.join(' / ')
+        html('p', row, kind === 'open' ? `预期：${ex.then}` : ex.then, 'case-outcome')
+        showCaseProof(row, ex)
       }
     }
   }
@@ -1242,12 +1309,15 @@
     const retired = (queue.retired_scenarios || []).filter(ex => storyIds.includes(ex.story))
     if (!retired.length)
       return
-    const group = disclosure(parent, `场景范围调整记录（${retired.length}）`)
+    const group = disclosure(parent, `验收范围调整 · ${retired.length} 条`)
     for (const ex of retired) {
       const row = html('div', group, null, 'record')
-      html('strong', row, `${ex.id} · v${ex.revision}`)
+      html('strong', row, ex.when)
       pairs(row, [
-        ['原验收条件', `${ex.given}，${ex.when}，应当${ex.then}`],
+        ['范围决定', `v${ex.revision} 移出验收 · ${ex.option.label}`],
+        ['场景编号', ex.id],
+        ['前提', ex.given],
+        ['原预期结果', ex.then],
         ['决定人', ex.answer.actor],
         ['调整原因', ex.answer.reason],
       ])
@@ -1257,21 +1327,24 @@
   function workDetails(parent, key) {
     const a = work.actions[key]
     const status = states[key]
-    pairs(parent, [
-      ['当前状态', activeName[status.state]],
-      ['完成条件', a.done],
-    ])
-    if (status.reasons.length)
-      list(section('下一步的条件', parent), status.reasons)
-    showLessons(parent, [...a.stories, ...a.read_stories])
-    if (a.accepts?.length)
-      pairs(parent, [['验收依据', a.accepts.join('、')]])
+    const records = work.events.filter(e => e.action === key)
+    const proof = records.find(e => e.id === status.proof)
     if (a.kind === '验证') {
       const cases = queue.scenarios.filter(ex => ex.actions.includes(key))
       if (cases.length)
         showScenarios(parent, cases)
-      else html('p', parent, '此动作还没有关联适用的验收场景。', 'dim')
+      else html('p', parent, '尚未关联验收场景。', 'dim')
     }
+    else if (proof?.output) {
+      html('p', parent, proof.output)
+    }
+    pairs(parent, [
+      ['完成条件', a.done],
+      ['验收方式', a.accepts?.join('、')],
+    ])
+    if (status.reasons.length)
+      list(section('开始前需要', parent), status.reasons)
+    showSources(parent, proof?.evidence)
     const input = a.depends_on.map((edge) => {
       const cond = edge.when
       return (
@@ -1279,20 +1352,9 @@
       )
     })
     if (input.length)
-      list(section('前置动作', parent), input)
-    const records = work.events.filter(e => e.action === key)
-    const proof = records.find(e => e.id === status.proof)
-    if (proof) {
-      const group = section('当前有效依据', parent)
-      pairs(group, [
-        ['结果', proof.output],
-        ['证据', proof.evidence],
-        ['环境', proof.environment],
-        ['预期', proof.expected],
-        ['版次', `v${proof.revision}`],
-      ])
-    }
-    related(parent, [...a.stories, ...a.contracts, ...a.decisions], '相关故事与输入')
+      list(disclosure(parent, `前置工作（${input.length}）`), input)
+    related(parent, [...a.stories, ...a.read_stories, ...a.contracts, ...a.decisions], '关联功能、接口与决定')
+    showLessons(parent, [...a.stories, ...a.read_stories])
     events(parent, records)
   }
   function protocolDetail(parent) {
@@ -1369,27 +1431,33 @@
   function populate(key) {
     const n = nodes.get(key)
     detail.replaceChildren()
-    $('panel-type').textContent = n.label + (n.state ? ` · ${n.state}` : '')
-    html('h2', detail, n.kind === 'contract' ? work.contracts[key].title : n.title)
+    $('panel-type').textContent = n.kind === 'story' || !n.state ? n.label : `${n.label} · ${n.state}`
+    $('panel-title').textContent = n.kind === 'contract' ? work.contracts[key].title : n.title
     if (n.kind === 'request') {
-      html('p', detail, work.raw_request)
-      pairs(detail, [
-        ['目标', work.goal],
-        ['来源', work.kind],
-      ])
-      showLessons(detail, visibleStories, { all: !scoped })
-      showQueue(detail, visibleActions, chainNodes, visibleStories)
+      html('p', detail, work.goal || work.raw_request)
+      if (work.goal && work.raw_request && work.raw_request !== work.goal)
+        html('p', disclosure(detail, '需求原话'), work.raw_request)
       if (work.scope.length)
-        list(section('本次范围'), work.scope)
-      related(detail, Object.keys(work.stories), '用户故事')
+        list(disclosure(detail, '本次范围'), work.scope)
+      jump(detail, '@delivery', research ? '查看调研结论' : '查看验收结果')
+      related(detail, visibleStories, '涉及功能')
+      showQueue(detail, visibleActions, chainNodes)
+      showLessons(detail, visibleStories, { all: !scoped })
       protocolDetail(detail)
       events(detail, work.events)
     }
     else if (n.kind === 'story') {
       const story = work.stories[key]
-      html('p', detail, story.goal)
+      if (story.goal)
+        html('p', detail, story.goal, 'story-goal')
+      const cases = queue.scenarios.filter(ex => ex.story === key)
+      if (cases.length)
+        showScenarios(detail, cases)
+      else if (!research)
+        html('p', detail, '当前没有验收场景。', 'dim')
+      const more = html('div', detail, null, 'story-tools')
       if (isOverview()) {
-        const inspect = html('button', detail, '查看此功能的实现链路', 'inspect-feature')
+        const inspect = html('button', more, '查看实现链路', 'inspect-feature')
         inspect.type = 'button'
         inspect.onclick = () => {
           viewPreference = 'detail'
@@ -1400,21 +1468,19 @@
           map.focus({ preventScroll: true })
         }
       }
-      pairs(detail, [
-        ['角色', story.actor],
-        ['前置', story.before],
-      ])
-      showLessons(detail, [key])
-      showQueue(detail, new Set(fullGraph.features[key].actions), featureNodes.get(key), [key])
-      if (story.flow?.length)
-        list(section('关键处理'), story.flow, true)
-      showScenarios(detail, queue.scenarios.filter(ex => ex.story === key))
-      showRetiredScenarios(detail, [key])
-      if (story.basis)
-        html('p', disclosure(detail, '需求与实现依据'), story.basis, 'source-note')
+      showSources(more, story.basis)
+      if (story.actor || story.before || story.flow?.length) {
+        const rules = disclosure(more, '业务规则')
+        pairs(rules, [['角色', story.actor], ['前置条件', story.before]])
+        if (story.flow?.length)
+          list(rules, story.flow, true)
+      }
+      showLessons(more, [key])
+      showQueue(more, new Set(fullGraph.features[key].actions), featureNodes.get(key))
+      showRetiredScenarios(more, [key])
       const refs = Object.entries(work.actions).filter(([, a]) => a.stories.includes(key))
       related(
-        detail,
+        more,
         refs.flatMap(([id, a]) => [id, ...a.contracts, ...a.decisions]),
       )
     }
@@ -1424,31 +1490,32 @@
     else if (n.kind === 'contract') {
       const c = work.contracts[key]
       html('code', detail, c.operation)
-      pairs(detail, [
-        ['依据', c.source],
-        ['核实状态', c.status],
-      ])
-      if (n.users.length)
-        pairs(detail, [['关联功能', n.users.map(id => work.stories[id].title).join('、')]])
-      showLessons(detail, n.users.filter(id => visibleStories.includes(id)))
-      const fields = section('字段与处理')
-      for (const f of c.fields) {
-        const item = html('div', fields, null, 'field')
-        html('strong', item, `${f.name} · ${f.type}`)
-        html('p', item, f.use)
-        html('p', item, f.constraint, 'dim')
+      if (c.status)
+        pairs(detail, [['核对情况', c.status]])
+      if (c.fields.length) {
+        const fields = disclosure(detail, `字段与处理（${c.fields.length}）`)
+        for (const f of c.fields) {
+          const item = html('div', fields, null, 'field')
+          html('strong', item, `${f.name} · ${f.type}`)
+          html('p', item, f.use)
+          html('p', item, f.constraint, 'dim')
+        }
       }
-      if (!c.fields.length)
-        html('p', fields, '待补充字段。', 'dim')
+      else {
+        html('p', detail, '接口字段待补充。', 'dim')
+      }
+      const stories = n.users.filter(id => visibleStories.includes(id))
+      related(detail, stories, '关联功能')
+      showSources(detail, c.source)
       for (const id of n.research.filter(id => visibleActions.has(id)))
         workDetails(disclosure(detail, `关联调研 · ${work.actions[id].title}`), id)
       const users = Object.entries(work.actions)
         .filter(([, a]) => a.contracts.includes(key))
         .map(([id]) => id)
       related(detail, users, '使用这份契约的工作')
+      showLessons(detail, stories)
     }
     else if (n.kind === 'delivery') {
-      showLessons(detail, visibleStories, { all: !scoped })
       const checks = Object.entries(work.actions).filter(
         ([id, a]) => a.kind === evidenceKind && states[id].state !== 'skipped' && visibleActions.has(id),
       )
@@ -1467,24 +1534,24 @@
           pairs(item, [
             ['预期', a.done],
             ['结果', proof?.output || activeName[states[id].state]],
-            ['环境', proof?.environment],
-            ['依据', proof?.evidence],
           ])
+          showSources(item, proof?.evidence)
         }
       }
       if (work.lessons.length) {
-        const group = section('历史经验记录')
+        const group = disclosure(detail, `历史经验记录（${work.lessons.length}）`)
         for (const l of work.lessons) {
           const more = disclosure(group, l.observation)
           pairs(more, [
             ['触发条件', l.when],
             ['做法', l.practice],
             ['适用边界', l.boundary],
-            ['证据', l.evidence],
             ['复核时机', l.review],
           ])
+          showSources(more, l.evidence)
         }
       }
+      showLessons(detail, visibleStories, { all: !scoped })
       events(detail, work.events)
     }
     else {
