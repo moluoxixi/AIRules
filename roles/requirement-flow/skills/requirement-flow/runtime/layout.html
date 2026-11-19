@@ -6,26 +6,27 @@
   <title>@@TITLE@@ · 需求全景图</title>
   <style>
     @@THEME@@
-    :root { font:15px/1.5 var(--ui) }
+    :root { font:15px/1.5 var(--ui); --wire:#5b697b; --wire-branch:#c69a68 }
     * {box-sizing:border-box} body {margin:0;color:var(--ink);background:var(--paper)}
     button,a {font:inherit; color:inherit} button {cursor:pointer} a {color:var(--blue);text-underline-offset:.18em}
     button:focus-visible,a:focus-visible,[tabindex]:focus-visible {outline:3px solid var(--blue);outline-offset:3px}
     [hidden] {display:none!important}
+    #map .map-node:focus {outline:none}
+    #map .map-node:is(:hover,:active,:focus-visible,.selected) .outline {stroke:var(--accent)}
+    @media(forced-colors:active) {
+      #map .map-node:is(:hover,:active,:focus-visible,.selected) .outline {stroke:Highlight;forced-color-adjust:none}
+    }
     .app {height:100vh;height:100dvh;min-height:220px;display:grid;grid-template-columns:minmax(0,1fr);grid-template-rows:auto minmax(0,1fr) auto;overflow:hidden}
-    header {display:flex;gap:12px;align-items:center;justify-content:space-between;min-height:64px;padding:10px clamp(12px,2.4vw,32px);background:var(--surface);border-bottom:1px solid var(--line)}
+    header {display:flex;gap:12px;align-items:center;justify-content:space-between;min-height:48px;padding:3px clamp(12px,2.4vw,32px);background:var(--surface);border-bottom:1px solid var(--line)}
     .identity,.controls,.legend,.tools,.button-link {display:flex;align-items:center}
-    .identity {gap:11px;min-width:0}.identity>div {min-width:0}
-    .mark {position:relative;display:grid;place-items:center;flex:none;width:38px;height:38px;background:var(--surface);border-radius:11px;color:var(--ink)}
+    .identity {gap:8px;min-width:0}
+    #archive-label {flex:none;font-size:.74rem;color:var(--muted)}
+    .mark {position:relative;display:grid;place-items:center;flex:none;width:30px;height:30px;background:var(--surface);border-radius:7px;color:var(--ink)}
     .mark svg {width:27px;height:27px}
     h1,h2,h3,h4,p,ol,ul,dl {margin:0}
     h1 {font-size:clamp(1.03rem,2vw,1.33rem);font-weight:730;line-height:1.25;letter-spacing:-.035em;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
-    .edition {color:var(--muted);font:.74rem var(--mono);letter-spacing:.02em;margin-top:4px;display:block}
-    .graph-crumb {display:flex;align-items:center;gap:7px;color:var(--muted);font-size:.72rem;line-height:1.2;margin-bottom:4px}
-    .graph-crumb .edition {margin:0;font-size:.69rem}
-    header .home-link {display:inline-flex;align-items:center;gap:2px;padding:1px 2px 1px 0;color:var(--teal);font-weight:650}
-    .home-link::after {content:"";display:inline-block;height:11px;border-right:1px solid var(--line);margin-left:4px}
-    .home-link svg {width:13px;height:13px;fill:none;stroke:currentColor;stroke-width:1.7}
-    .tools {gap:4px}
+    .tools {gap:4px;flex:none;margin-inline-start:auto}
+    .tools .button-link {min-height:36px;justify-content:center}
     header button,header a,.controls button,.close,.link-button,.refresh {border:0;background:transparent;border-radius:7px;text-decoration:none;padding:.4rem .58rem}
     header button,header a {color:var(--text)} header button:hover,header a:hover,.controls button:hover,.close:hover,.link-button:hover {background:var(--surface-hover);color:var(--ink)}
     .button-link {gap:6px;white-space:nowrap;font-weight:550;font-size:.85rem}
@@ -69,8 +70,8 @@
     footer {min-height:49px;padding:6px clamp(10px,2.2vw,30px);background:var(--surface);border-top:1px solid var(--line);display:flex;align-items:center;justify-content:space-between;gap:8px}
     .legend {gap:13px;flex-wrap:wrap;color:var(--text);font-size:.78rem}
     .legend span {display:inline-flex;align-items:center;gap:5px}
-    .rail {width:20px;display:inline-block;border-top:2px solid #7e899d}
-    .rail.branch {border-top:2px dashed var(--accent)}
+    .rail {width:20px;display:inline-block;border-top:1.5px solid var(--wire)}
+    .rail.branch {border-top:1.5px dashed var(--wire-branch)}
     .controls {gap:3px;flex:none;color:var(--text)}.controls button {padding:6px 7px;font-size:.84rem}
     .controls output {min-width:40px;text-align:center;font: .8rem var(--mono);font-variant-numeric:tabular-nums}
     .controls .fit {display:flex;gap:6px;align-items:center;margin-left:4px;border-left:1px solid var(--line);border-radius:0 6px 6px 0;padding-left:11px}
@@ -114,14 +115,14 @@
     #inspector>.notice,#endpoint-drawer>.notice,#source-drawer>.notice {position:static;transform:none;flex:none;margin:8px 12px}
     .notice button {margin:0 0 0 6px} .sr {position:absolute;width:1px;height:1px;clip-path:inset(50%);overflow:hidden}
     @media(max-width:790px) {
-      header {min-height:59px}.tools {gap:0}
+      .tools {gap:0}
     }
     @media(max-width:510px) {
-      header {min-height:54px;padding:7px 10px;gap:4px}.identity {gap:7px}.mark{width:33px;height:33px}.edition{font-size:.68rem}
+      header {min-height:44px;padding:1px 8px;gap:6px}.identity {gap:4px}.mark{width:24px;height:24px}.mark svg {width:22px;height:22px}
+      .tools .button-link {min-height:40px;min-width:32px}
       .button-link {gap:3px;padding:6px;font-size:.78rem} footer {min-height:45px;gap:4px}
       .legend {gap:6px;font-size:.7rem}.rail {width:13px}.controls {gap:0}.controls button{padding:5px}.controls output{min-width:31px;font-size:.73rem}
     }
-    @media(max-width:365px) {.tools .extra {position:absolute;clip-path:inset(50%);width:1px;height:1px;overflow:hidden}}
     .map-bar {position:relative;z-index:5;display:flex;align-items:center;gap:10px;padding:5px clamp(10px,2.4vw,32px);background:var(--surface);border-bottom:1px solid var(--line)}
     .map-modes {display:inline-flex;gap:2px;background:var(--surface-raised);border-radius:8px;padding:3px;flex:none}
     .map-modes button {background:none;border:1px solid transparent;border-radius:6px;color:var(--text);white-space:nowrap;padding:4px 10px;font:600 .84rem/1.5 var(--ui)}
@@ -248,7 +249,8 @@
     .source-note {white-space:pre-line;font: .78rem/1.65 var(--mono);overflow-wrap:anywhere}
     .no-results .controls,.no-results footer {visibility:hidden}
     @media(max-width:700px) {.controls .fit span {display:none}.controls .fit {padding:5px 7px}.tools .button-link {font-size:.77rem}}
-    @media(max-width:420px) {.map-modes button {padding-inline:7px}.map-bar {padding-inline:7px;gap:4px}.controls {gap:0}.controls button{min-width:30px}.controls .fit {margin-left:1px}.tools .button-link {font-size:0;gap:0}.tools .button-link svg {width:18px;height:18px}.identity {flex:1}}
+    @media(max-width:510px) {.tools .button-link {font-size:0;gap:0}.tools .button-link svg {width:18px;height:18px}.tools #catalog-home {font-size:.8rem;gap:3px}}
+    @media(max-width:420px) {.map-modes button {padding-inline:7px}.map-bar {padding-inline:7px;gap:4px}.controls {gap:0}.controls button{min-width:30px}.controls .fit {margin-left:1px}.identity {flex:1}}
     @media(max-width:640px) {
       .feature-bar {position:static}
       .filter-popover {top:calc(100% + 4px);left:clamp(8px,calc(100% - 354px),150px);width:min(344px,calc(100% - 16px))}
@@ -280,8 +282,17 @@
 <div class="app">
 <div class="app-head">
 <header>
-  <div class="identity"><span class="mark" aria-hidden="true"><svg viewBox="0 0 28 28" fill="none"><path d="M5 14h7m0 0c3 0 1-7 6-7h5m-11 7c3 0 1 7 6 7h5" stroke="#b4e8da" stroke-width="2.1"/><circle cx="5" cy="14" r="3.1" fill="#fff"/><circle cx="23" cy="7" r="2.7" fill="#8cd5c7"/><circle cx="23" cy="21" r="2.7" fill="#8cdebb"/></svg></span><div><div class="graph-crumb"><a id="catalog-home" class="home-link" aria-label="首页" hidden><svg viewBox="0 0 16 16" aria-hidden="true"><path d="m2 7 6-5 6 5m-10-1v8h8V6M7 14V9h2v5"/></svg>首页</a><a id="catalog-return" class="home-link" hidden>返回筛选结果</a><span id="edition-kind">需求全景图 · @@KIND@@</span><span class="edition">v@@VERSION@@</span></div><h1 title="@@TITLE@@">@@TITLE@@</h1></div></div>
-  <div class="tools"><button type="button" class="button-link" id="export" title="保存完整、可放大的 SVG 图"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 3v12m-4-4 4 4 4-4M4 15v4a1 1 0 0 0 1 1h14a1 1 0 0 0 1-1v-4"/></svg><span id="export-caption">导出整图</span></button><a id="ai-record" href="model.json" class="button-link" title="读取同一版需求的 JSON"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="m8 7-5 5 5 5m8-10 5 5-5 5m-3-13-2 16"/></svg>AI 记录</a></div>
+  <div class="identity">
+    <span class="mark" aria-hidden="true"><svg viewBox="0 0 28 28" fill="none"><path d="M5 14h7m0 0c3 0 1-7 6-7h5m-11 7c3 0 1 7 6 7h5" stroke="#b4e8da" stroke-width="2.1"/><circle cx="5" cy="14" r="3.1" fill="#fff"/><circle cx="23" cy="7" r="2.7" fill="#8cd5c7"/><circle cx="23" cy="21" r="2.7" fill="#8cdebb"/></svg></span>
+    <h1 title="@@TITLE@@">@@TITLE@@</h1>
+    <span id="archive-label" hidden>已归档</span>
+  </div>
+  <div class="tools">
+    <a id="catalog-return" class="button-link" title="返回筛选结果" hidden><svg viewBox="0 0 24 24" aria-hidden="true"><path d="m9 6-6 6 6 6M3 12h12a5 5 0 0 0 0-10"/></svg>返回筛选结果</a>
+    <button type="button" class="button-link" id="export" title="保存完整、可放大的 SVG 图"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 3v12m-4-4 4 4 4-4M4 15v4a1 1 0 0 0 1 1h14a1 1 0 0 0 1-1v-4"/></svg><span id="export-caption">导出整图</span></button>
+    <a id="ai-record" href="model.json" class="button-link" title="读取同一版需求的 JSON"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="m8 7-5 5 5 5m8-10 5 5-5 5m-3-13-2 16"/></svg>AI 记录</a>
+    <a id="catalog-home" class="button-link" title="返回需求首页" hidden><svg viewBox="0 0 24 24" aria-hidden="true"><path d="m3 10 9-7 9 7M5 9v12h14V9M10 21v-8h4v8"/></svg>首页</a>
+  </div>
 </header>
   <div class="map-bar">
     <div id="map-modes" role="group" aria-label="视图" class="map-modes">
@@ -324,8 +335,7 @@
       .map-node .n-title{font-weight:680;letter-spacing:-.3px}.map-node .n-label{font-weight:600;letter-spacing:.15px}
       .map-node .mono{font-family:"IBM Plex Mono","SFMono-Regular",Consolas,monospace;letter-spacing:-.3px}
       .map-line {fill:none;stroke-linecap:round;stroke-linejoin:round}
-      .map-node:hover .outline,.map-node:focus-visible .outline,.map-node.selected .outline {stroke:#ffc184;stroke-width:3}
-      .map-node.muted,.map-edge.muted {opacity:.27}.map-node.selected .n-title {font-weight:760}
+      .map-node.muted,.map-edge.muted {opacity:.27}
     </style></defs>
     <g id="world"><g id="wires"></g><g id="wire-labels"></g><g id="stations"></g></g>
   </svg>

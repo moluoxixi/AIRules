@@ -23,8 +23,7 @@
       catch { /* Direct home navigation works even when browser storage is unavailable. */ }
     }
   }
-  if (projectView)
-    $('edition-kind').textContent = readOnly ? '已归档' : '需求全景图'
+  $('archive-label').hidden = !readOnly
   function addDrawerHome(close) {
     if ($('catalog-home').hidden)
       return
@@ -87,14 +86,14 @@
   // Keep explicit SVG paints so an exported diagram renders identically outside this page.
   const canvasPaper = '#111319'
   const styles = {
-    request: { fill: '#33291f', stroke: '#ad8259', title: '#fff1de', text: '#f0d3b2', icon: '#ffc184' },
-    story: { fill: '#202632', stroke: '#616f88', title: '#eaf1ff', text: '#b9c7df', icon: '#a4c7ff' },
-    decision: { fill: '#302820', stroke: '#94744d', title: '#f9e0bb', text: '#d4bfa4', icon: '#ffc184' },
-    contract: { fill: '#1d2b2c', stroke: '#577d79', title: '#e3f5ed', text: '#b2cec2', icon: '#8cdebb' },
-    research: { fill: '#1f2a30', stroke: '#587786', title: '#e1edf4', text: '#b3c9d1', icon: '#9ed1db' },
-    develop: { fill: '#22262e', stroke: '#626e82', title: '#f0f1f4', text: '#bec6d4', icon: '#bbc9dc' },
-    verify: { fill: '#2a2632', stroke: '#7d7191', title: '#f2e8fc', text: '#ccbdda', icon: '#ccb2ea' },
-    delivery: { fill: '#212a26', stroke: '#677c6e', title: '#edf4ed', text: '#bdcec1', icon: '#a8d5b7' },
+    request: { fill: '#33291f', stroke: '#917052', title: '#fff1de', text: '#f0d3b2', icon: '#ffc184' },
+    story: { fill: '#202632', stroke: '#596a80', title: '#eaf1ff', text: '#b9c7df', icon: '#a4c7ff' },
+    decision: { fill: '#302820', stroke: '#856d50', title: '#f9e0bb', text: '#d4bfa4', icon: '#ffc184' },
+    contract: { fill: '#1d2b2c', stroke: '#536f70', title: '#e3f5ed', text: '#b2cec2', icon: '#8cdebb' },
+    research: { fill: '#1f2a30', stroke: '#516b79', title: '#e1edf4', text: '#b3c9d1', icon: '#9ed1db' },
+    develop: { fill: '#22262e', stroke: '#586473', title: '#f0f1f4', text: '#bec6d4', icon: '#bbc9dc' },
+    verify: { fill: '#2a2632', stroke: '#706681', title: '#f2e8fc', text: '#ccbdda', icon: '#ccb2ea' },
+    delivery: { fill: '#212a26', stroke: '#5d7065', title: '#edf4ed', text: '#bdcec1', icon: '#a8d5b7' },
   }
   const statusColors = {
     passed: { fill: '#294337', ink: '#a1e7bd' },
@@ -110,13 +109,14 @@
     verify: 'M8 1.5 14 4v4c0 2.5-3 5.2-6 6.5C5 13.2 2 10.5 2 8V4zM5 8l2 2 4-4',
     delivery: 'M2 5h12v8H2zM1 2.5h14V5H1zM6 8h4',
   }
+  const graphTheme = getComputedStyle(document.documentElement)
   const lineColors = {
-    normal: '#818b9d',
-    story: '#8ca1c5',
-    done: '#8ab69f',
-    possible: '#b08b68',
-    chosen: '#ffc184',
-    skipped: '#7b8390',
+    normal: graphTheme.getPropertyValue('--wire').trim(),
+    story: '#657890',
+    done: '#678579',
+    possible: graphTheme.getPropertyValue('--wire-branch').trim(),
+    chosen: '#74b7a8',
+    skipped: '#626a78',
   }
   const activeName = {
     ready: '可推进',
@@ -418,7 +418,7 @@
       'd': d,
       'class': 'map-line',
       'stroke': color,
-      'stroke-width': e.mode === 'chosen' ? 2.8 : 1.9,
+      'stroke-width': e.mode === 'chosen' ? 2 : 1.5,
       'marker-end': `url(#arr-${key})`,
     }
     if (e.mode === 'possible' || e.mode === 'skipped')
@@ -504,7 +504,7 @@
     const root = positions.get('@request')
     const bottom = root.y + boxes.get('@request').height / 2
     const joint = bottom + 14
-    const attrs = { 'class': 'map-line', 'stroke': lineColors.normal, 'stroke-width': 1.7 }
+    const attrs = { 'class': 'map-line', 'stroke': lineColors.normal, 'stroke-width': 1.35 }
     const base = $('wires')
     const rails = new Map()
     for (const { rail, y } of branches) rails.set(rail, y)
@@ -517,7 +517,7 @@
     for (const { rail, y, end } of branches) {
       const line = svg('path', { ...attrs, class: 'map-edge map-line', d: `M${rail} ${y}H${end}` }, base)
       if (!junctions.has(`${rail},${y}`))
-        svg('circle', { cx: rail, cy: y, r: 2.3, fill: attrs.stroke }, base)
+        svg('circle', { cx: rail, cy: y, r: 1.8, fill: attrs.stroke }, base)
       junctions.add(`${rail},${y}`)
       edgeEls.push([line])
     }
@@ -553,7 +553,7 @@
     const shape = {
       'fill': c.fill,
       'stroke': groupColor,
-      'stroke-width': n.activity === 'active' ? 2.5 : 1.45,
+      'stroke-width': 1.15,
       'class': 'outline',
     }
     if (n.kind === 'decision') {

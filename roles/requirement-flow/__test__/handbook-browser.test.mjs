@@ -271,11 +271,38 @@ describe.skipIf(!executablePath)('generated handbook interactions in Chromium', 
           return (Math.max(a, b) + 0.05) / (Math.min(a, b) + 0.05)
         })
         const background = doc.querySelector('svg > rect').getAttribute('fill')
-        return { count: nodes.length, minContrast: Math.min(...titleContrast), background: luminance(background) }
+        const lines = [...doc.querySelectorAll('#wires path[marker-end]')]
+        const pen = document.createElement('canvas').getContext('2d')
+        const legendColor = (selector) => {
+          pen.fillStyle = getComputedStyle(document.querySelector(selector)).borderTopColor
+          return pen.fillStyle
+        }
+        const wire = name => lines.find(line => line.getAttribute('marker-end') === `url(#arr-${name})`)
+        return {
+          count: nodes.length,
+          minContrast: Math.min(...titleContrast),
+          background: luminance(background),
+          normal: wire('normal')?.getAttribute('stroke'),
+          possible: wire('possible')?.getAttribute('stroke'),
+          normalLegend: legendColor('.legend .rail:not(.branch)'),
+          possibleLegend: legendColor('#branch-legend .rail'),
+          arrowsMatch: lines.every((line) => {
+            const ref = line.getAttribute('marker-end').slice(4, -1)
+            return doc.querySelector(`${ref} path`)?.getAttribute('fill') === line.getAttribute('stroke')
+          }),
+          originalBorders: nodes.every(node =>
+            node.querySelector('.outline').getAttribute('stroke')
+            === document.querySelector(`#stations [data-node="${CSS.escape(node.dataset.node)}"] .outline`).getAttribute('stroke')),
+        }
       })
       expect(svg.count).toBeGreaterThan(5)
       expect(svg.minContrast).toBeGreaterThanOrEqual(4.5)
       expect(svg.background).toBeLessThan(0.08)
+      expect(svg.normal).toBe(svg.normalLegend)
+      expect(svg.possible).toBe(svg.possibleLegend)
+      expect(svg.normal).not.toBe(svg.possible)
+      expect(svg.arrowsMatch).toBe(true)
+      expect(svg.originalBorders).toBe(true)
     }
     finally {
       await page.close()
@@ -368,6 +395,47 @@ describe.skipIf(!executablePath)('generated handbook interactions in Chromium', 
       await Promise.all([page.waitForNavigation({ waitUntil: 'domcontentloaded' }), page.click(selector)])
     }
 
+    it('keeps the graph title and the rightmost home link in a compact header', async () => {
+      const page = await browser.newPage()
+      try {
+        await page.goto(server.address)
+        await page.type(search, 'DocumentIndex')
+        await waitForCards(page, [unplanned])
+        await follow(page, linkFor(unplanned))
+        await page.waitForSelector('#catalog-return', { visible: true })
+        for (const [width, height] of [[903, 48], [430, 44], [375, 44]]) {
+          await page.setViewport({ width, height: 623 })
+          const header = await page.$eval('.app-head header', (el) => {
+            const title = el.querySelector('h1')
+            const home = el.querySelector('#catalog-home')
+            const homeRect = home.getBoundingClientRect()
+            const others = [...el.querySelectorAll('a, button')].filter(node => node !== home && node.getClientRects().length)
+            return {
+              text: el.textContent,
+              height: el.getBoundingClientRect().height,
+              title: title.title,
+              titleWidth: title.clientWidth,
+              clipped: title.scrollWidth > title.clientWidth && getComputedStyle(title).textOverflow === 'ellipsis',
+              clearOfActions: others.every(node => title.getBoundingClientRect().right <= node.getBoundingClientRect().left),
+              homeIsLast: others.every(node => node.getBoundingClientRect().right <= homeRect.left),
+              homeIsVisible: homeRect.right <= innerWidth && Number.parseFloat(getComputedStyle(home).fontSize) > 0,
+            }
+          })
+          expect(header.text).not.toMatch(/需求全景图|\bv\d+\b/u)
+          expect(header).toMatchObject({ height, title: longTitle, clearOfActions: true, homeIsLast: true, homeIsVisible: true })
+          if (width <= 430) {
+            expect(header.clipped).toBe(true)
+            expect(header.titleWidth).toBeGreaterThan(width / 3)
+          }
+        }
+        await follow(page, '#catalog-home')
+        await waitForCards(page, [archived, unplanned, 'plan', research])
+      }
+      finally {
+        await page.close()
+      }
+    })
+
     it('fits compact requirement cards to the viewport with a readable meter and a full-card target', async () => {
       const page = await browser.newPage()
       try {
@@ -411,10 +479,22 @@ describe.skipIf(!executablePath)('generated handbook interactions in Chromium', 
       const tip = '#card-tooltip:not([hidden])'
       try {
         await page.setViewport({ width: 665, height: 623 })
+        await page.emulateMediaFeatures([{ name: 'prefers-reduced-motion', value: 'reduce' }])
         await page.goto(server.address)
         const card = linkFor('plan')
+        const cardStyle = () => page.$eval(card, (link) => {
+          const box = link.closest('article')
+          const css = getComputedStyle(box)
+          const { width, height } = box.getBoundingClientRect()
+          return { color: css.borderColor, border: css.borderWidth, outline: css.outlineStyle, linkOutline: getComputedStyle(link).outlineStyle, shadow: css.boxShadow, width, height }
+        })
+        const idle = await cardStyle()
+        expect(idle).toMatchObject({ border: '1px', outline: 'none', linkOutline: 'none' })
         await page.hover(card)
         await page.waitForSelector(tip)
+        const hover = await cardStyle()
+        expect(hover).toEqual({ ...idle, color: expect.any(String) })
+        expect(hover.color).not.toBe(idle.color)
         expect(await page.$eval(tip, el => el.textContent)).toContain('已验 2 / 11 个场景')
         expect(await page.$eval(tip, el => el.textContent)).toContain('涉及功能')
         const fits = await page.$eval(tip, (el) => {
@@ -424,9 +504,16 @@ describe.skipIf(!executablePath)('generated handbook interactions in Chromium', 
         expect(fits).toBe(true)
         await page.keyboard.press('Escape')
         await page.waitForSelector(tip, { hidden: true })
+        await page.mouse.down()
+        expect(await cardStyle()).toEqual(hover)
+        await page.mouse.move(1, 1)
+        await page.mouse.up()
+        await page.focus(search)
+        expect(await cardStyle()).toEqual(idle)
         await page.keyboard.press('Tab')
         await page.focus(card)
         await page.waitForSelector(tip)
+        expect(await cardStyle()).toEqual(hover)
         expect(await page.$eval(card, el => el.getAttribute('aria-describedby'))).toBe('card-tooltip')
         await page.keyboard.press('Escape')
         await page.waitForSelector(tip, { hidden: true })
@@ -498,6 +585,8 @@ describe.skipIf(!executablePath)('generated handbook interactions in Chromium', 
         expect(decodeURIComponent(new URL(href).pathname)).toBe(`/tasks/${archived}/`)
         await follow(page, linkFor(archived))
         expect(await page.$eval('h1', el => el.textContent)).toBe(archivedTitle)
+        const archiveLabel = await page.waitForSelector('header #archive-label', { visible: true })
+        expect(await archiveLabel.evaluate(el => el.textContent)).toBe('已归档')
         await page.goBack({ waitUntil: 'domcontentloaded' })
         await waitForCards(page, [archived])
         expect(page.url()).toBe(filteredUrl)
@@ -642,8 +731,20 @@ describe.skipIf(!executablePath)('generated handbook interactions in Chromium', 
     const node = '[data-node="S-4"]'
     const tip = '#card-tooltip:not([hidden])'
     try {
+      const frameStyle = () => page.$eval(node, (group) => {
+        const outline = group.querySelector('.outline')
+        const css = getComputedStyle(outline)
+        const { width, height } = outline.getBBox()
+        return { stroke: css.stroke, line: css.strokeWidth, outline: getComputedStyle(group).outlineStyle, width, height }
+      })
+      const idle = await frameStyle()
+      expect(Number.parseFloat(idle.line)).toBeGreaterThan(0)
+      expect(Number.parseFloat(idle.line)).toBeLessThanOrEqual(1.5)
       await page.hover(node)
       await page.waitForSelector(tip)
+      const hover = await frameStyle()
+      expect(hover).toEqual({ ...idle, stroke: expect.any(String), outline: 'none' })
+      expect(hover.stroke).not.toBe(idle.stroke)
       const body = await page.$eval(tip, el => el.textContent)
       expect(body).toContain('跨页选择门店类型后统一确认')
       expect(await page.$eval(node, el => el.textContent)).not.toContain('跨页选择门店类型后统一确认')
@@ -657,13 +758,21 @@ describe.skipIf(!executablePath)('generated handbook interactions in Chromium', 
       await page.mouse.up()
       await page.mouse.move(0, 0)
       await page.$eval('[data-node="@request"]', group => group.focus())
+      expect(await frameStyle()).toEqual(idle)
       await page.keyboard.press('Tab')
       expect(await page.evaluate(() => document.activeElement.getAttribute('data-node'))).toBe('S-4')
       await page.waitForSelector(tip)
+      expect(await frameStyle()).toEqual(hover)
       await page.keyboard.press('Enter')
       await drawerReady(page)
+      expect(await page.$(`${node}.selected`)).not.toBeNull()
+      expect(await frameStyle()).toEqual(hover)
       expect(await page.$(tip)).toBeNull()
       expect(await visibleDetail(page)).toContain('跨页选择门店类型后统一确认')
+      await page.keyboard.press('Escape')
+      await drawerClosed(page)
+      await page.keyboard.press('Tab')
+      expect(await frameStyle()).toEqual(idle)
     }
     finally {
       await page.close()
