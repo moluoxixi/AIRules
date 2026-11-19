@@ -41,7 +41,11 @@ class UpgradeTransactionTest(unittest.TestCase):
         interrupted_stage.mkdir()
         staged_asset = interrupted_stage / "new-0"
         staged_asset.write_text("temporary installation bytes", encoding="utf-8")
-        self.assertEqual(case.git("check-ignore", str(staged_asset)), str(staged_asset))
+        staged_path = staged_asset.relative_to(case.project).as_posix().encode("utf-8") + b"\0"
+        ignored = subprocess.run(["git", "-C", str(case.project), "check-ignore", "-z", "--stdin"],
+                                 input=staged_path, capture_output=True, timeout=10)
+        self.assertEqual(ignored.returncode, 0, ignored.stderr)
+        self.assertEqual(ignored.stdout, staged_path)
         shutil.rmtree(interrupted_stage)
         case.prepare()
         case.complete()
