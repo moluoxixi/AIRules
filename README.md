@@ -9,7 +9,31 @@ AIRules 为 AI 宿主分发带版本的角色能力。一个 role 按需组合�
 - `airules install <role>` 安装用户级资产：拉取固定版本的 vendor、组合 capabilities、把 skills 投影到 `~/.agents/skills`、合并宿主 MCP 配置，并安装角色声明的 CLI package。
 - `init-project` 安装项目级资产：调用角色原生 CLI，在当前仓库生成 `.moluoxixi/` 或 `.trellis/`，再补装 AIRules 的知识库和中文兼容扩展。
 
-AIRules 安装器负责用户级 package setup、资产分发和受管 skills/MCP 校验，但不调度 agents。agents 的派发权属于初始化后的 Moluoxixi/Trellis 主工作流，hooks 负责注入状态和上下文，skills 才负责语义分析与文件修改。
+AIRules 安装器负责用户级 package setup、资产分发和受管 skills/MCP 校验，但不调度 agents。各项目使用所选角色的入口编排工作。
+
+## `requirement-flow`
+
+适用于希望从一张可筛选的大图查阅功能、接口字段、处理逻辑和验收证据的 Codex 项目。
+
+### 安装
+
+项目初始化需要 Python 3.9 或更高版本。
+
+```bash
+airules install requirement-flow --host codex
+airules verify requirement-flow --host codex
+python3 ~/.agents/skills/requirement-flow/flow.py --project /path/to/project init
+```
+
+### 功能
+
+总入口按故事和依赖选择需求分析、接口契约、开发、验证或独立审查五个专项 skill，可跳过已有结论的环节，也可并行推进独立功能。每个需求保存一张可筛选的图。开发交付按具名场景验收，实际运行记录或观察附件随需求归档。
+
+独立审查通过的经验可在同一项目的后续需求中自动匹配。功能图标明命中原因，可点回原需求、场景和证据。
+
+### 用法
+
+每个项目初始化一次。更新角色后再次运行初始化命令可更新项目内的程序。日常从 Codex 提出需求，或使用项目目录中的 `.agents/skills/requirement-flow/flow.py`。安装与迁移、查看图页的命令见[角色说明](roles/requirement-flow/README.md)。
 
 ## `general`
 
