@@ -72,14 +72,18 @@
     .mark svg {width:23px;height:23px}
     h1,h2,h3,h4,p,ol,ul,dl {margin:0}
     h1 {font:740 clamp(1.03rem,2vw,1.3rem)/1.25 var(--display);letter-spacing:-.025em;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
-    .tools {gap:4px;flex:none;margin-inline-start:auto}
-    .tools .button-link {min-height:36px;justify-content:center}
+    .tools {gap:8px;flex:none;margin-inline-start:auto}
+    .tools .button-link {
+      justify-content:center;gap:6px;min-height:34px;padding:4px 10px;border:1px solid var(--line);border-radius:9px;
+      background:#261d36;color:var(--text);font-size:.83rem;font-weight:600;line-height:1.25;text-decoration:none;white-space:nowrap;
+    }
+    .tools .button-link:hover:not([aria-disabled=true]) {border-color:var(--line-strong);background:var(--surface-hover);color:var(--ink)}
+    .tools .button-link[aria-disabled=true] {color:var(--muted);cursor:default}
     #catalog-home {color:var(--accent)}
-    #export:not([aria-disabled=true]) {color:var(--accent);background:var(--accent-bg)}
-    #export:not([aria-disabled=true]):hover {background:#493567}
-    header button,header a,.controls button,.close,.link-button,.refresh {border:0;background:transparent;border-radius:7px;text-decoration:none;padding:.4rem .58rem}
-    header button,header a {color:var(--text)} header button:hover,header a:hover,.controls button:hover,.close:hover,.link-button:hover {background:var(--surface-hover);color:var(--ink)}
-    .button-link {gap:6px;white-space:nowrap;font-weight:550;font-size:.85rem}
+    #export:not([aria-disabled=true]) {border-color:#8066a0;background:linear-gradient(145deg,#4d3869,#37284e);color:#f1e6ff;box-shadow:inset 0 1px #efd9ff22}
+    #export:not([aria-disabled=true]):hover {border-color:#a38ac4;background:linear-gradient(145deg,#5c457b,#433160)}
+    .controls button,.close,.link-button,.refresh {border:0;background:transparent;border-radius:7px;text-decoration:none;padding:.4rem .58rem}
+    .controls button:hover,.close:hover,.link-button:hover {background:var(--surface-hover);color:var(--ink)}
     .button-link svg,.controls svg,.close svg,.drawer-tab svg {width:17px;height:17px;display:block;fill:none;stroke:currentColor;stroke-width:1.65;stroke-linecap:round;stroke-linejoin:round}
     .feature-bar {position:relative;min-width:0;max-width:260px;flex:0 1 auto}
     .filter-toggle {display:flex;align-items:center;gap:7px;min-height:32px;max-width:100%;padding:4px 10px;border:1px solid var(--line-strong);border-radius:8px;background:var(--surface);color:var(--text);font:600 .82rem/1.4 var(--ui)}
@@ -112,7 +116,6 @@
     #filter-done:hover,.reset-search:hover {background:#e7d8ff}
     #filter-no-match {padding:12px 5px;color:var(--muted);font-size:.84rem}
     .no-results footer>* {visibility:hidden}
-    .button-link[aria-disabled=true] {color:var(--muted);cursor:default}
     .empty-search {position:absolute;inset:0;display:grid;align-content:center;justify-items:center;gap:12px;padding:20px;text-align:center;overflow-wrap:anywhere}
     .empty-search strong {font-size:1.12rem;color:var(--ink)}
     .surface {
@@ -179,13 +182,9 @@
     .notice {position:absolute;top:8px;left:50%;transform:translateX(-50%);background:var(--accent-bg);border:1px solid var(--line-strong);padding:7px 12px;border-radius:9px;box-shadow:var(--shadow);z-index:4;font-size:.84rem}
     #inspector>.notice,#endpoint-drawer>.notice,#source-drawer>.notice {position:static;transform:none;flex:none;margin:8px 12px}
     .notice button {margin:0 0 0 6px} .sr {position:absolute;width:1px;height:1px;clip-path:inset(50%);overflow:hidden}
-    @media(max-width:790px) {
-      .tools {gap:0}
-    }
     @media(max-width:510px) {
       header {min-height:44px;padding:1px 8px;gap:6px}.identity {gap:4px}.mark{width:24px;height:24px}.mark svg {width:22px;height:22px}
-      .tools .button-link {min-height:40px;min-width:32px}
-      .button-link {gap:3px;padding:6px;font-size:.78rem} footer {min-height:45px;gap:4px}
+      footer {min-height:45px;gap:4px}
       .legend {gap:6px;font-size:.7rem}.rail {width:13px}.controls {gap:0}.controls button{padding:5px}.controls output{min-width:31px;font-size:.73rem}
     }
     .map-bar {position:relative;z-index:5;display:flex;align-items:center;gap:10px;padding:8px var(--gutter) 0}
@@ -328,16 +327,22 @@
     }
     .source-note {white-space:pre-line;font: .78rem/1.65 var(--mono);overflow-wrap:anywhere}
     .no-results .controls,.no-results footer {visibility:hidden}
-    @media(max-width:700px) {.controls .fit span {display:none}.controls .fit {padding:5px 7px}.tools .button-link {font-size:.77rem}}
-    @media(max-width:510px) {.tools .button-link {font-size:0;gap:0}.tools .button-link svg {width:18px;height:18px}.tools #catalog-home {font-size:.8rem;gap:3px}}
+    @media(max-width:700px) {.controls .fit span {display:none}.controls .fit {padding:5px 7px}}
     @media(max-width:420px) {.map-modes button {padding-inline:7px}.map-bar {padding-inline:7px;gap:4px}.controls {gap:0}.controls button{min-width:30px}.controls .fit {margin-left:1px}.identity {flex:1}}
     @media(max-width:640px) {
+      .tools {gap:6px}
+      .tools .button-link {padding-inline:8px}
+      .tools #catalog-return {font-size:0;gap:0}
       .feature-bar {position:static}
       .filter-popover {top:calc(100% + 4px);left:clamp(8px,calc(100% - 354px),150px);width:min(344px,calc(100% - 16px))}
     }
     @media(max-width:510px) {
       .app {--gutter:8px}
       .surface {border-radius:10px}
+      .tools {gap:5px}
+      .tools .button-link {min-height:40px;min-width:32px;padding-inline:6px;border-radius:8px;font-size:0;gap:0}
+      .tools .button-link svg {width:18px;height:18px}
+      .tools #catalog-home {font-size:.8rem;gap:4px}
       .map-bar {gap:6px;padding-inline:8px}
       .filter-toggle {gap:5px;padding-inline:8px}
       .map-modes button {padding-inline:7px}
@@ -380,7 +385,7 @@
     <h1 title="@@TITLE@@">@@TITLE@@</h1>
     <span id="archive-label" hidden>已归档</span>
   </div>
-  <div class="tools">
+  <div class="tools" role="group" aria-label="页面操作">
     <a id="catalog-return" class="button-link" title="返回筛选结果" hidden><svg viewBox="0 0 24 24" aria-hidden="true"><path d="m9 6-6 6 6 6M3 12h12a5 5 0 0 0 0-10"/></svg>返回筛选结果</a>
     <button type="button" class="button-link" id="export" title="保存完整、可放大的 SVG 图"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 3v12m-4-4 4 4 4-4M4 15v4a1 1 0 0 0 1 1h14a1 1 0 0 0 1-1v-4"/></svg><span id="export-caption">导出整图</span></button>
     <a id="ai-record" href="model.json" class="button-link" title="读取同一版需求的 JSON"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="m8 7-5 5 5 5m8-10 5 5-5 5m-3-13-2 16"/></svg>AI 记录</a>

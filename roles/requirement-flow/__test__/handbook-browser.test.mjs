@@ -395,7 +395,7 @@ describe.skipIf(!executablePath)('generated handbook interactions in Chromium', 
       await Promise.all([page.waitForNavigation({ waitUntil: 'domcontentloaded' }), page.click(selector)])
     }
 
-    it('keeps the graph title and the rightmost home link in a compact header', async () => {
+    it('keeps separated graph actions and the rightmost home link in a compact header', async () => {
       const page = await browser.newPage()
       try {
         await page.goto(server.address)
@@ -403,13 +403,14 @@ describe.skipIf(!executablePath)('generated handbook interactions in Chromium', 
         await waitForCards(page, [unplanned])
         await follow(page, linkFor(unplanned))
         await page.waitForSelector('#catalog-return', { visible: true })
-        for (const [width, height] of [[903, 48], [430, 44], [375, 44]]) {
-          await page.setViewport({ width, height: 623 })
+        for (const [width, height, gap] of [[903, 48, 8], [725, 48, 8], [520, 48, 6], [430, 44, 5], [375, 44, 5]]) {
+          await page.setViewport({ width, height: width === 725 ? 593 : 623 })
           const header = await page.$eval('.app-head header', (el) => {
             const title = el.querySelector('h1')
             const home = el.querySelector('#catalog-home')
             const homeRect = home.getBoundingClientRect()
             const others = [...el.querySelectorAll('a, button')].filter(node => node !== home && node.getClientRects().length)
+            const actionRects = [...others, home].map(node => node.getBoundingClientRect())
             return {
               text: el.textContent,
               height: el.getBoundingClientRect().height,
@@ -419,10 +420,12 @@ describe.skipIf(!executablePath)('generated handbook interactions in Chromium', 
               clearOfActions: others.every(node => title.getBoundingClientRect().right <= node.getBoundingClientRect().left),
               homeIsLast: others.every(node => node.getBoundingClientRect().right <= homeRect.left),
               homeIsVisible: homeRect.right <= innerWidth && Number.parseFloat(getComputedStyle(home).fontSize) > 0,
+              smallestGap: Math.min(...actionRects.slice(1).map((rect, index) => rect.left - actionRects[index].right)),
             }
           })
           expect(header.text).not.toMatch(/需求全景图|\bv\d+\b/u)
           expect(header).toMatchObject({ height, title: longTitle, clearOfActions: true, homeIsLast: true, homeIsVisible: true })
+          expect(header.smallestGap).toBeGreaterThanOrEqual(gap)
           if (width <= 430) {
             expect(header.clipped).toBe(true)
             expect(header.titleWidth).toBeGreaterThan(width / 3)
