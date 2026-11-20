@@ -1,35 +1,39 @@
 :root {
   color-scheme: dark;
-  --paper: #111319;
-  --surface: #191c24;
-  --surface-raised: #20242e;
-  --surface-hover: #292e39;
-  --ink: #f0f1f4;
-  --text: #d5d9e1;
-  --muted: #a6afc0;
-  --line: #373d4b;
-  --line-strong: #596476;
-  --accent: #ffc184;
-  --accent-bg: #403023;
-  --on-accent: #24180e;
-  --teal: #8cdebb;
-  --success-bg: #20382e;
-  --blue: #a4c7ff;
-  --amber: #ffc184;
-  --focus-ring: #ffcb97;
-  --ui: "Instrument Sans","PingFang SC","Microsoft YaHei",system-ui,sans-serif;
+  --paper: #100e1c;
+  --surface: #1a172b;
+  --surface-raised: #242039;
+  --surface-hover: #302745;
+  --ink: #f6f0ff;
+  --text: #dfd8ed;
+  --muted: #b8aecb;
+  --line: #3c344f;
+  --line-strong: #66577d;
+  --accent: #d5bdff;
+  --accent-bg: #32254a;
+  --on-accent: #211433;
+  --teal: #92e4cd;
+  --success-bg: #1c3735;
+  --blue: #b7c2ff;
+  --amber: #ffd09b;
+  --rose: #f0acd3;
+  --focus-ring: #e3d0ff;
+  --glass: rgb(33 27 52 / .86);
+  --shadow: 0 16px 44px rgb(6 4 15 / .40), inset 0 1px rgb(245 225 255 / .07);
+  --display: "PingFang SC","Microsoft YaHei","Noto Sans CJK SC",system-ui,sans-serif;
+  --ui: "Instrument Sans","PingFang SC","Microsoft YaHei","Noto Sans CJK SC",system-ui,sans-serif;
   --mono: "IBM Plex Mono","SFMono-Regular",Consolas,monospace;
 }
 .card-tooltip {
-  position:fixed; z-index:12; width:max-content; max-width:min(330px,calc(100vw - 16px));
+  position:fixed; z-index:12; width:max-content; max-width:min(352px,calc(100vw - 16px));
   max-height:min(54vh,320px); overflow:auto; box-sizing:border-box; overscroll-behavior:contain;
-  padding:13px 15px; border:1px solid var(--line-strong); border-radius:9px;
-  background:var(--surface-raised); color:var(--text); box-shadow:0 8px 28px #0007;
-  font: .87rem/1.48 var(--ui); overflow-wrap:anywhere;
+  padding:15px 17px; border:1px solid var(--line-strong); border-radius:14px;
+  background:var(--glass); backdrop-filter:blur(22px) saturate(1.25); color:var(--text);
+  box-shadow:var(--shadow); font:.87rem/1.55 var(--ui); overflow-wrap:anywhere;
 }
 .card-tooltip[hidden] { display:none }
-.card-tooltip strong { display:block; font-size:.98rem; color:var(--ink); line-height:1.4 }
-.card-tooltip p { margin:6px 0 0; color:var(--text) }
-.card-tooltip dl { display:grid; grid-template-columns:auto minmax(0,1fr); gap:3px 12px; margin:9px 0 0 }
+.card-tooltip strong { display:block; font-size:1rem; color:var(--ink); line-height:1.4 }
+.card-tooltip p { margin:7px 0 0; color:var(--text) }
+.card-tooltip dl { display:grid; grid-template-columns:auto minmax(0,1fr); gap:4px 12px; margin:10px 0 0 }
 .card-tooltip dt { color:var(--muted) }
 .card-tooltip dd { margin:0 }

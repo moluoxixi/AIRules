@@ -84,22 +84,22 @@
   let visibleStories = []
   let scoped = false
   // Keep explicit SVG paints so an exported diagram renders identically outside this page.
-  const canvasPaper = '#111319'
+  const canvasPaper = '#100e1c'
   const styles = {
-    request: { fill: '#33291f', stroke: '#917052', title: '#fff1de', text: '#f0d3b2', icon: '#ffc184' },
-    story: { fill: '#202632', stroke: '#596a80', title: '#eaf1ff', text: '#b9c7df', icon: '#a4c7ff' },
-    decision: { fill: '#302820', stroke: '#856d50', title: '#f9e0bb', text: '#d4bfa4', icon: '#ffc184' },
-    contract: { fill: '#1d2b2c', stroke: '#536f70', title: '#e3f5ed', text: '#b2cec2', icon: '#8cdebb' },
-    research: { fill: '#1f2a30', stroke: '#516b79', title: '#e1edf4', text: '#b3c9d1', icon: '#9ed1db' },
-    develop: { fill: '#22262e', stroke: '#586473', title: '#f0f1f4', text: '#bec6d4', icon: '#bbc9dc' },
-    verify: { fill: '#2a2632', stroke: '#706681', title: '#f2e8fc', text: '#ccbdda', icon: '#ccb2ea' },
-    delivery: { fill: '#212a26', stroke: '#5d7065', title: '#edf4ed', text: '#bdcec1', icon: '#a8d5b7' },
+    request: { fill: '#392345', stroke: '#bf8ac5', title: '#fff1fa', text: '#ecc1df', icon: '#f0acd3' },
+    story: { fill: '#241a35', stroke: '#766095', title: '#f5edff', text: '#d1c0e7', icon: '#d5bdff' },
+    decision: { fill: '#342531', stroke: '#a77862', title: '#fff0dc', text: '#e4c4ab', icon: '#ffd09b' },
+    contract: { fill: '#1a2a32', stroke: '#547d85', title: '#eaf8fa', text: '#b5d8d9', icon: '#9edce0' },
+    research: { fill: '#21263b', stroke: '#6676a0', title: '#edf1ff', text: '#c6cfea', icon: '#adcaff' },
+    develop: { fill: '#232235', stroke: '#696483', title: '#f3f0fe', text: '#cbc8e1', icon: '#c3b9ef' },
+    verify: { fill: '#2c213a', stroke: '#855f98', title: '#faf0ff', text: '#dcc5ed', icon: '#e1b7f5' },
+    delivery: { fill: '#1a2c2d', stroke: '#587e75', title: '#ecfaf6', text: '#bbdcd2', icon: '#92e4cd' },
   }
   const statusColors = {
-    passed: { fill: '#294337', ink: '#a1e7bd' },
-    pending: { fill: '#303643', ink: '#d1dae6' },
-    stale: { fill: '#4a3826', ink: '#ffd29f' },
-    failed: { fill: '#502e36', ink: '#ffc2cc' },
+    passed: { fill: '#24413e', ink: '#92e4cd' },
+    pending: { fill: '#382c4b', ink: '#e0d5f2' },
+    stale: { fill: '#4d3433', ink: '#ffd09b' },
+    failed: { fill: '#542c44', ink: '#ffc0d5' },
   }
   const glyph = {
     request: 'M2 8h5m0 0c3 0 1-5 5-5h2M7 8c3 0 1 5 5 5h2',
@@ -114,11 +114,11 @@
   const graphTheme = getComputedStyle(document.documentElement)
   const lineColors = {
     normal: graphTheme.getPropertyValue('--wire').trim(),
-    story: '#657890',
-    done: '#678579',
+    story: '#927bb8',
+    done: '#719c98',
     possible: graphTheme.getPropertyValue('--wire-branch').trim(),
-    chosen: '#74b7a8',
-    skipped: '#626a78',
+    chosen: '#92e4cd',
+    skipped: '#716782',
   }
   const activeName = {
     ready: '可推进',
@@ -198,6 +198,10 @@
     }
     layouts.clear()
   }
+  const cardSheen = svg('linearGradient', { id: 'map-card-sheen', x1: '0%', x2: '96%', y1: '0%', y2: '100%' }, $('drawing-defs'))
+  svg('stop', { 'offset': '0%', 'stop-color': '#f0dfff', 'stop-opacity': 0.13 }, cardSheen)
+  svg('stop', { 'offset': '55%', 'stop-color': '#d5bdff', 'stop-opacity': 0.025 }, cardSheen)
+  svg('stop', { 'offset': '100%', 'stop-color': canvasPaper, 'stop-opacity': 0.16 }, cardSheen)
   for (const [name, color] of Object.entries(lineColors)) {
     const marker = svg(
       'marker',
@@ -557,102 +561,42 @@
     }))
     const x = -b.width / 2
     const y = -b.height / 2
-    const groupColor = n.activity === 'active' ? '#8cdebb' : c.stroke
+    const rightEdge = -x
+    const bottomEdge = -y
+    const fold = n.kind === 'contract' ? 11 : 0
+    const groupColor = n.activity === 'active' ? statusColors.passed.ink : c.stroke
     const shape = {
       'fill': c.fill,
       'stroke': groupColor,
       'stroke-width': 1.15,
       'class': 'outline',
     }
+    let shapeTag = 'rect'
+    let geometry
     if (n.kind === 'decision') {
       const r = 13
-      const right = -x
-      const bottom = -y
-      svg(
-        'path',
-        {
-          ...shape,
-          d:
-            `M${
-              x + r
-            } ${
-              y
-            }H${
-              right - r
-            }L${
-              right
-            } 0 ${
-              right - r
-            } ${
-              bottom
-            }H${
-              x + r
-            }L${
-              x
-            } 0Z`,
-        },
-        g,
-      )
+      shapeTag = 'path'
+      geometry = {
+        d: `M${x + r} ${y}H${rightEdge - r}L${rightEdge} 0 ${rightEdge - r} ${bottomEdge}H${x + r}L${x} 0Z`,
+      }
     }
-    else if (n.kind === 'contract') {
-      const cut = 11
-      const right = -x
-      const bottom = -y
-      svg(
-        'path',
-        {
-          ...shape,
-          d:
-            `M${
-              x + 5
-            } ${
-              y
-            }H${
-              right - cut
-            }L${
-              right
-            } ${
-              y + cut
-            }V${
-              bottom - 5
-            }Q${
-              right
-            } ${
-              bottom
-            } ${
-              right - 5
-            } ${
-              bottom
-            }H${
-              x + 5
-            }Q${
-              x
-            } ${
-              bottom
-            } ${
-              x
-            } ${
-              bottom - 5
-            }V${
-              y + 5
-            }Q${
-              x
-            } ${
-              y
-            } ${
-              x + 5
-            } ${
-              y
-            }Z`,
-        },
-        g,
-      )
-      svg('path', { d: `M${right - cut} ${y}v${cut}h${cut}`, fill: 'none', stroke: c.stroke }, g)
+    else if (fold) {
+      const r = 8
+      shapeTag = 'path'
+      geometry = {
+        d: `M${x + r} ${y}H${rightEdge - fold}L${rightEdge} ${y + fold}V${bottomEdge - r}`
+          + `Q${rightEdge} ${bottomEdge} ${rightEdge - r} ${bottomEdge}H${x + r}`
+          + `Q${x} ${bottomEdge} ${x} ${bottomEdge - r}V${y + r}Q${x} ${y} ${x + r} ${y}Z`,
+      }
     }
     else {
-      const radius = n.kind === 'request' ? 14 : n.kind === 'delivery' ? 19 : n.kind === 'verify' ? 12 : 8
-      svg('rect', { ...shape, x, y, width: b.width, height: b.height, rx: radius }, g)
+      const radius = n.kind === 'request' ? 17 : n.kind === 'delivery' ? 19 : 11
+      geometry = { x, y, width: b.width, height: b.height, rx: radius }
     }
+    svg(shapeTag, { ...geometry, ...shape }, g)
+    svg(shapeTag, { ...geometry, 'fill': 'url(#map-card-sheen)', 'pointer-events': 'none', 'aria-hidden': 'true' }, g)
+    if (fold)
+      svg('path', { d: `M${rightEdge - fold} ${y}v${fold}h${fold}`, fill: 'none', stroke: c.stroke }, g)
     const left = x + b.inset
     svg(
       'path',
@@ -681,10 +625,10 @@
       }
       if (badge) {
         const width = widthOf(n.state, 10.5, 600) + 10
-        svg('rect', { x: right - width + 4, y: y + 5, width, height: 18, rx: 5, fill: badge.fill }, g)
+        svg('rect', { x: right - width + 4, y: y + 5, width, height: 18, rx: 8, fill: badge.fill }, g)
       }
       if (n.activity === 'active')
-        svg('circle', { cx: right - widthOf(n.state, 10.5, 600) - 6, cy: y + 14.6, r: 2.5, fill: '#8cdebb' }, g)
+        svg('circle', { cx: right - widthOf(n.state, 10.5, 600) - 6, cy: y + 14.6, r: 2.5, fill: statusColors.passed.ink }, g)
       const ink = badge?.ink || (n.activity === 'done' ? statusColors.passed.ink : c.text)
       svg(
         'text',
@@ -803,9 +747,10 @@
       return
     cameraMode = 'reading'
     const entry = layout.positions.get('@request')
-    const top = boxSize.h / (2 * scale)
-    camera = { x: layout.width / 2, y: top, scale }
-    if (!isOverview() && entry) {
+    const overview = isOverview()
+    const breathingRoom = overview ? Math.max(0, Math.min(160, (boxSize.h - layout.height * scale) / 3)) : 0
+    camera = { x: layout.width / 2, y: (boxSize.h / 2 - breathingRoom) / scale, scale }
+    if (!overview && entry) {
       if (layout.dir === 'LR') {
         camera.x = Math.min(boxSize.w / (2 * scale), layout.width / 2)
         camera.y = entry.y

@@ -436,12 +436,13 @@ describe.skipIf(!executablePath)('generated handbook interactions in Chromium', 
       }
     })
 
-    it('fits compact requirement cards to the viewport with a readable meter and a full-card target', async () => {
+    it('fits editorial requirement cards to the viewport with a readable meter and a full-card target', async () => {
       const page = await browser.newPage()
       try {
         await page.goto(server.address)
         await waitForCards(page, ['plan', unplanned, archived, research])
-        for (const [width, expectedColumns] of [[1440, 5], [1200, 4], [960, 3], [665, 2], [390, 1], [320, 1]]) {
+        await page.waitForFunction(() => document.querySelector('.desk-art img')?.naturalWidth > 0)
+        for (const [width, expectedColumns] of [[1440, 3], [1200, 3], [960, 3], [665, 2], [390, 1], [320, 1]]) {
           await page.setViewport({ width, height: 820 })
           const metrics = await page.$eval('article[data-task-id="plan"]', (card) => {
             card.scrollIntoView({ block: 'center' })
@@ -459,7 +460,7 @@ describe.skipIf(!executablePath)('generated handbook interactions in Chromium', 
             }
           })
           expect(metrics.columns).toBe(expectedColumns)
-          expect(metrics.height).toBeLessThanOrEqual(82)
+          expect(metrics.height).toBeLessThanOrEqual(184)
           expect(metrics.titleSize).toBeGreaterThanOrEqual(15)
           expect(metrics.meterHeight).toBeGreaterThanOrEqual(4)
           expect(metrics.target).toBe(true)
@@ -513,7 +514,7 @@ describe.skipIf(!executablePath)('generated handbook interactions in Chromium', 
         await page.keyboard.press('Tab')
         await page.focus(card)
         await page.waitForSelector(tip)
-        expect(await cardStyle()).toEqual(hover)
+        expect(await cardStyle()).toEqual({ ...hover, outline: 'solid' })
         expect(await page.$eval(card, el => el.getAttribute('aria-describedby'))).toBe('card-tooltip')
         await page.keyboard.press('Escape')
         await page.waitForSelector(tip, { hidden: true })
