@@ -198,6 +198,10 @@
     }
     layouts.clear()
   }
+  const nodeSheen = svg('linearGradient', { id: 'node-sheen', x1: '0%', y1: '0%', x2: '22%', y2: '100%' }, $('drawing-defs'))
+  svg('stop', { 'offset': '0%', 'stop-color': '#f6e6ff', 'stop-opacity': 0.11 }, nodeSheen)
+  svg('stop', { 'offset': '42%', 'stop-color': '#e4c7ff', 'stop-opacity': 0.025 }, nodeSheen)
+  svg('stop', { 'offset': '100%', 'stop-color': '#e4c7ff', 'stop-opacity': 0 }, nodeSheen)
   for (const [name, color] of Object.entries(lineColors)) {
     const marker = svg(
       'marker',
@@ -380,7 +384,7 @@
       const bc = Math.hypot(c.x - b.x, c.y - b.y)
       if (!ab || !bc)
         continue
-      const r = Math.min(7, ab / 2, bc / 2)
+      const r = Math.min(10, ab / 2, bc / 2)
       d
         += ` L${
           xy({ x: b.x + ((a.x - b.x) * r) / ab, y: b.y + ((a.y - b.y) * r) / ab })
@@ -507,22 +511,41 @@
     const { positions, branches } = layout
     const root = positions.get('@request')
     const bottom = root.y + boxes.get('@request').height / 2
-    const joint = bottom + 14
-    const attrs = { 'class': 'map-line', 'stroke': lineColors.normal, 'stroke-width': 1.35 }
+    const joint = bottom + 15
+    const bend = 9
     const base = $('wires')
-    const rails = new Map()
-    for (const { rail, y } of branches) rails.set(rail, y)
-    svg('path', { ...attrs, d: `M${root.x} ${bottom}V${joint}` }, base)
-    const xs = [root.x, ...rails.keys()]
-    svg('path', { ...attrs, d: `M${Math.min(...xs)} ${joint}H${Math.max(...xs)}` }, base)
-    for (const [x, lastY] of rails)
-      svg('path', { ...attrs, d: `M${x} ${joint}V${lastY}` }, base)
-    const junctions = new Set()
+    const railStops = new Map(branches.map(({ rail, y }) => [rail, y - bend]))
+    const spinePaint = { 'class': 'map-line overview-spine', 'stroke': lineColors.normal, 'stroke-width': 1.9 }
+    const railPaint = { ...spinePaint, 'class': 'map-line overview-rail', 'stroke-width': 1.5 }
+
+    // Each rail stops where its last branch turns toward the card. The shared
+    // spine remains steady when selection dims individual connections.
+    svg('path', { ...spinePaint, d: `M${root.x} ${bottom}V${railStops.get(root.x) ?? joint - bend}` }, base)
+    for (const side of [-1, 1]) {
+      const rails = [...railStops.keys()]
+        .filter(x => Math.sign(x - root.x) === side)
+        .sort((a, b) => side * (a - b))
+      const outside = rails.pop()
+      if (outside === undefined)
+        continue
+
+      const radius = Math.min(bend, Math.abs(outside - root.x) / 3)
+      const sweep = `M${root.x} ${joint - bend}V${joint - radius}Q${root.x} ${joint} ${root.x + side * radius} ${joint}`
+        + `H${outside - side * radius}Q${outside} ${joint} ${outside} ${joint + radius}`
+      svg('path', { ...spinePaint, d: sweep }, base)
+      svg('path', { ...railPaint, d: `M${outside} ${joint + radius}V${railStops.get(outside)}` }, base)
+
+      for (const x of rails) {
+        const tapRadius = Math.min(bend, Math.abs(x - root.x) / 2)
+        const tap = `M${x - side * tapRadius} ${joint}Q${x} ${joint} ${x} ${joint + tapRadius}V${railStops.get(x)}`
+        svg('path', { ...railPaint, d: tap }, base)
+      }
+    }
+
     for (const { rail, y, end } of branches) {
-      const line = svg('path', { ...attrs, class: 'map-edge map-line', d: `M${rail} ${y}H${end}` }, base)
-      if (!junctions.has(`${rail},${y}`))
-        svg('circle', { cx: rail, cy: y, r: 1.8, fill: attrs.stroke }, base)
-      junctions.add(`${rail},${y}`)
+      const port = rail + Math.sign(end - rail) * bend
+      const d = `M${rail} ${y - bend}Q${rail} ${y} ${port} ${y}H${end}`
+      const line = svg('path', { ...railPaint, 'class': 'map-edge map-line', 'stroke-width': 1.45, d }, base)
       edgeEls.push([line])
     }
   }
@@ -571,13 +594,20 @@
     let geometry
     if (n.kind === 'decision') {
       const r = 13
+      const inset = 2
+      const rise = 4
       shapeTag = 'path'
       geometry = {
-        d: `M${x + r} ${y}H${rightEdge - r}L${rightEdge} 0 ${rightEdge - r} ${bottomEdge}H${x + r}L${x} 0Z`,
+        d: `M${x + r + inset} ${y}H${rightEdge - r - inset}Q${rightEdge - r} ${y} ${rightEdge - r + inset} ${y + rise}`
+          + `L${rightEdge - inset} ${-rise}Q${rightEdge} 0 ${rightEdge - inset} ${rise}`
+          + `L${rightEdge - r + inset} ${bottomEdge - rise}Q${rightEdge - r} ${bottomEdge} ${rightEdge - r - inset} ${bottomEdge}`
+          + `H${x + r + inset}Q${x + r} ${bottomEdge} ${x + r - inset} ${bottomEdge - rise}`
+          + `L${x + inset} ${rise}Q${x} 0 ${x + inset} ${-rise}`
+          + `L${x + r - inset} ${y + rise}Q${x + r} ${y} ${x + r + inset} ${y}Z`,
       }
     }
     else if (fold) {
-      const r = 8
+      const r = 10
       shapeTag = 'path'
       geometry = {
         d: `M${x + r} ${y}H${rightEdge - fold}L${rightEdge} ${y + fold}V${bottomEdge - r}`
@@ -586,10 +616,11 @@
       }
     }
     else {
-      const radius = n.kind === 'request' ? 17 : n.kind === 'delivery' ? 19 : 11
+      const radius = n.kind === 'request' ? 19 : n.kind === 'delivery' ? 21 : 13
       geometry = { x, y, width: b.width, height: b.height, rx: radius }
     }
     svg(shapeTag, { ...geometry, ...shape }, g)
+    svg(shapeTag, { ...geometry, 'class': 'n-sheen', 'fill': 'url(#node-sheen)', 'pointer-events': 'none', 'aria-hidden': 'true' }, g)
     if (fold)
       svg('path', { d: `M${rightEdge - fold} ${y}v${fold}h${fold}`, fill: 'none', stroke: c.stroke }, g)
     const left = x + b.inset
@@ -653,10 +684,10 @@
     if (progress?.total) {
       const w = b.width - 2 * b.inset
       const yBar = -y - 5
-      svg('rect', { x: left, y: yBar, width: w, height: 2, rx: 1, fill: c.stroke }, g)
+      svg('rect', { x: left, y: yBar, width: w, height: 2.5, rx: 1.25, fill: c.stroke }, g)
       const filled = w * progress.passed / progress.total
       if (filled)
-        svg('rect', { x: left, y: yBar, width: filled, height: 2, rx: 1, fill: statusColors.passed.ink }, g)
+        svg('rect', { x: left, y: yBar, width: filled, height: 2.5, rx: 1.25, fill: statusColors.passed.ink }, g)
     }
     g.addEventListener('click', () => {
       if (performance.now() > ignoreClicksUntil)

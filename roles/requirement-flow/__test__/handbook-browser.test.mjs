@@ -441,8 +441,8 @@ describe.skipIf(!executablePath)('generated handbook interactions in Chromium', 
       try {
         await page.goto(server.address)
         await waitForCards(page, ['plan', unplanned, archived, research])
-        for (const width of [1440, 1200, 960, 665, 390, 320]) {
-          await page.setViewport({ width, height: 820 })
+        for (const width of [1440, 1200, 960, 725, 665, 390, 320]) {
+          await page.setViewport({ width, height: width === 725 ? 593 : 820 })
           const metrics = await page.$eval('article[data-task-id="plan"]', (card) => {
             const bounds = card.getBoundingClientRect()
             const corner = document.elementFromPoint(bounds.left + 5, bounds.bottom - 5)
@@ -458,13 +458,14 @@ describe.skipIf(!executablePath)('generated handbook interactions in Chromium', 
               firstCardTop: document.querySelector('.cards .card').getBoundingClientRect().top,
               oneStatusAboveTitle: statuses.length === 1 && statuses[0].getBoundingClientRect().bottom <= title.getBoundingClientRect().top,
               separateProgress: meter.getBoundingClientRect().top >= tagLine.bottom,
+              cardsFit: [...card.parentElement.children].every(row => row.getBoundingClientRect().bottom <= innerHeight),
               titleSize: Number.parseFloat(getComputedStyle(title).fontSize),
               meterHeight: meter.getBoundingClientRect().height,
               target: corner?.closest('a') === title.querySelector('a'),
               overflow: document.documentElement.scrollWidth - innerWidth,
             }
           })
-          expect(metrics.columns).toBe(1)
+          expect(metrics.columns).toBe(width >= 700 ? 2 : 1)
           expect(metrics.headerHeight).toBeLessThanOrEqual(85)
           expect(metrics.toolbarGap).toBeGreaterThanOrEqual(16)
           expect(metrics.firstCardTop).toBeLessThanOrEqual(210)
@@ -474,6 +475,8 @@ describe.skipIf(!executablePath)('generated handbook interactions in Chromium', 
           expect(metrics.meterHeight).toBeGreaterThanOrEqual(4)
           expect(metrics.target).toBe(true)
           expect(metrics.overflow).toBe(0)
+          if (width === 725)
+            expect(metrics.cardsFit).toBe(true)
         }
         await page.hover(linkFor(unplanned))
         await page.waitForSelector('#card-tooltip:not([hidden])')
@@ -1067,6 +1070,12 @@ describe.skipIf(!executablePath)('generated handbook interactions in Chromium', 
       const panel = '#detail'
       const pending = `${panel} .acceptance-group[data-state="open"]`
       const passed = `${panel} .acceptance-group[data-state="passed"]`
+      const toolsAreStacked = await page.$$eval(`${panel} .story-tools > *`, (rows) => {
+        const bounds = rows.map(row => row.getBoundingClientRect())
+        return bounds.length >= 3 && bounds.slice(1).every((row, index) =>
+          row.left === bounds[0].left && row.width === bounds[0].width && row.top >= bounds[index].bottom)
+      })
+      expect(toolsAreStacked).toBe(true)
       const titles = group => page.$$eval(`${group} .case-title`, els => els.map(el => el.textContent))
       expect(await titles(pending)).toEqual(['在门户回读批量写入结果'])
       expect(await titles(passed)).toEqual(['跨页确认门店类型', '重试批量提交'])
