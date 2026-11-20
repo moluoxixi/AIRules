@@ -23,6 +23,8 @@ SPECIALISTS = ("flow-requirements", "flow-contracts", "flow-implement", "flow-ve
 SKILL = SKILLS / ROLE
 MANIFEST = Path(".requirements/installation.json")
 IGNORE = Path(".requirements/.gitignore")
+ATTRIBUTES = Path(".requirements/.gitattributes")
+EVIDENCE_ATTRIBUTES = (b"active/*/evidence/** -text", b"archive/*/evidence/** -text")
 LOCAL_PATTERNS = (b".receipt-key", b".receipt-key-*", b".workflow.lock", b".capture-*/", b".install-*/", b".model.json.*", b".handbook.html.*", b".basic-memory/")
 ARCHIVE = Path(".requirements/migrations/moluoxixi")
 ROOT_FILES = {"SKILL.md", "flow.py", "install_project.py", "references/model.md", "agents/openai.yaml"}
@@ -53,6 +55,15 @@ def require(ok, message):
 
 def digest(data):
     return hashlib.sha256(data).hexdigest()
+
+
+def append_git_rules(root, relative, rules):
+    current = read_file(safe_path(root, relative)) or b""
+    missing = [rule for rule in rules if rule not in current.splitlines()]
+    if missing:
+        newline = b"\r\n" if b"\r\n" in current else b"\n"
+        separator = newline if current and not current.endswith(b"\n") else b""
+        return current + separator + newline.join(missing) + newline
 
 
 def normalized_text(data):
@@ -348,11 +359,8 @@ def install_locked(root, migrate, *, after_apply=None):
         else:
             require(old is None, f"同名文件不受本工具管理：{target}")
         replacement = wanted.get(name)
-        if text_asset and old is not None and replacement is not None:
-            if normalized_text(old) == normalized_text(replacement):
-                continue
-            if b"\r\n" in old and b"\n" not in old.replace(b"\r\n", b""):
-                replacement = normalized_text(replacement).replace(b"\n", b"\r\n")
+        if text_asset and old is not None and replacement is not None and normalized_text(old) == normalized_text(replacement):
+            continue
         if old != replacement:
             files[target] = replacement
 
@@ -400,12 +408,10 @@ def install_locked(root, migrate, *, after_apply=None):
                text + ("" if not text or text.endswith(("\n", "\r")) else line_break) + block + line_break)
     if updated.encode() != original:
         files[agents_path] = updated.encode()
-    ignored = read_file(safe_path(root, IGNORE)) or b""
-    missing = [pattern for pattern in LOCAL_PATTERNS if pattern not in ignored.splitlines()]
-    if missing:
-        newline = b"\r\n" if b"\r\n" in ignored else b"\n"
-        prefix = newline if ignored and not ignored.endswith(b"\n") else b""
-        files[IGNORE] = ignored + prefix + newline.join(missing) + newline
+    for relative, rules in ((IGNORE, LOCAL_PATTERNS), (ATTRIBUTES, EVIDENCE_ATTRIBUTES)):
+        updated_rules = append_git_rules(root, relative, rules)
+        if updated_rules is not None:
+            files[relative] = updated_rules
     # A pre-versioned installer only accepts 1/2 and must refuse to downgrade this runtime.
     file_hashes = {name: digest(normalized_text(data) if Path(name).suffix in TEXT_SUFFIXES else data)
                    for name, data in wanted.items()}

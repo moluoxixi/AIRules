@@ -205,6 +205,14 @@ class InstallProjectTest(unittest.TestCase):
                 self.assertNotEqual(subprocess.run(command, capture_output=True).returncode, 0)
                 path.write_bytes(data)
 
+        # An upgrade must install the released bytes, including a new LF section in a CRLF file.
+        name = "flow-review/SKILL.md"
+        updated = originals[0] + b"\nReview the deployed version.\n"
+        with patch.object(installer, "assets", return_value={**installer.assets(), name: updated}):
+            self.assertTrue(installer.install(clone)["changed"])
+            self.assertEqual(paths[0].read_bytes(), updated)
+            self.assertFalse(installer.install(clone)["changed"])
+
         # A pre-normalization Windows installation stored the raw CRLF digest. An LF checkout
         # must recognize it as well, then record canonical hashes for the next upgrade.
         manifest = json.loads(originals[2])

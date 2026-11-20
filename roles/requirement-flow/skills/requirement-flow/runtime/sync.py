@@ -1227,13 +1227,18 @@ def commit(revision, operation, *, workspace=None, independent_capture=False):
         return model
 
 
+def matches_page(path, rendered):
+    # Git may check the generated HTML out as CRLF. Signed attachments are checked byte-for-byte elsewhere.
+    return path.exists() and path.read_bytes().replace(b"\r\n", b"\n") == rendered.replace(b"\r\n", b"\n")
+
+
 def sync(check=False):
     with task_lock(shared=check):
         model=load()
         validate(model)
         html=render(model).encode()
         if check:
-            expect(BOOK.exists() and BOOK.read_bytes()==html,"人读页需要从当前 model.json 重新生成。")
+            expect(matches_page(BOOK, html),"人读页需要从当前 model.json 重新生成。")
         else:
             atomic(BOOK,html)
         return model

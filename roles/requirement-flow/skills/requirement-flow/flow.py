@@ -247,6 +247,8 @@ def serve_catalog(store, args, *, root_task=None):
 
 
 def create(store, args):
+    from install_project import ATTRIBUTES, EVIDENCE_ATTRIBUTES, append_git_rules
+
     if not args.request.strip():
         raise ValueError("请提供需求原话")
     local_directory(store, create=True)
@@ -255,6 +257,10 @@ def create(store, args):
         if any(path.exists() and not legacy_lock_only(path) for path in (active, archive)):
             raise ValueError(f"需求 ID 已使用：{args.id}")
         remove_legacy_lock_directory(active)
+        # Direct CLI use is supported before project installation.
+        attributes = append_git_rules(store.parent, ATTRIBUTES, EVIDENCE_ATTRIBUTES)
+        if attributes is not None:
+            engine.atomic(store.parent / ATTRIBUTES, attributes)
         local_directory(active.parent, create=True)
         engine.initialize_task(active, args.request, key=args.id, title=args.title, outcome=args.outcome)
         emit(summary(active, include_lessons=True))
@@ -293,7 +299,7 @@ def upgrade(project, migrate=False):
             for path, model in tasks:
                 book = path / "handbook.html"
                 rendered = engine.render(model, workspace=path).encode()
-                if not book.exists() or book.read_bytes() != rendered:
+                if not engine.matches_page(book, rendered):
                     yield book.relative_to(project), rendered
                     refreshed.append(path.name)
         result = install_locked(project, migrate, after_apply=render_pages)
