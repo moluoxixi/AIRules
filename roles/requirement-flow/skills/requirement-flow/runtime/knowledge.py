@@ -9,11 +9,13 @@ import unicodedata
 
 if __package__:
     from . import basic_memory
+    from .task_locations import legacy_lock_only
     from .evidence import linked
     from .source_paths import SourcePaths
     from .lesson_retirement import read_retirement
 else:
     import basic_memory
+    from task_locations import legacy_lock_only
     from evidence import linked
     from source_paths import SourcePaths
     from lesson_retirement import read_retirement
@@ -393,7 +395,7 @@ def load_tasks(store, workspace, current_work, engine):
         if linked(base) or not base.is_dir():
             continue
         for folder in sorted(base.iterdir()):
-            if not linked(folder) and folder.is_dir():
+            if not linked(folder) and folder.is_dir() and not legacy_lock_only(folder):
                 folders.setdefault(unicodedata.normalize("NFC", folder.name), []).append(folder)
     for task, locations in folders.items():
         if len(locations) != 1:

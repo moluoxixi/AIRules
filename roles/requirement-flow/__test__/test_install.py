@@ -4,6 +4,7 @@ import hashlib
 import json
 from pathlib import Path
 import shutil
+import subprocess
 import sys
 import tempfile
 import unittest
@@ -176,6 +177,43 @@ class InstallProjectTest(unittest.TestCase):
         with self.assertRaises(ValueError):
             installer.install(self.project)
         self.assertEqual(snapshot(self.project), original)
+
+    def test_clean_git_crlf_checkout_upgrades_without_confusing_line_endings_with_edits(self):
+        from test_worktree_evidence import git
+
+        git(self.project, "init", "-q")
+        git(self.project, "config", "core.autocrlf", "false")
+        write(self.project, "AGENTS.md", "# Team rules\n")
+        installer.install(self.project)
+        git(self.project, "add", "-A")
+        git(self.project, "commit", "-qm", "install role on LF checkout")
+        clone = self.root / "crlf"
+        git(self.root, "clone", "-q", "-c", "core.autocrlf=true", str(self.project), str(clone))
+        paths = [clone / ".agents/skills/flow-review/SKILL.md", clone / "AGENTS.md",
+                 clone / installer.MANIFEST]
+        originals = [path.read_bytes() for path in paths]
+        self.assertTrue(all(b"\r\n" in data for data in originals))
+        command = [sys.executable, "-B", str(SKILL_SOURCE / "flow.py"), "--project", str(clone), "init"]
+        result = subprocess.run(command, capture_output=True, check=True)
+        self.assertFalse(json.loads(result.stdout)["changed"])
+        self.assertEqual([p.read_bytes() for p in paths], originals)
+        self.assertEqual(git(clone, "status", "--porcelain"), b"")
+        for path, data in zip(paths[:2], originals):
+            with self.subTest(path=path.name):
+                path.write_bytes(data.replace(b"\r\n", b" changed\r\n", 1) if path == paths[0] else
+                                 data.replace(b"<!-- REQUIREMENT-FLOW:START -->", b"<!-- REQUIREMENT-FLOW:START -->changed"))
+                self.assertNotEqual(subprocess.run(command, capture_output=True).returncode, 0)
+                path.write_bytes(data)
+
+        # A pre-normalization Windows installation stored the raw CRLF digest. An LF checkout
+        # must recognize it as well, then record canonical hashes for the next upgrade.
+        manifest = json.loads(originals[2])
+        manifest["files"]["flow-review/SKILL.md"] = hashlib.sha256(originals[0]).hexdigest()
+        old_block = installer.marked(originals[1].decode(), installer.MARK)
+        manifest["agents_block"] = hashlib.sha256(old_block.encode()).hexdigest()
+        write(self.project, installer.MANIFEST, json.dumps(manifest))
+        self.assertTrue(installer.install(self.project)["changed"])
+        self.assertFalse(installer.install(self.project)["changed"])
 
     def test_install_adds_local_evidence_ignores_and_keeps_project_patterns(self):
         path = write(self.project, ".requirements/.gitignore", b"team-local/\r\n.workflow.lock")

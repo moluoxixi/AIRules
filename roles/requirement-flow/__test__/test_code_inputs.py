@@ -70,10 +70,10 @@ class CodeInputsTest(unittest.TestCase):
         self.write("plan", patch, "--why", "明确保存验收")
         self.write("finish", "A-intake", "--output", "明确保存场景", "--evidence", "用户原话")
 
-    def collect(self, project=None, argv=None, ok=True):
+    def collect(self, project=None, argv=None, ok=True, share_output=False):
         return self.cli("task", "save", "verify-run", "A-check", "--scenario", "AC-save",
                         "--actor", "tester", "--environment", "真实本机代码", "--rev", self.queue(project)["revision"],
-                        "--", *(argv or [sys.executable, "-B", "check.py"]), project=project, ok=ok)
+                        *(["--share-output"] if share_output else []), "--", *(argv or [sys.executable, "-B", "check.py"]), project=project, ok=ok)
 
     def complete(self):
         self.collect()
@@ -228,7 +228,7 @@ class CodeInputsTest(unittest.TestCase):
     def test_code_change_during_successful_command_is_preserved_as_failed_receipt(self):
         self.prepare(["business.py", "check.py"])
         argv = [sys.executable, "-B", "-c", "from pathlib import Path; Path('business.py').write_text(\"def value(): return 'BROKEN'\\n\"); print('assertion output')"]
-        result = json.loads(self.collect(argv=argv, ok=False).stdout)
+        result = json.loads(self.collect(argv=argv, ok=False, share_output=True).stdout)
         self.assertFalse(result["passed"])
         work = self.project / ".requirements/active/save"
         event = next(e for e in reversed(json.loads((work / "model.json").read_bytes())["work"]["events"])
@@ -327,14 +327,27 @@ class CodeInputsTest(unittest.TestCase):
             page = sync.render(model, workspace=work)
             return json.loads(re.search(r'<script type="application/json" id="data">(.+?)</script>', page).group(1))
 
-        with patch.object(code_inputs, "snapshot", wraps=code_inputs.snapshot) as snapshots:
+        receipt, = [event["receipt"] for event in model["work"]["events"] if event["kind"] == "evidence"]
+        artifact = work / receipt["artifact"]["path"]
+        business = self.project / "business.py"
+        original_code = business.read_bytes()
+        with patch.object(code_inputs, "snapshot", wraps=code_inputs.snapshot) as snapshots, \
+                patch.object(evidence, "hash_file", wraps=evidence.hash_file) as reads:
             current = draw()
             self.assertEqual(snapshots.call_count, 1)
+            reads.assert_called_once_with(artifact)
             self.assertEqual(current["queue"]["scenarios"][0]["status"], "passed")
-            (self.project / "business.py").write_text("def value(): return 'BROKEN'\n")
+            business.write_text("def value(): return 'BROKEN'\n")
             changed = draw()
             self.assertEqual(snapshots.call_count, 2)
+            self.assertEqual(reads.call_count, 2)
             self.assertEqual(changed["queue"]["scenarios"][0]["status"], "stale")
+            business.write_bytes(original_code)
+            artifact.write_bytes(b"changed after the previous render")
+            reads.reset_mock()
+            tampered = draw()
+            reads.assert_called_once_with(artifact)
+            self.assertEqual(tampered["queue"]["scenarios"][0]["status"], "stale")
 
     def test_legacy_signed_artifact_remains_readable_but_cannot_prove_current_code(self):
         self.prepare()

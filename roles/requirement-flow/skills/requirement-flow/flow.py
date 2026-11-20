@@ -3,20 +3,19 @@
 import argparse
 from contextlib import contextmanager, ExitStack
 from datetime import datetime, timezone
-import hashlib
 from html.parser import HTMLParser
 import json
 import os
 from pathlib import Path
 import re
 import sys
-import tempfile
 import unicodedata
 
 sys.dont_write_bytecode = True
 sys.path.insert(0, str(Path(__file__).resolve().parent / "runtime"))
 import sync as engine
 from lesson_retirement import decision_file, read_retirement
+from task_locations import legacy_lock_only, lock_path, remove_legacy_lock_directory
 
 
 def identifier(value):
@@ -54,20 +53,6 @@ def local_directory(path, *, create=False):
     return path
 
 
-def lock_path(store, key=None):
-    uid = str(os.getuid()) if hasattr(os, "getuid") else "user"
-    directory = Path(tempfile.gettempdir()) / f"requirement-flow-locks-{uid}"
-    if directory.is_symlink():
-        raise ValueError(f"锁目录不能使用符号链接：{directory}")
-    directory.mkdir(mode=0o700, exist_ok=True)
-    # A lock stays at the same path before and after archiving the task.
-    resource = str(store.resolve()) + "\0" + (key or "")
-    if sys.platform in ("darwin", "win32"):
-        resource = resource.casefold()
-    name = hashlib.sha256(resource.encode("utf-8")).hexdigest()
-    return directory / (name + ".lock")
-
-
 @contextmanager
 def windows_lock(stream, exclusive, nonblocking):
     import ctypes
@@ -103,8 +88,6 @@ def windows_lock(stream, exclusive, nonblocking):
 @contextmanager
 def project_lock(store, key=None, *, exclusive=False, nonblocking=False):
     path = lock_path(store, key)
-    if path.is_symlink():
-        raise ValueError(f"锁文件不能使用符号链接：{path}")
     with path.open("a+b") as stream:
         if os.name == "nt":
             with windows_lock(stream, exclusive, nonblocking):
@@ -124,7 +107,7 @@ def locations(store, key):
 
 
 def existing(paths, key):
-    found = [path for path in paths if path.is_dir()]
+    found = [path for path in paths if path.is_dir() and not legacy_lock_only(path)]
     if not found:
         raise ValueError(f"需求不存在：{key}")
     if len(found) != 1:
@@ -228,6 +211,8 @@ def inventory(store, reader):
                     if path.name.startswith(".") or not (path.is_dir() or path.is_symlink()):
                         continue
                     try:
+                        if legacy_lock_only(path):
+                            continue
                         entries.append(reader(existing(locations(store, identifier(path.name)), path.name)))
                     except (ValueError, OSError, KeyError, TypeError, AttributeError, IndexError, RecursionError, argparse.ArgumentTypeError) as error:
                         entries.append({"id":path.name, "error":str(error)})
@@ -267,8 +252,9 @@ def create(store, args):
     local_directory(store, create=True)
     with project_lock(store, exclusive=True):
         active, archive = locations(store, args.id)
-        if active.exists() or archive.exists():
+        if any(path.exists() and not legacy_lock_only(path) for path in (active, archive)):
             raise ValueError(f"需求 ID 已使用：{args.id}")
+        remove_legacy_lock_directory(active)
         local_directory(active.parent, create=True)
         engine.initialize_task(active, args.request, key=args.id, title=args.title, outcome=args.outcome)
         emit(summary(active, include_lessons=True))
@@ -286,6 +272,8 @@ def upgrade(project, migrate=False):
         active = local_directory(store / "active")
         for folder in sorted(active.iterdir()) if active.exists() else ():
             if folder.name.startswith(".") or not (folder.is_dir() or engine.evidence.linked(folder)):
+                continue
+            if legacy_lock_only(folder):
                 continue
             key = identifier(folder.name)
             path = existing(locations(store, key), key)
@@ -392,6 +380,7 @@ def archive(store, args):
                                  + "。请先完成审查；如需按当前状态保存草稿，使用 --allow-incomplete。")
             check_snapshot(source, refresh_scenarios=True)
             local_directory(target.parent, create=True)
+            remove_legacy_lock_directory(target)
             source.rename(target)
             if own_cards:
                 refresh_notes(store)

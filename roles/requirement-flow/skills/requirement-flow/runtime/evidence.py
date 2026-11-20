@@ -16,9 +16,10 @@ import tempfile
 import unicodedata
 
 try:
-    from . import code_inputs
+    from . import code_inputs, run_result
 except ImportError:
     import code_inputs
+    import run_result
 
 
 def require(value, message):
@@ -176,18 +177,24 @@ def publish(root, staged, receipt, filename):
     return receipt
 
 
-def log_excerpt(path):
+def stream_excerpt(stream):
+    stream.seek(0)
     decoder = codecs.getincrementaldecoder("utf-8")(errors="replace")
+    for chunk in iter(lambda: stream.read(8192), b""):
+        text = decoder.decode(chunk).strip()
+        if text:
+            return text[:1536]
+    return decoder.decode(b"", final=True).strip()
+
+
+def log_excerpt(path):
     with regular(path).open("rb") as stream:
-        for chunk in iter(lambda: stream.read(8192), b""):
-            text = decoder.decode(chunk).strip()
-            if text:
-                return text[:1536]
-        return decoder.decode(b"", final=True).strip()
+        return stream_excerpt(stream)
 
 
-def run(workspace, project_root, argv, *, action, scenario, stamp, actor, environment, code_paths=None):
-    """Run the explicit argv from the project, preserving merged stdout/stderr and exit status."""
+def run(workspace, project_root, argv, *, action, scenario, stamp, actor, environment, code_paths=None,
+        share_output=False):
+    """Execute the user's argv unchanged and publish only the selected evidence audience."""
     project = directory(project_root)
     require(isinstance(argv, (list,tuple)) and argv and isinstance(argv[0],str) and argv[0].strip()
             and all(isinstance(arg,str) and "\0" not in arg for arg in argv), "命令必须是完整的 argv 数组")
@@ -197,25 +204,38 @@ def run(workspace, project_root, argv, *, action, scenario, stamp, actor, enviro
     receipt = binding(workspace, action, scenario, stamp, actor, environment)
     receipt["code_inputs"] = code_inputs.snapshot(project, code_paths)
     root = storage(workspace, create=True)
+    # One-way, task-keyed identity allows failure grouping without storing private arguments.
+    receipt["command_id"] = hmac.new(local_key(root, create=True), b"argv\0" + canonical(argv), hashlib.sha256).hexdigest()
     with tempfile.TemporaryDirectory(prefix=".capture-", dir=root) as temp:
         staged = Path(temp) / "record"
         staged.mkdir()
         log = staged / "output.log"
-        with log.open("wb") as stream:
+        # Raw output never touches the evidence directory until explicitly approved for sharing.
+        with tempfile.TemporaryFile() as raw:
             result = subprocess.run(list(argv), cwd=project, shell=False, stdin=subprocess.DEVNULL,
-                                    stdout=stream, stderr=subprocess.STDOUT, check=False)
-        preview = log_excerpt(log)
-        actual = f"命令退出码 {result.returncode}"
-        if preview:
-            actual += "\n" + preview
-        elif result.returncode == 0:
-            actual += "，日志为空或仅含空白。请运行会输出断言结果的验证命令。"
+                                    stdout=raw, stderr=subprocess.STDOUT, check=False)
+            preview = stream_excerpt(raw)
+            tests = run_result.test_summary(raw)
+            shared = share_output and run_result.can_share(argv, raw)
+            actual = run_result.summary_text(result.returncode, bool(preview), tests)
+            if shared:
+                raw.seek(0)
+                with log.open("wb") as target:
+                    shutil.copyfileobj(raw, target)
+                if preview:
+                    actual += "\n" + preview
+            else:
+                if share_output:
+                    actual += "\n检测到敏感参数或输出，仅保留运行摘要。"
+                log.write_text(actual + "\n", encoding="utf-8")
+            receipt.update(argv=list(argv) if shared else None, cwd=".", output_shared=shared,
+                           has_output=bool(preview), tests=tests)
         unchanged, change_reason = check_after_capture(project, receipt["code_inputs"], code_paths)
         if not unchanged:
             actual += "\n" + change_reason
-        receipt.update(kind="run", level="自动化", passed=result.returncode == 0 and bool(preview) and unchanged, actual=actual,
-                       code_inputs_unchanged=unchanged, code_inputs_error=change_reason,
-                       exit_code=result.returncode, argv=list(argv), cwd=str(project))
+        passed = result.returncode == 0 and bool(preview) and not run_result.insufficient_tests(tests) and unchanged
+        receipt.update(kind="run", level="自动化", passed=passed, actual=actual,
+                       code_inputs_unchanged=unchanged, code_inputs_error=change_reason, exit_code=result.returncode)
         return publish(root, staged, receipt, "output.log")
 
 
@@ -227,8 +247,18 @@ def check_after_capture(project_root, inputs, code_paths):
     return True, ""
 
 
-def validate_current_inputs(receipt, project_root, code_paths=None, *, cache=None):
+def validate_current_inputs(receipt, project_root, code_paths=None, *, cache=None, workspace=None):
     """Check freshness separately, so historical signed attachments remain readable."""
+    if workspace is not None and receipt["kind"] == "run" and receipt["passed"] and "has_output" not in receipt:
+        key = ("legacy-test-summary", Path(workspace), receipt["id"], receipt["artifact"]["sha256"])
+        if cache is None or key not in cache:
+            with artifact_path(workspace, receipt).open("rb") as log:
+                issue = run_result.insufficient_tests(run_result.test_summary(log))
+            if cache is not None:
+                cache[key] = issue
+        else:
+            issue = cache[key]
+        require(not issue, "旧回执需要重新验收：" + issue)
     code_inputs.verify_current(project_root, receipt.get("code_inputs"), code_paths, cache=cache)
     require(receipt.get("code_inputs_unchanged") is True,
             receipt.get("code_inputs_error") or "采集期间代码输入未保持一致，请重新验收")
@@ -332,7 +362,19 @@ def validate(workspace, receipt, *, action, scenario, stamp):
         require(receipt["kind"] in ("run","observe") and type(receipt["passed"]) is bool, "证据结果无效")
         if receipt["kind"] == "run":
             require(type(receipt["exit_code"]) is int, "命令退出码无效")
-            effective = receipt["exit_code"] == 0 and bool(log_excerpt(file))
+            if "has_output" in receipt:
+                require(type(receipt["has_output"]) is bool and type(receipt.get("output_shared")) is bool,
+                        "缺少命令输出采集结果")
+                if receipt["output_shared"]:
+                    with file.open("rb") as stream:
+                        require(receipt.get("tests") == run_result.test_summary(stream)
+                                and receipt["has_output"] == bool(stream_excerpt(stream)), "测试摘要与日志不符")
+                effective = (receipt["exit_code"] == 0 and receipt["has_output"]
+                             and not run_result.insufficient_tests(receipt["tests"]))
+            else:
+                # Historical signatures were issued under the earlier policy. Keep them readable;
+                # current acceptance additionally checks whether any tests actually ran.
+                effective = receipt["exit_code"] == 0 and bool(log_excerpt(file))
             if "code_inputs" in receipt:
                 require(type(receipt.get("code_inputs_unchanged")) is bool, "缺少代码输入采集结果")
                 effective = effective and receipt["code_inputs_unchanged"]
@@ -342,6 +384,22 @@ def validate(workspace, receipt, *, action, scenario, stamp):
         return receipt
     except (OSError, KeyError, TypeError, UnicodeError) as exc:
         raise ValueError("证据回执或附件无法核验：" + str(exc)) from exc
+
+
+def bind_collected_event(workspace, receipt, stamp):
+    """Bind this freshly authenticated, unpublished event to its final ledger position under the task lock."""
+    root = storage(workspace)
+    location = receipt_location(root, receipt)
+    bound = dict(receipt, stamp=stamp)
+    signature = hmac.new(local_key(root), canonical(bound), hashlib.sha256).hexdigest()
+    fd, temporary = tempfile.mkstemp(dir=location)
+    try:
+        with os.fdopen(fd, "wb") as staged:
+            staged.write(canonical({"receipt": bound, "signature": signature}) + b"\n")
+        os.replace(temporary, location / "receipt.json")
+    finally:
+        Path(temporary).unlink(missing_ok=True)
+    receipt.update(stamp=stamp)
 
 
 def discard(workspace, receipt):

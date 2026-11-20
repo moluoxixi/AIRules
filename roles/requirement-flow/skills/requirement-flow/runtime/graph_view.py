@@ -88,18 +88,29 @@ def make_graph(work, states, scenarios):
     for key, story in stories.items():
         cases = [case for case in scenarios if case["story"] == key]
         badge = "本期已撤出" if key in withdrawn else ""
+        progress = None
         if cases:
             passed = sum(case["status"] == "passed" for case in cases)
-            badge = f"{passed}/{len(cases)} 已验"
+            failed = sum(case["status"] == "failed" for case in cases)
+            stale = sum(case["status"] == "stale" for case in cases)
+            progress = dict(passed=passed, total=len(cases), failed=failed, stale=stale)
+            parts = [f"{passed}/{len(cases)} 通过"]
+            if failed:
+                parts.append(f"{failed} 失败")
+            if stale:
+                parts.append(f"{stale} 需补验")
+            badge = " · ".join(parts)
         node(key, "story", story["title"], story["flow"][0] if story.get("flow") else story["actor"],
-             label="用户故事", state=badge)
+             label="用户故事", state=badge, progress=progress)
         connect(ROOT_ID, key)
 
+    skipped_decisions = story_scope.skipped_decisions(work, states)
     for key, decision in decisions.items():
         answer = work["answers"].get(key)
         summary = decision["options"][answer["choice"]]["label"] if answer else ""
+        status = "当前分支不涉及" if key in skipped_decisions else "待你决定"
         node(key, "decision", decision["title"], summary, "业务决定",
-             "已决定" if answer else "待你决定")
+             "已决定" if answer else status)
         for story in decision["stories"] or [ROOT_ID]:
             connect(story, key)
 
@@ -129,14 +140,14 @@ def make_graph(work, states, scenarios):
         state = "待核对" if contract["state"] == "open" else contract["status"]
         if researchers[key]:
             research_state = states[researchers[key][0]]["state"]
-            state = {"active":"AI 调研中", "ready":"可调研", "blocked":"等待前置", "dormant":"按条件启用",
+            state = {"active":"调研中", "ready":"可调研", "blocked":"等待前置", "dormant":"按条件启用",
                      "skipped":"本次跳过", "done":"已梳理", "stale":"需复核"}[research_state]
         node(key, "contract", contract["operation"] if has_endpoint else contract["title"],
              caption, label, state, mono=bool(has_endpoint),
              research=researchers[key])
 
     kind_of = {"开发":"develop", "验证":"verify", "调研":"research"}
-    state_names = {"ready":"可推进","active":"AI 进行中","blocked":"等待前置","dormant":"按条件启用",
+    state_names = {"ready":"可推进","active":"进行中","blocked":"等待前置","dormant":"按条件启用",
                    "skipped":"本次跳过","done":"已完成","stale":"需复核"}
     for key, action in actions.items():
         if key in aliases:
@@ -300,7 +311,7 @@ nav{{display:flex;gap:16px;align-items:center}}.download{{display:inline-block;m
 <header><nav>{home_link}<a id="return-map" href="./">← 返回需求详情</a></nav></header><h1>{escape(card["observation"])}</h1>
 {historical}<section><h2>来源场景</h2><dl>{context}</dl></section>
 <section><h2>实际证据</h2><dl>{receipt}</dl><pre>{escape(proof["actual"])}</pre>
-<a class="download" href="{escape(download_url, quote=True)}" download>下载原始证据</a></section>
+<a class="download" href="{escape(download_url, quote=True)}" download>下载验收附件</a></section>
 <section><h2>经验与审查</h2><dl>{review_info}</dl></section></main>{return_script}</html>"""
 
 

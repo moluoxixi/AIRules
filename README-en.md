@@ -27,7 +27,7 @@ python3 ~/.agents/skills/requirement-flow/flow.py --project /path/to/project ini
 
 ### Features
 
-One entry point selects among five specialist skills for requirements, API contracts, implementation, verification, and review. Teams can skip work already covered and advance independent stories in parallel. Each requirement has its own graph. Delivery is checked against named scenarios with test output or observed results and attachments, all archived with the requirement.
+One entry point selects among five specialist skills for requirements, API contracts, implementation, verification, and review. Teams can skip work already covered and advance independent stories in parallel. Each requirement has its own graph. Delivery is checked against named scenarios with test output or observed results and attachments, all archived with the requirement. After changing the requirement's overall goal or scope, revisit research conclusions and verify the scenarios that remain in scope.
 
 Independently reviewed lessons surface in related work within the same project. The graph explains each match and links to the original requirement, scenario, and evidence.
 

@@ -97,7 +97,9 @@
   }
   const statusColors = {
     passed: { fill: '#294337', ink: '#a1e7bd' },
-    pending: { fill: '#4a3826', ink: '#ffd29f' },
+    pending: { fill: '#303643', ink: '#d1dae6' },
+    stale: { fill: '#4a3826', ink: '#ffd29f' },
+    failed: { fill: '#502e36', ink: '#ffc2cc' },
   }
   const glyph = {
     request: 'M2 8h5m0 0c3 0 1-5 5-5h2M7 8c3 0 1 5 5 5h2',
@@ -120,7 +122,7 @@
   }
   const activeName = {
     ready: '可推进',
-    active: 'AI 进行中',
+    active: '进行中',
     blocked: '等待前置',
     dormant: '按条件启用',
     skipped: '本次跳过',
@@ -187,7 +189,9 @@
       const size = n.kind === 'request' ? 17 : n.mono ? 14 : 15.5
       const inset = n.kind === 'decision' ? 22 : 12
       // Cards keep a consistent reading width at each zoom.
-      const width = n.kind === 'request' ? 216 : isOverview() ? 168 : n.kind === 'decision' ? 224 : 194
+      const standardWidth = n.kind === 'request' ? 216 : isOverview() ? 168 : n.kind === 'decision' ? 224 : 194
+      const statusWidth = n.progress ? widthOf(n.label + n.state, 11, 600) + 2 * inset + 36 : 0
+      const width = Math.max(standardWidth, statusWidth)
       const labels = linesOf(n.title, width - 2 * inset, 2, size, 680, n.mono)
       const height = Math.max(48, 28 + 18 * labels.length + (n.kind === 'story' ? 4 : 0))
       boxes.set(n.id, { width, height, size, inset, labels })
@@ -523,6 +527,10 @@
     }
   }
 
+  function storySummary(n) {
+    const goal = work.stories[n.id]?.goal?.trim()
+    return goal && goal !== n.title.trim() ? goal : ''
+  }
   function drawNode(n) {
     const p = layout.positions.get(n.id)
     const b = boxes.get(n.id)
@@ -544,7 +552,7 @@
     )
     window.FlowTooltip.bind(g, () => ({
       title: n.title,
-      summary: n.kind === 'story' ? work.stories[n.id]?.goal || n.caption : n.caption,
+      summary: n.kind === 'story' ? storySummary(n) : n.caption,
       rows: [[n.label, n.state], ['关联', n.sharedNote]],
     }))
     const x = -b.width / 2
@@ -662,12 +670,15 @@
     svg('text', { 'x': left + 17, 'y': y + 18.4, 'class': 'n-label', 'font-size': 10.8, 'fill': c.text }, g, n.label)
     if (n.state) {
       const right = -x - b.inset
-      const progress = n.kind === 'story' && n.state.match(/^(\d+)\/(\d+) 已验$/)
+      const progress = n.progress
       let badge
-      if (progress)
-        badge = progress[1] === progress[2] ? statusColors.passed : statusColors.pending
-      else if (['待你决定', '待核对', '需复核', '待验'].includes(n.state) || (n.kind === 'verify' && n.activity === 'ready'))
-        badge = statusColors.pending
+      if (progress) {
+        const state = progress.failed ? 'failed' : progress.stale ? 'stale' : progress.passed === progress.total ? 'passed' : 'pending'
+        badge = statusColors[state]
+      }
+      else if (['待你决定', '待核对', '需复核', '待验'].includes(n.state) || (n.kind === 'verify' && n.activity === 'ready')) {
+        badge = statusColors.stale
+      }
       if (badge) {
         const width = widthOf(n.state, 10.5, 600) + 10
         svg('rect', { x: right - width + 4, y: y + 5, width, height: 18, rx: 5, fill: badge.fill }, g)
@@ -699,12 +710,12 @@
         label,
       ),
     )
-    const progress = n.kind === 'story' && /^(\d+)\/(\d+) 已验$/u.exec(n.state)
-    if (progress && Number(progress[2]) > 0) {
+    const progress = n.progress
+    if (progress?.total) {
       const w = b.width - 2 * b.inset
       const yBar = -y - 5
       svg('rect', { x: left, y: yBar, width: w, height: 2, rx: 1, fill: c.stroke }, g)
-      const filled = w * Number(progress[1]) / Number(progress[2])
+      const filled = w * progress.passed / progress.total
       if (filled)
         svg('rect', { x: left, y: yBar, width: filled, height: 2, rx: 1, fill: statusColors.passed.ink }, g)
     }
@@ -1657,12 +1668,14 @@
     if (!history.length)
       return
     const group = disclosure(parent, `查看工作记录（${history.length}）`)
-    const names = { plan: '调整计划', start: '开始', finish: '完成', fail: '验证失败', decision: '业务决定', evidence: '采集场景证据' }
+    const names = { plan: '调整计划', start: '开始', finish: '完成', fail: '验证失败', decision: '业务决定', decision_reason: '订正决定理由', handoff: '动作交接', evidence: '采集场景证据' }
     for (const e of [...history].reverse()) {
       const item = html('div', group, null, 'record')
       html('strong', item, `${names[e.kind] || e.kind} · v${e.revision}`)
       pairs(item, [
-        ['记录人', e.actor],
+        [e.kind === 'handoff' ? '接手人' : '记录人', e.actor],
+        ['原执行人', e.previous_actor],
+        ['原理由', e.previous_reason],
         ['结果', e.output],
         ['预期', e.expected],
         ['环境', e.environment],
@@ -1719,7 +1732,7 @@
       sourceLink(row, `${label} · 来源功能图`, `${base}/handbook.html#node=${encodeURIComponent(source.story)}`)
       const path = proof?.artifact?.path
       if (typeof path === 'string' && /^evidence\/[\da-f]{32}\/(?:output\.log|artifact\.[a-z0-9]{1,12})$/u.test(path))
-        sourceLink(row, `${label} · 原始证据`, `${base}/${path}`).download = path.split('/').pop()
+        sourceLink(row, `${label} · 验收附件`, `${base}/${path}`).download = path.split('/').pop()
     }
   }
   function showLessons(parent, storyIds, { all = false } = {}) {
@@ -1994,10 +2007,37 @@
       form.action = `./decision${filterQuery()}`
       if (resume?.confirmDecision === key)
         html('p', form, '已读取最新版，请核对选项后再次确认决定。', 'dim').setAttribute('role', 'status')
-      form.addEventListener('submit', (event) => {
+      let saving = false
+      form.addEventListener('submit', async (event) => {
+        event.preventDefault()
+        if (saving)
+          return
         if (updatePending) {
-          event.preventDefault()
           reloadPage(key)
+          return
+        }
+        if (!event.submitter?.value)
+          return
+        const fields = new URLSearchParams(new FormData(form))
+        fields.set('choice', event.submitter.value)
+        saving = true
+        try {
+          const result = await fetch(form.action, { method: 'POST', headers: { Accept: 'application/json' }, body: fields })
+          if (result.status === 409 || result.status === 403) {
+            reloadPage(key)
+            return
+          }
+          if (!result.ok)
+            throw new Error(`Decision request failed (HTTP ${result.status})`)
+          const saved = await result.json()
+          location.assign(saved.location)
+        }
+        catch {
+          showUpdateNotice('决定提交结果未确认。请读取最新版核对，已填理由会保留。')
+          updatePending = true
+        }
+        finally {
+          saving = false
         }
       })
       for (const [name, value] of Object.entries({ csrf, revision: work.revision, decision: key })) {
@@ -2011,15 +2051,13 @@
       input.name = 'reason'
       input.maxLength = 500
       input.autocomplete = 'off'
-      input.value = decisionNotes.get(key) || ''
+      input.value = decisionNotes.get(key) ?? answer?.reason ?? ''
       input.addEventListener('input', () => decisionNotes.set(key, input.value))
       for (const [code, option] of Object.entries(d.options)) {
-        if (answer?.choice !== code) {
-          const btn = html('button', form, `采用「${option.label}」`, 'choose')
-          btn.type = 'submit'
-          btn.name = 'choice'
-          btn.value = code
-        }
+        const btn = html('button', form, answer?.choice === code ? '订正当前理由' : `采用「${option.label}」`, 'choose')
+        btn.type = 'submit'
+        btn.name = 'choice'
+        btn.value = code
       }
     }
     else {
@@ -2056,7 +2094,7 @@
     }
     else if (n.kind === 'story') {
       const story = work.stories[key]
-      if (story.goal)
+      if (story.goal && story.goal.trim() !== story.title.trim())
         html('p', detail, story.goal, 'story-goal')
       const cases = queue.scenarios.filter(ex => ex.story === key)
       if (cases.length)
@@ -2497,7 +2535,7 @@
     const bg = svg('rect', { x: rect[0], y: rect[1], width: rect[2], height: rect[3], fill: canvasPaper })
     copy.insertBefore(bg, copy.firstChild)
     const subject = scoped ? visibleStories.map(id => work.stories[id].title).join('、') : work.title
-    const title = svg('title', {}, null, `${subject} · ${work.kind} · v${work.revision}`)
+    const title = svg('title', {}, null, `${subject} · v${work.revision}`)
     copy.insertBefore(title, copy.firstChild)
     const blob = new Blob([new XMLSerializer().serializeToString(copy)], { type: 'image/svg+xml;charset=utf-8' })
     const url = URL.createObjectURL(blob)
@@ -2728,12 +2766,12 @@
     if (isOverview()) {
       const shown = viewNodes.filter(n => n.kind === 'request' || n.kind === 'story').map((n) => {
         if (n.kind === 'story')
-          return { ...n, label: '功能', caption: work.stories[n.id].goal || n.caption }
+          return { ...n, label: '功能', caption: storySummary(n) }
         const cases = queue.scenarios.filter(ex => included.has(ex.story))
         const passed = cases.filter(ex => ex.status === 'passed').length
         const counts = [`${ids.length} 个功能`]
         if (cases.length)
-          counts.push(`${passed}/${cases.length} 个场景已验`)
+          counts.push(`${passed}/${cases.length} 个场景通过`)
         const withdrawn = ids.filter(id => (queue.progress.withdrawn_stories || []).includes(id)).length
         if (withdrawn)
           counts.push(`${withdrawn} 个本期已撤出`)

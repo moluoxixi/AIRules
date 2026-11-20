@@ -43,7 +43,7 @@ class FailureFollowupsTest(unittest.TestCase):
 
     def collect(self, environment='local', extra=()):
         result = sync.capture('verify-run', 'A-check', 'AC-save', self.work()['revision'],
-                              'qa', environment, argv=[sys.executable, '-B', 'check.py', *extra])
+                              'qa', environment, share_output=True, argv=[sys.executable, '-B', 'check.py', *extra])
         queue = sync.dispatch(self.work(), include_lessons=False)
         return result, queue['verification_followups']
 

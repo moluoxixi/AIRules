@@ -29,9 +29,9 @@ class EvidenceTest(unittest.TestCase):
         (workspace / "model.json").write_text(json.dumps({"work":{"id":name,"events":[]}}),encoding="utf-8")
         return workspace
 
-    def command(self, *argv, workspace=None, bind=None):
+    def command(self, *argv, workspace=None, bind=None, share=False):
         return evidence.run(workspace or self.workspace, self.project, list(argv),
-                            **(bind or self.bind), **self.who)
+                            **(bind or self.bind), **self.who, share_output=share)
 
     def check(self, receipt, workspace=None, bind=None):
         return evidence.validate(workspace or self.workspace, receipt, **(bind or self.bind))
@@ -43,7 +43,7 @@ class EvidenceTest(unittest.TestCase):
     def test_real_command_records_argv_cwd_output_and_exit_status(self):
         literal = 'one arg; echo SHOULD_NOT_EXECUTE'
         code = "import os,sys; print(os.path.basename(os.getcwd()),sys.argv[1],flush=True); print('checked',file=sys.stderr)"
-        result = self.command(sys.executable, "-c", code, literal)
+        result = self.command(sys.executable, "-c", code, literal, share=True)
         self.assertTrue(self.check(result)["passed"])
         self.assertEqual(result["argv"][-1], literal)
         self.assertEqual(result["exit_code"], 0)
@@ -51,7 +51,7 @@ class EvidenceTest(unittest.TestCase):
         self.assertIn(("真实项目 " + literal).encode(), captured)
         self.assertIn(b"checked", captured)
         self.assertEqual(result["artifact"]["sha256"],hashlib.sha256(captured).hexdigest())
-        failed = self.command(sys.executable, "-c", "import sys; print('three failed'); sys.exit(3)")
+        failed = self.command(sys.executable, "-c", "import sys; print('three failed'); sys.exit(3)", share=True)
         self.assertEqual(self.check(failed)["passed"], False)
         self.assertEqual(failed["exit_code"],3)
         self.assertIn("three failed",failed["actual"])
@@ -68,14 +68,14 @@ class EvidenceTest(unittest.TestCase):
         for output in ("", " \t\n\r", "\u3000" * 3000):
             with self.subTest(bytes=len(output.encode("utf-8"))):
                 sample.write_bytes(output.encode("utf-8"))
-                result = self.command(*argv)
+                result = self.command(*argv, share=True)
                 self.assertFalse(self.check(result)["passed"])
                 self.assertEqual(result["exit_code"],0)
                 self.assertEqual(result["argv"],argv)
                 self.assertEqual(evidence.artifact_path(self.workspace,result).read_bytes(),output.encode("utf-8"))
                 self.assertIn("断言",result["actual"])
         # Whitespace may occupy more than one preview block before the real result.
-        checked = self.command(sys.executable,"-c","assert 1 + 1 == 2; print(' ' * 9000 + '1 assertion passed')")
+        checked = self.command(sys.executable,"-c","assert 1 + 1 == 2; print(' ' * 9000 + '1 assertion passed')", share=True)
         self.assertTrue(self.check(checked)["passed"])
         self.assertIn("1 assertion passed",checked["actual"])
 

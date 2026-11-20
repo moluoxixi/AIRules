@@ -1,4 +1,4 @@
 interface:
   display_name: 需求编排
   short_description: 把需求、接口、实现和证据连成一张可筛选的图
-  default_prompt: 使用 $requirement-flow 建立或接手续做这个项目的需求，按功能检查契约与验收。
+  default_prompt: 使用 $requirement-flow 创建需求或继续已有需求，按功能检查契约与验收。

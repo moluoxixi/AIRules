@@ -223,7 +223,7 @@
         const passed = measured.reduce((sum, t) => sum + t.passed, 0)
         const count = el('span', 'overview-count')
         count.append(el('b', '', passed), ' / ' + total)
-        block.append(el('span', 'overview-label', '进行中 · 场景已验'), count, meter(passed, total, `进行中需求已验证 ${passed} / ${total} 个场景`))
+        block.append(el('span', 'overview-label', '进行中 · 场景通过'), count, meter(passed, total, `进行中需求已验证 ${passed} / ${total} 个场景`))
       }
     }
     function card(task, index) {

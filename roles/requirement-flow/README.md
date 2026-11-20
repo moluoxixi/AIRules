@@ -18,7 +18,9 @@ python3 roles/requirement-flow/skills/requirement-flow/flow.py --project /path/t
 
 现有 Moluoxixi 项目需显式加 `--migrate`，旧 Codex 入口备份在 `.requirements/migrations/moluoxixi/`，原任务、独立 skill、其他 hooks 和项目规则保留。
 
-使用本机 Git worktree 的项目可以在主工作区安装并提交，再按项目原有流程同步分支。需求的 `model.json`、`handbook.html` 和 `evidence/` 中的回执与附件一起保存。同一仓库的工作区通过 Git 公共目录里的本机密钥复核回执。备份仓库或迁移机器时应单独保管这些密钥，新克隆需要恢复密钥才能复核原始回执。
+使用本机 Git worktree 的项目可以在主工作区安装并提交，再按项目原有流程同步分支。需求的 `model.json`、`handbook.html` 和 `evidence/` 中的回执与附件一起保存。同一仓库的工作区共用本机签名密钥。迁移或克隆时，从可信备份恢复 Git 公共目录（`git rev-parse --git-common-dir`）下的 `airules-requirement-flow-keys/`；非 Git 项目恢复该需求 `evidence/.receipt-key`。已有回执的需求缺少原密钥时，旧回执无法复核，新采集也无法登记。若原密钥无法找回，保留历史需求，另建需求引用原 ID，并重新验收。密钥应与分发文件分开保管。
+
+自动化回执默认只分发运行摘要。需要随需求保存可公开的命令和原始日志时，在 `verify-run` 的 `--` 之前加 `--share-output`。人工附件按原文件保存，采集前检查其可分发范围。升级会保留历史回执和归档快照，已分发的旧日志须单独处理。
 
 ## 一个入口与五个专项
 
