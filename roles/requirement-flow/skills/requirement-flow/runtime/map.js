@@ -84,22 +84,22 @@
   let visibleStories = []
   let scoped = false
   // Keep explicit SVG paints so an exported diagram renders identically outside this page.
-  const canvasPaper = '#100e1c'
+  const canvasPaper = '#152238'
   const styles = {
-    request: { fill: '#392345', stroke: '#bf8ac5', title: '#fff1fa', text: '#ecc1df', icon: '#f0acd3' },
-    story: { fill: '#241a35', stroke: '#766095', title: '#f5edff', text: '#d1c0e7', icon: '#d5bdff' },
-    decision: { fill: '#342531', stroke: '#a77862', title: '#fff0dc', text: '#e4c4ab', icon: '#ffd09b' },
-    contract: { fill: '#1a2a32', stroke: '#547d85', title: '#eaf8fa', text: '#b5d8d9', icon: '#9edce0' },
-    research: { fill: '#21263b', stroke: '#6676a0', title: '#edf1ff', text: '#c6cfea', icon: '#adcaff' },
-    develop: { fill: '#232235', stroke: '#696483', title: '#f3f0fe', text: '#cbc8e1', icon: '#c3b9ef' },
-    verify: { fill: '#2c213a', stroke: '#855f98', title: '#faf0ff', text: '#dcc5ed', icon: '#e1b7f5' },
-    delivery: { fill: '#1a2c2d', stroke: '#587e75', title: '#ecfaf6', text: '#bbdcd2', icon: '#92e4cd' },
+    request: { fill: '#284274', stroke: '#8ca8e9', title: '#f5f8ff', text: '#d2dffd', icon: '#bfd0ff' },
+    story: { fill: '#223652', stroke: '#6d8bbd', title: '#f1f6ff', text: '#c1d0e8', icon: '#b4cbfb' },
+    decision: { fill: '#3a3238', stroke: '#ae896b', title: '#fff6e8', text: '#e6cdb6', icon: '#f4c998' },
+    contract: { fill: '#203843', stroke: '#658d99', title: '#eefaff', text: '#c7dce3', icon: '#a9dfe5' },
+    research: { fill: '#25384c', stroke: '#6d89a6', title: '#f1f7ff', text: '#cbd8e8', icon: '#b9d2ea' },
+    develop: { fill: '#28354a', stroke: '#72839f', title: '#f2f5fc', text: '#c8d4e4', icon: '#becfec' },
+    verify: { fill: '#2d3955', stroke: '#7e90b5', title: '#f3f5ff', text: '#ccd9ee', icon: '#c8d3f4' },
+    delivery: { fill: '#22403f', stroke: '#6da697', title: '#effbf6', text: '#c4dfd6', icon: '#a1e4ce' },
   }
   const statusColors = {
-    passed: { fill: '#24413e', ink: '#92e4cd' },
-    pending: { fill: '#382c4b', ink: '#e0d5f2' },
-    stale: { fill: '#4d3433', ink: '#ffd09b' },
-    failed: { fill: '#542c44', ink: '#ffc0d5' },
+    passed: { fill: '#2b4b46', ink: '#a1e4ce' },
+    pending: { fill: '#35496b', ink: '#dce7fa' },
+    stale: { fill: '#544333', ink: '#f6d2a7' },
+    failed: { fill: '#563b49', ink: '#f9c8d6' },
   }
   const glyph = {
     request: 'M2 8h5m0 0c3 0 1-5 5-5h2M7 8c3 0 1 5 5 5h2',
@@ -114,11 +114,11 @@
   const graphTheme = getComputedStyle(document.documentElement)
   const lineColors = {
     normal: graphTheme.getPropertyValue('--wire').trim(),
-    story: '#927bb8',
-    done: '#719c98',
+    story: '#8aa4ce',
+    done: '#78a89f',
     possible: graphTheme.getPropertyValue('--wire-branch').trim(),
-    chosen: '#92e4cd',
-    skipped: '#716782',
+    chosen: '#a1e4ce',
+    skipped: '#727e99',
   }
   const activeName = {
     ready: '可推进',
@@ -198,10 +198,6 @@
     }
     layouts.clear()
   }
-  const cardSheen = svg('linearGradient', { id: 'map-card-sheen', x1: '0%', x2: '96%', y1: '0%', y2: '100%' }, $('drawing-defs'))
-  svg('stop', { 'offset': '0%', 'stop-color': '#f0dfff', 'stop-opacity': 0.13 }, cardSheen)
-  svg('stop', { 'offset': '55%', 'stop-color': '#d5bdff', 'stop-opacity': 0.025 }, cardSheen)
-  svg('stop', { 'offset': '100%', 'stop-color': canvasPaper, 'stop-opacity': 0.16 }, cardSheen)
   for (const [name, color] of Object.entries(lineColors)) {
     const marker = svg(
       'marker',
@@ -594,7 +590,6 @@
       geometry = { x, y, width: b.width, height: b.height, rx: radius }
     }
     svg(shapeTag, { ...geometry, ...shape }, g)
-    svg(shapeTag, { ...geometry, 'fill': 'url(#map-card-sheen)', 'pointer-events': 'none', 'aria-hidden': 'true' }, g)
     if (fold)
       svg('path', { d: `M${rightEdge - fold} ${y}v${fold}h${fold}`, fill: 'none', stroke: c.stroke }, g)
     const left = x + b.inset

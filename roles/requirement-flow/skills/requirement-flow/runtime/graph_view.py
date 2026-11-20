@@ -305,20 +305,25 @@ if (drawer && drawer.startsWith('#node=')) {
 <style>
 {Path(__file__).with_name("theme.css").read_text("utf-8")}
 * {{ box-sizing:border-box }}
+:root {{
+  color-scheme:light;
+  --paper:#eef2f8;
+  --surface:#fff;
+  --surface-hover:#e8eef9;
+  --line:#d9e1ee;
+  --ink:#18243b;
+  --text:#2c3954;
+  --muted:#52627a;
+  --accent:#354dbe;
+  --focus-ring:#354dbe;
+  --mineral:#18765f;
+  --amber:#805124;
+  background:var(--paper);
+}}
 body {{
-  --paper:#111217;
-  --surface:#191b22;
-  --surface-hover:#22252e;
-  --line:#2c303c;
-  --ink:#f0f1f5;
-  --text:#d8dbe4;
-  --muted:#a6acbc;
-  --accent:#c0c8ff;
-  --focus-ring:#9daaff;
   margin:0;
   min-height:100vh;
   color:var(--ink);
-  background:var(--paper);
   font:14px/1.58 var(--ui);
 }}
 .reading-wrap {{ width:min(calc(100% - clamp(32px,8vw,112px)),1060px); margin-inline:auto }}
@@ -353,7 +358,7 @@ h1 {{
   border-inline-start:2px solid var(--amber);
   border-radius:8px;
   color:var(--amber);
-  background:var(--surface);
+  background:#fffaf1;
 }}
 .reading-grid {{ display:grid; gap:16px }}
 .reading-card {{
@@ -363,8 +368,10 @@ h1 {{
   border:1px solid var(--line);
   border-radius:9px;
   background:var(--surface);
+  box-shadow:0 1px 2px #223c6210;
 }}
 h2 {{ margin:0 0 10px; color:var(--ink); font-size:1rem; line-height:1.35; font-weight:650 }}
+.evidence h2 {{ color:var(--mineral) }}
 dl {{
   display:grid;
   grid-template-columns:minmax(4.8em,auto) minmax(0,1fr);
@@ -380,15 +387,15 @@ pre {{
   padding:14px 16px;
   white-space:pre-wrap;
   overflow-wrap:anywhere;
-  background:var(--paper);
+  background:#f5f7fb;
   border:1px solid var(--line);
   border-radius:6px;
   color:var(--text);
   font:.86rem/1.65 var(--mono);
 }}
-.download {{ color:var(--accent); background:#252a38; border:1px solid #3b4358 }}
+.download {{ color:var(--accent); background:#eef2ff; border:1px solid #cdd6f5 }}
 .download::after {{ content:""; width:6px; height:6px; border:solid currentColor; border-width:0 2px 2px 0; transform:rotate(45deg); margin-top:-3px }}
-.download:hover {{ background:#2f3649; border-color:#515d7c }}
+.download:hover {{ background:#e2e9ff; border-color:#abb9ee }}
 @media (min-width:960px) {{
   .reading-grid {{ grid-template-columns:minmax(0,5fr) minmax(0,7fr); grid-template-rows:auto 1fr; align-items:start }}
   .evidence {{ grid-area:1 / 2 / span 2 }}

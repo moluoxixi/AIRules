@@ -1,35 +1,35 @@
 :root {
-  color-scheme: dark;
+  color-scheme: light;
   view-transition-name: none;
-  --paper: #100e1c;
-  --surface: #1a172b;
-  --surface-raised: #242039;
-  --surface-hover: #302745;
-  --ink: #f6f0ff;
-  --text: #dfd8ed;
-  --muted: #b8aecb;
-  --line: #3c344f;
-  --line-strong: #66577d;
-  --accent: #d5bdff;
-  --accent-bg: #32254a;
-  --on-accent: #211433;
-  --teal: #92e4cd;
-  --success-bg: #1c3735;
-  --blue: #b7c2ff;
-  --amber: #ffd09b;
-  --rose: #f0acd3;
-  --focus-ring: #e3d0ff;
-  --glass: rgb(33 27 52 / .86);
-  --shadow: 0 16px 44px rgb(6 4 15 / .40), inset 0 1px rgb(245 225 255 / .07);
-  --display: "PingFang SC","Microsoft YaHei","Noto Sans CJK SC",system-ui,sans-serif;
-  --ui: "Instrument Sans","PingFang SC","Microsoft YaHei","Noto Sans CJK SC",system-ui,sans-serif;
-  --mono: "IBM Plex Mono","SFMono-Regular",Consolas,monospace;
+  --paper: #eef2f8;
+  --surface: #ffffff;
+  --surface-raised: #f6f8fc;
+  --surface-hover: #e9eef8;
+  --ink: #18243b;
+  --text: #34445d;
+  --muted: #5d6d85;
+  --line: #d7e0ed;
+  --line-strong: #aebed8;
+  --accent: #354dbe;
+  --accent-bg: #e9edfc;
+  --on-accent: #ffffff;
+  --teal: #18765f;
+  --success-bg: #e9f6f0;
+  --blue: #344ab0;
+  --amber: #8b5416;
+  --rose: #88516f;
+  --focus-ring: #4e68d4;
+  --glass: rgb(252 253 255 / .96);
+  --shadow: 0 12px 32px rgb(33 51 91 / .13), 0 2px 5px rgb(33 51 91 / .06);
+  --display: "Avenir Next","PingFang SC","Microsoft YaHei","Noto Sans CJK SC",system-ui,sans-serif;
+  --ui: "Avenir Next","PingFang SC","Microsoft YaHei","Noto Sans CJK SC",system-ui,sans-serif;
+  --mono: "SFMono-Regular","IBM Plex Mono",Consolas,monospace;
 }
 .card-tooltip {
   position:fixed; z-index:12; width:max-content; max-width:min(352px,calc(100vw - 16px));
   max-height:min(54vh,320px); overflow:auto; box-sizing:border-box; overscroll-behavior:contain;
-  padding:15px 17px; border:1px solid var(--line-strong); border-radius:14px;
-  background:var(--glass); backdrop-filter:blur(22px) saturate(1.25); color:var(--text);
+  padding:15px 17px; border:1px solid var(--line-strong); border-radius:12px;
+  background:var(--glass); backdrop-filter:blur(14px); color:var(--text);
   box-shadow:var(--shadow); font:.87rem/1.55 var(--ui); overflow-wrap:anywhere;
 }
 .card-tooltip[hidden] { display:none }
