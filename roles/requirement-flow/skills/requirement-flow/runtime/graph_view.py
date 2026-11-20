@@ -1,4 +1,5 @@
 """Project the shared demand record into a readable graph, preserving its entity IDs."""
+from base64 import b64encode
 import hashlib
 import json
 import re
@@ -483,6 +484,7 @@ def render(model, states, impacts, token, checksum, template, *, queue, source_l
         "THEME_SCRIPT":(here/"theme.js").read_text("utf-8"),
         "DAGRE":(here/"dagre.min.js").read_text("utf-8"),
         "SCRIPT":(here/"map.js").read_text("utf-8"),
+        "INK_WASH": b64encode((here/"graph-ink-wash.png").read_bytes()).decode("ascii"),
     }
-    return re.sub(r"@@(TITLE|DIGEST|DATA|THEME|THEME_SCRIPT|TOOLTIP|DAGRE|SCRIPT)@@",
+    return re.sub(r"@@(TITLE|DIGEST|DATA|THEME|THEME_SCRIPT|TOOLTIP|DAGRE|SCRIPT|INK_WASH)@@",
                   lambda match: substitutions[match.group(1)], Path(template).read_text("utf-8"))

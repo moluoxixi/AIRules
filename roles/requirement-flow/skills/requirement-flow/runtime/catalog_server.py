@@ -159,7 +159,7 @@ def serve(project, port, source_root, default_task, *, inventory, open_task, tas
             else:
                 payload = json.dumps(data, separators=(",",":"), ensure_ascii=False)
                 safe = payload.replace("&","\\u0026").replace("<","\\u003c").replace(">","\\u003e")
-                self.send_content(200, template.replace("@@CATALOG_DATA@@",safe), "text/html", allow_images=True)
+                self.send_content(200, template.replace("@@CATALOG_DATA@@",safe), "text/html", image_sources=("'self'",))
 
         def route(self, *, write):
             if self.headers.get("Host") != self.host():

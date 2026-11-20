@@ -1329,7 +1329,7 @@ class TaskHandler(BaseHTTPRequestHandler):
 
     def log_message(self,*args):
         pass
-    def send_content(self, status, content, mime, *, allow_images=False):
+    def send_content(self, status, content, mime, *, image_sources=()):
         data=content.encode() if isinstance(content,str) else content
         self.send_response(status)
         self.send_header("Content-Type",mime+"; charset=utf-8")
@@ -1337,8 +1337,8 @@ class TaskHandler(BaseHTTPRequestHandler):
         self.send_header("Cache-Control","no-store")
         self.send_header("X-Content-Type-Options","nosniff")
         csp = "default-src 'none'; script-src 'unsafe-inline'; style-src 'unsafe-inline'; form-action 'self'; connect-src 'self'; frame-ancestors 'none'; base-uri 'none'"
-        if allow_images:
-            csp += "; img-src 'self'"
+        if image_sources:
+            csp += "; img-src " + " ".join(image_sources)
         self.send_header("Content-Security-Policy", csp)
         self.end_headers()
         self.wfile.write(data)
@@ -1447,7 +1447,7 @@ class TaskHandler(BaseHTTPRequestHandler):
         stale_session = bool(session) and not secrets.compare_digest(session.encode(), self.token.encode())
         if path in ("/","/handbook.html"):
             page = render(model, self.token, workspace=self.workspace, read_only=self.read_only, home_href=self.home_href)
-            self.send_content(200, page, "text/html")
+            self.send_content(200, page, "text/html", image_sources=("data:",))
         elif path == "/source-location":
             if not same_origin or not session:
                 self.send_error(403)
