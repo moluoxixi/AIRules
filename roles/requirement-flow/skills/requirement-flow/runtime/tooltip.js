@@ -185,7 +185,7 @@
       && task.total > 0 && Number.isInteger(task.passed) && task.passed >= 0 && task.passed <= task.total
     const count = `${task.passed} / ${task.total}`
     const measure = measured
-      ? (task.basis === 'research' ? `${count} 项调研有依据` : `已验 ${count} 个场景`)
+      ? (task.basis === 'research' ? `${count} 项调研有依据` : `${count} 个场景通过`)
       : task.error ? '记录无法读取' : task.basis === 'withdrawn' ? '本期无待验场景，原范围及决定可追溯' : task.basis === 'history' ? '历史记录待复验' : task.outcome === 'research' ? '待定义调研项' : '待定义验收场景'
     const kind = task.basis === 'history' ? '历史需求' : task.outcome === 'research' ? '调研需求' : '交付需求'
     const rows = [['需求类型', kind], ['当前状态', state], ['验收进度', measure]]

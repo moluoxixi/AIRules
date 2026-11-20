@@ -18,16 +18,19 @@ from evidence import linked
 
 SKILLS = Path(".agents/skills")
 ROLE = "requirement-flow"
-ROLE_VERSION = "0.9.1"
+ROLE_VERSION = "0.10.0"
 SPECIALISTS = ("flow-requirements", "flow-contracts", "flow-implement", "flow-verify", "flow-review")
 SKILL = SKILLS / ROLE
 MANIFEST = Path(".requirements/installation.json")
 IGNORE = Path(".requirements/.gitignore")
+ATTRIBUTES = Path(".requirements/.gitattributes")
+EVIDENCE_ATTRIBUTES = (b"active/*/evidence/** -text", b"archive/*/evidence/** -text")
 LOCAL_PATTERNS = (b".receipt-key", b".receipt-key-*", b".workflow.lock", b".capture-*/", b".install-*/", b".model.json.*", b".handbook.html.*", b".basic-memory/")
 ARCHIVE = Path(".requirements/migrations/moluoxixi")
 ROOT_FILES = {"SKILL.md", "flow.py", "install_project.py", "references/model.md", "agents/openai.yaml"}
+TEXT_SUFFIXES = {".md", ".py", ".html", ".js", ".css", ".json", ".yaml"}
 RUNTIME_FILES = {"basic_memory.py", "catalog.html", "catalog_server.py", "code_inputs.py", "dagre.min.js", "evidence.py", "graph_view.py", "knowledge.py", "lesson_retirement.py",
-                 "layout.html", "map.js", "protocol.json", "source_paths.py", "story_scope.py", "sync.py", "theme.css", "tooltip.js"}
+                 "layout.html", "map.js", "protocol.json", "run_result.py", "source_paths.py", "story_scope.py", "sync.py", "task_locations.py", "theme.css", "tooltip.js"}
 LEGACY_SKILLS = {
     "before-dev", "brainstorm", "break-loop", "channel", "check", "continue", "finish-work",
     "knowledge", "meta", "session-insight", "spec-bootstrap", "start", "update-spec",
@@ -52,6 +55,29 @@ def require(ok, message):
 
 def digest(data):
     return hashlib.sha256(data).hexdigest()
+
+
+def append_git_rules(root, relative, rules):
+    current = read_file(safe_path(root, relative)) or b""
+    missing = [rule for rule in rules if rule not in current.splitlines()]
+    if missing:
+        newline = b"\r\n" if b"\r\n" in current else b"\n"
+        separator = newline if current and not current.endswith(b"\n") else b""
+        return current + separator + newline.join(missing) + newline
+
+
+def normalized_text(data):
+    return data.replace(b"\r\n", b"\n")
+
+
+def matches_digest(data, expected, *, text):
+    if digest(data) == expected:
+        return True
+    if not text:
+        return False
+    normalized = normalized_text(data)
+    # Older manifests stored the checkout's raw LF or CRLF bytes.
+    return digest(normalized) == expected or digest(normalized.replace(b"\n", b"\r\n")) == expected
 
 
 def safe_path(root, relative):
@@ -326,19 +352,25 @@ def install_locked(root, migrate, *, after_apply=None):
         require(isinstance(name, str) and owned_name(name), f"不支持的受管文件：{name}")
         target = SKILLS / name
         old = read_file(safe_path(root, target))
+        text_asset = target.suffix in TEXT_SUFFIXES
         if name in tracked:
-            require(old is not None and digest(old) == tracked[name], f"受管文件已被修改或移除：{target}")
+            require(old is not None and matches_digest(old, tracked[name], text=text_asset),
+                    f"受管文件已被修改或移除：{target}")
         else:
             require(old is None, f"同名文件不受本工具管理：{target}")
-        if old != wanted.get(name):
-            files[target] = wanted.get(name)
+        replacement = wanted.get(name)
+        if text_asset and old is not None and replacement is not None and normalized_text(old) == normalized_text(replacement):
+            continue
+        if old != replacement:
+            files[target] = replacement
 
     agents_path = Path("AGENTS.md")
     original = read_file(safe_path(root, agents_path))
     text = (original or b"").decode()
     old_block = marked(text, MARK)
     if previous:
-        require(old_block and digest(old_block.encode()) == previous.get("agents_block"), "AGENTS.md 的受管块已被修改或移除")
+        require(old_block and matches_digest(old_block.encode(), previous.get("agents_block"), text=True),
+                "AGENTS.md 的受管块已被修改或移除")
     else:
         require(old_block is None, "AGENTS.md 已有同名受管块且缺少安装清单")
     legacy_root = safe_path(root, ".moluoxixi").is_dir()
@@ -376,17 +408,17 @@ def install_locked(root, migrate, *, after_apply=None):
                text + ("" if not text or text.endswith(("\n", "\r")) else line_break) + block + line_break)
     if updated.encode() != original:
         files[agents_path] = updated.encode()
-    ignored = read_file(safe_path(root, IGNORE)) or b""
-    missing = [pattern for pattern in LOCAL_PATTERNS if pattern not in ignored.splitlines()]
-    if missing:
-        newline = b"\r\n" if b"\r\n" in ignored else b"\n"
-        prefix = newline if ignored and not ignored.endswith(b"\n") else b""
-        files[IGNORE] = ignored + prefix + newline.join(missing) + newline
+    for relative, rules in ((IGNORE, LOCAL_PATTERNS), (ATTRIBUTES, EVIDENCE_ATTRIBUTES)):
+        updated_rules = append_git_rules(root, relative, rules)
+        if updated_rules is not None:
+            files[relative] = updated_rules
     # A pre-versioned installer only accepts 1/2 and must refuse to downgrade this runtime.
-    manifest = {"format": 3, "role": ROLE, "role_version": ROLE_VERSION, "files": {k: digest(v) for k, v in wanted.items()},
-                "agents_block": digest(block.encode()), "migrated": previously_migrated or migration}
+    file_hashes = {name: digest(normalized_text(data) if Path(name).suffix in TEXT_SUFFIXES else data)
+                   for name, data in wanted.items()}
+    manifest = {"format": 3, "role": ROLE, "role_version": ROLE_VERSION, "files": file_hashes,
+                "agents_block": digest(normalized_text(block.encode())), "migrated": previously_migrated or migration}
     manifest_bytes = (json.dumps(manifest, sort_keys=True, indent=2) + "\n").encode()
-    if manifest_bytes != old_bytes:
+    if old_bytes is None or manifest_bytes != normalized_text(old_bytes):
         files[MANIFEST] = manifest_bytes
     changed = apply(root, files, moves, after_apply) if files or moves or after_apply is not None else False
     return {"project": str(root), "skill": str(root / SKILL), "role_version": ROLE_VERSION, "changed": changed,

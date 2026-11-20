@@ -27,7 +27,7 @@ description: 在 Codex 项目中启用需求全景图，或在新需求、续做
 
 ## 写回同一份需求记录
 
-1. 对照动作范围与完成条件后，用 `task <ID> claim --actor <执行者> --rev <版次>` 领取或接手，可加 `--story <故事ID>` 聚焦同一功能。
+1. 用 `task <ID> claim --actor <执行者> --rev <版次>` 领取动作或继续自己的动作。换班时先用 `next` 核对持有人，再用 `task <ID> handoff <动作ID> --from <原执行者> --actor <接手人> --why '交接原因' --rev <版次>` 登记交接。
 2. 补计划、故事、契约或依赖时用 `task <ID> plan <补丁.json> --why '依据' --actor <执行者> --rev <版次>`。业务选项由实际决定人确认后再用 `decision` 记入。遇到版次冲突，重读上下文和本次差异再写入。
 3. 调研和开发的 `finish` 写实际产出及可复核位置。验证用 `verify-run` 执行检查，或用 `verify-observe` 登记真实观察，并核对场景覆盖。取得合格证据后用同一执行者和新版次 `finish` 验证动作；失败按受影响分支返工。命令、证据类型、场景 ID 和补丁字段见[记录格式](references/model.md)。
 4. 失败时读 `verification_followups`，定位原因、按依赖返工并重测。同一场景、输入、命令和环境连续失败时，`claim` 安排 `flow-review` 诊断动作；交给实际独立的执行者领取，核对失败回执，并用 `finish` 记录结论和依据。其他就绪动作继续推进。诊断完成后再修复并采集新证据。有复用价值的结论用 `lesson-propose` 绑定原始回执，`lesson_reviews` 中的待审项交给另一位实际审查者。

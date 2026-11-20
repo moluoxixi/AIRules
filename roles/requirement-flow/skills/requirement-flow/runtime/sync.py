@@ -12,13 +12,14 @@ import sys
 import tempfile
 import unicodedata
 if __package__:
-    from . import evidence, graph_view, knowledge, source_paths, story_scope
+    from . import evidence, graph_view, knowledge, source_paths, story_scope, task_locations
 else:
     import evidence
     import graph_view
     import knowledge
     import source_paths
     import story_scope
+    import task_locations
 from datetime import datetime, timezone
 from contextlib import contextmanager
 from contextvars import ContextVar
@@ -34,11 +35,11 @@ PROTOCOL = RUNTIME / "protocol.json"
 TASK_DIR = Path.cwd()
 MODEL = TASK_DIR / "model.json"
 BOOK = TASK_DIR / "handbook.html"
-LOCK = TASK_DIR / ".workflow.lock"
 PLANNABLE = ("stories", "contracts", "decisions", "actions")
 SKILLS = ("flow-requirements","flow-contracts","flow-implement","flow-verify","flow-review")
 STATES = {"ready":"可推进","active":"进行中","blocked":"等待输入","dormant":"按条件启用",
           "skipped":"本次跳过","done":"已完成","stale":"需复核"}
+_render_receipts = ContextVar("requirement_flow_render_receipts", default=None)
 _render_input_cache = ContextVar("requirement_flow_render_inputs", default=None)
 
 
@@ -76,11 +77,10 @@ def unique(pairs):
 
 def bind_workspace(path):
     """Select the data directory for this CLI invocation or HTTP server."""
-    global TASK_DIR, MODEL, BOOK, LOCK
+    global TASK_DIR, MODEL, BOOK
     TASK_DIR = Path(path).resolve()
     MODEL = TASK_DIR / "model.json"
     BOOK = TASK_DIR / "handbook.html"
-    LOCK = TASK_DIR / ".workflow.lock"
     return TASK_DIR
 
 
@@ -310,7 +310,7 @@ def validate_reviews(w):
         expect(origin["verification_actors"] == list(dict.fromkeys(event["actor"] for event in sources)),
                "诊断必须保留原失败执行者")
         expect(all(independent_actor(action,event["actor"]) for event in w["events"]
-                   if event.get("action") == key and event["kind"] in ("start","finish")),
+                   if event.get("action") == key and event["kind"] in ("start","handoff","finish")),
                "原失败执行者不能担任独立诊断者")
 
 
@@ -347,7 +347,21 @@ def case_stamp(scenario, latest_retired):
 
 
 def verified_receipt(workspace, event, stamp):
-    manifest = evidence.validate(workspace,event["receipt"],action=event["action"],scenario=event["scenario"],stamp=stamp)
+    cache = _render_receipts.get()
+    key = (Path(workspace), event["action"], event["scenario"], stamp, digest(event["receipt"])) if cache is not None else None
+    if cache is not None and key in cache:
+        manifest, error = cache[key]
+        if error:
+            raise Invalid(error)
+    else:
+        try:
+            manifest = evidence.validate(workspace, event["receipt"], action=event["action"], scenario=event["scenario"], stamp=stamp)
+        except ValueError as error:
+            if cache is not None:
+                cache[key] = (None, str(error))
+            raise
+        if cache is not None:
+            cache[key] = (manifest, None)
     expect(event.get("actor") == manifest["actor"], "证据事件的执行人与签名回执不符")
     expect(event.get("output") == manifest["actual"], "证据事件的结果与签名回执不符")
     return manifest
@@ -369,7 +383,7 @@ def local_diagnostic(error, project):
 
 
 def inspect_proof(workspace, event, action_id, scenario, action_stamp, scenario_stamp, accepts, replays,
-                  code_paths=None, input_cache=None):
+                  code_paths=None, input_cache=None, request_revision=0):
     if not event:
         return {"status":"pending", "reason":"尚未采集本场景的验收凭据", "receipt":None}
     stored = event.get("receipt")
@@ -380,6 +394,8 @@ def inspect_proof(workspace, event, action_id, scenario, action_stamp, scenario_
                "passed":False,"artifact":None}
     if event["id"] in replays:
         return {"status":"stale","invalid_receipt":True,"reason":"同一凭据已用于此前的采集事件，不能重放","receipt":summary}
+    if event["revision"] < request_revision:
+        return {"status":"stale","reason":"需求目标或范围已修订，需要重新采集","receipt":summary}
     stamp = proof_stamp(action_stamp,scenario_stamp,event["id"],event["revision"])
     if event.get("stamp") != action_stamp or event.get("scenario_stamp") != scenario_stamp:
         return {"status":"stale", "reason":"场景、输入或前置产出已改变，需要重新采集", "receipt":summary}
@@ -400,7 +416,7 @@ def inspect_proof(workspace, event, action_id, scenario, action_stamp, scenario_
         return {"status":"stale", "reason":manifest.get("code_inputs_error") or "采集期间代码输入未保持一致，请重新验收",
                 "receipt":summary}
     try:
-        evidence.validate_current_inputs(manifest, project, code_paths, cache=input_cache)
+        evidence.validate_current_inputs(manifest, project, code_paths, cache=input_cache, workspace=workspace)
     except (OSError, ValueError) as error:
         return {"status":"stale", "reason":local_diagnostic(error,project), "receipt":summary}
     if accepts and manifest["level"] not in accepts:
@@ -422,9 +438,21 @@ def evaluate(w, workspace=None):
     finishes = {}
     reopened = {}
     proof_events = {}
+    request_edit = {}
+    original_reasons = {}
     seen_receipts, replays = set(), set()
     for event in w["events"]:
-        if event["kind"] in ("start","finish","fail"):
+        if event["kind"] == "decision_reason":
+            original_reasons.setdefault((event["decision"], event["version"]), event["previous_reason"])
+        if event["kind"] == "plan":
+            fields = event.get("request_fields")
+            if fields is None:
+                # Legacy plans listed field names and entity IDs in the same array.
+                fields = [field for field in ("goal", "scope") if field in event.get("changed", ())
+                          and not any(field in w[group] for group in PLANNABLE)]
+            if fields:
+                request_edit = event
+        if event["kind"] in ("start","handoff","finish","fail"):
             latest[event["action"]] = event
         if event["kind"] == "finish":
             finishes[event["action"]] = event
@@ -438,6 +466,13 @@ def evaluate(w, workspace=None):
                     replays.add(event["id"])
                 seen_receipts.add(rid)
             proof_events[event["action"],event["scenario"]] = event
+
+    # A correction to the recorded explanation keeps the original choice's input signature.
+    decision_inputs = dict(w["answers"])
+    for key, answer in w["answers"].items():
+        choice_version = (key, answer["version"])
+        if choice_version in original_reasons:
+            decision_inputs[key] = {**answer, "reason": original_reasons[choice_version]}
 
     @lru_cache(maxsize=None)
     def visit(key):
@@ -499,21 +534,29 @@ def evaluate(w, workspace=None):
             # Evidence binds the particular covered example separately from shared story inputs.
             stories = {i:{k:v for k,v in story.items() if k != "examples"} for i,story in stories.items()}
         definition = {k:v for k,v in action.items() if k != "covers"} if verify else action
-        stamp = digest({
+        binding = {
             "action":definition, "dependency_outputs":inputs, "reopen":reopened.get(key),
             "stories":stories,
             "contracts":{i:w["contracts"][i] for i in contracts},
-            "decisions":{i:{"definition":w["decisions"][i],"answer":w["answers"].get(i)} for i in sorted(decisions)}
-        })
+            "decisions":{i:{"definition":w["decisions"][i],"answer":decision_inputs.get(i)} for i in sorted(decisions)}
+        }
+        request_revision = request_edit.get("revision", 0)
+        # Older receipts retain their original signature when collected after the last edit.
+        if request_edit.get("request_fields"):
+            binding["request"] = {"revision": request_revision, "goal": w["goal"], "scope": w["scope"]}
+        stamp = digest(binding)
         cases = {s:inspect_proof(workspace, proof_events.get((key,s)), key, definitions[s], stamp,
                                  case_stamp(definitions[s],retired),action.get("accepts"),replays,
-                                 action.get("code_paths"), input_cache)
+                                 action.get("code_paths"), input_cache, request_revision)
                  for s in action.get("covers", [])}
         last_finish = finishes.get(key,{})
         for s,c in cases.items():
             c["accepted"] = (c["status"] == "captured" and not blockers and last_finish.get("stamp") == stamp
                              and last_finish.get("receipts",{}).get(s) == c["receipt"]["id"])
-        if last and (last["kind"] == "fail" or last["stamp"] != stamp):
+        if last and last["revision"] < request_revision:
+            state = "stale"
+            reasons.append("需求目标或范围已修订，请按当前要求复核")
+        elif last and (last["kind"] == "fail" or last["stamp"] != stamp):
             state = "stale"
             if last["kind"] == "fail":
                 reasons.append("上次验证失败 · " + last["output"])
@@ -530,7 +573,7 @@ def evaluate(w, workspace=None):
                     reasons.append("已有新凭据，需要重新确认验证结果")
             else:
                 state = "done"
-        elif last.get("kind") == "start":
+        elif last.get("kind") in ("start", "handoff"):
             state = "active"
         else:
             state = "ready"
@@ -552,7 +595,14 @@ def decide(w, key, choice, reason, actor):
     expect(definition and choice in definition["options"] and reason.strip() and actor.strip(), "决定、选项、理由或决定人缺失")
     earlier = w["answers"].get(key)
     if earlier and earlier["choice"] == choice:
-        return False
+        if earlier["reason"] == reason:
+            return False
+        old_reason = earlier["reason"]
+        earlier["reason"] = reason
+        w["revision"] += 1
+        append_event(w,"decision_reason",actor,decision=key,choice=choice,version=earlier["version"],
+                     previous_reason=old_reason,output=reason)
+        return True
     w["revision"] += 1
     version = earlier["version"]+1 if earlier else 1
     w["answers"][key] = {"choice":choice, "version":version, "reason":reason, "actor":actor}
@@ -606,6 +656,7 @@ def apply_plan(w, patch, actor, reason):
     expect(reason.strip(), "请写明调整计划的原因")
     retired = retirements(w,patch)
     changed = []
+    request_fields = []
     for group,val in patch.items():
         if group == "retire_scenarios":
             continue
@@ -634,12 +685,16 @@ def apply_plan(w, patch, actor, reason):
                 expect(isinstance(val,str) and val.strip(), "目标不能为空")
             else:
                 expect(isinstance(val,list), group+" 应为列表")
+            if group in ("goal", "scope"):
+                request_fields.append(group)
             w[group] = val
             changed.append(group)
     if not changed:
         return False
     w["revision"] += 1
-    append_event(w,"plan",actor,output=reason,changed=changed,**({"retired_scenarios":retired} if retired else {}))
+    event = append_event(w,"plan",actor,output=reason,changed=changed,**({"retired_scenarios":retired} if retired else {}))
+    if "goal" in changed or "scope" in changed:
+        event["request_fields"] = request_fields
     return True
 
 
@@ -709,6 +764,18 @@ def progress(w, mode, key, actor, output="", evidence="", level="", environment=
     w["revision"] += 1
     append_event(w,mode,actor,action=key,stamp=status["stamp"],output=output,evidence=evidence,
                  level=level,environment=environment,expected=expected,reopen=reopen,**proof_fields)
+    return True
+
+
+def handoff(w, key, previous_actor, actor, reason):
+    action = w["actions"].get(key)
+    expect(action and actor.strip() and previous_actor.strip() and reason.strip(), "交接须填写动作、原执行者、接手人和理由")
+    expect(previous_actor != actor, "接手人须与原执行者不同")
+    status = evaluate(w)[key]
+    expect(status["state"] == "active" and status["actor"] == previous_actor, "动作未由指定的原执行者持有，请重新读取当前执行者")
+    expect(not action.get("review_for") or independent_actor(action, actor), "原失败执行者不能接手独立诊断")
+    w["revision"] += 1
+    append_event(w, "handoff", actor, action=key, previous_actor=previous_actor, stamp=status["stamp"], output=reason)
     return True
 
 
@@ -808,7 +875,7 @@ def verification_followups(work, scenarios):
             # not new inputs. Repeated failures on unchanged inputs need review.
             return (event.get("stamp"),event.get("scenario_stamp"),receipt.get("code_inputs"),
                     receipt.get("passed"),receipt.get("environment"),receipt.get("kind"),
-                    receipt.get("argv"),receipt.get("exit_code"))
+                    receipt.get("command_id", receipt.get("argv")),receipt.get("exit_code"))
         current = fingerprint(attempts[-1])
         repeated = []
         for attempt in reversed(attempts):
@@ -922,8 +989,9 @@ def dispatch(w, actor="AI", story=None, *, workspace=None, include_lessons=True,
             for block in status["blockers"]:
                 blocked_by.setdefault((block["kind"],block["id"]),[]).append(key)
 
+    skipped_decisions = story_scope.skipped_decisions(w, states, selected, chosen)
     pending = [{"id":key,**definition,"actions":blocked_by.get(("decision",key),[])}
-               for key, definition in w["decisions"].items() if key not in w["answers"] and
+               for key, definition in w["decisions"].items() if key not in w["answers"] and key not in skipped_decisions and
                (not definition["stories"] or not set(definition["stories"]) <= withdrawn
                 or ("decision",key) in blocked_by) and
                (not selected or selected.intersection(definition["stories"]) or ("decision",key) in blocked_by)]
@@ -998,7 +1066,7 @@ def claim(revision, actor="AI", story=None):
 
 
 def capture(mode, key, scenario_id, revision, actor, environment, *, argv=None, artifact=None,
-            actual=None, level=None, passed=True):
+            actual=None, level=None, passed=True, share_output=False):
     expect(actor.strip() and environment.strip(), "采集需要执行人和环境")
     level = "自动化" if mode == "verify-run" else level
 
@@ -1028,20 +1096,33 @@ def capture(mode, key, scenario_id, revision, actor, environment, *, argv=None, 
     binding = dict(action=key,scenario=scenario_id,stamp=combined,actor=actor,environment=environment,
                    code_paths=model["work"]["actions"][key].get("code_paths"))
     if mode == "verify-run":
-        receipt = evidence.run(TASK_DIR, project, argv, **binding)
+        receipt = evidence.run(TASK_DIR, project, argv, share_output=share_output, **binding)
     else:
         receipt = evidence.observe(TASK_DIR, project, artifact, actual=actual, level=level, passed=passed, **binding)
 
     def record(w):
-        expect(inputs(w) == (action_stamp,scenario_stamp,event_id), "采集期间输入变化，请重新采集")
+        current_action, current_case, next_event = inputs(w)
+        expect((current_action, current_case) == (action_stamp, scenario_stamp), "采集期间输入变化，请重新采集")
         evidence.validate(TASK_DIR, receipt, action=key, scenario=scenario_id, stamp=combined)
+        if receipt.get("code_inputs_unchanged"):
+            evidence.validate_current_inputs(receipt, project, binding["code_paths"], workspace=TASK_DIR)
+        if w["revision"] != revision:
+            # A different action or scenario can finish first. Never order two
+            # competing results for the same case by subprocess completion time.
+            relevant_write = any(event.get("action") == key and
+                                 (event["kind"] != "evidence" or event.get("scenario") == scenario_id)
+                                 for event in w["events"] if event["revision"] > revision)
+            if relevant_write:
+                raise Conflict("采集期间同一动作或场景已更新，请读取最新结果再采集。")
+            final_stamp = proof_stamp(action_stamp, scenario_stamp, next_event, w["revision"] + 1)
+            evidence.bind_collected_event(TASK_DIR, receipt, final_stamp)
         w["revision"] += 1
         append_event(w,"evidence",actor,action=key,scenario=scenario_id,stamp=action_stamp,
                      scenario_stamp=scenario_stamp,receipt=receipt,output=receipt["actual"])
         return True
 
     try:
-        saved = commit(revision, record)
+        saved = commit(revision, record, independent_capture=True)
     except Exception:
         evidence.discard(TASK_DIR,receipt)
         raise
@@ -1099,7 +1180,7 @@ def atomic(path, content):
 
 @contextmanager
 def task_lock(shared=False, *, workspace=None):
-    path = workspace / ".workflow.lock" if workspace is not None else LOCK
+    path = task_locations.model_lock_path(workspace if workspace is not None else TASK_DIR)
     with path.open("a+b") as stream:
         if os.fstat(stream.fileno()).st_size == 0:
             stream.write(b"\0")
@@ -1122,13 +1203,13 @@ def task_lock(shared=False, *, workspace=None):
                 fcntl.flock(stream.fileno(), fcntl.LOCK_UN)
 
 
-def commit(revision, operation, *, workspace=None):
+def commit(revision, operation, *, workspace=None, independent_capture=False):
     root = workspace or TASK_DIR
     model_path, book = root / "model.json", root / "handbook.html"
     with task_lock(workspace=root):
         model = load(model_path)
         validate(model)
-        if revision != model["work"]["revision"]:
+        if revision != model["work"]["revision"] and not independent_capture:
             raise Conflict("版本已更新，请读取最新记录再提交。")
         if operation(model["work"]):
             validate(model)
@@ -1146,13 +1227,18 @@ def commit(revision, operation, *, workspace=None):
         return model
 
 
+def matches_page(path, rendered):
+    # Git may check the generated HTML out as CRLF. Signed attachments are checked byte-for-byte elsewhere.
+    return path.exists() and path.read_bytes().replace(b"\r\n", b"\n") == rendered.replace(b"\r\n", b"\n")
+
+
 def sync(check=False):
     with task_lock(shared=check):
         model=load()
         validate(model)
         html=render(model).encode()
         if check:
-            expect(BOOK.exists() and BOOK.read_bytes()==html,"人读页需要从当前 model.json 重新生成。")
+            expect(matches_page(BOOK, html),"人读页需要从当前 model.json 重新生成。")
         else:
             atomic(BOOK,html)
         return model
@@ -1162,9 +1248,10 @@ def h(value):
     return escape(str(value),quote=True)
 
 
-def impact(w, decision, choice, workspace=None):
+def impact(w, decision, choice, workspace=None, *, before=None):
     simulated=copy.deepcopy(w)
-    before=evaluate(w,workspace)
+    if before is None:
+        before = evaluate(w, workspace)
     decide(simulated,decision,choice,"比较选项","推演")
     after=evaluate(simulated,workspace)
     return [(a["title"],STATES[before[k]["state"]],STATES[after[k]["state"]]) for k,a in w["actions"].items()
@@ -1184,13 +1271,18 @@ def offline_home_href(workspace):
 
 @input_scope()
 def render(model, token=None, *, workspace=None, read_only=False, home_href=None):
-    work = model["work"]
-    impacts = {key: {code: impact(work, key, code, workspace) for code in d["options"]}
-               for key, d in work["decisions"].items()}
-    return graph_view.render(model, evaluate(work,workspace), impacts, token, digest(model), LAYOUT,
-                             queue=dispatch(work,workspace=workspace,for_map=True), read_only=read_only,
-                             home_href=home_href if token else offline_home_href(workspace or TASK_DIR),
-                             source_labels=source_paths.SourcePaths.for_task(workspace or TASK_DIR).graph_labels(work))
+    token_cache = _render_receipts.set({})
+    try:
+        work = model["work"]
+        current = evaluate(work, workspace)
+        impacts = {key: {code: impact(work, key, code, workspace, before=current) for code in d["options"]}
+                   for key, d in work["decisions"].items()}
+        return graph_view.render(model, current, impacts, token, digest(model), LAYOUT,
+                                 queue=dispatch(work,workspace=workspace,for_map=True), read_only=read_only,
+                                 home_href=home_href if token else offline_home_href(workspace or TASK_DIR),
+                                 source_labels=source_paths.SourcePaths.for_task(workspace or TASK_DIR).graph_labels(work))
+    finally:
+        _render_receipts.reset(token_cache)
 
 
 def initialize_task(path, raw, *, key, title=None, outcome="delivery"):
@@ -1429,7 +1521,6 @@ class TaskHandler(BaseHTTPRequestHandler):
         except (KeyError,ValueError,IndexError) as err:
             code=409 if isinstance(err,Conflict) else 400
             self.send_content(code,"<!doctype html><meta charset='utf-8'><p>"+h(err)+"</p><a href='./#work'>返回最新需求</a>","text/html"); return
-        self.send_response(303)
         previous = parse_qs(request_url.query)
         picked = set(previous.get("features", [""])[0].split(","))
         known = [key for key in updated["work"]["stories"] if key in picked]
@@ -1438,7 +1529,12 @@ class TaskHandler(BaseHTTPRequestHandler):
             query["features"] = ",".join(known)
         if previous.get("q"):
             query["q"] = previous["q"][0][:80]
-        self.send_header("Location", self.task_prefix + ("?" + urlencode(query) if query else "") + "#work")
+        location = self.task_prefix + ("?" + urlencode(query) if query else "") + "#work"
+        if self.headers.get("Accept") == "application/json":
+            self.send_content(200, encoded({"location": location}), "application/json")
+            return
+        self.send_response(303)
+        self.send_header("Location", location)
         self.end_headers()
 
 
@@ -1482,6 +1578,12 @@ def main(argv=None, *, serve_project=None):
     q.add_argument("--outcome",choices=("delivery","research"),default="delivery")
     q=sub.add_parser("serve"); q.add_argument("--port",type=int,default=0)
     q.add_argument("--source-root", type=Path, help="从当前项目的指定 Git 工作树定位来源文件")
+    q=sub.add_parser("handoff", help="按当前归属转交一个进行中的动作")
+    q.add_argument("id")
+    q.add_argument("--from", dest="previous_actor", required=True)
+    q.add_argument("--actor", required=True, help="实际接手人")
+    q.add_argument("--why", required=True)
+    q.add_argument("--rev", type=int, required=True)
     for name in ("lesson-propose", "lesson-review"):
         q = sub.add_parser(name)
         q.add_argument("--rev", type=int, required=True)
@@ -1508,7 +1610,9 @@ def main(argv=None, *, serve_project=None):
         q.add_argument("--rev",required=True,type=int)
         q.add_argument("--actor",default="AI")
         q.add_argument("--environment",required=True)
-        if name == "verify-observe":
+        if name == "verify-run":
+            q.add_argument("--share-output", action="store_true", help="分发本次命令参数和原始日志，检测到敏感内容时仅保存摘要")
+        else:
             q.add_argument("--artifact",required=True)
             q.add_argument("--actual",required=True)
             q.add_argument("--level",choices=("真实环境","人工核对"),default="人工核对")
@@ -1549,7 +1653,7 @@ def main(argv=None, *, serve_project=None):
     elif a.cmd=="claim":
         print(json.dumps(claim(a.rev,a.actor,a.story),ensure_ascii=False,indent=2))
     elif a.cmd in ("verify-run","verify-observe"):
-        result = capture(a.cmd,a.id,a.scenario,a.rev,a.actor,a.environment,argv=command_args,
+        result = capture(a.cmd,a.id,a.scenario,a.rev,a.actor,a.environment,argv=command_args,share_output=getattr(a,"share_output",False),
                          artifact=getattr(a,"artifact",None),actual=getattr(a,"actual",None),
                          level=getattr(a,"level",None),passed=not getattr(a,"failed",False))
         print(json.dumps(result,ensure_ascii=False,indent=2))
@@ -1565,6 +1669,8 @@ def main(argv=None, *, serve_project=None):
         actor=a.actor or "AI"
         if a.cmd=="decision":
             op=lambda w:decide(w,a.id,a.choice,a.why,actor)
+        elif a.cmd=="handoff":
+            op=lambda w:handoff(w,a.id,a.previous_actor,actor,a.why)
         elif a.cmd=="plan":
             patch=load(Path(a.file))
             op=lambda w:apply_plan(w,patch,actor,a.why)

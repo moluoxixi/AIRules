@@ -116,7 +116,7 @@ function createHandbook(project) {
     record('finish', action, '--output', '提交门店类型确认处理', '--evidence', batchSource)
   function capture(action, scenario, environment, assertion) {
     const script = `const assert = require('node:assert/strict'); ${assertion}; console.log('raw-check-${scenario}')`
-    return JSON.parse(record('verify-run', action, '--scenario', scenario, '--environment', environment, '--', process.execPath, '-e', script))
+    return JSON.parse(record('verify-run', action, '--scenario', scenario, '--environment', environment, '--share-output', '--', process.execPath, '-e', script))
   }
   const oldProof = capture('V-3', 'SC-3', '本机单选测试', 'assert.equal([1].length, 1)')
   record('finish', 'V-3', '--output', '单选通过')
@@ -495,7 +495,7 @@ describe.skipIf(!executablePath)('generated handbook interactions in Chromium', 
         const hover = await cardStyle()
         expect(hover).toEqual({ ...idle, color: expect.any(String) })
         expect(hover.color).not.toBe(idle.color)
-        expect(await page.$eval(tip, el => el.textContent)).toContain('已验 2 / 11 个场景')
+        expect(await page.$eval(tip, el => el.textContent)).toContain('2 / 11 个场景通过')
         expect(await page.$eval(tip, el => el.textContent)).toContain('涉及功能')
         const fits = await page.$eval(tip, (el) => {
           const r = el.getBoundingClientRect()
@@ -520,7 +520,7 @@ describe.skipIf(!executablePath)('generated handbook interactions in Chromium', 
         await page.setViewport({ width: 390, height: 720, hasTouch: true })
         await Promise.all([page.waitForNavigation(), page.tap(card)])
         await drawerReady(page)
-        expect(await visibleDetail(page)).toContain('已验 2 / 11 个场景')
+        expect(await visibleDetail(page)).toContain('2 / 11 个场景通过')
         expect(await visibleDetail(page)).toContain('涉及功能')
         await follow(page, '#inspector .drawer-home')
         await waitForCards(page, [archived, unplanned, 'plan', research])
@@ -1362,6 +1362,9 @@ describe.skipIf(!executablePath)('generated handbook interactions in Chromium', 
       })
       await page.waitForFunction(() => document.querySelector('#panel-title')?.textContent === '单个确认')
       expect(await page.$eval('#detail', el => el.scrollTop)).toBe(0)
+      expect(await page.$eval('#stations [data-node="S-3"]', el => el.getAttribute('aria-label'))).toContain('0/1 通过 · 1 需补验')
+      expect(await page.$eval('#stations [data-node="S-0"]', el => el.getAttribute('aria-label'))).toBe('功能，新建方案，0/1 通过')
+      expect(await page.$('#detail .story-goal')).toBeNull()
       const stale = '#detail .acceptance-group[data-state="open"] .case-row[data-status="stale"]'
       expect(await page.$eval(stale, el => el.textContent)).toContain('单个确认')
       expect(await page.$eval(`${stale} .case-scope`, el => el.textContent)).toBe('证据无效，需补验')
@@ -1630,6 +1633,7 @@ describe.skipIf(!executablePath)('generated handbook interactions in Chromium', 
           'original-qa',
           '--environment',
           '真实本机断言',
+          '--share-output',
           '--',
           process.execPath,
           'check.cjs',
@@ -1845,6 +1849,84 @@ describe.skipIf(!executablePath)('generated handbook interactions in Chromium', 
       await server.stop()
     }
   })
+
+  it('recovers a mobile decision after a real 409 before polling and saves a corrected reason', async () => {
+    const isolated = mkdtempSync(path.join(tmpdir(), 'airules-decision-race-'))
+    let page, server
+    try {
+      createHandbook(isolated)
+      const model = path.join(isolated, '.requirements/active/plan/model.json')
+      const work = () => JSON.parse(readFileSync(model, 'utf8')).work
+      server = await startViewer(isolated)
+      page = await browser.newPage()
+      await page.setViewport({ width: 390, height: 844, hasTouch: true })
+      await page.goto(`${server.address}?view=detail&features=S-8&q=指引#node=D-scope`)
+      await drawerReady(page)
+      const route = page.url()
+      const field = '#detail input[name="reason"]'
+      const local = '#detail button.choose[value="local"]'
+      const draft = '门店只读本店已确认方案'
+      const correction = '店长复核后，只展示本店当前有效方案'
+      await page.type(field, draft)
+
+      // Hold only the browser's first outgoing form. The second writer commits after
+      // the form is in flight, so the real server must return the revision conflict.
+      await page.setRequestInterception(true)
+      let resolveFirst
+      const firstRequest = new Promise((resolve) => {
+        resolveFirst = resolve
+      })
+      const isDecision = req => req.method() === 'POST' && new URL(req.url()).pathname.endsWith('/decision')
+      page.on('request', (req) => {
+        if (resolveFirst && isDecision(req)) {
+          resolveFirst(req)
+          resolveFirst = null
+        }
+        else {
+          void req.continue()
+        }
+      })
+      const response = () => page.waitForResponse(res => isDecision(res.request()))
+      await page.click(local)
+      const held = await firstRequest
+      const revision = new URLSearchParams(held.postData()).get('revision')
+      runFlow(isolated, 'task', 'plan', 'decision', 'D-scope', 'national', '--rev', revision, '--actor', '运营', '--why', '先展示全国方案')
+      const [conflict] = await Promise.all([response(), page.waitForNavigation(), held.continue()])
+      expect(conflict.status()).toBe(409)
+      await drawerReady(page)
+      expect(page.url()).toBe(route)
+      expect(await page.$eval('#panel-title', el => el.textContent)).toBe('门店查看哪份方案')
+      expect(await page.$eval(field, el => el.value)).toBe(draft)
+      expect(await page.$eval('#detail form [role="status"]', el => el.textContent)).toContain('再次确认')
+      expect(work().answers['D-scope']).toMatchObject({ choice: 'national', reason: '先展示全国方案' })
+
+      async function confirm() {
+        const [result] = await Promise.all([response(), page.waitForNavigation(), page.click(local)])
+        expect(result.status()).toBe(200)
+        expect(new URL(page.url()).searchParams.get('features')).toBe('S-8')
+        expect(new URL(page.url()).searchParams.get('q')).toBe('指引')
+      }
+      await confirm()
+      const decided = work().answers['D-scope']
+      expect(decided).toMatchObject({ choice: 'local', reason: draft })
+      await page.goto(route)
+      await drawerReady(page)
+      expect(await page.$eval(local, el => el.textContent)).toBe('订正当前理由')
+      await page.$eval(field, el => el.select())
+      await page.type(field, correction)
+      await confirm()
+      expect(work().answers['D-scope']).toMatchObject({ choice: 'local', version: decided.version, reason: correction })
+      expect(work().events.at(-1)).toMatchObject({ kind: 'decision_reason', previous_reason: draft, output: correction })
+      await page.goto(route)
+      await drawerReady(page)
+      expect(await page.$eval(field, el => el.value)).toBe(correction)
+    }
+    finally {
+      await page?.close()
+      await server?.stop()
+      rmSync(isolated, { recursive: true, force: true })
+    }
+  }, 30_000)
 
   it('keeps a pending decision note while recovering a stale citation opened on a different node', async () => {
     let server = await startViewer(project)

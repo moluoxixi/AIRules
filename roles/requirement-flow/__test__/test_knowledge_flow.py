@@ -186,7 +186,7 @@ class Project:
 
     def capture(self, task, action, scenario, test, environment='本地 SQLite 临时数据库'):
         self.write(task, 'verify-run', action, '--scenario', scenario, '--environment', environment,
-                   '--', sys.executable, '-B', '-m', 'unittest', '-v', test)
+                   '--share-output', '--', sys.executable, '-B', '-m', 'unittest', '-v', test)
         self.write(task, 'finish', action, '--output', '业务断言已通过')
         return next(s for s in self.next(task)['scenarios'] if s['id'] == scenario)['receipts'][0]
 

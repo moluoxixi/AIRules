@@ -43,7 +43,12 @@ jobs:
         run: pnpm run build
 
       - name: Test
-        run: pnpm test
+        run: |
+          PUPPETEER_EXECUTABLE_PATH="$(command -v google-chrome)"
+          export PUPPETEER_EXECUTABLE_PATH
+          test -x "$PUPPETEER_EXECUTABLE_PATH"
+          pnpm test --reporter=default --reporter=json --outputFile.json="$RUNNER_TEMP/vitest.json"
+          node roles/requirement-flow/__test__/check-browser-results.mjs "$RUNNER_TEMP/vitest.json"
 
       - name: Verify packed role installation
         run: pnpm run verify:packed-airules
