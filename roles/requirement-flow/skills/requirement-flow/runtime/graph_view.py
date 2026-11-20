@@ -306,18 +306,18 @@ if (drawer && drawer.startsWith('#node=')) {
 {Path(__file__).with_name("theme.css").read_text("utf-8")}
 * {{ box-sizing:border-box }}
 :root {{
-  color-scheme:light;
-  --paper:#eef2f8;
-  --surface:#fff;
-  --surface-hover:#e8eef9;
-  --line:#d9e1ee;
-  --ink:#18243b;
-  --text:#2c3954;
-  --muted:#52627a;
-  --accent:#354dbe;
-  --focus-ring:#354dbe;
-  --mineral:#18765f;
-  --amber:#805124;
+  color-scheme:dark;
+  --paper:#151024;
+  --surface:#21192f;
+  --surface-hover:#302344;
+  --line:#423451;
+  --ink:#f5efff;
+  --text:#e3dcf0;
+  --muted:#b9accb;
+  --accent:#dac9ff;
+  --focus-ring:#dac9ff;
+  --mint:#a1e5cc;
+  --amber:#f4c393;
   background:var(--paper);
 }}
 body {{
@@ -358,7 +358,7 @@ h1 {{
   border-inline-start:2px solid var(--amber);
   border-radius:8px;
   color:var(--amber);
-  background:#fffaf1;
+  background:#2d2130;
 }}
 .reading-grid {{ display:grid; gap:16px }}
 .reading-card {{
@@ -368,10 +368,10 @@ h1 {{
   border:1px solid var(--line);
   border-radius:9px;
   background:var(--surface);
-  box-shadow:0 1px 2px #223c6210;
+  box-shadow:0 1px 3px #0b061f4a,inset 0 1px #fcf6ff08;
 }}
 h2 {{ margin:0 0 10px; color:var(--ink); font-size:1rem; line-height:1.35; font-weight:650 }}
-.evidence h2 {{ color:var(--mineral) }}
+.evidence h2 {{ color:var(--mint) }}
 dl {{
   display:grid;
   grid-template-columns:minmax(4.8em,auto) minmax(0,1fr);
@@ -387,15 +387,15 @@ pre {{
   padding:14px 16px;
   white-space:pre-wrap;
   overflow-wrap:anywhere;
-  background:#f5f7fb;
+  background:#1a1329;
   border:1px solid var(--line);
   border-radius:6px;
   color:var(--text);
   font:.86rem/1.65 var(--mono);
 }}
-.download {{ color:var(--accent); background:#eef2ff; border:1px solid #cdd6f5 }}
+.download {{ color:var(--accent); background:#312448; border:1px solid #574470 }}
 .download::after {{ content:""; width:6px; height:6px; border:solid currentColor; border-width:0 2px 2px 0; transform:rotate(45deg); margin-top:-3px }}
-.download:hover {{ background:#e2e9ff; border-color:#abb9ee }}
+.download:hover {{ background:#3e2c5a; border-color:#745b97 }}
 @media (min-width:960px) {{
   .reading-grid {{ grid-template-columns:minmax(0,5fr) minmax(0,7fr); grid-template-rows:auto 1fr; align-items:start }}
   .evidence {{ grid-area:1 / 2 / span 2 }}

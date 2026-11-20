@@ -84,22 +84,22 @@
   let visibleStories = []
   let scoped = false
   // Keep explicit SVG paints so an exported diagram renders identically outside this page.
-  const canvasPaper = '#152238'
+  const canvasPaper = '#140f23'
   const styles = {
-    request: { fill: '#284274', stroke: '#8ca8e9', title: '#f5f8ff', text: '#d2dffd', icon: '#bfd0ff' },
-    story: { fill: '#223652', stroke: '#6d8bbd', title: '#f1f6ff', text: '#c1d0e8', icon: '#b4cbfb' },
-    decision: { fill: '#3a3238', stroke: '#ae896b', title: '#fff6e8', text: '#e6cdb6', icon: '#f4c998' },
-    contract: { fill: '#203843', stroke: '#658d99', title: '#eefaff', text: '#c7dce3', icon: '#a9dfe5' },
-    research: { fill: '#25384c', stroke: '#6d89a6', title: '#f1f7ff', text: '#cbd8e8', icon: '#b9d2ea' },
-    develop: { fill: '#28354a', stroke: '#72839f', title: '#f2f5fc', text: '#c8d4e4', icon: '#becfec' },
-    verify: { fill: '#2d3955', stroke: '#7e90b5', title: '#f3f5ff', text: '#ccd9ee', icon: '#c8d3f4' },
-    delivery: { fill: '#22403f', stroke: '#6da697', title: '#effbf6', text: '#c4dfd6', icon: '#a1e4ce' },
+    request: { fill: '#3b2858', stroke: '#a485ce', title: '#fbf5ff', text: '#e4d2fb', icon: '#dac9ff' },
+    story: { fill: '#2a203e', stroke: '#82709d', title: '#f7f0ff', text: '#d6c9e8', icon: '#cbb7f2' },
+    decision: { fill: '#392b37', stroke: '#ae866b', title: '#fff5ec', text: '#e9cdbb', icon: '#f3c89f' },
+    contract: { fill: '#24323f', stroke: '#7398a3', title: '#f0f9fd', text: '#c8dce4', icon: '#a8d8e2' },
+    research: { fill: '#272f45', stroke: '#7388ad', title: '#f2f6ff', text: '#cad6eb', icon: '#b6c9f0' },
+    develop: { fill: '#2b293f', stroke: '#777593', title: '#f5f1ff', text: '#d6cee8', icon: '#c6bfdf' },
+    verify: { fill: '#342744', stroke: '#9476a8', title: '#faf2ff', text: '#dfcde8', icon: '#ddc0ee' },
+    delivery: { fill: '#253a39', stroke: '#6e9e94', title: '#effcf6', text: '#c5dfd5', icon: '#a1e5cc' },
   }
   const statusColors = {
-    passed: { fill: '#2b4b46', ink: '#a1e4ce' },
-    pending: { fill: '#35496b', ink: '#dce7fa' },
-    stale: { fill: '#544333', ink: '#f6d2a7' },
-    failed: { fill: '#563b49', ink: '#f9c8d6' },
+    passed: { fill: '#2d4b46', ink: '#a1e5cc' },
+    pending: { fill: '#413455', ink: '#e7daf8' },
+    stale: { fill: '#513b36', ink: '#f6d0ac' },
+    failed: { fill: '#563849', ink: '#f9c8d6' },
   }
   const glyph = {
     request: 'M2 8h5m0 0c3 0 1-5 5-5h2M7 8c3 0 1 5 5 5h2',
@@ -114,11 +114,11 @@
   const graphTheme = getComputedStyle(document.documentElement)
   const lineColors = {
     normal: graphTheme.getPropertyValue('--wire').trim(),
-    story: '#8aa4ce',
-    done: '#78a89f',
+    story: '#a28bc3',
+    done: '#78a69e',
     possible: graphTheme.getPropertyValue('--wire-branch').trim(),
-    chosen: '#a1e4ce',
-    skipped: '#727e99',
+    chosen: '#a1e5cc',
+    skipped: '#7a7089',
   }
   const activeName = {
     ready: '可推进',

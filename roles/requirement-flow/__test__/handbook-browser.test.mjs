@@ -436,7 +436,7 @@ describe.skipIf(!executablePath)('generated handbook interactions in Chromium', 
       }
     })
 
-    it('puts a compact list under a short header with readable meters and full-card targets', async () => {
+    it('puts layered cards under a short header with full-card targets', async () => {
       const page = await browser.newPage()
       try {
         await page.goto(server.address)
@@ -448,13 +448,16 @@ describe.skipIf(!executablePath)('generated handbook interactions in Chromium', 
             const corner = document.elementFromPoint(bounds.left + 5, bounds.bottom - 5)
             const title = card.querySelector('h3')
             const meter = card.querySelector('progress')
+            const statuses = card.querySelectorAll('.state')
+            const tagLine = card.querySelector('.card-tags').getBoundingClientRect()
             const header = document.querySelector('.masthead').getBoundingClientRect()
             return {
               columns: getComputedStyle(card.parentElement).gridTemplateColumns.split(' ').length,
               headerHeight: header.height,
               toolbarGap: document.querySelector('.toolbar').getBoundingClientRect().top - header.bottom,
               firstCardTop: document.querySelector('.cards .card').getBoundingClientRect().top,
-              height: bounds.height,
+              oneStatusAboveTitle: statuses.length === 1 && statuses[0].getBoundingClientRect().bottom <= title.getBoundingClientRect().top,
+              separateProgress: meter.getBoundingClientRect().top >= tagLine.bottom,
               titleSize: Number.parseFloat(getComputedStyle(title).fontSize),
               meterHeight: meter.getBoundingClientRect().height,
               target: corner?.closest('a') === title.querySelector('a'),
@@ -465,7 +468,8 @@ describe.skipIf(!executablePath)('generated handbook interactions in Chromium', 
           expect(metrics.headerHeight).toBeLessThanOrEqual(85)
           expect(metrics.toolbarGap).toBeGreaterThanOrEqual(16)
           expect(metrics.firstCardTop).toBeLessThanOrEqual(210)
-          expect(metrics.height).toBeLessThanOrEqual(100)
+          expect(metrics.oneStatusAboveTitle).toBe(true)
+          expect(metrics.separateProgress).toBe(true)
           expect(metrics.titleSize).toBeGreaterThanOrEqual(15)
           expect(metrics.meterHeight).toBeGreaterThanOrEqual(4)
           expect(metrics.target).toBe(true)
@@ -474,6 +478,28 @@ describe.skipIf(!executablePath)('generated handbook interactions in Chromium', 
         await page.hover(linkFor(unplanned))
         await page.waitForSelector('#card-tooltip:not([hidden])')
         expect(await page.$eval('#card-tooltip strong', tip => tip.textContent)).toBe(longTitle)
+      }
+      finally {
+        await page.close()
+      }
+    })
+
+    it('finds demands by label and highlights only the labels that match', async () => {
+      const page = await browser.newPage()
+      const tags = `${cards}[data-task-id="plan"] .card-tag`
+      const highlighted = () => page.$$eval(`${tags}[data-matched]`, items => items.map(item => item.textContent))
+      try {
+        await page.goto(server.address)
+        await waitForCards(page, ['plan', unplanned, archived, research])
+        expect(await page.$$eval(tags, items => items.map(item => item.textContent))).toEqual(featureTitles)
+        expect(await highlighted()).toEqual([])
+        await page.type(search, '批量确认')
+        await waitForCards(page, ['plan'])
+        expect(await highlighted()).toEqual(['批量确认'])
+        await page.click('#clear-query')
+        await page.type(search, '陈列模板生成')
+        await waitForCards(page, ['plan'])
+        expect(await highlighted()).toEqual([])
       }
       finally {
         await page.close()
