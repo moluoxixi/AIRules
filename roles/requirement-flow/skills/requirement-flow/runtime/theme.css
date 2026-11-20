@@ -1,34 +1,68 @@
 :root {
   color-scheme: dark;
   view-transition-name: none;
-  --paper: #151024;
-  --surface: #21192f;
-  --surface-raised: #29203b;
-  --surface-hover: #342647;
-  --ink: #f5efff;
-  --text: #e1d7eb;
-  --muted: #beb1cf;
-  --line: #413450;
-  --line-strong: #6e5a84;
-  --accent: #dac9ff;
-  --accent-bg: #392854;
-  --on-accent: #231436;
-  --teal: #a1e5cc;
-  --success-bg: #243b37;
-  --blue: #c8ceff;
-  --amber: #f4c693;
-  --rose: #e9aed0;
-  --focus-ring: #e8d8ff;
-  --glass: rgb(40 30 57 / .96);
-  --shadow: 0 14px 37px rgb(8 4 15 / .38), inset 0 1px rgb(245 225 255 / .06);
-  --display: "Avenir Next","PingFang SC","Microsoft YaHei","Noto Sans CJK SC",system-ui,sans-serif;
-  --ui: "Avenir Next","PingFang SC","Microsoft YaHei","Noto Sans CJK SC",system-ui,sans-serif;
-  --mono: "SFMono-Regular","IBM Plex Mono",Consolas,monospace;
+  --paper: #171f23;
+  --shade: #182226;
+  --surface: #202b2d;
+  --surface-raised: #293639;
+  --surface-hover: #34464a;
+  --ink: #efe6d5;
+  --text: #ddd9cc;
+  --muted: #b9c1b8;
+  --line: #46564f;
+  --line-strong: #6d8279;
+  --accent: #d8a27d;
+  --accent-bg: #3e312e;
+  --on-accent: #222823;
+  --teal: #b4c7b4;
+  --success-bg: #2c3e36;
+  --blue: #a9cad7;
+  --amber: #e4b680;
+  --rose: #eca8aa;
+  --focus-ring: var(--accent);
+  --grid: rgb(12 19 22 / .18);
+  --glass: rgb(32 43 45 / .96);
+  --shadow: 0 12px 32px rgb(7 13 16 / .37);
+  --display: "Kaiti SC",STKaiti,KaiTi,"Songti SC","Noto Serif CJK SC",serif;
+  --ui: Optima,"PingFang SC","Microsoft YaHei","Noto Sans CJK SC",sans-serif;
+  --mono: Menlo,"DejaVu Sans Mono",Consolas,monospace;
 }
+:root[data-theme=light] {
+  color-scheme: light;
+  --paper: #f2e9d5;
+  --shade: #e9dfc7;
+  --surface: #fcf7ea;
+  --surface-raised: #ebdfc5;
+  --surface-hover: #e4d5bb;
+  --ink: #202b29;
+  --text: #39433a;
+  --muted: #5c6053;
+  --line: #cbbda1;
+  --line-strong: #8a806a;
+  --accent: #963627;
+  --accent-bg: #f0dcd0;
+  --on-accent: #fff9eb;
+  --teal: #34604f;
+  --success-bg: #e5e8d6;
+  --blue: #2e566e;
+  --amber: #795028;
+  --rose: #923f4a;
+  --grid: rgb(76 59 39 / .095);
+  --glass: rgb(252 247 234 / .96);
+  --shadow: 0 12px 32px rgb(62 46 29 / .12);
+}
+.theme-toggle {
+  display:inline-grid; place-items:center; flex:none; inline-size:32px; block-size:32px; padding:0;
+  border:1px solid var(--line-strong); border-radius:5px; background:var(--surface); color:var(--accent); cursor:pointer;
+}
+.theme-toggle[hidden] { display:none }
+.theme-toggle:hover { border-color:var(--accent); background:var(--accent-bg) }
+.theme-toggle:focus-visible { outline:2px solid var(--focus-ring); outline-offset:2px }
+.theme-toggle svg { display:block; inline-size:18px; block-size:18px; fill:none; stroke:currentColor; stroke-width:1.6; stroke-linecap:round; stroke-linejoin:round }
 .card-tooltip {
   position:fixed; z-index:12; width:max-content; max-width:min(352px,calc(100vw - 16px));
   max-height:min(54vh,320px); overflow:auto; box-sizing:border-box; overscroll-behavior:contain;
-  padding:15px 17px; border:1px solid var(--line-strong); border-radius:12px;
+  padding:14px 16px; border:1px solid var(--line-strong); border-inline-start:2px solid var(--accent); border-radius:5px;
   background:var(--glass); backdrop-filter:blur(14px); color:var(--text);
   box-shadow:var(--shadow); font:.87rem/1.55 var(--ui); overflow-wrap:anywhere;
 }
@@ -46,7 +80,7 @@
     animation-duration:360ms;
     animation-timing-function:cubic-bezier(.22,.74,.16,1);
   }
-  ::view-transition-image-pair(requirement-surface) { overflow:clip; border-radius:12px }
+  ::view-transition-image-pair(requirement-surface) { overflow:clip; border-radius:5px }
   ::view-transition-old(requirement-surface),::view-transition-new(requirement-surface) {
     height:100%; object-fit:cover; object-position:center; animation-timing-function:linear;
   }

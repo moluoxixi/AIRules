@@ -1,4 +1,5 @@
 """Project the shared demand record into a readable graph, preserving its entity IDs."""
+from base64 import b64encode
 import hashlib
 import json
 import re
@@ -301,118 +302,137 @@ if (drawer && drawer.startsWith('#node=')) {
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
+<meta name="color-scheme" content="light dark">
 <title>经验来源 · {escape(source["scenario"])}</title>
+<script>{Path(__file__).with_name("theme.js").read_text("utf-8")}</script>
 <style>
 {Path(__file__).with_name("theme.css").read_text("utf-8")}
-* {{ box-sizing:border-box }}
-:root {{
-  color-scheme:dark;
-  --paper:#151024;
-  --surface:#21192f;
-  --surface-hover:#302344;
-  --line:#423451;
-  --ink:#f5efff;
-  --text:#e3dcf0;
-  --muted:#b9accb;
-  --accent:#dac9ff;
-  --focus-ring:#dac9ff;
-  --mint:#a1e5cc;
-  --amber:#f4c393;
-  background:var(--paper);
-}}
+*,*::before,*::after {{ box-sizing:border-box }}
+:root {{ background:var(--paper) }}
 body {{
   margin:0;
   min-height:100vh;
   color:var(--ink);
-  font:14px/1.58 var(--ui);
+  font:15px/1.6 var(--ui);
+  background:
+    radial-gradient(ellipse at 88% -9%,color-mix(in srgb,var(--blue) 13%,var(--paper)),transparent 37rem),
+    linear-gradient(170deg,var(--surface-raised),var(--paper) 27rem);
 }}
-.reading-wrap {{ width:min(calc(100% - clamp(32px,8vw,112px)),1060px); margin-inline:auto }}
+:root[data-theme=light] body {{
+  background:
+    radial-gradient(ellipse at 95% -9%,color-mix(in srgb,var(--teal) 13%,var(--paper)),transparent 37rem),
+    linear-gradient(170deg,var(--surface-raised),var(--paper) 27rem);
+}}
+.reading-wrap {{ width:min(calc(100% - clamp(32px,8vw,112px)),1120px); margin-inline:auto }}
 .masthead {{ background:var(--surface); border-bottom:1px solid var(--line) }}
-.masthead nav {{ min-height:49px; display:flex; align-items:center; gap:5px; flex-wrap:wrap }}
-.reader-label {{ color:var(--ink); font-weight:650; margin-inline-end:auto }}
+.masthead nav {{ min-height:57px; display:flex; align-items:center; gap:6px; flex-wrap:wrap; padding-block:6px }}
+.reader-label {{ display:flex; align-items:center; gap:9px; color:var(--ink); font-weight:650; margin-inline-end:auto }}
+.reader-label::before {{
+  content:"";
+  width:9px;
+  height:9px;
+  border:1px solid var(--accent);
+  border-radius:1px;
+  background:var(--accent);
+  box-shadow:inset 0 0 0 1px var(--surface);
+}}
+.reader-actions {{ display:flex; align-items:center; margin-inline-start:auto; gap:6px }}
 a {{ color:var(--accent); text-decoration:none }}
 a:focus-visible {{ outline:2px solid var(--focus-ring); outline-offset:3px }}
 nav a,.download {{
   display:inline-flex;
   align-items:center;
   gap:7px;
-  min-height:32px;
-  padding:4px 9px;
-  border-radius:6px;
-  font-size:.92rem;
+  min-height:36px;
+  padding:5px 9px;
+  border-radius:4px;
+  font-size:.87rem;
   font-weight:600;
 }}
 nav a {{ color:var(--muted) }}
 nav a:hover {{ color:var(--ink); background:var(--surface-hover) }}
-main {{ padding-block:22px 44px }}
+main {{ padding-block:clamp(24px,5vw,62px) 48px }}
 h1 {{
-  margin:0 0 16px;
-  font:650 clamp(1.2rem,2.4vw,1.55rem)/1.34 var(--display,var(--ui));
-  letter-spacing:-.025em;
+  margin:0 0 clamp(20px,4vw,34px);
+  padding-block-end:clamp(14px,2.3vw,22px);
+  border-block-end:3px double var(--line);
+  font:650 clamp(1.55rem,3.5vw,2.8rem)/1.28 var(--display);
+  text-wrap:pretty;
   overflow-wrap:anywhere;
 }}
 .historical {{
   margin:0 0 18px;
-  padding:10px 13px;
+  padding:10px 14px;
   border:1px solid var(--line);
   border-inline-start:2px solid var(--amber);
-  border-radius:8px;
+  border-radius:4px;
   color:var(--amber);
-  background:#2d2130;
+  background:color-mix(in srgb,var(--surface) 90%,var(--amber));
 }}
 .reading-grid {{ display:grid; gap:16px }}
 .reading-card {{
   min-width:0;
   align-self:start;
-  padding:clamp(12px,2vw,18px);
+  padding:clamp(14px,2vw,24px);
   border:1px solid var(--line);
-  border-radius:9px;
+  border-radius:2px;
   background:var(--surface);
-  box-shadow:0 1px 3px #0b061f4a,inset 0 1px #fcf6ff08;
 }}
-h2 {{ margin:0 0 10px; color:var(--ink); font-size:1rem; line-height:1.35; font-weight:650 }}
-.evidence h2 {{ color:var(--mint) }}
+h2 {{ margin:0 0 12px; color:var(--ink); font:650 1.2rem/1.35 var(--display) }}
+.evidence {{ border-inline-start:2px solid var(--accent); background:var(--surface-raised) }}
+:root[data-theme=light] .evidence {{ background:var(--surface) }}
+.evidence h2 {{ color:var(--accent) }}
 dl {{
   display:grid;
   grid-template-columns:minmax(4.8em,auto) minmax(0,1fr);
-  gap:0 12px;
+  column-gap:14px;
   margin:0;
   font-size:.9rem;
 }}
-dt,dd {{ margin:0; padding-block:7px; border-top:1px solid var(--line) }}
+dt,dd {{ margin:0; padding-block:7px; border-block-start:1px solid var(--line) }}
 dt {{ color:var(--muted) }}
 dd {{ overflow-wrap:anywhere; color:var(--text) }}
 pre {{
-  margin:16px 0 12px;
+  margin:17px 0 14px;
   padding:14px 16px;
   white-space:pre-wrap;
   overflow-wrap:anywhere;
-  background:#1a1329;
+  background:var(--shade);
   border:1px solid var(--line);
-  border-radius:6px;
+  border-radius:2px;
   color:var(--text);
   font:.86rem/1.65 var(--mono);
 }}
-.download {{ color:var(--accent); background:#312448; border:1px solid #574470 }}
+.download {{ padding-inline:12px; border-radius:2px; color:var(--on-accent); background:var(--accent); border:1px solid var(--accent) }}
 .download::after {{ content:""; width:6px; height:6px; border:solid currentColor; border-width:0 2px 2px 0; transform:rotate(45deg); margin-top:-3px }}
-.download:hover {{ background:#3e2c5a; border-color:#745b97 }}
-@media (min-width:960px) {{
-  .reading-grid {{ grid-template-columns:minmax(0,5fr) minmax(0,7fr); grid-template-rows:auto 1fr; align-items:start }}
+.download:hover {{ background:color-mix(in srgb,var(--accent) 78%,var(--ink)) }}
+@media (min-width:880px) {{
+  .reading-grid {{ grid-template-columns:minmax(0,4fr) minmax(0,6fr); grid-template-rows:auto 1fr }}
   .evidence {{ grid-area:1 / 2 / span 2 }}
 }}
 @media (max-width:480px) {{
-  main {{ padding-top:16px }}
-  dl {{ font-size:.85rem; gap:0 8px }}
+  .masthead nav,.reader-actions {{ gap:4px }}
+  nav a {{ padding-inline:6px }}
+  dl {{ font-size:.85rem; column-gap:8px }}
+  pre {{ padding-inline:11px }}
 }}
 @media (prefers-reduced-motion:no-preference) {{
-  .reading-grid {{ animation:reader-enter .2s ease-out }}
+  h1,.reading-card {{ animation:reader-enter .34s cubic-bezier(.2,.75,.25,1) backwards }}
+  .reading-card:nth-child(1) {{ animation-delay:70ms }}
+  .reading-card:nth-child(2) {{ animation-delay:115ms }}
+  .reading-card:nth-child(3) {{ animation-delay:160ms }}
   nav a,.download {{ transition:background .15s ease,color .15s ease,border-color .15s ease }}
-  @keyframes reader-enter {{ from {{ opacity:.72; transform:translateY(3px) }} }}
+  @keyframes reader-enter {{ from {{ opacity:0; transform:translateY(9px) }} }}
 }}
 </style>
 </head>
 <body>
-<header class="masthead"><nav class="reading-wrap" aria-label="导航"><span class="reader-label">经验来源</span>{home_link}<a id="return-map" href="./">← 返回需求详情</a></nav></header>
+<header class="masthead"><nav class="reading-wrap" aria-label="导航">
+  <span class="reader-label">经验来源</span>
+  <div class="reader-actions">{home_link}<a id="return-map" href="./">← 返回需求详情</a>
+    <button type="button" class="theme-toggle" data-theme-toggle aria-label="切换主题" hidden></button>
+  </div>
+</nav></header>
 <main class="reading-wrap">
   <h1>{escape(card["observation"])}</h1>
   {historical}
@@ -461,8 +481,10 @@ def render(model, states, impacts, token, checksum, template, *, queue, source_l
         "DIGEST":checksum, "DATA":safe_json,
         "TOOLTIP":(here/"tooltip.js").read_text("utf-8"),
         "THEME":(here/"theme.css").read_text("utf-8"),
+        "THEME_SCRIPT":(here/"theme.js").read_text("utf-8"),
         "DAGRE":(here/"dagre.min.js").read_text("utf-8"),
         "SCRIPT":(here/"map.js").read_text("utf-8"),
+        "INK_WASH": b64encode((here/"graph-ink-wash.png").read_bytes()).decode("ascii"),
     }
-    return re.sub(r"@@(TITLE|DIGEST|DATA|THEME|TOOLTIP|DAGRE|SCRIPT)@@",
+    return re.sub(r"@@(TITLE|DIGEST|DATA|THEME|THEME_SCRIPT|TOOLTIP|DAGRE|SCRIPT|INK_WASH)@@",
                   lambda match: substitutions[match.group(1)], Path(template).read_text("utf-8"))

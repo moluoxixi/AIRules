@@ -195,11 +195,19 @@ describe.skipIf(!executablePath)('generated handbook interactions in Chromium', 
     return { x, y, width, height, viewBox: el.getAttribute('viewBox') }
   })
   const previewTrigger = 'button.source-preview-trigger'
-  async function open(width, height, route = '') {
+  const themeToggle = 'button[data-theme-toggle]'
+  const preferTheme = (page, value) => page.emulateMediaFeatures([{ name: 'prefers-color-scheme', value }])
+  const waitForTheme = (page, theme) => page.waitForFunction((value) => {
+    const root = document.documentElement
+    return root.dataset.theme === value && getComputedStyle(root).colorScheme === value
+  }, { timeout: 4_000 }, theme)
+  async function open(width, height, route = '', theme) {
     const page = await browser.newPage()
     await page.setViewport({ width, height, hasTouch: true })
     const failed = new Promise((_, reject) => page.once('pageerror', reject))
     try {
+      if (theme)
+        await preferTheme(page, theme)
       await Promise.race([
         failed,
         page.goto(url + route, { waitUntil: 'domcontentloaded' })
@@ -246,9 +254,10 @@ describe.skipIf(!executablePath)('generated handbook interactions in Chromium', 
     }
   }
 
-  it('embeds readable node colors and a canvas background in standalone SVG exports', async () => {
-    const page = await open(390, 700, '?view=detail')
+  it.each(['dark', 'light'])('embeds readable %s colors in standalone SVG exports', async (theme) => {
+    const page = await open(390, 700, '?view=detail', theme)
     try {
+      await waitForTheme(page, theme)
       const svg = await page.evaluate(async () => {
         const download = new Promise((resolve) => {
           HTMLAnchorElement.prototype.click = function () {
@@ -297,7 +306,10 @@ describe.skipIf(!executablePath)('generated handbook interactions in Chromium', 
       })
       expect(svg.count).toBeGreaterThan(5)
       expect(svg.minContrast).toBeGreaterThanOrEqual(4.5)
-      expect(svg.background).toBeLessThan(0.08)
+      if (theme === 'dark')
+        expect(svg.background).toBeLessThan(0.08)
+      else
+        expect(svg.background).toBeGreaterThan(0.7)
       expect(svg.normal).toBe(svg.normalLegend)
       expect(svg.possible).toBe(svg.possibleLegend)
       expect(svg.normal).not.toBe(svg.possible)
@@ -331,6 +343,7 @@ describe.skipIf(!executablePath)('generated handbook interactions in Chromium', 
       server = await startServer(root, 'serve', '--port', '0')
       const graph = new URL('tasks/inspection-route/?view=overview&features=S-route-stop#node=S-route-stop', server.address).href
       await page.setViewport({ width: 390, height: 700 })
+      await preferTheme(page, 'light')
       await page.goto(graph)
       await drawerReady(page)
       const group = '#detail details.lesson-group'
@@ -343,12 +356,16 @@ describe.skipIf(!executablePath)('generated handbook interactions in Chromium', 
       const href = new URL(await page.$eval(evidence, node => node.href))
       expect(href.searchParams.get('approval')).toMatch(/^[a-f0-9]{64}$/u)
       await Promise.all([page.waitForNavigation(), page.click(evidence)])
+      await waitForTheme(page, 'light')
+      await page.click(themeToggle)
+      await waitForTheme(page, 'dark')
       expect(await page.$eval('header a[aria-label="首页"]', node => new URL(node.href).pathname)).toBe('/')
       expect(await page.$eval('.download', node => node.href)).toContain('lesson-evidence')
       const bytes = await page.$eval('.download', async node => (await fetch(node.href)).text())
       expect(bytes).toContain('test_store_on_later_page')
       await Promise.all([page.waitForNavigation(), page.click('#return-map')])
       await drawerReady(page)
+      await waitForTheme(page, 'dark')
       expect(page.url()).toBe(graph)
       expect(await page.$eval(group, node => node.open)).toBe(true)
     }
@@ -395,6 +412,79 @@ describe.skipIf(!executablePath)('generated handbook interactions in Chromium', 
       await Promise.all([page.waitForNavigation({ waitUntil: 'domcontentloaded' }), page.click(selector)])
     }
 
+    it('follows the system theme and preserves a manual theme across navigation and reload', async () => {
+      const context = await browser.createBrowserContext()
+      try {
+        const page = await context.newPage()
+        await page.setViewport({ width: 1024, height: 680 })
+        await preferTheme(page, 'dark')
+        await page.goto(server.address)
+        await waitForTheme(page, 'dark')
+        expect(await page.$eval(themeToggle, el => el.getAttribute('aria-label'))).toContain('浅色')
+        await preferTheme(page, 'light')
+        await waitForTheme(page, 'light')
+        expect(await page.$eval(themeToggle, el => el.getAttribute('aria-label'))).toContain('深色')
+        await page.type(search, '批量确认')
+        await waitForCards(page, ['plan'])
+        await follow(page, linkFor('plan'))
+        await waitForTheme(page, 'light')
+        const story = '#stations [data-node="S-4"]'
+        await page.waitForSelector(story)
+        await page.click('#plus')
+        const before = await canvasState(page)
+        const fill = () => page.$eval(`${story} .outline`, el => getComputedStyle(el).fill)
+        const lightFill = await fill()
+        await preferTheme(page, 'dark')
+        await waitForTheme(page, 'dark')
+        expect(await fill()).not.toBe(lightFill)
+        expect(await canvasState(page)).toEqual(before)
+        await page.click(themeToggle)
+        await waitForTheme(page, 'light')
+        expect(await fill()).toBe(lightFill)
+        expect(await page.evaluate(() => localStorage.getItem('requirement-flow:theme'))).toBe('light')
+        await page.goto(new URL('?view=overview&features=S-4#node=S-4', page.url()).href)
+        await drawerReady(page)
+        const selection = page.url()
+        await page.reload()
+        await drawerReady(page)
+        await waitForTheme(page, 'light')
+        expect(page.url()).toBe(selection)
+        expect(await page.$eval('#panel-title', el => el.textContent)).toBe('批量确认')
+        await follow(page, '#inspector .drawer-home')
+        await waitForTheme(page, 'light')
+        await page.click(themeToggle)
+        await preferTheme(page, 'light')
+        await page.reload()
+        await waitForTheme(page, 'dark')
+      }
+      finally {
+        await context.close()
+      }
+    })
+
+    it('switches the theme when storage is unavailable', async () => {
+      const page = await browser.newPage()
+      const errors = []
+      page.on('pageerror', error => errors.push(error.message))
+      try {
+        await page.evaluateOnNewDocument(() => {
+          Object.defineProperty(window, 'localStorage', {
+            get() { throw new DOMException('Storage unavailable', 'SecurityError') },
+          })
+        })
+        await preferTheme(page, 'light')
+        await page.goto(server.address)
+        await waitForTheme(page, 'light')
+        await waitForCards(page, [archived, unplanned, 'plan', research])
+        await page.click(themeToggle)
+        await waitForTheme(page, 'dark')
+        expect(errors).toEqual([])
+      }
+      finally {
+        await page.close()
+      }
+    })
+
     it('keeps separated graph actions and the rightmost home link in a compact header', async () => {
       const page = await browser.newPage()
       try {
@@ -439,12 +529,14 @@ describe.skipIf(!executablePath)('generated handbook interactions in Chromium', 
       }
     })
 
-    it('puts layered cards under a short header with full-card targets', async () => {
+    it.each(['dark', 'light'])('keeps %s cards compact with full-card targets', async (theme) => {
       const page = await browser.newPage()
       try {
+        await preferTheme(page, theme)
         await page.goto(server.address)
+        await waitForTheme(page, theme)
         await waitForCards(page, ['plan', unplanned, archived, research])
-        for (const width of [1440, 1200, 960, 725, 665, 390, 320]) {
+        for (const width of [1079, 960, 725, 665, 390, 320]) {
           await page.setViewport({ width, height: width === 725 ? 593 : 820 })
           const metrics = await page.$eval('article[data-task-id="plan"]', (card) => {
             const bounds = card.getBoundingClientRect()
@@ -454,6 +546,8 @@ describe.skipIf(!executablePath)('generated handbook interactions in Chromium', 
             const statuses = card.querySelectorAll('.state')
             const tagLine = card.querySelector('.card-tags').getBoundingClientRect()
             const header = document.querySelector('.masthead').getBoundingClientRect()
+            const active = card.closest('.section').getBoundingClientRect()
+            const archive = document.querySelector('.section[data-bucket="archive"]').getBoundingClientRect()
             return {
               columns: getComputedStyle(card.parentElement).gridTemplateColumns.split(' ').length,
               headerHeight: header.height,
@@ -461,29 +555,142 @@ describe.skipIf(!executablePath)('generated handbook interactions in Chromium', 
               firstCardTop: document.querySelector('.cards .card').getBoundingClientRect().top,
               oneStatusAboveTitle: statuses.length === 1 && statuses[0].getBoundingClientRect().bottom <= title.getBoundingClientRect().top,
               separateProgress: meter.getBoundingClientRect().top >= tagLine.bottom,
-              cardsFit: [...card.parentElement.children].every(row => row.getBoundingClientRect().bottom <= innerHeight),
               titleSize: Number.parseFloat(getComputedStyle(title).fontSize),
               meterHeight: meter.getBoundingClientRect().height,
               target: corner?.closest('a') === title.querySelector('a'),
+              archiveBelow: archive.top >= active.bottom,
               overflow: document.documentElement.scrollWidth - innerWidth,
             }
           })
           expect(metrics.columns).toBe(width >= 700 ? 2 : 1)
+          expect(metrics.headerHeight).toBeGreaterThan(0)
           expect(metrics.headerHeight).toBeLessThanOrEqual(85)
           expect(metrics.toolbarGap).toBeGreaterThanOrEqual(16)
-          expect(metrics.firstCardTop).toBeLessThanOrEqual(210)
+          expect(metrics.firstCardTop).toBeLessThanOrEqual(350)
           expect(metrics.oneStatusAboveTitle).toBe(true)
           expect(metrics.separateProgress).toBe(true)
           expect(metrics.titleSize).toBeGreaterThanOrEqual(15)
           expect(metrics.meterHeight).toBeGreaterThanOrEqual(4)
           expect(metrics.target).toBe(true)
-          expect(metrics.overflow).toBe(0)
-          if (width === 725)
-            expect(metrics.cardsFit).toBe(true)
+          expect(metrics.archiveBelow).toBe(true)
+          expect(metrics.overflow).toBeLessThanOrEqual(0)
         }
         await page.hover(linkFor(unplanned))
         await page.waitForSelector('#card-tooltip:not([hidden])')
         expect(await page.$eval('#card-tooltip strong', tip => tip.textContent)).toBe(longTitle)
+      }
+      finally {
+        await page.close()
+      }
+    })
+
+    it.each([
+      ['light', '/catalog-landscape.jpg'],
+      ['dark', '/catalog-landscape-night.jpg'],
+    ])('loads the %s landscape and keeps the first demand visible on a short viewport', async (theme, artworkPath) => {
+      const page = await browser.newPage()
+      try {
+        await page.setViewport({ width: 375, height: 520, hasTouch: true })
+        await page.setCacheEnabled(false)
+        await preferTheme(page, theme)
+        const [landscape] = await Promise.all([
+          page.waitForResponse(response => new URL(response.url()).pathname === artworkPath, { timeout: 4_000 }),
+          page.goto(server.address),
+        ])
+        expect(landscape.ok()).toBe(true)
+        expect(landscape.headers()['content-type']).toBe('image/jpeg')
+        await waitForTheme(page, theme)
+        const backgrounds = await page.$eval('.intro', el => [
+          getComputedStyle(el).backgroundImage,
+          getComputedStyle(el, '::before').backgroundImage,
+          getComputedStyle(el, '::after').backgroundImage,
+        ])
+        expect(backgrounds.some(background => background.includes(landscape.url()))).toBe(true)
+        await waitForCards(page, ['plan', unplanned, archived, research])
+        const firstCard = await page.$eval('.section[data-bucket="active"] .card', (el) => {
+          const { top, right, bottom, left } = el.getBoundingClientRect()
+          return top > 0 && bottom <= innerHeight && left >= 0 && right <= innerWidth
+        })
+        expect(firstCard).toBe(true)
+      }
+      finally {
+        await page.close()
+      }
+    })
+
+    it.each(['light', 'dark'])('keeps the %s active list stable beside the archive rail when filtering', async (theme) => {
+      const page = await browser.newPage()
+      const layout = () => page.$eval('#results', (el) => {
+        const measure = (bucket) => {
+          const section = el.querySelector(`.section[data-bucket="${bucket}"]`)
+          if (!section)
+            return null
+          const { left, right, top, width } = section.getBoundingClientRect()
+          const cards = section.querySelector('.cards')
+          const columns = getComputedStyle(cards).gridTemplateColumns
+          const firstCard = cards.firstElementChild.getBoundingClientRect()
+          return { left, right, top, width, firstCardTop: firstCard.top, firstCardWidth: firstCard.width, columnCount: columns.split(' ').length }
+        }
+        return {
+          active: measure('active'),
+          archive: measure('archive'),
+          width: el.getBoundingClientRect().width,
+          overflow: document.documentElement.scrollWidth - innerWidth,
+        }
+      })
+      try {
+        await page.setViewport({ width: 1440, height: 820, hasTouch: true })
+        await preferTheme(page, theme)
+        await page.goto(server.address)
+        await waitForTheme(page, theme)
+        await waitForCards(page, ['plan', unplanned, archived, research])
+        for (const width of [1440, 1080]) {
+          await page.setViewport({ width, height: 820, hasTouch: true })
+          const { active, archive, overflow } = await layout()
+          expect(active.columnCount).toBe(1)
+          expect(archive.columnCount).toBe(1)
+          expect(archive.width).toBeGreaterThan(250)
+          expect(archive.width).toBeLessThan(active.width)
+          expect(archive.left - active.right).toBeGreaterThanOrEqual(16)
+          expect(Math.abs(archive.top - active.top)).toBeLessThanOrEqual(1)
+          expect(active.firstCardTop).toBeLessThanOrEqual(350)
+          expect(overflow).toBeLessThanOrEqual(0)
+
+          await page.click('button[data-scope="active"]')
+          await waitForCards(page, ['plan', unplanned, research])
+          const activeOnly = await layout()
+          expect(activeOnly.archive).toBeNull()
+          expect(activeOnly.active).toMatchObject({ left: active.left, width: active.width, firstCardWidth: active.firstCardWidth })
+          expect(activeOnly.overflow).toBeLessThanOrEqual(0)
+          await page.click('button[data-scope="all"]')
+          await waitForCards(page, ['plan', unplanned, archived, research])
+        }
+        await page.click('button[data-scope="archive"]')
+        await waitForCards(page, [archived])
+        const archiveOnly = await layout()
+        expect(archiveOnly.active).toBeNull()
+        expect(archiveOnly.archive.width).toBeCloseTo(archiveOnly.width)
+        expect(archiveOnly.overflow).toBeLessThanOrEqual(0)
+
+        await page.click('button[data-scope="all"]')
+        await waitForCards(page, ['plan', unplanned, archived, research])
+        const { active } = await layout()
+        await page.type(search, '批量确认')
+        await waitForCards(page, ['plan'])
+        const matching = await layout()
+        expect(matching.archive).toBeNull()
+        expect(matching.active).toMatchObject({ left: active.left, width: active.width, firstCardWidth: active.firstCardWidth })
+        await page.click('#clear-query')
+        await waitForCards(page, ['plan', unplanned, archived, research])
+        const tap = await page.$eval(`${cards}[data-task-id="plan"]`, (card) => {
+          const { left, bottom } = card.getBoundingClientRect()
+          const title = card.querySelector('h3').getBoundingClientRect()
+          const progress = card.querySelector('progress').getBoundingClientRect()
+          return { x: left + 6, y: bottom - 6, progressGap: progress.top - title.bottom }
+        })
+        expect(tap.progressGap).toBeGreaterThanOrEqual(0)
+        await Promise.all([page.waitForNavigation({ waitUntil: 'domcontentloaded' }), page.touchscreen.tap(tap.x, tap.y)])
+        expect(new URL(page.url()).pathname).toBe('/tasks/plan/')
       }
       finally {
         await page.close()

@@ -83,26 +83,13 @@
   let visibleActions = new Set()
   let visibleStories = []
   let scoped = false
-  // Keep explicit SVG paints so an exported diagram renders identically outside this page.
-  const canvasPaper = '#140f23'
-  const styles = {
-    request: { fill: '#3b2858', stroke: '#a485ce', title: '#fbf5ff', text: '#e4d2fb', icon: '#dac9ff' },
-    story: { fill: '#2a203e', stroke: '#82709d', title: '#f7f0ff', text: '#d6c9e8', icon: '#cbb7f2' },
-    decision: { fill: '#392b37', stroke: '#ae866b', title: '#fff5ec', text: '#e9cdbb', icon: '#f3c89f' },
-    contract: { fill: '#24323f', stroke: '#7398a3', title: '#f0f9fd', text: '#c8dce4', icon: '#a8d8e2' },
-    research: { fill: '#272f45', stroke: '#7388ad', title: '#f2f6ff', text: '#cad6eb', icon: '#b6c9f0' },
-    develop: { fill: '#2b293f', stroke: '#777593', title: '#f5f1ff', text: '#d6cee8', icon: '#c6bfdf' },
-    verify: { fill: '#342744', stroke: '#9476a8', title: '#faf2ff', text: '#dfcde8', icon: '#ddc0ee' },
-    delivery: { fill: '#253a39', stroke: '#6e9e94', title: '#effcf6', text: '#c5dfd5', icon: '#a1e5cc' },
-  }
-  const statusColors = {
-    passed: { fill: '#2d4b46', ink: '#a1e5cc' },
-    pending: { fill: '#413455', ink: '#e7daf8' },
-    stale: { fill: '#513b36', ink: '#f6d0ac' },
-    failed: { fill: '#563849', ink: '#f9c8d6' },
-  }
+  let graphTheme = getComputedStyle(document.documentElement)
+  const theme = name => graphTheme.getPropertyValue(`--${name}`).trim()
+  const paint = name => `var(--${name})`
+  const canvasPaper = paint('shade')
+  const nodeInk = paint('ink')
+  const nodeText = paint('text')
   const glyph = {
-    request: 'M2 8h5m0 0c3 0 1-5 5-5h2M7 8c3 0 1 5 5 5h2',
     story: 'M2 3h5l1.5 1.5L10 3h4v10h-4l-1.5 1L7 13H2zM8.5 4.5V14',
     decision: 'M8 1.5 14.5 8 8 14.5 1.5 8z',
     contract: 'M3 2h7l3 3v9H3zM9 2v4h4M5 9h6m-6 2.5h4',
@@ -111,15 +98,15 @@
     verify: 'M8 1.5 14 4v4c0 2.5-3 5.2-6 6.5C5 13.2 2 10.5 2 8V4zM5 8l2 2 4-4',
     delivery: 'M2 5h12v8H2zM1 2.5h14V5H1zM6 8h4',
   }
-  const graphTheme = getComputedStyle(document.documentElement)
   const lineColors = {
-    normal: graphTheme.getPropertyValue('--wire').trim(),
-    story: '#a28bc3',
-    done: '#78a69e',
-    possible: graphTheme.getPropertyValue('--wire-branch').trim(),
-    chosen: '#a1e5cc',
-    skipped: '#7a7089',
+    normal: paint('wire'),
+    story: paint('wire-story'),
+    done: paint('wire-done'),
+    possible: paint('wire-branch'),
+    chosen: paint('teal'),
+    skipped: paint('wire-skipped'),
   }
+  const lineWidths = { normal: 1.4, chosen: 1.8, possible: 1.3, skipped: 1.15 }
   const activeName = {
     ready: '可推进',
     active: '进行中',
@@ -130,15 +117,39 @@
     stale: '需复核',
   }
   const svgns = 'http://www.w3.org/2000/svg'
+  const palettePaints = new WeakMap()
   function svg(tag, attrs, parent, value) {
     const el = document.createElementNS(svgns, tag)
-    for (const [key, val] of Object.entries(attrs || {})) el.setAttribute(key, val)
+    const paints = []
+    for (const [attribute, val] of Object.entries(attrs || {})) {
+      // Concrete paints let the same SVG render outside this page.
+      if (typeof val === 'string' && val.startsWith('var(--')) {
+        const token = val.slice(6, -1)
+        paints.push([attribute, token])
+        el.setAttribute(attribute, theme(token))
+      }
+      else {
+        el.setAttribute(attribute, val)
+      }
+    }
+    if (paints.length)
+      palettePaints.set(el, paints)
     if (value !== undefined)
       el.textContent = value
     if (parent)
       parent.append(el)
     return el
   }
+  window.addEventListener('flow-theme-change', () => {
+    graphTheme = getComputedStyle(document.documentElement)
+    for (const el of map.querySelectorAll('[fill], [stroke], [stop-color]')) {
+      const paints = palettePaints.get(el)
+      if (!paints)
+        continue
+      for (const [attribute, token] of paints)
+        el.setAttribute(attribute, theme(token))
+    }
+  })
   function html(tag, parent, value, className) {
     const el = document.createElement(tag)
     if (value !== undefined && value !== null)
@@ -150,22 +161,28 @@
     return el
   }
   const ctx = document.createElement('canvas').getContext('2d')
-  const font = '"Instrument Sans","PingFang SC","Microsoft YaHei",system-ui,sans-serif'
-  const mono = '"IBM Plex Mono","SFMono-Regular",Consolas,monospace'
-  function widthOf(text, size = 14, bold = 500, coding = false) {
-    ctx.font = `${bold} ${size}px ${coding ? mono : font}`
+  const font = theme('ui')
+  const mono = theme('mono')
+  const display = theme('display')
+  $('graph-style').append(
+    `.map-node text,.map-label {font-family:${font}}
+     .map-node .mono {font-family:${mono}}
+     .map-node .tablet-title {font-family:${display}}`,
+  )
+  function widthOf(text, size = 14, bold = 500, family = font) {
+    ctx.font = `${bold} ${size}px ${family}`
     return ctx.measureText(text).width
   }
-  function linesOf(value, width, max, size = 14, bold = 500, coding = false) {
+  function linesOf(value, width, max, size = 14, bold = 500, family = font) {
     const text = String(value || '')
       .replace(/\s+/g, ' ')
       .trim()
     const out = []
     let current = ''
     for (const ch of text) {
-      if (current && widthOf(current + ch, size, bold, coding) > width) {
+      if (current && widthOf(current + ch, size, bold, family) > width) {
         if (out.length === max - 1) {
-          while (current && widthOf(`${current}…`, size, bold, coding) > width) current = current.slice(0, -1)
+          while (current && widthOf(`${current}…`, size, bold, family) > width) current = current.slice(0, -1)
           out.push(`${current.trimEnd()}…`)
           return out
         }
@@ -186,22 +203,19 @@
     roomy = wide
     boxes.clear()
     for (const n of nodes.values()) {
-      const size = n.kind === 'request' ? 17 : n.mono ? 14 : 15.5
-      const inset = n.kind === 'decision' ? 22 : 12
       // Cards keep a consistent reading width at each zoom.
-      const standardWidth = n.kind === 'request' ? 216 : isOverview() ? 168 : n.kind === 'decision' ? 224 : 194
-      const statusWidth = n.progress ? widthOf(n.label + n.state, 11, 600) + 2 * inset + 36 : 0
-      const width = Math.max(standardWidth, statusWidth)
-      const labels = linesOf(n.title, width - 2 * inset, 2, size, 680, n.mono)
-      const height = Math.max(48, 28 + 18 * labels.length + (n.kind === 'story' ? 4 : 0))
-      boxes.set(n.id, { width, height, size, inset, labels })
+      const isRequest = n.kind === 'request'
+      const size = isRequest ? 20 : n.mono ? 14 : 16.5
+      const inset = isRequest ? 18 : 13
+      const width = isRequest ? 228 : isOverview() ? 174 : n.kind === 'decision' ? 224 : 198
+      const family = isRequest ? display : n.mono ? mono : font
+      const labels = linesOf(n.title, width - 2 * inset, 2, size, 700, family)
+      const lineHeight = isRequest ? 23 : 20
+      const height = (n.progress?.total ? 66 : 54) + lineHeight * Math.max(0, labels.length - 1)
+      boxes.set(n.id, { width, height, size, inset, labels, lineHeight })
     }
     layouts.clear()
   }
-  const nodeSheen = svg('linearGradient', { id: 'node-sheen', x1: '0%', y1: '0%', x2: '22%', y2: '100%' }, $('drawing-defs'))
-  svg('stop', { 'offset': '0%', 'stop-color': '#f6e6ff', 'stop-opacity': 0.11 }, nodeSheen)
-  svg('stop', { 'offset': '42%', 'stop-color': '#e4c7ff', 'stop-opacity': 0.025 }, nodeSheen)
-  svg('stop', { 'offset': '100%', 'stop-color': '#e4c7ff', 'stop-opacity': 0 }, nodeSheen)
   for (const [name, color] of Object.entries(lineColors)) {
     const marker = svg(
       'marker',
@@ -220,12 +234,8 @@
     svg(
       'path',
       {
-        'd': 'M1 1 7 4 1 7Z',
-        'fill': color,
-        'stroke': color,
-        'stroke-width': 1.4,
-        'stroke-linejoin': 'round',
-        'stroke-linecap': 'round',
+        d: 'M.7 1.2 7 4 .7 6.8 1.6 5.55 4.95 4 1.6 2.45Z',
+        fill: color,
       },
       marker,
     )
@@ -384,7 +394,7 @@
       const bc = Math.hypot(c.x - b.x, c.y - b.y)
       if (!ab || !bc)
         continue
-      const r = Math.min(10, ab / 2, bc / 2)
+      const r = Math.min(12, ab / 2, bc / 2)
       d
         += ` L${
           xy({ x: b.x + ((a.x - b.x) * r) / ab, y: b.y + ((a.y - b.y) * r) / ab })
@@ -418,19 +428,26 @@
     else if (key === 'normal' && nodes.get(e.source).kind === 'contract')
       key = 'done'
     const color = lineColors[key]
+    const width = lineWidths[e.mode] ?? lineWidths.normal
     const group = svg('g', { 'class': 'map-edge', 'aria-hidden': 'true' }, $('wires'))
     const d = rounded(route.points)
-    // A narrow background stroke gives a crossing a visible overpass in the SVG export too.
-    svg('path', { 'd': d, 'class': 'map-line', 'stroke': canvasPaper, 'stroke-width': 5.5 }, group)
+    // The paper-colored undercoat keeps crossings legible on the canvas and in the export.
+    svg('path', {
+      'd': d,
+      'class': 'map-line',
+      'stroke': canvasPaper,
+      'stroke-width': width + 2.1,
+      'stroke-opacity': 0.82,
+    }, group)
     const at = {
       'd': d,
       'class': 'map-line',
       'stroke': color,
-      'stroke-width': e.mode === 'chosen' ? 2 : 1.5,
+      'stroke-width': width,
       'marker-end': `url(#arr-${key})`,
     }
     if (e.mode === 'possible' || e.mode === 'skipped')
-      at['stroke-dasharray'] = e.mode === 'possible' ? '5 4' : '2 5'
+      at['stroke-dasharray'] = e.mode === 'possible' ? '5.5 4.5' : '1.5 5'
     svg('path', at, group)
     let label = null
     if (e.label && Number.isFinite(route.x)) {
@@ -447,8 +464,8 @@
           'width': route.width,
           'height': 17,
           'rx': 4,
-          'fill': e.mode === 'skipped' ? styles.develop.fill : styles.decision.fill,
-          'stroke': e.mode === 'skipped' ? styles.develop.stroke : styles.decision.stroke,
+          'fill': paint('surface'),
+          'stroke': paint(e.mode === 'skipped' ? 'line' : 'wire-branch'),
           'stroke-width': 0.7,
         },
         label,
@@ -462,7 +479,7 @@
           'text-anchor': 'middle',
           'font-size': 11.8,
           'font-weight': 600,
-          'fill': e.mode === 'skipped' ? styles.develop.text : styles.decision.text,
+          'fill': nodeText,
         },
         label,
         e.label,
@@ -512,11 +529,11 @@
     const root = positions.get('@request')
     const bottom = root.y + boxes.get('@request').height / 2
     const joint = bottom + 15
-    const bend = 9
+    const bend = 10.5
     const base = $('wires')
     const railStops = new Map(branches.map(({ rail, y }) => [rail, y - bend]))
-    const spinePaint = { 'class': 'map-line overview-spine', 'stroke': lineColors.normal, 'stroke-width': 1.9 }
-    const railPaint = { ...spinePaint, 'class': 'map-line overview-rail', 'stroke-width': 1.5 }
+    const spinePaint = { 'class': 'map-line overview-spine', 'stroke': lineColors.normal, 'stroke-width': 2.2 }
+    const railPaint = { ...spinePaint, 'class': 'map-line overview-rail', 'stroke-width': 1.45 }
 
     // Each rail stops where its last branch turns toward the card. The shared
     // spine remains steady when selection dims individual connections.
@@ -545,7 +562,7 @@
     for (const { rail, y, end } of branches) {
       const port = rail + Math.sign(end - rail) * bend
       const d = `M${rail} ${y - bend}Q${rail} ${y} ${port} ${y}H${end}`
-      const line = svg('path', { ...railPaint, 'class': 'map-edge map-line', 'stroke-width': 1.45, d }, base)
+      const line = svg('path', { ...railPaint, 'class': 'map-edge map-line', 'stroke-width': 1.2, d }, base)
       edgeEls.push([line])
     }
   }
@@ -554,10 +571,30 @@
     const goal = work.stories[n.id]?.goal?.trim()
     return goal && goal !== n.title.trim() ? goal : ''
   }
+  function cardState(n) {
+    const label = String(n.state ?? '').trim()
+    if (!label)
+      return null
+    const progress = n.progress
+    if (progress?.total) {
+      if (progress.failed)
+        return { label: progress.stale ? '失败 · 需补验' : '验收失败', tone: 'rose' }
+      if (progress.stale)
+        return { label: '需补验', tone: 'amber' }
+      if (progress.passed === progress.total)
+        return { label: '全部通过', tone: 'teal' }
+      return { label: progress.passed ? '部分通过' : '待验收', tone: 'muted' }
+    }
+    if (['待你决定', '待核对', '需复核', '待验'].includes(label) || (n.kind === 'verify' && n.activity === 'ready'))
+      return { label, tone: 'amber' }
+    if (n.activity === 'active' || n.activity === 'done' || ['已决定', '已核对', '调研中', '已梳理'].includes(label))
+      return { label, tone: 'teal' }
+    return { label, tone: 'muted' }
+  }
   function drawNode(n) {
     const p = layout.positions.get(n.id)
     const b = boxes.get(n.id)
-    const c = styles[n.kind]
+    const isRequest = n.kind === 'request'
     const g = svg(
       'g',
       {
@@ -580,101 +617,91 @@
     }))
     const x = -b.width / 2
     const y = -b.height / 2
-    const rightEdge = -x
-    const bottomEdge = -y
-    const fold = n.kind === 'contract' ? 11 : 0
-    const groupColor = n.activity === 'active' ? statusColors.passed.ink : c.stroke
-    const shape = {
-      'fill': c.fill,
-      'stroke': groupColor,
-      'stroke-width': 1.15,
+    const left = x + b.inset
+    const right = -left
+    svg('rect', {
+      x,
+      y,
+      'width': b.width,
+      'height': b.height,
+      'rx': 3,
+      'fill': paint(isRequest ? 'node-request' : 'surface'),
+      'stroke': paint(isRequest ? 'node-request-border' : 'line'),
+      'stroke-width': 1,
       'class': 'outline',
-    }
-    let shapeTag = 'rect'
-    let geometry
-    if (n.kind === 'decision') {
-      const r = 13
-      const inset = 2
-      const rise = 4
-      shapeTag = 'path'
-      geometry = {
-        d: `M${x + r + inset} ${y}H${rightEdge - r - inset}Q${rightEdge - r} ${y} ${rightEdge - r + inset} ${y + rise}`
-          + `L${rightEdge - inset} ${-rise}Q${rightEdge} 0 ${rightEdge - inset} ${rise}`
-          + `L${rightEdge - r + inset} ${bottomEdge - rise}Q${rightEdge - r} ${bottomEdge} ${rightEdge - r - inset} ${bottomEdge}`
-          + `H${x + r + inset}Q${x + r} ${bottomEdge} ${x + r - inset} ${bottomEdge - rise}`
-          + `L${x + inset} ${rise}Q${x} 0 ${x + inset} ${-rise}`
-          + `L${x + r - inset} ${y + rise}Q${x + r} ${y} ${x + r + inset} ${y}Z`,
-      }
-    }
-    else if (fold) {
-      const r = 10
-      shapeTag = 'path'
-      geometry = {
-        d: `M${x + r} ${y}H${rightEdge - fold}L${rightEdge} ${y + fold}V${bottomEdge - r}`
-          + `Q${rightEdge} ${bottomEdge} ${rightEdge - r} ${bottomEdge}H${x + r}`
-          + `Q${x} ${bottomEdge} ${x} ${bottomEdge - r}V${y + r}Q${x} ${y} ${x + r} ${y}Z`,
-      }
+    }, g)
+    if (isRequest) {
+      svg('path', {
+        'd': 'M1 3Q2.5 .2 4 .8L5.8 2.8 6.4 7.1 5.8 14.2 6 18.7 5.2 24.5 5.6 27.1'
+          + ' 4.3 31.3 3.2 36 2.4 32.5 2.9 28 1.6 26.4 2.1 21.1 .9 18.2 1.7 13.5 .6 8.9Z'
+          + 'M3.2 8.2 4.4 6.7 3.8 12.7 3.4 15.1ZM3.7 21.2 4.3 18.4 4.4 22 3.9 26Z',
+        'transform': `translate(${x + 4} ${y + 7}) scale(1 ${(b.height - 14) / 36})`,
+        'fill': paint('accent'),
+        'fill-rule': 'evenodd',
+        'pointer-events': 'none',
+        'aria-hidden': 'true',
+      }, g)
     }
     else {
-      const radius = n.kind === 'request' ? 19 : n.kind === 'delivery' ? 21 : 13
-      geometry = { x, y, width: b.width, height: b.height, rx: radius }
-    }
-    svg(shapeTag, { ...geometry, ...shape }, g)
-    svg(shapeTag, { ...geometry, 'class': 'n-sheen', 'fill': 'url(#node-sheen)', 'pointer-events': 'none', 'aria-hidden': 'true' }, g)
-    if (fold)
-      svg('path', { d: `M${rightEdge - fold} ${y}v${fold}h${fold}`, fill: 'none', stroke: c.stroke }, g)
-    const left = x + b.inset
-    svg(
-      'path',
-      {
+      const metaSize = 11
+      const metaBaseline = y + 20.5
+      const iconX = right - widthOf(n.label, metaSize, 600) - 18
+      const state = cardState(n)
+      if (state) {
+        const textWidth = iconX - left - 28
+        const [label] = linesOf(state.label, textWidth, 1, metaSize, 600)
+        const ink = paint(state.tone)
+        svg('rect', {
+          'x': left,
+          'y': y + 8,
+          'width': widthOf(label, metaSize, 600) + 20,
+          'height': 17,
+          'rx': 3,
+          'fill': 'none',
+          'stroke': ink,
+          'stroke-opacity': 0.45,
+        }, g)
+        svg('path', {
+          'd': `M${left + 8} ${y + 13.5}l3 3 -3 3 -3 -3Z`,
+          'fill': ink,
+          'aria-hidden': 'true',
+        }, g)
+        svg('text', {
+          'x': left + 15,
+          'y': metaBaseline,
+          'class': 'n-label',
+          'font-size': metaSize,
+          'fill': ink,
+        }, g, label)
+      }
+      svg('path', {
         'd': glyph[n.kind],
-        'transform': `translate(${left} ${y + 8}) scale(.83)`,
+        'transform': `translate(${iconX} ${y + 10}) scale(.83)`,
         'fill': 'none',
-        'stroke': c.icon,
-        'stroke-width': 1.65,
+        'stroke': paint(n.kind === 'research' ? 'teal' : 'blue'),
+        'stroke-width': 1.4,
         'stroke-linecap': 'round',
         'stroke-linejoin': 'round',
-      },
-      g,
-    )
-    svg('text', { 'x': left + 17, 'y': y + 18.4, 'class': 'n-label', 'font-size': 10.8, 'fill': c.text }, g, n.label)
-    if (n.state) {
-      const right = -x - b.inset
-      const progress = n.progress
-      let badge
-      if (progress) {
-        const state = progress.failed ? 'failed' : progress.stale ? 'stale' : progress.passed === progress.total ? 'passed' : 'pending'
-        badge = statusColors[state]
-      }
-      else if (['待你决定', '待核对', '需复核', '待验'].includes(n.state) || (n.kind === 'verify' && n.activity === 'ready')) {
-        badge = statusColors.stale
-      }
-      if (badge) {
-        const width = widthOf(n.state, 10.5, 600) + 10
-        svg('rect', { x: right - width + 4, y: y + 5, width, height: 18, rx: 8, fill: badge.fill }, g)
-      }
-      if (n.activity === 'active')
-        svg('circle', { cx: right - widthOf(n.state, 10.5, 600) - 6, cy: y + 14.6, r: 2.5, fill: statusColors.passed.ink }, g)
-      const ink = badge?.ink || (n.activity === 'done' ? statusColors.passed.ink : c.text)
+        'aria-hidden': 'true',
+      }, g)
       svg(
         'text',
-        { 'x': right, 'y': y + 18.4, 'class': 'n-label', 'font-size': 10.5, 'fill': ink, 'text-anchor': 'end' },
+        { 'x': right, 'y': metaBaseline, 'class': 'n-label', 'font-size': metaSize, 'fill': paint('muted'), 'text-anchor': 'end' },
         g,
-        n.state,
+        n.label,
       )
     }
-    const center = n.kind === 'request' || n.kind === 'delivery'
-    const lineX = center ? 0 : left
+    const titleClass = isRequest ? 'n-title tablet-title' : n.mono ? 'n-title mono' : 'n-title'
+    const titleBaseline = y + (isRequest ? 34 : 43)
     b.labels.forEach((label, i) =>
       svg(
         'text',
         {
-          'x': lineX,
-          'y': y + 36 + i * 18,
-          'class': `n-title${n.mono ? ' mono' : ''}`,
-          'fill': c.title,
+          'x': left,
+          'y': titleBaseline + i * b.lineHeight,
+          'class': titleClass,
+          'fill': nodeInk,
           'font-size': b.size,
-          'text-anchor': center ? 'middle' : 'start',
         },
         g,
         label,
@@ -682,12 +709,23 @@
     )
     const progress = n.progress
     if (progress?.total) {
-      const w = b.width - 2 * b.inset
-      const yBar = -y - 5
-      svg('rect', { x: left, y: yBar, width: w, height: 2.5, rx: 1.25, fill: c.stroke }, g)
-      const filled = w * progress.passed / progress.total
+      const fraction = `${progress.passed} / ${progress.total}`
+      const fractionSize = 11
+      const railWidth = right - left - widthOf(fraction, fractionSize, 400, mono) - 9
+      const railY = -y - 13
+      svg('rect', { x: left, y: railY, width: railWidth, height: 4, fill: paint('line') }, g)
+      const filled = railWidth * progress.passed / progress.total
       if (filled)
-        svg('rect', { x: left, y: yBar, width: filled, height: 2.5, rx: 1.25, fill: statusColors.passed.ink }, g)
+        svg('rect', { x: left, y: railY, width: filled, height: 4, fill: paint('accent') }, g)
+      svg('text', {
+        'x': right,
+        'y': railY + 6,
+        'class': 'mono',
+        'font-size': fractionSize,
+        'fill': nodeText,
+        'text-anchor': 'end',
+        'aria-hidden': 'true',
+      }, g, fraction)
     }
     g.addEventListener('click', () => {
       if (performance.now() > ignoreClicksUntil)
