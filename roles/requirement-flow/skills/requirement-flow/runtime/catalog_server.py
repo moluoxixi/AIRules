@@ -114,7 +114,9 @@ def serve(project, port, source_root, default_task, *, inventory, open_task, tas
         raise ValueError("端口应在 0 至 65535 之间。")
     checkout_root = engine.source_paths.select_source_root(project, source_root)
     template = (engine.RUNTIME / "catalog.html").read_text(encoding="utf-8")
-    for marker, asset in (("@@THEME@@", "theme.css"), ("@@TOOLTIP@@", "tooltip.js")):
+    landscapes = {f"/{name}": (engine.RUNTIME / name).read_bytes()
+                  for name in ("catalog-landscape.jpg", "catalog-landscape-night.jpg")}
+    for marker, asset in (("@@THEME@@", "theme.css"), ("@@THEME_SCRIPT@@", "theme.js"), ("@@TOOLTIP@@", "tooltip.js")):
         template = template.replace(marker, (engine.RUNTIME / asset).read_text(encoding="utf-8"))
     signing_key = secrets.token_bytes(32)
     legacy_reads = {"/version","/source-location","/context","/dispatch","/model.json","/lesson-source","/lesson-evidence"}
@@ -157,13 +159,23 @@ def serve(project, port, source_root, default_task, *, inventory, open_task, tas
             else:
                 payload = json.dumps(data, separators=(",",":"), ensure_ascii=False)
                 safe = payload.replace("&","\\u0026").replace("<","\\u003c").replace(">","\\u003e")
-                self.send_content(200, template.replace("@@CATALOG_DATA@@",safe), "text/html")
+                self.send_content(200, template.replace("@@CATALOG_DATA@@",safe), "text/html", allow_images=True)
 
         def route(self, *, write):
             if self.headers.get("Host") != self.host():
                 self.send_error(403)
                 return
             url = urlsplit(self.path)
+            if not write and url.path in landscapes:
+                landscape = landscapes[url.path]
+                self.send_response(200)
+                self.send_header("Content-Type", "image/jpeg")
+                self.send_header("Content-Length", str(len(landscape)))
+                self.send_header("Cache-Control", "no-cache")
+                self.send_header("X-Content-Type-Options", "nosniff")
+                self.end_headers()
+                self.wfile.write(landscape)
+                return
             if not write and url.path in (self.home_href, "/catalog.json"):
                 self.show_catalog(url)
                 return

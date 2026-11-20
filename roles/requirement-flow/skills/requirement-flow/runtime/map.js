@@ -83,23 +83,27 @@
   let visibleActions = new Set()
   let visibleStories = []
   let scoped = false
-  // Keep explicit SVG paints so an exported diagram renders identically outside this page.
-  const canvasPaper = '#140f23'
+  let graphTheme = getComputedStyle(document.documentElement)
+  const theme = name => graphTheme.getPropertyValue(`--${name}`).trim()
+  const paint = name => `var(--${name})`
+  const canvasPaper = paint('shade')
+  const nodeInk = paint('ink')
+  const nodeText = paint('text')
   const styles = {
-    request: { fill: '#3b2858', stroke: '#a485ce', title: '#fbf5ff', text: '#e4d2fb', icon: '#dac9ff' },
-    story: { fill: '#2a203e', stroke: '#82709d', title: '#f7f0ff', text: '#d6c9e8', icon: '#cbb7f2' },
-    decision: { fill: '#392b37', stroke: '#ae866b', title: '#fff5ec', text: '#e9cdbb', icon: '#f3c89f' },
-    contract: { fill: '#24323f', stroke: '#7398a3', title: '#f0f9fd', text: '#c8dce4', icon: '#a8d8e2' },
-    research: { fill: '#272f45', stroke: '#7388ad', title: '#f2f6ff', text: '#cad6eb', icon: '#b6c9f0' },
-    develop: { fill: '#2b293f', stroke: '#777593', title: '#f5f1ff', text: '#d6cee8', icon: '#c6bfdf' },
-    verify: { fill: '#342744', stroke: '#9476a8', title: '#faf2ff', text: '#dfcde8', icon: '#ddc0ee' },
-    delivery: { fill: '#253a39', stroke: '#6e9e94', title: '#effcf6', text: '#c5dfd5', icon: '#a1e5cc' },
+    request: { fill: paint('node-request'), stroke: paint('node-request-border'), icon: paint('node-request-icon') },
+    story: { fill: paint('surface-raised'), stroke: paint('node-story-border'), icon: paint('teal') },
+    decision: { fill: paint('node-decision'), stroke: paint('node-decision-border'), icon: paint('amber') },
+    contract: { fill: paint('node-contract'), stroke: paint('node-contract-border'), icon: paint('blue') },
+    research: { fill: paint('node-research'), stroke: paint('node-research-border'), icon: paint('blue') },
+    develop: { fill: paint('node-develop'), stroke: paint('node-develop-border'), icon: paint('muted') },
+    verify: { fill: paint('node-verify'), stroke: paint('node-verify-border'), icon: paint('teal') },
+    delivery: { fill: paint('success-bg'), stroke: paint('node-delivery-border'), icon: paint('teal') },
   }
   const statusColors = {
-    passed: { fill: '#2d4b46', ink: '#a1e5cc' },
-    pending: { fill: '#413455', ink: '#e7daf8' },
-    stale: { fill: '#513b36', ink: '#f6d0ac' },
-    failed: { fill: '#563849', ink: '#f9c8d6' },
+    passed: { fill: paint('node-passed'), ink: paint('teal') },
+    pending: { fill: paint('surface'), ink: nodeText },
+    stale: { fill: paint('node-stale'), ink: paint('amber') },
+    failed: { fill: paint('node-failed'), ink: paint('rose') },
   }
   const glyph = {
     request: 'M2 8h5m0 0c3 0 1-5 5-5h2M7 8c3 0 1 5 5 5h2',
@@ -111,14 +115,13 @@
     verify: 'M8 1.5 14 4v4c0 2.5-3 5.2-6 6.5C5 13.2 2 10.5 2 8V4zM5 8l2 2 4-4',
     delivery: 'M2 5h12v8H2zM1 2.5h14V5H1zM6 8h4',
   }
-  const graphTheme = getComputedStyle(document.documentElement)
   const lineColors = {
-    normal: graphTheme.getPropertyValue('--wire').trim(),
-    story: '#a28bc3',
-    done: '#78a69e',
-    possible: graphTheme.getPropertyValue('--wire-branch').trim(),
-    chosen: '#a1e5cc',
-    skipped: '#7a7089',
+    normal: paint('wire'),
+    story: paint('wire-story'),
+    done: paint('wire-done'),
+    possible: paint('wire-branch'),
+    chosen: paint('teal'),
+    skipped: paint('wire-skipped'),
   }
   const activeName = {
     ready: '可推进',
@@ -130,15 +133,39 @@
     stale: '需复核',
   }
   const svgns = 'http://www.w3.org/2000/svg'
+  const palettePaints = new WeakMap()
   function svg(tag, attrs, parent, value) {
     const el = document.createElementNS(svgns, tag)
-    for (const [key, val] of Object.entries(attrs || {})) el.setAttribute(key, val)
+    const paints = []
+    for (const [attribute, val] of Object.entries(attrs || {})) {
+      // Concrete paints let the same SVG render outside this page.
+      if (typeof val === 'string' && val.startsWith('var(--')) {
+        const token = val.slice(6, -1)
+        paints.push([attribute, token])
+        el.setAttribute(attribute, theme(token))
+      }
+      else {
+        el.setAttribute(attribute, val)
+      }
+    }
+    if (paints.length)
+      palettePaints.set(el, paints)
     if (value !== undefined)
       el.textContent = value
     if (parent)
       parent.append(el)
     return el
   }
+  window.addEventListener('flow-theme-change', () => {
+    graphTheme = getComputedStyle(document.documentElement)
+    for (const el of map.querySelectorAll('[fill], [stroke], [stop-color]')) {
+      const paints = palettePaints.get(el)
+      if (!paints)
+        continue
+      for (const [attribute, token] of paints)
+        el.setAttribute(attribute, theme(token))
+    }
+  })
   function html(tag, parent, value, className) {
     const el = document.createElement(tag)
     if (value !== undefined && value !== null)
@@ -150,8 +177,11 @@
     return el
   }
   const ctx = document.createElement('canvas').getContext('2d')
-  const font = '"Instrument Sans","PingFang SC","Microsoft YaHei",system-ui,sans-serif'
-  const mono = '"IBM Plex Mono","SFMono-Regular",Consolas,monospace'
+  const font = theme('ui')
+  const mono = theme('mono')
+  $('graph-style').append(
+    `.map-node text,.map-label {font-family:${font}} .map-node .mono {font-family:${mono}}`,
+  )
   function widthOf(text, size = 14, bold = 500, coding = false) {
     ctx.font = `${bold} ${size}px ${coding ? mono : font}`
     return ctx.measureText(text).width
@@ -192,16 +222,15 @@
       const standardWidth = n.kind === 'request' ? 216 : isOverview() ? 168 : n.kind === 'decision' ? 224 : 194
       const statusWidth = n.progress ? widthOf(n.label + n.state, 11, 600) + 2 * inset + 36 : 0
       const width = Math.max(standardWidth, statusWidth)
-      const labels = linesOf(n.title, width - 2 * inset, 2, size, 680, n.mono)
+      const labels = linesOf(n.title, width - 2 * inset, 2, size, 700, n.mono)
       const height = Math.max(48, 28 + 18 * labels.length + (n.kind === 'story' ? 4 : 0))
       boxes.set(n.id, { width, height, size, inset, labels })
     }
     layouts.clear()
   }
   const nodeSheen = svg('linearGradient', { id: 'node-sheen', x1: '0%', y1: '0%', x2: '22%', y2: '100%' }, $('drawing-defs'))
-  svg('stop', { 'offset': '0%', 'stop-color': '#f6e6ff', 'stop-opacity': 0.11 }, nodeSheen)
-  svg('stop', { 'offset': '42%', 'stop-color': '#e4c7ff', 'stop-opacity': 0.025 }, nodeSheen)
-  svg('stop', { 'offset': '100%', 'stop-color': '#e4c7ff', 'stop-opacity': 0 }, nodeSheen)
+  svg('stop', { 'offset': '0%', 'stop-color': paint('node-glint'), 'stop-opacity': 0.09 }, nodeSheen)
+  svg('stop', { 'offset': '62%', 'stop-color': paint('node-glint'), 'stop-opacity': 0 }, nodeSheen)
   for (const [name, color] of Object.entries(lineColors)) {
     const marker = svg(
       'marker',
@@ -462,7 +491,7 @@
           'text-anchor': 'middle',
           'font-size': 11.8,
           'font-weight': 600,
-          'fill': e.mode === 'skipped' ? styles.develop.text : styles.decision.text,
+          'fill': nodeText,
         },
         label,
         e.label,
@@ -607,7 +636,7 @@
       }
     }
     else if (fold) {
-      const r = 10
+      const r = 6
       shapeTag = 'path'
       geometry = {
         d: `M${x + r} ${y}H${rightEdge - fold}L${rightEdge} ${y + fold}V${bottomEdge - r}`
@@ -616,7 +645,7 @@
       }
     }
     else {
-      const radius = n.kind === 'request' ? 19 : n.kind === 'delivery' ? 21 : 13
+      const radius = n.kind === 'request' ? 8 : n.kind === 'delivery' ? 21 : 6
       geometry = { x, y, width: b.width, height: b.height, rx: radius }
     }
     svg(shapeTag, { ...geometry, ...shape }, g)
@@ -637,7 +666,7 @@
       },
       g,
     )
-    svg('text', { 'x': left + 17, 'y': y + 18.4, 'class': 'n-label', 'font-size': 10.8, 'fill': c.text }, g, n.label)
+    svg('text', { 'x': left + 17, 'y': y + 18.4, 'class': 'n-label', 'font-size': 10.8, 'fill': nodeText }, g, n.label)
     if (n.state) {
       const right = -x - b.inset
       const progress = n.progress
@@ -655,7 +684,7 @@
       }
       if (n.activity === 'active')
         svg('circle', { cx: right - widthOf(n.state, 10.5, 600) - 6, cy: y + 14.6, r: 2.5, fill: statusColors.passed.ink }, g)
-      const ink = badge?.ink || (n.activity === 'done' ? statusColors.passed.ink : c.text)
+      const ink = badge?.ink || (n.activity === 'done' ? statusColors.passed.ink : nodeText)
       svg(
         'text',
         { 'x': right, 'y': y + 18.4, 'class': 'n-label', 'font-size': 10.5, 'fill': ink, 'text-anchor': 'end' },
@@ -672,7 +701,7 @@
           'x': lineX,
           'y': y + 36 + i * 18,
           'class': `n-title${n.mono ? ' mono' : ''}`,
-          'fill': c.title,
+          'fill': nodeInk,
           'font-size': b.size,
           'text-anchor': center ? 'middle' : 'start',
         },

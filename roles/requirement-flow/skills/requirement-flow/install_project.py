@@ -29,8 +29,8 @@ LOCAL_PATTERNS = (b".receipt-key", b".receipt-key-*", b".workflow.lock", b".capt
 ARCHIVE = Path(".requirements/migrations/moluoxixi")
 ROOT_FILES = {"SKILL.md", "flow.py", "install_project.py", "references/model.md", "agents/openai.yaml"}
 TEXT_SUFFIXES = {".md", ".py", ".html", ".js", ".css", ".json", ".yaml"}
-RUNTIME_FILES = {"basic_memory.py", "catalog.html", "catalog_server.py", "code_inputs.py", "dagre.min.js", "evidence.py", "graph_view.py", "knowledge.py", "lesson_retirement.py",
-                 "layout.html", "map.js", "protocol.json", "run_result.py", "source_paths.py", "story_scope.py", "sync.py", "task_locations.py", "theme.css", "tooltip.js"}
+RUNTIME_FILES = {"basic_memory.py", "catalog-landscape.jpg", "catalog-landscape-night.jpg", "catalog.html", "catalog_server.py", "code_inputs.py", "dagre.min.js", "evidence.py", "graph_view.py", "knowledge.py", "lesson_retirement.py",
+                 "layout.html", "map.js", "protocol.json", "run_result.py", "source_paths.py", "story_scope.py", "sync.py", "task_locations.py", "theme.css", "theme.js", "tooltip.js"}
 LEGACY_SKILLS = {
     "before-dev", "brainstorm", "break-loop", "channel", "check", "continue", "finish-work",
     "knowledge", "meta", "session-insight", "spec-bootstrap", "start", "update-spec",

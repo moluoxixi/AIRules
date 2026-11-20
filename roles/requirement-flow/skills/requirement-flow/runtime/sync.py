@@ -1329,14 +1329,17 @@ class TaskHandler(BaseHTTPRequestHandler):
 
     def log_message(self,*args):
         pass
-    def send_content(self, status, content, mime):
+    def send_content(self, status, content, mime, *, allow_images=False):
         data=content.encode() if isinstance(content,str) else content
         self.send_response(status)
         self.send_header("Content-Type",mime+"; charset=utf-8")
         self.send_header("Content-Length",str(len(data)))
         self.send_header("Cache-Control","no-store")
         self.send_header("X-Content-Type-Options","nosniff")
-        self.send_header("Content-Security-Policy","default-src 'none'; script-src 'unsafe-inline'; style-src 'unsafe-inline'; form-action 'self'; connect-src 'self'; frame-ancestors 'none'; base-uri 'none'")
+        csp = "default-src 'none'; script-src 'unsafe-inline'; style-src 'unsafe-inline'; form-action 'self'; connect-src 'self'; frame-ancestors 'none'; base-uri 'none'"
+        if allow_images:
+            csp += "; img-src 'self'"
+        self.send_header("Content-Security-Policy", csp)
         self.end_headers()
         self.wfile.write(data)
     def host(self):
