@@ -1,5 +1,4 @@
 """Project inventory and task-scoped routes for the local requirements reader."""
-from base64 import b64encode
 from collections import OrderedDict
 from contextlib import ExitStack
 import hashlib
@@ -100,8 +99,6 @@ def serve(project, port, source_root, default_task, *, inventory, open_task, tas
     template = (engine.RUNTIME / "catalog.html").read_text(encoding="utf-8")
     for marker, asset in (("@@THEME@@", "theme.css"), ("@@TOOLTIP@@", "tooltip.js")):
         template = template.replace(marker, (engine.RUNTIME / asset).read_text(encoding="utf-8"))
-    hero = b64encode((engine.RUNTIME / "catalog-hero.webp").read_bytes()).decode("ascii")
-    template = template.replace("@@CATALOG_HERO@@", hero)
     signing_key = secrets.token_bytes(32)
     legacy_reads = {"/version","/source-location","/context","/dispatch","/model.json","/lesson-source","/lesson-evidence"}
 
@@ -143,7 +140,7 @@ def serve(project, port, source_root, default_task, *, inventory, open_task, tas
             else:
                 payload = json.dumps(data, separators=(",",":"), ensure_ascii=False)
                 safe = payload.replace("&","\\u0026").replace("<","\\u003c").replace(">","\\u003e")
-                self.send_content(200, template.replace("@@CATALOG_DATA@@",safe), "text/html", inline_images=True)
+                self.send_content(200, template.replace("@@CATALOG_DATA@@",safe), "text/html")
 
         def route(self, *, write):
             if self.headers.get("Host") != self.host():

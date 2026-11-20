@@ -436,22 +436,24 @@ describe.skipIf(!executablePath)('generated handbook interactions in Chromium', 
       }
     })
 
-    it('fits editorial requirement cards to the viewport with a readable meter and a full-card target', async () => {
+    it('puts a compact list under a short header with readable meters and full-card targets', async () => {
       const page = await browser.newPage()
       try {
         await page.goto(server.address)
         await waitForCards(page, ['plan', unplanned, archived, research])
-        await page.waitForFunction(() => document.querySelector('.desk-art img')?.naturalWidth > 0)
-        for (const [width, expectedColumns] of [[1440, 3], [1200, 3], [960, 3], [665, 2], [390, 1], [320, 1]]) {
+        for (const width of [1440, 1200, 960, 665, 390, 320]) {
           await page.setViewport({ width, height: 820 })
           const metrics = await page.$eval('article[data-task-id="plan"]', (card) => {
-            card.scrollIntoView({ block: 'center' })
             const bounds = card.getBoundingClientRect()
             const corner = document.elementFromPoint(bounds.left + 5, bounds.bottom - 5)
             const title = card.querySelector('h3')
             const meter = card.querySelector('progress')
+            const header = document.querySelector('.masthead').getBoundingClientRect()
             return {
               columns: getComputedStyle(card.parentElement).gridTemplateColumns.split(' ').length,
+              headerHeight: header.height,
+              toolbarGap: document.querySelector('.toolbar').getBoundingClientRect().top - header.bottom,
+              firstCardTop: document.querySelector('.cards .card').getBoundingClientRect().top,
               height: bounds.height,
               titleSize: Number.parseFloat(getComputedStyle(title).fontSize),
               meterHeight: meter.getBoundingClientRect().height,
@@ -459,8 +461,11 @@ describe.skipIf(!executablePath)('generated handbook interactions in Chromium', 
               overflow: document.documentElement.scrollWidth - innerWidth,
             }
           })
-          expect(metrics.columns).toBe(expectedColumns)
-          expect(metrics.height).toBeLessThanOrEqual(184)
+          expect(metrics.columns).toBe(1)
+          expect(metrics.headerHeight).toBeLessThanOrEqual(85)
+          expect(metrics.toolbarGap).toBeGreaterThanOrEqual(16)
+          expect(metrics.firstCardTop).toBeLessThanOrEqual(210)
+          expect(metrics.height).toBeLessThanOrEqual(100)
           expect(metrics.titleSize).toBeGreaterThanOrEqual(15)
           expect(metrics.meterHeight).toBeGreaterThanOrEqual(4)
           expect(metrics.target).toBe(true)
@@ -469,6 +474,43 @@ describe.skipIf(!executablePath)('generated handbook interactions in Chromium', 
         await page.hover(linkFor(unplanned))
         await page.waitForSelector('#card-tooltip:not([hidden])')
         expect(await page.$eval('#card-tooltip strong', tip => tip.textContent)).toBe(longTitle)
+      }
+      finally {
+        await page.close()
+      }
+    })
+
+    it('shares the card and canvas geometry across navigation in both directions', async () => {
+      const page = await browser.newPage()
+      try {
+        await page.emulateMediaFeatures([{ name: 'prefers-reduced-motion', value: 'no-preference' }])
+        await page.bringToFront()
+        await page.evaluateOnNewDocument(() => {
+          window.addEventListener('pagereveal', (event) => {
+            const transition = event.viewTransition
+            if (!transition)
+              return
+            transition.ready.then(() => {
+              const surfaceMoved = document.getAnimations().some(animation =>
+                animation instanceof CSSAnimation && animation.animationName === '-ua-view-transition-group-anim-requirement-surface')
+              document.documentElement.dataset.surfaceMoved = String(surfaceMoved)
+            }, () => {
+              document.documentElement.dataset.surfaceMoved = 'skipped'
+            })
+          })
+        })
+        await page.goto(server.address)
+        if (!await page.evaluate(() => 'PageRevealEvent' in window))
+          return
+        async function moved(direction) {
+          await page.waitForFunction(() => 'surfaceMoved' in document.documentElement.dataset, { timeout: 4_000 })
+          expect(await page.$eval('html', html => html.dataset.surfaceMoved), direction).toBe('true')
+        }
+        await follow(page, linkFor('plan'))
+        await moved('catalog to canvas')
+        await follow(page, '#catalog-home')
+        await moved('canvas to catalog')
+        await waitForCards(page, [archived, unplanned, 'plan', research])
       }
       finally {
         await page.close()
@@ -576,7 +618,7 @@ describe.skipIf(!executablePath)('generated handbook interactions in Chromium', 
         await waitForCards(page, [archived])
         await waitForFilterLink(page, 'scope', 'archive')
         // The on-screen keyboard leaves a short scrolling viewport even with compact cards.
-        await page.setViewport({ width: 375, height: 300, hasTouch: true })
+        await page.setViewport({ width: 375, height: 240, hasTouch: true })
         await page.$eval(linkFor(archived), link => link.scrollIntoView({ block: 'center' }))
         const scroll = await page.evaluate(() => scrollY)
         expect(scroll).toBeGreaterThan(0)
@@ -591,6 +633,14 @@ describe.skipIf(!executablePath)('generated handbook interactions in Chromium', 
         await page.goBack({ waitUntil: 'domcontentloaded' })
         await waitForCards(page, [archived])
         expect(page.url()).toBe(filteredUrl)
+        // The returning card's snapshot owns its paint until the shared transition settles.
+        await page.waitForFunction((selector) => {
+          const link = document.querySelector(selector)
+          if (!link)
+            return false
+          const { x, y, width, height } = link.getBoundingClientRect()
+          return link.contains(document.elementFromPoint(x + width / 2, y + height / 2))
+        }, { timeout: 4_000 }, linkFor(archived))
         await follow(page, linkFor(archived))
         expect(await page.$eval('#catalog-home', a => a.pathname + a.search)).toBe('/')
         await follow(page, '#catalog-return')

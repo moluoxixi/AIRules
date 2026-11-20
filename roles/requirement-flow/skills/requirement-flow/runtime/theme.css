@@ -1,5 +1,6 @@
 :root {
   color-scheme: dark;
+  view-transition-name: none;
   --paper: #100e1c;
   --surface: #1a172b;
   --surface-raised: #242039;
@@ -37,3 +38,24 @@
 .card-tooltip dl { display:grid; grid-template-columns:auto minmax(0,1fr); gap:4px 12px; margin:10px 0 0 }
 .card-tooltip dt { color:var(--muted) }
 .card-tooltip dd { margin:0 }
+
+::view-transition { pointer-events:none }
+@media (prefers-reduced-motion:no-preference) {
+  ::view-transition-group(requirement-surface) {
+    z-index:1;
+    animation-duration:360ms;
+    animation-timing-function:cubic-bezier(.22,.74,.16,1);
+  }
+  ::view-transition-image-pair(requirement-surface) { overflow:clip; border-radius:12px }
+  ::view-transition-old(requirement-surface),::view-transition-new(requirement-surface) {
+    height:100%; object-fit:cover; object-position:center; animation-timing-function:linear;
+  }
+  ::view-transition-old(requirement-surface) { animation-name:requirement-surface-out }
+  ::view-transition-new(requirement-surface) { animation-name:requirement-surface-in }
+  ::view-transition-group(requirement-drawer) { z-index:2; animation-duration:360ms }
+  ::view-transition-old(requirement-drawer) { animation:requirement-surface-out 220ms ease both }
+  ::view-transition-new(requirement-drawer) { animation:requirement-drawer-in 220ms 100ms ease both }
+  @keyframes requirement-surface-out { 0%,12% { opacity:1 } 52%,100% { opacity:0 } }
+  @keyframes requirement-surface-in { 0%,12% { opacity:0 } 52%,100% { opacity:1 } }
+  @keyframes requirement-drawer-in { from { opacity:0 } to { opacity:1 } }
+}

@@ -306,90 +306,52 @@ if (drawer && drawer.startsWith('#node=')) {
 {Path(__file__).with_name("theme.css").read_text("utf-8")}
 * {{ box-sizing:border-box }}
 body {{
+  --paper:#111217;
+  --surface:#191b22;
+  --surface-hover:#22252e;
+  --line:#2c303c;
+  --ink:#f0f1f5;
+  --text:#d8dbe4;
+  --muted:#a6acbc;
+  --accent:#c0c8ff;
+  --focus-ring:#9daaff;
   margin:0;
   min-height:100vh;
   color:var(--ink);
-  background:radial-gradient(ellipse at 84% -10%,#614b873d,transparent 42rem),var(--paper);
-  font:15px/1.65 var(--ui);
+  background:var(--paper);
+  font:14px/1.58 var(--ui);
 }}
 .reading-wrap {{ width:min(calc(100% - clamp(32px,8vw,112px)),1060px); margin-inline:auto }}
-.masthead {{
-  background:var(--glass,var(--surface));
-  border-bottom:1px solid var(--line);
-  backdrop-filter:blur(16px);
-}}
-.masthead nav {{ min-height:60px; display:flex; align-items:center; gap:10px; flex-wrap:wrap }}
+.masthead {{ background:var(--surface); border-bottom:1px solid var(--line) }}
+.masthead nav {{ min-height:49px; display:flex; align-items:center; gap:5px; flex-wrap:wrap }}
+.reader-label {{ color:var(--ink); font-weight:650; margin-inline-end:auto }}
 a {{ color:var(--accent); text-decoration:none }}
 a:focus-visible {{ outline:2px solid var(--focus-ring); outline-offset:3px }}
 nav a,.download {{
   display:inline-flex;
   align-items:center;
-  gap:8px;
-  min-height:40px;
-  padding:6px 12px;
-  border-radius:10px;
-  font-size:.9rem;
-  font-weight:650;
+  gap:7px;
+  min-height:32px;
+  padding:4px 9px;
+  border-radius:6px;
+  font-size:.92rem;
+  font-weight:600;
 }}
+nav a {{ color:var(--muted) }}
 nav a:hover {{ color:var(--ink); background:var(--surface-hover) }}
-main {{ padding-block:clamp(24px,4vw,52px) 62px }}
-.reading-hero {{
-  position:relative;
-  isolation:isolate;
-  overflow:hidden;
-  min-height:175px;
-  display:grid;
-  align-content:center;
-  margin-bottom:24px;
-  padding:clamp(22px,4vw,48px);
-  border:1px solid var(--line);
-  border-radius:24px;
-  background:linear-gradient(110deg,var(--surface) 22%,#29213b 100%);
-  box-shadow:var(--shadow,0 18px 36px #08051155);
-}}
-.reading-hero::before {{
-  content:"";
-  position:absolute;
-  z-index:-1;
-  inset:-30% -12% -30% 28%;
-  background:
-    repeating-radial-gradient(ellipse at 73% 55%,transparent 0 17px,#e4c4ff24 18px,transparent 19px 24px),
-    radial-gradient(ellipse at 78% 50%,#bd81ee4f,transparent 57%);
-  mask-image:linear-gradient(105deg,transparent 8%,#000 58%);
-  transform:rotate(-12deg);
-  pointer-events:none;
-}}
-.reading-kind {{
-  display:flex;
-  align-items:center;
-  gap:9px;
-  margin:0 0 10px;
-  color:var(--accent);
-  font-size:.86rem;
-  font-weight:660;
-  letter-spacing:.09em;
-}}
-.reading-kind::before {{
-  content:"";
-  width:6px;
-  height:6px;
-  border-radius:50%;
-  background:currentColor;
-  box-shadow:0 0 12px currentColor;
-}}
+main {{ padding-block:22px 44px }}
 h1 {{
-  max-width:27em;
-  margin:0;
-  font:650 clamp(1.6rem,4.1vw,2.8rem)/1.23 var(--display,var(--ui));
-  letter-spacing:-.04em;
+  margin:0 0 16px;
+  font:650 clamp(1.2rem,2.4vw,1.55rem)/1.34 var(--display,var(--ui));
+  letter-spacing:-.025em;
   overflow-wrap:anywhere;
 }}
 .historical {{
   margin:0 0 18px;
-  padding:12px 17px;
+  padding:10px 13px;
   border:1px solid var(--line);
-  border-inline-start:3px solid var(--amber);
-  border-radius:10px;
+  border-inline-start:2px solid var(--amber);
+  border-radius:8px;
   color:var(--amber);
   background:var(--surface);
 }}
@@ -397,13 +359,12 @@ h1 {{
 .reading-card {{
   min-width:0;
   align-self:start;
-  padding:clamp(17px,2.7vw,30px);
+  padding:clamp(12px,2vw,18px);
   border:1px solid var(--line);
-  border-radius:18px;
-  background:linear-gradient(148deg,#ac91dc12,transparent 50%),var(--glass,var(--surface));
-  box-shadow:0 12px 30px #08051136,inset 0 1px #ffffff06;
+  border-radius:9px;
+  background:var(--surface);
 }}
-h2 {{ margin:0 0 15px; color:var(--ink); font-size:1.17rem; line-height:1.35; letter-spacing:-.025em }}
+h2 {{ margin:0 0 10px; color:var(--ink); font-size:1rem; line-height:1.35; font-weight:650 }}
 dl {{
   display:grid;
   grid-template-columns:minmax(4.8em,auto) minmax(0,1fr);
@@ -421,33 +382,32 @@ pre {{
   overflow-wrap:anywhere;
   background:var(--paper);
   border:1px solid var(--line);
-  border-radius:11px;
+  border-radius:6px;
   color:var(--text);
   font:.86rem/1.65 var(--mono);
 }}
-.download {{ color:var(--on-accent); background:var(--accent); border:1px solid var(--accent) }}
+.download {{ color:var(--accent); background:#252a38; border:1px solid #3b4358 }}
 .download::after {{ content:""; width:6px; height:6px; border:solid currentColor; border-width:0 2px 2px 0; transform:rotate(45deg); margin-top:-3px }}
-.download:hover {{ filter:brightness(1.12); box-shadow:0 3px 18px #be9cea42 }}
+.download:hover {{ background:#2f3649; border-color:#515d7c }}
 @media (min-width:960px) {{
   .reading-grid {{ grid-template-columns:minmax(0,5fr) minmax(0,7fr); grid-template-rows:auto 1fr; align-items:start }}
   .evidence {{ grid-area:1 / 2 / span 2 }}
 }}
 @media (max-width:480px) {{
-  .reading-hero {{ min-height:145px; border-radius:18px }}
-  .reading-card {{ border-radius:15px }}
+  main {{ padding-top:16px }}
   dl {{ font-size:.85rem; gap:0 8px }}
 }}
 @media (prefers-reduced-motion:no-preference) {{
-  .reading-hero {{ animation:reader-enter .42s ease-out both }}
-  nav a,.download {{ transition:background .18s ease,color .18s ease,box-shadow .18s ease,filter .18s ease }}
-  @keyframes reader-enter {{ from {{ opacity:0; transform:translateY(7px) }} }}
+  .reading-grid {{ animation:reader-enter .2s ease-out }}
+  nav a,.download {{ transition:background .15s ease,color .15s ease,border-color .15s ease }}
+  @keyframes reader-enter {{ from {{ opacity:.72; transform:translateY(3px) }} }}
 }}
 </style>
 </head>
 <body>
-<header class="masthead"><nav class="reading-wrap" aria-label="导航">{home_link}<a id="return-map" href="./">← 返回需求详情</a></nav></header>
+<header class="masthead"><nav class="reading-wrap" aria-label="导航"><span class="reader-label">经验来源</span>{home_link}<a id="return-map" href="./">← 返回需求详情</a></nav></header>
 <main class="reading-wrap">
-  <div class="reading-hero"><p class="reading-kind">经验来源</p><h1>{escape(card["observation"])}</h1></div>
+  <h1>{escape(card["observation"])}</h1>
   {historical}
   <div class="reading-grid">
     <section class="reading-card"><h2>来源场景</h2><dl>{context}</dl></section>
