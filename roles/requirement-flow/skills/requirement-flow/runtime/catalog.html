@@ -50,7 +50,7 @@
     :root[data-theme=light] { --catalog-landscape:url('/catalog-landscape.jpg') }
     *,*::before,*::after { box-sizing:border-box }
     body,h1,h2,h3,p,ul { margin:0 }
-    html { scroll-padding-top:60px }
+    html { scroll-padding-top:60px; scrollbar-gutter:stable }
     body {
       min-height:100vh;
       background:radial-gradient(ellipse at 18% -10rem,var(--surface),transparent 62rem),var(--paper);
@@ -225,7 +225,7 @@
       .card[data-bucket=archive] .card-progress { grid-column:2; min-width:105px }
     }
     @media (min-width:1080px) {
-      .results:has([data-bucket=active]):has([data-bucket=archive]) {
+      .results[data-has-archive]:has(.section[data-bucket=active]) {
         display:grid; align-items:start; grid-template-columns:minmax(0,1fr) minmax(290px,29%); column-gap:26px;
       }
       .results:has([data-bucket=active]):has([data-bucket=archive]) .section + .section { margin-top:0 }
@@ -398,8 +398,10 @@
       $('project-name').textContent = data.project
       document.title = data.project + ' · 需求中心'
       const active = tasks.filter(t => t.bucket === 'active')
+      const archivedCount = tasks.length - active.length
+      $('results').toggleAttribute('data-has-archive', archivedCount > 0)
       $('inventory').replaceChildren()
-      for (const [n, label] of [[active.length, '进行中'], [tasks.length - active.length, '已归档']]) {
+      for (const [n, label] of [[active.length, '进行中'], [archivedCount, '已归档']]) {
         const entry = el('span')
         entry.append(el('b', '', n), el('span', 'metric-label', ' 项' + label))
         $('inventory').append(entry)

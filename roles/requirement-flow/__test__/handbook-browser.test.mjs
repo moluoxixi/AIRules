@@ -573,7 +573,7 @@ describe.skipIf(!executablePath)('generated handbook interactions in Chromium', 
           expect(metrics.meterHeight).toBeGreaterThanOrEqual(4)
           expect(metrics.target).toBe(true)
           expect(metrics.archiveBelow).toBe(true)
-          expect(metrics.overflow).toBe(0)
+          expect(metrics.overflow).toBeLessThanOrEqual(0)
         }
         await page.hover(linkFor(unplanned))
         await page.waitForSelector('#card-tooltip:not([hidden])')
@@ -618,7 +618,7 @@ describe.skipIf(!executablePath)('generated handbook interactions in Chromium', 
       }
     })
 
-    it.each(['light', 'dark'])('places the %s archive beside the active list on wide screens and expands a single group', async (theme) => {
+    it.each(['light', 'dark'])('keeps the %s active list stable beside the archive rail when filtering', async (theme) => {
       const page = await browser.newPage()
       const layout = () => page.$eval('#results', (el) => {
         const measure = (bucket) => {
@@ -628,8 +628,8 @@ describe.skipIf(!executablePath)('generated handbook interactions in Chromium', 
           const { left, right, top, width } = section.getBoundingClientRect()
           const cards = section.querySelector('.cards')
           const columns = getComputedStyle(cards).gridTemplateColumns
-          const firstCardTop = cards.firstElementChild.getBoundingClientRect().top
-          return { left, right, top, width, firstCardTop, columnCount: columns.split(' ').length }
+          const firstCard = cards.firstElementChild.getBoundingClientRect()
+          return { left, right, top, width, firstCardTop: firstCard.top, firstCardWidth: firstCard.width, columnCount: columns.split(' ').length }
         }
         return {
           active: measure('active'),
@@ -654,23 +654,33 @@ describe.skipIf(!executablePath)('generated handbook interactions in Chromium', 
           expect(archive.left - active.right).toBeGreaterThanOrEqual(16)
           expect(Math.abs(archive.top - active.top)).toBeLessThanOrEqual(1)
           expect(active.firstCardTop).toBeLessThanOrEqual(350)
-          expect(overflow).toBe(0)
+          expect(overflow).toBeLessThanOrEqual(0)
+
+          await page.click('button[data-scope="active"]')
+          await waitForCards(page, ['plan', unplanned, research])
+          const activeOnly = await layout()
+          expect(activeOnly.archive).toBeNull()
+          expect(activeOnly.active).toMatchObject({ left: active.left, width: active.width, firstCardWidth: active.firstCardWidth })
+          expect(activeOnly.overflow).toBeLessThanOrEqual(0)
+          await page.click('button[data-scope="all"]')
+          await waitForCards(page, ['plan', unplanned, archived, research])
         }
         await page.click('button[data-scope="archive"]')
         await waitForCards(page, [archived])
         const archiveOnly = await layout()
         expect(archiveOnly.active).toBeNull()
         expect(archiveOnly.archive.width).toBeCloseTo(archiveOnly.width)
-        expect(archiveOnly.overflow).toBe(0)
-
-        await page.click('button[data-scope="active"]')
-        await waitForCards(page, ['plan', unplanned, research])
-        const activeOnly = await layout()
-        expect(activeOnly.archive).toBeNull()
-        expect(activeOnly.active.width).toBeCloseTo(activeOnly.width)
-        expect(activeOnly.overflow).toBe(0)
+        expect(archiveOnly.overflow).toBeLessThanOrEqual(0)
 
         await page.click('button[data-scope="all"]')
+        await waitForCards(page, ['plan', unplanned, archived, research])
+        const { active } = await layout()
+        await page.type(search, '批量确认')
+        await waitForCards(page, ['plan'])
+        const matching = await layout()
+        expect(matching.archive).toBeNull()
+        expect(matching.active).toMatchObject({ left: active.left, width: active.width, firstCardWidth: active.firstCardWidth })
+        await page.click('#clear-query')
         await waitForCards(page, ['plan', unplanned, archived, research])
         const tap = await page.$eval(`${cards}[data-task-id="plan"]`, (card) => {
           const { left, bottom } = card.getBoundingClientRect()
