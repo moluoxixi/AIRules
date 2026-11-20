@@ -272,7 +272,7 @@ def lesson_source_page(card, source, download_url, home_href=None):
                         ("适用条件", card["when"]), ("做法", card["practice"]), ("边界", card["boundary"]),
                         ("审查人", review.get("actor")), ("审查意见", review.get("reason"))])
     home_link = f'<a href="{escape(home_href, quote=True)}" aria-label="首页">首页</a>' if home_href else ""
-    historical = ('<p role="status">历史依据：原始回执与附件完整，但不能证明当前输入，需重新验收。</p>'
+    historical = ('<p class="historical" role="status">历史依据：原始回执与附件完整，但不能证明当前输入，需重新验收。</p>'
                   if not source.get("valid", True) else "")
     return_script = """<script>
 const back = document.getElementById('return-map')
@@ -296,23 +296,137 @@ if (drawer && drawer.startsWith('#node=')) {
   }
 }
 </script>"""
-    return f"""<!doctype html><html lang="zh-CN"><meta charset="utf-8">
-<meta name="viewport" content="width=device-width,initial-scale=1"><title>经验来源 · {escape(source["scenario"])}</title>
-<style>{Path(__file__).with_name("theme.css").read_text("utf-8")}
-*{{box-sizing:border-box}}body{{margin:0;background:var(--paper);color:var(--ink);font:16px/1.6 var(--ui)}}
-main{{max-width:780px;margin:auto;padding:32px clamp(16px,4vw,32px) 60px}}
-h1{{font-size:clamp(1.35rem,3.5vw,2rem);line-height:1.4;margin:20px 0 24px}}
-section{{padding:clamp(15px,3vw,24px);background:var(--surface);border:1px solid var(--line);border-radius:12px;margin:16px 0}}
-h2{{font-size:1.1rem;margin:0 0 14px}}dl{{display:grid;grid-template-columns:minmax(4.7em,auto) minmax(0,1fr);gap:8px 16px;margin:0}}
-dt{{color:var(--muted)}}dd{{margin:0;overflow-wrap:anywhere;color:var(--text)}}
-pre{{white-space:pre-wrap;overflow-wrap:anywhere;background:var(--paper);padding:12px;border-radius:6px;font:.86rem/1.65 var(--mono)}}
-a{{color:var(--accent);text-underline-offset:3px}}a:focus-visible{{outline:2px solid var(--focus-ring);outline-offset:3px}}
-nav{{display:flex;gap:16px;align-items:center}}.download{{display:inline-block;margin-top:10px}}</style><main>
-<header><nav>{home_link}<a id="return-map" href="./">← 返回需求详情</a></nav></header><h1>{escape(card["observation"])}</h1>
-{historical}<section><h2>来源场景</h2><dl>{context}</dl></section>
-<section><h2>实际证据</h2><dl>{receipt}</dl><pre>{escape(proof["actual"])}</pre>
-<a class="download" href="{escape(download_url, quote=True)}" download>下载验收附件</a></section>
-<section><h2>经验与审查</h2><dl>{review_info}</dl></section></main>{return_script}</html>"""
+    return f"""<!doctype html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>经验来源 · {escape(source["scenario"])}</title>
+<style>
+{Path(__file__).with_name("theme.css").read_text("utf-8")}
+* {{ box-sizing:border-box }}
+:root {{
+  color-scheme:dark;
+  --paper:#151024;
+  --surface:#21192f;
+  --surface-hover:#302344;
+  --line:#423451;
+  --ink:#f5efff;
+  --text:#e3dcf0;
+  --muted:#b9accb;
+  --accent:#dac9ff;
+  --focus-ring:#dac9ff;
+  --mint:#a1e5cc;
+  --amber:#f4c393;
+  background:var(--paper);
+}}
+body {{
+  margin:0;
+  min-height:100vh;
+  color:var(--ink);
+  font:14px/1.58 var(--ui);
+}}
+.reading-wrap {{ width:min(calc(100% - clamp(32px,8vw,112px)),1060px); margin-inline:auto }}
+.masthead {{ background:var(--surface); border-bottom:1px solid var(--line) }}
+.masthead nav {{ min-height:49px; display:flex; align-items:center; gap:5px; flex-wrap:wrap }}
+.reader-label {{ color:var(--ink); font-weight:650; margin-inline-end:auto }}
+a {{ color:var(--accent); text-decoration:none }}
+a:focus-visible {{ outline:2px solid var(--focus-ring); outline-offset:3px }}
+nav a,.download {{
+  display:inline-flex;
+  align-items:center;
+  gap:7px;
+  min-height:32px;
+  padding:4px 9px;
+  border-radius:6px;
+  font-size:.92rem;
+  font-weight:600;
+}}
+nav a {{ color:var(--muted) }}
+nav a:hover {{ color:var(--ink); background:var(--surface-hover) }}
+main {{ padding-block:22px 44px }}
+h1 {{
+  margin:0 0 16px;
+  font:650 clamp(1.2rem,2.4vw,1.55rem)/1.34 var(--display,var(--ui));
+  letter-spacing:-.025em;
+  overflow-wrap:anywhere;
+}}
+.historical {{
+  margin:0 0 18px;
+  padding:10px 13px;
+  border:1px solid var(--line);
+  border-inline-start:2px solid var(--amber);
+  border-radius:8px;
+  color:var(--amber);
+  background:#2d2130;
+}}
+.reading-grid {{ display:grid; gap:16px }}
+.reading-card {{
+  min-width:0;
+  align-self:start;
+  padding:clamp(12px,2vw,18px);
+  border:1px solid var(--line);
+  border-radius:9px;
+  background:var(--surface);
+  box-shadow:0 1px 3px #0b061f4a,inset 0 1px #fcf6ff08;
+}}
+h2 {{ margin:0 0 10px; color:var(--ink); font-size:1rem; line-height:1.35; font-weight:650 }}
+.evidence h2 {{ color:var(--mint) }}
+dl {{
+  display:grid;
+  grid-template-columns:minmax(4.8em,auto) minmax(0,1fr);
+  gap:0 12px;
+  margin:0;
+  font-size:.9rem;
+}}
+dt,dd {{ margin:0; padding-block:7px; border-top:1px solid var(--line) }}
+dt {{ color:var(--muted) }}
+dd {{ overflow-wrap:anywhere; color:var(--text) }}
+pre {{
+  margin:16px 0 12px;
+  padding:14px 16px;
+  white-space:pre-wrap;
+  overflow-wrap:anywhere;
+  background:#1a1329;
+  border:1px solid var(--line);
+  border-radius:6px;
+  color:var(--text);
+  font:.86rem/1.65 var(--mono);
+}}
+.download {{ color:var(--accent); background:#312448; border:1px solid #574470 }}
+.download::after {{ content:""; width:6px; height:6px; border:solid currentColor; border-width:0 2px 2px 0; transform:rotate(45deg); margin-top:-3px }}
+.download:hover {{ background:#3e2c5a; border-color:#745b97 }}
+@media (min-width:960px) {{
+  .reading-grid {{ grid-template-columns:minmax(0,5fr) minmax(0,7fr); grid-template-rows:auto 1fr; align-items:start }}
+  .evidence {{ grid-area:1 / 2 / span 2 }}
+}}
+@media (max-width:480px) {{
+  main {{ padding-top:16px }}
+  dl {{ font-size:.85rem; gap:0 8px }}
+}}
+@media (prefers-reduced-motion:no-preference) {{
+  .reading-grid {{ animation:reader-enter .2s ease-out }}
+  nav a,.download {{ transition:background .15s ease,color .15s ease,border-color .15s ease }}
+  @keyframes reader-enter {{ from {{ opacity:.72; transform:translateY(3px) }} }}
+}}
+</style>
+</head>
+<body>
+<header class="masthead"><nav class="reading-wrap" aria-label="导航"><span class="reader-label">经验来源</span>{home_link}<a id="return-map" href="./">← 返回需求详情</a></nav></header>
+<main class="reading-wrap">
+  <h1>{escape(card["observation"])}</h1>
+  {historical}
+  <div class="reading-grid">
+    <section class="reading-card"><h2>来源场景</h2><dl>{context}</dl></section>
+    <section class="reading-card evidence"><h2>实际证据</h2><dl>{receipt}</dl><pre>{escape(proof["actual"])}</pre>
+      <a class="download" href="{escape(download_url, quote=True)}" download>下载验收附件</a>
+    </section>
+    <section class="reading-card"><h2>经验与审查</h2><dl>{review_info}</dl></section>
+  </div>
+</main>
+{return_script}
+</body>
+</html>"""
 
 
 def render(model, states, impacts, token, checksum, template, *, queue, source_labels=None, read_only=False, home_href=None):

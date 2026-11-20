@@ -395,7 +395,7 @@ describe.skipIf(!executablePath)('generated handbook interactions in Chromium', 
       await Promise.all([page.waitForNavigation({ waitUntil: 'domcontentloaded' }), page.click(selector)])
     }
 
-    it('keeps the graph title and the rightmost home link in a compact header', async () => {
+    it('keeps separated graph actions and the rightmost home link in a compact header', async () => {
       const page = await browser.newPage()
       try {
         await page.goto(server.address)
@@ -403,13 +403,14 @@ describe.skipIf(!executablePath)('generated handbook interactions in Chromium', 
         await waitForCards(page, [unplanned])
         await follow(page, linkFor(unplanned))
         await page.waitForSelector('#catalog-return', { visible: true })
-        for (const [width, height] of [[903, 48], [430, 44], [375, 44]]) {
-          await page.setViewport({ width, height: 623 })
+        for (const [width, height, gap] of [[903, 48, 8], [725, 48, 8], [520, 48, 6], [430, 44, 5], [375, 44, 5]]) {
+          await page.setViewport({ width, height: width === 725 ? 593 : 623 })
           const header = await page.$eval('.app-head header', (el) => {
             const title = el.querySelector('h1')
             const home = el.querySelector('#catalog-home')
             const homeRect = home.getBoundingClientRect()
             const others = [...el.querySelectorAll('a, button')].filter(node => node !== home && node.getClientRects().length)
+            const actionRects = [...others, home].map(node => node.getBoundingClientRect())
             return {
               text: el.textContent,
               height: el.getBoundingClientRect().height,
@@ -419,10 +420,12 @@ describe.skipIf(!executablePath)('generated handbook interactions in Chromium', 
               clearOfActions: others.every(node => title.getBoundingClientRect().right <= node.getBoundingClientRect().left),
               homeIsLast: others.every(node => node.getBoundingClientRect().right <= homeRect.left),
               homeIsVisible: homeRect.right <= innerWidth && Number.parseFloat(getComputedStyle(home).fontSize) > 0,
+              smallestGap: Math.min(...actionRects.slice(1).map((rect, index) => rect.left - actionRects[index].right)),
             }
           })
           expect(header.text).not.toMatch(/需求全景图|\bv\d+\b/u)
           expect(header).toMatchObject({ height, title: longTitle, clearOfActions: true, homeIsLast: true, homeIsVisible: true })
+          expect(header.smallestGap).toBeGreaterThanOrEqual(gap)
           if (width <= 430) {
             expect(header.clipped).toBe(true)
             expect(header.titleWidth).toBeGreaterThan(width / 3)
@@ -436,38 +439,110 @@ describe.skipIf(!executablePath)('generated handbook interactions in Chromium', 
       }
     })
 
-    it('fits compact requirement cards to the viewport with a readable meter and a full-card target', async () => {
+    it('puts layered cards under a short header with full-card targets', async () => {
       const page = await browser.newPage()
       try {
         await page.goto(server.address)
         await waitForCards(page, ['plan', unplanned, archived, research])
-        for (const [width, expectedColumns] of [[1440, 5], [1200, 4], [960, 3], [665, 2], [390, 1], [320, 1]]) {
-          await page.setViewport({ width, height: 820 })
+        for (const width of [1440, 1200, 960, 725, 665, 390, 320]) {
+          await page.setViewport({ width, height: width === 725 ? 593 : 820 })
           const metrics = await page.$eval('article[data-task-id="plan"]', (card) => {
-            card.scrollIntoView({ block: 'center' })
             const bounds = card.getBoundingClientRect()
             const corner = document.elementFromPoint(bounds.left + 5, bounds.bottom - 5)
             const title = card.querySelector('h3')
             const meter = card.querySelector('progress')
+            const statuses = card.querySelectorAll('.state')
+            const tagLine = card.querySelector('.card-tags').getBoundingClientRect()
+            const header = document.querySelector('.masthead').getBoundingClientRect()
             return {
               columns: getComputedStyle(card.parentElement).gridTemplateColumns.split(' ').length,
-              height: bounds.height,
+              headerHeight: header.height,
+              toolbarGap: document.querySelector('.toolbar').getBoundingClientRect().top - header.bottom,
+              firstCardTop: document.querySelector('.cards .card').getBoundingClientRect().top,
+              oneStatusAboveTitle: statuses.length === 1 && statuses[0].getBoundingClientRect().bottom <= title.getBoundingClientRect().top,
+              separateProgress: meter.getBoundingClientRect().top >= tagLine.bottom,
+              cardsFit: [...card.parentElement.children].every(row => row.getBoundingClientRect().bottom <= innerHeight),
               titleSize: Number.parseFloat(getComputedStyle(title).fontSize),
               meterHeight: meter.getBoundingClientRect().height,
               target: corner?.closest('a') === title.querySelector('a'),
               overflow: document.documentElement.scrollWidth - innerWidth,
             }
           })
-          expect(metrics.columns).toBe(expectedColumns)
-          expect(metrics.height).toBeLessThanOrEqual(82)
+          expect(metrics.columns).toBe(width >= 700 ? 2 : 1)
+          expect(metrics.headerHeight).toBeLessThanOrEqual(85)
+          expect(metrics.toolbarGap).toBeGreaterThanOrEqual(16)
+          expect(metrics.firstCardTop).toBeLessThanOrEqual(210)
+          expect(metrics.oneStatusAboveTitle).toBe(true)
+          expect(metrics.separateProgress).toBe(true)
           expect(metrics.titleSize).toBeGreaterThanOrEqual(15)
           expect(metrics.meterHeight).toBeGreaterThanOrEqual(4)
           expect(metrics.target).toBe(true)
           expect(metrics.overflow).toBe(0)
+          if (width === 725)
+            expect(metrics.cardsFit).toBe(true)
         }
         await page.hover(linkFor(unplanned))
         await page.waitForSelector('#card-tooltip:not([hidden])')
         expect(await page.$eval('#card-tooltip strong', tip => tip.textContent)).toBe(longTitle)
+      }
+      finally {
+        await page.close()
+      }
+    })
+
+    it('finds demands by label and highlights only the labels that match', async () => {
+      const page = await browser.newPage()
+      const tags = `${cards}[data-task-id="plan"] .card-tag`
+      const highlighted = () => page.$$eval(`${tags}[data-matched]`, items => items.map(item => item.textContent))
+      try {
+        await page.goto(server.address)
+        await waitForCards(page, ['plan', unplanned, archived, research])
+        expect(await page.$$eval(tags, items => items.map(item => item.textContent))).toEqual(featureTitles)
+        expect(await highlighted()).toEqual([])
+        await page.type(search, '批量确认')
+        await waitForCards(page, ['plan'])
+        expect(await highlighted()).toEqual(['批量确认'])
+        await page.click('#clear-query')
+        await page.type(search, '陈列模板生成')
+        await waitForCards(page, ['plan'])
+        expect(await highlighted()).toEqual([])
+      }
+      finally {
+        await page.close()
+      }
+    })
+
+    it('shares the card and canvas geometry across navigation in both directions', async () => {
+      const page = await browser.newPage()
+      try {
+        await page.emulateMediaFeatures([{ name: 'prefers-reduced-motion', value: 'no-preference' }])
+        await page.bringToFront()
+        await page.evaluateOnNewDocument(() => {
+          window.addEventListener('pagereveal', (event) => {
+            const transition = event.viewTransition
+            if (!transition)
+              return
+            transition.ready.then(() => {
+              const surfaceMoved = document.getAnimations().some(animation =>
+                animation instanceof CSSAnimation && animation.animationName === '-ua-view-transition-group-anim-requirement-surface')
+              document.documentElement.dataset.surfaceMoved = String(surfaceMoved)
+            }, () => {
+              document.documentElement.dataset.surfaceMoved = 'skipped'
+            })
+          })
+        })
+        await page.goto(server.address)
+        if (!await page.evaluate(() => 'PageRevealEvent' in window))
+          return
+        async function moved(direction) {
+          await page.waitForFunction(() => 'surfaceMoved' in document.documentElement.dataset, { timeout: 4_000 })
+          expect(await page.$eval('html', html => html.dataset.surfaceMoved), direction).toBe('true')
+        }
+        await follow(page, linkFor('plan'))
+        await moved('catalog to canvas')
+        await follow(page, '#catalog-home')
+        await moved('canvas to catalog')
+        await waitForCards(page, [archived, unplanned, 'plan', research])
       }
       finally {
         await page.close()
@@ -513,7 +588,7 @@ describe.skipIf(!executablePath)('generated handbook interactions in Chromium', 
         await page.keyboard.press('Tab')
         await page.focus(card)
         await page.waitForSelector(tip)
-        expect(await cardStyle()).toEqual(hover)
+        expect(await cardStyle()).toEqual({ ...hover, outline: 'solid' })
         expect(await page.$eval(card, el => el.getAttribute('aria-describedby'))).toBe('card-tooltip')
         await page.keyboard.press('Escape')
         await page.waitForSelector(tip, { hidden: true })
@@ -575,7 +650,7 @@ describe.skipIf(!executablePath)('generated handbook interactions in Chromium', 
         await waitForCards(page, [archived])
         await waitForFilterLink(page, 'scope', 'archive')
         // The on-screen keyboard leaves a short scrolling viewport even with compact cards.
-        await page.setViewport({ width: 375, height: 300, hasTouch: true })
+        await page.setViewport({ width: 375, height: 240, hasTouch: true })
         await page.$eval(linkFor(archived), link => link.scrollIntoView({ block: 'center' }))
         const scroll = await page.evaluate(() => scrollY)
         expect(scroll).toBeGreaterThan(0)
@@ -590,6 +665,14 @@ describe.skipIf(!executablePath)('generated handbook interactions in Chromium', 
         await page.goBack({ waitUntil: 'domcontentloaded' })
         await waitForCards(page, [archived])
         expect(page.url()).toBe(filteredUrl)
+        // The returning card's snapshot owns its paint until the shared transition settles.
+        await page.waitForFunction((selector) => {
+          const link = document.querySelector(selector)
+          if (!link)
+            return false
+          const { x, y, width, height } = link.getBoundingClientRect()
+          return link.contains(document.elementFromPoint(x + width / 2, y + height / 2))
+        }, { timeout: 4_000 }, linkFor(archived))
         await follow(page, linkFor(archived))
         expect(await page.$eval('#catalog-home', a => a.pathname + a.search)).toBe('/')
         await follow(page, '#catalog-return')
@@ -990,6 +1073,12 @@ describe.skipIf(!executablePath)('generated handbook interactions in Chromium', 
       const panel = '#detail'
       const pending = `${panel} .acceptance-group[data-state="open"]`
       const passed = `${panel} .acceptance-group[data-state="passed"]`
+      const toolsAreStacked = await page.$$eval(`${panel} .story-tools > *`, (rows) => {
+        const bounds = rows.map(row => row.getBoundingClientRect())
+        return bounds.length >= 3 && bounds.slice(1).every((row, index) =>
+          row.left === bounds[0].left && row.width === bounds[0].width && row.top >= bounds[index].bottom)
+      })
+      expect(toolsAreStacked).toBe(true)
       const titles = group => page.$$eval(`${group} .case-title`, els => els.map(el => el.textContent))
       expect(await titles(pending)).toEqual(['在门户回读批量写入结果'])
       expect(await titles(passed)).toEqual(['跨页确认门店类型', '重试批量提交'])

@@ -93,6 +93,31 @@ class CatalogServerTest(unittest.TestCase):
         self.assertEqual(cards["bad"]["state"], "error")
         self.assertNotIn(str(self.project), str(cards["bad"]))
 
+    def test_catalog_tags_reflect_current_story_scope(self):
+        self.command("new", "demo", "--request", "保存记录并支持导出")
+        stories = {}
+        for key, title, tags in (("export", "导出记录", [" ＡＰＩ ", "api", " ", 42, "导出"]),
+                                 ("save", " 保存记录 ", [" "]), ("copy", "保存记录", [])):
+            stories[f"S-{key}"] = {"title":title, "actor":"运营", "goal":title, "tags":tags,
+                                   "examples":[{"id":f"AC-{key}", "given":"有记录", "when":title, "then":"可回读"}]}
+        choice = {"title":"导出交付范围", "owner":"产品", "why":"确定本期范围", "stories":["S-export"],
+                  "options":{"keep":{"label":"本期交付", "consequence":"核验导出"},
+                             "defer":{"label":"下期交付", "consequence":"本期撤出导出"}}}
+        plan = self.project / "plan.json"
+        plan.write_text(json.dumps({"stories":stories, "decisions":{"D-scope":choice}}))
+        self.command("task", "demo", "plan", "plan.json", "--rev", "1", "--why", "登记范围")
+        self.start()
+        self.assertEqual(self.cards()["demo"]["tags"], ["ＡＰＩ", "导出"])
+        self.assertEqual(self.graph("/tasks/demo/")["model"]["work"]["stories"]["S-export"]["tags"],
+                         stories["S-export"]["tags"])
+
+        self.command("task", "demo", "decision", "D-scope", "defer", "--rev", "2", "--actor", "产品",
+                     "--why", "本期只做保存")
+        plan.write_text(json.dumps({"stories":{"S-export":{**stories["S-export"], "examples":[]}},
+                                    "retire_scenarios":{"AC-export":{"decision":"D-scope", "is":"defer"}}}))
+        self.command("task", "demo", "plan", "plan.json", "--rev", "3", "--why", "撤出导出场景")
+        self.assertEqual(self.cards()["demo"]["tags"], ["保存记录"])
+
     def test_scoped_writes_sources_redirects_and_read_only_archive(self):
         self.command("init")
         names = ("甲", "乙")

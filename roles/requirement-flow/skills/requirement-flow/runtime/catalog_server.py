@@ -7,6 +7,7 @@ import json
 import re
 import secrets
 from threading import Lock
+import unicodedata
 from urllib.parse import parse_qs, quote, unquote, urlsplit
 
 if __package__:
@@ -17,6 +18,21 @@ else:
 
 def task_href(key):
     return "/tasks/" + quote(key, safe="") + "/"
+
+
+def story_tags(stories, withdrawn):
+    withdrawn = set(withdrawn)
+    current = [story for key, story in stories.items() if key not in withdrawn]
+    tags = []
+    for story in current:
+        values = story.get("tags")
+        if isinstance(values, list):
+            tags.extend(tag.strip() for tag in values if isinstance(tag, str) and tag.strip())
+    labels = tags or [story["title"].strip() for story in current]
+    unique = {}
+    for label in labels:
+        unique.setdefault(unicodedata.normalize("NFKC", label).casefold(), label)
+    return list(unique.values())
 
 
 def task_card(work, queue):
@@ -41,6 +57,7 @@ def task_card(work, queue):
     return {
         "id":work["id"], "title":work["title"], "summary":(work.get("goal") or work["raw_request"])[:360],
         "stories":len(work["stories"]), "state":queue["state"], "outcome":work.get("outcome","delivery"),
+        "tags":story_tags(work["stories"], withdrawn),
         "updatedAt":updated or history.get("completed_at") or history.get("created_at"),
         "basis":basis, "passed":passed, "total":total, "withdrawnStories":len(withdrawn),
         "stale":sum(case["status"] == "stale" for case in cases),
@@ -80,7 +97,7 @@ def catalog_data(project, groups, default_task):
         for row in rows:
             if "error" in row:
                 row = {"id":row["id"], "title":row["id"], "summary":"", "state":"error", "stories":0,
-                       "outcome":"delivery", "basis":"none", "passed":0, "total":0, "stale":0, "failed":0,
+                       "tags":[], "outcome":"delivery", "basis":"none", "passed":0, "total":0, "stale":0, "failed":0,
                        "updatedAt":None, "href":None, "error":"需求记录无法读取，请检查目录与模型。"}
             tasks.append({**row, "bucket":bucket})
     if project.parent.name == "worktrees":
