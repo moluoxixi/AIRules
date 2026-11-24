@@ -189,10 +189,74 @@ def validate_implementation(value):
     return list(dict.fromkeys(sources))
 
 
+def lightweight(work):
+    return work.get("workflow") == "lightweight"
+
+
+def light_dev(story):
+    return "A-light-dev-" + story
+
+
+def light_verify(story, scenario):
+    return "A-light-check-" + digest([story, scenario])[:24]
+
+
+def validate_lightweight(work, scenarios, retired):
+    actions = work["actions"]
+    for story, spec in work["stories"].items():
+        dev = actions.get(light_dev(story), {})
+        expect(all(isinstance(spec.get(k), str) and spec[k].strip() for k in ("actor", "goal", "basis")),
+               "轻量故事须写明角色、目标和来源：" + story)
+        expect(dev.get("kind") == "开发" and dev["stories"] == [story] and
+               story in dev["read_stories"] and not dev.get("when"), "轻量故事缺少匹配的实现登记：" + story)
+    for scenario, spec in scenarios.items():
+        story = spec["story"]
+        key = light_verify(story, scenario)
+        expect(actions.get(key, {}).get("light_case") == scenario, "轻量验收场景须用 cards 登记：" + scenario)
+    for key, action in actions.items():
+        if "light_case" not in action and not key.startswith("A-light-check-"):
+            continue
+        scenario = action.get("light_case")
+        expect(isinstance(scenario, str) and action["kind"] == "验证" and len(action["stories"]) == 1,
+               "轻量检查的归属无效：" + key)
+        story = action["stories"][0]
+        current = scenarios.get(scenario, {}).get("story") == story
+        expect(key == light_verify(story, scenario) and story in action["read_stories"] and not action.get("when") and
+               {"id": light_dev(story)} in action["depends_on"] and
+               action.get("covers") == ([scenario] if current else []) and (current or (story, scenario) in retired),
+               "轻量检查须保留对应场景和实现关联：" + key)
+
+
+def validate_checks(action, key, covers):
+    checks = action["checks"]
+    expect(action["kind"] == "验证" and isinstance(checks, dict) and checks.keys() <= set(covers),
+           "checks 只属于验证动作，且须按 covers 中的场景 ID 登记：" + key)
+
+    def text(value):
+        return isinstance(value, str) and bool(value.strip()) and "\0" not in value
+
+    for scenario, check in checks.items():
+        label = key + "/" + scenario
+        expect(isinstance(check, dict), "检查计划须为对象：" + label)
+        level = check.get("level")
+        expect(level in ("自动化", "人工核对", "真实环境") and
+               (not action.get("accepts") or level in action["accepts"]), "检查计划的证据方式不适用：" + label)
+        field = "argv" if level == "自动化" else "steps"
+        expect(set(check) == {"level", "environment", "expected", field} and
+               text(check["environment"]) and text(check["expected"]), "检查计划须写明环境、预期和验法：" + label)
+        entries = check[field]
+        expect(isinstance(entries, list) and entries and text(entries[0]) and all(
+            isinstance(item, str) and "\0" not in item if field == "argv" else text(item) for item in entries
+        ), "检查计划缺少有效的命令参数或操作步骤：" + label)
+        if field == "argv":
+            expect(evidence.run_result.shareable_arguments(entries), "共享检查计划不得包含敏感命令参数：" + label)
+
+
 def validate(m):
     w = m["work"]
     expect(m["protocol"]["version"] == "2.0", "不支持的协议版本")
     expect(w.get("outcome","delivery") in ("research","delivery"), "需求目标类型无效")
+    expect("workflow" not in w or (lightweight(w) and w.get("outcome", "delivery") == "delivery"), "需求流程类型无效")
     expect(isinstance(w["revision"], int) and w["revision"] > 0 and w["raw_request"], "缺少有效原话或版次")
     ids = set()
     for group in PLANNABLE:
@@ -259,12 +323,21 @@ def validate(m):
                "covers 必须引用本动作所关联故事中的场景：" + key)
         if action["kind"] == "验证" and action.get("accepts"):
             expect(all(x in ("推演","自动化","真实环境","人工核对") for x in action["accepts"]), "不支持的验证方式")
+        if "checks" in action:
+            # Retired lightweight actions keep their original verification policy
+            # for restoration, but their empty covers never contributes to acceptance.
+            archived_case = lightweight(w) and not covers and isinstance(action.get("light_case"), str)
+            validate_checks(action, key, [action["light_case"]] if archived_case else covers)
         check_condition(action.get("when"))
         dep_ids = [dep["id"] for dep in action["depends_on"]]
         check_refs(dep_ids, "actions")
         expect(len(dep_ids) == len(set(dep_ids)), "重复动作依赖 " + key)
         for edge in action["depends_on"]:
             check_condition(edge.get("when"))
+    if lightweight(w):
+        validate_lightweight(w, scenarios, latest_retirements(w, set()))
+    else:
+        expect(not any("light_case" in action for action in w["actions"].values()), "轻量检查只属于轻量需求")
     remaining = set(w["actions"])
     while remaining:
         free = {k for k in remaining if not any(dep["id"] in remaining for dep in w["actions"][k]["depends_on"])}
@@ -374,11 +447,15 @@ def proof_stamp(action_stamp, scenario_stamp, event_id, revision):
     return digest({"action":action_stamp, "scenario":scenario_stamp, "event":event_id, "revision":revision})
 
 
-def case_stamp(scenario, latest_retired):
+def case_stamp(scenario, latest_retired, check=None):
     retired = latest_retired.get((scenario["story"],scenario["id"]))
+    binding = {"scenario": scenario}
     if retired:
-        return digest({"scenario":scenario,"last_retirement":retired["event"],"revision":retired["revision"]})
-    return digest(scenario)
+        binding.update(last_retirement=retired["event"], revision=retired["revision"])
+    if check is not None:
+        binding["check"] = check
+    # Missing checks keep the exact signatures of legacy receipts.
+    return digest(binding if retired or check is not None else scenario)
 
 
 def verified_receipt(workspace, event, stamp):
@@ -518,6 +595,11 @@ def evaluate(w, workspace=None):
         if action["stories"] and set(action["stories"]) <= withdrawn:
             return {"state":"skipped", "reasons":["关联功能已按业务决定移出本期范围"],
                     "stamp":None, "proof":None, "blockers":[], "actor":None, "cases":{}}
+        if "light_case" in action and not action["covers"]:
+            # The action remains addressable for old receipts. Reversing the decision
+            # makes the retired case uncovered in scenario_report, not silently passed.
+            return {"state":"skipped", "reasons":["场景已移出卡片；恢复范围后须重新登记场景"],
+                    "stamp":None, "proof":None, "blockers":[], "actor":None, "cases":{}}
         last = latest.get(key, {})
         condition = action.get("when")
         gate = condition_value(w, condition)
@@ -557,7 +639,10 @@ def evaluate(w, workspace=None):
             status = visit(dep)
             if status["state"] != "done":
                 blockers.append({"kind":"dependency","id":dep})
-            inputs[dep] = status["proof"]
+            # A light check binds the story's implementation inputs, not a new
+            # event number for a prose-only update. Actual code still binds per case.
+            is_light_implementation = "light_case" in action and dep == light_dev(action["stories"][0])
+            inputs[dep] = status["stamp"] if is_light_implementation and status["state"] == "done" else status["proof"]
         labels = {"decision":("待决定 · ", "decisions"),"contract":("待契约 · ", "contracts"),
                   "dependency":("等待 · ", "actions"),"coverage":("待关联验收场景 · ","actions"),
                   "review_evidence":("诊断失败回执不可读 · ","actions")}
@@ -571,7 +656,8 @@ def evaluate(w, workspace=None):
             covered_stories = {definitions[s]["story"] for s in action.get("covers", [])}
             stories = {i:({k:v for k,v in story.items() if k != "examples"} if i in covered_stories else story)
                        for i,story in stories.items()}
-        definition = {k:v for k,v in action.items() if k != "covers"} if verify else action
+        definition = {k:v for k,v in action.items() if k not in ("covers", "checks")} if verify else action
+        checks = action.get("checks", {})
         binding = {
             "action":definition, "dependency_outputs":inputs, "reopen":reopened.get(key),
             "stories":stories,
@@ -584,7 +670,7 @@ def evaluate(w, workspace=None):
             binding["request"] = {"revision": request_revision, "goal": w["goal"], "scope": w["scope"]}
         stamp = digest(binding)
         cases = {s:inspect_proof(workspace, proof_events.get((key,s)), key, definitions[s], stamp,
-                                 case_stamp(definitions[s],retired),action.get("accepts"),replays,
+                                 case_stamp(definitions[s], retired, checks.get(s)),action.get("accepts"),replays,
                                  action.get("code_paths"), input_cache, request_revision)
                  for s in action.get("covers", [])}
         last_finish = finishes.get(key,{})
@@ -736,6 +822,58 @@ def apply_plan(w, patch, actor, reason):
     return True
 
 
+def save_cards(work, patch, actor, reason):
+    expect(lightweight(work), "cards 用于轻量需求；已有编排需求继续用 plan")
+    expect(isinstance(patch, dict) and patch and set(patch) <= {"stories", "checks", "code_paths", "retire_scenarios"},
+           "轻量卡片只接受 stories、checks、code_paths 和 retire_scenarios")
+    stories, checks, paths = (patch.get(key, {}) for key in ("stories", "checks", "code_paths"))
+    expect(all(isinstance(group, dict) for group in (stories, checks, paths)), "卡片、检查计划和代码范围须按 ID 登记")
+    for story, spec in stories.items():
+        expect(isinstance(spec, dict) and isinstance(spec.get("examples"), list), "轻量故事须提供场景列表：" + story)
+        for case in spec["examples"]:
+            expect(isinstance(case, dict) and set(case) == {"id", "given", "when", "then"} and
+                   all(isinstance(value, str) and value.strip() for value in case.values()),
+                   "轻量场景须写稳定 ID、前提、操作和可观察结果；验法放在 checks：" + story)
+
+    previous = scenario_definitions(work)
+    scenarios = scenario_definitions({"stories": {**work["stories"], **stories}})
+    expect((checks.keys() | paths.keys()) <= scenarios.keys(), "检查计划和代码范围须引用本期场景 ID")
+    actions = work["actions"]
+    changes = {}
+    for story, spec in stories.items():
+        key = light_dev(story)
+        if key not in actions:
+            changes[key] = {"title": "实现 · " + spec["title"], "kind": "开发", "stories": [story],
+                            "read_stories": [story], "contracts": [], "decisions": [], "depends_on": [],
+                            "done": "登记已实现行为和可复核的代码依据"}
+    for scenario, spec in previous.items():
+        if scenarios.get(scenario, {}).get("story") != spec["story"]:
+            key = light_verify(spec["story"], scenario)
+            changes[key] = {**actions[key], "covers": []}
+    for scenario, spec in scenarios.items():
+        story = spec["story"]
+        key = light_verify(story, scenario)
+        if key in actions and scenario not in checks and scenario not in paths and actions[key]["covers"]:
+            continue
+        action = {**actions.get(key, {"title": "核验 · " + spec["when"], "kind": "验证", "stories": [story],
+                                     "read_stories": [story], "contracts": [], "decisions": [],
+                                     "depends_on": [{"id": light_dev(story)}], "done": "取得本场景的有效凭据",
+                                     "light_case": scenario}), "covers": [scenario]}
+        if scenario in checks:
+            if checks[scenario] is None:
+                action.pop("checks", None)
+            else:
+                action["checks"] = {scenario: checks[scenario]}
+        if scenario in paths:
+            if paths[scenario] is None:
+                action.pop("code_paths", None)
+            else:
+                action["code_paths"] = paths[scenario]
+        changes[key] = action
+    return apply_plan(work, {"stories": stories, "actions": changes,
+                             "retire_scenarios": patch.get("retire_scenarios", {})}, actor, reason)
+
+
 def active_ancestors(w, key):
     result = set()
     todo = [key]
@@ -758,7 +896,7 @@ def needs_independent_review(w, key, status):
 
 
 def progress(w, mode, key, actor, output="", evidence="", level="", environment="", expected="", reopen=None,
-             implementation=None):
+             implementation=None, *, refresh_implementation=False):
     expect(key in w["actions"] and actor.strip(), "动作或记录人无效")
     action = w["actions"][key]
     implementation_sources = []
@@ -771,7 +909,8 @@ def progress(w, mode, key, actor, output="", evidence="", level="", environment=
     status = evaluate(w)[key]
     state = status["state"]
     expect(not needs_independent_review(w,key,status), "重复失败须先用 claim 安排独立诊断，再继续原验证")
-    expect(executable(status), "当前动作不可执行：" + " / ".join(status["reasons"] or [STATES[state]]))
+    refreshing = refresh_implementation and mode == "finish" and action["kind"] == "开发" and state == "done"
+    expect(executable(status) or refreshing, "当前动作不可执行：" + " / ".join(status["reasons"] or [STATES[state]]))
     expect(state != "active" or actor == status["actor"], "该动作已由 " + str(status["actor"]) + " 领取")
     proof_fields = {}
     if mode == "start":
@@ -857,6 +996,8 @@ def action_packet(w, states, key, mode, workspace=None):
     verification = {}
     if action["kind"] == "验证":
         verification = {"code_paths":action.get("code_paths"), "verification_project_root":str(project.resolve())}
+        if "checks" in action:
+            verification["checks"] = action["checks"]
     if action.get("review_for"):
         verification = {"review_for":action["review_for"], "failed_evidence":review_receipts(w,action,workspace)}
     return {"id":key, "task_id":w["id"], "revision":w["revision"], "execution_project_root":str(project.resolve()),
@@ -1139,6 +1280,70 @@ def dispatch(w, actor="AI", story=None, *, workspace=None, include_lessons=True,
 
 
 @input_scope()
+def delivery_check(work, actor="AI", *, workspace=None, states=None):
+    """Report current obligations without sharing a stale completion bit or running checks."""
+    if states is None:
+        states = evaluate(work, workspace)
+    queue = dispatch(work, actor, workspace=workspace, include_lessons=False, states=states)
+    actions = work["actions"]
+    followups = {(row["action"], row["scenario"]): row["step"] for row in queue["verification_followups"]}
+    suggestions = []
+    for row in queue["scenarios"]:
+        if row["status"] == "passed":
+            continue
+        scope = {"story": row["story"], "story_title": work["stories"][row["story"]]["title"],
+                 "scenario": row["id"], "expected": row["then"]}
+        if not row["actions"]:
+            next_step = "resolve_scope" if row.get("retirement") else "plan_verification"
+            suggestions.append({**scope, "action": None, "status": "uncovered", "reason": row["reason"],
+                                "next_step": next_step})
+        for key in row["actions"]:
+            state = states[key]
+            case = state["cases"].get(row["id"])
+            if case and case["accepted"]:
+                continue
+            status = case["status"] if case else "pending"
+            holder = state["actor"]
+            missing = [s for s, result in state["cases"].items() if result["status"] != "captured"]
+            reasons = [case["reason"]] if case else []
+            if state["blockers"]:
+                next_step = "resolve_prerequisites"
+            elif holder and holder != actor:
+                next_step = "coordinate_with_holder"
+            elif status == "captured" and missing:
+                next_step = "await_shared_coverage"
+                reasons.append("共享动作还缺场景凭据：" + "、".join(missing))
+            else:
+                next_step = {"captured": "confirm_verification", "stale": "reverify", "pending": "collect_evidence",
+                             "failed": ("independent_review" if followups.get((key, row["id"])) == "independent_review"
+                                        else "diagnose_failure")}[status]
+            if state["blockers"]:
+                reasons.extend(state["reasons"])
+            if holder and holder != actor:
+                reasons.append("当前持有人：" + holder)
+            suggestions.append({**scope, "action": key, "status": status, "next_step": next_step,
+                                "reason": " / ".join(dict.fromkeys(reasons)), "holder": holder,
+                                "blockers": state["blockers"], "accepts": actions[key].get("accepts", []),
+                                "check": actions[key].get("checks", {}).get(row["id"]),
+                                "receipt_id": ((case or {}).get("receipt") or {}).get("id")})
+    rows = queue["scenarios"]
+    progress = queue["progress"]
+    pending = [{"id": row["id"], "title": row["title"], "owner": row["owner"]} for row in queue["pending_decisions"]]
+    outstanding = [{"id": key, "title": action["title"], "kind": action["kind"], "stories": action["stories"],
+                    "state": states[key]["state"], "holder": states[key]["actor"], "blockers": states[key]["blockers"]}
+                   for key, action in actions.items() if states[key]["state"] not in ("done", "skipped")]
+    if not rows and queue["outcome_type"] == "delivery" and not progress["withdrawn_stories"]:
+        suggestions.append({"story": None, "scenario": None, "action": None, "status": "uncovered",
+                            "next_step": "define_stories", "reason": "交付需求尚无本期验收场景"})
+    return {"task_id": work["id"], "revision": work["revision"], "outcome_type": queue["outcome_type"],
+            "state": queue["state"], "ready_to_deliver": queue["state"] == "complete",
+            "acceptance": {"passed": sum(row["status"] == "passed" for row in rows), "total": len(rows)},
+            "verified_stories": progress["verified_stories"], "unverified_stories": progress["unverified_stories"],
+            "withdrawn_stories": progress["withdrawn_stories"], "pending_decisions": pending,
+            "outstanding_actions": outstanding, "check_suggestions": suggestions}
+
+
+@input_scope()
 def claim(revision, actor="AI", story=None):
     result = {}
     def reserve(w):
@@ -1171,12 +1376,18 @@ def capture(mode, key, scenario_id, revision, actor, environment, *, argv=None, 
         check(action and action["kind"] == "验证" and scenario_id in action.get("covers",[]),
               "指定验证动作未关联此场景")
         check(not action.get("accepts") or level in action["accepts"],"该证据类型不满足验收条件")
+        planned = action.get("checks", {}).get(scenario_id)
+        if planned is not None:
+            check(planned["level"] == level, "实际采证方式与场景检查计划不一致")
+            check(planned["environment"] == environment, "实际采证环境与场景检查计划不一致")
+            if mode == "verify-run":
+                check(list(argv or ()) == planned["argv"], "运行命令与场景检查计划不一致，请先核对或更新验法")
         state = evaluate(w)[key]
         check(not needs_independent_review(w,key,state), "重复失败须先用 claim 安排独立诊断，再继续原验证")
         check(executable(state) or state["state"] == "done","前置条件或当前分支不允许采集")
         check(state["state"] != "active" or state["actor"] == actor, "该动作已由其他执行人领取")
         case = scenario_definitions(w)[scenario_id]
-        return state["stamp"], case_stamp(case,latest_retirements(w,set())), "E" + str(len(w["events"])+1)
+        return state["stamp"], case_stamp(case, latest_retirements(w, set()), planned), "E" + str(len(w["events"])+1)
 
     def registration_check(condition, message):
         # Only these known eligibility/input races qualify for collected feedback;
@@ -1187,9 +1398,16 @@ def capture(mode, key, scenario_id, revision, actor, environment, *, argv=None, 
     with task_lock(shared=True):
         model = load()
         validate(model)
-        if model["work"]["revision"] != revision:
+        work = model["work"]
+        if work["revision"] != revision:
             raise Conflict("版本已更新，请读取最新记录再采集。")
-        action_stamp, scenario_stamp, event_id = inputs(model["work"])
+        if scenario_id is None:
+            expect(lightweight(work), "编排需求须同时提供验证动作和 --scenario")
+            scenario_id = key
+            scenario = scenario_definitions(work).get(scenario_id)
+            expect(scenario, "本期验收场景不存在：" + scenario_id)
+            key = light_verify(scenario["story"], scenario_id)
+        action_stamp, scenario_stamp, event_id = inputs(work)
         combined = proof_stamp(action_stamp,scenario_stamp,event_id,revision+1)
 
     # Project commands run outside the model lock, from the task's owning project.
@@ -1201,6 +1419,8 @@ def capture(mode, key, scenario_id, revision, actor, environment, *, argv=None, 
         receipt = evidence.run(TASK_DIR, project, argv, share_output=share_output, **binding)
     else:
         receipt = evidence.observe(TASK_DIR, project, artifact, actual=actual, level=level, passed=passed, **binding)
+
+    recorded = {}
 
     def record(w):
         current_action, current_case, next_event = inputs(w, registration_check)
@@ -1225,8 +1445,15 @@ def capture(mode, key, scenario_id, revision, actor, environment, *, argv=None, 
             final_stamp = proof_stamp(action_stamp, scenario_stamp, next_event, w["revision"] + 1)
             evidence.bind_collected_event(TASK_DIR, receipt, final_stamp)
         w["revision"] += 1
-        append_event(w,"evidence",actor,action=key,scenario=scenario_id,stamp=action_stamp,
-                     scenario_stamp=scenario_stamp,receipt=receipt,output=receipt["actual"])
+        event = append_event(w, "evidence", actor, action=key, scenario=scenario_id, stamp=action_stamp,
+                             scenario_stamp=scenario_stamp, receipt=receipt, output=receipt["actual"])
+        recorded["id"] = event["id"]
+        if "light_case" in w["actions"][key] and receipt["passed"]:
+            # Confirm this one check in the same transaction as its signed receipt.
+            # evaluate still rechecks freshness and eligibility at every delivery read.
+            append_event(w, "finish", actor, action=key, stamp=action_stamp, output=receipt["actual"],
+                         evidence=f"{scenario_id} ({event['id']})", level=level, environment=environment,
+                         expected=scenario_definitions(w)[scenario_id]["then"], receipts={scenario_id: event["id"]})
         return True
 
     try:
@@ -1242,8 +1469,7 @@ def capture(mode, key, scenario_id, revision, actor, environment, *, argv=None, 
     except Exception:
         evidence.discard(TASK_DIR,receipt)
         raise
-    event = saved["work"]["events"][-1]
-    return {"id":event["id"],"revision":saved["work"]["revision"],"action":key,"scenario":scenario_id,
+    return {"id":recorded["id"],"revision":saved["work"]["revision"],"action":key,"scenario":scenario_id,
             "passed":receipt["passed"],"actor":actor,"level":level,"environment":environment,
             "actual":receipt["actual"],"artifact":receipt["artifact"]}
 
@@ -1267,6 +1493,7 @@ def context(m, story=None, *, workspace=None):
     withdrawn = story_scope.withdrawn_stories(w)
     result = {
         "protocol_version":m["protocol"]["version"],"revision":w["revision"],"mode":w["kind"],"outcome_type":w.get("outcome","delivery"),
+        **({"workflow": w["workflow"]} if lightweight(w) else {}),
         "raw_request":w["raw_request"],"goal":w["goal"],"scope":w["scope"],"contract_routes":routes,
         "scenarios":scenarios, "verification_followups":verification_followups(w,scenarios),
         "retired_scenarios":retirement_history(w,stories),
@@ -1322,7 +1549,7 @@ def task_lock(shared=False, *, workspace=None):
                 fcntl.flock(stream.fileno(), fcntl.LOCK_UN)
 
 
-def commit(revision, operation, *, workspace=None, independent_capture=False):
+def commit(revision, operation, *, workspace=None, independent_capture=False, report_actor=None):
     root = workspace or TASK_DIR
     model_path, book = root / "model.json", root / "handbook.html"
     with task_lock(workspace=root):
@@ -1330,9 +1557,14 @@ def commit(revision, operation, *, workspace=None, independent_capture=False):
         validate(model)
         if revision != model["work"]["revision"] and not independent_capture:
             raise Conflict("版本已更新，请读取最新记录再提交。")
+        feedback = None
         if operation(model["work"]):
             validate(model)
-            html = render(model,workspace=root).encode()
+            if report_actor is None:
+                html = render(model, workspace=root).encode()
+            else:
+                page, feedback = render(model, workspace=root, report_actor=report_actor)
+                html = page.encode()
             previous_page = book.read_bytes() if book.exists() else None
             atomic(book, html)
             try:
@@ -1343,6 +1575,9 @@ def commit(revision, operation, *, workspace=None, independent_capture=False):
                 else:
                     atomic(book, previous_page)
                 raise
+        if report_actor is not None:
+            report = feedback if feedback is not None else delivery_check(model["work"], report_actor, workspace=root)
+            return model, report
         return model
 
 
@@ -1389,7 +1624,7 @@ def offline_home_href(workspace):
 
 
 @input_scope()
-def render(model, token=None, *, workspace=None, read_only=False, home_href=None, with_queue=False):
+def render(model, token=None, *, workspace=None, read_only=False, home_href=None, with_queue=False, report_actor=None):
     token_cache = _render_receipts.set({})
     try:
         work = model["work"]
@@ -1402,12 +1637,14 @@ def render(model, token=None, *, workspace=None, read_only=False, home_href=None
                                  queue=queue, read_only=read_only,
                                  home_href=home_href if token else offline_home_href(workspace or TASK_DIR),
                                  source_labels=source_paths.SourcePaths.for_task(workspace or TASK_DIR).graph_labels(work))
+        if report_actor is not None:
+            return html, delivery_check(work, report_actor, workspace=workspace, states=current)
         return (html, queue) if with_queue else html
     finally:
         _render_receipts.reset(token_cache)
 
 
-def initialize_task(path, raw, *, key, title=None, outcome="delivery"):
+def initialize_task(path, raw, *, key, title=None, outcome="delivery", light=False):
     expect(isinstance(raw,str) and raw.strip(),"请提供需求原话")
     expect(isinstance(key,str) and key.strip() and key not in (".","..") and Path(key).name == key,
            "无效的需求 ID")
@@ -1426,6 +1663,9 @@ def initialize_task(path, raw, *, key, title=None, outcome="delivery"):
         "actions":{"A-intake":{"title":action_title,"kind":"调研","stories":[],"read_stories":[],
                                "contracts":[],"decisions":[],"depends_on":[],
                                "done":done}}}}
+    if light:
+        expect(not research, "仅交付型需求使用 --light；调研沿用 --outcome research")
+        model["work"].update(workflow="lightweight", actions={})
     validate(model)
     dest.parent.mkdir(parents=True,exist_ok=True)
     # Creation metadata is not a task ledger and must stay out of discovery.
@@ -1693,6 +1933,20 @@ def main(argv=None, *, serve_project=None):
     parser.add_argument("--check",action="store_true",help="核验双份记录与依赖")
     sub=parser.add_subparsers(dest="cmd")
     q=sub.add_parser("context"); q.add_argument("story",nargs="?")
+    q=sub.add_parser("delivery-check", help="只读检查本期交付；有缺口时返回 1，并输出复验建议")
+    q.add_argument("--actor", default="AI", help="实际执行者，用于区分已领取的验证")
+    q=sub.add_parser("cards", help="登记轻量故事、验收场景及可选检查计划")
+    q.add_argument("file", type=Path)
+    q.add_argument("--rev", type=int, required=True)
+    q.add_argument("--actor", default="AI")
+    q.add_argument("--why", required=True)
+    q=sub.add_parser("implement", help="按故事登记实际实现并反馈当前交付缺口")
+    q.add_argument("id", help="故事 ID")
+    q.add_argument("--rev", type=int, required=True)
+    q.add_argument("--actor", default="AI")
+    q.add_argument("--output", required=True)
+    q.add_argument("--evidence", required=True)
+    q.add_argument("--implementation", type=Path, help="实际实现详情 JSON 文件")
     for name in ("next","claim"):
         q=sub.add_parser(name)
         q.add_argument("--actor",default="AI")
@@ -1702,6 +1956,7 @@ def main(argv=None, *, serve_project=None):
     q=sub.add_parser("new"); q.add_argument("directory"); q.add_argument("--request",required=True)
     q.add_argument("--key"); q.add_argument("--title")
     q.add_argument("--outcome",choices=("delivery","research"),default="delivery")
+    q.add_argument("--light", action="store_true", help="从故事和场景直接推进交付")
     q=sub.add_parser("serve"); q.add_argument("--port",type=int,default=0)
     q.add_argument("--source-root", type=Path, help="从当前项目的指定 Git 工作树定位来源文件")
     q=sub.add_parser("handoff", help="按当前归属转交一个进行中的动作")
@@ -1731,8 +1986,8 @@ def main(argv=None, *, serve_project=None):
     q.add_argument("--actor", required=True)
     for name in ("verify-run","verify-observe"):
         q=sub.add_parser(name)
-        q.add_argument("id")
-        q.add_argument("--scenario",required=True)
+        q.add_argument("id", help="轻量场景 ID，或与 --scenario 配合的验证动作 ID")
+        q.add_argument("--scenario", help="编排动作覆盖的场景 ID")
         q.add_argument("--rev",required=True,type=int)
         q.add_argument("--actor",default="AI")
         q.add_argument("--environment",required=True)
@@ -1760,6 +2015,7 @@ def main(argv=None, *, serve_project=None):
                 q.add_argument("--environment",default=""); q.add_argument("--expected",default="")
             if name=="finish":
                 q.add_argument("--implementation", type=Path, help="开发动作的实际实现详情 JSON 文件")
+                q.add_argument("--plain", action="store_true", help="旧脚本兼容：只输出共同记录版次")
             if name=="fail":
                 q.add_argument("--reopen",required=True)
     a=parser.parse_args(arguments)
@@ -1771,7 +2027,15 @@ def main(argv=None, *, serve_project=None):
         print(("两份一致" if a.check else "人读页已更新")+" · v"+str(model["work"]["revision"]))
     elif a.cmd=="new":
         print(initialize_task(a.directory, a.request, key=a.key or Path(a.directory).resolve().name,
-                              title=a.title, outcome=a.outcome))
+                              title=a.title, outcome=a.outcome, light=a.light))
+    elif a.cmd == "delivery-check":
+        with task_lock(shared=True):
+            model = load()
+            validate(model)
+            report = delivery_check(model["work"], a.actor)
+        print(json.dumps(report, ensure_ascii=False, indent=2))
+        if not report["ready_to_deliver"]:
+            raise SystemExit(1)
     elif a.cmd=="context":
         model=load(); validate(model)
         print(json.dumps(context(model,a.story),ensure_ascii=False,indent=2))
@@ -1799,9 +2063,17 @@ def main(argv=None, *, serve_project=None):
             op=lambda w:decide(w,a.id,a.choice,a.why,actor)
         elif a.cmd=="handoff":
             op=lambda w:handoff(w,a.id,a.previous_actor,actor,a.why)
-        elif a.cmd=="plan":
-            patch=load(Path(a.file))
-            op=lambda w:apply_plan(w,patch,actor,a.why)
+        elif a.cmd in ("plan", "cards"):
+            patch = load(Path(a.file))
+            change = save_cards if a.cmd == "cards" else apply_plan
+            op = lambda w: change(w, patch, actor, a.why)
+        elif a.cmd == "implement":
+            implementation = load(a.implementation) if a.implementation is not None else None
+
+            def op(work):
+                expect(lightweight(work) and a.id in work["stories"], "implement 须指定已有的轻量故事 ID")
+                return progress(work, "finish", light_dev(a.id), actor, a.output, a.evidence,
+                                implementation=implementation, refresh_implementation=True)
         elif a.cmd == "lesson-propose":
             card = load(a.file)
             op = lambda w: knowledge.propose(w, TASK_DIR, card, actor, sys.modules[__name__])
@@ -1818,8 +2090,19 @@ def main(argv=None, *, serve_project=None):
             op=lambda w:progress(w,a.cmd,a.id,actor,a.output,getattr(a,"evidence",""),
                                  getattr(a,"level",""),getattr(a,"environment",""),getattr(a,"expected",""),getattr(a,"reopen",None),
                                  implementation=implementation)
-        model=commit(a.rev,op)
-        print("共同记录 v"+str(model["work"]["revision"]))
+        if a.cmd in ("cards", "implement", "finish") and not getattr(a, "plain", False):
+            model, report = commit(a.rev, op, report_actor=actor)
+            work = model["work"]
+            result = {"recorded": True, "revision": work["revision"], "delivery": report}
+            if a.cmd != "cards":
+                key = light_dev(a.id) if a.cmd == "implement" else a.id
+                result.update(action=key, kind=work["actions"][key]["kind"], output=a.output)
+                if a.cmd == "implement":
+                    result["story"] = a.id
+            print(json.dumps(result, ensure_ascii=False, indent=2))
+        else:
+            model = commit(a.rev, op)
+            print("共同记录 v" + str(model["work"]["revision"]))
 
 
 if __name__=="__main__":

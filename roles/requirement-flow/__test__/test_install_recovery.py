@@ -157,7 +157,9 @@ class InstallRecoveryTest(unittest.TestCase):
         theme = source / "runtime/theme.css"
         theme.write_bytes(theme.read_bytes() + f"\n/* release {self.release_number} */\n".encode())
         script = source / "install_project.py"
-        script.write_text(re.sub(r'ROLE_VERSION = "[\d.]+"', f'ROLE_VERSION = "0.11.{self.release_number}"',
+        major, minor, patch_version = map(int, installer.ROLE_VERSION.split('.'))
+        version = f'{major}.{minor}.{patch_version + self.release_number}'
+        script.write_text(re.sub(r'ROLE_VERSION = "[\d.]+"', f'ROLE_VERSION = "{version}"',
                                  script.read_text()), encoding="utf-8")
         return source
 

@@ -54,7 +54,21 @@ def git(repo, *args):
     return result.stdout
 
 
-def snapshot(project_root, code_paths=None):
+def file_mark(info):
+    return (info.st_dev, info.st_ino, info.st_mode, info.st_size, info.st_mtime_ns, info.st_ctime_ns)
+
+
+def open_file_mark(info):
+    if hasattr(info, "st_file_attributes"):
+        # Windows lstat can report creation time as ctime and infer execute bits
+        # from the filename. Compare only common fields across lstat and fstat;
+        # use the full descriptor marks when comparing two fstat results.
+        return (info.st_dev, info.st_ino, info.st_mode & ~0o111, info.st_size,
+                info.st_mtime_ns, getattr(info, "st_birthtime_ns", None))
+    return file_mark(info)
+
+
+def snapshot(project_root, code_paths=None, *, capture_marks=None):
     project = Path(project_root).resolve(strict=True)
     require(project.is_dir(), "代码输入项目目录不存在")
     paths = normalize_paths(code_paths)
@@ -73,14 +87,14 @@ def snapshot(project_root, code_paths=None):
         with os.fdopen(os.open(path, flags), "rb") as stream:
             before = os.fstat(stream.fileno())
             require(stat.S_ISREG(before.st_mode), "代码输入不是普通文件：" + name)
-            require((info.st_ino, info.st_dev, info.st_mode, info.st_size, info.st_mtime_ns) ==
-                    (before.st_ino, before.st_dev, before.st_mode, before.st_size, before.st_mtime_ns),
-                    "打开期间代码文件变化：" + name)
+            mark = file_mark(before)
+            require(open_file_mark(info) == open_file_mark(before), "打开期间代码文件变化：" + name)
             for block in iter(lambda: stream.read(1024 * 1024), b""):
                 checksum.update(block)
             after = os.fstat(stream.fileno())
-        require((before.st_size, before.st_mtime_ns, before.st_ino) ==
-                (after.st_size, after.st_mtime_ns, after.st_ino), "采集期间代码文件变化：" + name)
+        require(mark == file_mark(after), "采集期间代码文件变化：" + name)
+        if capture_marks is not None:
+            capture_marks[(name, "file")] = mark
         records[(name, "file")] = [bool(info.st_mode & 0o111), before.st_size, checksum.hexdigest()]
         files_seen += 1
 
@@ -118,6 +132,8 @@ def snapshot(project_root, code_paths=None):
             require(not excluded(target.relative_to(project)), "代码链接指向项目管理数据：" + name)
             require(target not in ancestors, "代码链接形成循环：" + name)
             records[(name, "link")] = [os.readlink(path)]
+            if capture_marks is not None:
+                capture_marks[(name, "link")] = file_mark(info)
             scan(target, relative, ancestors, generated or paths is None)
         elif stat.S_ISDIR(info.st_mode):
             actual = path.resolve()
@@ -208,7 +224,7 @@ def valid_snapshot(value):
             set(value["sha256"]) <= set("0123456789abcdef"))
 
 
-def verify_current(project_root, binding, code_paths=None, *, cache=None):
+def verify_current(project_root, binding, code_paths=None, *, cache=None, expected_marks=None):
     require(isinstance(binding, dict) and binding.get("version") == 1 and
             isinstance(binding.get("sha256"), str), "旧回执未绑定代码输入，请重新验收；原始证据仍可查阅")
     require(valid_snapshot(binding), "代码输入绑定无效，请重新验收；原始证据仍可查阅")
@@ -217,7 +233,10 @@ def verify_current(project_root, binding, code_paths=None, *, cache=None):
     require((binding["mode"] == "paths") == (paths is not None) and
             (paths is None or binding["entries"] > 0), "代码输入绑定无效，请重新验收")
     key = (str(Path(project_root).resolve()), None if paths is None else tuple(paths))
-    if cache is None:
+    if expected_marks is not None:
+        current_marks = {}
+        current = snapshot(project_root, paths, capture_marks=current_marks)
+    elif cache is None:
         current = snapshot(project_root, paths)
     else:
         if key not in cache:
@@ -230,4 +249,8 @@ def verify_current(project_root, binding, code_paths=None, *, cache=None):
         # Equal content hashes with different metadata cannot establish a code race.
         require(current["sha256"] != binding["sha256"], "代码输入绑定信息不一致，请重新验收")
         raise CodeInputContentMismatch("当前代码、测试或子仓库内容已改变，请重新验收")
+    if expected_marks is not None:
+        # Ephemeral local guard only. Portable receipts remain content-addressed;
+        # later checkouts with the same bytes need not share inode or timestamps.
+        require(current_marks == expected_marks, "采证期间代码文件曾被改写，即使内容已恢复也须重验")
     return binding

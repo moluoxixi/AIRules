@@ -142,6 +142,7 @@ def summarize(path, work, queue, *, include_lessons=False):
         "next": queue["next"]["id"] if queue["next"] else None, "running": queue["running"],
         "pending_decisions": [item["id"] for item in queue["pending_decisions"]],
         "handbook": str(path / "handbook.html"),
+        **({"workflow": work["workflow"]} if engine.lightweight(work) else {}),
         **({"related_lessons": queue["related_lessons"]} if include_lessons else {}),
     }
 
@@ -267,7 +268,7 @@ def create(store, args):
         if attributes is not None:
             engine.atomic(store.parent / ATTRIBUTES, attributes)
         local_directory(active.parent, create=True)
-        engine.initialize_task(active, args.request, key=args.id, title=args.title, outcome=args.outcome)
+        engine.initialize_task(active, args.request, key=args.id, title=args.title, outcome=args.outcome, light=args.light)
         emit(summary(active, include_lessons=True))
 
 
@@ -458,6 +459,7 @@ def main():
     new.add_argument("--request", required=True)
     new.add_argument("--title")
     new.add_argument("--outcome", choices=("delivery","research"), default="delivery")
+    new.add_argument("--light", action="store_true", help="使用轻量故事卡；不生成澄清待办")
     init = commands.add_parser("init", help="接入当前项目，迁移时归档旧流程入口")
     init.add_argument("--migrate", action="store_true", help="迁移已有项目编排配置")
     commands.add_parser("upgrade", help="从此版本升级项目技能并刷新进行中需求图，保留历史归档")
