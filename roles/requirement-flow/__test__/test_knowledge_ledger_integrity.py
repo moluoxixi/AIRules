@@ -173,16 +173,28 @@ class LedgerDiagnosticsTest(unittest.TestCase):
 
         with patch.object(Path, "iterdir", scan):
             self.assert_diagnostic(self.catalogue(), "archive")
-        # A filesystem change leaves the validated-empty fast path before this read failure.
-        path.write_text(path.read_text(encoding="utf-8"), encoding="utf-8")
-        with patch.object(sync, "load", side_effect=error):
+        # Change size as well as contents: rewriting identical bytes need not
+        # change a filesystem timestamp, so it can retain the known-empty cache.
+        path.write_text(path.read_text(encoding="utf-8") + "\n", encoding="utf-8")
+        with patch.object(sync, "load", side_effect=error) as load:
             for _ in range(2):
                 cards = self.catalogue()
                 self.assert_diagnostic(cards, "empty")
                 self.assertNotIn(private, json.dumps(cards.diagnostics))
+            self.assertEqual(load.call_count, 2, "both queries must exercise the read failure")
         with patch.object(knowledge, "linked", side_effect=error):
             self.assert_diagnostic(self.catalogue(), ".requirements")
         self.assertTrue(path.exists())
+
+    def test_read_error_fixture_remains_valid_with_coarse_file_timestamps(self):
+        original = knowledge.fingerprint
+
+        def coarse(path):
+            stamp = original(path)
+            return (*stamp[:2], 0, 0, stamp[-1])
+
+        with patch.object(knowledge, "fingerprint", coarse):
+            self.test_directory_and_model_read_errors_report_only_portable_reasons()
 
     def test_completely_absent_store_or_bucket_has_no_invented_history(self):
         self.assertEqual(self.catalogue().diagnostics, [])
