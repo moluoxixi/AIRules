@@ -202,7 +202,8 @@ def run(workspace, project_root, argv, *, action, scenario, stamp, actor, enviro
         executable = shutil.which(argv[0]) or argv[0]
         require(Path(executable).suffix.lower() not in (".bat",".cmd"), "请直接指定可执行文件，避免隐式命令解释器")
     receipt = binding(workspace, action, scenario, stamp, actor, environment)
-    receipt["code_inputs"] = code_inputs.snapshot(project, code_paths)
+    capture_marks = {}
+    receipt["code_inputs"] = code_inputs.snapshot(project, code_paths, capture_marks=capture_marks)
     root = storage(workspace, create=True)
     # One-way, task-keyed identity allows failure grouping without storing private arguments.
     receipt["command_id"] = hmac.new(local_key(root, create=True), b"argv\0" + canonical(argv), hashlib.sha256).hexdigest()
@@ -230,7 +231,7 @@ def run(workspace, project_root, argv, *, action, scenario, stamp, actor, enviro
                 log.write_text(actual + "\n", encoding="utf-8")
             receipt.update(argv=list(argv) if shared else None, cwd=".", output_shared=shared,
                            has_output=bool(preview), tests=tests, summary_policy=run_result.SUMMARY_POLICY)
-        unchanged, change_reason = check_after_capture(project, receipt["code_inputs"], code_paths)
+        unchanged, change_reason = check_after_capture(project, receipt["code_inputs"], code_paths, capture_marks)
         if not unchanged:
             actual += "\n" + change_reason
         passed = result.returncode == 0 and bool(preview) and not run_result.insufficient_tests(tests) and unchanged
@@ -239,9 +240,9 @@ def run(workspace, project_root, argv, *, action, scenario, stamp, actor, enviro
         return publish(root, staged, receipt, "output.log")
 
 
-def check_after_capture(project_root, inputs, code_paths):
+def check_after_capture(project_root, inputs, code_paths, capture_marks):
     try:
-        code_inputs.verify_current(project_root, inputs, code_paths)
+        code_inputs.verify_current(project_root, inputs, code_paths, expected_marks=capture_marks)
     except (OSError, ValueError) as exc:
         return False, "采集期间代码输入发生变化或无法复核：" + str(exc)
     return True, ""
@@ -312,7 +313,8 @@ def observe(workspace, project_root, artifact, *, action, scenario, stamp, actor
         require(parts[0] not in ("evidence","model.json","handbook.html",".workflow.lock"),
                 "不能将当前需求的数据或历史回执作为新观察附件")
     receipt = binding(workspace, action, scenario, stamp, actor, environment)
-    receipt["code_inputs"] = code_inputs.snapshot(project, code_paths)
+    capture_marks = {}
+    receipt["code_inputs"] = code_inputs.snapshot(project, code_paths, capture_marks=capture_marks)
     root = storage(workspace, create=True)
     suffix = source.suffix.lower()
     filename = "artifact" + (suffix if re.fullmatch(r"\.[a-z0-9]{1,12}",suffix) else ".bin")
@@ -327,7 +329,7 @@ def observe(workspace, project_root, artifact, *, action, scenario, stamp, actor
             after = os.fstat(stream.fileno())
             require(before.st_size == after.st_size and before.st_mtime_ns == after.st_mtime_ns
                     and target.tell() == before.st_size, "采集期间观察附件发生变化")
-        unchanged, change_reason = check_after_capture(project, receipt["code_inputs"], code_paths)
+        unchanged, change_reason = check_after_capture(project, receipt["code_inputs"], code_paths, capture_marks)
         if not unchanged:
             actual += "\n" + change_reason
         receipt.update(kind="observe", level=level, passed=passed and unchanged, actual=actual, exit_code=None, source=relative,

@@ -163,7 +163,7 @@ function startViewer(project, port = '0') {
 
 const executablePath = await localChrome()
 describe.skipIf(!executablePath)('generated handbook interactions in Chromium', { timeout: 15_000 }, () => {
-  let project, browser, url, batchArtifact
+  let project, lightProject, browser, url, batchArtifact
   beforeAll(async () => {
     project = mkdtempSync(path.join(tmpdir(), 'airules-handbook-'))
     const fixture = createHandbook(project)
@@ -179,6 +179,8 @@ describe.skipIf(!executablePath)('generated handbook interactions in Chromium', 
     await browser?.close()
     if (project)
       rmSync(project, { recursive: true, force: true })
+    if (lightProject)
+      rmSync(lightProject, { recursive: true, force: true })
   }, 30_000)
   function drawerReady(page) {
     return page.waitForFunction(() => {
@@ -222,10 +224,45 @@ describe.skipIf(!executablePath)('generated handbook interactions in Chromium', 
       throw error
     }
   }
-  const scale = page => page.$eval('#scale', el => Number.parseInt(el.textContent))
   // textContent also includes evidence and paths behind closed disclosures.
   // eslint-disable-next-line unicorn/prefer-dom-node-text-content
   const visibleDetail = page => page.$eval('#detail', el => el.innerText)
+  it('separates lightweight implementation, planned checks and actual evidence', async () => {
+    // A fixture nested in the legacy project would invalidate its default code scope.
+    lightProject = mkdtempSync(path.join(tmpdir(), 'airules-light-handbook-'))
+    const flow = (...args) => runFlow(lightProject, ...args)
+    const { handbook, revision } = JSON.parse(flow('new', 'stock', '--light', '--request', '保存后重开回显'))
+    const edit = path.join(lightProject, 'cards.json')
+    writeFileSync(path.join(lightProject, 'save.py'), 'saved = 3\n')
+    writeFileSync(path.join(lightProject, 'observed.txt'), '重开后显示 3\n')
+    writeFileSync(edit, JSON.stringify({
+      stories: { 'S-save': { title: '保存后重开', actor: '门店员', goal: '重开后显示保存值', basis: '需求原话', examples: [{ id: 'SC-reopen', given: '原数量为 2', when: '保存 3 后重新打开', then: '显示 3' }] } },
+      checks: { 'SC-reopen': { level: '人工核对', environment: '本机验收', expected: '回读数量等于保存值', steps: ['关闭详情', '重新打开详情'] } },
+      code_paths: { 'SC-reopen': ['save.py'] },
+    }))
+    const card = JSON.parse(flow('task', 'stock', 'cards', edit, '--rev', String(revision), '--why', '明确验收'))
+    const dev = JSON.parse(flow('task', 'stock', 'implement', 'S-save', '--rev', String(card.revision), '--output', '已接入回读', '--evidence', 'save.py:1'))
+    const page = await browser.newPage()
+    try {
+      const route = `${pathToFileURL(handbook).href}?view=detail&features=S-save#node=S-save`
+      await page.goto(route, { waitUntil: 'domcontentloaded' })
+      await drawerReady(page)
+      expect(await page.$eval('#detail .scope-caption', element => element.textContent)).toContain('实现已登记 · 验收 0/1')
+      await page.click('#detail .case-proof summary')
+      expect(await visibleDetail(page)).toContain('回读数量等于保存值')
+      expect(await visibleDetail(page)).not.toContain('已用于本项验收')
+      flow('task', 'stock', 'verify-observe', 'SC-reopen', '--rev', String(dev.revision), '--environment', '本机验收', '--actual', '重开后显示 3', '--artifact', 'observed.txt')
+      await page.reload({ waitUntil: 'domcontentloaded' })
+      await drawerReady(page)
+      expect(await page.$eval('#detail .scope-caption', element => element.textContent)).toContain('实现已登记 · 验收 1/1')
+      await page.click('#detail .case-proof summary')
+      expect(await visibleDetail(page)).toContain('已用于本项验收')
+    }
+    finally {
+      await page.close()
+    }
+  })
+  const scale = page => page.$eval('#scale', el => Number.parseInt(el.textContent))
   // replaceState updates the document before Puppeteer necessarily receives its same-document navigation event.
   function waitForFilterLink(page, key, value) {
     return page.waitForFunction((key, value) => new URLSearchParams(location.search).get(key) === value, { timeout: 5_000 }, key, value)

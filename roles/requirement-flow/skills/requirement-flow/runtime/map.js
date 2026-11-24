@@ -1960,7 +1960,24 @@
       ['预期结果', ex.then],
       ['判定', ex.reason],
     ])
-    for (const action of ex.actions) jump(more, action, work.actions[action].title)
+    for (const action of ex.actions) {
+      const verification = work.actions[action]
+      if (!verification.light_case)
+        jump(more, action, verification.title)
+      const check = verification.checks?.[ex.id]
+      if (!check)
+        continue
+      const plan = html('div', more, null, 'record')
+      html('strong', plan, verification.light_case ? '检查计划' : `检查计划 · ${verification.title}`)
+      pairs(plan, [
+        ['验法', check.level],
+        ['所需环境', check.environment],
+        ['检查通过标准', check.expected],
+        ['检查命令', check.argv && JSON.stringify(check.argv)],
+      ])
+      if (check.steps?.length)
+        list(plan, check.steps, true)
+    }
     for (const receipt of ex.receipts) {
       const item = html('div', more, null, 'record')
       html('strong', item, `回执 ${receipt.id}`)
@@ -2379,6 +2396,12 @@
       status.setAttribute('role', 'status')
       const actual = section('实际实现')
       const developers = Object.entries(work.actions).filter(([, action]) => action.kind === '开发' && action.stories.includes(key))
+      const cases = queue.scenarios.filter(ex => ex.story === key)
+      if (work.workflow === 'lightweight' && !withdrawn) {
+        const registered = developers.length > 0 && developers.every(([id]) => effectiveFinish(id))
+        const passed = cases.filter(ex => ex.status === 'passed').length
+        html('p', actual, `${registered ? '实现已登记' : '实现待登记或复核'} · 验收 ${passed}/${cases.length}`, 'scope-caption')
+      }
       if (!developers.length)
         html('p', actual, '尚未登记关联开发动作。', 'dim')
       const basis = new Set(String(story.basis || '').split(/\r?\n/u).map(line => line.trim()))
@@ -2389,7 +2412,6 @@
         showSources(actual, evidence.filter(line => !basis.has(line.trim())), '实现依据')
       }
       html('p', actual, '开发完成不等于业务验收；以下仅为本故事的验收结果。', 'dim')
-      const cases = queue.scenarios.filter(ex => ex.story === key)
       if (cases.length)
         showScenarios(detail, cases)
       else if (withdrawn)

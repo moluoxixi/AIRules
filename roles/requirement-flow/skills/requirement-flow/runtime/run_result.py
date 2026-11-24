@@ -220,7 +220,7 @@ SENSITIVE = re.compile(
 )
 
 
-def can_share(argv, raw):
+def shareable_arguments(argv):
     if any(SENSITIVE.search(arg) for arg in argv):
         return False
     if any(arg in ("--user", "--proxy-user", "--netrc-file") or arg.startswith(("--user=", "--proxy-user="))
@@ -230,6 +230,12 @@ def can_share(argv, raw):
     if ntpath.basename(argv[0]).lower() in ("curl", "curl.exe"):
         if any(arg.startswith(("-u", "-b", "-U")) for arg in argv[1:]):
             return False
+    return True
+
+
+def can_share(argv, raw):
+    if not shareable_arguments(argv):
+        return False
     raw.seek(0)
     previous = ""
     decoder = codecs.getincrementaldecoder("utf-8")()

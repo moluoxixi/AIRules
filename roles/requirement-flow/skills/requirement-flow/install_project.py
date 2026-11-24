@@ -19,7 +19,7 @@ from evidence import linked
 
 SKILLS = Path(".agents/skills")
 ROLE = "requirement-flow"
-ROLE_VERSION = "0.11.1"
+ROLE_VERSION = "0.12.0"
 SPECIALISTS = ("flow-requirements", "flow-contracts", "flow-implement", "flow-verify", "flow-review")
 SKILL = SKILLS / ROLE
 MANIFEST = Path(".requirements/installation.json")
@@ -28,7 +28,7 @@ ATTRIBUTES = Path(".requirements/.gitattributes")
 EVIDENCE_ATTRIBUTES = (b"active/*/evidence/** -text", b"archive/*/evidence/** -text")
 LOCAL_PATTERNS = (b".receipt-key", b".receipt-key-*", b".workflow.lock", b".capture-*/", b".install-*/", b".model.json.*", b".handbook.html.*", b".basic-memory/")
 ARCHIVE = Path(".requirements/migrations/moluoxixi")
-ROOT_FILES = {"SKILL.md", "flow.py", "install_project.py", "references/model.md", "agents/openai.yaml"}
+ROOT_FILES = {"SKILL.md", "flow.py", "install_project.py", "references/model.md", "references/lightweight.md", "agents/openai.yaml"}
 TEXT_SUFFIXES = {".md", ".py", ".html", ".js", ".css", ".json", ".yaml"}
 RUNTIME_FILES = {"basic_memory.py", "catalog-landscape.jpg", "catalog-landscape-night.jpg", "catalog.html", "catalog_server.py", "code_inputs.py", "dagre.min.js", "evidence.py", "graph-ink-wash.png", "graph_view.py", "knowledge.py", "lesson_retirement.py",
                  "layout.html", "map.js", "protocol.json", "run_result.py", "source_paths.py", "story_scope.py", "sync.py", "task_locations.py", "theme.css", "theme.js", "tooltip.js"}

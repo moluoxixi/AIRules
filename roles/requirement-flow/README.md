@@ -24,9 +24,11 @@ python3 roles/requirement-flow/skills/requirement-flow/flow.py --project /path/t
 
 请随需求提交 `.requirements/.gitattributes`。安装、升级或新建需求时会补上其中的规则，让 Git 在提交和检出时保留活动及归档证据的原始换行。若旧附件已被 Git 转换且校验失败，须从可信备份恢复采集时的原始文件。
 
-## 一个入口与五个专项
+## 轻量交付与按需编排
 
-项目的默认入口是 `requirement-flow`。它读当前需求图和授权范围，组合五种工作方法。动作可以跳过、重复或并行。例如，已确认字段的小修复可直接开发，接口待确认只影响使用该接口的故事。
+范围明确的新交付需求默认走轻量路径：`new --light` 后按故事建卡、登记实现、按场景采证；交付前执行 `delivery-check`。无需手工领动作或再次确认已经采集的合格证据。检查计划可按场景单独登记。完整命令、反馈字段、适用边界和旧流程兼容见[轻量需求交付](skills/requirement-flow/references/lightweight.md)。
+
+原编排入口和已有需求不变。接口、业务决定、并行依赖或独立复核确有需要时，由 `requirement-flow` 调用相关专项；不是每项需求都要走遍五种方法。
 
 | 专项 skill | 使用时机和交付物 |
 | --- | --- |
