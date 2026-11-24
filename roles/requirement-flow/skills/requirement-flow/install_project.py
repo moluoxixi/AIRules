@@ -13,12 +13,13 @@ import tempfile
 
 SOURCE = Path(__file__).resolve().parent
 sys.dont_write_bytecode = True
+sys.path.insert(0, str(SOURCE))
 sys.path.insert(0, str(SOURCE / "runtime"))
 from evidence import linked
 
 SKILLS = Path(".agents/skills")
 ROLE = "requirement-flow"
-ROLE_VERSION = "0.10.0"
+ROLE_VERSION = "0.11.0"
 SPECIALISTS = ("flow-requirements", "flow-contracts", "flow-implement", "flow-verify", "flow-review")
 SKILL = SKILLS / ROLE
 MANIFEST = Path(".requirements/installation.json")
@@ -253,65 +254,370 @@ def project_lock(root):
         yield
 
 
+JOURNAL = "journal.json"
+
+
+def fingerprint(path):
+    """Exact bytes, including directory moves; never serialize file contents."""
+    require(not linked(path), f"交易路径不能是符号链接：{path}")
+    if not path.exists():
+        return None
+    if path.is_file():
+        return "f:" + digest(path.read_bytes())
+    require(path.is_dir(), f"交易路径不是普通文件或目录：{path}")
+    entries = [(p.relative_to(path).as_posix(), fingerprint(p)) for p in sorted(path.iterdir())]
+    return "d:" + digest(json.dumps(entries, ensure_ascii=False).encode())
+
+
+def journal_bytes(journal):
+    return (json.dumps(journal, sort_keys=True, indent=2) + "\n").encode()
+
+
+def save_journal(stage, journal):
+    # Atomic replacement and fsync precede each mutation of project files.
+    temporary = safe_path(stage, JOURNAL + ".tmp")
+    with temporary.open("wb") as stream:
+        stream.write(journal_bytes(journal))
+        stream.flush()
+        os.fsync(stream.fileno())
+    temporary.replace(stage / JOURNAL)
+    if os.name != "nt":
+        descriptor = os.open(stage, os.O_RDONLY)
+        try:
+            os.fsync(descriptor)
+        finally:
+            os.close(descriptor)
+
+
+def migration_sources():
+    return {p.as_posix() for p in entry_points()} | {
+        ".codex/hooks/" + name for name in HOOK_FILES} | {".codex/config.toml"}
+
+
+def owned_target(name):
+    path = PurePosixPath(name)
+    if path.as_posix() != name or path.is_absolute() or ".." in path.parts:
+        return False
+    if path.is_relative_to(SKILLS.as_posix()):
+        return owned_name(path.relative_to(SKILLS.as_posix()).as_posix())
+    if name in {"AGENTS.md", MANIFEST.as_posix(), IGNORE.as_posix(), ATTRIBUTES.as_posix(), ".codex/hooks.json"}:
+        return True
+    if path.is_relative_to(ARCHIVE.as_posix()):
+        return path.relative_to(ARCHIVE.as_posix()).as_posix() in migration_sources() | {
+            "AGENTS.md", ".codex/hooks.json", "migration.json"}
+    return (len(path.parts) == 4 and path.parts[:2] == (".requirements", "active")
+            and path.parts[2] not in (".", "..") and not path.parts[2].startswith(".")
+            and path.name == "handbook.html")
+
+
+def check_journal(root, stage, journal):
+    require(isinstance(journal, dict) and type(journal.get("version")) is int and journal["version"] == 1
+            and journal.get("phase") in {"applying", "rolling_back", "rolled_back", "committed"}, "无法识别交易日志")
+    require(all(isinstance(journal.get(key), list) for key in ("files", "moves", "directories")), "交易日志结构无效")
+    paths, ancestors = set(), {".requirements"}
+    def controlled(name, allowed):
+        require(isinstance(name, str) and allowed(name), f"非受管交易路径：{name}")
+        path = safe_path(root, name)
+        require(name not in paths, f"重复交易路径：{name}")
+        paths.add(name)
+        ancestors.update(p.as_posix() for p in Path(name).parents if p != Path("."))
+        return path
+    def valid_hash(value, directory=False):
+        return value is None or (isinstance(value, str) and re.fullmatch(r"[fd]:[0-9a-f]{64}" if directory else r"f:[0-9a-f]{64}", value))
+    expected = {JOURNAL, JOURNAL + ".tmp"}
+    for n, operation in enumerate(journal["files"]):
+        require(isinstance(operation, dict) and operation.get("state") in {"preparing", "pending", "applied", "restored"},
+                "无效文件交易")
+        controlled(operation.get("path"), owned_target)
+        require(valid_hash(operation.get("pre")) and valid_hash(operation.get("post")), "无效文件哈希")
+        if operation["state"] == "preparing":
+            require(operation["post"] is not None and journal["phase"] != "committed", "无效准备状态")
+        expected.update({f"old-{n}", f"new-{n}"})
+    for operation in journal["moves"]:
+        require(isinstance(operation, dict) and operation.get("state") in {"pending", "applied", "restored"}, "无效归档交易")
+        source = operation.get("source")
+        controlled(source, lambda name: name in migration_sources())
+        controlled(operation.get("destination"), lambda name: name == (ARCHIVE / source).as_posix())
+        require(operation.get("pre") is not None and valid_hash(operation["pre"], directory=True)
+                and operation.get("post") == operation["pre"], "无效归档哈希")
+    for name in journal["directories"]:
+        require(isinstance(name, str) and name in ancestors, f"非受管交易目录：{name}")
+        directory = safe_path(root, name)
+        require(not directory.exists() or directory.is_dir(), f"交易目录已被修改：{directory}")
+    for entry in stage.iterdir():
+        require(entry.name in expected and not linked(entry) and entry.is_file(), f"未知交易备份：{entry}")
+
+
+def registration_state(post):
+    return "preparing" if post is not None else "pending"
+
+
+def is_next_journal(current, proposed):
+    """Recognize an identical or single unpublished write of this transaction."""
+    if current.keys() != proposed.keys():
+        return False
+    changed = [key for key in current if current[key] != proposed[key]]
+    if not changed:
+        return True
+    if len(changed) != 1:
+        return False
+    field, = changed
+    phase = current["phase"]
+    if field == "phase":
+        destination = proposed[field]
+        if (phase, destination) == ("applying", "rolling_back"):
+            return True
+        if (phase, destination) == ("applying", "committed"):
+            return all(op["state"] == "applied" for op in current["files"] + current["moves"])
+        if (phase, destination) == ("rolling_back", "rolled_back"):
+            return (all(op["state"] in {"restored", "preparing"} for op in current["files"])
+                    and all(op["state"] == "restored" for op in current["moves"]))
+        return False
+    if field not in {"files", "moves", "directories"}:
+        return False
+    before, after = current[field], proposed[field]
+    if phase == "applying" and len(after) == len(before) + 1 and after[:-1] == before:
+        if field == "directories":
+            return True
+        state = registration_state(after[-1]["post"]) if field == "files" else "pending"
+        return after[-1]["state"] == state
+    if field == "directories" or len(before) != len(after):
+        return False
+    changes = [(old, new) for old, new in zip(before, after) if old != new]
+    if len(changes) != 1:
+        return False
+    old, new = changes[0]
+    if {**old, "state": new["state"]} != new:
+        return False
+    if phase == "rolling_back":
+        return old["state"] in {"pending", "applied"} and new["state"] == "restored"
+    return phase == "applying" and (old["state"], new["state"]) in {
+        ("preparing", "pending"), ("pending", "applied")}
+
+
+def check_temporary_journal(root, stage, current):
+    raw = read_file(safe_path(stage, JOURNAL + ".tmp"))
+    if raw is None:
+        return
+    try:
+        proposed = json.loads(raw)
+    except ValueError as exc:
+        raise ValueError("未知或不完整的交易临时日志") from exc
+    check_journal(root, stage, proposed)
+    require(raw == journal_bytes(proposed) and is_next_journal(current, proposed),
+            "交易临时日志不是本交易的下一次写入")
+    # The record may claim a write or rename happened. Verify the actual
+    # boundary before removing or overwriting any unpublished journal bytes.
+    phase = proposed["phase"]
+    for n, op in enumerate(proposed["files"]):
+        if current["phase"] == phase and n < len(current["files"]) and current["files"][n] == op:
+            continue
+        state = file_state(root, stage, op, n, phase)
+        if phase == "applying":
+            require(state == ("installed" if op["state"] == "applied" else "original"),
+                    f"交易临时日志与暂存文件不一致：{op['path']}")
+    for n, op in enumerate(proposed["moves"]):
+        if current["phase"] == phase and n < len(current["moves"]) and current["moves"][n] == op:
+            continue
+        installed = move_installed(root, op, phase)
+        if phase == "applying":
+            require(installed == (op["state"] == "applied"), f"交易临时日志与归档移动不一致：{op['source']}")
+    for name in proposed["directories"][len(current["directories"]):]:
+        require(not safe_path(root, name).exists(), f"交易临时日志与目录不一致：{name}")
+
+
+def file_state(root, stage, operation, n, phase):
+    target = safe_path(root, operation["path"])
+    pre, post = operation["pre"], operation["post"]
+    current, old, new = fingerprint(target), fingerprint(stage / f"old-{n}"), fingerprint(stage / f"new-{n}")
+    # A registered preparation has not renamed anything. An absent or complete
+    # staged file is recoverable; partial/edited bytes are deliberately ambiguous.
+    if operation["state"] == "preparing":
+        require(current == pre and old is None and new in (None, post), f"准备中的目标或备份已被修改：{target}")
+        return "original"
+    # Recognize both sides of each rename, also during an interrupted rollback.
+    if phase == "committed":
+        require(current == post and new is None and (old is None or old == pre), f"已提交目标或备份已被修改：{target}")
+        return "installed"
+    if phase == "rolled_back" or (phase == "rolling_back" and operation["state"] == "restored"):
+        require(current == pre and old is None and new in (None, post), f"已恢复的目标或备份已被修改：{target}")
+        return "original"
+    if current == pre and old is None and new == post:
+        return "original"
+    if pre is not None and post is not None and old == pre and current is None and new == post:
+        return "gap"
+    if old == pre and current == post and new is None:
+        return "installed"
+    raise ValueError(f"目标已被修改、备份丢失或交易状态不确定：{target}")
+
+
+def move_installed(root, operation, phase):
+    src = safe_path(root, operation["source"])
+    dest = safe_path(root, operation["destination"])
+    before, after = fingerprint(src), fingerprint(dest)
+    restored = phase == "rolled_back" or (phase == "rolling_back" and operation["state"] == "restored")
+    require((before == operation["pre"] and after is None and phase != "committed")
+            or (before is None and after == operation["pre"] and not restored), f"归档目标已被修改或丢失：{src}")
+    return after is not None
+
+
+def recover_stage(root, stage):
+    """Validate the entire transaction before restoring anything; leave ambiguity intact."""
+    try:
+        require(not linked(stage) and stage.is_dir(), "交易 stage 必须是普通目录")
+        raw = read_file(safe_path(stage, JOURNAL))
+        if raw is None and not any(stage.iterdir()):
+            # Only an empty shell may outlive the last cleanup rename/unlink.
+            stage.rmdir()
+            return {"stage": stage.name, "action": "cleaned"}
+        require(raw is not None, "旧版 stage 没有 journal，需人工恢复（保留全部备份）")
+        journal = json.loads(raw)
+        check_journal(root, stage, journal)
+        check_temporary_journal(root, stage, journal)
+        phase = journal["phase"]
+        states = [file_state(root, stage, op, n, phase) for n, op in enumerate(journal["files"])]
+        moved = [move_installed(root, op, phase) for op in journal["moves"]]
+        # Once cleanup may have removed scratch files, the completed rollback is final.
+        if phase in ("applying", "rolling_back"):
+            journal["phase"] = "rolling_back"
+            save_journal(stage, journal)
+            for n in reversed(range(len(states))):
+                op = journal["files"][n]
+                if op["state"] == "preparing":
+                    # Nothing to undo. Keep this state so another interruption
+                    # can still distinguish an absent new file from missing data.
+                    continue
+                target = safe_path(root, op["path"])
+                if states[n] == "installed" and op["post"] is not None:
+                    target.replace(stage / f"new-{n}")
+                if (stage / f"old-{n}").exists():
+                    (stage / f"old-{n}").replace(target)
+                op["state"] = "restored"
+                save_journal(stage, journal)
+            for op, applied in reversed(list(zip(journal["moves"], moved))):
+                if applied:
+                    safe_path(root, op["destination"]).rename(safe_path(root, op["source"]))
+                op["state"] = "restored"
+                save_journal(stage, journal)
+            journal["phase"] = "rolled_back"
+            save_journal(stage, journal)
+        # Keep the journal through directory cleanup too: a second interruption
+        # must not leave unowned, empty skill directories blocking installation.
+        if phase != "committed":
+            for name in reversed(journal["directories"]):
+                directory = safe_path(root, name)
+                if directory.exists() and not any(directory.iterdir()):
+                    directory.rmdir()
+        for entry in stage.iterdir():
+            if entry.name != JOURNAL:
+                entry.unlink()
+        (stage / JOURNAL).unlink()
+        stage.rmdir()
+        if phase != "committed" and ".requirements" in journal["directories"]:
+            store = safe_path(root, ".requirements")
+            if store.exists() and not any(store.iterdir()):
+                store.rmdir()
+        return {"stage": stage.name, "action": "committed" if phase == "committed" else "rolled_back"}
+    except (OSError, ValueError, TypeError, KeyError) as exc:
+        raise ValueError(f"安装交易恢复被拒绝；保留 stage 和备份：{stage}；{exc}") from exc
+
+
+def recover_pending(root):
+    # Callers hold the installation and project/store locks, just like installation.
+    store = safe_path(root, ".requirements")
+    require(not store.exists() or store.is_dir(), f"预期目录：{store}")
+    return [recover_stage(root, stage) for stage in sorted(store.glob(".install-*"))]
+
+
 def apply(root, files, moves, after_apply=None):
-    """Install assets and derived pages in one reversible, same-filesystem transaction."""
-    # Staging is metadata, never a temporary application-code input. Keep it on the
-    # project's filesystem without requiring write access to the project's parent.
-    with ExitStack() as directory_undo:
-        store = safe_path(root, ".requirements")
-        if not store.exists():
-            store.mkdir()
-            directory_undo.callback(store.rmdir)
-        require(store.is_dir(), f"预期目录：{store}")
-        with tempfile.TemporaryDirectory(prefix=".install-", dir=store) as tmp, ExitStack() as undo:
-            changed = _apply_files(root, files, moves, after_apply, Path(tmp), undo)
-            undo.pop_all()
-        directory_undo.pop_all()
+    """A small disk journal extends the installer's existing same-filesystem renames."""
+    store = safe_path(root, ".requirements")
+    created_store = not store.exists()
+    if created_store:
+        store.mkdir()
+    require(store.is_dir(), f"预期目录：{store}")
+    # No TemporaryDirectory finalizer: a failed recovery must retain the only backup.
+    stage = Path(tempfile.mkdtemp(prefix=".install-", dir=store))
+    journal = {"version": 1, "phase": "applying", "files": [], "moves": [],
+               "directories": [".requirements"] if created_store else []}
+    try:
+        save_journal(stage, journal)
+        changed = _apply_files(root, files, moves, after_apply, stage, journal)
+    except BaseException:
+        recover_stage(root, stage)
+        raise
+    journal["phase"] = "committed"
+    save_journal(stage, journal)
+    recover_stage(root, stage)
     return changed
 
 
-def _apply_files(root, files, moves, after_apply, stage, undo):
-    """All replacements, including pages rendered from installed assets, share undo."""
+def _apply_files(root, files, moves, after_apply, stage, journal):
     def parent(path):
         if not path.exists():
             parent(path.parent)
+            journal["directories"].append(path.relative_to(root).as_posix())
+            save_journal(stage, journal)
             path.mkdir()
-            undo.callback(path.rmdir)
 
-    def prepare(relative, data, n):
+    def prepare(relative, data):
+        name = Path(relative).as_posix()
+        require(owned_target(name), f"非受管安装目标：{name}")
         target = safe_path(root, relative)
+        old = read_file(target)
+        n = len(journal["files"])
+        post = "f:" + digest(data) if data is not None else None
+        operation = {"path": name, "pre": "f:" + digest(old) if old is not None else None,
+                     "post": post, "state": registration_state(post)}
+        # Persist ownership, target and digests before creating any staged bytes.
+        journal["files"].append(operation)
+        save_journal(stage, journal)
         if data is not None:
             staged = stage / f"new-{n}"
-            staged.write_bytes(data)
+            with staged.open("wb") as stream:
+                stream.write(data)
+                stream.flush()
+                os.fsync(stream.fileno())
             if target.is_file():
                 os.chmod(staged, target.stat().st_mode & 0o777)
+            operation["state"] = "pending"
+            save_journal(stage, journal)
+        return n
 
-    def replace(relative, data, n):
-        target = safe_path(root, relative)
+    def replace(n):
+        operation = journal["files"][n]
+        require(operation["state"] == "pending", "暂存文件尚未准备完成")
+        target = safe_path(root, operation["path"])
+        require(file_state(root, stage, operation, n, "applying") == "original", f"安装目标已改变：{target}")
         parent(target.parent)
         if target.exists():
-            old = stage / f"old-{n}"
-            target.replace(old)
-            undo.callback(old.replace, target)
-        if data is not None:
+            target.replace(stage / f"old-{n}")
+        if operation["post"] is not None:
             (stage / f"new-{n}").replace(target)
-            undo.callback(target.unlink)
+        operation["state"] = "applied"
+        save_journal(stage, journal)
 
-    for n, (relative, data) in enumerate(files.items()):
-        prepare(relative, data, n)
+    for relative, data in files.items():
+        prepare(relative, data)
     for source, destination in moves:
         src, dest = safe_path(root, source), safe_path(root, destination)
+        require(source.as_posix() in migration_sources() and destination == ARCHIVE / source, "非受管旧入口归档")
         require(not dest.exists(), f"旧入口归档路径已存在：{dest}")
+        before = fingerprint(src)
+        operation = {"source": source.as_posix(), "destination": destination.as_posix(),
+                     "pre": before, "post": before, "state": "pending"}
+        journal["moves"].append(operation)
+        save_journal(stage, journal)
         parent(dest.parent)
         src.rename(dest)
-        undo.callback(dest.rename, src)
-    for n, (relative, data) in enumerate(files.items()):
-        replace(relative, data, n)
+        operation["state"] = "applied"
+        save_journal(stage, journal)
+    for n in range(len(files)):
+        replace(n)
     changed = bool(files or moves)
     if after_apply is not None:
-        for n, (relative, data) in enumerate(after_apply(), start=len(files)):
-            prepare(relative, data, n)
-            replace(relative, data, n)
+        for relative, data in after_apply():
+            replace(prepare(relative, data))
             changed = True
     return changed
 
@@ -320,11 +626,35 @@ def install(project, migrate=False):
     path = Path(project).expanduser()
     require(path.is_dir() and not linked(path), f"目标应是已有的真实项目目录：{path}")
     root = path.resolve()
-    with project_lock(root):
-        return install_locked(root, migrate)
+    from flow import engine, project_lock as store_lock, upgrade
+    store = safe_path(root, ".requirements")
+    with project_lock(root), store_lock(store, exclusive=True), store_lock(
+            store, ".project-viewer", exclusive=True, nonblocking=True), ExitStack() as locks:
+        if any(store.glob(".install-*")):
+            # A missing manifest routes here instead of upgrade. Protect restored
+            # pages with the same task/model locks that upgrade normally holds.
+            active = safe_path(root, ".requirements/active")
+            require(not active.exists() or active.is_dir(), f"预期目录：{active}")
+            for path in sorted(active.iterdir()) if active.exists() else ():
+                if path.name.startswith("."):
+                    continue
+                require(not linked(path) and path.is_dir(), f"需求目录不是普通目录：{path}")
+                locks.enter_context(store_lock(store, path.name, exclusive=True, nonblocking=True))
+                locks.enter_context(engine.task_lock(workspace=path))
+        recovered = recover_pending(root)
+        # A missing-manifest interruption can otherwise turn an upgrade into a
+        # plain install and omit its derived pages. Route it back through upgrade.
+        resume_upgrade = bool(recovered and safe_path(root, MANIFEST).is_file())
+        if not resume_upgrade:
+            result = install_locked(root, migrate)
+    if resume_upgrade:
+        result = upgrade(root, migrate)
+    result["recovered"] = recovered + result["recovered"]
+    return result
 
 
 def install_locked(root, migrate, *, after_apply=None):
+    recovered = recover_pending(root)
     wanted = assets()
     manifest_file = safe_path(root, MANIFEST)
     old_bytes = read_file(manifest_file)
@@ -422,7 +752,7 @@ def install_locked(root, migrate, *, after_apply=None):
         files[MANIFEST] = manifest_bytes
     changed = apply(root, files, moves, after_apply) if files or moves or after_apply is not None else False
     return {"project": str(root), "skill": str(root / SKILL), "role_version": ROLE_VERSION, "changed": changed,
-            "migrated": migration, "archive": str(root / archive) if archive else None}
+            "migrated": migration, "archive": str(root / archive) if archive else None, "recovered": recovered}
 
 
 if __name__ == "__main__":

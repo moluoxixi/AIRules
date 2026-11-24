@@ -209,8 +209,17 @@ class ProjectFlowTest(unittest.TestCase):
         self.ok("archive","open","--allow-incomplete")
         self.assertFalse(active.exists())
         archived = self.store / "archive/open"
-        self.assertEqual(data, {p.name:p.read_bytes() for p in archived.iterdir()})
+        frozen = {p.name:p.read_bytes() for p in archived.iterdir()}
+        self.assertEqual(set(frozen), set(data))
+        self.assertEqual({k:v for k,v in data.items() if k != "handbook.html"},
+                         {k:v for k,v in frozen.items() if k != "handbook.html"})
+        page = flow.SnapshotHTML()
+        page.feed(frozen["handbook.html"].decode())
+        payload = json.loads(page.payloads[0])
+        self.assertTrue(payload["read_only"])
+        self.assertEqual(payload["catalog_card"]["bucket"], "archive")
         self.ok("archive","open")
+        self.assertEqual(frozen, {p.name:p.read_bytes() for p in archived.iterdir()})
         self.no("new","open","--request","同名需求")
         self.no("task","open","claim","--actor","甲","--rev","1")
         self.no("task","open","--workspace", active, "context")

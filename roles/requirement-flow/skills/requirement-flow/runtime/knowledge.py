@@ -25,6 +25,7 @@ FIELDS = ("observation", "when", "practice", "boundary")
 REF = ("story", "scenario", "action", "receipt")
 VERDICTS = {"approve": "approved", "reject": "rejected", "retire": "retired"}
 ID = re.compile(r"[A-Za-z0-9][A-Za-z0-9_-]*")
+LEDGER_INCOMPLETE = "经验账本不完整待复核，已暂停当前项目自动推荐和新采用"
 COMMON = set("""测试 验证 需求 功能 接口 数据 页面 业务 正常 开发 用户 系统 处理 实现 字段 调研 操作 检查 结果
     test verify api data system feature page user get post put delete id name type status code success result
     value message title pageindex pagesize pageno pagenum""".split())
@@ -33,6 +34,21 @@ COMMON = set("""测试 验证 需求 功能 接口 数据 页面 业务 正常 �
 # Each public write replaces model.json atomically. Also include timestamps/size for in-place edits.
 _empty_models = OrderedDict()
 _cache_lock = Lock()
+
+
+class Catalogue(list):
+    """A list projection with read diagnostics, never a second approval ledger."""
+    def __init__(self, cards=(), *, diagnostics=()):
+        super().__init__(cards)
+        self.diagnostics = list(diagnostics)
+
+
+def task_directory_name(name):
+    """Use the public task ID boundary; hidden and non-task entries are not ledgers."""
+    name = unicodedata.normalize("NFC", name)
+    return (bool(name) and name[0].isalnum() and all(c.isalnum() or c in "_-" for c in name)
+            and len(name.encode("utf-8")) <= 255
+            and not re.fullmatch(r"CON|PRN|AUX|NUL|COM[1-9]|LPT[1-9]", name, re.I))
 
 
 def fingerprint(path):
@@ -221,7 +237,7 @@ def live_row(row, work, cases, bucket, workspace, engine):
         sources.append({**original, "valid": not issue,
                         "readable": not issue or historical_source(original, work, workspace, engine)})
     result = {**row, "task": work["id"], "task_title": work["title"], "bucket": bucket,
-              "sources": sources, "issues": issues}
+              "sources": sources, "issues": issues, "ledger_state": row["state"]}
     if issues and row["state"] == "approved":
         result["state"] = "stale"
     return result
@@ -356,6 +372,8 @@ def memory_hits(workspace, contexts):
 
 
 def match_cards(work, cards, *, stories=None, action=None, limit=5, hits=None):
+    if getattr(cards, "diagnostics", []):
+        return []
     contexts = query_contexts(work, stories, action)
     matches = []
     for card in cards:
@@ -379,37 +397,68 @@ def match_cards(work, cards, *, stories=None, action=None, limit=5, hits=None):
 def read_source_model(path, stamp, engine):
     """Cache ledger parsing only. Evidence files, source aliases and retirements are rechecked on every read."""
     model = engine.load(path)
+    versions = engine.validate(model)
     work = model["work"]
-    if not isinstance(work, dict) or not work.get("lesson_cards"):
+    engine.expect(work["id"] == unicodedata.normalize("NFC", path.parent.name), "需求模型 ID 与目录不一致")
+    if not work.get("lesson_cards"):
         if stamp == fingerprint(path):
             remember_empty(path, stamp)
         return None
-    versions = engine.validate(model)
     return work, versions
 
 
-def load_tasks(store, workspace, current_work, engine):
+def load_tasks(store, workspace, current_work, engine, diagnostics=None):
+    diagnostics = [] if diagnostics is None else diagnostics
+
+    def diagnose(task, reason):
+        # Use fixed reasons, not exception text or symlink targets containing private paths.
+        diagnostics.append({"task": task, "reason": LEDGER_INCOMPLETE + "：" + reason})
+
     folders = {}
     for bucket in ("active", "archive"):
         base = store / bucket
-        if linked(base) or not base.is_dir():
+        try:
+            if linked(base):
+                diagnose(bucket, "需求存储目录不能使用符号链接")
+                continue
+            if not base.exists():
+                continue
+            if not base.is_dir():
+                diagnose(bucket, "需求存储路径不是目录")
+                continue
+            entries = sorted(base.iterdir())
+        except (OSError, ValueError):
+            diagnose(bucket, "需求存储目录无法读取")
             continue
-        for folder in sorted(base.iterdir()):
-            if not linked(folder) and folder.is_dir() and not legacy_lock_only(folder):
-                folders.setdefault(unicodedata.normalize("NFC", folder.name), []).append(folder)
+        for folder in entries:
+            if not task_directory_name(folder.name):
+                continue
+            task = unicodedata.normalize("NFC", folder.name)
+            try:
+                if linked(folder):
+                    diagnose(task, "需求目录不能使用符号链接")
+                elif folder.is_dir() and not legacy_lock_only(folder):
+                    folders.setdefault(task, []).append(folder)
+            except (OSError, ValueError):
+                diagnose(task, "需求目录无法读取")
     for task, locations in folders.items():
         if len(locations) != 1:
+            diagnose(task, "需求 ID 在进行中和归档目录重复")
             continue
         folder, = locations
         model_file = folder / "model.json"
-        if linked(model_file) or not model_file.is_file():
-            continue
         try:
+            if linked(model_file):
+                diagnose(task, "需求模型不能使用符号链接")
+                continue
+            if not model_file.is_file():
+                diagnose(task, "需求模型缺失或不是普通文件")
+                continue
             if folder == workspace and current_work is not None:
                 work = current_work
+                versions = validate_cards(work, engine)
                 if not work.get("lesson_cards"):
                     continue
-                versions = validate_cards(work, engine)
             else:
                 model_file = model_file.absolute()
                 stamp = fingerprint(model_file)
@@ -419,11 +468,12 @@ def load_tasks(store, workspace, current_work, engine):
                 if record is None:
                     continue
                 work, versions = record
-            if task == work["id"]:
-                yield folder, work, versions
-        except (OSError, ValueError, TypeError, KeyError, IndexError, AttributeError):
-            # Invalid unrelated or concurrently archived records cannot enter the catalogue.
-            continue
+            if task != work["id"]:
+                diagnose(task, "需求模型 ID 与目录不一致")
+                continue
+            yield folder, work, versions
+        except (OSError, ValueError, TypeError, KeyError, IndexError, AttributeError, RecursionError):
+            diagnose(task, "需求模型无法读取或校验失败")
 
 
 def project_cards(workspace, engine, *, current_work=None, relevant_to=None, stories=None, action=None, include_keys=()):
@@ -436,12 +486,19 @@ def project_cards(workspace, engine, *, current_work=None, relevant_to=None, sto
 def _project_cards(workspace, engine, *, current_work=None, relevant_to=None, stories=None, action=None, include_keys=()):
     workspace = Path(workspace)
     store = workspace if workspace.name == ".requirements" else workspace.parent.parent
-    if store.name != ".requirements" or linked(store) or not store.is_dir():
-        return []
+    if store.name != ".requirements":
+        return Catalogue()
+    try:
+        if linked(store) or store.exists() and not store.is_dir():
+            raise ValueError("invalid store")
+        if not store.is_dir():
+            return Catalogue()
+    except (OSError, ValueError):
+        return Catalogue(diagnostics=[{"task": ".requirements", "reason": LEDGER_INCOMPLETE + "：需求存储目录无法安全读取"}])
     contexts = query_contexts(relevant_to, stories, action) if relevant_to is not None else None
-    results, replacements = [], {}
+    results, replacements = Catalogue(), {}
     paths = None
-    for folder, work, versions in load_tasks(store, workspace, current_work, engine):
+    for folder, work, versions in load_tasks(store, workspace, current_work, engine, results.diagnostics):
         # A later rejection/retirement of the replacement cannot resurrect its predecessor.
         published, approvals, retired = {}, {}, {}
         for event in work["events"]:
@@ -498,7 +555,13 @@ def _project_cards(workspace, engine, *, current_work=None, relevant_to=None, st
         replacement = replacements.get((item["task"], item["id"], item["version"]))
         if replacement:
             item.update(state="superseded", replaced_by=replacement)
-    return sorted(results, key=lambda item: (item["task"], item["id"], item["version"]))
+        if results.diagnostics:
+            if item["state"] == "approved":
+                item["state"] = "stale"
+            item["availability"] = "ledger_incomplete"
+            item["issues"].append(LEDGER_INCOMPLETE)
+    return Catalogue(sorted(results, key=lambda item: (item["task"], item["id"], item["version"])),
+                     diagnostics=results.diagnostics)
 
 
 def adoption_events(work, stories=()):
@@ -536,6 +599,7 @@ def adopt(work, workspace, story, task, lesson, version, reason, actor, engine):
         return False
     engine.expect(task != work["id"] and version > 0, "请选择其他需求中已批准的具体经验版本")
     cards = project_cards(workspace, engine, current_work=work, relevant_to=work, stories={story}, include_keys={key})
+    engine.expect(not getattr(cards, "diagnostics", []), LEDGER_INCOMPLETE + "；请先修复需求账本并重新核对")
     card = next((c for c in cards if card_key(c) == key), None)
     engine.expect(card and card["state"] == "approved", "来源经验尚未批准、已失效或已退役，请重新查阅")
     # Store the adopted conclusion and immutable proof IDs, so a missing origin never erases the decision.

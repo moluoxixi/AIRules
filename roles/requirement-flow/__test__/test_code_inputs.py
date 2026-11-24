@@ -86,6 +86,76 @@ class CodeInputsTest(unittest.TestCase):
         self.assertNotEqual(queue["state"], "complete")
         self.cli("archive", "save", project=project, ok=False)
 
+    def test_archive_uses_the_last_observed_qualification_for_freeze_and_reply(self):
+        from contextlib import redirect_stdout
+        import io
+        from types import SimpleNamespace
+        import flow
+
+        original_project = self.project
+        for gate, allow in ((None, False), ('after-summary', False), ('final-page', False), ('final-page', True)):
+            with self.subTest(gate=gate, allow_incomplete=allow):
+                self.project = self.base / f'{gate}-{allow}'
+                self.project.mkdir()
+                for name in ('business.py', 'check.py'):
+                    (self.project / name).write_bytes((original_project / name).read_bytes())
+                self.prepare(paths=['business.py', 'check.py'])
+                self.complete()
+                store = self.project / '.requirements'
+                active, archived = store / 'active/save', store / 'archive/save'
+                page = (active / 'handbook.html').read_bytes()
+                history = {p.relative_to(active): p.read_bytes() for p in active.rglob('*')
+                           if p.is_file() and p.name != 'handbook.html'}
+                observations = []
+                summarize, render = flow.summary, flow.engine.render
+
+                def change_code():
+                    (self.project / 'business.py').write_text("def value(): return 'changed'\n")
+                    observations.append('changed')
+
+                def summary(*args, **kwargs):
+                    info = summarize(*args, **kwargs)
+                    self.assertEqual(info['state'], 'complete')
+                    if gate == 'after-summary':
+                        change_code()
+                    return info
+
+                def render_page(*args, **kwargs):
+                    if gate == 'final-page' and kwargs.get('read_only'):
+                        change_code()
+                    rendered = render(*args, **kwargs)
+                    if kwargs.get('read_only'):
+                        parser = flow.SnapshotHTML()
+                        parser.feed(rendered[0] if isinstance(rendered, tuple) else rendered)
+                        observations.append(json.loads(parser.payloads[0])['queue']['scenarios'][0]['status'])
+                    return rendered
+
+                with patch.object(flow, 'summary', side_effect=summary), \
+                        patch.object(flow.engine, 'render', side_effect=render_page), redirect_stdout(io.StringIO()) as output:
+                    args = SimpleNamespace(id='save', allow_incomplete=allow)
+                    if gate and not allow:
+                        with self.assertRaisesRegex(ValueError, 'allow-incomplete'):
+                            flow.archive(store, args)
+                    else:
+                        flow.archive(store, args)
+                if gate and not allow:
+                    self.assertIn('changed', observations)
+                    self.assertEqual((active / 'handbook.html').read_bytes(), page)
+                    self.assertFalse(archived.exists())
+                    self.assertFalse(output.getvalue())
+                    self.assertEqual(self.queue()['scenarios'][0]['status'], 'stale')
+                else:
+                    self.assertFalse(active.exists())
+                    parser = flow.SnapshotHTML()
+                    parser.feed((archived / 'handbook.html').read_text())
+                    queue = json.loads(parser.payloads[0])['queue']
+                    info = json.loads(output.getvalue())
+                    self.assertEqual(info['state'], queue['state'])
+                    self.assertEqual(queue['scenarios'][0]['status'], 'stale' if gate else 'passed')
+                    self.assertEqual(info['progress'], queue['progress'])
+                target = active if gate and not allow else archived
+                self.assertEqual({n: (target / n).read_bytes() for n in history}, history)
+
     def test_actual_worktree_bytes_and_file_additions_deletions_invalidate(self):
         self.init_git()
         self.prepare()
@@ -305,7 +375,7 @@ class CodeInputsTest(unittest.TestCase):
         with self.assertRaisesRegex(ValueError, "旧回执"):
             code_inputs.verify_current(self.project, None, paths, cache=cache)
         with self.assertRaisesRegex(ValueError, "已改变"):
-            code_inputs.verify_current(self.project, {**first, "sha256": "different"}, paths, cache=cache)
+            code_inputs.verify_current(self.project, {**first, "sha256": "0" * 64}, paths, cache=cache)
         (self.project / "business.py").write_text("def value(): return 'changed'\n")
         with self.assertRaisesRegex(ValueError, "已改变"):
             code_inputs.verify_current(self.project, first, paths, cache={})

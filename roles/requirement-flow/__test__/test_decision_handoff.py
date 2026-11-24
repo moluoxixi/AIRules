@@ -65,6 +65,29 @@ class DecisionHandoffTest(StateFixture):
         self.assertEqual(self.queue()['state'],'waiting')
         self.assertEqual(sync.dispatch(self.work(),story='S-save')['state'],'complete')
 
+        def assert_story_projection(expected):
+            work = self.work()
+            self.assertNotIn('story_queues', sync.dispatch(work, for_map=True, include_lessons=False))
+            page = sync.dispatch(work, for_map=True, include_lessons=False, include_story_queues=True)
+            actual = {story: [row['id'] for row in sync.dispatch(work, story=story, include_lessons=False)['pending_decisions']]
+                      for story in work['stories']}
+            self.assertEqual(actual, expected)
+            self.assertEqual({story: scope['pending_decisions'] for story, scope in page['story_queues'].items()}, actual)
+
+        assert_story_projection({'S-save': [], 'S-other': ['D-device']})
+        self.plan({'decisions': {'D-alone': decision('独立业务约定')}})
+        alone = sync.dispatch(self.work(), story='S-save')['pending_decisions']
+        self.assertEqual([(row['id'], row['actions']) for row in alone], [('D-alone', [])])
+        assert_story_projection({'S-save': ['D-alone'], 'S-other': ['D-device']})
+        self.decide('D-alone', 'a')
+        downstream = {**self.work()['actions']['A-contract'], 'title': '汇总下游验证', 'closes_contracts': [],
+                      'depends_on': [{'id': 'A-other', 'when': {'decision': 'D-mode', 'is': 'a'}}]}
+        self.plan({'actions': {'A-join': downstream}})
+        # A conditionally active dependency may bring the other story's decision into scope.
+        assert_story_projection({'S-save': ['D-device'], 'S-other': ['D-device']})
+        self.decide('D-device', 'a')
+        assert_story_projection({'S-save': [], 'S-other': []})
+
     def test_reason_amendment_preserves_proof_and_retry_is_idempotent(self):
         self.plan({'decisions': {'D': decision('使用甲或乙')},
                    'actions': {'A-verify': {**self.verify_action, 'decisions': ['D']}}})

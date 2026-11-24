@@ -1037,7 +1037,10 @@ describe.skipIf(!executablePath)('generated handbook interactions in Chromium', 
       expect(hover.stroke).not.toBe(idle.stroke)
       const body = await page.$eval(tip, el => el.textContent)
       expect(body).toContain('跨页选择门店类型后统一确认')
-      expect(await page.$eval(node, el => el.textContent)).not.toContain('跨页选择门店类型后统一确认')
+      const captions = await page.$$eval(`${node} .n-caption`, labels => labels.map(el => el.textContent))
+      expect(captions[0]).toMatch(/^跨页选择门店类型/u)
+      expect(captions[1]).toMatch(/下一步|待决定|待处理|进行中/u)
+      expect(captions.every(text => text.length < body.length)).toBe(true)
       await page.keyboard.press('Escape')
       await page.waitForSelector(tip, { hidden: true })
       const bounds = await (await page.$(node)).boundingBox()
@@ -1087,7 +1090,8 @@ describe.skipIf(!executablePath)('generated handbook interactions in Chromium', 
         return [card.width, card.height, Number(node.querySelector('.n-title').getAttribute('font-size'))]
       })
       expect(box[0]).toBeLessThanOrEqual(175)
-      expect(box[1]).toBeLessThanOrEqual(66)
+      expect(box[1]).toBeLessThanOrEqual(96)
+      expect(await page.$$eval('[data-node="S-4"] .n-caption', labels => labels.length)).toBe(2)
       expect(box[2]).toBeGreaterThanOrEqual(15)
       const controls = await page.evaluate(() => {
         const canvas = document.querySelector('#map').getBoundingClientRect()
@@ -1659,7 +1663,7 @@ describe.skipIf(!executablePath)('generated handbook interactions in Chromium', 
       await page.waitForFunction(() => document.querySelector('#panel-title')?.textContent === '单个确认')
       expect(await page.$eval('#detail', el => el.scrollTop)).toBe(0)
       expect(await page.$eval('#stations [data-node="S-3"]', el => el.getAttribute('aria-label'))).toContain('0/1 通过 · 1 需补验')
-      expect(await page.$eval('#stations [data-node="S-0"]', el => el.getAttribute('aria-label'))).toBe('功能，新建方案，0/1 通过')
+      expect(await page.$eval('#stations [data-node="S-0"]', el => el.getAttribute('aria-label'))).toBe('功能，新建方案，0/1 通过，下一步 · 新建方案')
       expect(await page.$('#detail .story-goal')).toBeNull()
       const stale = '#detail .acceptance-group[data-state="open"] .case-row[data-status="stale"]'
       expect(await page.$eval(stale, el => el.textContent)).toContain('单个确认')

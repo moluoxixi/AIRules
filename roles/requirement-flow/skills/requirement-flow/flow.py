@@ -132,6 +132,10 @@ def task_report(path, *, include_lessons=False):
 
 def summary(path, *, include_lessons=False):
     work, queue = task_report(path, include_lessons=include_lessons)
+    return summarize(path, work, queue, include_lessons=include_lessons)
+
+
+def summarize(path, work, queue, *, include_lessons=False):
     return {
         "id": work["id"], "title": work["title"], "outcome": work.get("outcome", "delivery"),
         "revision": work["revision"], "state": queue["state"], "progress": queue["progress"],
@@ -149,7 +153,8 @@ def emit(value):
 def list_lessons(store, include_all):
     with project_lock(store):
         cards = engine.knowledge.project_cards(store, engine)
-        emit({"lessons":[c for c in cards if include_all or c["state"] == "approved"]})
+        emit({"lessons":[c for c in cards if include_all or c["state"] == "approved"],
+              "warnings":getattr(cards, "diagnostics", [])})
 
 
 def memory_command(store, operation):
@@ -267,12 +272,10 @@ def create(store, args):
 
 
 def upgrade(project, migrate=False):
-    from install_project import MANIFEST, install_locked, project_lock as installation_lock, safe_path
+    from install_project import MANIFEST, install_locked, project_lock as installation_lock, recover_pending, safe_path
 
     store = local_directory(project / ".requirements")
     with installation_lock(project), project_lock(store, exclusive=True), ExitStack() as locks:
-        if not safe_path(project, MANIFEST).is_file():
-            raise ValueError("尚未安装 requirement-flow，请先运行 init。")
         locks.enter_context(project_lock(store, ".project-viewer", exclusive=True, nonblocking=True))
         tasks = []
         active = local_directory(store / "active")
@@ -292,10 +295,15 @@ def upgrade(project, migrate=False):
             if model["work"]["id"] != key:
                 raise ValueError(f"需求 ID 与目录不一致：{key}")
             tasks.append((path, model))
+        # Recovery may restore a manifest or page that was between two renames.
+        # Hold every task lease before touching these managed projection files.
+        recovered = recover_pending(project)
+        if not safe_path(project, MANIFEST).is_file():
+            raise ValueError("尚未安装 requirement-flow，请先运行 init。")
         refreshed = []
         def render_pages():
-            # Installed files (including AGENTS.md and ignore rules) are now final;
-            # the installer still holds its undo stack if any render/write fails.
+            # Installed assets are now final; their disk journal also covers pages
+            # so a rendering failure or interrupted process can safely roll back.
             for path, model in tasks:
                 book = path / "handbook.html"
                 rendered = engine.render(model, workspace=path).encode()
@@ -303,6 +311,7 @@ def upgrade(project, migrate=False):
                     yield book.relative_to(project), rendered
                     refreshed.append(path.name)
         result = install_locked(project, migrate, after_apply=render_pages)
+        result["recovered"] = recovered + result["recovered"]
         result["refreshed"] = refreshed
         result["memory"] = refresh_notes(store)
         return result
@@ -332,7 +341,7 @@ class SnapshotHTML(HTMLParser):
             self.payloads[-1] += content
 
 
-def check_snapshot(path, *, refresh_scenarios=False):
+def read_snapshot(path):
     model = engine.load(path / "model.json")
     if model["work"]["id"] != unicodedata.normalize("NFC", path.name):
         raise ValueError("归档模型与需求目录的 ID 不一致。")
@@ -348,22 +357,27 @@ def check_snapshot(path, *, refresh_scenarios=False):
     saved_queue = snapshot.get("queue", {})
     if "lesson_version" in snapshot and snapshot["lesson_version"] != engine.graph_view.lesson_version(saved_queue):
         raise ValueError("归档人读页的经验记录与摘要不一致。")
+    return model, saved_queue
+
+
+def check_snapshot(path):
+    model, saved_queue = read_snapshot(path)
     saved_cases = saved_queue.get("scenarios")
-    if saved_cases is not None or refresh_scenarios:
-        live_queue = engine.dispatch(model["work"], workspace=path, include_lessons=refresh_scenarios, for_map=True)
-        live_cases = live_queue["scenarios"]
-        saved_states = {case["id"]: case["status"] for case in saved_cases or []}
-        live_states = {case["id"]: case["status"] for case in live_cases}
-        lessons_changed = refresh_scenarios and snapshot.get("lesson_version") != engine.graph_view.lesson_version(live_queue)
-        if saved_cases is None or saved_states != live_states or lessons_changed:
-            if not refresh_scenarios:
-                changed = sorted(key for key in saved_states.keys() | live_states.keys()
-                                 if saved_states.get(key) != live_states.get(key))
-                raise ValueError("验收场景与归档快照不一致，请核对凭据：" + "、".join(changed))
-            # Only the active copy can be refreshed, while the archive operation holds its lock.
-            engine.bind_workspace(path)
-            engine.sync()
+    if saved_cases is not None:
+        live_cases = engine.dispatch(model["work"], workspace=path, include_lessons=False, for_map=True)["scenarios"]
+        saved_states = {(case["story"], case["id"]): case["status"] for case in saved_cases}
+        live_states = {(case["story"], case["id"]): case["status"] for case in live_cases}
+        if saved_states != live_states:
+            changed = sorted(key for key in saved_states.keys() | live_states.keys()
+                             if saved_states.get(key) != live_states.get(key))
+            raise ValueError("验收场景与归档快照不一致，请核对凭据：" + "、".join(
+                f"{story}/{scenario}" for story, scenario in changed))
     return model["work"]["revision"]
+
+
+def require_archive_state(args, state):
+    if state != "complete" and not args.allow_incomplete:
+        raise ValueError(f"需求 {args.id} 当前状态为 {state}。如需保留当前进度并归档，请使用 --allow-incomplete。")
 
 
 def archive(store, args):
@@ -376,21 +390,32 @@ def archive(store, args):
             emit(summary(target))
             return
         with project_lock(store, args.id, exclusive=True, nonblocking=True):
-            info = summary(source)
-            if info["state"] != "complete" and not args.allow_incomplete:
-                raise ValueError(f"需求 {args.id} 当前状态为 {info['state']}。如需保留当前进度并归档，请使用 --allow-incomplete。")
-            own_cards = engine.load(source / "model.json")["work"].get("lesson_cards", {})
+            require_archive_state(args, summary(source)["state"])
+            model, _ = read_snapshot(source)
+            engine.validate(model)
+            own_cards = model["work"].get("lesson_cards", {})
             pending = [key for key, card in own_cards.items() if card["state"] == "pending"]
             if pending and not args.allow_incomplete:
                 raise ValueError("归档会冻结待审经验 " + "、".join(pending)
                                  + "。请先完成审查；如需按当前状态保存草稿，使用 --allow-incomplete。")
-            check_snapshot(source, refresh_scenarios=True)
-            local_directory(target.parent, create=True)
-            remove_legacy_lock_directory(target)
-            source.rename(target)
+            # Use the exact queue embedded in the final read-only page. Do not
+            # refresh the active page and then decide from an earlier observation.
+            rendered, queue = engine.render(model, workspace=source, read_only=True, with_queue=True)
+            require_archive_state(args, queue["state"])
+            info = summarize(target, model["work"], queue)
+            book = source / "handbook.html"
+            previous_page = book.read_bytes()
+            try:
+                local_directory(target.parent, create=True)
+                remove_legacy_lock_directory(target)
+                engine.atomic(book, rendered.encode())
+                source.rename(target)
+            except Exception:
+                if source.is_dir() and book.read_bytes() != previous_page:
+                    engine.atomic(book, previous_page)
+                raise
             if own_cards:
                 refresh_notes(store)
-            info["handbook"] = str(target / "handbook.html")
             emit(info)
 
 

@@ -17,6 +17,10 @@ EXCLUDED = {".git", ".requirements"}
 GENERATED = {"node_modules", "__pycache__", ".venv", "venv", ".pytest_cache", ".mypy_cache", ".ruff_cache"}
 
 
+class CodeInputContentMismatch(ValueError):
+    """A complete current snapshot differs from a valid, same-scope binding."""
+
+
 def require(value, message):
     if not value:
         raise ValueError(message)
@@ -194,11 +198,24 @@ def snapshot(project_root, code_paths=None):
             "entries": len(records)}
 
 
+def valid_snapshot(value):
+    return (isinstance(value, dict) and
+            set(value) == {"version", "mode", "code_paths", "sha256", "entries"} and
+            type(value["version"]) is int and value["version"] == 1 and
+            value["mode"] in ("paths", "git", "directory") and
+            type(value["entries"]) is int and value["entries"] >= 0 and
+            isinstance(value["sha256"], str) and len(value["sha256"]) == 64 and
+            set(value["sha256"]) <= set("0123456789abcdef"))
+
+
 def verify_current(project_root, binding, code_paths=None, *, cache=None):
     require(isinstance(binding, dict) and binding.get("version") == 1 and
             isinstance(binding.get("sha256"), str), "旧回执未绑定代码输入，请重新验收；原始证据仍可查阅")
+    require(valid_snapshot(binding), "代码输入绑定无效，请重新验收；原始证据仍可查阅")
     paths = normalize_paths(code_paths)
-    require(binding.get("code_paths") == paths, "验证代码范围已改变，请重新验收")
+    require(binding["code_paths"] == paths, "验证代码范围已改变，请重新验收")
+    require((binding["mode"] == "paths") == (paths is not None) and
+            (paths is None or binding["entries"] > 0), "代码输入绑定无效，请重新验收")
     key = (str(Path(project_root).resolve()), None if paths is None else tuple(paths))
     if cache is None:
         current = snapshot(project_root, paths)
@@ -206,5 +223,11 @@ def verify_current(project_root, binding, code_paths=None, *, cache=None):
         if key not in cache:
             cache[key] = snapshot(project_root, paths)
         current = cache[key]
-    require(current == binding, "当前代码、测试或子仓库内容已改变，请重新验收")
+    require(valid_snapshot(current) and current["code_paths"] == paths and
+            (current["mode"] == "paths") == (paths is not None) and
+            (paths is None or current["entries"] > 0), "当前代码快照无效，请重新验收")
+    if current != binding:
+        # Equal content hashes with different metadata cannot establish a code race.
+        require(current["sha256"] != binding["sha256"], "代码输入绑定信息不一致，请重新验收")
+        raise CodeInputContentMismatch("当前代码、测试或子仓库内容已改变，请重新验收")
     return binding

@@ -283,7 +283,20 @@
     .field-type {min-width:0;font:.75rem/1.45 var(--mono);color:var(--muted)}
     #detail .contract-field p,.endpoint-body .contract-field p {font-size:.85rem}
     #detail .contract-field .field-constraint,.endpoint-body .contract-field .field-constraint,.endpoint-note {font-size:.8rem;color:var(--muted);margin:2px 0 0}
-    .story-goal {color:var(--muted)}
+    .story-goal {color:var(--text)}
+    #detail>section:first-child>h3 {margin-top:0}
+    .current-status,.scope-caption {padding:7px 10px;margin-block:10px;border-inline-start:2px solid var(--amber);background:var(--surface-raised);color:var(--text)}
+    .implementation-record+.implementation-record {margin-top:10px;padding-top:8px;border-top:1px solid var(--line)}
+    .implementation-summary {color:var(--text);white-space:pre-line}
+    .implementation-steps,.implementation-branch {margin-top:8px}
+    #detail .implementation-steps p {color:var(--text)}
+    .case-owner {grid-column:1/-1;font-size:.75rem;color:var(--muted)}
+    .knowledge-warning {border-inline-start:2px solid var(--amber);padding-inline-start:10px}
+    .source-read-time {margin-block:8px;color:var(--muted);font:.78rem/1.5 var(--ui)}
+    .update-health {position:absolute;inset:auto 8px 8px;max-width:600px;padding:7px 10px;background:var(--surface);border:1px solid var(--line);border-inline-start:2px solid var(--amber);color:var(--text);font-size:.8rem;z-index:4}
+    #inspector>.update-health,#endpoint-drawer>.update-health,#source-drawer>.update-health {position:static;flex:none;margin:8px 12px}
+    .update-health button {margin:3px 0 0 6px}
+    .source-reader-tools button:is(:disabled,[aria-disabled=true]) {cursor:default;color:var(--muted)}
     #detail .acceptance-report>h3 {font-size:.92rem;color:var(--ink);margin:10px 0 6px}
     .acceptance-group {
       --state-color:var(--amber);border-inline-start:2px solid var(--state-color);
@@ -311,6 +324,8 @@
     .story-tools:empty {display:none}
     .story-tools>*+* {border-block-start:1px solid var(--line)}
     .story-tools>.compact-fold {margin:0}
+    .story-tools>section {padding:8px 12px}
+    #detail .story-tools>section>h3 {margin:0 0 6px}
     .story-tools>.compact-fold>summary,.story-tools>.inspect-feature {
       display:flex;justify-content:space-between;align-items:center;gap:12px;width:100%;min-height:38px;
       padding:8px 12px;color:var(--text);font:620 .84rem/1.4 var(--ui);text-align:start;list-style:none;

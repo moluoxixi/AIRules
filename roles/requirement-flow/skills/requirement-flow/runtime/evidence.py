@@ -229,7 +229,7 @@ def run(workspace, project_root, argv, *, action, scenario, stamp, actor, enviro
                     actual += "\n检测到敏感参数或输出，仅保留运行摘要。"
                 log.write_text(actual + "\n", encoding="utf-8")
             receipt.update(argv=list(argv) if shared else None, cwd=".", output_shared=shared,
-                           has_output=bool(preview), tests=tests)
+                           has_output=bool(preview), tests=tests, summary_policy=run_result.SUMMARY_POLICY)
         unchanged, change_reason = check_after_capture(project, receipt["code_inputs"], code_paths)
         if not unchanged:
             actual += "\n" + change_reason
@@ -251,6 +251,19 @@ def validate_current_inputs(receipt, project_root, code_paths=None, *, cache=Non
     """Check freshness separately, so historical signed attachments remain readable."""
     if workspace is not None and receipt["kind"] == "run" and receipt["passed"] and "has_output" not in receipt:
         key = ("legacy-test-summary", Path(workspace), receipt["id"], receipt["artifact"]["sha256"])
+        if cache is None or key not in cache:
+            with artifact_path(workspace, receipt).open("rb") as log:
+                issue = run_result.insufficient_tests(run_result.test_summary(log))
+            if cache is not None:
+                cache[key] = issue
+        else:
+            issue = cache[key]
+        require(not issue, "旧回执需要重新验收：" + issue)
+    if (receipt["kind"] == "run" and receipt["passed"] and "has_output" in receipt
+            and receipt.get("summary_policy") != run_result.SUMMARY_POLICY):
+        require(receipt.get("output_shared") and workspace is not None,
+                "摘要采集规则已更新，旧回执原日志未共享或无法复核，请重新采集。")
+        key = ("summary-policy", Path(workspace), receipt["id"], receipt["artifact"]["sha256"], run_result.SUMMARY_POLICY)
         if cache is None or key not in cache:
             with artifact_path(workspace, receipt).open("rb") as log:
                 issue = run_result.insufficient_tests(run_result.test_summary(log))
@@ -367,8 +380,11 @@ def validate(workspace, receipt, *, action, scenario, stamp):
                         "缺少命令输出采集结果")
                 if receipt["output_shared"]:
                     with file.open("rb") as stream:
-                        require(receipt.get("tests") == run_result.test_summary(stream)
-                                and receipt["has_output"] == bool(stream_excerpt(stream)), "测试摘要与日志不符")
+                        # Historical envelopes are authenticated under their original
+                        # policy; current acceptance separately rescans their raw log.
+                        if receipt.get("summary_policy") == run_result.SUMMARY_POLICY:
+                            require(receipt.get("tests") == run_result.test_summary(stream), "测试摘要与日志不符")
+                        require(receipt["has_output"] == bool(stream_excerpt(stream)), "测试摘要与日志不符")
                 effective = (receipt["exit_code"] == 0 and receipt["has_output"]
                              and not run_result.insufficient_tests(receipt["tests"]))
             else:
