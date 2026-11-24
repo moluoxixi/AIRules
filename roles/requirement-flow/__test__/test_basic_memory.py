@@ -111,10 +111,12 @@ class BasicMemoryTests(unittest.TestCase):
             db.commit()
         memory.write_state(state, {"project": memory.binding_id(notes), "package": memory.PACKAGE,
                                    "generation": runtime.name, "indexed": 1, "stamp": memory.snapshot(notes)[0]})
-        with patch.object(memory, "rebuild", side_effect=TimeoutError("index unavailable")) as rebuild:
+        with patch.object(memory.time, "monotonic", return_value=100), patch.object(
+                memory, "rebuild", side_effect=TimeoutError("index unavailable")) as rebuild:
             with self.assertRaisesRegex(ValueError, "index unavailable"):
                 memory.project(self.store, [lesson(state="retired")])
             self.assertEqual(rebuild.call_args.kwargs["purpose"], "publish")
+            self.assertEqual(rebuild.call_args.kwargs["deadline"], 105)
         status = memory.status(self.store)
         self.assertFalse(status["ready"], status)
         self.assertIn("index unavailable", status["error"])
@@ -152,7 +154,10 @@ class BasicMemoryTests(unittest.TestCase):
 
     @unittest.skipUnless(os.getenv("AIRULES_TEST_BASIC_MEMORY") == "1" and shutil.which("uv"),
                          "set AIRULES_TEST_BASIC_MEMORY=1 to install and exercise real Basic Memory")
+    @patch.object(memory, "AUTOMATIC_REFRESH_SECONDS", 30)
     def test_upstream_index_chinese_search_recovery_and_retirement(self):
+        # Verify real index behaviour independent of runner speed. The production
+        # five-second deadline and its failure path are covered separately above.
         ready = memory.enable(self.store, [lesson()])
         self.assertTrue(ready["ready"], ready)
         notes, state = memory.paths(self.store)
