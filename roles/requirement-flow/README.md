@@ -26,7 +26,7 @@ python3 roles/requirement-flow/skills/requirement-flow/flow.py --project /path/t
 
 ## 轻量交付与按需编排
 
-范围明确的新交付需求默认走轻量路径：`new --light` 后按故事建卡、登记实现、按场景采证；交付前执行 `delivery-check`。无需手工领动作或再次确认已经采集的合格证据。检查计划可按场景单独登记。完整命令、反馈字段、适用边界和旧流程兼容见[轻量需求交付](skills/requirement-flow/references/lightweight.md)。
+范围明确的新交付需求默认走轻量路径：`new --light` 后按故事建卡、登记实现、按场景采证。无需手工领动作或再次确认已经采集的合格证据；采证回执自带交付报告，`delivery-check` 可随时重查，`ready_to_deliver: true` 才算完成。检查计划可按场景单独登记。不改行为的修改和纯问答不建需求；建卡后展示清单即可继续。同一输入连续失败两次后转入独立诊断。完整命令、反馈字段、适用边界和旧流程兼容见[轻量需求交付](skills/requirement-flow/references/lightweight.md)，领取、交接和子代理派发见[动作编排](skills/requirement-flow/references/orchestration.md)。
 
 原编排入口和已有需求不变。接口、业务决定、并行依赖或独立复核确有需要时，由 `requirement-flow` 调用相关专项；不是每项需求都要走遍五种方法。
 

@@ -215,12 +215,15 @@ class SourcePaths:
                 result[key] = value
         return result
 
+    def rules_index(self):
+        """The project's own business rules, when the project keeps a rules index."""
+        index = ".requirements/rules/index.md"
+        return index if self.root is not None and project_file(self.root, index) else None
+
     def reading_context(self, record):
         projected = self.project(record)
-        index = ".requirements/rules/index.md"
-        if self.root is not None and project_file(self.root, index):
-            return {**projected, "project_rules": index}
-        return projected
+        rules = self.rules_index()
+        return {**projected, "project_rules": rules} if rules else projected
 
     def graph_labels(self, work):
         labels = {}

@@ -267,5 +267,5 @@ def summary_text(code, has_output, tests):
     elif not has_output:
         lines.append("日志为空或仅含空白，请运行会输出断言结果的验证命令。")
     elif tests is None:
-        lines.append("命令有输出，请在确认业务断言后完成场景验收。")
+        lines.append("命令有输出，请核对日志确实验证了本场景的业务预期。")
     return "\n".join(lines)

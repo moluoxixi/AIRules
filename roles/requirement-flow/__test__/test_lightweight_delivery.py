@@ -24,10 +24,10 @@ class LightweightDeliveryTest(unittest.TestCase):
         self.book = self.task_root / "handbook.html"
         self.revision = self.cli("new", "work", "--light", "--request", "门店员保存记录并能重开回显")['revision']
 
-    def raw(self, entry, *args, code=0):
+    def raw(self, entry, *args, code=0, input=None):
         timeout = 60 if args[:1] == ("init",) else 30
         result = subprocess.run([sys.executable, "-B", str(entry), "--project", str(self.project), *map(str, args)],
-                                cwd=self.project, text=True, capture_output=True, timeout=timeout)
+                                cwd=self.project, text=True, capture_output=True, timeout=timeout, input=input)
         self.assertEqual(result.returncode, code, result.stderr or result.stdout)
         return result
 
@@ -226,6 +226,184 @@ finally:
         attempt = self.raw(self.entry, "task", "work", "verify-run", "AC-error", "--rev", self.revision,
                            "--environment", "本机", "--", sys.executable, "-B", "fail.py", code=1)
         self.assertIn("独立诊断", attempt.stderr)
+
+    def test_claim_leaves_card_actions_unclaimed_and_names_the_independent_diagnosis(self):
+        self.code_fixture("save", "值")
+        self.write("fail.py", "assert False, 'still failing'\n")
+        self.patch({"stories": {"S-save": self.story("保存", self.case(), self.case("AC-error"))},
+                    "code_paths": {"AC-save": ["save.py", "test_save.py"], "AC-error": ["save.py", "fail.py"]}})
+        self.implement()
+        for _ in range(2):
+            self.verify("AC-error", "fail.py", code=1)
+        refused = self.raw(self.entry, "task", "work", "verify-run", "AC-error", "--rev", self.revision,
+                           "--environment", "本机", "--", sys.executable, "-B", "fail.py", code=1)
+        self.assertIn("先用 claim", refused.stderr)
+        self.assertIn("原失败执行者以外", refused.stderr)
+        pending = {row["scenario"]: row["next_step"] for row in self.check()["check_suggestions"]}
+        self.assertEqual(pending, {"AC-save": "collect_evidence", "AC-error": "independent_review"})
+
+        # The failing executor follows the instruction to claim: nothing of the cards may be taken.
+        idle = self.cli("task", "work", "claim", "--actor", "tester", "--rev", self.revision)
+        self.revision = idle["revision"]
+        self.assertEqual((idle["claimed"], idle["outcome"], idle["next"]), (None, "not_needed", None))
+        work = json.loads(self.model.read_bytes())["work"]
+        diagnosis = next(key for key, action in work["actions"].items() if action.get("review_for"))
+        self.assertIn(diagnosis, idle["note"])
+        self.assertIn("原失败执行者以外", idle["note"])
+        self.assertFalse([event for event in work["events"] if event["kind"] == "start"])
+        self.assertEqual(self.cli("task", "work", "next", "--actor", "tester")["running"], [])
+        report = self.check()
+        suggestions = {row["scenario"]: row for row in report["check_suggestions"]}
+        # The scenario now waits on its new prerequisite; the added row says who can resolve it.
+        self.assertEqual(suggestions["AC-error"]["next_step"], "resolve_prerequisites")
+        self.assertEqual(suggestions[None]["next_step"], "independent_review")
+        self.assertEqual([row["id"] for row in report["outstanding_actions"]], [diagnosis])
+        start = self.raw(self.entry, "task", "work", "start", "A-light-dev-S-save", "--rev", self.revision,
+                         "--actor", "tester", "--output", "开始", code=1)
+        self.assertIn("轻量故事无需领取", start.stderr)
+
+        # Another card keeps moving, including under the default actor name.
+        passed = self.cli("task", "work", "verify-run", "AC-save", "--rev", self.revision, "--environment", "本机",
+                          "--", sys.executable, "-B", "test_save.py")
+        self.revision = passed["revision"]
+        self.assertEqual((passed["delivery"]["ready_to_deliver"], passed["delivery"]["acceptance"]),
+                         (False, {"passed": 1, "total": 2}))
+
+        taken = self.cli("task", "work", "claim", "--actor", "reviewer", "--rev", self.revision)
+        self.revision = taken["revision"]
+        self.assertEqual(taken["claimed"], diagnosis)
+        done = self.cli("task", "work", "finish", diagnosis, "--rev", self.revision, "--actor", "reviewer",
+                        "--output", "断言失败来自尚未实现的分支", "--evidence", "fail.py:1")
+        self.revision = done["revision"]
+        retried = self.cli("task", "work", "verify-run", "AC-error", "--rev", self.revision, "--actor", "tester",
+                           "--environment", "本机", "--", sys.executable, "-B", "fail.py", code=1)
+        self.revision = retried["revision"]
+        self.assertEqual(retried["delivery"]["check_suggestions"][0]["next_step"], "diagnose_failure")
+
+    def test_capture_receipts_report_delivery_and_do_not_ask_for_a_finished_confirmation(self):
+        self.code_fixture("save", "值")
+        (self.project / ".requirements/rules").mkdir(parents=True, exist_ok=True)
+        self.write(".requirements/rules/index.md", "# 项目业务规则\n")
+        self.patch({"stories": {"S-save": self.story("保存", self.case())},
+                    "code_paths": {"AC-save": ["save.py", "test_save.py"]}})
+        early = self.raw(self.entry, "task", "work", "verify-run", "AC-save", "--rev", self.revision, "--environment", "本机",
+                         "--", sys.executable, "-B", "test_save.py", code=1)
+        self.assertIn("前置条件未满足", early.stderr)
+        self.assertIn("implement", early.stderr)
+        self.implement()
+        receipt = self.verify()
+        self.assertTrue(receipt["delivery"]["ready_to_deliver"])
+        self.assertEqual(receipt["delivery"]["acceptance"], {"passed": 1, "total": 1})
+        # The project's own rules travel with the report instead of a pointer only `context` carried.
+        self.assertEqual(receipt["delivery"]["project_rules"], ".requirements/rules/index.md")
+        self.assertNotIn("完成场景验收", receipt["actual"])
+        self.assertEqual(self.cli("task", "work", "context")["scenarios"][0]["receipts"][0]["reason"],
+                         "已取得有效凭据并计入验收")
+        queued = self.cli("task", "work", "next")
+        self.assertIsNone(queued["review_skill"])
+        # Card actions are never offered as a start packet; only added actions are.
+        self.assertEqual((queued["next"], queued["state"]), (None, "complete"))
+        self.write("fail.py", "assert False, 'regression'\n")
+        failed = self.verify(script="fail.py", code=1)
+        self.assertFalse(failed["delivery"]["ready_to_deliver"])
+        self.assertEqual(failed["delivery"]["check_suggestions"][0]["next_step"], "diagnose_failure")
+
+    def test_added_action_is_named_in_check_suggestions_and_claim_only_takes_it(self):
+        self.code_fixture("save", "值")
+        self.patch({"stories": {"S-save": self.story("保存", self.case())},
+                    "code_paths": {"AC-save": ["save.py", "test_save.py"]}})
+        self.implement()
+        self.verify()
+        idle = self.cli("task", "work", "claim", "--actor", "tester", "--rev", self.revision)
+        self.revision = idle["revision"]
+        self.assertIsNone(idle["claimed"])
+        self.assertIn("已无待办", idle["note"])
+        review = {"actions": {"A-review": {
+            "title": "独立复核保存回显", "kind": "调研", "stories": ["S-save"], "read_stories": ["S-save"],
+            "contracts": [], "decisions": [], "depends_on": [], "done": "核对实现与证据一致", "skill": "flow-review"}}}
+        planned = self.raw(self.entry, "task", "work", "plan", "-", "--rev", self.revision, "--why", "跨层改动需要独立复核",
+                           "--actor", "tester", input=json.dumps(review, ensure_ascii=False))
+        self.revision = int(planned.stdout.strip().rsplit("v", 1)[-1])
+        report = self.check()
+        self.assertFalse(report["ready_to_deliver"])
+        self.assertEqual([row["id"] for row in report["outstanding_actions"]], ["A-review"])
+        self.assertEqual([(row["action"], row["next_step"]) for row in report["check_suggestions"]],
+                         [("A-review", "claim_action")])
+        taken = self.cli("task", "work", "claim", "--actor", "tester", "--rev", self.revision)
+        self.revision = taken["revision"]
+        self.assertEqual(taken["claimed"], "A-review")
+        # Somebody else claiming learns who holds the only outstanding action instead of a generic refusal.
+        other = self.cli("task", "work", "claim", "--actor", "other", "--rev", self.revision)
+        self.revision = other["revision"]
+        self.assertEqual((other["claimed"], other["outcome"]), (None, "not_needed"))
+        self.assertIn("A-review（tester）正由其他执行者处理", other["note"])
+        done = self.cli("task", "work", "finish", "A-review", "--rev", self.revision, "--actor", "tester",
+                        "--output", "实现与回执一致", "--evidence", "E3")
+        self.revision = done["revision"]
+        self.assertTrue(done["delivery"]["ready_to_deliver"])
+
+    def test_new_reports_the_workflow_and_cards_read_standard_input(self):
+        self.assertEqual(self.cli("task", "work", "context")["workflow"], "lightweight")
+        self.assertEqual(self.cli("new", "orchestrated", "--request", "按门店导出")["workflow"], "orchestrated")
+        self.assertEqual(self.cli("task", "orchestrated", "context")["workflow"], "orchestrated")
+        patch = json.dumps({"stories": {"S-save": self.story("保存", self.case())}}, ensure_ascii=False)
+        written = self.raw(self.entry, "task", "work", "cards", "-", "--rev", self.revision, "--why", "标准输入登记",
+                           "--actor", "tester", input=patch)
+        self.revision = json.loads(written.stdout)["revision"]
+        self.assertEqual(json.loads(self.model.read_bytes())["work"]["stories"]["S-save"]["title"], "保存")
+        before = self.model.read_bytes()
+        broken = self.raw(self.entry, "task", "work", "cards", "-", "--rev", self.revision, "--why", "残缺输入",
+                          "--actor", "tester", input="{", code=1)
+        self.assertIn("标准输入不是有效的 JSON", broken.stderr)
+        self.assertEqual(self.model.read_bytes(), before)
+
+    def test_claim_keeps_naming_the_diagnosis_while_taking_another_added_action(self):
+        self.code_fixture("save", "值")
+        self.write("fail.py", "assert False, 'still failing'\n")
+        self.patch({"stories": {"S-save": self.story("保存", self.case(), self.case("AC-error"))},
+                    "code_paths": {"AC-save": ["save.py", "test_save.py"], "AC-error": ["save.py", "fail.py"]}})
+        self.implement()
+        self.verify()
+        for _ in range(2):
+            self.verify("AC-error", "fail.py", code=1)
+        extra = {"actions": {"A-notes": {
+            "title": "补充失败现象记录", "kind": "调研", "stories": ["S-save"], "read_stories": ["S-save"],
+            "contracts": [], "decisions": [], "depends_on": [], "done": "记录失败现象", "skill": "flow-review"}}}
+        planned = self.raw(self.entry, "task", "work", "plan", "-", "--rev", self.revision, "--why", "补一份现象记录",
+                           "--actor", "tester", input=json.dumps(extra, ensure_ascii=False))
+        self.revision = int(planned.stdout.strip().rsplit("v", 1)[-1])
+        taken = self.cli("task", "work", "claim", "--actor", "tester", "--rev", self.revision)
+        self.revision = taken["revision"]
+        self.assertEqual((taken["claimed"], taken["outcome"]), ("A-notes", "claimed"))
+        work = json.loads(self.model.read_bytes())["work"]
+        diagnosis = next(key for key, action in work["actions"].items() if action.get("review_for"))
+        self.assertIn("独立诊断 " + diagnosis, taken["note"])
+        self.assertIn("原失败执行者以外", taken["note"])
+        self.assertNotIn("轻量故事无需领取", taken["note"])
+        # The holder is told to finish; somebody else is told whose action it is.
+        steps = {(row["action"], row["next_step"]) for row in self.check()["check_suggestions"]}
+        self.assertIn(("A-notes", "finish_action"), steps)
+        self.assertIn((diagnosis, "independent_review"), steps)
+        seen = self.cli("task", "work", "delivery-check", "--actor", "other", code=1)
+        self.assertIn(("A-notes", "coordinate_with_holder"),
+                      {(row["action"], row["next_step"]) for row in seen["check_suggestions"]})
+
+    def test_claim_note_follows_card_progress_instead_of_internal_actions(self):
+        self.code_fixture("save", "值")
+        self.patch({"stories": {"S-save": self.story("保存", self.case())},
+                    "code_paths": {"AC-save": ["save.py", "test_save.py"]}})
+        first = self.cli("task", "work", "claim", "--actor", "tester", "--rev", self.revision)
+        self.revision = first["revision"]
+        self.assertEqual((first["claimed"], first["outcome"]), (None, "not_needed"))
+        self.assertIn("按场景 ID 调用 verify-run", first["note"])
+        self.assertNotIn("后加的动作", first["note"])
+        self.implement()
+        second = self.cli("task", "work", "claim", "--actor", "tester", "--rev", self.revision)
+        self.revision = second["revision"]
+        self.assertEqual((second["claimed"], second["outcome"]), (None, "not_needed"))
+        self.assertIn("按场景 ID 调用 verify-run", second["note"])
+        self.assertNotIn("先用 cards", second["note"])
+        self.assertTrue(self.verify()["delivery"]["ready_to_deliver"])
 
 
 if __name__ == "__main__":

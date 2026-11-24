@@ -1,8 +1,8 @@
 # 计划与证据
 
-[轻量交付](lightweight.md)使用故事和场景 ID 完成登记与验收；本页记录原编排的动作、证据和扩展字段。两种路径共享 `delivery-check`，以当前有效凭据判断是否可交付。
+[轻量交付](lightweight.md)使用故事和场景 ID 完成登记与验收；本页记录原编排的动作、证据和扩展字段，领取、交接和子代理派发见[动作编排](orchestration.md)。两种路径共享 `delivery-check`，以当前有效凭据判断是否可交付。
 
-项目工具位于 `.agents/skills/requirement-flow/flow.py`。用 `task <需求ID> context [故事ID]` 读取当前版次、故事、契约、决定和场景验收情况。`plan` 接受 UTF-8 JSON，仅提交要改的栏目，按 ID 修改单条记录时传入该条完整对象。每次写入使用刚读到的 `revision`，发生冲突时重新读取相关记录。
+项目工具位于 `.agents/skills/requirement-flow/flow.py`。用 `task <需求ID> context [故事ID]` 读取当前版次、故事、契约、决定和场景验收情况。`plan` 接受 UTF-8 JSON，仅提交要改的栏目，按 ID 修改单条记录时传入该条完整对象；文件名填 `-` 时从标准输入读取。每次写入使用刚读到的 `revision`，发生冲突时重新读取相关记录。
 
 不同场景可以并行采集，工具按最新需求版次分别登记回执。如果采集期间该动作被交接、同一场景已有新记录，或关联代码、输入发生变化，先核对新状态再采集。
 
@@ -14,7 +14,7 @@
 | `actions` | `title`、`kind`（调研、开发、验证）、`stories`、`read_stories`、`contracts`、`decisions`、`depends_on`、`done`。无对应关系时填空数组。`read_stories` 表示哪些故事改动会影响该动作产出。 |
 | `lessons` | `observation`、`when`、`practice`、`boundary`、`evidence`、`review`。确认有复用价值后，将适用条件、边界和依据写入当前需求。 |
 
-动作或依赖边可加 `when: {"decision":"D-range","is":"all"}` 指定生效条件。接口调研用 `closes_contracts` 声明负责确认的契约。调度默认依动作分配专项工作方法；需要时用动作的 `skill` 指定五个专项之一。`next` 返回建议动作的 `skill`，待复核的交付还可返回 `review_skill`。
+动作或依赖边可加 `when: {"decision":"D-range","is":"all"}` 指定生效条件。接口调研用 `closes_contracts` 声明负责确认的契约。调度默认依动作分配专项工作方法；需要时用动作的 `skill` 指定五个专项之一。`next` 返回建议动作的 `skill`，待复核的交付还可返回 `review_skill`；轻量需求完成后不提示复核。
 
 一个决定仅供已跳过分支使用时，普通归档可以完成。重新选择该分支后，尚未回答的决定会回到待办。独立于动作的决定，以及当前动作使用的决定，继续等待业务确认。
 

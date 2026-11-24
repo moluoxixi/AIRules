@@ -126,7 +126,11 @@ class CodeInputsTest(unittest.TestCase):
             return json.loads(result.stdout)
 
         self.collect()
+        # An orchestrated capture is counted already, but its verification still awaits `finish`.
+        reasons = lambda: [r["reason"] for r in json.loads(self.cli("task", "save", "context").stdout)["scenarios"][0]["receipts"]]
+        self.assertEqual(reasons(), ["已取得有效凭据，等待完成验证动作"])
         self.write("finish", "A-check", "--output", "保存通过")
+        self.assertEqual(reasons(), ["已取得有效凭据，等待完成验证动作"])
         self.cli("task", "save", "verify-run", "A-search", "--scenario", "AC-search", "--actor", "tester",
                  "--environment", "真实本机代码", "--rev", self.queue()["revision"], "--", sys.executable, "-B", "check_search.py")
         self.write("finish", "A-search", "--output", "搜索通过")

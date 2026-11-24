@@ -19,7 +19,7 @@ from evidence import linked
 
 SKILLS = Path(".agents/skills")
 ROLE = "requirement-flow"
-ROLE_VERSION = "0.12.0"
+ROLE_VERSION = "0.12.1"
 SPECIALISTS = ("flow-requirements", "flow-contracts", "flow-implement", "flow-verify", "flow-review")
 SKILL = SKILLS / ROLE
 MANIFEST = Path(".requirements/installation.json")
@@ -28,7 +28,8 @@ ATTRIBUTES = Path(".requirements/.gitattributes")
 EVIDENCE_ATTRIBUTES = (b"active/*/evidence/** -text", b"archive/*/evidence/** -text")
 LOCAL_PATTERNS = (b".receipt-key", b".receipt-key-*", b".workflow.lock", b".capture-*/", b".install-*/", b".model.json.*", b".handbook.html.*", b".basic-memory/")
 ARCHIVE = Path(".requirements/migrations/moluoxixi")
-ROOT_FILES = {"SKILL.md", "flow.py", "install_project.py", "references/model.md", "references/lightweight.md", "agents/openai.yaml"}
+ROOT_FILES = {"SKILL.md", "flow.py", "install_project.py", "references/model.md", "references/lightweight.md",
+              "references/orchestration.md", "agents/openai.yaml"}
 TEXT_SUFFIXES = {".md", ".py", ".html", ".js", ".css", ".json", ".yaml"}
 RUNTIME_FILES = {"basic_memory.py", "catalog-landscape.jpg", "catalog-landscape-night.jpg", "catalog.html", "catalog_server.py", "code_inputs.py", "dagre.min.js", "evidence.py", "graph-ink-wash.png", "graph_view.py", "knowledge.py", "lesson_retirement.py",
                  "layout.html", "map.js", "protocol.json", "run_result.py", "source_paths.py", "story_scope.py", "sync.py", "task_locations.py", "theme.css", "theme.js", "tooltip.js"}
@@ -43,9 +44,9 @@ HOOK_FILES = {"inject-workflow-state.py", "inject-subagent-context.py", "session
 LEGACY_CONFIG_SHA256 = "47f8e045d9b1b001b0729a1a86a24f9f269d837df70a46c8bf773ac89cbce3b1"
 MARK = "REQUIREMENT-FLOW"
 BLOCK = """<!-- REQUIREMENT-FLOW:START -->
-## 需求全景图
+## 需求编排
 
-收到新需求，或需要梳理、开发、验证、继续已有需求时，使用项目 skill `.agents/skills/requirement-flow/SKILL.md`。先用项目内的 `flow.py list` 查看已有需求。围绕用户当前授权的功能点推进，把接口、关键处理和验证证据写入该需求。人读页面和 AI 记录均在 `.requirements/` 下。
+新增或续做会改变行为的需求、调整范围、验收交付时，使用项目 skill `.agents/skills/requirement-flow/SKILL.md`：默认轻量交付，建故事卡、登记实现、按场景采证；采证回执自带交付报告，`delivery-check` 可随时重查，`ready_to_deliver: true` 才算完成。先用项目内的 `flow.py list` 找已有需求。不改行为的修改（错别字、格式化、纯重构、依赖升级）和纯问答不建需求。人读页面和 AI 记录均在 `.requirements/` 下。
 <!-- REQUIREMENT-FLOW:END -->"""
 
 
