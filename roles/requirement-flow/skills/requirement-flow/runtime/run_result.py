@@ -4,54 +4,193 @@ import ntpath
 import re
 
 
+# Advance when summary interpretation changes. Private raw logs cannot be
+# reconstructed later, so acceptance must distinguish their collection policy.
+SUMMARY_POLICY = "runner-summary-v3"
 ANSI = re.compile(r"\x1b\[[0-?]*[ -/]*[@-~]")
 UNITTEST = re.compile(r"^Ran (\d+) tests? in [\d.]+s[ \t\r]*\n\s*(OK|FAILED)(?: \(([^)]+)\))?[ \t\r]*$", re.M)
 TESTS_LINE = re.compile(r"^\s*Tests\s*:?\s+([^\n]+)$", re.M)
+SUITES_LINE = re.compile(r"^\s*Test (?:Files|Suites)\s*:?\s+([^\n]+)$")
+# Empty or numeric bodies identify incomplete headers; prose such as
+# "Test Suites: selection of ..." remains an ordinary diagnostic.
+PARTIAL_JS = re.compile(r"^\s*(?:Tests|Test (?:Files|Suites))(?:(?:\s*:\s*|\s+)[+-]?\d.*|\s*:?\s*)$")
+PARTIAL_RAN = re.compile(r"^Ran ([+-]?\d+) tests?(?: in\b.*)?$")
+PARTIAL_NODE = re.compile(r"^[#ℹ]\s+tests(?:\s+[+-]?\d.*|\s*)$")
 COUNTS = re.compile(r"(\d+)\s+(passed|failed|errors?|skipped|todo|pending|xfailed|deselected)\b", re.I)
+PYTEST_WARNINGS = re.compile(r"(\d+)\s+(warnings?)\b", re.I)
+PYTEST_XPASSED = re.compile(r"(\d+)\s+(xpassed)\b", re.I)
 PYTEST = re.compile(r"^=*\s*((?:\d+ [a-z]+(?:,\s*|\s+))+|no tests ran\s+)in [\d.]+s\s*=*\s*$", re.M | re.I)
-NODE = re.compile(r"^[#ℹ]\s+tests\s+(\d+)\s*$", re.M)
+NODE = re.compile(r"^([#ℹ])\s+(tests|suites|pass|fail|cancelled|skipped|todo|duration_ms)\s+(\d+(?:\.\d+)?)\s*$")
+RAN = re.compile(r"^Ran (\d+) tests? in ([\d.]+)s\s*$")
+VERDICT = re.compile(r"^(OK|FAILED)(?: \(([^)]+)\))?\s*$")
+UNIT_COUNTS = re.compile(r"(failures|errors|skipped|expected failures|unexpected successes)=(\d+)")
+UNIT_DETAILS = re.compile(rf"{UNIT_COUNTS.pattern}(?:,\s*{UNIT_COUNTS.pattern})*")
+
+
+def count_summary(summary, runner):
+    summary = summary.strip()
+    matches = list(COUNTS.finditer(summary))
+    if runner == "pytest":
+        # Warnings are metadata; non-strict XPASS counts an executed assertion.
+        # Strict XPASS is still vetoed by pytest's failure count / command exit.
+        matches = sorted(matches + list(PYTEST_WARNINGS.finditer(summary)) +
+                         list(PYTEST_XPASSED.finditer(summary)), key=lambda match: match.start())
+    counts = {}
+    invalid = False
+    end = 0
+    for match in matches:
+        number, kind = match.groups()
+        kind = kind.lower()
+        gap = summary[end:match.start()]
+        invalid |= not (gap.isspace() or gap.strip() in (",", "|")) if end else bool(gap)
+        invalid |= kind in counts
+        counts[kind] = counts.get(kind, 0) + int(number)
+        end = match.end()
+    total = sum(n for kind, n in counts.items() if kind not in ("warning", "warnings"))
+    if not counts:
+        invalid = not bool(re.fullmatch(r"0 total|no tests ran", summary, re.I))
+        return {"runner": runner, "total": 0, "skipped": 0, **({"invalid": True} if invalid else {})}
+    # Every character must belong to a count, separator or single declared total.
+    declared = re.fullmatch(r"(?:,\s*(\d+)\s+total|\((\d+)\))?", summary[end:].strip())
+    invalid |= declared is None
+    if declared and (declared[1] or declared[2]):
+        invalid |= int(declared[1] or declared[2]) != total
+    return {"runner": runner, "total": total,
+            "skipped": sum(counts.get(k, 0) for k in ("skipped", "todo", "pending", "deselected")),
+            "expected_failures": counts.get("xfailed", 0),
+            "failed": sum(counts.get(k, 0) for k in ("failed", "error", "errors")),
+            **({"invalid": True} if invalid else {})}
 
 
 def test_summary(raw):
-    """Runner names and counts are safe to include in a shareable receipt."""
-    raw.seek(0, 2)
-    end = raw.tell()
-    # The large body may contain assertion diagnostics. The summary is at the end.
-    raw.seek(max(0, end - 256 * 1024))
-    text = ANSI.sub("", raw.read().decode("utf-8", "replace"))
-    suites = list(UNITTEST.finditer(text))
-    if suites:
-        total = sum(int(match[1]) for match in suites)
-        skipped = sum(int(count) for match in suites for count in re.findall(r"skipped=(\d+)", match[3] or ""))
-        expected = sum(int(count) for match in suites for count in re.findall(r"expected failures=(\d+)", match[3] or ""))
-        failed = sum(int(count) for match in suites for count in re.findall(
-            r"(?:^|, )(?:failures|errors|unexpected successes)=(\d+)", match[3] or ""))
-        if not failed and any(match[2] == "FAILED" for match in suites):
-            failed = 1
-        return {"runner": "unittest", "total": total, "skipped": skipped, "expected_failures": expected,
-                "failed": failed}
-    match = NODE.search(text)
-    if match and re.search(r"^[#ℹ]\s+pass\s+\d+\s*$", text, re.M):
-        skipped = sum(int(x) for x in re.findall(r"^[#ℹ]\s+(?:skipped|todo)\s+(\d+)\s*$", text, re.M))
-        failure = re.search(r"^[#ℹ]\s+fail\s+(\d+)\s*$", text, re.M)
-        return {"runner": "node:test", "total": int(match[1]), "skipped": skipped,
-                "failed": int(failure[1]) if failure else 0}
-    for pattern, runner in ((TESTS_LINE, "JavaScript"), (PYTEST, "pytest")):
-        matches = list(pattern.finditer(text))
-        if not matches:
+    """Scan the whole log, retaining only recognized summary blocks, never diagnostics."""
+    raw.seek(0)
+    blocks = []
+    node = None
+    ran = None
+    scan_incomplete = False
+
+    def finish_node():
+        nonlocal node
+        if node is None:
+            return
+        counts = node[1]
+        required = {"tests", "pass", "fail", "skipped", "todo"}
+        invalid = node[2] or not required <= counts.keys()
+        invalid |= counts.get("tests", 0) != sum(counts.get(k, 0) for k in
+                                                  ("pass", "fail", "cancelled", "skipped", "todo"))
+        blocks.append({"runner": "node:test", "total": counts["tests"],
+                       "skipped": counts.get("skipped", 0) + counts.get("todo", 0),
+                       "failed": counts.get("fail", 0) + counts.get("cancelled", 0),
+                       **({"invalid": True} if invalid else {})})
+        node = None
+
+    def finish_ran(verdict=None):
+        nonlocal ran
+        if ran is None:
+            return
+        counts = {}
+        invalid = verdict is None or not ran[1] or ran[2]
+        if verdict is not None:
+            details = verdict[2] or ""
+            invalid |= bool(details) and UNIT_DETAILS.fullmatch(details) is None
+            for kind, number in UNIT_COUNTS.findall(details):
+                invalid |= kind in counts
+                counts[kind] = counts.get(kind, 0) + int(number)
+            invalid |= verdict[1] == "OK" and any(k in counts for k in
+                                                  ("failures", "errors", "unexpected successes"))
+            invalid |= sum(counts.values()) > ran[0]
+        failed = sum(counts.get(k, 0) for k in ("failures", "errors", "unexpected successes"))
+        blocks.append({"runner": "unittest", "total": ran[0], "skipped": counts.get("skipped", 0),
+                       "expected_failures": counts.get("expected failures", 0),
+                       "failed": max(failed, int(verdict is not None and verdict[1] == "FAILED")),
+                       **({"invalid": True} if invalid else {})})
+        ran = None
+
+    # readline's bound avoids retaining an arbitrarily large assertion body. If a
+    # line is truncated, report that limitation rather than claiming full coverage.
+    limit = 256 * 1024
+    while True:
+        line = raw.readline(limit + 1)
+        if not line:
+            break
+        if len(line) > limit:
+            scan_incomplete = True
+            while line and not line.endswith(b"\n"):
+                line = raw.readline(limit + 1)
+            finish_node()
+            finish_ran()
             continue
-        summary = matches[-1][1]
-        counts = {kind.lower(): int(n) for n, kind in COUNTS.findall(summary)}
-        if counts:
-            total = sum(counts.values())
-            skipped = sum(counts.get(k, 0) for k in ("skipped", "todo", "pending", "deselected"))
-            return {"runner": runner, "total": total, "skipped": skipped, "expected_failures": counts.get("xfailed", 0),
-                    "failed": sum(counts.get(k, 0) for k in ("failed", "error", "errors"))}
-        if "no tests ran" in summary.lower() or re.search(r"\b0 total\b", summary):
-            return {"runner": runner, "total": 0, "skipped": 0}
-    if re.search(r"^(?:No test files found|No tests found)(?:\s|,|$)", text, re.M):
-        return {"runner": "JavaScript", "total": 0, "skipped": 0}
-    return None
+        text = ANSI.sub("", line.decode("utf-8", "replace")).strip("\r\n")
+        if ran is not None:
+            if not text.strip():
+                ran[1] = True
+                continue
+            verdict = VERDICT.fullmatch(text.strip())
+            if verdict:
+                finish_ran(verdict)
+                continue
+            # Any nonblank interruption (including another runner/header) closes
+            # this block as invalid before the new line is considered independently.
+            finish_ran()
+        match = NODE.fullmatch(text.strip())
+        if node is not None and (not match or match[2] == "tests" or match[1] != node[0]):
+            finish_node()
+        if match:
+            prefix, kind, number = match.groups()
+            if kind == "tests":
+                node = [prefix, {"tests": int(number.split(".")[0])}, "." in number]
+            elif node is not None:
+                node[2] |= kind in node[1] or (kind != "duration_ms" and "." in number)
+                node[1][kind] = float(number) if kind == "duration_ms" else int(number.split(".")[0])
+            continue
+        start = RAN.fullmatch(text.strip())
+        if start:
+            ran = [int(start[1]), False, re.fullmatch(r"\d+(?:\.\d+)?", start[2]) is None]
+            continue
+        for pattern, runner in ((SUITES_LINE, "JavaScript"), (TESTS_LINE, "JavaScript"), (PYTEST, "pytest")):
+            match = pattern.fullmatch(text)
+            if match and (COUNTS.match(match[1].strip()) or match[1].lower().startswith("no tests ran")
+                          or re.match(r"\d+ total\b", match[1].strip())
+                          or (pattern is PYTEST and PYTEST_XPASSED.match(match[1].strip()))):
+                block = count_summary(match[1], runner)
+                if pattern is SUITES_LINE:
+                    # File/suite failures veto the run independently; their counts
+                    # are never test counts and their success cannot prove execution.
+                    block = {"runner": runner, "total": 0, "skipped": 0, "failed": block.get("failed", 0),
+                             "suite": True, **({"invalid": True} if block.get("invalid") else {})}
+                blocks.append(block)
+                break
+        else:
+            partial_ran = PARTIAL_RAN.fullmatch(text.strip())
+            if PARTIAL_JS.fullmatch(text):
+                blocks.append({"runner": "JavaScript", "total": 0, "skipped": 0, "invalid": True})
+            elif partial_ran:
+                blocks.append({"runner": "unittest", "total": max(0, int(partial_ran[1])), "skipped": 0, "invalid": True})
+            elif PARTIAL_NODE.fullmatch(text.strip()):
+                blocks.append({"runner": "node:test", "total": 0, "skipped": 0, "invalid": True})
+            elif re.match(r"^(?:No test files found|No tests found)(?:\s|,|$)", text):
+                blocks.append({"runner": "JavaScript", "total": 0, "skipped": 0})
+    finish_node()
+    finish_ran()
+    if not blocks and not scan_incomplete:
+        return None
+    runners = list(dict.fromkeys(block["runner"] for block in blocks))
+    result = {"runner": runners[0] if len(runners) == 1 else "mixed" if runners else "unknown",
+              **{key: sum(block.get(key, 0) for block in blocks)
+                 for key in ("total", "skipped", "expected_failures", "failed")
+                 if key in ("total", "skipped") or any(key in block for block in blocks)}}
+    if any(block.get("invalid") for block in blocks):
+        result["invalid"] = True
+    test_blocks = [block for block in blocks if not block.get("suite")]
+    if len(test_blocks) > 1 and any(block["total"] <= block["skipped"] + block.get("expected_failures", 0)
+                                    for block in test_blocks):
+        result["insufficient"] = True
+    if scan_incomplete:
+        result["scan_incomplete"] = True
+    if len(runners) > 1:
+        result["runners"] = runners
+    return result
 
 
 def insufficient_tests(summary):
@@ -59,7 +198,11 @@ def insufficient_tests(summary):
         return ""
     if summary.get("failed"):
         return "测试运行器报告失败，需要修复后重新验收。"
-    if summary["total"] <= summary["skipped"] + summary.get("expected_failures", 0):
+    if summary.get("scan_incomplete"):
+        return "日志含超长行，摘要扫描已截断，不能确认全部运行结果，请重新验收。"
+    if summary.get("invalid"):
+        return "测试运行器摘要不完整或计数冲突，请重新验收。"
+    if summary.get("insufficient") or summary["total"] <= summary["skipped"] + summary.get("expected_failures", 0):
         return "没有实际通过的测试，请检查发现规则、跳过条件和预期失败后重新验收。"
     return ""
 

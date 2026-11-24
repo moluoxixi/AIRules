@@ -58,6 +58,7 @@
   const picks = new Set()
   const chipButtons = new Map()
   const decisionNotes = new Map()
+  const decisionSubmissions = new Map()
   const restored = csrf && history.state?.flowReader
   function savedReading() {
     if (restored?.work !== work.id)
@@ -75,6 +76,7 @@
   const resume = savedReading()
   let confirmingSession = Boolean(resume)
   let updatePending = false
+  let decisionUnconfirmed = false
   let reloading = false
   let viewPreference = null
   let chainNodes = new Map()
@@ -211,7 +213,8 @@
       const family = isRequest ? display : n.mono ? mono : font
       const labels = linesOf(n.title, width - 2 * inset, 2, size, 700, family)
       const lineHeight = isRequest ? 23 : 20
-      const height = (n.progress?.total ? 66 : 54) + lineHeight * Math.max(0, labels.length - 1)
+      const captions = n.kind === 'story' ? 2 : n.caption ? (n.sharedNote ? 2 : 1) : n.sharedNote ? 1 : 0
+      const height = (n.progress?.total ? 66 : 54) + captions * 15 + lineHeight * Math.max(0, labels.length - 1)
       boxes.set(n.id, { width, height, size, inset, labels, lineHeight })
     }
     layouts.clear()
@@ -571,6 +574,41 @@
     const goal = work.stories[n.id]?.goal?.trim()
     return goal && goal !== n.title.trim() ? goal : ''
   }
+  function isStoryWithdrawn(key) {
+    return (queue.progress?.withdrawn_stories || []).includes(key)
+  }
+  function storyQueue(key) {
+    return queue.story_queues?.[key] || { actions: [], pending_decisions: [] }
+  }
+  function storyNext(key) {
+    if (isStoryWithdrawn(key))
+      return '本期已撤出 · 保留原范围与依据'
+    const scope = storyQueue(key)
+    const ids = new Set(scope.actions)
+    const [decision] = scope.pending_decisions
+    if (decision)
+      return `待决定 · ${work.decisions[decision].title}`
+    const blocker = (queue.technical_blockers || []).find(item => item.kind !== 'dependency' && item.actions?.some(id => ids.has(id)))
+    if (blocker)
+      return `待处理 · ${blocker.title}`
+    const cases = (queue.scenarios || []).filter(ex => ex.story === key)
+    if (cases.some(ex => ex.status === 'failed'))
+      return '下一步 · 跟进未通过场景'
+    if (cases.some(ex => ex.status === 'stale'))
+      return '下一步 · 按当前输入补验'
+    const running = (queue.running || []).find(item => ids.has(item.id))
+    if (running)
+      return `进行中 · ${running.title}`
+    const ready = (queue.ready || []).find(id => ids.has(id))
+    if (ready)
+      return `下一步 · ${work.actions[ready].title}`
+    const pending = [...ids].find(id => !['done', 'skipped'].includes(states[id].state))
+    if (pending)
+      return states[pending].reasons[0] || `${activeName[states[pending].state]} · ${work.actions[pending].title}`
+    if (cases.length && cases.every(ex => ex.status === 'passed'))
+      return '本故事验收通过 · 不代表需求已交付'
+    return cases.length ? '下一步 · 补齐场景验收' : '验收场景待登记'
+  }
   function cardState(n) {
     const label = String(n.state ?? '').trim()
     if (!label)
@@ -582,7 +620,7 @@
       if (progress.stale)
         return { label: '需补验', tone: 'amber' }
       if (progress.passed === progress.total)
-        return { label: '全部通过', tone: 'teal' }
+        return { label: '本故事通过', tone: 'teal' }
       return { label: progress.passed ? '部分通过' : '待验收', tone: 'muted' }
     }
     if (['待你决定', '待核对', '需复核', '待验'].includes(label) || (n.kind === 'verify' && n.activity === 'ready'))
@@ -601,7 +639,7 @@
         'class': 'map-node',
         'role': 'button',
         'tabindex': '0',
-        'aria-label': [n.label, n.title, n.state, n.sharedNote].filter(Boolean).join('，'),
+        'aria-label': [n.label, n.title, n.state, n.caption, n.kind === 'story' && storyNext(n.id), n.sharedNote].filter(Boolean).join('，'),
         'aria-haspopup': 'dialog',
         'aria-controls': 'inspector',
         'aria-expanded': 'false',
@@ -613,7 +651,7 @@
     window.FlowTooltip.bind(g, () => ({
       title: n.title,
       summary: n.kind === 'story' ? storySummary(n) : n.caption,
-      rows: [[n.label, n.state], ['关联', n.sharedNote]],
+      rows: [[n.label, n.state], ['当前待办', n.kind === 'story' ? storyNext(n.id) : ''], ['关联', n.sharedNote]],
     }))
     const x = -b.width / 2
     const y = -b.height / 2
@@ -707,6 +745,19 @@
         label,
       ),
     )
+    const captions = n.kind === 'story'
+      ? [storySummary(n), storyNext(n.id)]
+      : [n.caption, n.sharedNote].filter(Boolean)
+    captions.forEach((caption, index) => {
+      const [line] = linesOf(caption, right - left, 1, 11, 400)
+      svg('text', {
+        'x': left,
+        'y': titleBaseline + (b.labels.length - 1) * b.lineHeight + 16 + index * 15,
+        'class': 'n-caption',
+        'font-size': 11,
+        'fill': paint('muted'),
+      }, g, line || '')
+    })
     const progress = n.progress
     if (progress?.total) {
       const fraction = `${progress.passed} / ${progress.total}`
@@ -1232,6 +1283,8 @@
     if (activeSource?.entry !== entry)
       return
     const { name, ref, location, error } = entry
+    const scroll = sourceBody.scrollTop
+    const restoreRefreshFocus = document.activeElement?.classList.contains('source-reread')
     sourceBody.replaceChildren()
     html('h2', sourceBody, name.replace(/:\d.*$/u, '')).id = 'source-title'
     html('p', sourceBody, ref, 'source-reader-path')
@@ -1246,8 +1299,21 @@
     copy.type = 'button'
     copy.setAttribute('aria-live', 'polite')
     copy.onclick = () => copySource(copy, entry.copyRef, sourceBody)
+    if (csrf) {
+      const refresh = html('button', tools, entry.loading ? '正在读取…' : '重新读取原文', 'source-reread')
+      refresh.type = 'button'
+      refresh.disabled = Boolean(error?.denied)
+      refresh.setAttribute('aria-disabled', String(Boolean(entry.loading || error?.denied)))
+      refresh.onclick = () => entry.load(true)
+      if (restoreRefreshFocus && !refresh.disabled)
+        refresh.focus({ preventScroll: true })
+    }
+    if (entry.readAt)
+      html('p', sourceBody, `片段读取时间 · ${new Date(entry.readAt).toLocaleString()}`, 'source-read-time')
+    if (location && (error || entry.loading))
+      html('p', sourceBody, entry.loading ? '正在读取当前原文，暂时保留上次片段…' : `${error.message} 原文未更新，仍显示上次读取片段。`, 'source-reader-status').setAttribute('role', 'status')
     if (!location) {
-      const message = error?.message || (csrf ? '正在读取原文…' : '离线页仅保留文件引用，可在本机需求图查看原文。')
+      const message = error?.message || (csrf ? '正在读取原文…' : '离线页不可获取当前原文，仅保留文件引用；可在本机需求图重新读取。')
       const status = html('p', sourceBody, message, 'source-reader-status')
       status.setAttribute('role', 'status')
       if (error?.retry) {
@@ -1272,6 +1338,7 @@
       html('span', codeLine, number, 'source-line-number')
       html('span', codeLine, content)
     }
+    sourceBody.scrollTop = scroll
     revealSourceLine()
   }
 
@@ -1340,20 +1407,28 @@
     copy.onclick = () => copySource(copy, entry.copyRef, file)
     if (!csrf)
       return
-    let loading = false
-    async function load() {
-      if (!group.open || loading || entry.location || entry.error?.denied)
+    async function load(force = false) {
+      const reread = force === true
+      if ((!group.open && !reread) || entry.loading || (entry.location && !reread) || entry.error?.denied)
         return
-      loading = true
+      entry.loading = true
       entry.error = null
       file.querySelector('.source-unavailable')?.remove()
       drawSourceReader(entry)
       let status
+      let timedOut = false
+      const controller = new AbortController()
+      // One entry-local deadline covers both response headers and the JSON body.
+      const timeout = setTimeout(() => {
+        timedOut = true
+        controller.abort()
+      }, 15000)
       try {
         const reply = await fetch(`./source-location?${new URLSearchParams({ ref })}`, {
           headers: { 'X-Requirement-Flow': csrf },
           cache: 'no-store',
           redirect: 'error',
+          signal: controller.signal,
         })
         status = reply.status
         if (status === 409) {
@@ -1363,6 +1438,8 @@
         if (!reply.ok)
           throw new Error('Source request failed')
         const result = await reply.json()
+        if (controller.signal.aborted)
+          throw new Error('Source read timed out')
         const { editors, preview, path } = result
         confirmingSession = false
         if (typeof path === 'string' && path) {
@@ -1388,7 +1465,10 @@
           file.querySelector('summary').replaceChildren(link)
           entry.editorLink = link
         }
+        entry.previewButton?.remove()
+        entry.previewButton = null
         if (preview?.lines?.length && Number.isSafeInteger(preview.startLine)) {
+          entry.readAt = new Date().toISOString()
           const open = html('button', null, '预览', 'source-preview-trigger')
           open.type = 'button'
           open.title = `预览 ${name} 附近的原文`
@@ -1408,17 +1488,20 @@
           ? '当前工作区无法定位此文件或引用行，可复制引用。'
           : denied
             ? '当前页面无权读取本地文件，请从本机需求页打开。'
-            : '暂时无法连接文件服务。'
+            : timedOut
+              ? '读取原文超时，请重试。'
+              : '暂时无法连接文件服务。'
         entry.error = { message, denied, retry: !denied }
         const warning = html('p', file, message, 'source-unavailable')
         if (!missing && !denied) {
           const retry = html('button', warning, '重试', 'link-button')
           retry.type = 'button'
-          retry.onclick = load
+          retry.onclick = () => load(true)
         }
       }
       finally {
-        loading = false
+        clearTimeout(timeout)
+        entry.loading = false
         drawSourceReader(entry)
       }
     }
@@ -1623,16 +1706,44 @@
         enterDrawer({ nodes: [...readerRoute.nodes, dest] }, btn)
     }
   }
+  function storyLinks(parent, ids, title, { expand = false } = {}) {
+    if (!ids.length)
+      return
+    const group = section(title, parent)
+    group.classList.add('story-links')
+    for (const id of ids) {
+      const button = html('button', group, `${expand && !visibleStories.includes(id) ? '加入筛选并查看 · ' : ''}${work.stories[id].title}`, 'link-button')
+      button.type = 'button'
+      button.dataset.dest = id
+      button.onclick = () => {
+        if (!expand || visibleStories.includes(id)) {
+          enterDrawer({ nodes: [...readerRoute.nodes, id] }, button)
+          return
+        }
+        rememberDrawer(button)
+        const next = { nodes: [...readerRoute.nodes, id] }
+        const url = new URL(location.href)
+        url.searchParams.delete('q')
+        url.searchParams.set('features', storyIds.filter(key => visibleStories.includes(key) || key === id).join(','))
+        url.searchParams.set('view', 'detail')
+        url.hash = routeHash(next)
+        history.pushState({ drawerParent: routeHash(readerRoute), drawerSteps: (history.state?.drawerSteps || 0) + 1 }, '', url)
+        readFilters()
+        refreshFeatures(false)
+        applyRoute(next)
+      }
+    }
+  }
   function related(parent, ids, title = '图中关联') {
     const destinations = [...new Set(ids.map(id => graph.aliases[id] || id))].filter(
-      id => id !== selected && chainNodes.has(id),
+      id => id !== selected && chainNodes.has(id) && (!work.stories[id] || visibleStories.includes(id)),
     )
     if (destinations.length) {
       const group = disclosure(parent, `${title}（${destinations.length}）`)
       for (const id of destinations) jump(group, id)
     }
   }
-  function showQueue(parent, actionIds, nodeIds) {
+  function showQueue(parent, actionIds, decisionIds) {
     const rows = []
     for (const item of queue.running) {
       if (actionIds.has(item.id))
@@ -1642,10 +1753,8 @@
       if (actionIds.has(id))
         rows.push([id, '可以开始', work.actions[id].title])
     }
-    for (const item of queue.pending_decisions) {
-      if (nodeIds.has(item.id))
-        rows.push([item.id, '待决定', item.title])
-    }
+    for (const id of decisionIds)
+      rows.push([id, '待决定', work.decisions[id].title])
     for (const item of queue.technical_blockers) {
       if (item.kind === 'contract' && item.actions.some(id => actionIds.has(id)))
         rows.push([item.id, '待核对接口', item.title])
@@ -1658,7 +1767,7 @@
     }
     if (!rows.length)
       return
-    const group = disclosure(parent, `待办工作（${rows.length}）`)
+    const group = section(`待办工作（${rows.length}）`, parent)
     for (const [id, status, title] of rows) {
       const row = html('div', group, null, 'record queue-item')
       html('span', row, status, 'dim')
@@ -1745,6 +1854,16 @@
     }
   }
   function showLessons(parent, storyIds, { all = false } = {}) {
+    if (queue.knowledge_warnings?.length) {
+      const warning = section('经验提示', parent)
+      warning.classList.add('knowledge-warning')
+      html('p', warning, '经验账本不完整，已暂停经验推荐；不影响开发推进。').setAttribute('role', 'status')
+      const messages = queue.knowledge_warnings.map(item => typeof item === 'string'
+        ? item
+        : [item.task, item.reason].filter(Boolean).join(' · ')).filter(Boolean)
+      if (messages.length)
+        list(warning, messages)
+    }
     const inScope = id => all || storyIds.includes(id)
     const adopted = (queue.adopted_lessons || []).filter(card => inScope(card.adoption.story))
     const own = (queue.lesson_cards || []).filter(card => all || card.sources.some(source => inScope(source.story)))
@@ -1864,10 +1983,10 @@
       }
     }
   }
-  function showScenarios(parent, cases) {
+  function showScenarios(parent, cases, title = '验收结果', showOwner = false) {
     if (!cases.length)
       return
-    const report = section('验收结果', parent)
+    const report = section(title, parent)
     report.classList.add('acceptance-report')
     for (const [kind, heading] of [['open', '待跟进'], ['passed', '已验证']]) {
       const rows = cases.filter(ex => (ex.status === 'passed') === (kind === 'passed'))
@@ -1880,6 +1999,9 @@
       for (const ex of rows) {
         const row = html('div', group, null, 'case-row')
         row.dataset.status = ex.status
+        row.dataset.story = ex.story
+        if (showOwner)
+          html('span', row, `所属功能 · ${work.stories[ex.story]?.title || ex.story}`, 'case-owner')
         html('strong', row, ex.when, 'case-title')
         const scope = html('span', row, caseScope(ex), 'case-scope')
         const environments = [...new Set(ex.receipts.map(proof => proof.environment).filter(Boolean))]
@@ -1909,20 +2031,85 @@
       jump(row, ex.decision, work.decisions[ex.decision].title)
     }
   }
+  function effectiveFinish(key) {
+    if (states[key]?.state !== 'done')
+      return null
+    return work.events.find(event => event.id === states[key].proof && event.kind === 'finish' && event.action === key) || null
+  }
+  function showImplementation(parent, key, { link = false, compact = false } = {}) {
+    const action = work.actions[key]
+    const proof = effectiveFinish(key)
+    const item = html('div', parent, null, 'implementation-record')
+    if (link) {
+      if (chainNodes.has(graph.aliases[key] || key)) {
+        jump(item, key, action.title)
+      }
+      else {
+        html('strong', item, action.title)
+      }
+    }
+    const implementation = proof?.implementation
+    html('p', item, implementation?.summary || proof?.output || `实际实现待登记 · ${activeName[states[key].state]}`, 'implementation-summary')
+    if (!proof && action.done)
+      pairs(item, [['完成条件', action.done]])
+    if (implementation) {
+      const body = compact && (implementation.steps?.length || implementation.branches?.length)
+        ? disclosure(item, '处理步骤与异常分支')
+        : item
+      if (implementation.steps?.length) {
+        const steps = html('ol', body, null, 'implementation-steps')
+        for (const step of implementation.steps) {
+          const row = html('li', steps)
+          html('strong', row, step.title)
+          html('p', row, step.detail)
+          showSources(row, step.source, '步骤依据')
+        }
+      }
+      if (implementation.branches?.length) {
+        html('h4', body, '关键异常与分支')
+        for (const branch of implementation.branches) {
+          const row = html('div', body, null, 'implementation-branch')
+          pairs(row, [['当', branch.condition], ['实际处理', branch.behavior]])
+          showSources(row, branch.source, '分支依据')
+        }
+      }
+    }
+    if (!proof) {
+      const historical = [...work.events].reverse().find(event => event.kind === 'finish' && event.action === key)
+      if (historical) {
+        const history = disclosure(item, '历史产出（非当前有效实现）')
+        html('p', history, historical.implementation?.summary || historical.output)
+        showSources(history, historical.evidence, '历史依据')
+      }
+    }
+    return proof
+  }
   function workDetails(parent, key) {
     const a = work.actions[key]
     const status = states[key]
     const records = work.events.filter(e => e.action === key)
-    const proof = records.find(e => e.id === status.proof)
-    if (a.kind === '验证') {
+    const proof = effectiveFinish(key)
+    if (a.kind === '开发') {
+      const implementation = section('本次实现', parent)
+      showImplementation(implementation, key)
+      html('p', implementation, '开发完成不等于业务验收；场景与证据以验证结果为准。', 'dim')
+    }
+    else if (a.kind === '验证') {
       const cases = queue.scenarios.filter(ex => ex.actions.includes(key))
-      if (cases.length)
-        showScenarios(parent, cases)
-      else html('p', parent, '尚未关联验收场景。', 'dim')
+      if (cases.length) {
+        showScenarios(parent, cases.filter(ex => visibleStories.includes(ex.story)), '验收结果 · 当前功能', true)
+        showScenarios(parent, cases.filter(ex => !visibleStories.includes(ex.story)), '验收结果 · 其它共用功能', true)
+        html('p', parent, '本动作按完整覆盖场景确认结果；当前筛选不会缩减验收范围。', 'dim')
+      }
+      else {
+        html('p', parent, '尚未关联验收场景。', 'dim')
+      }
     }
     else if (proof?.output) {
       html('p', parent, proof.output)
     }
+    storyLinks(parent, a.stories, '交付功能', { expand: true })
+    storyLinks(parent, (a.read_stories || []).filter(id => !a.stories.includes(id)), '参考输入（非本次交付）')
     pairs(parent, [
       ['完成条件', a.done],
       ['验收方式', a.accepts?.join('、')],
@@ -1969,8 +2156,8 @@
     })
     if (input.length)
       list(disclosure(parent, `前置工作（${input.length}）`), input)
-    related(parent, [...a.stories, ...a.read_stories, ...a.contracts, ...(a.closes_contracts || []), ...a.decisions], '关联功能、接口与决定')
-    showLessons(parent, [...a.stories, ...a.read_stories])
+    related(parent, [...a.contracts, ...(a.closes_contracts || []), ...a.decisions], '关联接口与决定')
+    showLessons(parent, a.stories)
     events(parent, records)
   }
   function protocolDetail(parent) {
@@ -1986,6 +2173,47 @@
     html('p', group, protocol.ai.read)
     html('p', group, protocol.ai.write)
     html('p', group, protocol.ai.new_request)
+  }
+  function updateDecisionForm(form, key) {
+    const choice = decisionSubmissions.get(key)
+    form.querySelector('[data-decision-status]').textContent = choice ? '正在提交决定，请等待确认。' : ''
+    for (const button of form.querySelectorAll('button.choose')) {
+      button.disabled = choice !== undefined
+      button.textContent = button.value === choice ? '提交中…' : button.dataset.label
+    }
+  }
+  async function postDecision(url, fields) {
+    const controller = new AbortController()
+    let timer
+    const deadline = new Promise((_, reject) => {
+      timer = setTimeout(() => {
+        reject(new Error('Decision request timed out'))
+        controller.abort()
+      }, 15000)
+    })
+    async function request() {
+      const result = await fetch(url, {
+        method: 'POST',
+        headers: { Accept: 'application/json' },
+        body: fields,
+        signal: controller.signal,
+      })
+      if (result.status === 409 || result.status === 403)
+        return null
+      if (!result.ok)
+        throw new Error(`Decision request failed (HTTP ${result.status})`)
+      const saved = await result.json()
+      if (typeof saved?.location !== 'string' || !saved.location)
+        throw new Error('Decision response has no location')
+      return saved.location
+    }
+    try {
+      // The body consumes the same deadline as the headers; only the winner can navigate.
+      return await Promise.race([request(), deadline])
+    }
+    finally {
+      clearTimeout(timer)
+    }
   }
   function decisionDetail(key, parent) {
     const d = work.decisions[key]
@@ -2014,39 +2242,59 @@
       const form = html('form', parent)
       form.method = 'post'
       form.action = `./decision${filterQuery()}`
+      form.dataset.decisionForm = key
       if (resume?.confirmDecision === key)
         html('p', form, '已读取最新版，请核对选项后再次确认决定。', 'dim').setAttribute('role', 'status')
-      let saving = false
       form.addEventListener('submit', async (event) => {
         event.preventDefault()
-        if (saving)
+        if (reloading || decisionSubmissions.has(key))
           return
         if (updatePending) {
           reloadPage(key)
           return
         }
-        if (!event.submitter?.value)
+        const choice = event.submitter?.value
+        if (!choice)
           return
         const fields = new URLSearchParams(new FormData(form))
-        fields.set('choice', event.submitter.value)
-        saving = true
+        fields.set('choice', choice)
+        decisionNotes.set(key, fields.get('reason'))
+        decisionSubmissions.set(key, choice)
+        updateDecisionForm(form, key)
         try {
-          const result = await fetch(form.action, { method: 'POST', headers: { Accept: 'application/json' }, body: fields })
-          if (result.status === 409 || result.status === 403) {
-            reloadPage(key)
+          const destination = await postDecision(form.action, fields)
+          if (reloading || decisionUnconfirmed)
             return
+          if (destination === null) {
+            reloadPage(key)
           }
-          if (!result.ok)
-            throw new Error(`Decision request failed (HTTP ${result.status})`)
-          const saved = await result.json()
-          location.assign(saved.location)
+          else {
+            const next = new URL(destination, location.href)
+            if (next.origin !== location.origin)
+              throw new Error('Decision response has an unexpected origin')
+            if (next.pathname === location.pathname && next.search === location.search) {
+              // A hash-only navigation would keep the stale document and revision.
+              history.pushState(null, '', next)
+              location.reload()
+            }
+            else {
+              location.assign(next)
+            }
+            reloading = true
+          }
         }
         catch {
-          showUpdateNotice('决定提交结果未确认。请读取最新版核对，已填理由会保留。')
-          updatePending = true
+          if (!reloading) {
+            decisionUnconfirmed = true
+            updatePending = true
+            showUpdateNotice('决定提交结果未确认。请读取最新版核对，已填理由会保留。')
+          }
         }
         finally {
-          saving = false
+          decisionSubmissions.delete(key)
+          const current = detail.querySelector('form[data-decision-form]')
+          if (current?.dataset.decisionForm === key)
+            updateDecisionForm(current, key)
         }
       })
       for (const [name, value] of Object.entries({ csrf, revision: work.revision, decision: key })) {
@@ -2067,7 +2315,12 @@
         btn.type = 'submit'
         btn.name = 'choice'
         btn.value = code
+        btn.dataset.label = btn.textContent
       }
+      const status = html('div', form, null, 'dim')
+      status.dataset.decisionStatus = ''
+      status.setAttribute('role', 'status')
+      updateDecisionForm(form, key)
     }
     else {
       html('p', parent, readOnly ? '这个需求已归档。此处可查阅当时的决定和依据。' : '离线图保留当时的记录。可在本机协作页或聊天中登记决定。', 'dim')
@@ -2096,19 +2349,50 @@
         list(disclosure(detail, '本次范围'), work.scope)
       jump(detail, '@delivery', research ? '查看调研结论' : '查看验收结果')
       related(detail, visibleStories, '涉及功能')
-      showQueue(detail, visibleActions, chainNodes)
+      if (scoped) {
+        const scopes = visibleStories.map(storyQueue)
+        showQueue(detail, new Set(scopes.flatMap(scope => scope.actions)), new Set(scopes.flatMap(scope => scope.pending_decisions)))
+      }
+      else {
+        showQueue(detail, visibleActions, queue.pending_decisions.map(item => item.id))
+      }
       showLessons(detail, visibleStories, { all: !scoped })
       protocolDetail(detail)
       events(detail, work.events)
     }
     else if (n.kind === 'story') {
       const story = work.stories[key]
+      const withdrawn = isStoryWithdrawn(key)
+      const referenceOnly = !visibleStories.includes(key)
+      if (referenceOnly)
+        html('p', detail, '参考输入 · 只读查阅，不加入当前交付与验收范围。', 'scope-caption')
+      const agreement = section('需求约定')
       if (story.goal && story.goal.trim() !== story.title.trim())
-        html('p', detail, story.goal, 'story-goal')
+        html('p', agreement, story.goal, 'story-goal')
+      pairs(agreement, [['角色', story.actor], ['前置条件', story.before]])
+      if (story.flow?.length) {
+        list(agreement, story.flow.slice(0, 3), true)
+        if (story.flow.length > 3)
+          list(disclosure(agreement, '完整业务流程'), story.flow, true)
+      }
+      const status = html('p', detail, `${!withdrawn && chainNodes.get(key)?.state ? `${chainNodes.get(key).state} · ` : ''}${storyNext(key)}`, 'current-status')
+      status.setAttribute('role', 'status')
+      const actual = section('实际实现')
+      const developers = Object.entries(work.actions).filter(([, action]) => action.kind === '开发' && action.stories.includes(key))
+      if (!developers.length)
+        html('p', actual, '尚未登记关联开发动作。', 'dim')
+      const basis = new Set(String(story.basis || '').split(/\r?\n/u).map(line => line.trim()))
+      for (const [id] of developers) {
+        const proof = showImplementation(actual, id, { link: true, compact: true })
+        // A citation already in the story's sources need not occupy a second row.
+        const evidence = Array.isArray(proof?.evidence) ? proof.evidence : String(proof?.evidence || '').split(/\r?\n/u)
+        showSources(actual, evidence.filter(line => !basis.has(line.trim())), '实现依据')
+      }
+      html('p', actual, '开发完成不等于业务验收；以下仅为本故事的验收结果。', 'dim')
       const cases = queue.scenarios.filter(ex => ex.story === key)
       if (cases.length)
         showScenarios(detail, cases)
-      else if ((queue.progress.withdrawn_stories || []).includes(key))
+      else if (withdrawn)
         html('p', detail, '本功能已按业务决定移出本期范围，原场景和调整原因保留在验收范围调整中。', 'dim')
       else if (!research)
         html('p', detail, '当前没有验收场景。', 'dim')
@@ -2140,7 +2424,10 @@
           list(rules, story.flow, true)
       }
       showLessons(more, [key])
-      showQueue(more, new Set(fullGraph.features[key].actions), featureNodes.get(key))
+      if (!withdrawn && !referenceOnly) {
+        const scope = storyQueue(key)
+        showQueue(more, new Set(scope.actions), scope.pending_decisions)
+      }
       showRetiredScenarios(more, [key])
       const refs = Object.entries(work.actions).filter(([, a]) => a.stories.includes(key))
       related(
@@ -2156,6 +2443,7 @@
       showContract(detail, c)
       const stories = n.users.filter(id => visibleStories.includes(id))
       related(detail, stories, '关联功能')
+      storyLinks(detail, n.users.filter(id => !visibleStories.includes(id)), '其它共用功能', { expand: true })
       showSources(detail, c.source)
       for (const id of n.research.filter(id => visibleActions.has(id)))
         workDetails(disclosure(detail, `关联调研 · ${work.actions[id].title}`), id)
@@ -2172,6 +2460,8 @@
       const cases = queue.scenarios.filter(ex => visibleStories.includes(ex.story))
       if (cases.length)
         showScenarios(detail, cases)
+      else if (visibleStories.length && visibleStories.every(isStoryWithdrawn))
+        html('p', detail, '当前范围已全部撤出，原场景和业务决定保留在验收范围调整中；不代表业务验收通过。')
       else if (!research)
         html('p', detail, '待梳理可验收的业务场景。')
       showRetiredScenarios(detail, visibleStories)
@@ -2369,6 +2659,11 @@
   function applyRoute(requested, trigger) {
     const next = { nodes: requested.nodes, endpoint: requested.endpoint || null, source: requested.source || null, side: requested.side === 'response' ? 'response' : 'request' }
     const old = readerRoute
+    // A cited story is readable from the full record without widening the canvas.
+    for (const id of next.nodes) {
+      if (work.stories[id] && !chainNodes.has(id))
+        chainNodes.set(id, fullGraph.nodes.find(node => node.id === id))
+    }
     const invalid = next.nodes.findIndex(id => !chainNodes.has(id))
     if (invalid >= 0) {
       next.nodes = next.nodes.slice(0, invalid)
@@ -2387,7 +2682,7 @@
       next.nodes = path
     }
     const key = next.nodes.at(-1)
-    if (key && isOverview() && !next.nodes.some(id => nodes.has(id))) {
+    if (key && isOverview() && (!work.stories[key] || visibleStories.includes(key)) && !next.nodes.some(id => nodes.has(id))) {
       viewPreference = 'detail'
       const url = new URL(location.href)
       url.searchParams.set('view', 'detail')
@@ -2608,26 +2903,32 @@
     location.reload()
   }
   function placeUpdateNotice() {
-    const notice = $('notice')
-    if (notice.hidden)
-      return
-    if (sourceDrawer.open)
-      sourceBody.before(notice)
-    else if (endpointDrawer.open)
-      endpointBody.before(notice)
-    else if (selected)
-      detail.before(notice)
-    else map.parentNode.append(notice)
+    for (const notice of [$('notice'), $('update-health')]) {
+      if (!notice || notice.hidden)
+        continue
+      if (sourceDrawer.open)
+        sourceBody.before(notice)
+      else if (endpointDrawer.open)
+        endpointBody.before(notice)
+      else if (selected)
+        detail.before(notice)
+      else map.parentNode.append(notice)
+    }
   }
   function showUpdateNotice(message) {
+    if ($('update-health'))
+      $('update-health').hidden = true
     $('notice').firstChild.textContent = message
     $('notice').hidden = false
     placeUpdateNotice()
   }
   function requestUpdate(sessionChanged) {
-    if (reloading)
+    if (reloading || decisionUnconfirmed)
       return
     updatePending = true
+    // A version change may be the in-flight decision itself; leave its confirmation in charge.
+    if (decisionSubmissions.size)
+      return
     const reason = detail.querySelector('input[name="reason"]')
     const drafting = Array.from(decisionNotes.values()).some(value => value.trim()) || (reason && reason === document.activeElement)
     if (drafting || (sessionChanged && confirmingSession)) {
@@ -2640,18 +2941,32 @@
   }
   $('refresh').onclick = () => reloadPage()
   if (csrf) {
+    const health = html('div', map.parentNode, null, 'update-health')
+    health.id = 'update-health'
+    health.hidden = true
+    health.setAttribute('role', 'status')
+    const healthText = html('span', health)
+    const retry = html('button', health, '重试更新', 'link-button')
+    retry.type = 'button'
+    retry.onclick = () => poll()
+    const pageReadAt = new Date().toLocaleString()
+    let lastVersionRead = null
+    const cancelledPolls = new WeakSet()
     let pendingPoll = null
     async function poll() {
       if (document.hidden || pendingPoll || reloading)
         return
       const controller = new AbortController()
       pendingPoll = controller
+      retry.disabled = true
       const timeout = setTimeout(() => controller.abort(), 15000)
       try {
         const res = await fetch('./version', { headers: { 'X-Requirement-Flow': csrf }, cache: 'no-store', redirect: 'error', signal: controller.signal })
         if (!res.ok)
-          return
+          throw new Error(`Version request failed (HTTP ${res.status})`)
         const current = await res.json()
+        lastVersionRead = new Date().toLocaleString()
+        health.hidden = true
         const displayed = queue.scenarios.map(ex => [ex.id, ex.status])
         if (current.session_changed) {
           requestUpdate(true)
@@ -2665,10 +2980,15 @@
         requestUpdate(false)
       }
       catch {
-        /* The map retains its last locally rendered revision. */
+        if (!cancelledPolls.has(controller) && !reloading && !updatePending) {
+          healthText.textContent = `暂时无法更新，显示上次读取状态。${lastVersionRead ? `最近核对时间 · ${lastVersionRead}` : `页面读取时间 · ${pageReadAt}`}`
+          health.hidden = false
+          placeUpdateNotice()
+        }
       }
       finally {
         clearTimeout(timeout)
+        retry.disabled = false
         if (pendingPoll === controller)
           pendingPoll = null
       }
@@ -2677,7 +2997,10 @@
     function stopPolling() {
       clearInterval(pollTimer)
       pollTimer = null
-      pendingPoll?.abort()
+      if (pendingPoll) {
+        cancelledPolls.add(pendingPoll)
+        pendingPoll.abort()
+      }
     }
     function resumePolling() {
       if (document.hidden)
@@ -2746,15 +3069,16 @@
             caption: research ? `${proven} / ${checks.length} 项调研有证据` : '待梳理验收场景',
           }
         }
-        if (n.kind !== 'contract' || n.users.length < 2)
+        const users = n.users || work.actions[n.id]?.stories || []
+        const outside = users.filter(id => !included.has(id))
+        if (!['contract', 'develop', 'verify', 'research'].includes(n.kind) || (!outside.length && users.length < 2))
           return n
-        const outside = n.users.filter(id => !included.has(id))
         const sharedNote
           = outside.length === 1
             ? `「${work.stories[outside[0]].title}」也在用`
             : outside.length
               ? `另有 ${outside.length} 个功能使用`
-              : `${n.users.length} 个功能共用`
+              : `${users.length} 个功能共用`
         return { ...n, sharedNote }
       })
     let edges = fullGraph.edges

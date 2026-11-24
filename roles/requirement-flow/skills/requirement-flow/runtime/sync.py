@@ -62,6 +62,15 @@ class Conflict(Invalid):
     pass
 
 
+class CollectedConflict(Conflict):
+    """A rejected race still exposes the safe outcome of the command that ran."""
+    def __init__(self, message, *, action, scenario, actor, passed, environment):
+        self.collected_result = {"recorded":False, "action":action, "scenario":scenario, "actor":actor,
+                                 "passed":passed, "environment":environment,
+                                 "reason":"采集已执行但未登记、重读后核对重采。"}
+        super().__init__(message + "\n" + json.dumps({"collected_result":self.collected_result}, ensure_ascii=False))
+
+
 def expect(condition, message):
     if not condition:
         raise Invalid(message)
@@ -159,6 +168,27 @@ def validate_endpoints(contract_id, endpoints):
                 names.add(name)
 
 
+def validate_implementation(value):
+    """Actual development results are event data, never planned story inputs."""
+    def has_text(text):
+        return isinstance(text, str) and bool(text.strip())
+
+    expect(isinstance(value, dict) and set(value) <= {"summary", "steps", "branches"}
+           and has_text(value.get("summary")), "implementation 需要非空 summary，且只能包含 summary、steps、branches")
+    sources = []
+    for group, required in (("steps", {"title", "detail"}), ("branches", {"condition", "behavior"})):
+        rows = value.get(group, [])
+        expect(isinstance(rows, list), "implementation." + group + " 应为列表")
+        for row in rows:
+            expect(isinstance(row, dict) and required <= row.keys() and set(row) <= required | {"source"}
+                   and all(has_text(row.get(key)) for key in required)
+                   and ("source" not in row or has_text(row["source"])),
+                   "implementation." + group + " 条目结构无效或含空文本")
+            if "source" in row:
+                sources.extend(line.strip() for line in row["source"].splitlines() if line.strip())
+    return list(dict.fromkeys(sources))
+
+
 def validate(m):
     w = m["work"]
     expect(m["protocol"]["version"] == "2.0", "不支持的协议版本")
@@ -170,6 +200,7 @@ def validate(m):
         for key, item in w[group].items():
             expect(re.fullmatch(r"[A-Za-z0-9][A-Za-z0-9_-]*", key) and key not in ids, "记录 ID 无效或重复 " + key)
             expect(item["title"].strip(), "缺少标题 " + key)
+            expect("implementation" not in item, "implementation 只能记录在开发动作的 finish 事件中：" + key)
             ids.add(key)
 
     def check_refs(refs, group):
@@ -249,6 +280,10 @@ def validate(m):
             check_refs([e["action"]], "actions")
         if e.get("reopen"):
             check_refs([e["reopen"]], "actions")
+        if "implementation" in e:
+            expect(e["kind"] == "finish" and w["actions"].get(e.get("action"), {}).get("kind") == "开发",
+                   "implementation 只属于开发动作的 finish 事件")
+            validate_implementation(e["implementation"])
     for lesson in w["lessons"]:
         expect(all(lesson.get(k) for k in ("observation","when","practice","boundary","evidence","review")), "经验缺少使用条件或依据")
     validate_reviews(w)
@@ -531,8 +566,11 @@ def evaluate(w, workspace=None):
             reasons.append(review_error)
         stories = {i:w["stories"][i] for i in action["read_stories"]}
         if verify:
-            # Evidence binds the particular covered example separately from shared story inputs.
-            stories = {i:{k:v for k,v in story.items() if k != "examples"} for i,story in stories.items()}
+            # Only covered owners bind examples separately. Explicitly read reference
+            # stories remain full inputs, including their acceptance expectations.
+            covered_stories = {definitions[s]["story"] for s in action.get("covers", [])}
+            stories = {i:({k:v for k,v in story.items() if k != "examples"} if i in covered_stories else story)
+                       for i,story in stories.items()}
         definition = {k:v for k,v in action.items() if k != "covers"} if verify else action
         binding = {
             "action":definition, "dependency_outputs":inputs, "reopen":reopened.get(key),
@@ -719,9 +757,14 @@ def needs_independent_review(w, key, status):
     return any(item["step"] == "independent_review" for item in verification_followups(w,cases))
 
 
-def progress(w, mode, key, actor, output="", evidence="", level="", environment="", expected="", reopen=None):
+def progress(w, mode, key, actor, output="", evidence="", level="", environment="", expected="", reopen=None,
+             implementation=None):
     expect(key in w["actions"] and actor.strip(), "动作或记录人无效")
     action = w["actions"][key]
+    implementation_sources = []
+    if implementation is not None:
+        expect(mode == "finish" and action["kind"] == "开发", "implementation 只允许开发动作 finish 使用")
+        implementation_sources = validate_implementation(implementation)
     if action.get("review_for"):
         expect(independent_actor(action,actor), "原失败执行者不能担任独立诊断者，请使用独立执行者的稳定身份")
         review_receipts(w,action)
@@ -761,6 +804,12 @@ def progress(w, mode, key, actor, output="", evidence="", level="", environment=
             expect(level != "推演" or w["kind"] == "合成推演", "真实需求不能用推演证据作验收结论")
         if mode == "fail":
             expect(action["kind"] == "验证" and reopen in active_ancestors(w,key), "失败时指定当前验证或本分支的实际前置动作")
+    if implementation is not None:
+        proof_fields["implementation"] = copy.deepcopy(implementation)
+        existing = {line.strip() for line in evidence.splitlines()}
+        additions = [source for source in implementation_sources if source not in existing]
+        if additions:
+            evidence += ("" if evidence.endswith("\n") else "\n") + "\n".join(additions)
     w["revision"] += 1
     append_event(w,mode,actor,action=key,stamp=status["stamp"],output=output,evidence=evidence,
                  level=level,environment=environment,expected=expected,reopen=reopen,**proof_fields)
@@ -796,15 +845,22 @@ def action_packet(w, states, key, mode, workspace=None):
             dep = edge["id"]
             dependencies[dep] = {"title":w["actions"][dep]["title"], "proof":receipts.get(states[dep]["proof"])}
     default_skill = {"调研":"flow-contracts" if contracts else "flow-requirements", "开发":"flow-implement", "验证":"flow-verify"}
+    task = TASK_DIR if workspace is None else Path(workspace)
+    store = task.parent.parent
+    project = store.parent if store.name == ".requirements" else Path.cwd()
+    execution = {}
+    last_execution = next((event for event in reversed(w["events"])
+                           if event.get("action") == key and event["kind"] in ("start", "handoff", "finish", "fail")), None)
+    if last_execution and last_execution["kind"] in ("start", "handoff") and states[key]["state"] == "stale":
+        execution["previous_execution"] = {"actor":last_execution["actor"], "event_id":last_execution["id"],
+                                           "reason":"输入已修订，须确认原执行停止再领取"}
     verification = {}
     if action["kind"] == "验证":
-        task = TASK_DIR if workspace is None else Path(workspace)
-        store = task.parent.parent
-        project = store.parent if store.name == ".requirements" else Path.cwd()
         verification = {"code_paths":action.get("code_paths"), "verification_project_root":str(project.resolve())}
     if action.get("review_for"):
         verification = {"review_for":action["review_for"], "failed_evidence":review_receipts(w,action,workspace)}
-    return {"id":key, "title":action["title"], "kind":action["kind"], "mode":mode, "stories":action["stories"],
+    return {"id":key, "task_id":w["id"], "revision":w["revision"], "execution_project_root":str(project.resolve()),
+            "title":action["title"], "kind":action["kind"], "mode":mode, "stories":action["stories"], **execution,
             "skill":action.get("skill") or default_skill[action["kind"]], "covers":action.get("covers",[]),
             "goal":w["goal"], "scope":w["scope"], "done":action["done"], "accepts":action.get("accepts", []),
             "closes_contracts":action.get("closes_contracts", []), "prior_result":previous, **verification,
@@ -934,10 +990,12 @@ def lesson_context(work, workspace, stories, packet=None, *, for_map=False):
     keys = set(hits) | {knowledge.card_key(event["origin"]) for event in events}
     cards = knowledge.project_cards(workspace, sys.modules[__name__], current_work=work, relevant_to=work,
                                     stories=stories, include_keys=keys)
+    warnings = getattr(cards, "diagnostics", [])
     adopted = knowledge.adopted_cards(events, cards)
     own_cards = [card for card in cards if card["task"] == work["id"]
                  and (not stories or any(s["story"] in stories for s in card["sources"]))]
     if packet is not None:
+        packet["knowledge_warnings"] = warnings
         packet["related_lessons"] = knowledge.match_cards(work, cards, stories=stories, action=packet["id"], hits=hits)
         owners = {sid for sid, *_ in knowledge.query_contexts(work, stories, packet["id"])}
         packet["adopted_lessons"] = [card for card in adopted if card["adoption"]["story"] in owners]
@@ -945,16 +1003,14 @@ def lesson_context(work, workspace, stories, packet=None, *, for_map=False):
                 "sources":[{k:s[k] for k in ("story","scenario","action","receipt")} for s in card["sources"]]}
                for card in own_cards if card["state"] == "pending"]
     return {"related_lessons": knowledge.match_cards(work, cards, stories=stories, hits=hits, limit=None if for_map else 5),
-            "lesson_cards": own_cards, "lesson_reviews": reviews, "adopted_lessons": adopted}
+            "lesson_cards": own_cards, "lesson_reviews": reviews, "adopted_lessons": adopted,
+            "knowledge_warnings": warnings}
 
 
-@input_scope()
-def dispatch(w, actor="AI", story=None, *, workspace=None, include_lessons=True, for_map=False):
-    expect(isinstance(actor,str) and actor.strip(), "执行人不能为空")
-    expect(story is None or story in w["stories"], "故事不存在")
-    selected = {story} if story is not None else set()
-    withdrawn = story_scope.withdrawn_stories(w)
-    chosen = {key for key, action in w["actions"].items() if not selected or selected.intersection(action["stories"])}
+def chosen_actions(w, selected, withdrawn):
+    if not selected:
+        return set(w["actions"])
+    chosen = {key for key, action in w["actions"].items() if selected.intersection(action["stories"])}
     to_visit = list(chosen)
     while to_visit:
         action = w["actions"][to_visit.pop()]
@@ -966,7 +1022,44 @@ def dispatch(w, actor="AI", story=None, *, workspace=None, include_lessons=True,
             if edge["id"] not in chosen and dependency_active(w, edge):
                 chosen.add(edge["id"])
                 to_visit.append(edge["id"])
-    states = evaluate(w, workspace)
+    return chosen
+
+
+def pending_decisions(w, states, selected, chosen, withdrawn, blocked_by):
+    skipped = story_scope.skipped_decisions(w, states, selected, chosen)
+    return [{"id": key, **definition, "actions": blocked_by.get(("decision", key), [])}
+            for key, definition in w["decisions"].items() if key not in w["answers"] and key not in skipped and
+            (not definition["stories"] or not set(definition["stories"]) <= withdrawn
+             or ("decision", key) in blocked_by) and
+            (not selected or selected.intersection(definition["stories"]) or ("decision", key) in blocked_by)]
+
+
+def map_story_queues(w, states, withdrawn, blocked_by):
+    result = {}
+    for story in w["stories"]:
+        selected = {story}
+        chosen = chosen_actions(w, selected, withdrawn)
+        local_blocks = {}
+        for key, actions in blocked_by.items():
+            if key[0] == "decision":
+                local_actions = [action for action in actions if action in chosen]
+                if local_actions:
+                    local_blocks[key] = local_actions
+        pending = pending_decisions(w, states, selected, chosen, withdrawn, local_blocks)
+        result[story] = {"actions": sorted(chosen), "pending_decisions": [row["id"] for row in pending]}
+    return result
+
+
+@input_scope()
+def dispatch(w, actor="AI", story=None, *, workspace=None, include_lessons=True, for_map=False, states=None,
+             include_story_queues=False):
+    expect(isinstance(actor,str) and actor.strip(), "执行人不能为空")
+    expect(story is None or story in w["stories"], "故事不存在")
+    selected = {story} if story is not None else set()
+    withdrawn = story_scope.withdrawn_stories(w)
+    chosen = chosen_actions(w, selected, withdrawn)
+    if states is None:
+        states = evaluate(w, workspace)
     ready, running, waiting, completed = [], [], [], []
     blocked_by = {}
     for key, action in w["actions"].items():
@@ -989,12 +1082,9 @@ def dispatch(w, actor="AI", story=None, *, workspace=None, include_lessons=True,
             for block in status["blockers"]:
                 blocked_by.setdefault((block["kind"],block["id"]),[]).append(key)
 
-    skipped_decisions = story_scope.skipped_decisions(w, states, selected, chosen)
-    pending = [{"id":key,**definition,"actions":blocked_by.get(("decision",key),[])}
-               for key, definition in w["decisions"].items() if key not in w["answers"] and key not in skipped_decisions and
-               (not definition["stories"] or not set(definition["stories"]) <= withdrawn
-                or ("decision",key) in blocked_by) and
-               (not selected or selected.intersection(definition["stories"]) or ("decision",key) in blocked_by)]
+    pending = pending_decisions(w, states, selected, chosen, withdrawn, blocked_by)
+    projection = ({"story_queues": map_story_queues(w, states, withdrawn, blocked_by)}
+                  if include_story_queues and not selected else {})
     technical = [{"kind":kind,"id":key,"title":w["contracts" if kind=="contract" else "actions"][key]["title"],"actions":actions}
                  for (kind,key), actions in blocked_by.items() if kind != "decision"]
     own = next((item["id"] for item in running if item["actor"] == actor), None)
@@ -1004,6 +1094,7 @@ def dispatch(w, actor="AI", story=None, *, workspace=None, include_lessons=True,
     if packet is not None and for_map:
         # Versioned pages travel between worktrees; execution context belongs to live packets.
         packet.pop("verification_project_root", None)
+        packet.pop("execution_project_root", None)
     if packet is not None and include_lessons:
         packet = source_paths.SourcePaths.for_task(workspace or TASK_DIR).reading_context(packet)
     scenarios = scenario_report(w, states, selected)
@@ -1036,7 +1127,7 @@ def dispatch(w, actor="AI", story=None, *, workspace=None, include_lessons=True,
                                  "scenarios":[f["scenario"] for f in repeats],
                                  "receipts":[rid for f in repeats for rid in f["receipts"]],
                                  "verification_actors":list(dict.fromkeys(f["actor"] for f in repeats))}
-    return {**lessons, "revision":w["revision"],"actor":actor,"story":story,"outcome_type":w.get("outcome","delivery"),
+    return {**lessons, **projection, "revision":w["revision"],"actor":actor,"story":story,"outcome_type":w.get("outcome","delivery"),
             "state":state,"next":packet,"ready":ready,
             "running":running,"pending_decisions":pending,"technical_blockers":technical,"waiting":waiting,"scenarios":scenarios,
             "retired_scenarios":retirement_history(w,selected), "verification_followups":followups,
@@ -1060,9 +1151,14 @@ def claim(revision, actor="AI", story=None):
             result["outcome"] = "resumed" if packet else queue["state"]
             return changed
         result["outcome"] = "claimed"
+        if packet.get("previous_execution"):
+            result["previous_execution"] = packet["previous_execution"]
         return progress(w, "start", packet["id"], actor, packet["title"]) or changed
     model = commit(revision, reserve)
-    return {**dispatch(model["work"], actor, story), **result}
+    queue = dispatch(model["work"], actor, story)
+    if queue["next"] is not None and result.get("previous_execution"):
+        queue["next"]["previous_execution"] = result.pop("previous_execution")
+    return {**queue, **result}
 
 
 def capture(mode, key, scenario_id, revision, actor, environment, *, argv=None, artifact=None,
@@ -1070,17 +1166,23 @@ def capture(mode, key, scenario_id, revision, actor, environment, *, argv=None, 
     expect(actor.strip() and environment.strip(), "采集需要执行人和环境")
     level = "自动化" if mode == "verify-run" else level
 
-    def inputs(w):
+    def inputs(w, check=expect):
         action = w["actions"].get(key)
-        expect(action and action["kind"] == "验证" and scenario_id in action.get("covers",[]),
-               "指定验证动作未关联此场景")
-        expect(not action.get("accepts") or level in action["accepts"],"该证据类型不满足验收条件")
+        check(action and action["kind"] == "验证" and scenario_id in action.get("covers",[]),
+              "指定验证动作未关联此场景")
+        check(not action.get("accepts") or level in action["accepts"],"该证据类型不满足验收条件")
         state = evaluate(w)[key]
-        expect(not needs_independent_review(w,key,state), "重复失败须先用 claim 安排独立诊断，再继续原验证")
-        expect(executable(state) or state["state"] == "done","前置条件或当前分支不允许采集")
-        expect(state["state"] != "active" or state["actor"] == actor, "该动作已由其他执行人领取")
+        check(not needs_independent_review(w,key,state), "重复失败须先用 claim 安排独立诊断，再继续原验证")
+        check(executable(state) or state["state"] == "done","前置条件或当前分支不允许采集")
+        check(state["state"] != "active" or state["actor"] == actor, "该动作已由其他执行人领取")
         case = scenario_definitions(w)[scenario_id]
         return state["stamp"], case_stamp(case,latest_retirements(w,set())), "E" + str(len(w["events"])+1)
+
+    def registration_check(condition, message):
+        # Only these known eligibility/input races qualify for collected feedback;
+        # integrity, model validation and commit I/O failures remain ordinary errors.
+        if not condition:
+            raise Conflict(message)
 
     with task_lock(shared=True):
         model = load()
@@ -1101,11 +1203,17 @@ def capture(mode, key, scenario_id, revision, actor, environment, *, argv=None, 
         receipt = evidence.observe(TASK_DIR, project, artifact, actual=actual, level=level, passed=passed, **binding)
 
     def record(w):
-        current_action, current_case, next_event = inputs(w)
-        expect((current_action, current_case) == (action_stamp, scenario_stamp), "采集期间输入变化，请重新采集")
+        current_action, current_case, next_event = inputs(w, registration_check)
+        registration_check((current_action, current_case) == (action_stamp, scenario_stamp),
+                           "采集期间输入变化，请重新采集")
         evidence.validate(TASK_DIR, receipt, action=key, scenario=scenario_id, stamp=combined)
         if receipt.get("code_inputs_unchanged"):
-            evidence.validate_current_inputs(receipt, project, binding["code_paths"], workspace=TASK_DIR)
+            try:
+                evidence.validate_current_inputs(receipt, project, binding["code_paths"], workspace=TASK_DIR)
+            except evidence.code_inputs.CodeInputContentMismatch as error:
+                # Only a complete, same-scope content comparison qualifies;
+                # malformed bindings, policy rejection and snapshot I/O do not.
+                raise Conflict("采集期间代码输入变化，请重新采集") from error
         if w["revision"] != revision:
             # A different action or scenario can finish first. Never order two
             # competing results for the same case by subprocess completion time.
@@ -1123,6 +1231,14 @@ def capture(mode, key, scenario_id, revision, actor, environment, *, argv=None, 
 
     try:
         saved = commit(revision, record, independent_capture=True)
+    except Conflict as error:
+        with task_lock():
+            # discard authenticates the original receipt and attachment, then
+            # confirms it is not referenced by the ledger before removing it.
+            if not evidence.discard(TASK_DIR,receipt):
+                raise
+        raise CollectedConflict(str(error), action=key, scenario=scenario_id, actor=actor,
+                                passed=receipt["passed"], environment=environment) from error
     except Exception:
         evidence.discard(TASK_DIR,receipt)
         raise
@@ -1141,6 +1257,8 @@ def context(m, story=None, *, workspace=None):
     status = evaluate(w, workspace)
     chosen, decisions, contracts = graph_view.feature_scope(w, stories)
     routes = [r for r in w.get("contract_routes", []) if r["decision"] in decisions]
+    references = ({sid for key in chosen for sid in
+                   (*w["actions"][key]["stories"], *w["actions"][key]["read_stories"])} - stories) if stories else set()
     all_events = [e for e in w["events"] if not stories or e.get("action") in chosen or
                   e.get("decision") in decisions or e.get("story") in stories or set(e.get("changed",[])) & (chosen|decisions|contracts|stories)]
     effective_ids = {status[k]["proof"] for k in chosen if status[k]["proof"]}
@@ -1154,6 +1272,7 @@ def context(m, story=None, *, workspace=None):
         "retired_scenarios":retirement_history(w,stories),
         "withdrawn_stories":[k for k in w["stories"] if k in withdrawn and (not stories or k in stories)],
         "stories":story_context(w,[k for k in w["stories"] if not stories or k in stories]),
+        "reference_stories":story_context(w,[k for k in w["stories"] if k in references]),
         "decisions":{k:{**w["decisions"][k],"answer":w["answers"].get(k)} for k in w["decisions"] if k in decisions},
         "contracts":{k:v for k,v in w["contracts"].items() if k in contracts},
         "contract_usage":{k:{s:w["stories"][s]["title"] for s in usage[k]} for k in w["contracts"] if k in contracts},
@@ -1270,17 +1389,20 @@ def offline_home_href(workspace):
 
 
 @input_scope()
-def render(model, token=None, *, workspace=None, read_only=False, home_href=None):
+def render(model, token=None, *, workspace=None, read_only=False, home_href=None, with_queue=False):
     token_cache = _render_receipts.set({})
     try:
         work = model["work"]
         current = evaluate(work, workspace)
         impacts = {key: {code: impact(work, key, code, workspace, before=current) for code in d["options"]}
                    for key, d in work["decisions"].items()}
-        return graph_view.render(model, current, impacts, token, digest(model), LAYOUT,
-                                 queue=dispatch(work,workspace=workspace,for_map=True), read_only=read_only,
+        # Only a full page needs scoped work; polling and snapshot checks don't.
+        queue = dispatch(work, workspace=workspace, for_map=True, states=current, include_story_queues=True)
+        html = graph_view.render(model, current, impacts, token, digest(model), LAYOUT,
+                                 queue=queue, read_only=read_only,
                                  home_href=home_href if token else offline_home_href(workspace or TASK_DIR),
                                  source_labels=source_paths.SourcePaths.for_task(workspace or TASK_DIR).graph_labels(work))
+        return (html, queue) if with_queue else html
     finally:
         _render_receipts.reset(token_cache)
 
@@ -1306,7 +1428,8 @@ def initialize_task(path, raw, *, key, title=None, outcome="delivery"):
                                "done":done}}}}
     validate(model)
     dest.parent.mkdir(parents=True,exist_ok=True)
-    with tempfile.TemporaryDirectory(dir=dest.parent) as temp:
+    # Creation metadata is not a task ledger and must stay out of discovery.
+    with tempfile.TemporaryDirectory(prefix=".new-", dir=dest.parent) as temp:
         staging=Path(temp)/"new"
         staging.mkdir()
         (staging/"model.json").write_bytes(encoded(model))
@@ -1635,6 +1758,8 @@ def main(argv=None, *, serve_project=None):
                 q.add_argument("--evidence",required=name=="fail",default="")
                 q.add_argument("--level",choices=("自动化","真实环境","人工核对","推演"),default="")
                 q.add_argument("--environment",default=""); q.add_argument("--expected",default="")
+            if name=="finish":
+                q.add_argument("--implementation", type=Path, help="开发动作的实际实现详情 JSON 文件")
             if name=="fail":
                 q.add_argument("--reopen",required=True)
     a=parser.parse_args(arguments)
@@ -1686,8 +1811,13 @@ def main(argv=None, *, serve_project=None):
         elif a.cmd == "lesson-review":
             op = lambda w: knowledge.review(w, TASK_DIR, a.id, a.verdict, actor, a.why, sys.modules[__name__], version=a.version)
         else:
+            implementation_file = getattr(a, "implementation", None)
+            implementation = load(implementation_file) if implementation_file is not None else None
+            if implementation_file is not None:
+                validate_implementation(implementation)
             op=lambda w:progress(w,a.cmd,a.id,actor,a.output,getattr(a,"evidence",""),
-                                 getattr(a,"level",""),getattr(a,"environment",""),getattr(a,"expected",""),getattr(a,"reopen",None))
+                                 getattr(a,"level",""),getattr(a,"environment",""),getattr(a,"expected",""),getattr(a,"reopen",None),
+                                 implementation=implementation)
         model=commit(a.rev,op)
         print("共同记录 v"+str(model["work"]["revision"]))
 

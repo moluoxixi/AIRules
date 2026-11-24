@@ -101,7 +101,7 @@ def make_graph(work, states, scenarios):
             if stale:
                 parts.append(f"{stale} 需补验")
             badge = " · ".join(parts)
-        node(key, "story", story["title"], story["flow"][0] if story.get("flow") else story["actor"],
+        node(key, "story", story["title"], story.get("goal", ""),
              label="用户故事", state=badge, progress=progress)
         connect(ROOT_ID, key)
 
@@ -155,11 +155,24 @@ def make_graph(work, states, scenarios):
             continue
         state = states[key]["state"]
         caption = action["done"]
+        caption_kind = "condition"
+        if action["kind"] == "开发":
+            proof = next((event for event in work.get("events", [])
+                          if state == "done" and event["id"] == states[key].get("proof")
+                          and event["kind"] == "finish" and event.get("action") == key), None)
+            historical = next((event for event in reversed(work.get("events", []))
+                               if event["kind"] == "finish" and event.get("action") == key), None)
+            result = proof or (historical if state == "stale" else None)
+            summary = (result.get("implementation") or {}).get("summary") if result else None
+            output = summary or (result.get("output") if result else None)
+            if output:
+                caption_kind = "actual" if proof else "historical"
+                caption = ("实际产出 · " if proof else "历史产出（需复核）· ") + output
+            else:
+                caption = "完成条件 · " + action["done"] if action.get("done") else "实际实现待登记"
         if len(action["stories"]) == 1:
             story = stories[action["stories"][0]]
-            if action["kind"] == "开发" and story.get("flow"):
-                caption = story["flow"][-1]
-            elif action["kind"] == "验证" and story.get("examples"):
+            if action["kind"] == "验证" and story.get("examples"):
                 amounts = [r["example"] for r in routes if r["decision"] in action["decisions"] and r.get("example")]
                 covered = set(action.get("covers", []))
                 example = next((case for case in story["examples"] if case.get("id") in covered), None)
@@ -169,7 +182,8 @@ def make_graph(work, states, scenarios):
                     caption = " / ".join(amounts) if amounts else story["examples"][0]["given"]
         node(key, kind_of[action["kind"]], action["title"], caption, action["kind"],
              "待验" if action["kind"] == "验证" and state == "blocked" else state_names[state],
-             activity=state)
+             activity=state, caption_kind=caption_kind, users=list(action["stories"]),
+             reference_stories=[story for story in action.get("read_stories", []) if story not in action["stories"]])
 
     for route in routes:
         connect(route["decision"], route["contract"], {"decision":route["decision"],"is":route["option"]})
@@ -235,12 +249,22 @@ def make_graph(work, states, scenarios):
         connect(key, DELIVERY_ID)
 
     features = {}
+    users_by_contract = contract_users(work)
     for story in stories:
         included, choices, sources = feature_scope(work, {story})
         visible = {ROOT_ID, DELIVERY_ID, story} | choices | sources | {aliases.get(k, k) for k in included}
+        references = {ref for key in included for ref in actions[key].get("read_stories", [])
+                      if ref not in actions[key]["stories"]}
         features[story] = {"nodes":[key for key in nodes if key in visible],
-                           "actions":[key for key in actions if key in included]}
-    for key, users in contract_users(work).items():
+                           "actions":[key for key in actions if key in included],
+                           "reference_stories":[key for key in stories if key in references and key != story],
+                           "shared_actions":{key:[owner for owner in actions[key]["stories"] if owner != story]
+                                             for key in actions if key in included and
+                                             any(owner != story for owner in actions[key]["stories"])},
+                           "shared_contracts":{key:[owner for owner in users_by_contract[key] if owner != story]
+                                               for key in contracts if key in sources and
+                                               any(owner != story for owner in users_by_contract[key])}}
+    for key, users in users_by_contract.items():
         nodes[key]["users"] = users
     return {"nodes":list(nodes.values()), "edges":list(edges.values()), "aliases":aliases, "features":features}
 
@@ -250,6 +274,8 @@ def lesson_version(queue):
     # An empty adoption ledger hashes exactly as pre-0.8 snapshots did.
     if queue.get("adopted_lessons"):
         cards.append(queue["adopted_lessons"])
+    if queue.get("knowledge_warnings"):
+        cards.append(queue["knowledge_warnings"])
     return hashlib.sha256(json.dumps(cards, sort_keys=True, ensure_ascii=False).encode()).hexdigest()
 
 

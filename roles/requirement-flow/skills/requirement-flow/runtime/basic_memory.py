@@ -114,8 +114,9 @@ def project(store, cards, *, refresh_index=True):
     notes, state = paths(store)
     desired = {}
     counts = dict(written=0, removed=0, unchanged=0)
+    complete = not getattr(cards, "diagnostics", [])
     for card in cards:
-        if card["state"] == "approved":
+        if complete and card["state"] == "approved":
             relative = Path(segment(card["task"])) / (segment(card["id"]) + ".md")
             if relative in desired:
                 raise ValueError(f"同一经验有多个有效版本：{relative}")
