@@ -1,7 +1,8 @@
 """Reviewed project lessons, derived from task records and their live evidence."""
 import copy
 from collections import OrderedDict
-from functools import lru_cache
+import hashlib
+import json
 from pathlib import Path
 import re
 from threading import Lock
@@ -30,9 +31,10 @@ COMMON = set("""测试 验证 需求 功能 接口 数据 页面 业务 正常 �
     test verify api data system feature page user get post put delete id name type status code success result
     value message title pageindex pagesize pageno pagenum""".split())
 
-# Polling a graph repeatedly should only parse tasks that contain lesson cards.
-# Each public write replaces model.json atomically. Also include timestamps/size for in-place edits.
+# Reuse validation of unchanged bytes, not filesystem metadata. In-place edits
+# of the same size can have identical timestamps on some filesystems.
 _empty_models = OrderedDict()
+_nonempty_models = OrderedDict()
 _cache_lock = Lock()
 
 
@@ -54,22 +56,6 @@ def task_directory_name(name):
 def fingerprint(path):
     info = path.stat()
     return (info.st_dev, info.st_ino, info.st_mtime_ns, info.st_ctime_ns, info.st_size)
-
-
-def known_empty(path, stamp):
-    with _cache_lock:
-        if _empty_models.get(path) == stamp:
-            _empty_models.move_to_end(path)
-            return True
-    return False
-
-
-def remember_empty(path, stamp):
-    with _cache_lock:
-        _empty_models[path] = stamp
-        _empty_models.move_to_end(path)
-        if len(_empty_models) > 768:
-            _empty_models.popitem(last=False)
 
 
 def text(value):
@@ -393,18 +379,28 @@ def match_cards(work, cards, *, stories=None, action=None, limit=5, hits=None):
     return [card for _, card in matches[:limit]]
 
 
-@lru_cache(maxsize=32)
-def read_source_model(path, stamp, engine):
-    """Cache ledger parsing only. Evidence files, source aliases and retirements are rechecked on every read."""
-    model = engine.load(path)
+def read_source_model(path, engine):
+    """Read current ledger bytes once; cache only successful parsing and validation."""
+    data = path.read_bytes()
+    key = path, hashlib.sha256(data).digest(), engine
+    with _cache_lock:
+        for cache in (_empty_models, _nonempty_models):
+            if key in cache:
+                cache.move_to_end(key)
+                return cache[key]
+    # Parse the same bytes used for the key, even if the file is replaced while reading.
+    model = json.loads(data.decode("utf-8"), object_pairs_hook=engine.unique)
     versions = engine.validate(model)
     work = model["work"]
     engine.expect(work["id"] == unicodedata.normalize("NFC", path.parent.name), "需求模型 ID 与目录不一致")
-    if not work.get("lesson_cards"):
-        if stamp == fingerprint(path):
-            remember_empty(path, stamp)
-        return None
-    return work, versions
+    record = (work, versions) if work.get("lesson_cards") else None
+    cache, limit = (_empty_models, 768) if record is None else (_nonempty_models, 32)
+    with _cache_lock:
+        cache[key] = record
+        cache.move_to_end(key)
+        if len(cache) > limit:
+            cache.popitem(last=False)
+    return record
 
 
 def load_tasks(store, workspace, current_work, engine, diagnostics=None):
@@ -460,11 +456,7 @@ def load_tasks(store, workspace, current_work, engine, diagnostics=None):
                 if not work.get("lesson_cards"):
                     continue
             else:
-                model_file = model_file.absolute()
-                stamp = fingerprint(model_file)
-                if known_empty(model_file, stamp):
-                    continue
-                record = read_source_model(model_file, stamp, engine)
+                record = read_source_model(model_file.absolute(), engine)
                 if record is None:
                     continue
                 work, versions = record
