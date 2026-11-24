@@ -30,8 +30,10 @@ class ProjectFlowTest(unittest.TestCase):
 
     def command(self, *args, cwd=None, explicit=True):
         project_arg = ["--project", str(self.project)] if explicit else []
+        # Initial installation and upgrade must flush the full transaction journal.
+        timeout = 60 if args[:1] in (("init",), ("upgrade",)) else 10
         return subprocess.run([sys.executable, str(FLOW), *project_arg, *map(str,args)],
-                              cwd=cwd or self.project.parent, timeout=10, capture_output=True, text=True,
+                              cwd=cwd or self.project.parent, timeout=timeout, capture_output=True, text=True,
                               env={**os.environ, "PYTHONDONTWRITEBYTECODE":"1"})
 
     def ok(self, *args, **kwargs):

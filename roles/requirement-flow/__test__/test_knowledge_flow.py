@@ -129,8 +129,11 @@ class Project:
         return [sys.executable, '-B', str(self.entry), '--project', str(self.root), *map(str, args)]
 
     def cli(self, *args, ok=True):
+        # Initialization commits the full asset set and its recovery journal.
+        # Keep ordinary workflow queries on their existing, shorter deadline.
+        timeout = 60 if args[:1] == ('init',) else 15
         p = subprocess.run(self.command(*args), cwd=self.root, text=True, encoding='utf-8',
-                           capture_output=True, timeout=15)
+                           capture_output=True, timeout=timeout)
         if (p.returncode == 0) != ok:
             raise AssertionError(f'{args} returned {p.returncode}: {p.stderr or p.stdout}')
         return p.stdout
@@ -243,6 +246,65 @@ class Project:
                 yield url
             finally:
                 p.terminate()
+
+
+class ProjectCommandTimeoutTest(unittest.TestCase):
+    def test_slow_initialization_runs_the_real_cli_and_finishes_installation(self):
+        command = Project.command
+
+        def delayed(project, *args):
+            self.assertEqual(args, ('init',))
+            # Model startup or disk latency beyond the ordinary query budget,
+            # then execute the actual installer rather than a fake success.
+            return [sys.executable, '-B', '-c',
+                    'import os, runpy, sys, time; time.sleep(16); sys.argv = sys.argv[1:]; '
+                    'sys.path.insert(0, os.path.dirname(sys.argv[0])); '
+                    'runpy.run_path(sys.argv[0], run_name="__main__")',
+                    *command(project, *args)[2:]]
+
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            with patch.object(Project, 'command', delayed):
+                project = Project(root)
+            self.assertTrue(project.entry.is_file())
+            self.assertEqual((root / 'directory.py').read_text(encoding='utf-8'), DIRECTORY)
+            self.assertEqual(project.data('list'), {'active': [], 'archive': []})
+            self.assertFalse(project.data('init')['changed'])
+            self.assertEqual(list((root / '.requirements').glob('.install-*')), [])
+
+    def test_only_initialization_gets_a_larger_finite_budget(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            project = Project(Path(tmp), installed=True)
+            for args, budget in [(('init',), 60), (('init', '--migrate'), 60),
+                                 (('list',), 15), (('task', 'check', 'next'), 15),
+                                 (('new', 'check', '--request', 'init'), 15)]:
+                with self.subTest(args=args):
+                    result = subprocess.CompletedProcess(project.command(*args), 0, stdout='{}', stderr='')
+                    with patch.object(subprocess, 'run', return_value=result) as run:
+                        self.assertEqual(project.cli(*args), '{}')
+                    run.assert_called_once_with(project.command(*args), cwd=project.root,
+                                                text=True, encoding='utf-8', capture_output=True, timeout=budget)
+
+    def test_initialization_timeout_propagates_without_retry_or_fixture_writes(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            error = subprocess.TimeoutExpired(['flow.py', 'init'], 60, output='preparing', stderr='blocked')
+            with patch.object(subprocess, 'run', side_effect=error) as run:
+                with self.assertRaises(subprocess.TimeoutExpired) as raised:
+                    Project(root)
+            self.assertIs(raised.exception, error)
+            self.assertEqual(run.call_count, 1)
+            self.assertEqual(list(root.iterdir()), [])
+
+    def test_failed_initialization_is_not_retried_or_treated_as_installed(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            result = subprocess.CompletedProcess(['flow.py', 'init'], 1, stdout='', stderr='installation rejected')
+            with patch.object(subprocess, 'run', return_value=result) as run:
+                with self.assertRaisesRegex(AssertionError, 'installation rejected'):
+                    Project(root)
+            self.assertEqual(run.call_count, 1)
+            self.assertEqual(list(root.iterdir()), [])
 
 
 class KnowledgeFlowTest(unittest.TestCase):

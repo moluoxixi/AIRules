@@ -1090,12 +1090,17 @@ describe.skipIf(!executablePath)('requirement clarity in the existing headless b
   }, 25_000)
 
   it('reads a new document when a successful decision returns the same page with a different hash', async () => {
-    const page = await open('?features=S-one#node=D-test')
+    const page = await open('?features=S-one#node=D-test', 'online', 'normal', { deadlineMs: null })
     try {
       const before = documentReads
-      await Promise.all([page.waitForNavigation({ waitUntil: 'domcontentloaded' }), page.click(chooseYes)])
-      expect(new URL(page.url()).hash).toBe('#work')
-      await expect.poll(() => documentReads, { timeout: 2000 }).toBe(before + 1)
+      await page.evaluate(() => {
+        window.__documentBeforeDecision = true
+      })
+      await page.click(chooseYes)
+      // Wait on a real HTTP read and a new document, not a hash-change event.
+      await expect.poll(() => documentReads, { timeout: 5000 }).toBe(before + 1)
+      await page.waitForFunction(() => !window.__documentBeforeDecision && location.hash === '#work'
+        && document.querySelector('#stations [data-node]'), { timeout: 3000 })
       expect(decisionPosts).toHaveLength(1)
     }
     finally { await page.close() }

@@ -19,7 +19,7 @@ from evidence import linked
 
 SKILLS = Path(".agents/skills")
 ROLE = "requirement-flow"
-ROLE_VERSION = "0.11.0"
+ROLE_VERSION = "0.11.1"
 SPECIALISTS = ("flow-requirements", "flow-contracts", "flow-implement", "flow-verify", "flow-review")
 SKILL = SKILLS / ROLE
 MANIFEST = Path(".requirements/installation.json")

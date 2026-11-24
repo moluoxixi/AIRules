@@ -97,7 +97,55 @@ class LedgerDiagnosticsTest(unittest.TestCase):
             model["work"]["revision"] = 1
             path.write_text(json.dumps(model), encoding="utf-8")
             self.assertEqual(self.catalogue().diagnostics, [])
-            self.assertEqual(validate.call_count, 4)
+            self.assertEqual(validate.call_count, 3, "restoring the exact validated bytes may reuse parsing")
+
+    def test_same_size_invalid_model_is_not_hidden_by_unchanged_file_metadata(self):
+        path, model = self.empty_model()
+        original = knowledge.fingerprint(path)
+        with patch.object(knowledge, "fingerprint", return_value=original):
+            self.assertEqual(self.catalogue().diagnostics, [])
+            size = path.stat().st_size
+            model["work"]["revision"] = 0
+            path.write_text(json.dumps(model), encoding="utf-8")
+            self.assertEqual(path.stat().st_size, size)
+            for _ in range(2):
+                self.assert_diagnostic(self.catalogue(), "empty")
+            model["work"]["revision"] = 1
+            path.write_text(json.dumps(model), encoding="utf-8")
+            self.assertEqual(self.catalogue().diagnostics, [])
+
+    def test_nonempty_model_cache_reads_same_size_new_bytes(self):
+        path, model = self.empty_model()
+        model["work"]["lesson_cards"] = {"L": {"version": 1}}
+        path.write_text(json.dumps(model), encoding="utf-8")
+        stamp = knowledge.fingerprint(path)
+
+        def read():
+            (_, work, _), = knowledge.load_tasks(self.store, self.store, None, sync)
+            return work
+
+        with patch.object(knowledge, "fingerprint", return_value=stamp), patch.object(sync, "validate", return_value={}) as validate:
+            before = read()
+            self.assertEqual(before["revision"], 1)
+            size = path.stat().st_size
+            model["work"]["revision"] = 2
+            path.write_text(json.dumps(model), encoding="utf-8")
+            self.assertEqual(path.stat().st_size, size)
+            after = read()
+            self.assertEqual(after["revision"], 2)
+            self.assertEqual(validate.call_count, 2)
+            self.assertIs(read(), after)
+            self.assertEqual(validate.call_count, 2)
+
+    def test_duplicate_json_keys_remain_diagnostic_after_cached_empty_model(self):
+        path, _ = self.empty_model()
+        self.assertEqual(self.catalogue().diagnostics, [])
+        content = path.read_text(encoding="utf-8")
+        path.write_text(content.replace('"revision": 1', '"revision": 1, "revision": 2'), encoding="utf-8")
+        for _ in range(2):
+            self.assert_diagnostic(self.catalogue(), "empty")
+        path.write_text(content, encoding="utf-8")
+        self.assertEqual(self.catalogue().diagnostics, [])
 
     def test_empty_model_with_mismatched_task_id_is_not_known_empty(self):
         path, model = self.empty_model()
@@ -173,13 +221,23 @@ class LedgerDiagnosticsTest(unittest.TestCase):
 
         with patch.object(Path, "iterdir", scan):
             self.assert_diagnostic(self.catalogue(), "archive")
-        # A filesystem change leaves the validated-empty fast path before this read failure.
-        path.write_text(path.read_text(encoding="utf-8"), encoding="utf-8")
-        with patch.object(sync, "load", side_effect=error):
+        # A previously validated ledger must still be readable on each request.
+        read_bytes = Path.read_bytes
+        reads = []
+
+        def read(candidate):
+            if candidate == path:
+                reads.append(candidate)
+                raise error
+            return read_bytes(candidate)
+
+        with patch.object(Path, "read_bytes", read):
             for _ in range(2):
                 cards = self.catalogue()
                 self.assert_diagnostic(cards, "empty")
                 self.assertNotIn(private, json.dumps(cards.diagnostics))
+        self.assertEqual(reads, [path, path])
+        self.assertEqual(self.catalogue().diagnostics, [])
         with patch.object(knowledge, "linked", side_effect=error):
             self.assert_diagnostic(self.catalogue(), ".requirements")
         self.assertTrue(path.exists())
