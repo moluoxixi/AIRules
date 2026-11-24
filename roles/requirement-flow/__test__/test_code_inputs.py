@@ -1,10 +1,12 @@
 """Real checkouts and CLI runs must not reuse evidence from different code."""
 import json
+import os
 from pathlib import Path
 import re
 import subprocess
 import sys
 import tempfile
+from types import SimpleNamespace
 import unittest
 from unittest.mock import patch
 
@@ -453,6 +455,42 @@ class CodeInputsTest(unittest.TestCase):
         source.write_text("value = 2")
         with self.assertRaisesRegex(ValueError, "已改变"):
             code_inputs.verify_current(self.project, first, ["."])
+
+    def test_windows_path_and_handle_stat_differ_without_indicating_a_write(self):
+        source = self.project / "run.cmd"
+        source.write_bytes(b"@exit /b 0\r\n")
+        paths = [source.name]
+        original_lstat = Path.lstat
+        original_fstat = os.fstat
+        change_time = 100
+        inode_offset = 0
+
+        def windows_stat(info, mode, ctime_ns, inode):
+            return SimpleNamespace(st_file_attributes=0, st_dev=info.st_dev, st_ino=inode,
+                                   st_mode=mode, st_size=info.st_size, st_mtime_ns=info.st_mtime_ns,
+                                   st_birthtime_ns=10, st_ctime_ns=ctime_ns)
+
+        def path_stat(path, *args, **kwargs):
+            info = original_lstat(path, *args, **kwargs)
+            if path == source:
+                return windows_stat(info, info.st_mode | 0o111, 10, info.st_ino)
+            return info
+
+        def handle_stat(fd):
+            info = original_fstat(fd)
+            return windows_stat(info, info.st_mode & ~0o111, change_time, info.st_ino + inode_offset)
+
+        with patch.object(Path, "lstat", path_stat), patch.object(os, "fstat", handle_stat):
+            marks = {}
+            binding = code_inputs.snapshot(self.project, paths, capture_marks=marks)
+            self.assertEqual(code_inputs.verify_current(self.project, binding, paths, expected_marks=marks), binding)
+            change_time += 100
+            with self.assertRaisesRegex(ValueError, "采证期间代码文件曾被改写"):
+                code_inputs.verify_current(self.project, binding, paths, expected_marks=marks)
+            self.assertEqual(code_inputs.snapshot(self.project, paths), binding)
+            inode_offset = 1
+            with self.assertRaisesRegex(ValueError, "打开期间代码文件变化"):
+                code_inputs.snapshot(self.project, paths)
 
     def test_request_scoped_cache_never_skips_receipt_or_new_request_freshness_checks(self):
         paths = ["business.py"]

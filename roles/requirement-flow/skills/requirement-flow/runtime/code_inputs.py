@@ -58,6 +58,16 @@ def file_mark(info):
     return (info.st_dev, info.st_ino, info.st_mode, info.st_size, info.st_mtime_ns, info.st_ctime_ns)
 
 
+def open_file_mark(info):
+    if hasattr(info, "st_file_attributes"):
+        # Windows lstat can report creation time as ctime and infer execute bits
+        # from the filename. Compare only common fields across lstat and fstat;
+        # use the full descriptor marks when comparing two fstat results.
+        return (info.st_dev, info.st_ino, info.st_mode & ~0o111, info.st_size,
+                info.st_mtime_ns, getattr(info, "st_birthtime_ns", None))
+    return file_mark(info)
+
+
 def snapshot(project_root, code_paths=None, *, capture_marks=None):
     project = Path(project_root).resolve(strict=True)
     require(project.is_dir(), "代码输入项目目录不存在")
@@ -78,7 +88,7 @@ def snapshot(project_root, code_paths=None, *, capture_marks=None):
             before = os.fstat(stream.fileno())
             require(stat.S_ISREG(before.st_mode), "代码输入不是普通文件：" + name)
             mark = file_mark(before)
-            require(file_mark(info) == mark, "打开期间代码文件变化：" + name)
+            require(open_file_mark(info) == open_file_mark(before), "打开期间代码文件变化：" + name)
             for block in iter(lambda: stream.read(1024 * 1024), b""):
                 checksum.update(block)
             after = os.fstat(stream.fileno())
