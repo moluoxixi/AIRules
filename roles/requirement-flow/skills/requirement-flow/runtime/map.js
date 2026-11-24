@@ -2193,7 +2193,10 @@
     })
     async function request() {
       const result = await fetch(url, {
-        method: 'POST', headers: { Accept: 'application/json' }, body: fields, signal: controller.signal,
+        method: 'POST',
+        headers: { Accept: 'application/json' },
+        body: fields,
+        signal: controller.signal,
       })
       if (result.status === 409 || result.status === 403)
         return null

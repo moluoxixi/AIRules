@@ -224,8 +224,20 @@ assert pending_uses(q.queue()) == {'D-export-only': ['A-export']}
 inactive = snapshot(q, 'scope-inactive-edge')
 assert 'A-export' in inactive['graph']['features']['S-save']['actions']
 `, tests, skill, directory], { encoding: 'utf8' })
-  const names = ['online', 'offline', 'stale', 'partial', 'partial-decision', 'allwithdraw', 'unplanned',
-    'scope-skipped', 'scope-active', 'scope-answered', 'scope-declared', 'scope-inactive-edge']
+  const names = [
+    'online',
+    'offline',
+    'stale',
+    'partial',
+    'partial-decision',
+    'allwithdraw',
+    'unplanned',
+    'scope-skipped',
+    'scope-active',
+    'scope-answered',
+    'scope-declared',
+    'scope-inactive-edge',
+  ]
   const pages = Object.fromEntries(names.map(name => [name, readFileSync(path.join(directory, `${name}.html`), 'utf8')]))
   const versions = Object.fromEntries(Object.entries(pages).map(([name, page]) => {
     const data = JSON.parse(page.match(/<script type="application\/json" id="data">(.+?)<\/script>/u)[1])
@@ -253,8 +265,11 @@ describe.skipIf(!executablePath)('requirement clarity in the existing headless b
     const { response, location } = post
     if (!response.headersSent)
       response.writeHead(status, { 'Content-Type': status === 200 ? 'application/json' : 'text/plain' })
-    response.end(status !== 200 ? `HTTP ${status}`
-      : post.mode === 'body' ? `${JSON.stringify(location)}}` : JSON.stringify({ location }))
+    response.end(status !== 200
+      ? `HTTP ${status}`
+      : post.mode === 'body'
+        ? `${JSON.stringify(location)}}`
+        : JSON.stringify({ location }))
   }
   let reads = 0
   let polls = 0
@@ -267,10 +282,14 @@ describe.skipIf(!executablePath)('requirement clarity in the existing headless b
         const post = { response, mode: decisionMode, closed: false, startedAt: performance.now() }
         const base = url.pathname.replace(/decision$/u, '')
         post.location = `${base}?features=${url.searchParams.get('features')}#work`
-        response.on('close', () => { post.closed = true })
+        response.on('close', () => {
+          post.closed = true
+        })
         request.setEncoding('utf8')
         let body = ''
-        request.on('data', chunk => { body += chunk })
+        request.on('data', (chunk) => {
+          body += chunk
+        })
         request.on('end', () => {
           post.fields = Object.fromEntries(new URLSearchParams(body))
           decisionPosts.push(post)
@@ -289,7 +308,9 @@ describe.skipIf(!executablePath)('requirement clarity in the existing headless b
         if (sourceMode !== 'normal') {
           const pending = { response, closed: false, mode: sourceMode }
           hangingSources.push(pending)
-          response.on('close', () => { pending.closed = true })
+          response.on('close', () => {
+            pending.closed = true
+          })
           if (sourceMode === 'body') {
             response.writeHead(200, { 'Content-Type': 'application/json' })
             response.flushHeaders()
@@ -374,7 +395,9 @@ describe.skipIf(!executablePath)('requirement clarity in the existing headless b
 
   const sourceRoute = '?view=detail&features=S-one#node=A-shared&source=src%2Fsave.js%3A1'
   async function reopenSource(page, hash) {
-    await page.evaluate(value => { location.hash = value }, hash)
+    await page.evaluate((value) => {
+      location.hash = value
+    }, hash)
     await page.waitForSelector('#source-drawer[open]')
   }
   const sourceBodyText = page => page.$eval('#source-body', el => el.textContent)
@@ -450,11 +473,15 @@ describe.skipIf(!executablePath)('requirement clarity in the existing headless b
       expect(payload.queue.pending_decisions.map(item => item.id)).toContain('D-format')
       expect(await page.$eval('#detail .current-status', el => el.textContent)).toBe(withdrawnNext)
       expect(await page.$$('#detail .queue-item')).toHaveLength(0)
-      await page.evaluate(() => { location.hash = '#node=S-save' })
+      await page.evaluate(() => {
+        location.hash = '#node=S-save'
+      })
       await waitTitle(page, '保存本期记录')
       expect(await page.$eval('#detail .current-status', el => el.textContent)).toContain('待决定 · 共用格式决定')
       expect(await page.$('#detail .queue-item [data-dest="D-format"]')).not.toBeNull()
-      await page.evaluate(() => { location.hash = '#node=%40request' })
+      await page.evaluate(() => {
+        location.hash = '#node=%40request'
+      })
       await waitTitle(page, payload.graph.nodes.find(node => node.id === '@request').title)
       expect(await page.$('#detail .queue-item [data-dest="D-format"]')).not.toBeNull()
       expect(await page.$('#detail .queue-item [data-dest="A-shared"]')).not.toBeNull()
@@ -519,7 +546,9 @@ describe.skipIf(!executablePath)('requirement clarity in the existing headless b
       expect.soft(await storyCard(page, 'S-save'), 'the story card should not take work from another story').toContain(acceptedStory)
       expect.soft(await queuedDecision(page, 'D-format'), 'the story queue should omit the skipped local decision').toBeNull()
       // Leave the decision available as reading context, just not as local pending work.
-      await page.evaluate(() => { location.hash = '#node=D-format' })
+      await page.evaluate(() => {
+        location.hash = '#node=D-format'
+      })
       await waitTitle(page, '导出及试验采用哪种格式')
     }
     finally { await page.close() }
@@ -562,11 +591,15 @@ describe.skipIf(!executablePath)('requirement clarity in the existing headless b
       expect.soft(await storyStatus(page)).toContain(acceptedStory)
       expect.soft(await storyCard(page, 'S-save')).toContain(acceptedStory)
       expect.soft(await page.$$('#detail .queue-item')).toHaveLength(0)
-      await page.evaluate(() => { location.hash = '#node=%40request' })
+      await page.evaluate(() => {
+        location.hash = '#node=%40request'
+      })
       await page.waitForFunction(() => document.querySelector('[data-node="@request"]')?.getAttribute('aria-label')
         && document.querySelector('#panel-type').textContent.includes('需求'))
       expect.soft(await page.$$('#detail .queue-item')).toHaveLength(0)
-      await page.evaluate(() => { location.hash = '#node=A-summary' })
+      await page.evaluate(() => {
+        location.hash = '#node=A-summary'
+      })
       await waitTitle(page, '核对保存结果')
       expect(await page.$eval('#detail', el => el.textContent)).toContain('试验导入时')
     }
@@ -635,8 +668,10 @@ describe.skipIf(!executablePath)('requirement clarity in the existing headless b
   })
 
   it('does not mislabel remaining or genuinely unplanned delivery scope as withdrawn', async () => {
-    for (const [name, features, expected] of [['partial', 'S-export,S-save', 'AC-save'],
-      ['unplanned', '', '待梳理可验收的业务场景']]) {
+    for (const [name, features, expected] of [
+      ['partial', 'S-export,S-save', 'AC-save'],
+      ['unplanned', '', '待梳理可验收的业务场景'],
+    ]) {
       const page = await open(`?view=detail&features=${features}#node=%40delivery`, name)
       try {
         expect(await text(page)).toContain(expected)
@@ -777,7 +812,9 @@ describe.skipIf(!executablePath)('requirement clarity in the existing headless b
       const pending = hangingSources[0]
       sourceMode = 'normal'
       sourceText = '新故事入口读取的原文'
-      await page.evaluate(() => { location.hash = '#node=S-one&source=src%2Fsave.js%3A1' })
+      await page.evaluate(() => {
+        location.hash = '#node=S-one&source=src%2Fsave.js%3A1'
+      })
       await page.waitForFunction(() => document.querySelector('#source-body').textContent.includes('新故事入口读取的原文'))
       const readTime = await page.$eval('.source-read-time', el => el.textContent)
       pending.response.writeHead(200, { 'Content-Type': 'application/json' })
@@ -792,7 +829,9 @@ describe.skipIf(!executablePath)('requirement clarity in the existing headless b
       await page.waitForSelector('.source-reread[aria-disabled="true"]')
       sourceMode = 'normal'
       sourceText = '再次切换入口后的原文'
-      await page.evaluate(() => { location.hash = '#node=A-shared&source=src%2Fsave.js%3A1' })
+      await page.evaluate(() => {
+        location.hash = '#node=A-shared&source=src%2Fsave.js%3A1'
+      })
       await page.waitForFunction(() => document.querySelector('#source-body').textContent.includes('再次切换入口后的原文'))
       await waitSourceIdle(page)
       expect(await sourceBodyText(page)).not.toContain('读取原文超时')
@@ -953,14 +992,15 @@ describe.skipIf(!executablePath)('requirement clarity in the existing headless b
   const chooseNo = '#detail button.choose[value="no"]'
   const decisionDraft = '保留这个决定理由以便核对'
   const decisionReason = page => page.$eval(decisionField, el => el.value)
-  const updateNotice = page => page.$eval('#notice', el => el.hidden ? null : el.innerText)
+  const updateNotice = page => page.$eval('#notice', el => el.hidden ? null : el.textContent)
   const buttonState = page => page.$$eval('#detail form button[type="submit"]', buttons => buttons.map(el => ({
     text: el.getAttribute('aria-label') || el.textContent,
     disabled: el.disabled || el.getAttribute('aria-disabled') === 'true',
   })))
   function expectDecisionWaiting(buttons, stage) {
     expect.soft(buttons, `${stage}: every decision option must be inactive while submitting`).toEqual([
-      expect.objectContaining({ disabled: true }), expect.objectContaining({ disabled: true }),
+      expect.objectContaining({ disabled: true }),
+      expect.objectContaining({ disabled: true }),
     ])
     expect.soft(buttons.map(button => button.text).join(' '), `${stage}: the button should explain the wait`)
       .toMatch(/提交中|正在提交|正在保存|等待(?:确认|响应)|保存中/u)
@@ -988,8 +1028,13 @@ describe.skipIf(!executablePath)('requirement clarity in the existing headless b
         expect((await headers).status()).toBe(200)
       await expect.poll(() => decisionPosts.length).toBe(1)
       const post = decisionPosts[0]
-      expect(post.fields).toEqual({ csrf: 'fixture-token', revision: String(data.versions.online.revision),
-        decision: 'D-test', choice: 'yes', reason: decisionDraft })
+      expect(post.fields).toEqual({
+        csrf: 'fixture-token',
+        revision: String(data.versions.online.revision),
+        decision: 'D-test',
+        choice: 'yes',
+        reason: decisionDraft,
+      })
       expect(post.response.headersSent).toBe(mode === 'body')
       expect(post.response.writableEnded).toBe(false)
       const pollsWhileWaiting = polls
@@ -1034,7 +1079,7 @@ describe.skipIf(!executablePath)('requirement clarity in the existing headless b
       if (!notice || page.url() !== route)
         return // Earlier assertions already describe the failure; no nonexistent button to click.
 
-      expect(await page.$eval('#notice #refresh', el => el.innerText)).toContain('读取最新版')
+      expect(await page.$eval('#notice #refresh', el => el.textContent)).toContain('读取最新版')
       await readLatestDecision(page)
       expect(page.url()).toBe(route)
       expect(documentReads).toBe(before + 1)
@@ -1083,7 +1128,7 @@ describe.skipIf(!executablePath)('requirement clarity in the existing headless b
       else {
         if (status === 409 || status === 403) {
           await page.waitForFunction(() => Array.from(document.querySelectorAll('#detail form [role="status"]'))
-            .some(el => el.innerText.includes('再次确认')), { timeout: 3000 })
+            .some(el => el.textContent.includes('再次确认')), { timeout: 3000 })
         }
         expect(page.url()).toBe(route)
         expect(await decisionReason(page)).toBe(decisionDraft)
