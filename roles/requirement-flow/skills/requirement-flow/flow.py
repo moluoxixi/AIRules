@@ -142,7 +142,7 @@ def summarize(path, work, queue, *, include_lessons=False):
         "next": queue["next"]["id"] if queue["next"] else None, "running": queue["running"],
         "pending_decisions": [item["id"] for item in queue["pending_decisions"]],
         "handbook": str(path / "handbook.html"),
-        **({"workflow": work["workflow"]} if engine.lightweight(work) else {}),
+        "workflow": work.get("workflow", "orchestrated"),
         **({"related_lessons": queue["related_lessons"]} if include_lessons else {}),
     }
 

@@ -3,6 +3,7 @@ import importlib.util
 import hashlib
 import json
 from pathlib import Path
+import re
 import shutil
 import subprocess
 import sys
@@ -30,6 +31,12 @@ def snapshot(root):
         p.relative_to(root).as_posix(): p.read_bytes() if p.is_file() else None
         for p in root.rglob("*")
     }
+
+
+def headings(document):
+    text = document.read_text(encoding="utf-8")
+    return {re.sub(r"\s", "-", re.sub(r"[^\w\s-]", "", line.lstrip("#").strip()))
+            for line in text.splitlines() if line.startswith("#")}
 
 
 class InstallProjectTest(unittest.TestCase):
@@ -106,6 +113,7 @@ class InstallProjectTest(unittest.TestCase):
             skill = self.project / ".agents/skills/requirement-flow"
             self.assertTrue((skill / "flow.py").is_file())
             self.assertTrue((skill / "references/model.md").is_file())
+            self.assertTrue((skill / "references/orchestration.md").is_file())
             self.assertTrue((skill / "runtime/evidence.py").is_file())
             for name in installer.SPECIALISTS:
                 self.assertEqual((skill.parent / name / "SKILL.md").read_bytes(),
@@ -170,6 +178,31 @@ class InstallProjectTest(unittest.TestCase):
         self.assertTrue(rules.startswith("Use test portal.\n"))
         self.assertTrue(rules.endswith("Preserve project reviews.\n"))
         self.assertFalse(installer.install(self.project)["changed"])
+
+    def test_agent_instructions_route_to_shipped_documents_and_state_when_not_to_use_them(self):
+        installer.install(self.project)
+        skills = self.project / ".agents/skills"
+        agents = (self.project / "AGENTS.md").read_text(encoding="utf-8")
+        self.assertIn("ready_to_deliver: true", agents)
+        self.assertIn("不建需求", agents)
+        entry = (skills / "requirement-flow/SKILL.md").read_text(encoding="utf-8")
+        self.assertIn("展示后继续实现，不等待确认", entry)
+        self.assertIn("references/orchestration.md", entry)
+        for name in installer.SPECIALISTS:
+            description = re.search(r"^description: (.+)$", (skills / name / "SKILL.md").read_text(encoding="utf-8"), re.M)[1]
+            self.assertIn("requirement-flow", description, name)
+        broken = []
+        for document in sorted(skills.rglob("*.md")):
+            for target in re.findall(r"\]\(([^)]+)\)", document.read_text(encoding="utf-8")):
+                if re.match(r"[a-z]+:", target):
+                    continue
+                relative, _, anchor = target.partition("#")
+                linked = (document.parent / relative).resolve() if relative else document
+                if not linked.is_file():
+                    broken.append(f"{document.relative_to(skills)}: {target}")
+                elif anchor and anchor not in headings(linked):
+                    broken.append(f"{document.relative_to(skills)}: #{anchor}")
+        self.assertEqual(broken, [])
 
     def test_refuses_unknown_same_name_without_writing(self):
         write(self.project, ".agents/skills/requirement-flow/SKILL.md", "project-owned")

@@ -1,6 +1,6 @@
 schema_version: 2
 role_id: requirement-flow
-role_version: 0.12.0
+role_version: 0.12.1
 status: experimental
 canonical_root: roles/requirement-flow
 description: Project-local requirements graphs, dependency-based task dispatch and evidence tracking for Codex.

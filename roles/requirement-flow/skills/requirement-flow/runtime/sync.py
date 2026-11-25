@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Local, file-based collaboration protocol. All mutable facts live in model.json."""
+"""需求目录内的协作命令：读取、领取、采证和写回同一份 model.json。"""
 import argparse
 import copy
 import hashlib
@@ -96,6 +96,18 @@ def bind_workspace(path):
 def load(path=None):
     path = Path(path) if path is not None else MODEL
     return json.loads(path.read_text(encoding="utf-8"), object_pairs_hook=unique)
+
+
+def json_source(source):
+    """Read a JSON document from a file, or from standard input when asked for '-'."""
+    if str(source) != "-":
+        return load(Path(source))
+    stdin = getattr(sys, "stdin", None)
+    expect(stdin is not None and not stdin.isatty(), "file 填 - 时请通过管道或重定向提供 JSON")
+    try:
+        return json.loads(stdin.buffer.read().decode("utf-8"), object_pairs_hook=unique)
+    except ValueError as error:
+        raise Invalid("标准输入不是有效的 JSON：" + str(error)) from None
 
 
 def encoded(obj):
@@ -199,6 +211,11 @@ def light_dev(story):
 
 def light_verify(story, scenario):
     return "A-light-check-" + digest([story, scenario])[:24]
+
+
+def light_action(work, key):
+    """Story and scenario plumbing; cards never advance by claiming these."""
+    return key.startswith("A-light-check-") or key in {light_dev(story) for story in work["stories"]}
 
 
 def validate_lightweight(work, scenarios, retired):
@@ -677,6 +694,11 @@ def evaluate(w, workspace=None):
         for s,c in cases.items():
             c["accepted"] = (c["status"] == "captured" and not blockers and last_finish.get("stamp") == stamp
                              and last_finish.get("receipts",{}).get(s) == c["receipt"]["id"])
+            if c["accepted"]:
+                # A light capture is finished by the same transaction; an
+                # orchestrated one is already counted, but still awaits its `finish`.
+                c["reason"] = ("已取得有效凭据并计入验收" if "light_case" in action
+                               else "已取得有效凭据，等待完成验证动作")
         if last and last["revision"] < request_revision:
             state = "stale"
             reasons.append("需求目标或范围已修订，请按当前要求复核")
@@ -899,6 +921,8 @@ def progress(w, mode, key, actor, output="", evidence="", level="", environment=
              implementation=None, *, refresh_implementation=False):
     expect(key in w["actions"] and actor.strip(), "动作或记录人无效")
     action = w["actions"][key]
+    expect(not (mode == "start" and light_action(w, key)),
+           "轻量故事无需领取：用 implement 登记实现，或按场景 ID 调用 verify-run / verify-observe")
     implementation_sources = []
     if implementation is not None:
         expect(mode == "finish" and action["kind"] == "开发", "implementation 只允许开发动作 finish 使用")
@@ -908,10 +932,11 @@ def progress(w, mode, key, actor, output="", evidence="", level="", environment=
         review_receipts(w,action)
     status = evaluate(w)[key]
     state = status["state"]
-    expect(not needs_independent_review(w,key,status), "重复失败须先用 claim 安排独立诊断，再继续原验证")
+    expect(not needs_independent_review(w,key,status), "重复失败须先用 claim 安排独立诊断，由原失败执行者以外的执行者领取并 finish 后再复验")
     refreshing = refresh_implementation and mode == "finish" and action["kind"] == "开发" and state == "done"
     expect(executable(status) or refreshing, "当前动作不可执行：" + " / ".join(status["reasons"] or [STATES[state]]))
-    expect(state != "active" or actor == status["actor"], "该动作已由 " + str(status["actor"]) + " 领取")
+    expect(state != "active" or actor == status["actor"],
+           "该动作已由 " + str(status["actor"]) + " 领取；继续沿用该署名，或先 handoff 转交")
     proof_fields = {}
     if mode == "start":
         if state == "active":
@@ -1193,7 +1218,7 @@ def map_story_queues(w, states, withdrawn, blocked_by):
 
 @input_scope()
 def dispatch(w, actor="AI", story=None, *, workspace=None, include_lessons=True, for_map=False, states=None,
-             include_story_queues=False):
+             include_story_queues=False, claimable=False):
     expect(isinstance(actor,str) and actor.strip(), "执行人不能为空")
     expect(story is None or story in w["stories"], "故事不存在")
     selected = {story} if story is not None else set()
@@ -1231,7 +1256,17 @@ def dispatch(w, actor="AI", story=None, *, workspace=None, include_lessons=True,
     own = next((item["id"] for item in running if item["actor"] == actor), None)
     review_ready = next((key for key in ready if w["actions"][key].get("review_for")), None)
     next_key = own or review_ready or next(iter(ready),None)
-    packet = action_packet(w, states, next_key, "resume" if own else "start", workspace) if next_key else None
+    packet_key, packet_own = next_key, own
+    if lightweight(w):
+        # Cards advance without a claim: packets, and what a claim may take, are only
+        # for actions added to the requirement.
+        packet_own = None if own and light_action(w, own) else own
+        packet_key = packet_own or review_ready or next((key for key in ready if not light_action(w, key)), None)
+        if claimable:
+            # A claim reports the requirement from the point of view of the added actions.
+            next_key, own = packet_key, packet_own
+    packet = (action_packet(w, states, packet_key, "resume" if packet_key == packet_own else "start", workspace)
+              if packet_key else None)
     if packet is not None and for_map:
         # Versioned pages travel between worktrees; execution context belongs to live packets.
         packet.pop("verification_project_root", None)
@@ -1268,12 +1303,14 @@ def dispatch(w, actor="AI", story=None, *, workspace=None, include_lessons=True,
                                  "scenarios":[f["scenario"] for f in repeats],
                                  "receipts":[rid for f in repeats for rid in f["receipts"]],
                                  "verification_actors":list(dict.fromkeys(f["actor"] for f in repeats))}
+    # A finished lightweight delivery is a stopping point, not a request for another review.
+    delivery_review = (not lightweight(w) and (scenarios or not research) and not packet
+                       and (missing or state in ("unplanned","complete")))
     return {**lessons, **projection, "revision":w["revision"],"actor":actor,"story":story,"outcome_type":w.get("outcome","delivery"),
             "state":state,"next":packet,"ready":ready,
             "running":running,"pending_decisions":pending,"technical_blockers":technical,"waiting":waiting,"scenarios":scenarios,
             "retired_scenarios":retirement_history(w,selected), "verification_followups":followups,
-            "review_skill":"flow-review" if lessons.get("lesson_reviews") or (
-                (scenarios or not research) and not packet and (missing or state in ("unplanned","complete"))) else None,
+            "review_skill":"flow-review" if lessons.get("lesson_reviews") or delivery_review else None,
             "progress":{"completed":completed,"verified_stories":[s for s in w["stories"] if s in verified and (not selected or s in selected)],
                         "withdrawn_stories":[s for s in w["stories"] if s in withdrawn],
                         "unverified_stories":missing}}
@@ -1329,18 +1366,40 @@ def delivery_check(work, actor="AI", *, workspace=None, states=None):
     rows = queue["scenarios"]
     progress = queue["progress"]
     pending = [{"id": row["id"], "title": row["title"], "owner": row["owner"]} for row in queue["pending_decisions"]]
+    light = lightweight(work)
     outstanding = [{"id": key, "title": action["title"], "kind": action["kind"], "stories": action["stories"],
                     "state": states[key]["state"], "holder": states[key]["actor"], "blockers": states[key]["blockers"]}
-                   for key, action in actions.items() if states[key]["state"] not in ("done", "skipped")]
+                   for key, action in actions.items()
+                   if states[key]["state"] not in ("done", "skipped") and not (light and light_action(work, key))]
     if not rows and queue["outcome_type"] == "delivery" and not progress["withdrawn_stories"]:
         suggestions.append({"story": None, "scenario": None, "action": None, "status": "uncovered",
                             "next_step": "define_stories", "reason": "交付需求尚无本期验收场景"})
+    # On a lightweight requirement an added review or research action holds delivery
+    # without leaving a scenario gap, so name it beside the scenario rows.
+    represented = {row["action"] for row in suggestions}
+    for row in (outstanding if light else []):
+        if row["id"] in represented:
+            continue
+        action = actions[row["id"]]
+        independent = not action.get("review_for") or independent_actor(action, actor)
+        step = ("independent_review" if not independent else "resolve_prerequisites" if row["blockers"]
+                else "coordinate_with_holder" if row["holder"] and row["holder"] != actor
+                else "finish_action" if row["holder"] else "claim_action")
+        reason = row["title"] if independent else row["title"] + "；须由原失败执行者以外的执行者领取"
+        story = row["stories"][0] if row["stories"] else None
+        suggestions.append({"story": story, "scenario": None, "expected": None,
+                            "story_title": work["stories"][story]["title"] if story else None,
+                            "action": row["id"], "status": row["state"], "next_step": step, "reason": reason,
+                            "holder": row["holder"], "blockers": row["blockers"], "accepts": [], "check": None,
+                            "receipt_id": None})
+    rules = source_paths.SourcePaths.for_task(workspace or TASK_DIR).rules_index()
     return {"task_id": work["id"], "revision": work["revision"], "outcome_type": queue["outcome_type"],
             "state": queue["state"], "ready_to_deliver": queue["state"] == "complete",
             "acceptance": {"passed": sum(row["status"] == "passed" for row in rows), "total": len(rows)},
             "verified_stories": progress["verified_stories"], "unverified_stories": progress["unverified_stories"],
             "withdrawn_stories": progress["withdrawn_stories"], "pending_decisions": pending,
-            "outstanding_actions": outstanding, "check_suggestions": suggestions}
+            "outstanding_actions": outstanding, "check_suggestions": suggestions,
+            **({"project_rules": rules} if rules else {})}
 
 
 @input_scope()
@@ -1349,16 +1408,41 @@ def claim(revision, actor="AI", story=None):
     def reserve(w):
         expect(story is None or story in w["stories"], "故事不存在")
         changed = materialize_reviews(w,actor,story)
-        queue = dispatch(w, actor, story, include_lessons=False)
+        queue = dispatch(w, actor, story, include_lessons=False, claimable=True)
         packet = queue["next"]
+        waiting = [row["id"] for row in queue["waiting"]
+                   if any(block["kind"] == "independent_reviewer" for block in row["blockers"])]
+        note = ("独立诊断 " + "、".join(waiting) + " 须由原失败执行者以外的执行者 claim 领取并 finish；其他场景继续采证。"
+                if waiting else "")
+        if lightweight(w) and not packet:
+            # Cards advance through implement and scenario captures; only an added
+            # action is claimed, and a diagnosis never by the executor who failed.
+            others = [item for item in queue["running"] if item["actor"] != actor and not light_action(w, item["id"])]
+            if not w["stories"]:
+                guidance = "先用 cards 登记故事和场景。"
+            elif others:
+                guidance = ("动作 " + "、".join(item["id"] + "（" + item["actor"] + "）" for item in others)
+                            + "正由其他执行者处理：等其完成后复验，或由持有人 handoff 后再 claim。")
+            elif queue["pending_decisions"]:
+                guidance = "先由实际决定人处理待决定项 " + "、".join(item["id"] for item in queue["pending_decisions"]) + "。"
+            elif any(not light_action(w, row["id"]) for row in queue["waiting"]):
+                guidance = "后加的动作仍在等前置条件，见 waiting。"
+            elif queue["state"] == "complete":
+                guidance = "本需求已无待办：用 delivery-check 核对，通过后报告或 archive 归档。"
+            else:
+                guidance = "" if waiting else "用 implement 登记实现，按场景 ID 调用 verify-run 或 verify-observe 采证。"
+            note = "轻量故事无需领取。" + guidance + note
+        if note:
+            result["note"] = note
         result["claimed"] = packet["id"] if packet else None
-        if not packet or packet["mode"] == "resume":
-            result["outcome"] = "resumed" if packet else queue["state"]
-            return changed
-        result["outcome"] = "claimed"
-        if packet.get("previous_execution"):
-            result["previous_execution"] = packet["previous_execution"]
-        return progress(w, "start", packet["id"], actor, packet["title"]) or changed
+        if packet and packet["mode"] != "resume":
+            result["outcome"] = "claimed"
+            if packet.get("previous_execution"):
+                result["previous_execution"] = packet["previous_execution"]
+            return progress(w, "start", packet["id"], actor, packet["title"]) or changed
+        result["outcome"] = ("not_needed" if lightweight(w) and not packet
+                             else "resumed" if packet else queue["state"])
+        return changed
     model = commit(revision, reserve)
     queue = dispatch(model["work"], actor, story)
     if queue["next"] is not None and result.get("previous_execution"):
@@ -1383,9 +1467,13 @@ def capture(mode, key, scenario_id, revision, actor, environment, *, argv=None, 
             if mode == "verify-run":
                 check(list(argv or ()) == planned["argv"], "运行命令与场景检查计划不一致，请先核对或更新验法")
         state = evaluate(w)[key]
-        check(not needs_independent_review(w,key,state), "重复失败须先用 claim 安排独立诊断，再继续原验证")
-        check(executable(state) or state["state"] == "done","前置条件或当前分支不允许采集")
-        check(state["state"] != "active" or state["actor"] == actor, "该动作已由其他执行人领取")
+        check(not needs_independent_review(w,key,state),
+              "重复失败须先用 claim 安排独立诊断，由原失败执行者以外的执行者领取并 finish 后再复验本场景")
+        check(executable(state) or state["state"] == "done",
+              "前置条件未满足，暂不能采集：" + " / ".join(state["reasons"] or [STATES[state["state"]]])
+              + ("；轻量故事先用 implement 登记实现" if "light_case" in action and state["state"] == "blocked" else ""))
+        check(state["state"] != "active" or state["actor"] == actor,
+              "该动作已由 " + str(state["actor"]) + " 领取；继续沿用该署名，或先 handoff 转交")
         case = scenario_definitions(w)[scenario_id]
         return state["stamp"], case_stamp(case, latest_retirements(w, set()), planned), "E" + str(len(w["events"])+1)
 
@@ -1457,7 +1545,8 @@ def capture(mode, key, scenario_id, revision, actor, environment, *, argv=None, 
         return True
 
     try:
-        saved = commit(revision, record, independent_capture=True)
+        # The page render already evaluates this revision; reuse it for the delivery feedback.
+        saved, report = commit(revision, record, independent_capture=True, report_actor=actor)
     except Conflict as error:
         with task_lock():
             # discard authenticates the original receipt and attachment, then
@@ -1471,7 +1560,7 @@ def capture(mode, key, scenario_id, revision, actor, environment, *, argv=None, 
         raise
     return {"id":recorded["id"],"revision":saved["work"]["revision"],"action":key,"scenario":scenario_id,
             "passed":receipt["passed"],"actor":actor,"level":level,"environment":environment,
-            "actual":receipt["actual"],"artifact":receipt["artifact"]}
+            "actual":receipt["actual"],"artifact":receipt["artifact"],"delivery":report}
 
 
 @input_scope()
@@ -1493,7 +1582,7 @@ def context(m, story=None, *, workspace=None):
     withdrawn = story_scope.withdrawn_stories(w)
     result = {
         "protocol_version":m["protocol"]["version"],"revision":w["revision"],"mode":w["kind"],"outcome_type":w.get("outcome","delivery"),
-        **({"workflow": w["workflow"]} if lightweight(w) else {}),
+        "workflow": w.get("workflow", "orchestrated"),
         "raw_request":w["raw_request"],"goal":w["goal"],"scope":w["scope"],"contract_routes":routes,
         "scenarios":scenarios, "verification_followups":verification_followups(w,scenarios),
         "retired_scenarios":retirement_history(w,stories),
@@ -1936,7 +2025,7 @@ def main(argv=None, *, serve_project=None):
     q=sub.add_parser("delivery-check", help="只读检查本期交付；有缺口时返回 1，并输出复验建议")
     q.add_argument("--actor", default="AI", help="实际执行者，用于区分已领取的验证")
     q=sub.add_parser("cards", help="登记轻量故事、验收场景及可选检查计划")
-    q.add_argument("file", type=Path)
+    q.add_argument("file", type=Path, help="卡片 JSON 文件；- 表示从标准输入读取")
     q.add_argument("--rev", type=int, required=True)
     q.add_argument("--actor", default="AI")
     q.add_argument("--why", required=True)
@@ -1946,9 +2035,9 @@ def main(argv=None, *, serve_project=None):
     q.add_argument("--actor", default="AI")
     q.add_argument("--output", required=True)
     q.add_argument("--evidence", required=True)
-    q.add_argument("--implementation", type=Path, help="实际实现详情 JSON 文件")
+    q.add_argument("--implementation", type=Path, help="实际实现详情 JSON 文件；- 表示从标准输入读取")
     for name in ("next","claim"):
-        q=sub.add_parser(name)
+        q=sub.add_parser(name, help="查看待办、依赖与当前版次" if name == "next" else "领取编排动作；轻量故事无需领取")
         q.add_argument("--actor",default="AI")
         q.add_argument("--story",help="限定故事和所需的前置动作")
         if name == "claim":
@@ -1970,7 +2059,7 @@ def main(argv=None, *, serve_project=None):
         q.add_argument("--rev", type=int, required=True)
         q.add_argument("--actor", required=True)
         if name == "lesson-propose":
-            q.add_argument("file", type=Path, help="包含经验做法、边界、主题词和场景回执的 JSON 文件")
+            q.add_argument("file", type=Path, help="包含经验做法、边界、主题词和场景回执的 JSON 文件；- 表示标准输入")
         else:
             q.add_argument("id")
             q.add_argument("verdict", choices=("approve","reject","retire"))
@@ -2003,7 +2092,7 @@ def main(argv=None, *, serve_project=None):
         q.add_argument("--rev",type=int,required=True,help="执行前读到的 work.revision")
         q.add_argument("--actor",required=name=="decision",default=None)
         if name=="plan":
-            q.add_argument("file")
+            q.add_argument("file", help="补丁 JSON 文件；- 表示从标准输入读取")
             q.add_argument("--why",required=True)
         elif name=="decision":
             q.add_argument("id"); q.add_argument("choice"); q.add_argument("--why",required=True)
@@ -2014,7 +2103,7 @@ def main(argv=None, *, serve_project=None):
                 q.add_argument("--level",choices=("自动化","真实环境","人工核对","推演"),default="")
                 q.add_argument("--environment",default=""); q.add_argument("--expected",default="")
             if name=="finish":
-                q.add_argument("--implementation", type=Path, help="开发动作的实际实现详情 JSON 文件")
+                q.add_argument("--implementation", type=Path, help="开发动作的实际实现详情 JSON 文件；- 表示标准输入")
                 q.add_argument("--plain", action="store_true", help="旧脚本兼容：只输出共同记录版次")
             if name=="fail":
                 q.add_argument("--reopen",required=True)
@@ -2064,18 +2153,18 @@ def main(argv=None, *, serve_project=None):
         elif a.cmd=="handoff":
             op=lambda w:handoff(w,a.id,a.previous_actor,actor,a.why)
         elif a.cmd in ("plan", "cards"):
-            patch = load(Path(a.file))
+            patch = json_source(a.file)
             change = save_cards if a.cmd == "cards" else apply_plan
             op = lambda w: change(w, patch, actor, a.why)
         elif a.cmd == "implement":
-            implementation = load(a.implementation) if a.implementation is not None else None
+            implementation = json_source(a.implementation) if a.implementation is not None else None
 
             def op(work):
                 expect(lightweight(work) and a.id in work["stories"], "implement 须指定已有的轻量故事 ID")
                 return progress(work, "finish", light_dev(a.id), actor, a.output, a.evidence,
                                 implementation=implementation, refresh_implementation=True)
         elif a.cmd == "lesson-propose":
-            card = load(a.file)
+            card = json_source(a.file)
             op = lambda w: knowledge.propose(w, TASK_DIR, card, actor, sys.modules[__name__])
         elif a.cmd == "lesson-adopt":
             op = lambda w: knowledge.adopt(w, TASK_DIR, a.story, a.source, a.lesson, a.version, a.why,
@@ -2084,7 +2173,7 @@ def main(argv=None, *, serve_project=None):
             op = lambda w: knowledge.review(w, TASK_DIR, a.id, a.verdict, actor, a.why, sys.modules[__name__], version=a.version)
         else:
             implementation_file = getattr(a, "implementation", None)
-            implementation = load(implementation_file) if implementation_file is not None else None
+            implementation = json_source(implementation_file) if implementation_file is not None else None
             if implementation_file is not None:
                 validate_implementation(implementation)
             op=lambda w:progress(w,a.cmd,a.id,actor,a.output,getattr(a,"evidence",""),

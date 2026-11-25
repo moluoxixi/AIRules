@@ -14,7 +14,7 @@
 
 ## 默认三步
 
-以下从已启用的项目根运行；`REV` 表示上一条写入回执或最新 `context`/`delivery-check` 的 `revision`，每次写入后更新，冲突时重读再提交。首次启用用分发目录的 `flow.py --project <项目> init`，已有安装用新版分发目录的 `upgrade`。
+以下从已启用的项目根运行；`REV` 表示上一条写入回执或最新 `context`/`delivery-check` 的 `revision`，每次写入后更新，冲突时重读再提交。首次启用用分发目录的 `flow.py --project <项目> init`，已有安装用新版分发目录的 `upgrade`。`--actor` 是执行者署名，同一需求全程显式传同一个值（示例为 `dev`）；省略时记为 `AI`，会被当成另一位执行者。JSON 文件参数填 `-` 时从标准输入读取。
 
 ### 1. 登记可验收的故事
 
@@ -59,6 +59,8 @@ python3 "$FLOW" task stock-save cards /path/to/cards.json --rev "$REV" --actor d
 
 `code_paths` 按场景限制验证绑定的项目内代码、测试、配置和必要输入。未填写使用原有项目默认范围；不要为了减少复验而漏掉共享实现。只有确有业务决定时才撤出场景：先用 `plan`/`decision` 记录选择，再在一份 `cards` 补丁同时修改故事、用 `retire_scenarios` 按场景 ID 填写 `{ "decision": "D-scope", "is": "later" }`。若也有手工维护的共享验证动作，在同一份原 `plan` 更新那些覆盖关系和轻量关联。撤下保留历史、原检查计划和代码范围，不算通过；决定反转后恢复原 ID，按原验法重新采证。
 
+建卡后向负责人展示功能清单和待决定的分支，展示后直接继续实现，不等待确认。待决定的分支只阻塞依赖它的故事，其余照常推进。
+
 ### 2. 按故事登记实现，按场景采证
 
 ```sh
@@ -80,9 +82,13 @@ python3 "$FLOW" task stock-save verify-run AC-reopen --rev "$REV" --actor dev --
 python3 "$FLOW" task stock-save delivery-check --actor dev
 ```
 
-`implement` 和旧 `finish` 默认回传结构化 JSON：写入是否成功、版次、动作种类和 `delivery`。写入成功的退出码是 **0**，即使验收仍有缺口；只依赖旧版次文本的脚本可用 `finish --plain`。`delivery-check` 是整项需求的只读检查，**0 表示当前可交付；1 且有报告表示仍有缺口；命令或数据错误见 stderr**。使用 `ready_to_deliver` 判断，不只看最后一张卡或通过计数。它不执行测试，不发布、不部署，也不把一次绿灯存成永久的交付结论。改码、改范围或换了实际验收环境后重新核对；已采证且仍有效的场景不用重跑。
+`cards`、`implement`、`verify-run`、`verify-observe` 和旧 `finish` 都回传结构化 JSON，其中 `delivery` 与 `delivery-check` 的报告相同：最近一次采证回执里 `ready_to_deliver: true` 就是当前可交付，不必再跑一次检查。写入成功的退出码是 **0**，即使验收仍有缺口；只依赖旧版次文本的脚本可用 `finish --plain`。单独运行 `delivery-check` 时，**0 表示当前可交付；1 且有报告表示仍有缺口；命令或数据错误见 stderr**。使用 `ready_to_deliver` 判断，不只看最后一张卡或通过计数。它不执行测试，不发布、不部署，也不把一次绿灯存成永久的交付结论。改码、改范围或换了实际验收环境后重新核对；已采证且仍有效的场景不用重跑。
 
-`delivery`/`delivery-check` 报告包括 `acceptance`（通过/本期场景）、已验证/未验证/撤出故事、待决定项、未结束动作以及专属 `check_suggestions`。建议按故事、场景和验证动作列出原因、下一步、已有回执或已登记验法。`reverify` 表示按当前输入补验，`collect_evidence` 表示首次采证，`confirm_verification` 表示原编排覆盖的全部凭据均已齐、仍需确认；共享动作有其它场景缺证时用 `await_shared_coverage`，先补那些场景。另有未覆盖、范围恢复、待前置条件、他人持有和失败诊断。报告给出当前状态，不把待复验一律归因于刚执行的写入。
+`delivery` 报告包括 `acceptance`（通过/本期场景）、已验证/未验证/撤出故事、待决定项、未结束动作以及 `check_suggestions`。建议按故事、场景和验证动作列出原因、下一步、已有回执或已登记验法。`reverify` 表示按当前输入补验，`collect_evidence` 表示首次采证，`confirm_verification` 表示原编排覆盖的全部凭据均已齐、仍需确认；共享动作有其它场景缺证时用 `await_shared_coverage`，先补那些场景。`claim_action` 表示有一个后加的动作（如独立复核）待处理：用 `claim` 领取，按它返回的 `skill` 完成；自己已持有的（`finish_action`）用 `finish` 结束。`independent_review` 表示它须由原失败执行者以外的执行者领取。`outstanding_actions` 只列这些后加的动作。另有未覆盖、范围恢复、待前置条件和他人持有。报告给出当前状态，不把待复验一律归因于刚执行的写入。项目有 `.requirements/rules/index.md` 时报告带 `project_rules`，按它查本次业务规则。
+
+## 连续失败与单执行者
+
+同一场景、输入、命令和环境连续失败两次后，工具拒绝再次采证。运行 `task <ID> claim --actor <执行者>` 会生成独立诊断动作，并说明它在等谁：原失败执行者不能领取，须由另一位真实执行者 `claim` 领取、复现后 `finish`，再由原执行者修复并重新采证。单会话没有第二位执行者时，把失败回执和场景 ID 交给用户，或另起一个独立子代理；期间其他场景照常推进。轻量需求的 `claim` 不领取故事和场景的内部动作，回执 `claimed: null` 是正常结果，`note` 写明接下来该做什么；`next` 的 `next` 也只为后加的动作给出执行包。`next` 和 `claim` 回执里的 `state`、`ready` 等字段描述需求整体，与其它回执的 `delivery.state` 相同；领取结果看 `claimed`、`outcome` 和 `note`。
 
 用 `serve` 看需求中心，故事详情分开显示实现、验收进度和可展开的检查计划、来源、实际回执。`task <ID> --check` 仍检查两份记录一致性，不取代 `delivery-check`。有条件的缺口在当前授权内补齐；缺真实环境、权限或业务回答时，交接具体缺口，不宣称验收完成。结束后可用 `archive <ID>`；`--allow-incomplete` 是保留未完成进度，不是验收放行。归档内容只读，不作为当前候选的放行依据。
 
