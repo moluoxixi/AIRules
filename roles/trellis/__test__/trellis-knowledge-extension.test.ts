@@ -104,6 +104,8 @@ describe('trellis role-owned knowledge extension', () => {
     const manifest = JSON.parse(fs.readFileSync(path.join(root, '.trellis', 'airules-init-manifest.json'), 'utf8'))
     expect(manifest.schemaVersion).toBe(1)
     expect(manifest.entries).toHaveProperty('.trellis/scripts/knowledge.py')
+    expect(manifest.entries).toHaveProperty('.trellis/scripts/airules-dashboard.mjs')
+    expect(fs.existsSync(path.join(root, '.trellis', 'scripts', 'airules-dashboard.mjs'))).toBe(true)
     expect(manifest.entries).not.toHaveProperty('.trellis/knowledge/index.md')
     expect(manifest.entries).not.toHaveProperty('.trellis/knowledge/relations.json')
     expect(fs.existsSync(path.join(root, '.trellis', '.template-hashes.json'))).toBe(false)

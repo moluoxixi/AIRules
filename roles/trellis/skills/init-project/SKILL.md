@@ -8,7 +8,7 @@ description: Initialize or reconfigure a repository with official native Trellis
 Run the role-local wrapper so the official `trellis init` completes before the
 AIRules extension is installed. Trellis owns its native generated project
 assets. AIRules owns only the knowledge workflow, managed project instruction
-block, and README usage block installed after native initialization succeeds.
+block, opt-in local Dashboard launcher, and README usage block installed after native initialization succeeds.
 
 ## Workflow
 
@@ -53,7 +53,9 @@ block, and README usage block installed after native initialization succeeds.
    `bootstrapLocalization` fields, then apply Bootstrap Hygiene below.
 10. Report the native Trellis, bootstrap hygiene, and AIRules extension results.
     Point out `.trellis/knowledge/sources/` as the document inbox and summarize
-    changed paths using `git status --short`. Do not stage or commit generated
+    changed paths using `git status --short`. Mention the optional
+    `node .trellis/scripts/airules-dashboard.mjs` launcher; do not run it during
+    initialization. Do not stage or commit generated
     files unless the user explicitly requests it.
 
 ## Bootstrap Hygiene

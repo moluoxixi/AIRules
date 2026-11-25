@@ -325,6 +325,18 @@ trellis --version
 
 `airules install trellis` 会安装 Trellis CLI 和用户级能力，但不会自动修改任何项目；项目级工作流由下一步的 `init-project` 创建。
 
+### 本地任务看板
+
+完成项目级 `init-project` 后，从项目根目录运行：
+
+```bash
+node .trellis/scripts/airules-dashboard.mjs
+```
+
+可加 `--no-open` 只启动服务，或用 `--port 3780` 指定起始端口。入口按需用 npm 获取固定版本 `@terranc/trellis-dashboard@0.1.5`，跳过依赖安装脚本。它是社区看板，只监听本机回环地址，浏览现有任务、PRD、规范和工作日志；不替代 Trellis CLI 或改变角色的任务编排。需要 Node.js 18+、npm 和 Python 3。按 Ctrl+C 停止，不建议转发端口。
+
+已经初始化的项目无需为了看板重跑 `trellis init`。同步新版角色后，可从项目根目录直接运行该角色 `init-project/assets/project-extension/runtime/airules-dashboard.mjs` 的实际路径，或在下次正常执行项目级初始化/配置时取得项目内入口。
+
 ### 功能
 
 #### 安装后的资产
