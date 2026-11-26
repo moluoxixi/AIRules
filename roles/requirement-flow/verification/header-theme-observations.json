@@ -1,0 +1,119 @@
+{
+  "header555": {
+    "controls": [
+      {
+        "name": "目录",
+        "top": 12
+      },
+      {
+        "name": "查看 Markdown",
+        "top": 12
+      },
+      {
+        "name": "复制链接",
+        "top": 12
+      },
+      {
+        "name": "刷新内容",
+        "top": 12
+      },
+      {
+        "name": "切换为夜墨主题",
+        "top": 12
+      }
+    ],
+    "height": 32,
+    "overflow": false,
+    "theme": "light",
+    "width": 555
+  },
+  "header390": {
+    "breadcrumbTitle": "docs/business/inventory.md",
+    "controls": [
+      {
+        "name": "目录",
+        "top": 12,
+        "width": 38.4453125
+      },
+      {
+        "name": "查看 Markdown",
+        "top": 12,
+        "width": 32
+      },
+      {
+        "name": "复制链接",
+        "top": 12,
+        "width": 32
+      },
+      {
+        "name": "刷新内容",
+        "top": 12,
+        "width": 32
+      },
+      {
+        "name": "切换为宣纸主题",
+        "top": 12,
+        "width": 32
+      }
+    ],
+    "height": 32,
+    "overflow": false,
+    "width": 390
+  },
+  "dark": {
+    "background": "rgb(21, 28, 28)",
+    "diagrams": 3,
+    "phase": "实测结果1",
+    "text": "rgb(214, 216, 201)",
+    "theme": "dark",
+    "themeLabel": "切换为宣纸主题"
+  },
+  "darkPersisted": true,
+  "diagramDark": {
+    "nodes": [
+      "rgb(44, 60, 49)",
+      "rgb(44, 60, 49)",
+      "rgb(44, 60, 49)"
+    ],
+    "text": [
+      "rgb(236, 232, 217)",
+      "rgb(236, 232, 217)",
+      "rgb(236, 232, 217)"
+    ]
+  },
+  "rapidMenuToSource": true,
+  "sourceModalObserved": true,
+  "copyToast": "当前阅读链接已复制",
+  "restoredUserRouteAndLightTheme": true,
+  "landscapes": {
+    "mode": "newly generated with built-in image_gen; original composition preserved for night companion",
+    "light": {
+      "background": "url(\"http://127.0.0.1:9877/assets/ink-landscape-light.jpg\")",
+      "headerRowHeight": 32,
+      "opacity": "0.8",
+      "overflow": false,
+      "theme": "light",
+      "width": 555
+    },
+    "dark": {
+      "background": "url(\"http://127.0.0.1:9877/assets/ink-landscape-dark.jpg\")",
+      "diagrams": 3,
+      "headerRowHeight": 32,
+      "overflow": false,
+      "theme": "dark",
+      "width": 390
+    },
+    "nightPersistedAfterReload": true
+  },
+  "source_sha256": {
+    "roles/requirement-flow/skills/requirement-flow/reader/index.html": "c4e512b741ac62a20b962dc7a985f4ca4d0e2c6d1c94087bc5d99435f3491543",
+    "roles/requirement-flow/skills/requirement-flow/reader/assets/reader.css": "feb0936b35efd008ebe7ba0e045aa730bc2f335ec8f4286261a57af055befd03",
+    "roles/requirement-flow/skills/requirement-flow/reader/assets/reader.js": "f60c304da4819b9fc7fa823497691c3f2f5f7e2b59d91f5db2f325fd66f00899",
+    "roles/requirement-flow/skills/requirement-flow/reader/assets/ink-landscape-light.jpg": "69001204d7b832380f62ef2e8bbdcb45ca86fe972eff01b4f19a88580febc468",
+    "roles/requirement-flow/skills/requirement-flow/reader/assets/ink-landscape-dark.jpg": "2051a357ecb7963bbf01663311a5147df8d50ddf4ba6d251a657ec40a6ce8f02"
+  },
+  "screenshot_sha256": {
+    "header-theme-light.jpg": "82ef91da7a06702e1632a5932f9b7fcdafea8ef79831fb409ab451fb54cee7be",
+    "header-theme-dark.jpg": "ab96ccb2a8d1c2d16d8a0b002dcdf1b32c108bbfd589c4b2fe39a70ce44e4e0f"
+  }
+}

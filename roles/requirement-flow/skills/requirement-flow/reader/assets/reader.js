@@ -15,6 +15,7 @@
     'source-button',
     'copy-link',
     'refresh-button',
+    'theme-button',
     'document-kind',
     'page-title',
     'page-description',
@@ -58,10 +59,9 @@
   let diagramNumber = 0
   let sourceVersion = 0
   let diagramVersion = 0
-  let loadErrors = []
 
   const escape = value => String(value).replace(/[&<>"']/g, char => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', '\'': '&#39;' })[char])
-  const contentUrl = path => `/content/${path.split('/').map(encodeURIComponent).join('/')}`
+  const contentUrl = (path, revision) => `/content/${path.split('/').map(encodeURIComponent).join('/')}${revision ? `?sha256=${encodeURIComponent(revision)}` : ''}`
   const cleanTitle = value => String(value).replace(phaseMarker, '')
   const slug = value => value.toLowerCase().trim().replace(/[^\p{L}\p{N}\p{M}\s-]/gu, '').replace(/\s+/g, '-') || 'section'
 
@@ -117,7 +117,7 @@
     const saved = cache.get(doc.path)
     if (saved?.revision === doc.sha256)
       return saved.text
-    const text = await fetchResource(contentUrl(doc.path))
+    const text = await fetchResource(contentUrl(doc.path, doc.sha256))
     cache.set(doc.path, { revision: doc.sha256, text })
     return text
   }
@@ -163,8 +163,15 @@
     ui['document-kind'].textContent = kind
     ui['page-description'].textContent = description
     ui.breadcrumbs.textContent = path || `${catalog?.project || '项目'} / 业务阅读`
+    ui.breadcrumbs.title = ui.breadcrumbs.textContent
     ui['source-button'].hidden = !showSource
     document.title = `${title} · 业务手册`
+    updateHeaderOffset()
+  }
+
+  function updateHeaderOffset() {
+    const height = ui['page-title'].closest('.page-header').getBoundingClientRect().height
+    document.documentElement.style.setProperty('--header-offset', `${height + 16}px`)
   }
 
   function setMenu(open) {
@@ -402,26 +409,47 @@
     return Number.isNaN(parsed.valueOf()) ? String(value || '') : parsed.toLocaleString('zh-CN', { hour12: false })
   }
 
-  mermaid.initialize({
-    startOnLoad: false,
-    securityLevel: 'strict',
-    suppressErrorRendering: true,
-    maxTextSize: 30000,
-    secure: ['securityLevel', 'startOnLoad', 'suppressErrorRendering', 'maxTextSize'],
-    theme: 'base',
-    htmlLabels: false,
-    fontFamily: 'Optima, PingFang SC, Microsoft YaHei, Noto Sans CJK SC, sans-serif',
-    themeVariables: {
-      primaryColor: '#e5e8d6',
-      primaryBorderColor: '#34604f',
-      primaryTextColor: '#202b29',
-      lineColor: '#8a806a',
-      secondaryColor: '#f0dcd0',
-      tertiaryColor: '#fcf7ea',
-      fontSize: '13px',
-    },
-    flowchart: { htmlLabels: false, useMaxWidth: true, curve: 'basis' },
-  })
+  function applyTheme(theme) {
+    document.documentElement.dataset.theme = theme
+    const label = theme === 'dark' ? '切换为宣纸主题' : '切换为夜墨主题'
+    ui['theme-button'].setAttribute('aria-label', label)
+    ui['theme-button'].setAttribute('aria-pressed', String(theme === 'dark'))
+    ui['theme-button'].title = label
+    const colors = getComputedStyle(document.documentElement)
+    const color = name => colors.getPropertyValue(name).trim()
+    mermaid.initialize({
+      startOnLoad: false,
+      securityLevel: 'strict',
+      suppressErrorRendering: true,
+      maxTextSize: 30000,
+      secure: ['securityLevel', 'startOnLoad', 'suppressErrorRendering', 'maxTextSize'],
+      theme: 'base',
+      htmlLabels: false,
+      fontFamily: 'Optima, PingFang SC, Microsoft YaHei, Noto Sans CJK SC, sans-serif',
+      themeVariables: {
+        darkMode: theme === 'dark',
+        background: color('--surface'),
+        primaryColor: color('--success-bg'),
+        primaryBorderColor: color('--teal'),
+        primaryTextColor: color('--ink'),
+        lineColor: color('--line-strong'),
+        secondaryColor: color('--accent-bg'),
+        tertiaryColor: color('--surface'),
+        textColor: color('--text'),
+        fontSize: '13px',
+      },
+      flowchart: { htmlLabels: false, useMaxWidth: true, curve: 'basis' },
+    })
+  }
+
+  let savedTheme
+  try {
+    savedTheme = localStorage.getItem('requirement-flow.theme')
+  }
+  catch {
+    // Theme switching remains available when the browser blocks storage.
+  }
+  applyTheme(savedTheme === 'light' || savedTheme === 'dark' ? savedTheme : matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light')
 
   function safeDiagram(svg) {
     return DOMPurify.sanitize(svg, {
@@ -533,29 +561,50 @@
       ui.article.innerHTML = '<div class="empty"><p>当前没有收录任务记录。</p><p>业务文档可以照常阅读。</p></div>'
       return
     }
-    const records = await Promise.all(tasks.map(async doc => ({ doc, raw: await documentText(doc).catch(() => '') })))
+    const records = await Promise.all(tasks.map(async (doc) => {
+      try {
+        return { doc, raw: await documentText(doc) }
+      }
+      catch (error) {
+        return { doc, raw: '', error: error.message }
+      }
+    }))
     if (version !== renderVersion)
       return
-    ui.article.innerHTML = `<div class="task-grid">${records.map(({ doc, raw }) => {
+    window.scrollTo({ top: 0, behavior: 'instant' })
+    ui.article.innerHTML = `<div class="task-grid">${records.map(({ doc, raw, error }) => {
       const summary = paragraphExcerpt(raw)
-      return `<section class="task-card"><div class="card-source">${escape(doc.path)}</div><h2>${navLink(doc)}</h2><p>${escape(summary ? `原文首段：${summary}` : '打开任务记录查阅原文。')}</p>${cardRelated(doc, '相关文档', 'document')}</section>`
+      return `<section class="task-card"><div class="card-source">${escape(doc.path)}</div><h2>${navLink(doc)}</h2><p>${escape(error ? `原文未能读取：${error}` : summary ? `原文首段：${summary}` : '打开任务记录查阅原文。')}</p>${cardRelated(doc, '相关文档', 'document')}</section>`
     }).join('')}</div>`
+    if (records.some(item => item.error))
+      notice('部分任务原文未能读取。恢复来源后刷新内容，任务摘要与关联以重新读取的原文为准。', true)
   }
 
   function excerpt(raw, query) {
-    const selected = paragraphExcerpt(raw)
-    if (!selected)
-      return '原文没有正文段落，可打开文档查看。'
-    const position = selected.toLocaleLowerCase().indexOf(query.toLocaleLowerCase())
+    const plain = DOMPurify.sanitize(markdown.parse(raw), {
+      ALLOWED_TAGS: [],
+      ALLOWED_ATTR: [],
+      RETURN_DOM_FRAGMENT: true,
+    }).textContent.replace(/\s+/g, ' ').trim()
+    const needle = query.toLocaleLowerCase()
+    const text = plain.toLocaleLowerCase().includes(needle) ? plain : raw.replace(/\s+/g, ' ').trim()
+    const position = text.toLocaleLowerCase().indexOf(needle)
+    const start = Math.max(0, position - 55)
+    const end = Math.min(text.length, Math.max(start + 190, position + query.length + 55))
+    const selected = text.slice(start, end)
+    const prefix = start ? '…' : ''
+    const suffix = end < text.length ? '…' : ''
     if (position < 0)
-      return escape(selected)
-    return `${escape(selected.slice(0, position))}<mark>${escape(selected.slice(position, position + query.length))}</mark>${escape(selected.slice(position + query.length))}`
+      return escape(paragraphExcerpt(raw) || '可打开文档查看原文。')
+    const offset = position - start
+    return `${prefix}${escape(selected.slice(0, offset))}<mark>${escape(selected.slice(offset, offset + query.length))}</mark>${escape(selected.slice(offset + query.length))}${suffix}`
   }
 
   async function renderSearch(query, version) {
     setHeader({ title: `查找“${query}”`, kind: '业务查询', description: '搜索收录的文档与任务原文，沿普通链接查看关联和依据。' })
     ui['phase-filter'].innerHTML = ''
     ui.context.hidden = true
+    const loadErrors = []
     const records = await Promise.all([...documents.values()].map(async (doc) => {
       try {
         return { doc, raw: await documentText(doc) }
@@ -567,6 +616,7 @@
     }))
     if (version !== renderVersion)
       return
+    window.scrollTo({ top: 0, behavior: 'instant' })
     const needle = query.toLocaleLowerCase()
     const matches = records.filter(item => item && `${item.doc.title}\n${item.raw}`.toLocaleLowerCase().includes(needle))
       .sort((a, b) => {
@@ -583,7 +633,7 @@
       ui.article.innerHTML = '<div class="empty"><p>没有找到匹配内容。</p><p>可换一个业务对象、操作或规则名称。</p></div>'
     }
     else {
-      ui.article.innerHTML = `<p class="search-results-summary">找到 ${matches.length} 份文档 · 内容来自当前 Markdown</p><div class="search-results">${matches.map(({ doc, raw }) => `<section class="search-card"><div class="card-source">${escape(doc.path)}</div><h2>${navLink(doc)}<span class="result-type ${doc.kind === 'task' ? 'task' : ''}">${doc.kind === 'task' ? '任务记录' : '文档'}</span></h2><p>原文首段：${excerpt(raw, query)}</p>${cardRelated(doc, doc.kind === 'task' ? '相关文档' : '关联任务', doc.kind === 'task' ? 'document' : 'task')}</section>`).join('')}</div>`
+      ui.article.innerHTML = `<p class="search-results-summary">找到 ${matches.length} 份文档 · 内容来自当前 Markdown</p><div class="search-results">${matches.map(({ doc, raw }) => `<section class="search-card"><div class="card-source">${escape(doc.path)}</div><h2>${navLink(doc)}<span class="result-type ${doc.kind === 'task' ? 'task' : ''}">${doc.kind === 'task' ? '任务记录' : '文档'}</span></h2><p>命中原文：${excerpt(raw, query)}</p>${cardRelated(doc, doc.kind === 'task' ? '相关文档' : '关联任务', doc.kind === 'task' ? 'document' : 'task')}</section>`).join('')}</div>`
     }
     if (loadErrors.length)
       notice(`部分文档未读取，查询结果可能不完整。${[...new Set(loadErrors)].join('；')}`, true)
@@ -678,7 +728,6 @@
       documents = new Map(next.documents.map(doc => [doc.path, doc]))
       sources = new Map((next.sources || []).map(source => [source.path, source]))
       cache.clear()
-      loadErrors = []
       ui['project-name'].textContent = next.project
       await renderRoute()
     }
@@ -693,7 +742,6 @@
       cache.clear()
       scrollPositions.clear()
       diagramDefinitions.clear()
-      loadErrors = []
       currentPath = ''
       currentPhase = 'all'
       currentView = 'page'
@@ -719,7 +767,7 @@
     finally {
       refreshing = false
       ui['refresh-button'].removeAttribute('aria-busy')
-      ui['refresh-button'].removeAttribute('title')
+      ui['refresh-button'].title = '刷新内容'
     }
   }
 
@@ -731,13 +779,13 @@
     const doc = documents.get(path)
     ui['source-title'].textContent = path
     ui['source-type'].textContent = doc ? '本次读取的 Markdown 原文' : '项目文本来源'
-    ui['source-original'].href = contentUrl(path)
+    ui['source-original'].href = contentUrl(path, metadata.sha256)
     ui['source-hash'].textContent = ''
     ui['source-content'].textContent = '正在读取来源…'
     if (!ui['source-dialog'].open)
       ui['source-dialog'].showModal()
     try {
-      const text = doc ? await documentText(doc) : await fetchResource(contentUrl(path))
+      const text = doc ? await documentText(doc) : await fetchResource(contentUrl(path, metadata.sha256))
       if (version !== sourceVersion || !ui['source-dialog'].open)
         return
       ui['source-content'].textContent = text
@@ -782,6 +830,13 @@
     applyPhaseFilter()
   })
   document.addEventListener('click', (event) => {
+    if (event.target.closest('a[href="#content"]')) {
+      event.preventDefault()
+      const content = $('content')
+      content.focus({ preventScroll: true })
+      content.scrollIntoView({ block: 'start' })
+      return
+    }
     if (event.target.closest('button[data-retry-read]')) {
       refresh()
       return
@@ -795,6 +850,12 @@
     if (source) {
       event.preventDefault()
       openSource(source.dataset.source)
+    }
+    const section = event.target.closest('a[href^="#"]')
+    if (section?.getAttribute('href') === location.hash && routeInfo().section
+      && !event.ctrlKey && !event.metaKey && !event.shiftKey && !event.altKey) {
+      event.preventDefault()
+      renderRoute()
     }
   })
   ui['source-button'].addEventListener('click', () => openSource(currentPath))
@@ -823,6 +884,17 @@
     }
   })
   ui['refresh-button'].addEventListener('click', refresh)
+  ui['theme-button'].addEventListener('click', () => {
+    const theme = document.documentElement.dataset.theme === 'dark' ? 'light' : 'dark'
+    applyTheme(theme)
+    try {
+      localStorage.setItem('requirement-flow.theme', theme)
+    }
+    catch {
+      // The selected theme still applies to the current page.
+    }
+    renderRoute()
+  })
   ui['mobile-menu'].addEventListener('click', () => setMenu(!ui.sidebar.classList.contains('open')))
   ui['nav-shade'].addEventListener('click', () => setMenu(false))
   document.addEventListener('keydown', (event) => {
@@ -834,5 +906,6 @@
     }
   })
   window.addEventListener('hashchange', renderRoute)
+  new ResizeObserver(updateHeaderOffset).observe(ui['page-title'].closest('.page-header'))
   refresh()
 })()

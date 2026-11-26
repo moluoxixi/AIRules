@@ -7,15 +7,14 @@
 ```bash
 airules install requirement-flow --host codex
 python3 ~/.agents/skills/requirement-flow/scripts/ponytail.py setup --default full
-python3 ~/.agents/skills/requirement-flow/scripts/ponytail.py doctor
 airules verify requirement-flow --host codex
 ```
 
-`setup` 通过 Codex 原生插件机制安装或复用官方完整 Ponytail，并调用上游配置函数设置默认 full。若提示 hooks 待审查，先在该宿主的原生 `/hooks` 界面检查并信任，再运行 `doctor`、开启新会话。`doctor` 只读检查安装、默认档位及 hook 信任；`configuration_ready` 不证明新会话实际运行或业务验收通过。上游资源保持原样，会话内切档与关闭沿用 Ponytail 自身能力。
+`setup` 通过 Codex 原生插件机制安装或复用官方完整 Ponytail，调用上游配置函数设置默认 full，并检查配置。若提示 hooks 待审查，先在该宿主的原生 `/hooks` 界面检查并信任，再按需运行 `python3 ~/.agents/skills/requirement-flow/scripts/ponytail.py doctor`、开启新会话。`doctor` 只读检查安装、默认档位及 hook 信任，供配置变化后复查或排障；`configuration_ready` 不证明新会话实际运行或业务验收通过。上游资源保持原样，会话内切档与关闭沿用 Ponytail 自身能力。
 
 `--codex-home /path/to/codex-home` 只选择 Codex 的插件与配置目录。Ponytail 默认档位仍按上游规则从 `PONYTAIL_DEFAULT_MODE`、`$XDG_CONFIG_HOME/ponytail/config.json` 或 `~/.config/ponytail/config.json` 解析（Windows 回退到 APPDATA）。需要隔离默认配置时一并指定 XDG_CONFIG_HOME；设置只在安装、升级或诊断时检查，日常任务直接使用。
 
-`ponytail-review`、`ponytail-audit`、`ultra` 等专项能力按实际需要使用，不是 RF 的必经阶段。日常从需求继续自主执行；RF 可自动发现，也可显式调用 `$requirement-flow`：
+`ponytail-review`、`ponytail-audit`、`ponytail-debt` 等专项能力按实际需要使用，不是 RF 的必经阶段。Codex 中可用 `$ponytail:ponytail-review` 检查当前改动；完整调用方式见[官方命令说明](https://github.com/DietrichGebert/ponytail#commands)。`ultra` 是可选档位，默认仍为 full。日常从需求继续自主执行；RF 可自动发现，也可显式调用 `$requirement-flow`：
 
 ```text
 让第一次接手的人看懂当前库存业务及这次改动的影响。
@@ -24,6 +23,8 @@ airules verify requirement-flow --host codex
 ```
 
 RF 不要求项目初始化。已有且有依据的状态、权限、接口契约和例外属于完整范围；出现新的业务约束或证据缺口时，随之调整调查与验法。缺失的业务决定或授权只阻塞依赖部分。
+
+RF 不增加固定阶段、任务卡门禁或审查循环。官方 full 自带的范围检查、复用取向和非平凡改动的测试要求由 Ponytail 原样提供；业务说明、交接和证据工具按需要使用。
 
 ## 项目里保留什么
 

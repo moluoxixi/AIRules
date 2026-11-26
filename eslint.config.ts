@@ -15,6 +15,9 @@ export default eslintConfig({
     'roles/**/.sync/**',
     'roles/**/packages/**',
     'roles/requirement-flow/skills/requirement-flow/reader/assets/vendor/**',
+    // Preserve machine-written receipt bytes; evidence.py validates their structure and digests.
+    'roles/requirement-flow/verification/*-check.json',
+    'roles/requirement-flow/verification/*-check-*.json',
     'vendor',
 
     // other

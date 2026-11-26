@@ -1,0 +1,220 @@
+Already up to date
+Done in 176ms using pnpm v11.17.0
+$ vitest run --maxWorkers=4
+
+ RUN  v4.1.4 /Users/mmhm/AIRules
+
+Cloning into '/tmp/rfac-2na8xocx/vendor-sync-ExCyQ5/remote-work'...
+warning: You appear to have cloned an empty repository.
+done.
+Switched to a new branch 'main'
+To /tmp/rfac-2na8xocx/airules-repository-update-8giYEu/remote.git
+ * [new branch]      main -> main
+Cloning into '/tmp/rfac-2na8xocx/airules-repository-update-8giYEu/checkout'...
+done.
+To /tmp/rfac-2na8xocx/airules-repository-update-8giYEu/remote.git
+   1d6fc8c..2878b97  main -> main
+To /tmp/rfac-2na8xocx/vendor-sync-ExCyQ5/origin.git
+ * [new branch]      main -> main
+Cloning into '/tmp/rfac-2na8xocx/vendor-sync-ExCyQ5/home/vendor/repos/demo'...
+done.
+HEAD is now at f7f8e49 initial remote skill
+Reset branch 'main'
+branch 'main' set up to track 'origin/main'.
+Your branch is up to date with 'origin/main'.
+HEAD is now at f7f8e49 initial remote skill
+To /tmp/rfac-2na8xocx/vendor-sync-ExCyQ5/origin.git
+   f7f8e49..8d14155  main -> main
+From /tmp/rfac-2na8xocx/vendor-sync-ExCyQ5/origin
+   f7f8e49..8d14155  main       -> origin/main
+HEAD is now at 019823e local-only commit
+Reset branch 'main'
+branch 'main' set up to track 'origin/main'.
+Your branch is up to date with 'origin/main'.
+HEAD is now at 8d14155 remote latest skill
+Cloning into '/tmp/rfac-2na8xocx/vendor-sync-qYDYOF/remote-work'...
+warning: You appear to have cloned an empty repository.
+done.
+Switched to a new branch 'main'
+To /tmp/rfac-2na8xocx/airules-repository-update-uAlWSc/remote.git
+ * [new branch]      main -> main
+Cloning into '/tmp/rfac-2na8xocx/airules-repository-update-uAlWSc/checkout'...
+done.
+To /tmp/rfac-2na8xocx/vendor-sync-qYDYOF/origin.git
+ * [new branch]      main -> main
+Cloning into '/tmp/rfac-2na8xocx/vendor-sync-qYDYOF/home/vendor/repos/demo'...
+done.
+HEAD is now at 83ccf84 initial remote skill
+Reset branch 'main'
+branch 'main' set up to track 'origin/main'.
+Your branch is up to date with 'origin/main'.
+HEAD is now at 83ccf84 initial remote skill
+To /tmp/rfac-2na8xocx/vendor-sync-qYDYOF/origin.git
+ + 83ccf84...0bf4ac5 main -> main (forced update)
+From /tmp/rfac-2na8xocx/vendor-sync-qYDYOF/origin
+ + 83ccf84...0bf4ac5 main       -> origin/main  (forced update)
+HEAD is now at 83ccf84 initial remote skill
+Reset branch 'main'
+branch 'main' set up to track 'origin/main'.
+Your branch is up to date with 'origin/main'.
+HEAD is now at 0bf4ac5 rewritten remote skill
+Cloning into '/tmp/rfac-2na8xocx/vendor-sync-149hTS/remote-work'...
+warning: You appear to have cloned an empty repository.
+done.
+To /tmp/rfac-2na8xocx/airules-repository-update-uAlWSc/remote.git
+   a9c868c..1a83fa1  main -> main
+Switched to a new branch 'main'
+To /tmp/rfac-2na8xocx/vendor-sync-149hTS/origin.git
+ * [new branch]      main -> main
+
+up to date, audited 1 package in 223ms
+
+found 0 vulnerabilities
+
+> airules-update-fixture@1.0.0 build
+> node -e "require('node:fs').writeFileSync('build-marker', 'built')"
+
+To /tmp/rfac-2na8xocx/airules-repository-update-sJWbpf/remote.git
+ * [new branch]      main -> main
+To /tmp/rfac-2na8xocx/vendor-sync-149hTS/origin.git
+   6f49903..6932bd5  main -> main
+Cloning into '/tmp/rfac-2na8xocx/vendor-sync-149hTS/home/vendor/repos/demo'...
+Cloning into '/tmp/rfac-2na8xocx/airules-repository-update-sJWbpf/checkout'...
+done.
+done.
+From /tmp/rfac-2na8xocx/vendor-sync-149hTS/origin
+ * branch            6f4990374563eaf59fa2ff5d350b4dfddf6ea3d5 -> FETCH_HEAD
+HEAD is now at 6932bd5 newer revision
+HEAD is now at 6f49903 pinned revision
+HEAD is now at 6f49903 pinned revision
+To /tmp/rfac-2na8xocx/airules-repository-update-sJWbpf/remote.git
+   6f37c7d..44a9fce  main -> main
+Previous HEAD position was 6f49903 pinned revision
+Switched to branch 'main'
+Cloning into '/tmp/rfac-2na8xocx/vendor-sync-P26cTg/remote-work'...
+warning: You appear to have cloned an empty repository.
+done.
+Switched to a new branch 'main'
+To /tmp/rfac-2na8xocx/airules-repository-update-xJMO2O/remote.git
+ * [new branch]      main -> main
+To /tmp/rfac-2na8xocx/vendor-sync-P26cTg/origin.git
+ * [new branch]      main -> main
+Cloning into '/tmp/rfac-2na8xocx/airules-repository-update-xJMO2O/checkout'...
+done.
+Cloning into '/tmp/rfac-2na8xocx/vendor-sync-P26cTg/home/vendor/repos/demo'...
+done.
+HEAD is now at 6f37c7d initial
+HEAD is now at 92e8ef1 initial
+Reset branch 'main'
+branch 'main' set up to track 'origin/main'.
+Your branch is up to date with 'origin/main'.
+HEAD is now at 92e8ef1 initial
+Cloning into '/tmp/rfac-2na8xocx/vendor-sync-sJrVih/remote-work'...
+warning: You appear to have cloned an empty repository.
+done.
+Switched to a new branch 'main'
+To /tmp/rfac-2na8xocx/airules-repository-update-zTRKea/remote.git
+ * [new branch]      main -> main
+Cloning into '/tmp/rfac-2na8xocx/airules-repository-update-zTRKea/checkout'...
+done.
+To /tmp/rfac-2na8xocx/vendor-sync-sJrVih/origin.git
+ * [new branch]      main -> main
+Cloning into '/tmp/rfac-2na8xocx/vendor-sync-sJrVih/home/vendor/repos/demo'...
+done.
+HEAD is now at 90e1e15 initial
+Reset branch 'main'
+branch 'main' set up to track 'origin/main'.
+Your branch is up to date with 'origin/main'.
+To /tmp/rfac-2na8xocx/airules-repository-update-yNjuXi/remote.git
+ * [new branch]      main -> main
+HEAD is now at 90e1e15 initial
+Cloning into '/tmp/rfac-2na8xocx/airules-repository-update-yNjuXi/checkout'...
+done.
+Cloning into '/tmp/rfac-2na8xocx/vendor-sync-pNWgC0/remote-work'...
+warning: You appear to have cloned an empty repository.
+done.
+Switched to a new branch 'main'
+To /tmp/rfac-2na8xocx/airules-repository-update-yNjuXi/remote.git
+   7c31848..4c27c8b  main -> main
+To /tmp/rfac-2na8xocx/vendor-sync-pNWgC0/origin.git
+ * [new branch]      main -> main
+Cloning into '/tmp/rfac-2na8xocx/vendor-sync-pNWgC0/home/vendor/repos/demo'...
+done.
+HEAD is now at 25769c5 initial
+Reset branch 'main'
+branch 'main' set up to track 'origin/main'.
+Your branch is up to date with 'origin/main'.
+HEAD is now at 25769c5 initial
+Cloning into '/tmp/rfac-2na8xocx/vendor-sync-vKlrIY/remote-work'...
+warning: You appear to have cloned an empty repository.
+done.
+Switched to a new branch 'trunk'
+Error: cannot acknowledge invalid knowledge relations: source_unmapped (path=api.md)
+To /tmp/rfac-2na8xocx/vendor-sync-vKlrIY/origin.git
+ * [new branch]      trunk -> trunk
+Cloning into '/tmp/rfac-2na8xocx/vendor-sync-vKlrIY/clone'...
+done.
+warning: remote HEAD refers to nonexistent ref, unable to checkout
+Cloning into '/tmp/rfac-2na8xocx/vendor-sync-GVVAbl/remote-work'...
+warning: You appear to have cloned an empty repository.
+done.
+Switched to a new branch 'feature-only'
+To /tmp/rfac-2na8xocx/vendor-sync-GVVAbl/origin.git
+ * [new branch]      feature-only -> feature-only
+Cloning into '/tmp/rfac-2na8xocx/vendor-sync-GVVAbl/clone'...
+done.
+warning: remote HEAD refers to nonexistent ref, unable to checkout
+Cloning into '/tmp/rfac-2na8xocx/vendor-sync-n8pTfz/remote-work'...
+warning: You appear to have cloned an empty repository.
+done.
+Switched to a new branch 'first'
+To /tmp/rfac-2na8xocx/vendor-sync-n8pTfz/origin.git
+ * [new branch]      first -> first
+Switched to a new branch 'second'
+To /tmp/rfac-2na8xocx/vendor-sync-n8pTfz/origin.git
+ * [new branch]      second -> second
+Cloning into '/tmp/rfac-2na8xocx/vendor-sync-n8pTfz/clone'...
+done.
+warning: remote HEAD refers to nonexistent ref, unable to checkout
+Cloning into '/tmp/rfac-2na8xocx/vendor-sync-tVhA0v/remote-work'...
+warning: You appear to have cloned an empty repository.
+done.
+Switched to a new branch 'main'
+Error: cannot acknowledge invalid knowledge relations: source_unmapped (path=api.md)
+To /tmp/rfac-2na8xocx/vendor-sync-tVhA0v/origin.git
+ * [new branch]      main -> main
+Cloning into '/tmp/rfac-2na8xocx/vendor-sync-tVhA0v/home/vendor/repos/remote-demo'...
+warning: filtering not recognized by server, ignoring
+warning: filtering not recognized by server, ignoring
+HEAD is now at 7106d60 initial remote
+Reset branch 'main'
+branch 'main' set up to track 'origin/main'.
+Your branch is up to date with 'origin/main'.
+HEAD is now at 7106d60 initial remote
+Cloning into '/tmp/rfac-2na8xocx/vendor-sync-uRh5PK/remote-work'...
+warning: You appear to have cloned an empty repository.
+done.
+Switched to a new branch 'main'
+To /tmp/rfac-2na8xocx/vendor-sync-uRh5PK/origin.git
+ * [new branch]      main -> main
+Cloning into '/tmp/rfac-2na8xocx/vendor-sync-uRh5PK/home/vendor/repos/remote-demo'...
+warning: filtering not recognized by server, ignoring
+warning: filtering not recognized by server, ignoring
+HEAD is now at aabc599 initial remote
+Reset branch 'main'
+branch 'main' set up to track 'origin/main'.
+Your branch is up to date with 'origin/main'.
+HEAD is now at aabc599 initial remote
+[channel spawn] context path escapes cwd, refusing: ../moluoxixi-runtime-external-HpEmZ4/evidence.md (add its real directory to channel.trusted_context_dirs in .moluoxixi/config.yaml to allow)
+
+ Test Files  40 passed (40)
+      Tests  498 passed (498)
+   Start at  23:49:00
+   Duration  15.34s (transform 731ms, setup 0ms, import 1.75s, tests 56.55s, environment 2ms)
+
+Already up to date
+Done in 160ms using pnpm v11.17.0
+$ eslint .
+Already up to date
+Done in 163ms using pnpm v11.17.0
+$ tsc --noEmit

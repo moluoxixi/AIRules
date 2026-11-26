@@ -10,7 +10,7 @@ from pathlib import Path, PurePosixPath
 import re
 import string
 import sys
-from urllib.parse import unquote, urlsplit
+from urllib.parse import parse_qs, unquote, urlsplit
 
 
 sys.dont_write_bytecode = True
@@ -307,7 +307,7 @@ class ReaderProject:
                 'documents': list(documents.values()), 'sources': list(sources.values()),
                 'warnings': list(dict.fromkeys(warnings))}
 
-    def content(self, name):
+    def content(self, name, expected_sha256=None):
         local_path(self.root, name)
         catalog = self.catalog()
         allowed = {item['path'] for item in catalog['documents'] + catalog['sources']}
@@ -317,7 +317,10 @@ class ReaderProject:
             if any(link['target'] == name and link['kind'] != 'external' for link in links):
                 text_file(self.root, name)
             raise ReaderError('来源未由业务或任务 Markdown 链接：' + name, 404)
-        return text_file(self.root, name)[0]
+        data = text_file(self.root, name)[0]
+        if expected_sha256 is not None and hashlib.sha256(data).hexdigest() != expected_sha256:
+            raise ReaderError('来源已更新，请点击“刷新内容”重新读取目录与关联：' + name, 409)
+        return data
 
 
 def create_server(reader, port=0):
@@ -347,13 +350,15 @@ def create_server(reader, port=0):
                 host = urlsplit('//' + self.headers.get('Host', '')).hostname
                 if host not in {'127.0.0.1', 'localhost'}:
                     raise ReaderError('阅读器仅接受本机访问')
-                route = unquote(urlsplit(self.path).path)
+                parsed = urlsplit(self.path)
+                route = unquote(parsed.path)
                 if route == '/api/catalog':
                     self.answer(200, json.dumps(reader.catalog(), ensure_ascii=False).encode())
                 elif route.startswith('/content/'):
                     name = route[len('/content/'):]
                     mime = 'text/markdown' if PurePosixPath(name).suffix.lower() in MARKDOWN else 'text/plain'
-                    self.answer(200, reader.content(name), mime + '; charset=utf-8')
+                    expected = parse_qs(parsed.query, keep_blank_values=True).get('sha256', [None])[0]
+                    self.answer(200, reader.content(name, expected), mime + '; charset=utf-8')
                 elif route in {'/', '/index.html'} or route.startswith('/assets/'):
                     name = 'index.html' if route in {'/', '/index.html'} else route.lstrip('/')
                     path = local_path(assets, name)

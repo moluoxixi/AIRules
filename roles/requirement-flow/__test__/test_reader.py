@@ -1,5 +1,6 @@
 """HTTP checks for a read-only Markdown reader and its document relationships."""
 import importlib.util
+import hashlib
 import json
 from pathlib import Path
 import queue
@@ -211,6 +212,32 @@ class ReaderTest(unittest.TestCase):
         self.assertEqual(body, self.flow.read_bytes())
         self.assertIn(headers.get_content_type(), ("text/plain", "text/markdown"))
         self.assertEqual(headers.get("X-Content-Type-Options"), "nosniff")
+
+    def test_content_revision_rejects_changed_markdown_and_evidence_until_catalog_refresh(self):
+        for name, path in [("docs/business/流程 说明.md", self.flow), ("src/copy.py", self.source)]:
+            with self.subTest(name=name):
+                catalog = self.catalog()
+                metadata = next(item for item in catalog["documents"] + catalog["sources"] if item["path"] == name)
+                route = "/content/" + quote(name, safe="/") + "?sha256=" + metadata["sha256"]
+                self.assertEqual(self.get(route)[1], path.read_bytes())
+                path.write_bytes(path.read_bytes() + b"\nChanged after catalog read.\n")
+                status, body, _ = self.get(route)
+                self.assertEqual(status, 409, body)
+                self.assertIn("刷新内容", json.loads(body)["error"])
+                current = self.catalog()
+                fresh = next(item for item in current["documents"] + current["sources"] if item["path"] == name)
+                status, body, _ = self.get("/content/" + quote(name, safe="/") + "?sha256=" + fresh["sha256"])
+                self.assertEqual(status, 200, body)
+                self.assertEqual(body, path.read_bytes())
+
+    def test_content_revision_hashes_original_bom_and_crlf_bytes(self):
+        data = b"\xef\xbb\xbf# BOM source\r\n\r\nBody.\r\n"
+        self.flow.write_bytes(data)
+        metadata = next(item for item in self.catalog()["documents"] if item["path"] == "docs/business/流程 说明.md")
+        self.assertEqual(metadata["sha256"], hashlib.sha256(data).hexdigest())
+        status, body, _ = self.get("/content/" + quote(metadata["path"], safe="/") + "?sha256=" + metadata["sha256"])
+        self.assertEqual(status, 200, body)
+        self.assertEqual(body, data)
 
     def test_parentheses_in_task_and_escaped_source_links_keep_their_full_targets(self):
         task_path = "docs/changes/复制(新).md"

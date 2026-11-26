@@ -1,0 +1,14 @@
+Already up to date
+Done in 357ms using pnpm v11.17.0
+
+ RUN  v4.1.4 /Users/mmhm/AIRules
+
+
+ Test Files  1 passed (1)
+      Tests  5 passed (5)
+   Start at  20:45:13
+   Duration  30.06s (transform 309ms, setup 0ms, import 503ms, tests 29.28s, environment 0ms)
+
+Already up to date
+Done in 867ms using pnpm v11.17.0
+$ eslint .

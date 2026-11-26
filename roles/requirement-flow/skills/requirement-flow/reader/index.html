@@ -3,7 +3,7 @@
   <head>
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
-    <meta name="color-scheme" content="light">
+    <meta name="color-scheme" content="light dark">
     <title>业务手册</title>
     <link rel="stylesheet" href="/assets/reader.css">
     <script src="/assets/vendor/marked.umd.js" defer></script>
@@ -34,9 +34,10 @@
           <button id="mobile-menu" class="button mobile-menu" aria-controls="sidebar" aria-expanded="false">目录</button>
           <div id="breadcrumbs" class="breadcrumbs">业务阅读</div>
           <div class="page-actions">
-            <button id="source-button" class="button">查看 Markdown</button>
-            <button id="copy-link" class="button">复制链接</button>
-            <button id="refresh-button" class="button refresh">刷新内容 <span aria-hidden="true">↻</span></button>
+            <button id="source-button" class="button action-button" aria-label="查看 Markdown" title="查看 Markdown"><svg class="action-icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M14 3H6a1 1 0 0 0-1 1v16a1 1 0 0 0 1 1h12a1 1 0 0 0 1-1V8zm0 0v5h5M8 13h8m-8 4h6"/></svg><span class="action-label">查看 Markdown</span></button>
+            <button id="copy-link" class="button action-button" aria-label="复制链接" title="复制链接"><svg class="action-icon" viewBox="0 0 24 24" aria-hidden="true"><path d="m10 13 4-4m-6 6-1 1a4 4 0 0 1-6-6l4-4a4 4 0 0 1 6 0m2 3 1-1a4 4 0 0 1 6 6l-4 4a4 4 0 0 1-6 0" transform="translate(1 1)"/></svg><span class="action-label">复制链接</span></button>
+            <button id="refresh-button" class="button refresh action-button" aria-label="刷新内容" title="刷新内容"><svg class="action-icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M20 7v5h-5M4 17v-5h5m-4-4a8 8 0 0 1 13-3l2 2M4 17l2 2a8 8 0 0 0 13-3"/></svg><span class="action-label">刷新内容</span></button>
+            <button id="theme-button" class="button theme-button" aria-label="切换为夜墨主题" title="切换为夜墨主题" aria-pressed="false"><svg class="action-icon theme-moon" viewBox="0 0 24 24" aria-hidden="true"><path d="M20 15a8 8 0 0 1-11-11 8.5 8.5 0 1 0 11 11Z"/></svg><svg class="action-icon theme-sun" viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="4"/><path d="M12 2v2m0 16v2M2 12h2m16 0h2M5 5l1.5 1.5m11 11L19 19M5 19l1.5-1.5m11-11L19 5"/></svg></button>
           </div>
         </div>
         <div class="title-line"><span id="document-kind" class="kind-label">业务内容</span><h1 id="page-title">业务手册</h1></div>

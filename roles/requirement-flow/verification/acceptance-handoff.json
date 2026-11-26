@@ -1,0 +1,72 @@
+{
+  "scope": "Independent cold replay of the archived final handoff; no new model invocation.",
+  "archive_sha256": "e278481a4790c657710b22061d048019a44830ff817a2e0d006f71473471bc91",
+  "archive_bytes": 785765,
+  "entry_hashes_verified": 488,
+  "frozen_project_files": 41,
+  "frozen_project_file_bytes": 156356,
+  "frozen_project_unchanged": true,
+  "manifest_sha256": "5a098e38728de808683743a9e9102c6061450ffc29a48b94821eed0886ccc49c",
+  "manifest_digest_basis": "Derived after replay from the verified archive manifest. Full initial/final relative-path to [file_sha256, unix_mode] maps were actually compared and equal; this summary digest was not separately captured at execution time.",
+  "working_directory": "/tmp/rf-handoff-accept-z73zn_9c/project",
+  "commands": [
+    {
+      "command": "python3 -B .agents/skills/requirement-flow/scripts/evidence.py check --project /tmp/rf-handoff-accept-z73zn_9c/project evidence/library-holds-final.json",
+      "exit_code": 0,
+      "stderr": "",
+      "stdout_format": "Complete fields parsed from stdout; original whitespace normalized.",
+      "result": {
+        "receipt": "evidence/library-holds-final.json",
+        "execution": "succeeded",
+        "freshness": "current",
+        "problems": []
+      }
+    },
+    {
+      "command": "python3 -B evidence/library-holds-final-check.py",
+      "exit_code": 0,
+      "stderr": "",
+      "started_at": "2026-11-26T15:41:49.008652+00:00",
+      "finished_at": "2026-11-26T15:41:49.104930+00:00",
+      "output_scope": "Summary/excerpts from the actual run, not full raw stdout. Three intermediate subprocess records with full inline source and temporary paths are omitted; all exited 0.",
+      "local_tests_passed": 2,
+      "writer_output": "Writer committed three expected records and exited",
+      "independent_reader_output": {
+        "existing": "2026-03-02",
+        "new": "2026-03-03",
+        "temporary": "2026-03-01"
+      },
+      "full_notification_fields_asserted": true,
+      "stray_database_exists": false,
+      "business_source_test_rules_unchanged": true,
+      "owned_temporary_workspace_removed": true,
+      "document_links_resolve": 36,
+      "remaining_local_authorized_issues": [],
+      "unverified_scope": "deployment, actual target UI/auth/interfaces, real gateway delivery, other production lifecycle"
+    },
+    {
+      "command": "Repeat the first evidence.py check after business replay",
+      "exit_code": 0,
+      "stderr": "",
+      "stdout_format": "Complete result fields; whitespace normalized.",
+      "result": {
+        "receipt": "evidence/library-holds-final.json",
+        "execution": "succeeded",
+        "freshness": "current",
+        "problems": []
+      }
+    }
+  ],
+  "verification_document_local_links_checked": 40,
+  "verification_document_missing_links": [],
+  "historical_source_receipts_checked_stale": [
+    "ponytail-check.json",
+    "ponytail-check-final.json",
+    "ponytail-check-release.json",
+    "boundary-check.json"
+  ],
+  "theme_receipt_current_at_independent_inspection": "header-theme-check.json; later anchor fixes change this source scope, so it is historical for the final acceptance.",
+  "temporary_root_removed": "/tmp/rf-handoff-accept-z73zn_9c",
+  "temporary_paths_remaining": [],
+  "remote_operations": false
+}

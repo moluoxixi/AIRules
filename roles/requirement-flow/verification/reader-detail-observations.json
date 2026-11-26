@@ -1,0 +1,31 @@
+{
+  "query": "布尔值",
+  "beforeHighlighted": 0,
+  "afterHighlighted": 3,
+  "results": 3,
+  "layout": {
+    "headerToContent": 16,
+    "overflow": false,
+    "scrollY": 0
+  },
+  "missingTaskSource": true,
+  "restoredTaskCards": 2,
+  "restoredNoticeHidden": true,
+  "taskTarget": "#page=inventory%2Fdocs%2Fcopy-decision.md&section=验证与交接",
+  "renderedSearch": "找到 3 份文档 · 内容来自当前 Markdown\n\ndocs/business/inventory.md\n库存申请：提交、取消与复制文档\n\n命中原文：… [现状] 规则与例外 保存、提交 同时满足本店、原发起人、草稿状态 规范与实现 商品数量 1–99 的整数；布尔值不是数量 1、99 合法；0、100、true 拒绝 历史申请 已取消、已审核记录不可原地改写 “重新申请”必须区分新单与原单 跨店代操作 尚无批准的授权决定 继续拒绝，不能从复制功能推导扩大权限 保存失败 原有内容保持不变，修正后再试 本机断言核对拒绝与恢复路径…\n\n关联任务\n产品决定 D17 →\n任务卡的验证与交接 →\ninventory/spec/current.md\n库存申请现行规则文档\n\n命中原文：…接口联调环境。 申请归属门店，操作人只能在本店且为原发起人时保存/提交。商品数量必须为 1 到 99 的整数，布尔值不算数量。 本次 R12 尚无复制功能；支持人员提到跨店代操作，但尚无授权决定。 本机工作区现已依据 D17 实现待发布的 R13 复制流程，并通过本机内存存储的完整回读验证；详情与未验证范围见该记录。这没有改变上述生产 R12 现状，也没有扩大跨店权限。实现与检…\n\n关联任务\nD17 →\ninventory/docs/copy-decision.md\n产品决定 D17任务记录\n\n命中原文：…保留复制来源不可变。校验通过后才写入，失败保留之前内容，可以修正数量后重试。 沿用 1–99 的整数规则（拒绝布尔值），提交只能从 draft 到 submitted。跨店代操作仍未获批准，继续拒绝；没有缩减已批准的本店原发起人流程。 实现入口：inventory.py。这里的 Store 是进程内存储模型；回读验证的是同一 Store 中实际保存的数据，不是磁盘重启恢复或真实…\n\n相关文档\nR12 业务说明 →\n业务阅读样例 · 引用本页 →\n库存申请：提交、取消与复制 · 引用本页 →",
+  "console": {
+    "readerErrorsObserved": 0,
+    "hostPreloadError": {
+      "script": "browser-page-preload.js",
+      "message": "MutationObserver.observe: parameter 1 is not of type Node",
+      "reproducedAfterReload": false,
+      "sourceConfirmed": true
+    }
+  },
+  "source_sha256": {
+    "roles/requirement-flow/skills/requirement-flow/reader/assets/reader.js": "68ca754621ba18b4edb3ef108813346d693c1ff1e2257f081c904fc3dadaef23",
+    "roles/requirement-flow/skills/requirement-flow/reader/assets/reader.css": "1ec6a04edda1f326b88fedbe8701faf3dc899c4fe29236b480bec16455f552bf",
+    "roles/requirement-flow/skills/requirement-flow/scripts/reader.py": "51cdec29cf113c97000abcdaf52d0a8c38f803dbb1bca3333491fcb270138dbf"
+  },
+  "screenshot_sha256": "c1df7035d100cdaa4dc1bb7bfa77ecb1b6ca7b46375ba43b97fc462b17c6b988"
+}

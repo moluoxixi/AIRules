@@ -9,7 +9,7 @@ AIRules 为 AI 宿主分发带版本的角色能力。一个 role 按需组合�
 - `airules install <role>` 安装用户级资产：拉取固定版本的 vendor、组合 capabilities、把 skills 投影到 `~/.agents/skills`、合并宿主 MCP 配置，并安装角色声明的 CLI package。
 - `init-project` 安装项目级资产：调用角色原生 CLI，在当前仓库生成 `.moluoxixi/` 或 `.trellis/`，再补装 AIRules 的知识库和中文兼容扩展。
 
-AIRules 安装器负责用户级 package setup、资产分发和受管 skills/MCP 校验，但不调度 agents。各项目使用所选角色的入口编排工作。
+AIRules 安装器负责用户级 package setup、资产分发和受管 skills/MCP 校验，但不调度 agents。计划、执行与协作由宿主按所选能力安排，部分角色另提供项目工作流。
 
 ## `requirement-flow`
 
@@ -36,6 +36,8 @@ RF 分发一个技能，Ponytail 通过官方插件机制单独安装、升级�
 ### 用法
 
 日常直接从 Codex 提出需求，或使用 `$requirement-flow`。更新通过相同的安装命令完成，项目业务文档与交接记录由项目自行保存。详见[角色说明](roles/requirement-flow/README.md)。
+
+实际演练、证据与未验证范围见[验证记录](roles/requirement-flow/VERIFICATION.md)，其中保留失败发现及其闭环依据。
 
 ## `general`
 

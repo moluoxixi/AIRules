@@ -85,6 +85,7 @@ it('projects one Codex skill and updates it without changing project documentati
       path.join('scripts', 'ponytail.py'),
       path.join('scripts', 'reader.py'),
       path.join('reader', 'index.html'),
+      ...['ink-landscape-light.jpg', 'ink-landscape-dark.jpg'].map(name => path.join('reader', 'assets', name)),
       ...['reader.js', 'reader.css', 'vendor/marked.umd.js', 'vendor/purify.min.js', 'vendor/mermaid.tiny.js'].map(name => path.join('reader', 'assets', name)),
       ...['business', 'work', 'verification', 'reader'].map(name => path.join('references', `${name}.md`)),
     ]

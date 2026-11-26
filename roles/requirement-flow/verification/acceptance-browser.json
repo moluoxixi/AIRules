@@ -1,0 +1,409 @@
+{
+  "checks": [
+    {
+      "name": "inventory_business_reading",
+      "passed": true,
+      "details": {
+        "bodyRead": true
+      }
+    },
+    {
+      "name": "inventory_diagrams",
+      "passed": true,
+      "details": {
+        "count": 3
+      }
+    },
+    {
+      "name": "current_phase",
+      "passed": true,
+      "details": {
+        "visiblePhase": "current"
+      }
+    },
+    {
+      "name": "proposed_phase",
+      "passed": true,
+      "details": {
+        "deploymentNotCertified": true
+      }
+    },
+    {
+      "name": "observed_phase_scope",
+      "passed": true,
+      "details": {
+        "unverifiedScopeVisible": true
+      }
+    },
+    {
+      "name": "evidence_source",
+      "passed": true,
+      "details": {
+        "path": "inventory/docs/evidence/copy-cancelled-02.json.output.txt",
+        "actualOutputRead": true,
+        "revisionBound": true
+      }
+    },
+    {
+      "name": "markdown_source",
+      "passed": true,
+      "details": {
+        "path": "docs/business/inventory.md"
+      }
+    },
+    {
+      "name": "diagram_expand",
+      "passed": true,
+      "details": {
+        "height": "229.93359375",
+        "width": "1049.1796875"
+      }
+    },
+    {
+      "name": "business_search_task_links",
+      "passed": true,
+      "details": {
+        "resultCount": 4,
+        "linkedTaskCount": 1
+      }
+    },
+    {
+      "name": "search_to_task_handoff_anchor",
+      "passed": true,
+      "details": {
+        "hash": "#page=inventory%2Fdocs%2Fcopy-decision.md&section=%E9%AA%8C%E8%AF%81%E4%B8%8E%E4%BA%A4%E6%8E%A5",
+        "headerBottom": 137.9921875,
+        "headingTop": 805.421875,
+        "unverifiedScopeVisible": true
+      }
+    },
+    {
+      "name": "task_business_backlink",
+      "passed": true,
+      "details": {
+        "from": "D17",
+        "to": "docs/business/inventory.md"
+      }
+    },
+    {
+      "name": "browser_back",
+      "passed": true,
+      "details": {
+        "restored": "D17"
+      }
+    },
+    {
+      "name": "task_cards",
+      "passed": true,
+      "details": {
+        "taskCount": 2
+      }
+    },
+    {
+      "name": "desktop_anchor_after_fix",
+      "passed": true,
+      "details": {
+        "gap": 15.9296875,
+        "headerBottom": 137.9921875,
+        "headingTop": 153.921875,
+        "offset": "153.992px"
+      }
+    },
+    {
+      "name": "library_business",
+      "passed": true,
+      "details": {
+        "currentProposedObservedDistinct": true,
+        "sqliteResultsPresent": true
+      }
+    },
+    {
+      "name": "library_task_roundtrip",
+      "passed": true,
+      "details": {
+        "backlinkDerived": true
+      }
+    },
+    {
+      "name": "repair_rule_implementation_conflict",
+      "passed": true,
+      "details": {
+        "unknownLifecycleRetained": true,
+        "noInventedProductDecision": true
+      }
+    },
+    {
+      "name": "unlinked_business_no_fabricated_task",
+      "passed": true,
+      "details": {
+        "relatedTasks": 0
+      }
+    },
+    {
+      "name": "source_document_not_certified",
+      "passed": true,
+      "details": {
+        "kind": "文档",
+        "unmarkedContentNotPromoted": true
+      }
+    },
+    {
+      "name": "missing_entry_clears_snapshot",
+      "passed": true,
+      "details": {
+        "title": "业务内容读取失败",
+        "article": "本次未能读取最新 Markdown。\n\n请检查或恢复业务入口，完成后重新读取。\n\n重试读取",
+        "sourceHidden": true,
+        "relatedHidden": true,
+        "diagrams": 0
+      }
+    },
+    {
+      "name": "source_retry_recovery",
+      "passed": true,
+      "details": {
+        "restored": "repairclub/desk-policy.md"
+      }
+    },
+    {
+      "name": "dark_theme_diagram_palette",
+      "passed": true,
+      "details": {
+        "diagrams": 3,
+        "image": "url(\"http://127.0.0.1:9877/assets/ink-landscape-dark.jpg\")",
+        "text": "rgb(236, 232, 217)",
+        "theme": "dark"
+      }
+    },
+    {
+      "name": "theme_preserves_route",
+      "passed": true,
+      "details": {
+        "route": "http://127.0.0.1:9877/#page=docs%2Fbusiness%2Finventory.md"
+      }
+    },
+    {
+      "name": "theme_persists_after_reload",
+      "passed": true,
+      "details": {
+        "theme": "dark"
+      }
+    },
+    {
+      "name": "rule_query_hits_context",
+      "passed": true,
+      "details": {
+        "ruleResults": 3,
+        "ruleHighlights": [
+          "布尔值",
+          "布尔值",
+          "布尔值"
+        ]
+      }
+    },
+    {
+      "name": "mobile_repeated_anchor_after_fix",
+      "passed": true,
+      "details": {
+        "gap": 15.9453125,
+        "headingTop": 145.5859375,
+        "scrollY": 1005.5,
+        "width": 390
+      }
+    },
+    {
+      "name": "theme_preserves_anchor_position",
+      "passed": true,
+      "details": {
+        "gap": 15.9453125,
+        "theme": "light"
+      }
+    },
+    {
+      "name": "mobile_toolbar_single_row",
+      "passed": true,
+      "details": {
+        "buttons": [
+          {
+            "name": "目录",
+            "title": null,
+            "top": 12
+          },
+          {
+            "name": "查看 Markdown",
+            "title": "查看 Markdown",
+            "top": 12
+          },
+          {
+            "name": "复制链接",
+            "title": "复制链接",
+            "top": 12
+          },
+          {
+            "name": "刷新内容",
+            "title": "刷新内容",
+            "top": 12
+          },
+          {
+            "name": "切换为夜墨主题",
+            "title": "切换为夜墨主题",
+            "top": 12
+          }
+        ],
+        "height": 32,
+        "overflow": false
+      }
+    },
+    {
+      "name": "mobile_menu_to_source",
+      "passed": true,
+      "details": {
+        "sourceDialog": "inventory/docs/copy-decision.md"
+      }
+    },
+    {
+      "name": "copy_current_link",
+      "passed": true,
+      "details": {
+        "clipboardMatchesCurrentRoute": true
+      }
+    },
+    {
+      "name": "keyboard_skip_preserves_document",
+      "passed": true,
+      "details": {
+        "focused": "content",
+        "title": "产品决定 D17",
+        "url": "http://127.0.0.1:9877/#page=inventory%2Fdocs%2Fcopy-decision.md&section=%E9%AA%8C%E8%AF%81%E4%B8%8E%E4%BA%A4%E6%8E%A5"
+      }
+    },
+    {
+      "name": "compact_555_toolbar",
+      "passed": true,
+      "details": {
+        "height": 32,
+        "overflow": false
+      }
+    },
+    {
+      "name": "refresh_preserves_task",
+      "passed": true,
+      "details": {
+        "task": "D17"
+      }
+    },
+    {
+      "name": "restored_reading_state",
+      "passed": true,
+      "details": {
+        "route": "http://127.0.0.1:9877/#page=docs%2Fbusiness%2Finventory.md&phase=observed",
+        "phase": "observed"
+      }
+    },
+    {
+      "name": "final_reading_layout",
+      "passed": true,
+      "details": {
+        "headerToFilter": 16,
+        "iframeCount": 0,
+        "theme": "light"
+      }
+    },
+    {
+      "name": "theme_preserves_phase_filter",
+      "passed": true,
+      "details": {
+        "phase": "实测结果1"
+      }
+    }
+  ],
+  "initial": {
+    "theme": "light",
+    "url": "http://127.0.0.1:9877/#page=docs%2Fbusiness%2Finventory.md&phase=observed",
+    "viewport": {
+      "height": 505,
+      "width": 319
+    }
+  },
+  "observationTiming": [
+    {
+      "name": "business_search_task_links",
+      "passed": false,
+      "details": {
+        "resultCount": 0,
+        "linkedTaskCount": 0
+      },
+      "reason": "Initial assertion sampled after header update but before asynchronous result rendering; excluded from product verdict."
+    }
+  ],
+  "findings": [
+    {
+      "issue": "Double-counted sticky header offset",
+      "beforeDesktopHeadingTop": 364.921875,
+      "fix": "Single actual header height plus 16px",
+      "desktopAfterGap": 15.9296875
+    },
+    {
+      "issue": "Repeated current-section link did not navigate after scrolling",
+      "beforeMobile": {
+        "hash": "#page=inventory%2Fdocs%2Fcopy-decision.md&section=%E9%AA%8C%E8%AF%81%E4%B8%8E%E4%BA%A4%E6%8E%A5",
+        "headerBottom": 129.640625,
+        "headingTop": -1386.4140625,
+        "scrollY": 2537.5
+      }
+    },
+    {
+      "issue": "Keyboard skip-to-content changed the document route",
+      "before": {
+        "url": "http://127.0.0.1:9877/#page=inventory%2Fdocs%2Fcopy-decision.md&section=%E9%AA%8C%E8%AF%81%E4%B8%8E%E4%BA%A4%E6%8E%A5",
+        "title": "产品决定 D17"
+      },
+      "after": {
+        "title": "业务阅读样例",
+        "url": "http://127.0.0.1:9877/#content"
+      }
+    }
+  ],
+  "consoleObserved": [],
+  "verdict": "passed",
+  "checksPassed": 36,
+  "source_sha256": {
+    "roles/requirement-flow/skills/requirement-flow/reader/index.html": "c4e512b741ac62a20b962dc7a985f4ca4d0e2c6d1c94087bc5d99435f3491543",
+    "roles/requirement-flow/skills/requirement-flow/reader/assets/reader.js": "50b8d9ef515b39519817285b6528ed6e571ca885706efa298e39ef767e18147b",
+    "roles/requirement-flow/skills/requirement-flow/reader/assets/reader.css": "26018b5fbd543a1532f282d9bc7bd28806c40ab1851991552570b8c32c761af9",
+    "roles/requirement-flow/skills/requirement-flow/scripts/reader.py": "23c118e766cfc0f4fa44f7b2bab4042eb5a9616beee918626073ab6b462ced0e"
+  },
+  "screenshot_sha256": {
+    "acceptance-light.jpg": "fe4801acdece9c1cd629a605f1ddcb4c3ae4aad4633e00cb7c3061a0a453abcf",
+    "acceptance-dark.jpg": "92ceaa869fc57b26a9417a74d91a6d5a0cfa64eb48cf4c2fab390323db9c6d80"
+  },
+  "preview_inputs_sha256": {
+    "README.md": "fa2ad94aa69f74d61ed916a931ca62efaba77e7604a64e70d278330654ac550a",
+    "evidence/second-projects-replay.output.txt": "18b5c56164be053e11dbdb1745d04f23cd73eced0582358d7d5d4e29cd476b72",
+    "labels-check/exporter.py": "c567ff5c63c0e193cd1e9a0629c9e3f1a38af685478b7435a6fe08308256115a",
+    "labels-check/README.md": "82d04893b8ef49292356a87b5c1d81e9bf5b360cee1f782d29b7278fafb83341",
+    "library/test_collection.py": "2aa4e780c9faebe3d82b8517b835ceedc5300db5ababa5f24bf5e66764dafaae",
+    "library/README.md": "350c853b68c6e669683cfa15b9755607fb6d82b01474db1449d17fdecd0db7c6",
+    "library/collection.py": "e39f8b0eb697c95b2ac6bd341113828a3125443a468a83dc03ca13ea09d4833f",
+    "library/handbook.md": "f991ba96ed3f688f5889dda1d2ffec60bf34179392936e4bd6ef18de01737614",
+    "library/docs/changes/regular-holds.md": "f664df4315d07e592693fc84ac6ef238fc0f24626eeb1f2b485964c97c3ba098",
+    "docs/business/inventory.md": "265d10ea78b2867a5baf2559c91c53e6f006d1a404d0cb14a0d7587b36471c1d",
+    "docs/business/library.md": "41e212a00e2a7b7811980c78371e9f12ff18562d690a9bb68b0173f4c46f32dc",
+    "docs/business/index.md": "66210e0d21246e84fe3a16ded2d77d7c2d2eca951501c17914342324be6c7ce5",
+    "docs/business/repair.md": "bc6d51b604116a21ec2c8ce110da036642e989b06576c1da4270a0a962083236",
+    "repairclub/orders.py": "82925de65c045908b6509d6263d8decbe83bdd7683a53a27cbfde97b6bebae7d",
+    "repairclub/README.md": "ba3bee76247f95a840b157ca00a01093a0e785d705c0c88f37a01d14efd02d77",
+    "repairclub/desk-policy.md": "8dfbaa36f6ceecc7c92b153ac2042377d48ad962140e8873f9bd349a0cb60215",
+    "inventory/README.md": "08381b9741fff43872225f29736a95d08df5e751f2302d1ecbc848216896ee7e",
+    "inventory/inventory.py": "cb0dd33395016feca969b3b656f9238c1d6ade9a80d366fa41311df8f44ed5ef",
+    "inventory/tests/test_inventory.py": "1501277a15eee8d8082d9a0ee3f980b416f5ebb7317f24b4e5ffc541c34bd11d",
+    "inventory/spec/current.md": "58c89046e593ec201a483cc965ac3e7e31186180944ef94d14f9a4f9caeeb775",
+    "inventory/docs/copy-decision.md": "3dad474d540f18de10446ac6c7f082813fb9cbad4871ba76f17aa0c9f51e29c8",
+    "inventory/docs/evidence/copy-cancelled-02.json": "c499a541be5ee4afaa488725d54dc2c3abeab26e74b880cf022d6e9bd22a8c03",
+    "inventory/docs/evidence/copy-cancelled-02.json.output.txt": "253692c318c14a0a021949ccf98341a52aa0520af53aca29e01cbeb3547ff6c5",
+    "inventory/docs/evidence/copy-cancelled-01.json": "65fcc785e7895f3a89162b4efa8de65fcee78a009292d33e422ce7f54eabd909",
+    "inventory/docs/evidence/copy-cancelled-01.json.output.txt": "253692c318c14a0a021949ccf98341a52aa0520af53aca29e01cbeb3547ff6c5"
+  },
+  "preview_input_count": 25,
+  "preview_inputs_restored_exactly": true
+}

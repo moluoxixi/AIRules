@@ -9,7 +9,7 @@ There are two installation layers:
 - `airules install <role>` installs user-level assets. It checks out pinned vendors, composes capabilities, projects skills through `~/.agents/skills`, merges host MCP configuration, and installs declared role CLI packages.
 - `init-project` installs project-level assets. It invokes the native role CLI to generate `.moluoxixi/` or `.trellis/`, then adds the AIRules knowledge and Simplified Chinese compatibility extensions.
 
-The AIRules installer handles user-level package setup, asset distribution, and managed skill/MCP verification, but it does not dispatch agents. Each initialized project runs the workflow provided by its selected role.
+The AIRules installer handles user-level package setup, asset distribution, and managed skill/MCP verification, but it does not dispatch agents. The host arranges planning, execution, and collaboration using the selected capabilities; some roles also provide project workflows.
 
 ## `requirement-flow`
 
@@ -36,6 +36,8 @@ An optional business reader opens those Markdown files directly, with navigation
 ### Usage
 
 Describe the work in Codex or invoke `$requirement-flow`. Update with the same install command; business documentation and handoff records remain project-owned. See the [role guide](roles/requirement-flow/README.md).
+
+The [verification record](roles/requirement-flow/VERIFICATION.md) identifies exercised cases, evidence, unresolved limits, and how observed failures were resolved.
 
 ## `general`
 
