@@ -12,6 +12,6 @@
 
 ## macOS 超时的诊断边界
 
-首轮阅读器子进程在 60 秒时被终止，原日志只有七个进度点，无法确认具体挂起位置或根因。本机回归未复现。保留原超时、断言和全部测试，增加逐项测试输出及每 30 秒的 faulthandler 线程堆栈，使再次挂起时有具体依据；不将诊断增强描述为已证明修复了某个生产缺陷。
+首轮阅读器子进程在 60 秒时被终止，原日志只有七个进度点，无法确认具体挂起位置或根因。本机回归未复现。保留原超时、断言和全部测试，增加逐项测试输出及每 30 秒的 faulthandler 线程堆栈。第二轮 `cf265ec` 的 [CI](https://github.com/moluoxixi/AIRules/actions/runs/45863320703) 中 Windows 与其他六项作业成功，macOS 安装测试再次超时；Vitest 将子进程 stderr 截成字节摘要，无法读到堆栈。随后补齐异常时的 stdout/stderr 原文输出并仍抛出原错误；不将这些诊断增强描述为已证明修复了某个生产缺陷。
 
-本修复提交前的本地结果见[执行回执](ci-portability-check.json)及[原始输出](ci-portability-check.json.output.txt)。新提交的跨平台最终状态应以对应 GitHub Actions run 为准；此记录保留首轮失败和修复依据，不预先声称新 CI 通过。
+跨平台修复提交前的本地结果见[历史执行回执](ci-portability-check.json)及[原始输出](ci-portability-check.json.output.txt)；后续诊断输出补充的本地结果见[执行回执](ci-diagnostics-check.json)及[原始输出](ci-diagnostics-check.json.output.txt)。新提交的跨平台最终状态应以对应 GitHub Actions run 为准；此记录保留首轮失败和修复依据，不预先声称新 CI 通过。

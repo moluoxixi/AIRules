@@ -122,10 +122,20 @@ it('projects one Codex skill and updates it without changing project documentati
 it.each(['test_evidence.py', 'test_second_projects.py', 'test_reader.py', 'test_ponytail.py'])('runs the role regressions in %s', (name) => {
   expect(existsSync(path.join(tests, name))).toBe(true)
   const py = python()
-  execFileSync(py.command, [...py.prefix, '-c', regressionRunner, tests, name], {
-    cwd: repo,
-    env: { ...process.env, PYTHONUTF8: '1', PYTHONDONTWRITEBYTECODE: '1' },
-    stdio: 'pipe',
-    timeout: 60_000,
-  })
+  try {
+    execFileSync(py.command, [...py.prefix, '-c', regressionRunner, tests, name], {
+      cwd: repo,
+      env: { ...process.env, PYTHONUTF8: '1', PYTHONDONTWRITEBYTECODE: '1' },
+      stdio: 'pipe',
+      timeout: 60_000,
+    })
+  }
+  catch (error) {
+    const output = error as { stdout?: string | Uint8Array, stderr?: string | Uint8Array }
+    if (output.stdout?.length)
+      process.stdout.write(output.stdout)
+    if (output.stderr?.length)
+      process.stderr.write(output.stderr)
+    throw error
+  }
 }, 65_000)
