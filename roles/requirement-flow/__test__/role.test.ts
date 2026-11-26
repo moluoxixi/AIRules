@@ -11,7 +11,6 @@ import { loadVendorManifest } from '../../../scripts/lib/vendors.js'
 import { verifyGlobalAgentSkills, verifyHost } from '../../../scripts/lib/verify.js'
 
 const role = 'requirement-flow'
-const skillNames = [role, 'flow-requirements', 'flow-contracts', 'flow-implement', 'flow-verify', 'flow-review']
 const tests = fileURLToPath(new URL('.', import.meta.url))
 const roleDirectory = path.resolve(tests, '..')
 const repo = path.resolve(roleDirectory, '../..')
@@ -23,28 +22,55 @@ function python() {
     if (spawnSync(command, [...prefix, '-c', 'import sys; sys.exit(sys.version_info.major != 3)']).status === 0)
       return { command, prefix }
   }
-  throw new Error('Python 3 is required to test the requirement-flow runtime')
+  throw new Error('Python 3 is required to test the optional requirement-flow evidence helper')
 }
 
-it('installs the Codex role and upgrades its shared program without replacing either project’s records', async () => {
+function snapshot(root: string): Record<string, string> {
+  const files: Record<string, string> = {}
+  function walk(directory: string) {
+    for (const entry of readdirSync(directory, { withFileTypes: true })) {
+      const target = path.join(directory, entry.name)
+      if (entry.isDirectory())
+        walk(target)
+      else
+        files[path.relative(root, target)] = readFileSync(target).toString('base64')
+    }
+  }
+  walk(root)
+  return files
+}
+
+it('projects one Codex skill and updates it without changing project documentation or instructions', async () => {
   const sandbox = mkdtempSync(path.join(os.tmpdir(), 'airules-flow-role-'))
   try {
     const homeDir = path.join(sandbox, 'distribution')
     const userHome = path.join(sandbox, 'user')
     mkdirSync(path.join(userHome, '.codex'), { recursive: true })
+    const projects = ['first project', '第二项目'].map(name => path.join(sandbox, name))
+    for (const project of projects) {
+      mkdirSync(path.join(project, 'docs', 'business'), { recursive: true })
+      mkdirSync(path.join(project, 'docs', 'changes'), { recursive: true })
+      writeFileSync(path.join(project, 'AGENTS.md'), '# Existing project rules\n')
+      writeFileSync(path.join(project, 'docs', 'business', 'index.md'), '# Current business\n')
+      writeFileSync(path.join(project, 'docs', 'changes', 'check.md'), '# Proposed change\nVerification pending.\n')
+    }
+    const before = projects.map(snapshot)
     const roles = await resolveRoleInheritance(repo, role)
     expect(roles.map(item => item.role)).toEqual([role])
     const manifestPath = roles[0].manifestPath
     const manifest = await loadVendorManifest(manifestPath)
     expect(manifest.hosts).toEqual(['codex'])
+    expect(manifest.packages).toEqual([])
     expect(Object.keys(manifest.vendors)).toEqual(['requirement-flow-role'])
+    expect(Object.values(manifest.vendors).every(vendor => vendor.setup === undefined)).toBe(true)
     const vendor = manifest.vendors['requirement-flow-role']
     const checkout = path.join(homeDir, vendor.cloneDir, 'roles', role)
     mkdirSync(path.dirname(checkout), { recursive: true })
     cpSync(roleDirectory, checkout, { recursive: true })
     const installPaths = { ...getDefaultInstallPaths(userHome), moluoHome: homeDir }
     async function projectRole() {
-      await rebuildVendorAssets({ homeDir, role, manifestPath, manifest })
+      const inventory = await rebuildVendorAssets({ homeDir, role, manifestPath, manifest })
+      expect(inventory.skills).toEqual([role])
       ensureInstallRoot(installPaths)
       ensureGlobalSkillLink(installPaths)
       expect(await verifyGlobalAgentSkills(homeDir, userHome)).toBe(true)
@@ -52,58 +78,20 @@ it('installs the Codex role and upgrades its shared program without replacing ei
       expect(await verifyHost('codex', homeDir, userHome, role)).toBe(true)
     }
     await projectRole()
-    for (const name of skillNames) {
-      const relative = path.join('.agents', 'skills', name, 'SKILL.md')
-      expect(readFileSync(path.join(userHome, relative))).toEqual(readFileSync(path.join(checkout, 'skills', name, 'SKILL.md')))
+    expect(readdirSync(path.join(userHome, '.agents', 'skills'))).toEqual([role])
+    const assets = ['SKILL.md', path.join('scripts', 'evidence.py'), ...['business', 'work', 'verification'].map(name => path.join('references', `${name}.md`))]
+    for (const relative of assets) {
+      expect(readFileSync(path.join(userHome, skill, relative))).toEqual(readFileSync(path.join(checkout, 'skills', role, relative)))
     }
-    const globalScript = path.join(userHome, skill, 'flow.py')
-    const py = python()
-    function run(script: string, project: string, ...args: string[]) {
-      return execFileSync(py.command, [...py.prefix, script, '--project', project, ...args], {
-        cwd: project,
-        encoding: 'utf8',
-        env: { ...process.env, HOME: userHome, USERPROFILE: userHome, PYTHONUTF8: '1', PYTHONDONTWRITEBYTECODE: '1' },
-      })
-    }
-    const projects = ['first project', '第二项目'].map(name => path.join(sandbox, name))
-    const data = projects.map(project => path.join(project, '.requirements', 'active', 'check'))
-    for (const project of projects) {
-      mkdirSync(project)
-      writeFileSync(path.join(project, 'AGENTS.md'), '# Existing project rules\n')
-      run(globalScript, project, 'init')
-      const localScript = path.join(project, skill, 'flow.py')
-      for (const name of skillNames) {
-        const relative = path.join('.agents', 'skills', name, 'SKILL.md')
-        expect(readFileSync(path.join(project, relative))).toEqual(readFileSync(path.join(userHome, relative)))
-      }
-      expect(JSON.parse(run(localScript, project, 'list')).active).toEqual([])
-      run(localScript, project, 'new', 'check', '--request', path.basename(project), '--outcome', 'research')
-    }
-    const firstScript = path.join(projects[0], skill, 'flow.py')
-    run(firstScript, projects[0], 'task', 'check', 'finish', 'A-intake', '--rev', '1', '--output', 'Reviewed', '--evidence', 'AGENTS.md')
-    run(firstScript, projects[0], 'archive', 'check')
-    data[0] = path.join(projects[0], '.requirements', 'archive', 'check')
 
-    const snapshots = data.map(folder => ['model.json', 'handbook.html'].map(file => readFileSync(path.join(folder, file))))
-    const instructions = projects.map(project => readFileSync(path.join(project, 'AGENTS.md'), 'utf8'))
-    expect(snapshots.map(([record]) => JSON.parse(record.toString()).work.raw_request)).toEqual(projects.map(project => path.basename(project)))
-    expect(snapshots.map(([record]) => JSON.parse(record.toString()).work.revision)).toEqual([2, 1])
-    const reference = path.join('references', 'model.md')
-    const changed = path.join(checkout, 'skills', role, reference)
-    // Change an asset in the disposable vendor checkout to exercise a real update.
-    appendFileSync(changed, '\nUpdated field reference for the projection test.\n')
+    const changed = path.join(checkout, 'skills', role, 'SKILL.md')
+    appendFileSync(changed, '\nUpdated guidance for the projection test.\n')
     await projectRole()
+    await projectRole()
+    expect(readFileSync(path.join(userHome, skill, 'SKILL.md'))).toEqual(readFileSync(changed))
     for (const [index, project] of projects.entries()) {
-      run(globalScript, project, 'init')
-      run(globalScript, project, 'init')
-      expect(readFileSync(path.join(project, skill, reference))).toEqual(readFileSync(changed))
-      expect(readFileSync(path.join(project, 'AGENTS.md'), 'utf8')).toBe(instructions[index])
-      expect(instructions[index]).toContain('# Existing project rules')
-      for (const [fileIndex, file] of ['model.json', 'handbook.html'].entries()) {
-        const after = readFileSync(path.join(data[index], file))
-        expect(after.equals(snapshots[index][fileIndex]), `upgrade changed ${project}/${file}`).toBe(true)
-      }
-      run(path.join(project, skill, 'flow.py'), project, 'task', 'check', '--check')
+      expect(snapshot(project)).toEqual(before[index])
+      expect(readdirSync(project).sort()).toEqual(['AGENTS.md', 'docs'])
     }
     expect(existsSync(path.join(userHome, '.requirements'))).toBe(false)
   }
@@ -112,17 +100,13 @@ it('installs the Codex role and upgrades its shared program without replacing ei
   }
 }, 60_000)
 
-// Time each module independently on native runners. Adding another suite must
-// not consume the time available to existing CLI and browser-server regressions.
-const pythonModules = readdirSync(tests).filter(name => /^test_.*\.py$/u.test(name)).sort()
-const moduleTimeout = 5 * 60_000
-
-it.each(pythonModules)('runs the Python regressions in %s', (name) => {
+it('runs the evidence helper regressions', () => {
+  expect(existsSync(path.join(tests, 'test_evidence.py'))).toBe(true)
   const py = python()
-  execFileSync(py.command, [...py.prefix, '-m', 'unittest', 'discover', '-s', tests, '-p', name], {
+  execFileSync(py.command, [...py.prefix, '-m', 'unittest', 'discover', '-s', tests, '-p', 'test_evidence.py'], {
     cwd: repo,
     env: { ...process.env, PYTHONUTF8: '1', PYTHONDONTWRITEBYTECODE: '1' },
     stdio: 'pipe',
-    timeout: moduleTimeout,
+    timeout: 60_000,
   })
-}, moduleTimeout + 5_000)
+}, 65_000)

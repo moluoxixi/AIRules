@@ -13,27 +13,26 @@ The AIRules installer handles user-level package setup, asset distribution, and 
 
 ## `requirement-flow`
 
-This Codex role maps features, API fields, processing steps and verification evidence on a filterable graph.
+For capable models that judge and execute work autonomously, this Codex role connects development with business context, continuity, and reviewable delivery results.
 
 ### Install
-
-Project initialization requires Python 3.9 or newer.
 
 ```bash
 airules install requirement-flow --host codex
 airules verify requirement-flow --host codex
-python3 ~/.agents/skills/requirement-flow/flow.py --project /path/to/project init
 ```
+
+Installation provides one `requirement-flow` skill. No project initialization is needed.
 
 ### Features
 
-One entry point selects among five specialist skills for requirements, API contracts, implementation, verification, and review. Teams can skip work already covered and advance independent stories in parallel. Each requirement has its own graph. Delivery is checked against named scenarios with test output or observed results and attachments, all archived with the requirement. After changing the requirement's overall goal or scope, revisit research conclusions and verify the scenarios that remain in scope.
+Simple work proceeds directly. Add analysis, records, and verification as code, contracts, or observed behavior reveal constraints. Use the project's existing documentation locations. New projects can use `docs/business/index.md` for current operations, key rules, and exceptions, and `docs/changes/<id>.md` for changes that need continuity or review.
 
-Independently reviewed lessons surface in related work within the same project. The graph explains each match and links to the original requirement, scenario, and evidence.
+Keep current rules, proposed changes, and verified results distinct, with sources and scope. Link verification to the actual checks, code, and environment; identify anything still unverified. An optional Python helper captures command output and input fingerprints. A successful command still requires checking whether its assertions establish the intended business outcome.
 
 ### Usage
 
-Run initialization for each project and repeat it after updating the role. Open the project in Codex or use its local `.agents/skills/requirement-flow/flow.py` to work with requirements. [Role guide](roles/requirement-flow/README.md)
+Describe the work in Codex or invoke `$requirement-flow`. Update with the same install command; business documentation and handoff records remain project-owned. See the [role guide](roles/requirement-flow/README.md).
 
 ## `general`
 

@@ -13,27 +13,26 @@ AIRules 安装器负责用户级 package setup、资产分发和受管 skills/MC
 
 ## `requirement-flow`
 
-适用于希望从一张可筛选的大图查阅功能、接口字段、处理逻辑和验收证据的 Codex 项目。
+面向能够自主判断和执行的新模型，帮助 Codex 在开发时理解业务、延续上下文，并给出可复核的交付结果。
 
 ### 安装
-
-项目初始化需要 Python 3.9 或更高版本。
 
 ```bash
 airules install requirement-flow --host codex
 airules verify requirement-flow --host codex
-python3 ~/.agents/skills/requirement-flow/flow.py --project /path/to/project init
 ```
+
+安装一个 `requirement-flow` skill 即可使用，无需逐项目初始化。
 
 ### 功能
 
-总入口按故事和依赖选择需求分析、接口契约、开发、验证或独立审查五个专项 skill，可跳过已有结论的环节，也可并行推进独立功能。每个需求保存一张可筛选的图。开发交付按具名场景验收，实际运行记录或观察附件随需求归档。修改整项需求的目标或范围后，要重新核对调研结果并验收仍在范围内的场景。
+简单任务直接推进；随着代码、接口或实测暴露新的约束，再增加必要的分析、记录和验证。记录优先写入项目已有文档位置；新项目可使用 `docs/business/index.md` 说明业务现状、关键规则和例外，用 `docs/changes/<id>.md` 保存需要续做或复核的变更。
 
-独立审查通过的经验可在同一项目的后续需求中自动匹配。功能图标明命中原因，可点回原需求、场景和证据。
+现行规则、拟议变更和已验证结果分别记录，并注明来源和适用范围。验证结果关联实际检查内容、代码及环境；未验证部分保留为明确缺口。可选的 Python 采证脚本保存命令输出与输入摘要，命令成功仍需核对其断言能否证明业务预期。
 
 ### 用法
 
-每个项目初始化一次。更新角色后再次运行初始化命令可更新项目内的程序。日常从 Codex 提出需求，或使用项目目录中的 `.agents/skills/requirement-flow/flow.py`。安装与迁移、查看图页的命令见[角色说明](roles/requirement-flow/README.md)。
+日常直接从 Codex 提出需求，或使用 `$requirement-flow`。更新通过相同的安装命令完成，项目业务文档与交接记录由项目自行保存。详见[角色说明](roles/requirement-flow/README.md)。
 
 ## `general`
 

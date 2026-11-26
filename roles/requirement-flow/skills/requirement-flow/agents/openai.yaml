@@ -1,4 +1,4 @@
 interface:
-  display_name: 需求编排
-  short_description: 把需求、接口、实现和证据连成一张可筛选的图
-  default_prompt: 使用 $requirement-flow 记录当前需求：默认轻量交付，建故事卡、登记实现、按场景采证，交付报告 ready_to_deliver 为 true 才算完成。
+  display_name: 需求推进
+  short_description: 自主推进开发，保留业务脉络、接手依据和真实验证边界
+  default_prompt: 使用 $requirement-flow 推进当前工作，按实际影响补足业务约束和验证，留下必要的业务说明与接手依据。

@@ -1,101 +1,62 @@
-# 需求编排
+# Requirement Flow
 
-`requirement-flow` 是 AIRules 的独立 Codex 角色。一项需求有一张可筛选的功能图，沿任一故事可以查到用户操作、接口与字段、关键处理、待决定事项和验收结果。人读页面和 AI 记录共用同一份需求数据。
+帮助模型把需求做到可复核的交付，同时留下人能读懂的业务脉络。面向能够自主判断和执行的模型：小任务直接做，出现新的业务约束、共享影响或验证缺口时扩展工作；不预设轻量/重型等级，也没有必经阶段。
 
-## 安装与升级
-
-在包含本角色的 AIRules 检出中，可直接为项目初始化。需要 Python 3.9 或更高版本。
+## 安装与使用
 
 ```bash
-python3 roles/requirement-flow/skills/requirement-flow/flow.py --project /path/to/project init
+airules install requirement-flow --host codex
+airules verify requirement-flow --host codex
 ```
 
-包含本角色的 AIRules 版本发布后，也可先运行 `airules install requirement-flow --host codex` 和 `airules verify requirement-flow --host codex`，再执行 `python3 ~/.agents/skills/requirement-flow/flow.py --project /path/to/project init`。用户级安装让 Codex 发现六个 skills；每个项目各执行一次 `init`，才会有项目自己的六个 skill、一段 `AGENTS.md` 入口和 `.requirements/installation.json` 安装清单。
+分发一个可自动发现的 `requirement-flow` skill，不修改项目，不要求初始化、Python 服务或记忆索引。直接描述需求，或显式使用 `$requirement-flow`：
 
-升级已有项目时，从更新后的 AIRules 分发目录运行 `python3 roles/requirement-flow/skills/requirement-flow/flow.py --project /path/to/project upgrade`。使用用户级安装时，先更新该安装，再从其 skill 目录运行同一条 `upgrade`。关闭该项目正在运行的需求图服务，升级后可沿用原端口重启。已有项目重复执行新版 `init` 也会走升级流程。
+```text
+修复保存后重开丢失数量的问题。
+继续这个分支的撤销申请功能，核对哪些已经验证，补足剩余工作。
+让第一次接手的人看懂当前库存业务及这次改动的影响。
+```
 
-升级校验受管文件，并将新技能与进行中需求的离线页面一起更新。安装清单记录角色版本；命令列出实际刷新的需求 ID。原始模型、回执、项目规则和归档快照均保留。将已有单需求端口改作项目首页时，用 `serve --port <原端口> --default-task <原需求ID>` 启动，旧收藏和已打开的图页仍能找到原需求。旧契约中的接口地址可以直接展开，共用字段保留在契约层。按来源补齐接口用途与各自的请求、响应后，可在接口行查看。通过 `plan` 修改契约会触发相关场景复核。
+Beta 0.13.0 替换旧设计，不支持旧 `flow.py` 命令和 `.requirements` 格式的自动升级。旧项目材料仍是历史来源，按需阅读；切换已有试验项目时先确认项目级旧技能/入口的归属，避免它们遮蔽新版用户级技能。保留项目业务与证据文件，不自动改写其他工作流。当前源代码尚需发布到角色远程分发版本后，安装命令才会取得这一版。
 
-现有 Moluoxixi 项目需显式加 `--migrate`，旧 Codex 入口备份在 `.requirements/migrations/moluoxixi/`，原任务、独立 skill、其他 hooks 和项目规则保留。
+## 日常工作
 
-使用本机 Git worktree 的项目可以在主工作区安装并提交，再按项目原有流程同步分支。需求的 `model.json`、`handbook.html` 和 `evidence/` 中的回执与附件一起保存。同一仓库的工作区共用本机签名密钥。迁移或克隆时，从可信备份恢复 Git 公共目录（`git rev-parse --git-common-dir`）下的 `airules-requirement-flow-keys/`；非 Git 项目恢复该需求 `evidence/.receipt-key`。已有回执的需求缺少原密钥时，旧回执无法复核，新采集也无法登记。若原密钥无法找回，保留历史需求，另建需求引用原 ID，并重新验收。密钥应与分发文件分开保管。
+开始时定位用户结果、当前实现和有关业务规则。判断可简短到无需写出。明确的局部修改直接实现并运行相关检查；“重构”“升级依赖”同样看实际影响。随着调查发现权限、状态流转、契约、共享调用方或恢复路径等约束，及时补充相应分析和验法。授权内的可逆实现选择由模型决定；缺失的业务决定只阻塞依赖它的部分。
 
-自动化回执默认只分发运行摘要。需要随需求保存可公开的命令和原始日志时，在 `verify-run` 的 `--` 之前加 `--share-output`。人工附件按原文件保存，采集前检查其可分发范围。升级会保留历史回执和归档快照，已分发的旧日志须单独处理。
+交付前再核对最终影响和证据。只声明真实验证过的范围，分别说明实现、验证和部署状态。命令成功、记录齐全或测试总数都不能自动证明用户目标成立。
 
-请随需求提交 `.requirements/.gitattributes`。安装、升级或新建需求时会补上其中的规则，让 Git 在提交和检出时保留活动及归档证据的原始换行。若旧附件已被 Git 转换且校验失败，须从可信备份恢复采集时的原始文件。
+## 可继续的项目材料
 
-## 轻量交付与按需编排
+优先复用项目已有文档、issue 和 PR，不另建平行系统。没有现成约定且确有需要时，用以下普通文件；按需要增量维护，不为小任务批量建模板：
 
-范围明确的新交付需求默认走轻量路径：`new --light` 后按故事建卡、登记实现、按场景采证。无需手工领动作或再次确认已经采集的合格证据；采证回执自带交付报告，`delivery-check` 可随时重查，`ready_to_deliver: true` 才算完成。检查计划可按场景单独登记。不改行为的修改和纯问答不建需求；建卡后展示清单即可继续。同一输入连续失败两次后转入独立诊断。完整命令、反馈字段、适用边界和旧流程兼容见[轻量需求交付](skills/requirement-flow/references/lightweight.md)，领取、交接和子代理派发见[动作编排](skills/requirement-flow/references/orchestration.md)。
+| 材料 | 回答的问题 | 默认位置 |
+| --- | --- | --- |
+| 业务说明 | 谁为达成什么目标操作哪些对象；状态、规则、例外、外部依赖及依据 | `docs/business/index.md`，必要时链接专题 |
+| 变更与接手记录 | 现状与目标差异、决定、影响、实际实现、尚缺什么和下一步 | `docs/changes/<id>.md` 或已有 issue/PR |
+| 验证依据 | 哪种代码、环境和数据下实际观察到了什么，哪些未测 | 链接在变更记录内；日志/附件随项目约定保存 |
 
-原编排入口和已有需求不变。接口、业务决定、并行依赖或独立复核确有需要时，由 `requirement-flow` 调用相关专项；不是每项需求都要走遍五种方法。
+业务说明独立于任务历史，按业务对象与能力导航；新接手的人无需翻完整聊天才能理解系统。重要结论标明政策确认、代码观察或实测依据及适用范围。拟议规则先留在变更记录；本地实现或测试通过只更新相应范围，确认目标范围生效后再改该范围的业务现状。
 
-| 专项 skill | 使用时机和交付物 |
-| --- | --- |
-| `flow-requirements` | 需求边界或状态不清时，把原话拆成故事、具名场景和待决定问题。 |
-| `flow-contracts` | 核对操作到请求、响应和回显的字段链，记录来源和契约缺口。 |
-| `flow-implement` | 依据已确认范围开发，回写实际代码位置、关键处理和异常分支。 |
-| `flow-verify` | 按场景运行断言，或登记真实观察及附件，指出失败与未覆盖项。 |
-| `flow-review` | 独立复核需求、实现与证据是否一致，给出有依据的发现。 |
+对应写法见[业务说明](skills/requirement-flow/references/business.md)、[工作记录](skills/requirement-flow/references/work.md)、[验证与证据](skills/requirement-flow/references/verification.md)。技能正文按问题引导读取，不需要每次全部加载。
 
-## 查看和推进需求
+## 可选的证据工具
 
-在已启用的项目中，可以直接告诉 Codex 要做什么。以下命令从项目根目录运行，`plan-search` 是示例需求 ID。
+需要长期保存命令运行依据或复核代码内容时，可使用技能内的 `scripts/evidence.py`，需要 Python 3.9+，无第三方依赖：
 
 ```bash
-FLOW=.agents/skills/requirement-flow/flow.py
-python3 "$FLOW" list
-python3 "$FLOW" new plan-search --request '门店人员可以按名称查找方案'
-python3 "$FLOW" task plan-search next --actor developer
-python3 "$FLOW" serve
+python3 ~/.agents/skills/requirement-flow/scripts/evidence.py run \
+  --project /path/to/project --output docs/changes/evidence/save-01.json \
+  --input src/inventory --input tests/test_inventory.py \
+  -- python3 -m unittest tests.test_inventory -v
+
+python3 ~/.agents/skills/requirement-flow/scripts/evidence.py check \
+  --project /path/to/project docs/changes/evidence/save-01.json
 ```
 
-`serve` 输出项目需求中心的本机 URL。可以搜索需求、切换进行中和归档，在卡片上查看已有证据支持的进度。点击卡片进入需求图，点左上角「需求中心」回到刚才浏览的位置。需要专门打开一张图时，使用 `task plan-search serve`。离线可打开 `.requirements/active/plan-search/handbook.html`；AI 可读同目录 `model.json`，或用 `task plan-search context <故事ID>` 只读取一个功能。
+记录实际命令、时间、退出码、日志和显式输入内容。目录输入含文件增删、未提交内容和执行位变化。运行期间发现变化会标记，复核时改变的输入/日志会失效。工具只报告执行与输入状态，不提供“业务通过”或任务完成标记；执行者仍须核对断言、输入范围以及真实部署和数据条件。采证不应包含凭据或私有数据。详细边界与人工实测写法见[验证与证据](skills/requirement-flow/references/verification.md)。
 
-有验收场景的卡片按「有有效通过证据的场景数 / 当前场景数」计算。仅调研且没有场景的需求按调研项计量。迁移的历史记录缺少可复核的验收证据时显示「历史记录待复验」。进入归档卡片可只读查阅原始记录。
+## 取舍与验证
 
-功能详情先展示需求约定、当前阻塞与下一步，再查看实际实现和场景证据。开发产出可按入口、处理、回读及异常分支分步骤展示，每步链接真实依据；没有登记实现细节时明确显示缺口，不把业务流程当成代码。共享动作区分本次功能、其他共用功能和参考输入，筛选不会改变真实验收覆盖范围。
+删除动作 DAG、领取/署名状态机、固定失败次数硬锁、五专项技能、图页服务、签名密钥、旧版迁移和 Basic Memory 经验账本。保留的是业务与实现/证据分离、影响重估、范围决定可追溯以及真实输入变化检测。没有实测证据表明旧编排值得继续维护，因此不保留第二套引擎；有需要时用工作记录中的可选显式步骤和分工约定。
 
-图页默认以 100% 展示功能卡和各自的验收进度。点「筛选功能」可搜索或多选，收起浮层后仍保留筛选范围。选择功能或切换「实现链路」，可以沿连线查看接口、处理、业务决定和验证记录。右上角的锁控制滚轮与双指缩放，初始锁定；锁定时仍可平移、手动加减。点击百分比恢复原大小，点击「适应画布」查看当前图的全貌。
-
-需求中心的卡片显示标题、状态和进度。将鼠标移到卡片上或用键盘聚焦，可查看完整说明和验收详情；手机点卡进入需求图。在线图页与原始证据页的头部提供「首页」，可直接回到当前项目的需求中心。
-
-从功能详情点进关联节点，再选具体接口，可以继续查看请求字段、响应字段和接口依据。点「预览」会在独立抽屉打开原文，高亮引用行。在线预览可重新读取当前文件并显示读取时间；图服务断连时保留最后读取内容并提示未更新，恢复后解除提示。点左上角返回、按 Esc 或使用浏览器后退，可以逐层回到刚才的阅读位置。复制浏览器地址可在同一本机图服务直达当前详情。
-
-“涉及文件与依据”提供 WebStorm、VS Code 和复制引用入口。复制到 Codex 或 Claude 对话的引用包含已定位工作树的完整路径和原始行号。离线页面或缺少文件时，复制的是项目相对引用。代码和需求图在不同 worktree 时，可在启动图服务时指定代码所在的同仓库检出。
-
-```bash
-python3 .agents/skills/requirement-flow/flow.py serve --source-root /path/to/project-worktree
-```
-
-## 验收与归档
-
-### 子代理与返工
-
-总入口分派相互独立的工作，把功能、动作、场景和回执 ID、版次、授权及代码/模型写入根交给各执行者。同需求同一时段指定一个模型写入工作区；跨 worktree 共享密钥不等于共享领取状态。变更进行中输入前由宿主确认原执行者停工，再复核领取，不能把输入失效当作进程取消。失败诊断的私有复现材料单独交接，公共回执仍默认只分享摘要。一个验证动作由一位持有人对完整覆盖统一结束；独立验收、延期或不同执行者的检查拆为独立验证动作，共享开发可保持。经验提案由另一位实际审查者复核，可交给独立子代理或团队成员。项目使用本地执行者署名；宿主负责身份及可用权限。只有一位执行者时可继续其他就绪动作，候选经验保留待审。
-
-验证失败会保存实际结果。`next` 和 `context` 的 `verification_followups` 给出受影响的动作、场景及失败回执。同一场景、输入、命令和环境连续失败时，`claim` 安排独立诊断动作；其他已就绪动作仍可领取。诊断者通过现有 `claim`、`finish` 留下结论和依据，再修复、重测相关场景。执行者使用稳定署名，宿主负责保证实际身份和审查独立性。
-
-### 项目经验
-
-将经验提案绑定到原故事、验收场景和回执。另一位审查者通过后，需求模型保存批准记录，并在 `.requirements/knowledge/lessons/` 生成可读的 Markdown。把需求、证据和经验随同项目提交。每个 worktree 接收这些文件后，可以启用自己的 Basic Memory 本地全文索引。首次启用需安装 uv，并能取得 Python 3.12 和固定版本 `basic-memory==1.0.0`。CLI 的 `new`、`next`、`context` 和 `claim` 查询本机索引，支持中文。共享图页按标签、接口和字段匹配经验，采用记录仍按原版本展示。
-
-```bash
-FLOW=.agents/skills/requirement-flow/flow.py
-python3 "$FLOW" memory enable
-python3 "$FLOW" memory status
-```
-
-`new` 根据需求原话查经验，`next`、`context` 和 `claim` 按当前故事或动作查。AI 核对推荐理由、适用范围和原始证据，再用 `lesson-adopt` 记录这次采用的理由及具体版本。每个需求用自己的场景证据验收。图上从采用记录可回到原需求、场景和附件。退役后新需求停止收到该版本，历史采用仍能查到当时的理由。
-
-索引和配置保存在各工作区本机。同步项目文件后可执行 `memory sync` 重建索引；只有经过当前模型和原始回执复核的版本能进入推荐。已有需求的账本缺失、损坏或身份冲突时暂停自动推荐和新采用，先恢复完整记录；历史仍可追溯，索引故障仅降级检索。索引故障时，批准记录和 Markdown 保留，提示待同步，可用 `memory sync` 重试。自动索引命令共用 5 秒预算，超时则按项目标签、接口和字段查询。`lessons --all` 可以追溯历史审查、替代和退役。提案字段、采用及退役命令见[记录格式](skills/requirement-flow/references/model.md#可在项目内复用的经验)。
-
-### 场景证据
-
-从 0.11.0 起，验证还绑定显式读取、但不在本动作覆盖范围内的参考故事场景预期。这类参考输入改变时，目标验收须重新采证；升级后不能把缺少该绑定的旧结果追认为当前通过。仅同故事其他独立场景变化仍保留逐场景隔离。
-
-从 0.9.0 起，验证回执绑定实际代码内容，包括未提交修改及子模块。可在验证动作的 `code_paths` 中限定实现、测试和配置范围；未指定时使用当前项目的默认范围。代码改变后，场景显示待复验。旧回执缺少这份绑定，升级后保留为历史依据，不自动代表当前代码已通过；已采用经验仍能追到完整的原始回执。范围与升级规则见[验证所用的代码](skills/requirement-flow/references/model.md#验证所用的代码)。
-
-为每个验收例子分配稳定 ID，用验证动作的 `covers` 指向它负责的场景。每个场景分别通过 `verify-run` 保存实际测试命令、输出与退出码，或通过 `verify-observe` 保存真实观察、环境和项目内的附件。测试须输出可核对的结果，执行者还要确认断言覆盖业务预期。所有相关场景有当前有效的通过凭据后才能结束验证动作。比如，“保存成功”的提示可以证明界面反馈，要证明数据已保存，还需重新进入页面核对回显。[命令与示例](skills/requirement-flow/references/model.md)
-
-交付型需求按场景检查完整性。确需撤出已承诺场景时，先记录本故事的业务决定，再在同一份计划补丁中登记撤出的场景和决定依据。原场景仍可查阅。只委托调研时，创建需求可加 `--outcome research`，按实际结论和依据收尾。调研中明确登记的验收场景也须逐条验证。结束后用 `archive <需求ID>` 将模型、图页和已采集的 `evidence/` 一起移入 `.requirements/archive/<需求ID>/`。若明确要冻结未完成工作，可用 `--allow-incomplete` 保留原状态。旧版自由文本记录可继续查阅；续做的旧交付需求须补上场景覆盖与实际证据。
+审查依据及架构决定见[设计记录](DESIGN.md)。自动检查和独立场景演练的实际结果及局限见[验证记录](VERIFICATION.md)，它们不等于已经证明所有模型的长期使用效果。

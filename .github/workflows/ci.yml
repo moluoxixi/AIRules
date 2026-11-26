@@ -43,12 +43,7 @@ jobs:
         run: pnpm run build
 
       - name: Test
-        run: |
-          PUPPETEER_EXECUTABLE_PATH="$(command -v google-chrome)"
-          export PUPPETEER_EXECUTABLE_PATH
-          test -x "$PUPPETEER_EXECUTABLE_PATH"
-          pnpm test --reporter=default --reporter=json --outputFile.json="$RUNNER_TEMP/vitest.json"
-          node roles/requirement-flow/__test__/check-browser-results.mjs "$RUNNER_TEMP/vitest.json"
+        run: pnpm test
 
       - name: Verify packed role installation
         run: pnpm run verify:packed-airules
@@ -200,11 +195,6 @@ jobs:
         with:
           python-version: '3.12'
           cache-dependency-glob: roles/memory-superpowers/**/*.py
-
-      - name: Verify requirement-flow against the pinned Basic Memory index
-        env:
-          AIRULES_TEST_BASIC_MEMORY: '1'
-        run: uv run --no-project --python 3.12 python -B -m unittest discover -s roles/requirement-flow/__test__ -p test_basic_memory.py
 
       - name: Verify real pinned BMAD installation and input preservation
         run: uv run roles/memory-superpowers/__test__/bmad_integration.py
