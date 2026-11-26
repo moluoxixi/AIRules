@@ -1,5 +1,7 @@
 # 本项目
 vendor
+!roles/requirement-flow/skills/requirement-flow/reader/assets/vendor/
+!roles/requirement-flow/skills/requirement-flow/reader/assets/vendor/**
 .pnpm-store
 # ai相关
 .qoder

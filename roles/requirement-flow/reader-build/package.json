@@ -1,0 +1,13 @@
+{
+  "name": "requirement-flow-reader-assets",
+  "type": "module",
+  "private": true,
+  "scripts": {
+    "build": "node build.mjs"
+  },
+  "dependencies": {
+    "@mermaid-js/tiny": "11.15.0",
+    "dompurify": "3.4.10",
+    "marked": "16.4.2"
+  }
+}

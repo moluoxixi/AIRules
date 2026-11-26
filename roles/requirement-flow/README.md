@@ -9,7 +9,7 @@ airules install requirement-flow --host codex
 airules verify requirement-flow --host codex
 ```
 
-分发一个可自动发现的 `requirement-flow` skill，不修改项目，不要求初始化、Python 服务或记忆索引。直接描述需求，或显式使用 `$requirement-flow`：
+分发一个可自动发现的 `requirement-flow` skill，不要求项目初始化或记忆索引。网页阅读器按需启动；日常直接描述需求，或显式使用 `$requirement-flow`：
 
 ```text
 修复保存后重开丢失数量的问题。
@@ -39,6 +39,30 @@ Beta 0.13.0 替换旧设计，不支持旧 `flow.py` 命令和 `.requirements` �
 
 对应写法见[业务说明](skills/requirement-flow/references/business.md)、[工作记录](skills/requirement-flow/references/work.md)、[验证与证据](skills/requirement-flow/references/verification.md)。技能正文按问题引导读取，不需要每次全部加载。
 
+## 业务网页阅读
+
+0.14.0 增加一套通用只读页面，直接读取项目 Markdown。业务内容、图表和关联都写在原文中；修改后刷新即可，不生成第二份业务 HTML 或知识模型。
+
+```bash
+python3 ~/.agents/skills/requirement-flow/scripts/reader.py --project /path/to/project \
+  --entry docs/business/index.md --tasks docs/changes --port 8765
+```
+
+从终端打印的本机地址打开。页面提供业务导航、查询、Mermaid 流程和状态图、规则表、原文及来源查看。用 `[现状]`、`[拟议变更]`、`[实测结果]` 标记对应章节；分类只读取原文，不认证政策生效或验收完成。业务页与任务记录的普通 Markdown 链接定义关联，页面将已有任务记录展示成任务卡，并计算反向跳转。
+
+`--tasks` 可重复指定目录或单个 Markdown；省略时仅在存在时读取 `docs/changes/`。不必为了页面迁移已有业务规范，入口可以位于项目原有目录。服务只监听本机、只读，不写项目文件；Python 3.9+ 即可使用，浏览器资源随技能分发，无运行时外网或 Node 依赖。格式、边界和操作见[阅读器说明](skills/requirement-flow/references/reader.md)。
+
+在本仓库中用现有样例核验：选择一个尚不存在的输出目录，准备好后启动阅读服务。
+
+```bash
+python3 roles/requirement-flow/__test__/prepare_reader_example.py --output /tmp/requirement-flow-reader-example
+python3 roles/requirement-flow/skills/requirement-flow/scripts/reader.py \
+  --project /tmp/requirement-flow-reader-example --entry docs/business/index.md \
+  --tasks inventory/docs/copy-decision.md --tasks library/docs/changes --port 8765
+```
+
+样例是已有库存、预约和维修合成项目的副本，附加的业务说明也只有 Markdown。核验完成后关闭服务并清理自己创建的样例目录。第三方浏览器资产的可复现准备脚本位于 `reader-build/`，只有维护这些程序资产时需要 Node。
+
 ## 可选的证据工具
 
 需要长期保存命令运行依据或复核代码内容时，可使用技能内的 `scripts/evidence.py`，需要 Python 3.9+，无第三方依赖：
@@ -57,6 +81,6 @@ python3 ~/.agents/skills/requirement-flow/scripts/evidence.py check \
 
 ## 取舍与验证
 
-删除动作 DAG、领取/署名状态机、固定失败次数硬锁、五专项技能、图页服务、签名密钥、旧版迁移和 Basic Memory 经验账本。保留的是业务与实现/证据分离、影响重估、范围决定可追溯以及真实输入变化检测。没有实测证据表明旧编排值得继续维护，因此不保留第二套引擎；有需要时用工作记录中的可选显式步骤和分工约定。
+删除动作 DAG、领取/署名状态机、固定失败次数硬锁、五专项技能、旧动作图及其服务、签名密钥、旧版迁移和 Basic Memory 经验账本。保留业务与实现/证据分离、影响重估、范围决定可追溯以及真实输入变化检测；业务阅读由按需启动的只读页面提供。有需要时用工作记录中的可选显式步骤和分工约定，不维护第二套编排引擎。
 
 审查依据及架构决定见[设计记录](DESIGN.md)。自动检查和独立场景演练的实际结果及局限见[验证记录](VERIFICATION.md)，它们不等于已经证明所有模型的长期使用效果。

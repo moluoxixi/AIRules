@@ -1,0 +1,67 @@
+<!doctype html>
+<html lang="zh-CN">
+  <head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <meta name="color-scheme" content="light">
+    <title>业务手册</title>
+    <link rel="stylesheet" href="/assets/reader.css">
+    <script src="/assets/vendor/marked.umd.js" defer></script>
+    <script src="/assets/vendor/purify.min.js" defer></script>
+    <script src="/assets/vendor/mermaid.tiny.js" defer></script>
+    <script src="/assets/reader.js" defer></script>
+  </head>
+  <body>
+    <a class="skip-link" href="#content">跳到正文</a>
+    <button id="nav-shade" class="nav-shade" aria-label="收起目录" hidden></button>
+    <aside id="sidebar" class="sidebar" aria-label="业务导航">
+      <a id="home-link" class="brand" href="#">
+        <svg viewBox="0 0 32 32" aria-hidden="true"><path d="M5 6h8a4 4 0 0 1 4 4v17a6 6 0 0 0-5-3H5zm22 0h-6a4 4 0 0 0-4 4v17a6 6 0 0 1 5-3h5z"/></svg>
+        <span>业务手册<small id="project-name">正在读取项目</small></span>
+      </a>
+      <label class="search-box" for="search-input"><span aria-hidden="true">⌕</span><input id="search-input" type="search" placeholder="查业务、规则或任务" autocomplete="off"><kbd>/</kbd></label>
+      <nav class="view-switch" aria-label="内容类型">
+        <a id="business-view" href="#">业务内容<span id="business-count"></span></a>
+        <a id="task-view" href="#view=tasks">任务卡<span id="task-count"></span></a>
+      </nav>
+      <div id="navigation" class="navigation"><p class="quiet">正在读取 Markdown 目录…</p></div>
+      <footer class="sidebar-footer"><span class="read-dot"></span>直接读取 Markdown · 只读</footer>
+    </aside>
+
+    <div class="workspace">
+      <header class="page-header">
+        <div class="header-line">
+          <button id="mobile-menu" class="button mobile-menu" aria-controls="sidebar" aria-expanded="false">目录</button>
+          <div id="breadcrumbs" class="breadcrumbs">业务阅读</div>
+          <div class="page-actions">
+            <button id="source-button" class="button">查看 Markdown</button>
+            <button id="copy-link" class="button">复制链接</button>
+            <button id="refresh-button" class="button refresh">刷新内容 <span aria-hidden="true">↻</span></button>
+          </div>
+        </div>
+        <div class="title-line"><span id="document-kind" class="kind-label">业务内容</span><h1 id="page-title">业务手册</h1></div>
+        <p id="page-description" class="page-description">从业务入口了解流程、规则与依据。</p>
+      </header>
+      <main id="content" tabindex="-1">
+        <div id="notice" class="notice" role="status" hidden></div>
+        <div id="phase-filter" class="phase-filter" aria-label="按原文标记筛选"></div>
+        <div class="reader-layout">
+          <article id="article" class="article" aria-live="polite"><div class="loading">正在读取业务说明…</div></article>
+          <aside id="context" class="context" aria-label="本页目录与关联"></aside>
+        </div>
+      </main>
+    </div>
+
+    <dialog id="source-dialog" class="source-dialog" aria-labelledby="source-title">
+      <div class="source-toolbar"><div><span id="source-type" class="eyebrow">Markdown 原文</span><h2 id="source-title">来源</h2></div><button id="close-source" class="button" aria-label="关闭来源">关闭 <span aria-hidden="true">×</span></button></div>
+      <div class="source-meta"><span id="source-hash"></span><a id="source-original" target="_blank" rel="noopener noreferrer">打开原始文本 ↗</a></div>
+      <pre id="source-content" tabindex="0"></pre>
+    </dialog>
+    <dialog id="diagram-dialog" class="diagram-dialog" aria-labelledby="diagram-title">
+      <div class="source-toolbar"><div><span id="diagram-phase" class="eyebrow">图表细节</span><h2 id="diagram-title">放大图表</h2></div><button id="close-diagram" class="button" aria-label="关闭放大图表">关闭 <span aria-hidden="true">×</span></button></div>
+      <p class="diagram-hint">按原始比例显示，可横向和纵向滚动。</p>
+      <div id="diagram-full" class="diagram-full" tabindex="0" aria-label="可滚动的原始比例图表"></div>
+    </dialog>
+    <div id="toast" class="toast" role="status" hidden></div>
+  </body>
+</html>

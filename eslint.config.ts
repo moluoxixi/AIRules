@@ -14,6 +14,7 @@ export default eslintConfig({
     '.codegraph',
     'roles/**/.sync/**',
     'roles/**/packages/**',
+    'roles/requirement-flow/skills/requirement-flow/reader/assets/vendor/**',
     'vendor',
 
     // other

@@ -30,6 +30,8 @@ Simple work proceeds directly. Add analysis, records, and verification as code, 
 
 Keep current rules, proposed changes, and verified results distinct, with sources and scope. Link verification to the actual checks, code, and environment; identify anything still unverified. An optional Python helper captures command output and input fingerprints. A successful command still requires checking whether its assertions establish the intended business outcome.
 
+An optional business reader opens those Markdown files directly, with navigation, search, Mermaid diagrams, source inspection, and links between business pages and task cards. Markdown remains the content source; refreshing reads edits without maintaining a second set of business pages.
+
 ### Usage
 
 Describe the work in Codex or invoke `$requirement-flow`. Update with the same install command; business documentation and handoff records remain project-owned. See the [role guide](roles/requirement-flow/README.md).

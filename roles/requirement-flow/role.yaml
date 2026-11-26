@@ -1,6 +1,6 @@
 schema_version: 2
 role_id: requirement-flow
-role_version: 0.13.0
+role_version: 0.14.0
 status: experimental
 canonical_root: roles/requirement-flow
 description: Autonomous development with business context, resumable change records and reviewable verification for Codex.
