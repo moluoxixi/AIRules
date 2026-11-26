@@ -100,10 +100,10 @@ it('projects one Codex skill and updates it without changing project documentati
   }
 }, 60_000)
 
-it('runs the evidence helper regressions', () => {
-  expect(existsSync(path.join(tests, 'test_evidence.py'))).toBe(true)
+it.each(['test_evidence.py', 'test_second_projects.py'])('runs the role regressions in %s', (name) => {
+  expect(existsSync(path.join(tests, name))).toBe(true)
   const py = python()
-  execFileSync(py.command, [...py.prefix, '-m', 'unittest', 'discover', '-s', tests, '-p', 'test_evidence.py'], {
+  execFileSync(py.command, [...py.prefix, '-m', 'unittest', 'discover', '-s', tests, '-p', name], {
     cwd: repo,
     env: { ...process.env, PYTHONUTF8: '1', PYTHONDONTWRITEBYTECODE: '1' },
     stdio: 'pipe',

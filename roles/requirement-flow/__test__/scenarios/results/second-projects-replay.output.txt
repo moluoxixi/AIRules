@@ -1,0 +1,120 @@
+Current retained cross-project snapshot replay; no assertion about historical model behavior.
+Started: 2026-11-26T06:09:05.564755+00:00
+Python: 3.9.6 (default, May 22 2026, 11:13:45)  [Clang 21.0.0 (clang-2100.1.1.101)]
+Reproduce: python3 -B -m unittest discover -s roles/requirement-flow/__test__ -p test_second_projects.py -v
+
+test_export_heading_and_two_file_snapshot (second_projects_replay.SecondProjectsTest) ... COMMAND ["git", "apply", "/Users/mmhm/AIRules/roles/requirement-flow/__test__/scenarios/results/second-projects.patch"]
+CWD /var/folders/75/83064q_d1255_5hq4270dsp80000gn/T/requirement-flow-second-projects-b3y78zkj
+EXIT 0
+
+COMMAND ["/Library/Developer/CommandLineTools/usr/bin/python3", "-B", "-c", "from exporter import heading; assert heading() == '每日对账汇总'; print(heading())"]
+CWD /var/folders/75/83064q_d1255_5hq4270dsp80000gn/T/requirement-flow-second-projects-b3y78zkj/labels-check
+EXIT 0
+STDOUT
+每日对账汇总
+
+ok
+test_library_persistence_and_notification_fields_across_processes (second_projects_replay.SecondProjectsTest) ... COMMAND ["git", "apply", "/Users/mmhm/AIRules/roles/requirement-flow/__test__/scenarios/results/second-projects.patch"]
+CWD /var/folders/75/83064q_d1255_5hq4270dsp80000gn/T/requirement-flow-second-projects-m8gmh_u_
+EXIT 0
+
+COMMAND ["/Library/Developer/CommandLineTools/usr/bin/python3", "-B", "-c", "\nfrom contextlib import closing\nfrom datetime import date\nimport sys\nfrom collection import desk_quote, open_db, reserve\n\narrival = date(2026, 2, 28)\nassert desk_quote(arrival, 'regular') == date(2026, 3, 3)\nassert desk_quote(arrival, 'pop-up') == date(2026, 3, 1)\nwith closing(open_db(sys.argv[1])) as db:\n    db.execute('insert into holds values (?, ?)', ('existing', '2026-03-02'))\n    db.commit()\n    reserve(db, 'new', 'regular', arrival)\n    reserve(db, 'temporary', 'pop-up', arrival)\n", "/var/folders/75/83064q_d1255_5hq4270dsp80000gn/T/requirement-flow-second-projects-m8gmh_u_/library/holds.sqlite"]
+CWD /var/folders/75/83064q_d1255_5hq4270dsp80000gn/T/requirement-flow-second-projects-m8gmh_u_/library
+EXIT 0
+
+COMMAND ["/Library/Developer/CommandLineTools/usr/bin/python3", "-B", "-c", "\nfrom contextlib import closing\nfrom datetime import date\nimport json\nimport sys\nfrom collection import deadline_for, notification_payload, open_db\n\nexpected = {'new': '2026-03-03', 'temporary': '2026-03-01', 'existing': '2026-03-02'}\nwith closing(open_db(sys.argv[1])) as db:\n    for member, deadline in expected.items():\n        assert deadline_for(db, member) == date.fromisoformat(deadline)\n        assert notification_payload(db, member) == {'member': member, 'collect_by': deadline}\n    assert db.execute('select count(*) from holds').fetchone()[0] == 3\nprint(json.dumps(expected, sort_keys=True))\n", "/var/folders/75/83064q_d1255_5hq4270dsp80000gn/T/requirement-flow-second-projects-m8gmh_u_/library/holds.sqlite"]
+CWD /var/folders/75/83064q_d1255_5hq4270dsp80000gn/T/requirement-flow-second-projects-m8gmh_u_/library
+EXIT 0
+STDOUT
+{"existing": "2026-03-02", "new": "2026-03-03", "temporary": "2026-03-01"}
+
+ok
+test_original_library_sqlite_tests (second_projects_replay.SecondProjectsTest) ... COMMAND ["git", "apply", "/Users/mmhm/AIRules/roles/requirement-flow/__test__/scenarios/results/second-projects.patch"]
+CWD /var/folders/75/83064q_d1255_5hq4270dsp80000gn/T/requirement-flow-second-projects-zrc3timy
+EXIT 0
+
+COMMAND ["/Library/Developer/CommandLineTools/usr/bin/python3", "-B", "-m", "unittest", "-v"]
+CWD /var/folders/75/83064q_d1255_5hq4270dsp80000gn/T/requirement-flow-second-projects-zrc3timy/library
+EXIT 0
+STDERR
+test_new_and_existing_holds_after_reopening (test_collection.CounterTests) ... ok
+test_popup (test_collection.CounterTests) ... ok
+
+----------------------------------------------------------------------
+Ran 2 tests in 0.004s
+
+OK
+
+ok
+test_popup_one_to_two_day_regression_is_detected_then_restored (second_projects_replay.SecondProjectsTest) ... COMMAND ["git", "apply", "/Users/mmhm/AIRules/roles/requirement-flow/__test__/scenarios/results/second-projects.patch"]
+CWD /var/folders/75/83064q_d1255_5hq4270dsp80000gn/T/requirement-flow-second-projects-fvk6fmlp
+EXIT 0
+
+COMMAND ["/Library/Developer/CommandLineTools/usr/bin/python3", "-B", "-m", "unittest", "-v"]
+CWD /var/folders/75/83064q_d1255_5hq4270dsp80000gn/T/requirement-flow-second-projects-fvk6fmlp/library
+EXIT 1
+STDERR
+test_new_and_existing_holds_after_reopening (test_collection.CounterTests) ... test_popup (test_collection.CounterTests) ... FAIL
+
+======================================================================
+FAIL: test_new_and_existing_holds_after_reopening (test_collection.CounterTests) (member='temporary')
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/private/var/folders/75/83064q_d1255_5hq4270dsp80000gn/T/requirement-flow-second-projects-fvk6fmlp/library/test_collection.py", line 30, in test_new_and_existing_holds_after_reopening
+    self.assertEqual(desk_quote(arrival, counter), expected)
+AssertionError: datetime.date(2026, 3, 2) != datetime.date(2026, 3, 1)
+
+======================================================================
+FAIL: test_popup (test_collection.CounterTests)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/private/var/folders/75/83064q_d1255_5hq4270dsp80000gn/T/requirement-flow-second-projects-fvk6fmlp/library/test_collection.py", line 11, in test_popup
+    self.assertEqual(desk_quote(date(2026, 2, 28), "pop-up"), date(2026, 3, 1))
+AssertionError: datetime.date(2026, 3, 2) != datetime.date(2026, 3, 1)
+
+----------------------------------------------------------------------
+Ran 2 tests in 0.004s
+
+FAILED (failures=2)
+
+COMMAND ["/Library/Developer/CommandLineTools/usr/bin/python3", "-B", "-c", "\nfrom contextlib import closing\nfrom datetime import date\nfrom collection import deadline_for, desk_quote, notification_payload, open_db, reserve\n\narrival = date(2026, 2, 28)\nassert desk_quote(arrival, 'pop-up') == date(2026, 3, 2)\nwith closing(open_db('regression.sqlite')) as db:\n    reserve(db, 'temporary', 'pop-up', arrival)\nwith closing(open_db('regression.sqlite')) as db:\n    assert deadline_for(db, 'temporary') == date(2026, 3, 2)\n    assert notification_payload(db, 'temporary')['collect_by'] == '2026-03-02'\n"]
+CWD /var/folders/75/83064q_d1255_5hq4270dsp80000gn/T/requirement-flow-second-projects-fvk6fmlp/library
+EXIT 0
+
+COMMAND ["/Library/Developer/CommandLineTools/usr/bin/python3", "-B", "-m", "unittest", "-v"]
+CWD /var/folders/75/83064q_d1255_5hq4270dsp80000gn/T/requirement-flow-second-projects-fvk6fmlp/library
+EXIT 0
+STDERR
+test_new_and_existing_holds_after_reopening (test_collection.CounterTests) ... ok
+test_popup (test_collection.CounterTests) ... ok
+
+----------------------------------------------------------------------
+Ran 2 tests in 0.004s
+
+OK
+
+ok
+test_repairclub_current_code_allows_owner_to_cancel_after_claim (second_projects_replay.SecondProjectsTest) ... COMMAND ["git", "apply", "/Users/mmhm/AIRules/roles/requirement-flow/__test__/scenarios/results/second-projects.patch"]
+CWD /var/folders/75/83064q_d1255_5hq4270dsp80000gn/T/requirement-flow-second-projects-3nafq_b4
+EXIT 0
+
+COMMAND ["/Library/Developer/CommandLineTools/usr/bin/python3", "-B", "-c", "\nfrom orders import cancel, claim, file_order\n\norder = file_order('resident-a', 'east')\nclaim(order, 'east')\ncancel(order, 'resident-a')\nassert order == {'owner': 'resident-a', 'depot': 'east', 'state': 'cancelled'}\nfor operation in (lambda: cancel(order, 'resident-a'), lambda: claim(order, 'east')):\n    before = dict(order)\n    try:\n        operation()\n    except ValueError as error:\n        assert str(error) == 'unavailable'\n    else:\n        raise AssertionError('Cancelled order must stay unavailable')\n    assert order == before\n"]
+CWD /var/folders/75/83064q_d1255_5hq4270dsp80000gn/T/requirement-flow-second-projects-3nafq_b4/repairclub
+EXIT 0
+
+ok
+test_repairclub_station_and_owner_rejections_preserve_order (second_projects_replay.SecondProjectsTest) ... COMMAND ["git", "apply", "/Users/mmhm/AIRules/roles/requirement-flow/__test__/scenarios/results/second-projects.patch"]
+CWD /var/folders/75/83064q_d1255_5hq4270dsp80000gn/T/requirement-flow-second-projects-ehcq4hzc
+EXIT 0
+
+COMMAND ["/Library/Developer/CommandLineTools/usr/bin/python3", "-B", "-c", "\nfrom orders import cancel, claim, file_order\n\ndef rejected(order, operation):\n    before = dict(order)\n    try:\n        operation()\n    except ValueError as error:\n        assert str(error) == 'unavailable'\n    else:\n        raise AssertionError('Operation should have been rejected')\n    assert order == before\n\norder = file_order('resident-a', 'east')\nassert order == {'owner': 'resident-a', 'depot': 'east', 'state': 'waiting'}\nrejected(order, lambda: claim(order, 'west'))\nrejected(order, lambda: cancel(order, 'resident-b'))\nclaim(order, 'east')\nassert order['state'] == 'claimed'\nrejected(order, lambda: cancel(order, 'resident-b'))\nrejected(order, lambda: claim(order, 'east'))\n\nwaiting = file_order('resident-b', 'west')\ncancel(waiting, 'resident-b')\nassert waiting['state'] == 'cancelled'\nrejected(waiting, lambda: claim(waiting, 'west'))\nrejected(waiting, lambda: cancel(waiting, 'resident-b'))\n"]
+CWD /var/folders/75/83064q_d1255_5hq4270dsp80000gn/T/requirement-flow-second-projects-ehcq4hzc/repairclub
+EXIT 0
+
+ok
+
+----------------------------------------------------------------------
+Ran 6 tests in 0.307s
+
+OK
+Finished: 2026-11-26T06:09:05.872311+00:00

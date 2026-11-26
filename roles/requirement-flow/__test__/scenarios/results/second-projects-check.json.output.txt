@@ -1,0 +1,11 @@
+test_export_heading_and_two_file_snapshot (test_second_projects.SecondProjectsTest) ... ok
+test_library_persistence_and_notification_fields_across_processes (test_second_projects.SecondProjectsTest) ... ok
+test_original_library_sqlite_tests (test_second_projects.SecondProjectsTest) ... ok
+test_popup_one_to_two_day_regression_is_detected_then_restored (test_second_projects.SecondProjectsTest) ... ok
+test_repairclub_current_code_allows_owner_to_cancel_after_claim (test_second_projects.SecondProjectsTest) ... ok
+test_repairclub_station_and_owner_rejections_preserve_order (test_second_projects.SecondProjectsTest) ... ok
+
+----------------------------------------------------------------------
+Ran 6 tests in 0.310s
+
+OK

@@ -8,4 +8,6 @@
 
 本次实际产物见 [results/completed.patch](results/completed.patch)。复核时把 `simple/` 和 `evolving/` 复制到新的临时根，在该根运行 `git apply <补丁绝对路径>`；随后从 `evolving/project/` 运行测试，或对 `docs/evidence/copy-cancelled-02.json` 使用技能的证据复核命令。补丁包含原始输出及两次回执；复核针对接手后的第二次回执，第一次作为历史保留。完成后清理该复原目录。
 
-补充盲测的三个项目由 [second-projects.patch](results/second-projects.patch) 保存。将它应用到新的空临时目录，可从 `library/README.md` 接手预约业务，在 `library/` 运行 `python3 -B -m unittest -v` 复核 SQLite 回读。将临时点保留天数从 1 改为 2 后再运行同一检查，可以复现接班时发现的回退。`repairclub/README.md` 和相邻源文件可以对照检查维修站的值班手册与本地行为差异。
+补充项目的最终快照由 [second-projects.patch](results/second-projects.patch) 保存；此前盲测的原始输入及过程未保留，不据此声称独立会话历史已核实。将补丁应用到新的空临时目录，可从 `library/README.md` 理解预约业务，在 `library/` 运行 `python3 -B -m unittest -v` 复核 SQLite 回读。将临时点保留天数从 1 改为 2 后再运行同一检查，可构造防回退反例；它是可重复实验。`repairclub/README.md` 和相邻源文件可对照检查维修站手册与本地行为的差异，以及尚未调查的流程边界。
+
+自动重放使用角色下的 `test_second_projects.py`：在空系统临时目录应用快照，运行正例、故意注入回退的失败检查、恢复后复验及维修站归属/状态检查，结束时自动清理。该回归已接入角色 CI；它验证快照可复现，不评估模型能力。
