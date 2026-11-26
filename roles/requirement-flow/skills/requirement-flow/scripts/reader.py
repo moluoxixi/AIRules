@@ -8,6 +8,7 @@ import json
 import mimetypes
 from pathlib import Path, PurePosixPath
 import re
+from socketserver import TCPServer
 import string
 import sys
 from urllib.parse import parse_qs, unquote, urlsplit
@@ -326,6 +327,12 @@ class ReaderProject:
 def create_server(reader, port=0):
     assets = Path(__file__).resolve().parents[1] / 'reader'
 
+    class LoopbackHTTPServer(ThreadingHTTPServer):
+        def server_bind(self):
+            # Numeric loopback needs no reverse DNS to populate HTTP metadata.
+            TCPServer.server_bind(self)
+            self.server_name, self.server_port = self.server_address[:2]
+
     class Handler(BaseHTTPRequestHandler):
         def log_message(self, *_args):
             pass
@@ -381,7 +388,7 @@ def create_server(reader, port=0):
         def do_POST(self):
             self.answer(405, b'{"error":"Read-only reader"}')
 
-    return ThreadingHTTPServer(('127.0.0.1', port), Handler)
+    return LoopbackHTTPServer(('127.0.0.1', port), Handler)
 
 
 def main():

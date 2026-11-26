@@ -11,6 +11,7 @@ import tempfile
 import threading
 import time
 import unittest
+from unittest.mock import patch
 from urllib.error import HTTPError
 from urllib.parse import quote, unquote
 from urllib.request import build_opener, ProxyHandler, Request
@@ -502,6 +503,37 @@ class ReaderTest(unittest.TestCase):
         self.assertNotIn(b"Traceback", body)
         self.entry.write_bytes(content)
         self.assertEqual(self.get("/api/catalog")[0], 200)
+
+
+class ReaderServerTest(unittest.TestCase):
+    def test_numeric_loopback_serves_http_without_reverse_dns(self):
+        with tempfile.TemporaryDirectory(prefix="requirement-flow-reader-bind-test-") as directory:
+            project = Path(directory)
+            entry = project / "docs/business/index.md"
+            entry.parent.mkdir(parents=True)
+            entry.write_bytes("# 本地业务\n".encode("utf-8"))
+            spec = importlib.util.spec_from_file_location("requirement_flow_reader_bind", SCRIPT)
+            reader_module = importlib.util.module_from_spec(spec)
+            spec.loader.exec_module(reader_module)
+            reader = reader_module.ReaderProject(project)
+            with patch("socket.getfqdn", side_effect=AssertionError("Numeric loopback needs no DNS")) as lookup:
+                with reader_module.create_server(reader) as server:
+                    self.assertEqual(server.server_address[0], "127.0.0.1")
+                    self.assertGreater(server.server_address[1], 0)
+                    self.assertEqual(server.server_port, server.server_address[1])
+                    self.assertEqual(server.server_name, "127.0.0.1")
+                    worker = threading.Thread(target=server.serve_forever, daemon=True)
+                    worker.start()
+                    try:
+                        opener = build_opener(ProxyHandler({}))
+                        with opener.open(f"http://127.0.0.1:{server.server_port}/api/catalog", timeout=5) as response:
+                            self.assertEqual(response.status, 200)
+                            self.assertEqual(json.load(response)["entry"], "docs/business/index.md")
+                    finally:
+                        server.shutdown()
+                        worker.join(timeout=5)
+                    self.assertFalse(worker.is_alive())
+                lookup.assert_not_called()
 
 
 class ReaderExampleTest(unittest.TestCase):
