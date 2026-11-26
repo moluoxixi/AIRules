@@ -1,58 +1,56 @@
 # Requirement Flow
 
-帮助模型把需求做到可复核的交付，同时留下人能读懂的业务脉络。面向能够自主判断和执行的模型：小任务直接做，出现新的业务约束、共享影响或验证缺口时扩展工作；不预设轻量/重型等级，也没有必经阶段。
+让人理解业务，让下一位能继续，让交付结论有依据。官方 Ponytail 默认 full 提供最小完整实现的工程取向，宿主负责计划、执行与协作，requirement-flow 补充业务规则、上下文接续和证据意义。
 
 ## 安装与使用
 
 ```bash
 airules install requirement-flow --host codex
+python3 ~/.agents/skills/requirement-flow/scripts/ponytail.py setup --default full
+python3 ~/.agents/skills/requirement-flow/scripts/ponytail.py doctor
 airules verify requirement-flow --host codex
 ```
 
-分发一个可自动发现的 `requirement-flow` skill，不要求项目初始化或记忆索引。网页阅读器按需启动；日常直接描述需求，或显式使用 `$requirement-flow`：
+`setup` 通过 Codex 原生插件机制安装或复用官方完整 Ponytail，并调用上游配置函数设置默认 full。若提示 hooks 待审查，先在该宿主的原生 `/hooks` 界面检查并信任，再运行 `doctor`、开启新会话。`doctor` 只读检查安装、默认档位及 hook 信任；`configuration_ready` 不证明新会话实际运行或业务验收通过。上游资源保持原样，会话内切档与关闭沿用 Ponytail 自身能力。
+
+`--codex-home /path/to/codex-home` 只选择 Codex 的插件与配置目录。Ponytail 默认档位仍按上游规则从 `PONYTAIL_DEFAULT_MODE`、`$XDG_CONFIG_HOME/ponytail/config.json` 或 `~/.config/ponytail/config.json` 解析（Windows 回退到 APPDATA）。需要隔离默认配置时一并指定 XDG_CONFIG_HOME；设置只在安装、升级或诊断时检查，日常任务直接使用。
+
+`ponytail-review`、`ponytail-audit`、`ultra` 等专项能力按实际需要使用，不是 RF 的必经阶段。日常从需求继续自主执行；RF 可自动发现，也可显式调用 `$requirement-flow`：
 
 ```text
-修复保存后重开丢失数量的问题。
-继续这个分支的撤销申请功能，核对哪些已经验证，补足剩余工作。
 让第一次接手的人看懂当前库存业务及这次改动的影响。
+继续这个分支，核对已有结论仍适用，补足剩余工作。
+检查保存后的回读证据能否证明需求已经满足。
 ```
 
-Beta 0.13.0 替换旧设计，不支持旧 `flow.py` 命令和 `.requirements` 格式的自动升级。旧项目材料仍是历史来源，按需阅读；切换已有试验项目时先确认项目级旧技能/入口的归属，避免它们遮蔽新版用户级技能。保留项目业务与证据文件，不自动改写其他工作流。当前源代码尚需发布到角色远程分发版本后，安装命令才会取得这一版。
+RF 不要求项目初始化。已有且有依据的状态、权限、接口契约和例外属于完整范围；出现新的业务约束或证据缺口时，随之调整调查与验法。缺失的业务决定或授权只阻塞依赖部分。
 
-## 日常工作
+## 项目里保留什么
 
-开始时定位用户结果、当前实现和有关业务规则。判断可简短到无需写出。明确的局部修改直接实现并运行相关检查；“重构”“升级依赖”同样看实际影响。随着调查发现权限、状态流转、契约、共享调用方或恢复路径等约束，及时补充相应分析和验法。授权内的可逆实现选择由模型决定；缺失的业务决定只阻塞依赖它的部分。
-
-交付前再核对最终影响和证据。只声明真实验证过的范围，分别说明实现、验证和部署状态。命令成功、记录齐全或测试总数都不能自动证明用户目标成立。
-
-## 可继续的项目材料
-
-优先复用项目已有文档、issue 和 PR，不另建平行系统。没有现成约定且确有需要时，用以下普通文件；按需要增量维护，不为小任务批量建模板：
+优先复用已有文档、issue 和 PR。只有需要长期理解或接续上下文而没有约定时，才使用下列普通文件：
 
 | 材料 | 回答的问题 | 默认位置 |
 | --- | --- | --- |
-| 业务说明 | 谁为达成什么目标操作哪些对象；状态、规则、例外、外部依赖及依据 | `docs/business/index.md`，必要时链接专题 |
-| 变更与接手记录 | 现状与目标差异、决定、影响、实际实现、尚缺什么和下一步 | `docs/changes/<id>.md` 或已有 issue/PR |
-| 验证依据 | 哪种代码、环境和数据下实际观察到了什么，哪些未测 | 链接在变更记录内；日志/附件随项目约定保存 |
+| 业务说明 | 当前如何运作，哪些规则与例外重要，依据是什么 | `docs/business/index.md`，必要时链接专题 |
+| 变更与接手记录 | 本次差异、重要决定、实际实现、缺口和下一步 | `docs/changes/<id>.md` 或已有 issue/PR |
+| 验证依据 | 指定代码、环境和数据下实际观察到了什么 | 链接在变更记录内，原始日志与附件沿项目约定保存 |
 
-业务说明独立于任务历史，按业务对象与能力导航；新接手的人无需翻完整聊天才能理解系统。重要结论标明政策确认、代码观察或实测依据及适用范围。拟议规则先留在变更记录；本地实现或测试通过只更新相应范围，确认目标范围生效后再改该范围的业务现状。
+现行规则、拟议目标和实测结果各有来源及适用范围；本地实现或测试通过不自动更新生产现状。简单任务可由修改、相关检查与简短交付说明完成。
 
-对应写法见[业务说明](skills/requirement-flow/references/business.md)、[工作记录](skills/requirement-flow/references/work.md)、[验证与证据](skills/requirement-flow/references/verification.md)。技能正文按问题引导读取，不需要每次全部加载。
+具体写法按需读取[业务说明](skills/requirement-flow/references/business.md)、[工作记录](skills/requirement-flow/references/work.md)及[验证与证据](skills/requirement-flow/references/verification.md)。
 
-## 业务网页阅读
-
-0.14.0 增加一套通用只读页面，直接读取项目 Markdown。业务内容、图表和关联都写在原文中；修改后刷新即可，不生成第二份业务 HTML 或知识模型。
+## Markdown 网页阅读
 
 ```bash
 python3 ~/.agents/skills/requirement-flow/scripts/reader.py --project /path/to/project \
   --entry docs/business/index.md --tasks docs/changes --port 8765
 ```
 
-从终端打印的本机地址打开。页面提供业务导航、查询、Mermaid 流程和状态图、规则表、原文及来源查看。用 `[现状]`、`[拟议变更]`、`[实测结果]` 标记对应章节；分类只读取原文，不认证政策生效或验收完成。业务页与任务记录的普通 Markdown 链接定义关联，页面将已有任务记录展示成任务卡，并计算反向跳转。
+从项目已有 Markdown 入口读取导航，沿链接阅读普通文档、规范和任务。页面提供查询、Mermaid 流程/状态图、原文及来源查看、任务互跳与反向关联；引用的 Markdown 也能查来源。内容只维护在 Markdown，刷新即可读取改动。
 
-`--tasks` 可重复指定目录或单个 Markdown；省略时仅在存在时读取 `docs/changes/`。不必为了页面迁移已有业务规范，入口可以位于项目原有目录。服务只监听本机、只读，不写项目文件；Python 3.9+ 即可使用，浏览器资源随技能分发，无运行时外网或 Node 依赖。格式、边界和操作见[阅读器说明](skills/requirement-flow/references/reader.md)。
+`[现状]`、`[拟议变更]`、`[实测结果]` 是原文语义标记，不认证政策生效或验收完成。入口与任务位置、格式及读取边界见[阅读器说明](skills/requirement-flow/references/reader.md)。阅读服务按需启动，只监听本机且只读，运行时仅需 Python 3.9+；离线浏览器资源随技能分发。
 
-在本仓库中用现有样例核验：选择一个尚不存在的输出目录，准备好后启动阅读服务。
+在本仓库用保留的合成样例查阅：选择尚不存在的输出目录，准备后启动服务。
 
 ```bash
 python3 roles/requirement-flow/__test__/prepare_reader_example.py --output /tmp/requirement-flow-reader-example
@@ -61,26 +59,10 @@ python3 roles/requirement-flow/skills/requirement-flow/scripts/reader.py \
   --tasks inventory/docs/copy-decision.md --tasks library/docs/changes --port 8765
 ```
 
-样例是已有库存、预约和维修合成项目的副本，附加的业务说明也只有 Markdown。核验完成后关闭服务并清理自己创建的样例目录。第三方浏览器资产的可复现准备脚本位于 `reader-build/`，只有维护这些程序资产时需要 Node。
+使用完关闭服务并清理自己创建的样例目录。浏览器程序资产的准备配置位于 `reader-build/`，仅维护这些资产时需要 Node。
 
-## 可选的证据工具
+## 可复核的证据
 
-需要长期保存命令运行依据或复核代码内容时，可使用技能内的 `scripts/evidence.py`，需要 Python 3.9+，无第三方依赖：
+需要保存命令输出或复核输入是否变化时，使用可选的 `scripts/evidence.py`。它只报告执行与显式输入状态，不能代替实际断言或业务验收；原始输出与输入范围、人工环境记录和复验规则见[验证与证据](skills/requirement-flow/references/verification.md)。
 
-```bash
-python3 ~/.agents/skills/requirement-flow/scripts/evidence.py run \
-  --project /path/to/project --output docs/changes/evidence/save-01.json \
-  --input src/inventory --input tests/test_inventory.py \
-  -- python3 -m unittest tests.test_inventory -v
-
-python3 ~/.agents/skills/requirement-flow/scripts/evidence.py check \
-  --project /path/to/project docs/changes/evidence/save-01.json
-```
-
-记录实际命令、时间、退出码、日志和显式输入内容。目录输入含文件增删、未提交内容和执行位变化。运行期间发现变化会标记，复核时改变的输入/日志会失效。工具只报告执行与输入状态，不提供“业务通过”或任务完成标记；执行者仍须核对断言、输入范围以及真实部署和数据条件。采证不应包含凭据或私有数据。详细边界与人工实测写法见[验证与证据](skills/requirement-flow/references/verification.md)。
-
-## 取舍与验证
-
-删除动作 DAG、领取/署名状态机、固定失败次数硬锁、五专项技能、旧动作图及其服务、签名密钥、旧版迁移和 Basic Memory 经验账本。保留业务与实现/证据分离、影响重估、范围决定可追溯以及真实输入变化检测；业务阅读由按需启动的只读页面提供。有需要时用工作记录中的可选显式步骤和分工约定，不维护第二套编排引擎。
-
-审查依据及架构决定见[设计记录](DESIGN.md)。自动检查和独立场景演练的实际结果及局限见[验证记录](VERIFICATION.md)，它们不等于已经证明所有模型的长期使用效果。
+当前职责及历史取舍见[设计记录](DESIGN.md)。实际检查、演练和未验证范围见[验证记录](VERIFICATION.md)；文档与组件组合本身不证明跨模型效果。

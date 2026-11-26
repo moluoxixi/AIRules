@@ -143,7 +143,7 @@ class ReaderTest(unittest.TestCase):
         documents = {page["path"]: page for page in catalog["documents"]}
         business = documents["docs/business/index.md"]
         task = documents["docs/changes/copy.md"]
-        self.assertEqual(business["kind"], "business")
+        self.assertEqual(business["kind"], "document")
         self.assertEqual(task["kind"], "task")
         link = next(link for link in business["links"] if link["target"] == task["path"])
         self.assertEqual(unquote(link["fragment"]), "实施范围")
@@ -151,6 +151,53 @@ class ReaderTest(unittest.TestCase):
         self.assertIn(business["path"], {page["path"] for page in task["backlinks"]})
         self.assertIn(task["path"], {page["path"] for page in business["backlinks"]})
         self.assertEqual(documents["docs/changes/unlinked.md"]["kind"], "task")
+
+    def test_navigation_uses_entry_link_order_and_keeps_recursive_markdown_as_documents(self):
+        specification = self.write("spec/current.md", "# 当前规范\n\n保存后应重新回读数量。\n")
+        self.flow.write_text("# 办理流程\n\n[规范依据](../../spec/current.md#数量)\n", encoding="utf-8")
+        self.entry.write_text("""# 门店库存业务
+
+[先看本次变更](../changes/copy.md#实施范围)
+[再看办理流程](流程%20说明.md#保存)
+[相同入口再次出现](流程%20说明.md#保存)
+[另一条规则](流程%20说明.md#恢复)
+[无法读取的来源](../../spec/missing.md)
+""", encoding="utf-8")
+        catalog = self.catalog()
+        self.assertEqual(catalog["navigation"], [
+            {"path": "docs/business/index.md", "label": "门店库存业务", "fragment": ""},
+            {"path": "docs/changes/copy.md", "label": "先看本次变更", "fragment": "实施范围"},
+            {"path": "docs/business/流程 说明.md", "label": "再看办理流程", "fragment": "保存"},
+            {"path": "docs/business/流程 说明.md", "label": "另一条规则", "fragment": "恢复"},
+        ])
+        documents = {page["path"]: page for page in catalog["documents"]}
+        self.assertEqual(documents["spec/current.md"]["kind"], "document")
+        self.assertEqual(documents["docs/business/流程 说明.md"]["kind"], "document")
+        self.assertNotIn("spec/current.md", {link["path"] for link in catalog["navigation"]})
+        self.assertNotIn("docs/changes/unlinked.md", {link["path"] for link in catalog["navigation"]})
+        self.assertIn("docs/changes/unlinked.md", documents)
+        self.assertEqual(self.content("spec/current.md")[1], specification.read_bytes())
+        self.assertIn("docs/business/流程 说明.md", {page["path"] for page in documents["spec/current.md"]["backlinks"]})
+
+    def test_a_single_link_is_enough_for_relationships_without_writing_a_reciprocal_link(self):
+        self.task.write_text("# 复制已取消申请\n\n只保留业务页指向本任务的链接。\n", encoding="utf-8")
+        before = self.snapshot()
+        documents = {page["path"]: page for page in self.catalog()["documents"]}
+        task = documents["docs/changes/copy.md"]
+        self.assertEqual(task["links"], [])
+        self.assertIn("docs/business/index.md", {page["path"] for page in task["backlinks"]})
+        self.assertEqual(self.snapshot(), before)
+
+        self.entry.write_text("# 门店库存业务\n\n[办理流程](流程%20说明.md)\n", encoding="utf-8")
+        self.task.write_text("# 复制已取消申请\n\n[保存规则](../business/流程%20说明.md#保存)\n", encoding="utf-8")
+        before = self.snapshot()
+        documents = {page["path"]: page for page in self.catalog()["documents"]}
+        flow = documents["docs/business/流程 说明.md"]
+        self.assertEqual(flow["links"], [])
+        self.assertIn("docs/changes/copy.md", {page["path"] for page in flow["backlinks"]})
+        task_link = documents["docs/changes/copy.md"]["links"][0]
+        self.assertEqual((task_link["label"], task_link["fragment"]), ("保存规则", "保存"))
+        self.assertEqual(self.snapshot(), before)
 
     def test_encoded_names_and_anchors_resolve_to_the_original_markdown(self):
         catalog = self.catalog()
@@ -447,12 +494,20 @@ class ReaderExampleTest(unittest.TestCase):
             documents = {page["path"]: page for page in catalog["documents"]}
             inventory = documents["docs/business/inventory.md"]
             task = documents["inventory/docs/copy-decision.md"]
-            self.assertEqual(inventory["kind"], "business")
+            self.assertEqual(inventory["kind"], "document")
             self.assertEqual(task["kind"], "task")
             self.assertIn(task["path"], {link["target"] for link in inventory["links"]})
             self.assertIn(inventory["path"], {page["path"] for page in task["backlinks"]})
             self.assertEqual({page["path"] for page in documents.values() if page["kind"] == "task"},
                              {"inventory/docs/copy-decision.md", "library/docs/changes/regular-holds.md"})
+            self.assertEqual([link["path"] for link in catalog["navigation"]], [
+                "docs/business/index.md", "docs/business/inventory.md", "docs/business/library.md",
+                "docs/business/repair.md", "inventory/docs/copy-decision.md",
+                "library/docs/changes/regular-holds.md",
+            ])
+            for path in ("inventory/spec/current.md", "library/handbook.md", "repairclub/desk-policy.md"):
+                self.assertEqual(documents[path]["kind"], "document")
+                self.assertNotIn(path, {link["path"] for link in catalog["navigation"]})
             for page in documents.values():
                 for link in page["links"]:
                     with self.subTest(document=page["path"], target=link["target"]):

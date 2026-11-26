@@ -1,0 +1,214 @@
+{
+  "version": "5.3.3",
+  "source_commit": "ebd8654c2c627f721eb8f9c0d1bd4090a29f9e10",
+  "codex_cli": "0.170.0",
+  "requested_model": "gpt-6.2-sol/high",
+  "doctor": {
+    "operation": "doctor",
+    "codex_home": "/Users/mmhm/.codex",
+    "cwd": "/private/var/folders/75/83064q_d1255_5hq4270dsp80000gn/T/airules-rf-ponytail-implementation-sta8husy/native-session",
+    "plugin": {
+      "status": "installed",
+      "enabled": true,
+      "version": "5.3.3",
+      "source": {
+        "source": "git",
+        "url": "https://github.com/DietrichGebert/ponytail.git",
+        "ref": "main"
+      },
+      "root": "/Users/mmhm/.codex/plugins/cache/ponytail/ponytail/5.3.3"
+    },
+    "default_mode": {
+      "expected": "full",
+      "effective": "full",
+      "config_path": "/Users/mmhm/.config/ponytail/config.json",
+      "environment_override": null,
+      "matches": true
+    },
+    "hooks": {
+      "status": "trusted",
+      "missing_events": [],
+      "errors": [],
+      "warnings": [],
+      "events": [
+        {
+          "eventName": "sessionStart",
+          "enabled": true,
+          "trustStatus": "trusted",
+          "currentHash": "sha256:defea43402fc8edba23234c694a1117cf80efc2da38968a40a1004cd9d63f725/sha256:5791bd402a7b6a24859e4061e3a47a84e192a9401a637335bdb04bfbd2f5e19f"
+        },
+        {
+          "eventName": "userPromptSubmit",
+          "enabled": true,
+          "trustStatus": "trusted",
+          "currentHash": "sha256:5aa5ec474e0bb546f207794993b37fdf7507e54a64e09216be164c5b7b42a197/sha256:5791bd402a7b6a24859e4061e3a47a84e192a9401a637335bdb04bfbd2f5e19f"
+        },
+        {
+          "eventName": "subagentStart",
+          "enabled": true,
+          "trustStatus": "trusted",
+          "currentHash": "sha256:5b2c1dfa8c7ecc5e8881c8e69479f65d46ed727e0bc5b8e7b4553cee9e5c3daf/sha256:5791bd402a7b6a24859e4061e3a47a84e192a9401a637335bdb04bfbd2f5e19f"
+        }
+      ]
+    },
+    "configuration_ready": true,
+    "fresh_session_verified": false,
+    "problems": [],
+    "next_step": "Open a fresh Codex thread after native hook review; installation and metadata checks do not prove runtime activation or business acceptance"
+  },
+  "completed_native_hooks": [
+    {
+      "event": "sessionStart",
+      "status": "completed",
+      "source": "plugin",
+      "source_path": "/Users/mmhm/.codex/plugins/cache/ponytail/ponytail/5.3.3/hooks/claude-codex-hooks.json",
+      "context_markers": [
+        "PONYTAIL MODE ACTIVE — level: full"
+      ],
+      "context_sha256": [
+        "44b9a3a32a2a8c025535cb746552bc6dd82816469af264130937f0ec2b56eb00"
+      ]
+    },
+    {
+      "event": "userPromptSubmit",
+      "status": "completed",
+      "source": "plugin",
+      "source_path": "/Users/mmhm/.codex/plugins/cache/ponytail/ponytail/5.3.3/hooks/claude-codex-hooks.json",
+      "context_markers": [],
+      "context_sha256": []
+    },
+    {
+      "event": "sessionStart",
+      "status": "completed",
+      "source": "plugin",
+      "source_path": "/Users/mmhm/.codex/plugins/cache/ponytail/ponytail/5.3.3/hooks/claude-codex-hooks.json",
+      "context_markers": [
+        "PONYTAIL MODE ACTIVE — level: full"
+      ],
+      "context_sha256": [
+        "44b9a3a32a2a8c025535cb746552bc6dd82816469af264130937f0ec2b56eb00"
+      ]
+    },
+    {
+      "event": "userPromptSubmit",
+      "status": "completed",
+      "source": "plugin",
+      "source_path": "/Users/mmhm/.codex/plugins/cache/ponytail/ponytail/5.3.3/hooks/claude-codex-hooks.json",
+      "context_markers": [],
+      "context_sha256": []
+    },
+    {
+      "event": "subagentStart",
+      "status": "completed",
+      "source": "plugin",
+      "source_path": "/Users/mmhm/.codex/plugins/cache/ponytail/ponytail/5.3.3/hooks/claude-codex-hooks.json",
+      "context_markers": [
+        "PONYTAIL MODE ACTIVE — level: full"
+      ],
+      "context_sha256": [
+        "44b9a3a32a2a8c025535cb746552bc6dd82816469af264130937f0ec2b56eb00"
+      ]
+    }
+  ],
+  "neutral_fresh_cli": {
+    "prompt": "只读核对：根据本会话已经注入的指导，简短说明当前编码模式的名称或档位，以及关于复用、完整性和验证的要求。不读取任何文件，不调用工具，不猜测未提供的信息。",
+    "exit": {
+      "exit_code": 0
+    },
+    "messages": [
+      "当前编码模式是 **Ponytail，full 档**。\n\n- **复用**：优先沿用项目已有的实现和约定，其次使用标准库或平台能力，再考虑已安装的依赖。\n- **完整性**：用最小改动完整解决问题，覆盖受影响的调用方、测试、测试数据、配置和导出，保留必要的校验和错误处理。\n- **验证**：运行与改动相关的检查。新增非平凡逻辑须有一个小测试或断言自检，简单改动可免新增测试。"
+    ],
+    "tool_commands": 0
+  },
+  "subagent_probe": {
+    "started_at": "2026-11-26T12:14:09.757574+00:00",
+    "cwd": "/private/var/folders/75/83064q_d1255_5hq4270dsp80000gn/T/airules-rf-ponytail-implementation-sta8husy/native-session",
+    "requested_model": "gpt-6.2-sol",
+    "reasoning_effort": "high",
+    "ephemeral": true,
+    "app_server_arguments": [
+      "codex",
+      "app-server",
+      "--stdio",
+      "--enable",
+      "multi_agent_v2"
+    ],
+    "per_invocation_feature": {
+      "name": "multi_agent_v2",
+      "stage": "stable",
+      "enabled": true
+    },
+    "prompt": "请启动且仅启动一个全新上下文的只读子代理，不继承本会话历史。按你实际可用的spawn工具schema选择独立上下文参数（若参数名是fork_turns则设none；若是fork_context则设false）。只给子代理这项任务：不读文件、不用工具、不再创建代理，报告当前上下文显示的编码模式；不要把你看到的模式或答案传过去。等待并汇总它的独立报告。只尝试一次；失败就报告真实错误。",
+    "trust_bypass": false,
+    "configuration_writes": false,
+    "turn_statuses": {
+      "01a217c7-309e-7a40-bfd5-42ec579b8d52": "completed",
+      "01a217c7-0a8c-75d0-acb7-bb3029b19317": "completed"
+    },
+    "child_thread_ids": [
+      "01a217c7-309e-7a40-bfd5-42ec579b8d52"
+    ],
+    "initialize_succeeded": true,
+    "listed_hooks": [
+      {
+        "eventName": "sessionStart",
+        "sourcePath": "/Users/mmhm/.codex/plugins/cache/ponytail/ponytail/5.3.3/hooks/claude-codex-hooks.json",
+        "source": "plugin",
+        "enabled": true,
+        "trustStatus": "trusted"
+      },
+      {
+        "eventName": "userPromptSubmit",
+        "sourcePath": "/Users/mmhm/.codex/plugins/cache/ponytail/ponytail/5.3.3/hooks/claude-codex-hooks.json",
+        "source": "plugin",
+        "enabled": true,
+        "trustStatus": "trusted"
+      },
+      {
+        "eventName": "subagentStart",
+        "sourcePath": "/Users/mmhm/.codex/plugins/cache/ponytail/ponytail/5.3.3/hooks/claude-codex-hooks.json",
+        "source": "plugin",
+        "enabled": true,
+        "trustStatus": "trusted"
+      }
+    ],
+    "parent_thread_id": "01a217c7-0a8c-75d0-acb7-bb3029b19317",
+    "thread_model": "gpt-6.2-sol",
+    "finished_at": "2026-11-26T12:14:31.533499+00:00",
+    "app_server_exit_code_after_cleanup": 0,
+    "stderr_lines_discarded": 56,
+    "hook_event_count": 6,
+    "evidence_redaction": "Spawn message is transport-protected in raw notifications; ciphertext omitted. Plaintext child task was not independently inspected."
+  },
+  "specialist_review": {
+    "requested_skill": "ponytail:ponytail-review",
+    "official_skill_read_confirmed": true,
+    "official_core_read_confirmed": true,
+    "observed_review": "No findings reported for the single label correction",
+    "observed_checks": "Three known statuses and two fallback inputs; output explicitly reports 5 label checks passed",
+    "scope_limit": "External callers were not checked; this single wording diff does not establish broad review quality",
+    "source_files_unchanged": true,
+    "uncommitted_diff_unchanged": true,
+    "configured_default_full_unchanged": true,
+    "runtime_activation_claim": "This run proves explicit native specialty loading and observed read-only review; lifecycle autoactivation has separate root evidence",
+    "artifacts": [
+      "events.jsonl",
+      "stderr.txt",
+      "final.txt",
+      "run-summary.json",
+      "input.diff",
+      "process.json",
+      "prompt.txt",
+      "skill-read-command.txt",
+      "skill-read-output.txt",
+      "review-check-command.txt",
+      "review-check-output.txt"
+    ],
+    "native_process_group_stopped": true
+  },
+  "limits": [
+    "The initial ephemeral inherited-history subagent attempt failed; the independent-context path succeeded.",
+    "The protected child message ciphertext was redacted; hook output is the direct activation evidence.",
+    "Only the macOS Codex surface and the stated synthetic review were exercised."
+  ]
+}

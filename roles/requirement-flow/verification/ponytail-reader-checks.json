@@ -1,0 +1,93 @@
+{
+  "inventory": {
+    "diagrams": 3,
+    "nav": [
+      "业务阅读样例",
+      "库存申请：提交、取消与复制",
+      "预约自取：期限与存量单",
+      "维修工单：归属与撤回",
+      "D17：复制已取消的库存申请",
+      "普通分馆新预约延长一天"
+    ],
+    "phases": [
+      "全部内容",
+      "现状4",
+      "拟议变更1",
+      "实测结果1"
+    ],
+    "related": [
+      {
+        "href": "#page=inventory%2Fdocs%2Fcopy-decision.md",
+        "text": "产品决定 D17inventory/docs/copy-decision.md"
+      },
+      {
+        "href": "#page=inventory%2Fdocs%2Fcopy-decision.md&section=%E9%AA%8C%E8%AF%81%E4%B8%8E%E4%BA%A4%E6%8E%A5",
+        "text": "任务卡的验证与交接inventory/docs/copy-decision.md"
+      }
+    ],
+    "sources": [
+      "规范",
+      "实现",
+      "11 项测试",
+      "实际输出",
+      "业务阅读样例"
+    ],
+    "title": "库存申请：提交、取消与复制",
+    "headerBoundaryGap": 0
+  },
+  "task": {
+    "related": [
+      "R12 业务说明inventory/spec/current.md",
+      "业务阅读样例docs/business/index.md · 引用本页",
+      "库存申请：提交、取消与复制docs/business/inventory.md · 引用本页"
+    ],
+    "text": true,
+    "title": "产品决定 D17"
+  },
+  "spacing": {
+    "filterToReader": 16,
+    "headerToFilter": 16
+  },
+  "proposed": "拟议变更 · 原文标记\n复制已取消申请#\n\n关联任务：产品决定 D17。下一版增加复制：原发起人将本店 cancelled 申请复制成独立 draft，新单保留 copied_from；原单及其商品内容保持不变。R13 尚未部署。\n\n原已取消申请：保留不变\n复制商品与来源\n新草稿：独立标识\n修改数量与保存\n按原规则提交新单\n流程与状态 · Mermaid\n来自当前 Markdown\n放大图表\n查看图表原文",
+  "evidenceDialog": {
+    "visible": true,
+    "text": "test_copy_edit_save_read_and_resubmit (test_inventory.CopyCancelledTest) ... ok\ntest_copy_permissions_and_no_partial_creation (test_inventory.CopyCancelledTest) ... ok\ntest_historical_state_cannot_be_forged_as_draft (test_inventory.CopyCancelledTest) ... ok\ntest_invalid_quantity_rejected_then_edit_can_recover (test_inventory.CopyCancelledTest) ... ok\ntest_only_cancelled_can_be_copied (test_inventory.CopyCancelledTest) ... ok\ntest_repeated_copies_have_independent_identity_and_items (test_inventory.CopyCancelledTest) ... ok\ntest_save_and_submit_require_stored_owner_and_shop (test_inventory.CopyCancelledTest) ... ok\ntest_save_cannot_change_ownership_or_copy_provenance (test_inventory.CopyCancelledTest) ... ok\ntest_submit_and_copy_reject_invalid_stored_quantities (test_inventory.CopyCancelledTest) ... ok\ntest_unknown_source_does_not_create_record (test_inventory.CopyCancelledTest) ... ok\ntest_save_message (test_inventory.SaveTest) ... ok\n\n----------------------------------------------------------------------\nRan 11 tests in 0.001s\n\nOK\n"
+  },
+  "markdownSource": {
+    "title": "库存申请现行规则",
+    "kind": "文档",
+    "nav": [
+      "业务阅读样例",
+      "库存申请：提交、取消与复制",
+      "预约自取：期限与存量单",
+      "维修工单：归属与撤回",
+      "D17：复制已取消的库存申请",
+      "普通分馆新预约延长一天"
+    ]
+  },
+  "search": "找到 4 份文档 · 内容来自当前 Markdown\n\ndocs/business/inventory.md\n库存申请：提交、取消与复制文档\n\n原文首段：店员为本店申请补货，仓配接续审核。先理解原单的生命周期，再看“复制为新单”改变了什么。\n\n关联任务\n产品决定 D17 →\n任务卡的验证与交接 →\ndocs/business/index.md\n业务阅读样例文档\n\n原文首段：从一次真实操作理解系统，再查状态、规则、例外与依据。\n\n关联任务\nD17：复制已取消的库存申请 →\n普通分馆新预约延长一天 →\ninventory/spec/current.md\n库存申请现行规则文档\n\n原文首段：生产基线 R12，业务负责人已确认；本机代码并不代表线上版本。\n\n关联任务\nD17 →\ninventory/docs/copy-decision.md\n产品决定 D17任务记录\n\n原文首段：负责人已批准下一版：原发起人可将本店 cancelled 申请复制成一个新的 draft，新单记录 copied_from，保留原申请及商品内容不变；新单改数量不能影响旧单。新单按原数量与提交规则校验。\n\n相关文档\nR12 业务说明 →\n业务阅读样例 · 引用本页 →\n库存申请：提交、取消与复制 · 引用本页 →",
+  "searchToTask": "产品决定 D17",
+  "observed": "实测结果 · 原文标记\n本机复制、回读与重提#\n\n保留的11 项测试及实际输出覆盖了复制→改量→保存→回读→提交，以及权限拒绝、历史状态保护、数量边界和引用隔离。\n\n验证对象是进程内 Store，不是磁盘重启持久化；真实接口、仓配后续、UAT 和生产仍未验证。当前实现与这些限制均可从任务卡的验证与交接继续查阅。",
+  "markdownRefresh": {
+    "addedVisible": true,
+    "restored": true
+  },
+  "diagramDialog": {
+    "visible": true,
+    "text": "满足\n不满足\n店员编辑草稿\n本店原发起人且数量合法\n保存与提交\n拒绝操作并保留原数据\n等待仓配审核\n已审核\n发起人取消"
+  },
+  "consoleErrors": [],
+  "assertions": {
+    "businessNavigation": true,
+    "diagrams": true,
+    "taskRoundTrip": true,
+    "semanticFilter": true,
+    "evidence": true,
+    "markdownSource": true,
+    "searchTask": true,
+    "refresh": true,
+    "spacing": true,
+    "diagramModal": true,
+    "noConsoleErrors": true
+  }
+}

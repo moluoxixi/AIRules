@@ -1,0 +1,207 @@
+{
+  "final_checks": [
+    {
+      "name": "lint-final",
+      "command": [
+        "pnpm",
+        "run",
+        "lint:check"
+      ],
+      "exit_code": 0
+    },
+    {
+      "name": "typecheck-final",
+      "command": [
+        "pnpm",
+        "run",
+        "typecheck"
+      ],
+      "exit_code": 0
+    },
+    {
+      "name": "build",
+      "command": [
+        "pnpm",
+        "run",
+        "build"
+      ],
+      "exit_code": 0
+    },
+    {
+      "name": "test-final",
+      "command": [
+        "pnpm",
+        "test",
+        "--maxWorkers=4"
+      ],
+      "exit_code": 0,
+      "temporary_path_note": "short alias avoids macOS Unix socket path length; all resources remain under owned root"
+    },
+    {
+      "name": "packed",
+      "command": [
+        "pnpm",
+        "run",
+        "verify:packed-airules"
+      ],
+      "exit_code": 0
+    },
+    {
+      "name": "remote",
+      "command": [
+        "pnpm",
+        "run",
+        "verify:remote-role-install"
+      ],
+      "exit_code": 0
+    }
+  ],
+  "test_summary": "40 test files / 498 tests passed",
+  "reader_assertions": {
+    "businessNavigation": true,
+    "diagrams": true,
+    "taskRoundTrip": true,
+    "semanticFilter": true,
+    "evidence": true,
+    "markdownSource": true,
+    "searchTask": true,
+    "refresh": true,
+    "spacing": true,
+    "diagramModal": true,
+    "noConsoleErrors": true
+  },
+  "handoff_evaluation": {
+    "evaluated_at": "2026-11-26T12:22:35.982362+00:00",
+    "overall": "Business context recovery, local verification and fresh-session continuation demonstrated. The first-session cleanup failure remains in history and was independently attributed and closed after explicit authorization. No unresolved items remain within the authorized local acceptance scope.",
+    "actual_execution": {
+      "cli_version": "0.170.0",
+      "model": "gpt-6.2-sol",
+      "reasoning_effort": "high",
+      "approval": "never",
+      "sandbox": "workspace-write",
+      "ephemeral": true,
+      "no_daemon": true,
+      "user_codex_home": "inherited real user config; not overridden or ignored",
+      "disabled_features": [
+        "apps",
+        "remote_plugin",
+        "recommended_plugins"
+      ],
+      "no_hook_trust_bypass": true,
+      "no_ponytail_text_injected_by_evaluator": true,
+      "first_model_naturally_read_installed_skill": "/Users/mmhm/.codex/plugins/cache/ponytail/ponytail/5.3.3/skills/ponytail/SKILL.md"
+    },
+    "session_identities": {
+      "first": {
+        "thread_events": [
+          {
+            "type": "thread.started",
+            "thread_id": "01a217bd-b496-7021-a09e-d8cb42826d38"
+          }
+        ],
+        "turn_completed": true,
+        "command_count": 15,
+        "nonzero_commands": 1
+      },
+      "second": {
+        "thread_events": [
+          {
+            "type": "thread.started",
+            "thread_id": "01a217c3-45e8-7683-bd80-99af1261bbcb"
+          }
+        ],
+        "turn_completed": true,
+        "command_count": 10,
+        "nonzero_commands": 0
+      }
+    },
+    "blind_boundary": "Corrected final attempt used only independent project-local business source and a frozen full RF skill copy; manually reviewed all 15+10 actual commands. No parent/audit/readiness reads observed. Models used self-created system temporary copies for tests; these paths have been checked absent.",
+    "scope_assessment": {
+      "current_vs_target_vs_observation": "Both sessions distinguish sample R12 ordinary two days / popup one day, pending ordinary-new three days, and local SQLite/notification-field observations. Neither claimed deployment, UI, or gateway delivery.",
+      "continuation": "Second prompt had no skill invocation or expected rules. It recovered from actual first-session files, reran checks, split quote/persistence assertions, added three mutation checks, updated existing handoff rather than creating a parallel task ledger.",
+      "evidence": "Actual commands and assertions observed, not inferred from exit 0. First detected default discovery of zero tests and corrected command. Independent evaluator repeated final test, cross-process persistence/readback and all three mutants with restoration.",
+      "business_implementation": "library/collection.py unchanged from initial frozen input; final test_collection.py strengthened. Full RF skill copy also unchanged by models."
+    },
+    "failure_and_limitations": [
+      "First probe argument order was wrong. Its corrected log records a summary, but it overwrote the same project output path; raw failure survives in evaluator CLI transcript, not in the project-only evidence. The date-named SQLite file was therefore not safely attributable by the second model. Independent closure subsequently recovered the original raw failed command and preserved it with the project cleanup proof; provenance is now resolved.",
+      "First final response claimed temporary files cleaned while library/2026-03-01 remained. Independent snapshot/diff and read-only SQLite inspection confirm this gap. Second independently found the file, did not blindly delete unconfirmed data, and explicitly disclosed retention in final/handoff. After explicit authorization, the evaluator proved ownership and deleted only the active file; current documentation marks this resolved while retaining the first failure.",
+      "First excluded attempt used the wrong venue-business label and read evaluator sibling material while searching; it is not counted as the final blind evaluation. Second pre-freeze corrected attempt was explicitly interrupted by root, not counted as model/product failure.",
+      "Current final evaluation is a synthetic project/local-runtime demonstration; no target environment, real UI, authorization interface, gateway delivery, or complete production lifecycle verified.",
+      "Evaluator final-check script initially had a quoting SyntaxError; failed receipt/source retained separately. Corrected verify_final_02.py passed with current input receipt; this harness failure is excluded from product conclusions."
+    ],
+    "independent_evidence": "Final cleaned-project receipt and companion output; copied handoff snapshot check succeeded/current in final-receipt-check.json. Older receipts and all failures remain preserved.",
+    "snapshots_and_diffs": [
+      "input-before-first.json",
+      "input-before-second.json",
+      "initial-project/",
+      "after-first-project/",
+      "after-second-project/",
+      "first.actual.diff",
+      "second.actual.diff",
+      "combined.actual.diff",
+      "closed-final-project/",
+      "closed-final-project.snapshot.json",
+      "final-receipt-check.json",
+      "evaluation.before-cleanup.json"
+    ],
+    "simple_case": "../../simple-native/evaluation.json: one labels.py line, four state assertions, no new cards/docs/repeated review, no parent evaluator read observed",
+    "formal_repository_changes": "none by evaluator or model sessions; all implementation/model artifacts remain in designated task temp root",
+    "current_unresolved": "none",
+    "current_unresolved_items": [],
+    "current_unresolved_scope": "Authorized local library-business handoff, deterministic verification, known probe cleanup and final evidence recapture only; deployment and external-environment limitations remain unverified.",
+    "cleanup_history": {
+      "first_session_cleanup_failure": true,
+      "first_session_failure_preserved": true,
+      "second_session_safely_preserved_unconfirmed_data": true,
+      "ownership_now_confirmed": true,
+      "basis": "Initial manifest absence + exact failed item_12 argument order/cwd/open_db + matching two committed rows and unchanged file hash",
+      "deleted_only_active_file": "library/2026-03-01",
+      "sha256_before_deletion": "13ec449b45ca5b431b3ceeb9d2bbac81a2d02010e0cd8dfdcea201abec1f7086",
+      "independently_closed_after_authorization": true,
+      "third_model_session_run": false,
+      "evidence": "closed-final-project/evidence/library-probe-cleanup.json",
+      "historical_database_copies": "after-first-project and after-second-project are immutable failure-evidence snapshots, not unresolved active temporary files"
+    },
+    "final_verification": {
+      "receipt": "closed-final-project/evidence/library-holds-final.json",
+      "output": "closed-final-project/evidence/library-holds-final.json.output.txt",
+      "status": "succeeded/current",
+      "capture_scope": "Final handoff/business documents, implementation, tests, business rules, cleanup attribution and verification runner inputs",
+      "checks": "2 existing tests; independent writer/reader processes asserting regular-new 2026-03-03, popup-new 2026-03-01, original saved 2026-03-02 and complete notification payloads; active stray absent; no caches or owned scratch; 36 local document links resolve",
+      "mutation_replay": "Prior evaluator-final-02 three-mutation evidence remains historical and current for its unchanged snapshot; code/test/rules unchanged during cleanup, so only affected final documents and key local behavior were recaptured"
+    }
+  },
+  "simple_evaluation": {
+    "evaluated_at": "2026-11-26T12:01:37.805037+00:00",
+    "business_result": "passed for local state label function only",
+    "model_cli_exit": 0,
+    "actual_change": "one labels.py line: submitted 以提交 -> 已提交",
+    "independent_verification": "verification.json; four states asserted with python -B",
+    "new_model_files": [],
+    "cards_or_extra_docs_created": false,
+    "repeated_review_observed": false,
+    "completed_command_count": 6,
+    "failed_command_context": "one discovery command returned 1 because this disposable fixture has no git repository/no AGENTS hit; subsequent source/read/write/assertions completed",
+    "model_read_boundary": "Manually inspected all six completed command strings. Model read only project files and designated RF/official installed Ponytail skill material; no read of parent handoff, evaluation snapshots, logs or answers observed.",
+    "blind_test_limitation": "Global user configuration and installed skills were intentionally loaded; this is fresh task-context execution, not a claim about clean-machine defaults.",
+    "ui_limitation": "No runnable list UI in fixture; model final answer accurately limits validation to state label function.",
+    "configuration_noise": "Two warning/error items report ignored user config key mcp_servers.computer-use.type; stderr also contains unavailable localhost hindsight MCP startup/shutdown warnings. They did not prevent the actual file edit and assertions.",
+    "skill_after_matches_input": true,
+    "process_exited": true,
+    "own_direct_children_remaining": [],
+    "python_caches": [],
+    "retained_for_parent": "all snapshots, scripts, model result and logs remain under this assigned simple-native directory; no other temporary paths created by evaluator"
+  },
+  "superseded_check_attempts": [
+    {
+      "run": "checks/test",
+      "exit_code": 129,
+      "reason": "Interrupted after discovering ignored historical workspaces in collection; exclusions corrected."
+    },
+    {
+      "run": "checks/test-source",
+      "exit_code": 1,
+      "reason": "Overlong macOS Unix socket TMPDIR plus one concurrency timeout; short owned alias and four workers used for the complete passing rerun."
+    }
+  ]
+}

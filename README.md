@@ -13,16 +13,17 @@ AIRules 安装器负责用户级 package setup、资产分发和受管 skills/MC
 
 ## `requirement-flow`
 
-面向能够自主判断和执行的新模型，帮助 Codex 在开发时理解业务、延续上下文，并给出可复核的交付结果。
+面向能够自主判断和执行的新模型，与官方 Ponytail 默认 full 配合，保留业务理解、上下文接续和可复核的交付依据。
 
 ### 安装
 
 ```bash
 airules install requirement-flow --host codex
+python3 ~/.agents/skills/requirement-flow/scripts/ponytail.py setup --default full
 airules verify requirement-flow --host codex
 ```
 
-安装一个 `requirement-flow` skill 即可使用，无需逐项目初始化。
+RF 分发一个技能，Ponytail 通过官方插件机制单独安装、升级和切档。首次按提示完成原生 hooks 审查，再开新会话；专项能力按需调用。无需逐项目初始化，安装与运行验证的边界见角色说明。
 
 ### 功能
 

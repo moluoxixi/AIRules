@@ -5,6 +5,8 @@ export default defineConfig({
     exclude: [
       '**/node_modules/**',
       '**/.pnpm-store/**',
+      '**/.qoder/**',
+      '**/.airules/**',
       '**/dist/**',
       'roles/*/packages/**',
       '.skill-references/**',

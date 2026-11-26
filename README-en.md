@@ -13,16 +13,17 @@ The AIRules installer handles user-level package setup, asset distribution, and 
 
 ## `requirement-flow`
 
-For capable models that judge and execute work autonomously, this Codex role connects development with business context, continuity, and reviewable delivery results.
+For capable models that judge and execute autonomously, this Codex role complements official Ponytail in full mode with business understanding, continuity, and reviewable evidence.
 
 ### Install
 
 ```bash
 airules install requirement-flow --host codex
+python3 ~/.agents/skills/requirement-flow/scripts/ponytail.py setup --default full
 airules verify requirement-flow --host codex
 ```
 
-Installation provides one `requirement-flow` skill. No project initialization is needed.
+RF provides one skill. Ponytail is installed and updated through its official plugin mechanism, with full as the default and specialist capabilities used when needed. Review its native hooks when prompted, then open a fresh session. No project initialization is needed; the role guide distinguishes installation checks from runtime verification.
 
 ### Features
 

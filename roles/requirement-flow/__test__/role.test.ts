@@ -82,6 +82,7 @@ it('projects one Codex skill and updates it without changing project documentati
     const assets = [
       'SKILL.md',
       path.join('scripts', 'evidence.py'),
+      path.join('scripts', 'ponytail.py'),
       path.join('scripts', 'reader.py'),
       path.join('reader', 'index.html'),
       ...['reader.js', 'reader.css', 'vendor/marked.umd.js', 'vendor/purify.min.js', 'vendor/mermaid.tiny.js'].map(name => path.join('reader', 'assets', name)),
@@ -107,7 +108,7 @@ it('projects one Codex skill and updates it without changing project documentati
   }
 }, 60_000)
 
-it.each(['test_evidence.py', 'test_second_projects.py', 'test_reader.py'])('runs the role regressions in %s', (name) => {
+it.each(['test_evidence.py', 'test_second_projects.py', 'test_reader.py', 'test_ponytail.py'])('runs the role regressions in %s', (name) => {
   expect(existsSync(path.join(tests, name))).toBe(true)
   const py = python()
   execFileSync(py.command, [...py.prefix, '-m', 'unittest', 'discover', '-s', tests, '-p', name], {

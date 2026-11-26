@@ -1,0 +1,31 @@
+{
+  "archive_sha256": "e278481a4790c657710b22061d048019a44830ff817a2e0d006f71473471bc91",
+  "entry_hashes_verified": 488,
+  "cold_replay": [
+    {
+      "command": [
+        "python3",
+        "-B",
+        ".agents/skills/requirement-flow/scripts/evidence.py",
+        "check",
+        "--project",
+        "/var/folders/75/83064q_d1255_5hq4270dsp80000gn/T/airules-rf-ponytail-implementation-sta8husy/cold-replay/handoff/audit/attempt-03/closed-final-project",
+        "evidence/library-holds-final.json"
+      ],
+      "exit_code": 0,
+      "stdout": "{\n  \"receipt\": \"evidence/library-holds-final.json\",\n  \"execution\": \"succeeded\",\n  \"freshness\": \"current\",\n  \"problems\": []\n}\n",
+      "stderr": ""
+    },
+    {
+      "command": [
+        "python3",
+        "-B",
+        "evidence/library-holds-final-check.py"
+      ],
+      "exit_code": 0,
+      "stdout": "Final local verification after independently attributed probe cleanup\nStarted UTC: 2026-11-26T12:28:06.146094+00:00\nOwned temporary path: /private/var/folders/75/83064q_d1255_5hq4270dsp80000gn/T/airules-rf-ponytail-implementation-sta8husy/cold-replay/handoff/audit/attempt-03/closed-final-project/work/library-final-4_h0dcz3\n{\"command\": [\"/Library/Developer/CommandLineTools/usr/bin/python3\", \"-B\", \"-m\", \"unittest\", \"discover\", \"-s\", \"library\", \"-v\"], \"cwd\": \"/private/var/folders/75/83064q_d1255_5hq4270dsp80000gn/T/airules-rf-ponytail-implementation-sta8husy/cold-replay/handoff/audit/attempt-03/closed-final-project\", \"exit_code\": 0, \"stdout\": \"\", \"stderr\": \"test_desk_quote (test_collection.CounterTests) ... ok\\ntest_new_and_existing_holds_after_reopening (test_collection.CounterTests) ... ok\\n\\n----------------------------------------------------------------------\\nRan 2 tests in 0.007s\\n\\nOK\\n\"}\n{\"command\": [\"/Library/Developer/CommandLineTools/usr/bin/python3\", \"-B\", \"-c\", \"from contextlib import closing\\nfrom datetime import date\\nimport sys\\nfrom collection import desk_quote, open_db, reserve\\narrival = date(2026, 2, 28)\\nassert desk_quote(arrival, 'regular') == date(2026, 3, 3)\\nassert desk_quote(arrival, 'pop-up') == date(2026, 3, 1)\\nwith closing(open_db(sys.argv[1])) as db:\\n    db.execute('insert into holds values (?, ?)', ('existing', '2026-03-02'))\\n    db.commit()\\n    reserve(db, 'new', 'regular', arrival)\\n    reserve(db, 'temporary', 'pop-up', arrival)\\nprint('Writer committed three expected records and exited')\\n\", \"/private/var/folders/75/83064q_d1255_5hq4270dsp80000gn/T/airules-rf-ponytail-implementation-sta8husy/cold-replay/handoff/audit/attempt-03/closed-final-project/work/library-final-4_h0dcz3/independent.sqlite\"], \"cwd\": \"/private/var/folders/75/83064q_d1255_5hq4270dsp80000gn/T/airules-rf-ponytail-implementation-sta8husy/cold-replay/handoff/audit/attempt-03/closed-final-project/library\", \"exit_code\": 0, \"stdout\": \"Writer committed three expected records and exited\\n\", \"stderr\": \"\"}\n{\"command\": [\"/Library/Developer/CommandLineTools/usr/bin/python3\", \"-B\", \"-c\", \"from contextlib import closing\\nfrom datetime import date\\nimport json\\nimport sys\\nfrom collection import deadline_for, notification_payload, open_db\\nexpected = {'new': '2026-03-03', 'temporary': '2026-03-01', 'existing': '2026-03-02'}\\nwith closing(open_db(sys.argv[1])) as db:\\n    for member, deadline in expected.items():\\n        assert deadline_for(db, member) == date.fromisoformat(deadline)\\n        assert notification_payload(db, member) == {'member': member, 'collect_by': deadline}\\n    assert db.execute('select count(*) from holds').fetchone()[0] == 3\\nprint(json.dumps(expected, sort_keys=True))\\n\", \"/private/var/folders/75/83064q_d1255_5hq4270dsp80000gn/T/airules-rf-ponytail-implementation-sta8husy/cold-replay/handoff/audit/attempt-03/closed-final-project/work/library-final-4_h0dcz3/independent.sqlite\"], \"cwd\": \"/private/var/folders/75/83064q_d1255_5hq4270dsp80000gn/T/airules-rf-ponytail-implementation-sta8husy/cold-replay/handoff/audit/attempt-03/closed-final-project/library\", \"exit_code\": 0, \"stdout\": \"{\\\"existing\\\": \\\"2026-03-02\\\", \\\"new\\\": \\\"2026-03-03\\\", \\\"temporary\\\": \\\"2026-03-01\\\"}\\n\", \"stderr\": \"\"}\n{\"local_tests\": 2, \"independent_process_readback\": \"three records and full notification fields asserted\", \"stray_database_exists\": false, \"business_source_test_rules_unchanged\": true, \"owned_temporary_workspace_removed\": true, \"document_links_resolve\": 36, \"remaining_local_authorized_issues\": [], \"unverified_scope\": \"deployment, actual target UI/auth/interfaces, real gateway delivery, other production lifecycle\"}\nFinished UTC: 2026-11-26T12:28:06.310418+00:00\n",
+      "stderr": ""
+    }
+  ],
+  "scope": "Independent cold extraction of the final cleaned handoff; no model rerun."
+}

@@ -123,28 +123,39 @@
   }
 
   function related(doc, kind) {
-    const paths = new Set([
-      ...(doc.links || []).filter(link => link.kind === 'document' && link.exists !== false).map(link => link.target),
-      ...(doc.backlinks || []).map(link => link.path),
-    ])
-    return [...paths].map(path => documents.get(path)).filter(item => item && item.path !== doc.path && item.kind === kind)
+    const linked = new Map()
+    for (const link of doc.links || []) {
+      const target = documents.get(link.target)
+      if (link.kind !== 'document' || link.exists === false || !target || target.path === doc.path || target.kind !== kind)
+        continue
+      const fragment = link.fragment || ''
+      const key = `${target.path}#${fragment}`
+      if (!linked.has(key))
+        linked.set(key, { ...target, linkLabel: link.label || target.title, linkFragment: fragment })
+    }
+    for (const link of doc.backlinks || []) {
+      const target = documents.get(link.path)
+      if (target && target.path !== doc.path && target.kind === kind && ![...linked.values()].some(item => item.path === target.path))
+        linked.set(target.path, { ...target, linkLabel: target.title, referencedBy: true })
+    }
+    return [...linked.values()]
   }
 
-  function navLink(doc, extraClass = '') {
-    return `<a class="${extraClass}" href="${escape(routeUrl(doc.path))}"${currentPath === doc.path && currentView === 'page' ? ' aria-current="page"' : ''}>${escape(cleanTitle(doc.title || doc.path))}</a>`
+  function navLink(doc, extraClass = '', label = doc.title || doc.path, fragment = '') {
+    return `<a class="${extraClass}" href="${escape(routeUrl(doc.path, fragment))}"${currentPath === doc.path && currentView === 'page' ? ' aria-current="page"' : ''}>${escape(cleanTitle(label))}</a>`
   }
 
   function renderNavigation() {
-    const business = [...documents.values()].filter(doc => doc.kind !== 'task')
     const tasks = [...documents.values()].filter(doc => doc.kind === 'task')
-    ui['business-count'].textContent = business.length
+    const navigation = (catalog.navigation || []).filter(link => documents.has(link.path))
+    ui['business-count'].textContent = navigation.length
     ui['task-count'].textContent = tasks.length
     ui['business-view'].closest('nav').hidden = false
     ui['business-view'].href = routeUrl(catalog.entry)
     ui['home-link'].href = routeUrl(catalog.entry)
     ui['business-view'].toggleAttribute('aria-current', currentView !== 'tasks')
     ui['task-view'].toggleAttribute('aria-current', currentView === 'tasks')
-    ui.navigation.innerHTML = `<div class="nav-group">业务说明</div>${business.map(doc => navLink(doc, 'nav-link')).join('') || '<p class="quiet">尚无业务说明</p>'}${tasks.length ? `<div class="nav-group">相关任务</div>${tasks.map(doc => navLink(doc, 'nav-link')).join('')}` : ''}`
+    ui.navigation.innerHTML = `<div class="nav-group">入口目录</div>${navigation.map(link => navLink(documents.get(link.path), 'nav-link', link.label, link.fragment)).join('') || '<p class="quiet">入口尚无文档链接</p>'}`
   }
 
   function setHeader({ title, kind = '业务内容', description = '', path = '', showSource = false }) {
@@ -358,19 +369,22 @@
 
   function renderContext(doc, toc) {
     const taskLinks = related(doc, 'task')
-    const businessLinks = related(doc, 'business')
-    const contextDocs = doc.kind === 'task' ? businessLinks : taskLinks
+    const documentLinks = related(doc, 'document')
+    const contextDocs = doc.kind === 'task' ? documentLinks : taskLinks
     let html = contextBlock('本页目录', toc.length ? toc.map(item => `<a class="toc-link level-${Math.min(item.level, 3)}" href="${escape(routeUrl(doc.path, item.id))}">${escape(item.title)}</a>`).join('') : '<p class="context-note">本页没有分节标题</p>')
-    html += contextBlock(doc.kind === 'task' ? '关联业务' : '关联任务', contextDocs.length ? contextDocs.map(item => `<a class="related-card" href="${escape(routeUrl(item.path))}">${escape(cleanTitle(item.title || item.path))}<small>${escape(item.path)}</small></a>`).join('') : '<p class="context-note">原文暂无相关文档链接</p>')
-    const references = (doc.links || []).filter(link => link.kind === 'source' || link.kind === 'external')
-    const unique = [...new Map(references.map(item => [item.target, item])).values()]
+    html += contextBlock(doc.kind === 'task' ? '相关文档' : '关联任务', contextDocs.length ? contextDocs.map(item => `<a class="related-card" href="${escape(routeUrl(item.path, item.linkFragment))}">${escape(cleanTitle(item.linkLabel || item.title || item.path))}<small>${escape(item.path)}${item.referencedBy ? ' · 引用本页' : ''}</small></a>`).join('') : '<p class="context-note">原文暂无相关文档链接</p>')
+    const references = (doc.links || []).filter(link => link.kind === 'source' || link.kind === 'external'
+      || (doc.kind !== 'task' && link.kind === 'document' && link.target !== doc.path && documents.get(link.target)?.kind !== 'task'))
+    const unique = [...new Map(references.map(item => [`${item.target}#${item.fragment || ''}`, item])).values()]
     html += contextBlock('来源与依据', unique.length
       ? unique.map((link) => {
           if (link.exists === false)
             return `<span class="source-link unavailable-link" tabindex="0" title="来源未收录或不可读取；确认链接指向可读取的项目内文本后刷新内容" data-reason="来源未收录或不可读取：${escape(link.target)}。确认链接指向可读取的项目内文本后刷新内容。">${escape(link.label || link.target)}</span>`
           return link.kind === 'external'
             ? `<a class="source-link" href="${escape(link.target)}" target="_blank" rel="noopener noreferrer">${escape(link.label || link.target)} ↗</a>`
-            : `<a class="source-link" href="${escape(contentUrl(link.target))}" data-source="${escape(link.target)}">${escape(link.label || link.target)}</a>`
+            : link.kind === 'document'
+              ? `<a class="source-link" href="${escape(routeUrl(link.target, link.fragment))}">${escape(link.label || link.target)}</a>`
+              : `<a class="source-link" href="${escape(contentUrl(link.target))}" data-source="${escape(link.target)}">${escape(link.label || link.target)}</a>`
         }).join('')
       : '<p class="context-note">来源可在正文链接中查阅</p>')
     const other = (doc.backlinks || []).filter(item => item.path !== doc.path && item.kind === doc.kind)
@@ -507,7 +521,7 @@
 
   function cardRelated(doc, label, kind) {
     const linked = related(doc, kind)
-    return linked.length ? `<div class="card-related"><span>${label}</span>${linked.map(item => `<a href="${escape(routeUrl(item.path))}">${escape(cleanTitle(item.title || item.path))} →</a>`).join('')}</div>` : ''
+    return linked.length ? `<div class="card-related"><span>${label}</span>${linked.map(item => `<a href="${escape(routeUrl(item.path, item.linkFragment))}">${escape(cleanTitle(item.linkLabel || item.title || item.path))}${item.referencedBy ? ' · 引用本页' : ''} →</a>`).join('')}</div>` : ''
   }
 
   async function renderTasks(version) {
@@ -524,7 +538,7 @@
       return
     ui.article.innerHTML = `<div class="task-grid">${records.map(({ doc, raw }) => {
       const summary = paragraphExcerpt(raw)
-      return `<section class="task-card"><div class="card-source">${escape(doc.path)}</div><h2>${navLink(doc)}</h2><p>${escape(summary ? `原文首段：${summary}` : '打开任务记录查阅原文。')}</p>${cardRelated(doc, '关联业务', 'business')}</section>`
+      return `<section class="task-card"><div class="card-source">${escape(doc.path)}</div><h2>${navLink(doc)}</h2><p>${escape(summary ? `原文首段：${summary}` : '打开任务记录查阅原文。')}</p>${cardRelated(doc, '相关文档', 'document')}</section>`
     }).join('')}</div>`
   }
 
@@ -539,7 +553,7 @@
   }
 
   async function renderSearch(query, version) {
-    setHeader({ title: `查找“${query}”`, kind: '业务查询', description: '搜索业务与任务原文；每条业务结果可直接打开关联任务。' })
+    setHeader({ title: `查找“${query}”`, kind: '业务查询', description: '搜索收录的文档与任务原文，沿普通链接查看关联和依据。' })
     ui['phase-filter'].innerHTML = ''
     ui.context.hidden = true
     const records = await Promise.all([...documents.values()].map(async (doc) => {
@@ -569,7 +583,7 @@
       ui.article.innerHTML = '<div class="empty"><p>没有找到匹配内容。</p><p>可换一个业务对象、操作或规则名称。</p></div>'
     }
     else {
-      ui.article.innerHTML = `<p class="search-results-summary">找到 ${matches.length} 份文档 · 内容来自当前 Markdown</p><div class="search-results">${matches.map(({ doc, raw }) => `<section class="search-card"><div class="card-source">${escape(doc.path)}</div><h2>${navLink(doc)}<span class="result-type ${doc.kind === 'task' ? 'task' : ''}">${doc.kind === 'task' ? '任务记录' : '业务说明'}</span></h2><p>原文首段：${excerpt(raw, query)}</p>${cardRelated(doc, doc.kind === 'task' ? '关联业务' : '关联任务', doc.kind === 'task' ? 'business' : 'task')}</section>`).join('')}</div>`
+      ui.article.innerHTML = `<p class="search-results-summary">找到 ${matches.length} 份文档 · 内容来自当前 Markdown</p><div class="search-results">${matches.map(({ doc, raw }) => `<section class="search-card"><div class="card-source">${escape(doc.path)}</div><h2>${navLink(doc)}<span class="result-type ${doc.kind === 'task' ? 'task' : ''}">${doc.kind === 'task' ? '任务记录' : '文档'}</span></h2><p>原文首段：${excerpt(raw, query)}</p>${cardRelated(doc, doc.kind === 'task' ? '相关文档' : '关联任务', doc.kind === 'task' ? 'document' : 'task')}</section>`).join('')}</div>`
     }
     if (loadErrors.length)
       notice(`部分文档未读取，查询结果可能不完整。${[...new Set(loadErrors)].join('；')}`, true)
@@ -582,7 +596,7 @@
     const raw = await documentText(doc)
     if (version !== renderVersion)
       return
-    setHeader({ title: cleanTitle(doc.title || doc.path), kind: doc.kind === 'task' ? '任务记录' : '业务内容', description: doc.kind === 'task' ? '目标、实际实现和验证范围以本记录中的明确说明为准。' : '沿业务流程阅读规则、例外与依据；分类取自原文的明确标记。', path: doc.path, showSource: true })
+    setHeader({ title: cleanTitle(doc.title || doc.path), kind: doc.kind === 'task' ? '任务记录' : doc.path === catalog.entry ? '业务入口' : '文档', description: doc.kind === 'task' ? '目标、实际实现和验证范围以本记录中的明确说明为准。' : '阅读规则、例外与依据；章节用途取自原文标记，适用范围以正文为准。', path: doc.path, showSource: true })
     const { container, toc } = markdownSections(raw, doc)
     ui.article.replaceChildren(...container.childNodes)
     renderPhaseFilter()

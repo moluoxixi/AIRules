@@ -1,5 +1,13 @@
 # Requirement Flow 验证记录
 
+## 0.15.0 官方 Ponytail 与业务上下文
+
+官方 Ponytail 5.3.3 默认 full 已通过真实新会话的原生 hook 事件确认；独立上下文子代理传播和官方 review 调用也有实际运行记录。RF 聚焦业务、接续和证据，阅读器保留 Markdown 唯一内容源并改正导航/来源分类。
+
+现有样例已实际核对阅读、任务互跳、两轮新会话接手和最终证据。首轮探针清理遗漏经过独立归属确认、清理与重采证闭环，未将失败自述作为完成结论。正式源码 40 文件、498 项测试，以及 lint、类型检查、构建、打包和真实远程来源安装检查通过。具体条件、失败历史、未验证范围、原生事件、截图与可重放证据见[本轮验证](verification/ponytail.md)。以下旧版结果按各自范围保留。
+
+[最终角色回归回执](verification/ponytail-check-final.json)及[原始输出](verification/ponytail-check-final.json.output.txt)绑定本轮角色、验证材料、公共入口说明和测试收集配置；回执不代替上述浏览器、原生 hook 与业务断言的实际观察。前一份 `ponytail-check.json` 是补齐原始输出 Git 属性前的历史采集，不作为最终文件的 current 依据。原始输出保留真实空行，并禁用 Git 行尾转换。
+
 ## 0.14.0 直接读取 Markdown 的业务阅读器
 
 已在内置浏览器实际打开现有样例，核对业务导航、Mermaid 流程/状态图、原文与来源、业务查询到任务卡及反向关联、锚点、刷新和故障恢复。详见[实际核验记录与截图](verification/reader.md)。

@@ -1,4 +1,4 @@
 interface:
-  display_name: 需求推进
-  short_description: 自主推进开发，保留业务脉络、接手依据和真实验证边界
-  default_prompt: 使用 $requirement-flow 推进当前工作，按实际影响补足业务约束和验证，留下必要的业务说明与接手依据。
+  display_name: 业务与交付上下文
+  short_description: 理解业务规则与变更影响，保留可接续的上下文和可复核的验证依据
+  default_prompt: 使用 $requirement-flow 梳理受影响业务、当前变更和验证依据，保留接手所需的重要决定与下一步。

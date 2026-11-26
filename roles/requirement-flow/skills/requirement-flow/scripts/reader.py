@@ -259,7 +259,7 @@ class ReaderProject:
                 continue
             heading = re.search(r'^#\s+(.+?)\s*#*\s*$', content.lstrip('\ufeff'), re.M)
             document = {'path': name, 'title': heading[1] if heading else PurePosixPath(name).stem,
-                        'kind': 'task' if name in task_paths and name != self.entry else 'business',
+                        'kind': 'task' if name in task_paths and name != self.entry else 'document',
                         'sha256': hashlib.sha256(data).hexdigest(), 'links': [], 'backlinks': []}
             documents[name] = document
             for label, value in markdown_links(content):
@@ -290,8 +290,20 @@ class ReaderProject:
                         target['backlinks'].append(backlink)
                 elif link['kind'] == 'document' and link['exists']:
                     link['exists'] = False
+        entry = documents[self.entry]
+        navigation = [{'path': self.entry, 'label': entry['title'], 'fragment': ''}]
+        destinations = {(self.entry, '')}
+        for link in entry['links']:
+            destination = (link['target'], link['fragment'])
+            if (link['kind'] != 'document' or not link['exists'] or link['target'] == self.entry
+                    or destination in destinations):
+                continue
+            destinations.add(destination)
+            navigation.append({'path': link['target'], 'label': link['label'],
+                               'fragment': link['fragment']})
         return {'project': self.root.name, 'entry': self.entry,
                 'read_at': datetime.now(timezone.utc).isoformat(),
+                'navigation': navigation,
                 'documents': list(documents.values()), 'sources': list(sources.values()),
                 'warnings': list(dict.fromkeys(warnings))}
 

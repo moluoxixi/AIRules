@@ -1,0 +1,11 @@
+Already up to date
+Done in 285ms using pnpm v11.17.0
+
+ RUN  v4.1.4 /Users/mmhm/AIRules
+
+
+ Test Files  1 passed (1)
+      Tests  5 passed (5)
+   Start at  20:35:25
+   Duration  28.41s (transform 176ms, setup 0ms, import 286ms, tests 27.96s, environment 0ms)
+
