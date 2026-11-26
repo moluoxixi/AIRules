@@ -107,7 +107,7 @@ class ReaderTest(unittest.TestCase):
     def write(self, relative, content):
         path = self.project / relative
         path.parent.mkdir(parents=True, exist_ok=True)
-        path.write_text(content, encoding="utf-8")
+        path.write_bytes(content.encode("utf-8"))
         return path
 
     def get(self, route):

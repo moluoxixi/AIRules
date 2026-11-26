@@ -1,0 +1,224 @@
+Already up to date
+Done in 557ms using pnpm v11.17.0
+$ vitest run --maxWorkers=4
+
+ RUN  v4.1.4 /Users/mmhm/AIRules
+
+Cloning into '/tmp/rfsync-yfng_e4i/vendor-sync-8mBSBV/remote-work'...
+warning: You appear to have cloned an empty repository.
+done.
+Switched to a new branch 'main'
+To /tmp/rfsync-yfng_e4i/vendor-sync-8mBSBV/origin.git
+ * [new branch]      main -> main
+Cloning into '/tmp/rfsync-yfng_e4i/vendor-sync-8mBSBV/home/vendor/repos/demo'...
+To /tmp/rfsync-yfng_e4i/airules-repository-update-7tzpRG/remote.git
+ * [new branch]      main -> main
+done.
+Cloning into '/tmp/rfsync-yfng_e4i/airules-repository-update-7tzpRG/checkout'...
+done.
+HEAD is now at 691dccf initial remote skill
+Reset branch 'main'
+branch 'main' set up to track 'origin/main'.
+Your branch is up to date with 'origin/main'.
+HEAD is now at 691dccf initial remote skill
+To /tmp/rfsync-yfng_e4i/airules-repository-update-7tzpRG/remote.git
+   b304eaf..cecf966  main -> main
+To /tmp/rfsync-yfng_e4i/vendor-sync-8mBSBV/origin.git
+   691dccf..ede394f  main -> main
+From /tmp/rfsync-yfng_e4i/vendor-sync-8mBSBV/origin
+   691dccf..ede394f  main       -> origin/main
+HEAD is now at be25cf1 local-only commit
+Reset branch 'main'
+branch 'main' set up to track 'origin/main'.
+Your branch is up to date with 'origin/main'.
+HEAD is now at ede394f remote latest skill
+Cloning into '/tmp/rfsync-yfng_e4i/vendor-sync-3IfzHB/remote-work'...
+warning: You appear to have cloned an empty repository.
+done.
+Switched to a new branch 'main'
+To /tmp/rfsync-yfng_e4i/airules-repository-update-NeKVo5/remote.git
+ * [new branch]      main -> main
+To /tmp/rfsync-yfng_e4i/vendor-sync-3IfzHB/origin.git
+ * [new branch]      main -> main
+Cloning into '/tmp/rfsync-yfng_e4i/vendor-sync-3IfzHB/home/vendor/repos/demo'...
+done.
+Cloning into '/tmp/rfsync-yfng_e4i/airules-repository-update-NeKVo5/checkout'...
+done.
+HEAD is now at 1a80182 initial remote skill
+Reset branch 'main'
+branch 'main' set up to track 'origin/main'.
+Your branch is up to date with 'origin/main'.
+HEAD is now at 1a80182 initial remote skill
+To /tmp/rfsync-yfng_e4i/airules-repository-update-NeKVo5/remote.git
+   efcd308..c5eb805  main -> main
+To /tmp/rfsync-yfng_e4i/vendor-sync-3IfzHB/origin.git
+ + 1a80182...6332646 main -> main (forced update)
+From /tmp/rfsync-yfng_e4i/vendor-sync-3IfzHB/origin
+ + 1a80182...6332646 main       -> origin/main  (forced update)
+HEAD is now at 1a80182 initial remote skill
+Reset branch 'main'
+branch 'main' set up to track 'origin/main'.
+Your branch is up to date with 'origin/main'.
+HEAD is now at 6332646 rewritten remote skill
+
+up to date, audited 1 package in 1s
+
+found 0 vulnerabilities
+
+> airules-update-fixture@1.0.0 build
+> node -e "require('node:fs').writeFileSync('build-marker', 'built')"
+
+Cloning into '/tmp/rfsync-yfng_e4i/vendor-sync-jAJ9nu/remote-work'...
+warning: You appear to have cloned an empty repository.
+done.
+Switched to a new branch 'main'
+To /tmp/rfsync-yfng_e4i/airules-repository-update-MAv5yM/remote.git
+ * [new branch]      main -> main
+To /tmp/rfsync-yfng_e4i/vendor-sync-jAJ9nu/origin.git
+ * [new branch]      main -> main
+Cloning into '/tmp/rfsync-yfng_e4i/airules-repository-update-MAv5yM/checkout'...
+done.
+To /tmp/rfsync-yfng_e4i/airules-repository-update-MAv5yM/remote.git
+   f6f1848..e727f83  main -> main
+To /tmp/rfsync-yfng_e4i/vendor-sync-jAJ9nu/origin.git
+   c2eea10..b74aa6a  main -> main
+Cloning into '/tmp/rfsync-yfng_e4i/vendor-sync-jAJ9nu/home/vendor/repos/demo'...
+done.
+From /tmp/rfsync-yfng_e4i/vendor-sync-jAJ9nu/origin
+ * branch            c2eea106590679d2571044e2d633ea0b2b2bca6f -> FETCH_HEAD
+HEAD is now at b74aa6a newer revision
+HEAD is now at c2eea10 pinned revision
+HEAD is now at c2eea10 pinned revision
+To /tmp/rfsync-yfng_e4i/airules-repository-update-w7xiBW/remote.git
+ * [new branch]      main -> main
+Previous HEAD position was c2eea10 pinned revision
+Switched to branch 'main'
+Cloning into '/tmp/rfsync-yfng_e4i/airules-repository-update-w7xiBW/checkout'...
+done.
+HEAD is now at 5f7a6a3 initial
+Cloning into '/tmp/rfsync-yfng_e4i/vendor-sync-5UGpM5/remote-work'...
+warning: You appear to have cloned an empty repository.
+done.
+Switched to a new branch 'main'
+To /tmp/rfsync-yfng_e4i/vendor-sync-5UGpM5/origin.git
+ * [new branch]      main -> main
+Cloning into '/tmp/rfsync-yfng_e4i/vendor-sync-5UGpM5/home/vendor/repos/demo'...
+To /tmp/rfsync-yfng_e4i/airules-repository-update-VZhKGH/remote.git
+ * [new branch]      main -> main
+done.
+Cloning into '/tmp/rfsync-yfng_e4i/airules-repository-update-VZhKGH/checkout'...
+done.
+HEAD is now at f5bac76 initial
+Reset branch 'main'
+branch 'main' set up to track 'origin/main'.
+Your branch is up to date with 'origin/main'.
+HEAD is now at f5bac76 initial
+Cloning into '/tmp/rfsync-yfng_e4i/vendor-sync-K3BDS1/remote-work'...
+warning: You appear to have cloned an empty repository.
+done.
+Switched to a new branch 'main'
+To /tmp/rfsync-yfng_e4i/airules-repository-update-7LotPk/remote.git
+ * [new branch]      main -> main
+Cloning into '/tmp/rfsync-yfng_e4i/airules-repository-update-7LotPk/checkout'...
+done.
+To /tmp/rfsync-yfng_e4i/vendor-sync-K3BDS1/origin.git
+ * [new branch]      main -> main
+Cloning into '/tmp/rfsync-yfng_e4i/vendor-sync-K3BDS1/home/vendor/repos/demo'...
+done.
+HEAD is now at 7b73ef9 initial
+Reset branch 'main'
+branch 'main' set up to track 'origin/main'.
+Your branch is up to date with 'origin/main'.
+To /tmp/rfsync-yfng_e4i/airules-repository-update-7LotPk/remote.git
+   a1f8e80..f5b8f3e  main -> main
+HEAD is now at 7b73ef9 initial
+Cloning into '/tmp/rfsync-yfng_e4i/vendor-sync-n0rwiF/remote-work'...
+warning: You appear to have cloned an empty repository.
+done.
+Switched to a new branch 'main'
+To /tmp/rfsync-yfng_e4i/vendor-sync-n0rwiF/origin.git
+ * [new branch]      main -> main
+Cloning into '/tmp/rfsync-yfng_e4i/vendor-sync-n0rwiF/home/vendor/repos/demo'...
+done.
+HEAD is now at 0b9ee1b initial
+Reset branch 'main'
+branch 'main' set up to track 'origin/main'.
+Your branch is up to date with 'origin/main'.
+Error: cannot acknowledge invalid knowledge relations: source_unmapped (path=api.md)
+HEAD is now at 0b9ee1b initial
+Cloning into '/tmp/rfsync-yfng_e4i/vendor-sync-QGE92T/remote-work'...
+warning: You appear to have cloned an empty repository.
+done.
+Switched to a new branch 'trunk'
+To /tmp/rfsync-yfng_e4i/vendor-sync-QGE92T/origin.git
+ * [new branch]      trunk -> trunk
+Cloning into '/tmp/rfsync-yfng_e4i/vendor-sync-QGE92T/clone'...
+done.
+warning: remote HEAD refers to nonexistent ref, unable to checkout
+Cloning into '/tmp/rfsync-yfng_e4i/vendor-sync-Xas2kE/remote-work'...
+warning: You appear to have cloned an empty repository.
+done.
+Switched to a new branch 'feature-only'
+To /tmp/rfsync-yfng_e4i/vendor-sync-Xas2kE/origin.git
+ * [new branch]      feature-only -> feature-only
+Cloning into '/tmp/rfsync-yfng_e4i/vendor-sync-Xas2kE/clone'...
+done.
+warning: remote HEAD refers to nonexistent ref, unable to checkout
+Cloning into '/tmp/rfsync-yfng_e4i/vendor-sync-CDeQnW/remote-work'...
+warning: You appear to have cloned an empty repository.
+done.
+Switched to a new branch 'first'
+To /tmp/rfsync-yfng_e4i/vendor-sync-CDeQnW/origin.git
+ * [new branch]      first -> first
+Switched to a new branch 'second'
+To /tmp/rfsync-yfng_e4i/vendor-sync-CDeQnW/origin.git
+ * [new branch]      second -> second
+Cloning into '/tmp/rfsync-yfng_e4i/vendor-sync-CDeQnW/clone'...
+done.
+warning: remote HEAD refers to nonexistent ref, unable to checkout
+Cloning into '/tmp/rfsync-yfng_e4i/vendor-sync-veZmwU/remote-work'...
+warning: You appear to have cloned an empty repository.
+done.
+Switched to a new branch 'main'
+To /tmp/rfsync-yfng_e4i/vendor-sync-veZmwU/origin.git
+ * [new branch]      main -> main
+Cloning into '/tmp/rfsync-yfng_e4i/vendor-sync-veZmwU/home/vendor/repos/remote-demo'...
+warning: filtering not recognized by server, ignoring
+warning: filtering not recognized by server, ignoring
+HEAD is now at 023cb1d initial remote
+Reset branch 'main'
+branch 'main' set up to track 'origin/main'.
+Your branch is up to date with 'origin/main'.
+HEAD is now at 023cb1d initial remote
+Cloning into '/tmp/rfsync-yfng_e4i/vendor-sync-1eD7X7/remote-work'...
+warning: You appear to have cloned an empty repository.
+done.
+Switched to a new branch 'main'
+Error: cannot acknowledge invalid knowledge relations: source_unmapped (path=api.md)
+To /tmp/rfsync-yfng_e4i/vendor-sync-1eD7X7/origin.git
+ * [new branch]      main -> main
+Cloning into '/tmp/rfsync-yfng_e4i/vendor-sync-1eD7X7/home/vendor/repos/remote-demo'...
+warning: filtering not recognized by server, ignoring
+warning: filtering not recognized by server, ignoring
+HEAD is now at fe5c189 initial remote
+Reset branch 'main'
+branch 'main' set up to track 'origin/main'.
+Your branch is up to date with 'origin/main'.
+HEAD is now at fe5c189 initial remote
+[channel spawn] context path escapes cwd, refusing: ../moluoxixi-runtime-external-hWDx4M/evidence.md (add its real directory to channel.trusted_context_dirs in .moluoxixi/config.yaml to allow)
+
+ Test Files  40 passed (40)
+      Tests  498 passed (498)
+   Start at  00:51:00
+   Duration  58.75s (transform 2.63s, setup 0ms, import 6.93s, tests 216.48s, environment 7ms)
+
+Already up to date
+Done in 501ms using pnpm v11.17.0
+$ eslint .
+Already up to date
+Done in 537ms using pnpm v11.17.0
+$ tsc --noEmit
+Already up to date
+Done in 393ms using pnpm v11.17.0
+$ node scripts/clean-dist.mjs
+$ tsc -p tsconfig.build.json

@@ -124,8 +124,15 @@ class PonytailTest(unittest.TestCase):
         return code, json.loads(output.getvalue())
 
     def test_inherited_relative_codex_home_keeps_same_cache_for_rpc_in_another_cwd(self):
-        self.environment["CODEX_HOME"] = os.path.relpath(self.codex_home, Path.cwd())
-        code, report = self.cli("doctor", "--default", "lite", explicit_home=False)
+        invocation = self.root / "invocation"
+        invocation.mkdir()
+        previous = Path.cwd()
+        try:
+            os.chdir(invocation)
+            self.environment["CODEX_HOME"] = os.path.relpath(self.codex_home, invocation)
+            code, report = self.cli("doctor", "--default", "lite", explicit_home=False)
+        finally:
+            os.chdir(previous)
         self.assertEqual(code, 0, report)
         self.assertEqual(report["codex_home"], str(self.codex_home))
 

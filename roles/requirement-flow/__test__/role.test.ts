@@ -15,6 +15,16 @@ const tests = fileURLToPath(new URL('.', import.meta.url))
 const roleDirectory = path.resolve(tests, '..')
 const repo = path.resolve(roleDirectory, '../..')
 const skill = path.join('.agents', 'skills', role)
+const regressionRunner = [
+  'import faulthandler, sys, unittest',
+  'faulthandler.dump_traceback_later(30, repeat=True)',
+  'try:',
+  '    suite = unittest.defaultTestLoader.discover(sys.argv[1], pattern=sys.argv[2])',
+  '    result = unittest.TextTestRunner(verbosity=2).run(suite)',
+  'finally:',
+  '    faulthandler.cancel_dump_traceback_later()',
+  'sys.exit(0 if result.wasSuccessful() else 1)',
+].join('\n')
 
 function python() {
   const candidates = process.platform === 'win32' ? [['py', '-3'], ['python'], ['python3']] : [['python3'], ['python']]
@@ -112,7 +122,7 @@ it('projects one Codex skill and updates it without changing project documentati
 it.each(['test_evidence.py', 'test_second_projects.py', 'test_reader.py', 'test_ponytail.py'])('runs the role regressions in %s', (name) => {
   expect(existsSync(path.join(tests, name))).toBe(true)
   const py = python()
-  execFileSync(py.command, [...py.prefix, '-m', 'unittest', 'discover', '-s', tests, '-p', name], {
+  execFileSync(py.command, [...py.prefix, '-c', regressionRunner, tests, name], {
     cwd: repo,
     env: { ...process.env, PYTHONUTF8: '1', PYTHONDONTWRITEBYTECODE: '1' },
     stdio: 'pipe',

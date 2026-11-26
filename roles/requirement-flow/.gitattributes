@@ -1,0 +1,16 @@
+*.md text eol=lf
+*.py text eol=lf
+*.js text eol=lf
+*.css text eol=lf
+*.html text eol=lf
+*.json text eol=lf
+*.ts text eol=lf
+*.yaml text eol=lf
+*.mjs text eol=lf
+*.patch text eol=lf
+*.txt text eol=lf
+.gitattributes text eol=lf
+
+*.output.txt -text
+*.jpg -text
+*.zip -text
