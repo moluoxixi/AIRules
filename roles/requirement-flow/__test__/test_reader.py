@@ -18,6 +18,11 @@ from urllib.request import build_opener, ProxyHandler, Request
 
 SCRIPT = Path(__file__).resolve().parents[1] / "skills/requirement-flow/scripts/reader.py"
 PREPARE_EXAMPLE = Path(__file__).resolve().parent / "prepare_reader_example.py"
+READER_RUNNER = """import faulthandler, runpy, sys
+faulthandler.dump_traceback_later(5)
+script = sys.argv.pop(1)
+runpy.run_path(script, run_name="__main__")
+"""
 
 
 class ReaderTest(unittest.TestCase):
@@ -60,7 +65,7 @@ class ReaderTest(unittest.TestCase):
     def start_server(self, entry="docs/business/index.md"):
         self.__dict__.pop("url", None)
         self.process = subprocess.Popen(
-            [sys.executable, "-u", "-B", str(SCRIPT), "--project", str(self.project),
+            [sys.executable, "-u", "-B", "-c", READER_RUNNER, str(SCRIPT), "--project", str(self.project),
              "--entry", entry, "--tasks", "docs/changes", "--port", "0"],
             cwd=self.base, stdout=subprocess.PIPE, stderr=subprocess.STDOUT,
             text=True, encoding="utf-8",
@@ -89,8 +94,12 @@ class ReaderTest(unittest.TestCase):
                 self.url = found.group()
                 break
         else:
+            sys.stderr.write("Reader startup diagnostics:\n" + "".join(output))
+            sys.stderr.flush()
             self.fail("Reader did not print its local URL: " + "".join(output))
         if not hasattr(self, "url"):
+            sys.stderr.write("Reader startup diagnostics:\n" + "".join(output))
+            sys.stderr.flush()
             self.fail("Reader exited before startup: " + "".join(output))
 
     def stop_server(self):
