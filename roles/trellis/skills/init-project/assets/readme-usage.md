@@ -12,3 +12,5 @@
 AI 编程助手会根据当前宿主选择可用的命令或技能。项目的工作流、任务和规范状态位于 `.trellis/`。
 
 将接口文档、业务说明等文本资料放入 `.trellis/knowledge/sources/`。AI 会在每次对话时检查内容差异，把资料按业务域和稳定实体整理到 `.trellis/knowledge/library/`，更新 `.trellis/knowledge/index.md`，并用 `.trellis/knowledge/relations.json` 追踪每个知识页面依赖的 source 版本；只有遇到会实质影响整理结果的歧义时才会询问。
+
+在项目根目录运行 `node .trellis/scripts/airules-dashboard.mjs`，打开本机任务看板，查看任务状态、PRD 和规范。按需加 `--no-open` 或 `--port 3780`。看板是固定版本的社区工具，首次主动运行时通过 npm 获取；项目初始化不会下载或启动它。需要 Node.js 18+、npm 和 Python 3。用 Ctrl+C 停止。

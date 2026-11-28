@@ -322,6 +322,18 @@ trellis --version
 
 The role install provides the Trellis CLI and user-level capabilities but does not modify a project. `init-project` creates project-local workflow assets.
 
+### Local task dashboard
+
+After running the project-level `init-project`, run this command from the project root:
+
+```bash
+node .trellis/scripts/airules-dashboard.mjs
+```
+
+Use `--no-open` to skip opening a browser or `--port 3780` to choose a starting port. The launcher fetches the pinned community package `@terranc/trellis-dashboard@0.1.5` on demand through npm without lifecycle scripts. It serves the existing tasks, PRDs, specs and workspace logs on loopback and does not replace the native Trellis CLI. Requires Node.js 18+, npm and Python 3. Stop it with Ctrl+C and do not forward its port.
+
+Existing projects need not re-run `trellis init` just to open the dashboard. After syncing the updated role, run its `init-project/assets/project-extension/runtime/airules-dashboard.mjs` by its installed path from the project root, or use the project-local entry point after the next normal project initialization/reconfiguration.
+
 ### Features
 
 #### Installed assets

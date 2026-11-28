@@ -164,7 +164,7 @@ describe('native Trellis role', () => {
     expect(document.toJS({ maxAliasCount: 0 })).toMatchObject({
       schema_version: 2,
       role_id: 'trellis',
-      role_version: '0.5.0',
+      role_version: '0.6.0',
       status: 'stable',
       canonical_root: 'roles/trellis',
       provides: { capabilities: [] },
@@ -201,6 +201,7 @@ describe('native Trellis role', () => {
     expect(injected).toContain(original.trim())
     expect(injected).toContain('请使用 Trellis 开始处理这个需求：<描述需求>')
     expect(injected).toContain('.trellis/knowledge/sources/')
+    expect(injected).toContain('node .trellis/scripts/airules-dashboard.mjs')
     expect(injected.match(/<!-- AIRULES:TRELLIS:START -->/gu)).toHaveLength(1)
     expect(injected.match(/<!-- AIRULES:TRELLIS:END -->/gu)).toHaveLength(1)
 

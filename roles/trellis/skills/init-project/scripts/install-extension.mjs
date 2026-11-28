@@ -78,6 +78,7 @@ export function installExtension({ project, platforms, force = false, dryRun = f
 
   const manifest = readManifest(projectRoot)
   const plan = new Map()
+  addStatic(plan, '.trellis/scripts/airules-dashboard.mjs', 'runtime/airules-dashboard.mjs')
   addStatic(plan, '.trellis/scripts/common/knowledge.py', 'runtime/common/knowledge.py')
   addStatic(plan, '.trellis/scripts/knowledge.py', 'runtime/knowledge.py')
   addStatic(plan, '.trellis/scripts/knowledge-hook.py', 'runtime/knowledge-hook.py')
