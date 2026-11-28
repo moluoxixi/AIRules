@@ -1,6 +1,7 @@
 import { copyFile, mkdir, readFile, writeFile } from 'node:fs/promises'
 import path from 'node:path'
 import { fileURLToPath } from 'node:url'
+import { build as bundle } from 'esbuild'
 
 const root = path.dirname(fileURLToPath(import.meta.url))
 const modules = path.resolve(process.argv[2] || path.join(root, 'node_modules'))
@@ -9,6 +10,7 @@ const inputs = [
   ['marked', 'lib/marked.umd.js', 'marked.umd.js'],
   ['dompurify', 'dist/purify.min.js', 'purify.min.js'],
   ['@mermaid-js/tiny', 'dist/mermaid.tiny.js', 'mermaid.tiny.js'],
+  ['minisearch', 'dist/umd/index.js', 'minisearch.umd.js'],
 ]
 async function build() {
   const declared = JSON.parse(await readFile(path.join(root, 'package.json'), 'utf8')).dependencies
@@ -22,8 +24,23 @@ async function build() {
     await copyFile(path.join(directory, source), path.join(destination, output))
     versions[name] = metadata.version
   }
+  for (const name of ['parse5', 'entities']) {
+    const metadata = JSON.parse(await readFile(path.join(modules, name, 'package.json'), 'utf8'))
+    if (metadata.version !== declared[name])
+      throw new Error(`${name}: expected ${declared[name]}, received ${metadata.version}`)
+    versions[name] = metadata.version
+  }
+  await bundle({
+    entryPoints: [path.join(modules, 'parse5/dist/index.js')],
+    outfile: path.join(destination, 'parse5.cjs'),
+    bundle: true,
+    platform: 'node',
+    format: 'cjs',
+    target: 'node20.19',
+    minify: true,
+  })
   await writeFile(path.join(destination, 'versions.json'), `${JSON.stringify(versions, null, 2)}\n`)
-  console.log(`Copied ${inputs.length} pinned browser assets to ${destination}`)
+  console.log(`Built ${inputs.length + 1} pinned reader assets to ${destination}`)
 }
 
 build().catch((error) => {

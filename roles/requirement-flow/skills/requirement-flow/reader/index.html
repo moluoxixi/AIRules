@@ -9,39 +9,43 @@
     <script src="/assets/vendor/marked.umd.js" defer></script>
     <script src="/assets/vendor/purify.min.js" defer></script>
     <script src="/assets/vendor/mermaid.tiny.js" defer></script>
+    <script src="/assets/vendor/minisearch.umd.js" defer></script>
+    <script src="/assets/search.js" defer></script>
     <script src="/assets/reader.js" defer></script>
   </head>
   <body>
     <a class="skip-link" href="#content">跳到正文</a>
-    <button id="nav-shade" class="nav-shade" aria-label="收起目录" hidden></button>
-    <aside id="sidebar" class="sidebar" aria-label="业务导航">
+    <header class="site-header">
+      <button id="mobile-menu" class="button mobile-menu" aria-controls="sidebar" aria-expanded="false">目录</button>
       <a id="home-link" class="brand" href="#">
         <svg viewBox="0 0 32 32" aria-hidden="true"><path d="M5 6h8a4 4 0 0 1 4 4v17a6 6 0 0 0-5-3H5zm22 0h-6a4 4 0 0 0-4 4v17a6 6 0 0 1 5-3h5z"/></svg>
         <span>业务手册<small id="project-name">正在读取项目</small></span>
       </a>
-      <label class="search-box" for="search-input"><span aria-hidden="true">⌕</span><input id="search-input" type="search" placeholder="查业务、规则或任务" autocomplete="off"><kbd>/</kbd></label>
+      <label class="search-box" for="search-input"><span aria-hidden="true">⌕</span><input id="search-input" type="search" aria-label="搜索业务、规则和任务" placeholder="搜索业务、规则或任务" autocomplete="off"><kbd>/</kbd></label>
+      <button id="theme-button" class="button theme-button" aria-label="切换为夜墨主题" title="切换为夜墨主题" aria-pressed="false"><svg class="action-icon theme-moon" viewBox="0 0 24 24" aria-hidden="true"><path d="M20 15a8 8 0 0 1-11-11 8.5 8.5 0 1 0 11 11Z"/></svg><svg class="action-icon theme-sun" viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="4"/><path d="M12 2v2m0 16v2M2 12h2m16 0h2M5 5l1.5 1.5m11 11L19 19M5 19l1.5-1.5m11-11L19 5"/></svg></button>
+    </header>
+    <button id="nav-shade" class="nav-shade" aria-label="收起目录" hidden></button>
+    <aside id="sidebar" class="sidebar" aria-label="业务导航">
       <nav class="view-switch" aria-label="内容类型">
         <a id="business-view" href="#">业务入口<span id="business-count"></span></a>
-        <a id="task-view" href="#view=tasks">任务卡<span id="task-count"></span></a>
+        <a id="task-view" href="#view=tasks">任务与记录<span id="task-count"></span></a>
       </nav>
-      <div id="navigation" class="navigation"><p class="quiet">正在读取 Markdown 目录…</p></div>
+      <div id="navigation" class="navigation" tabindex="0" role="navigation" aria-label="文档与任务目录"><p class="quiet">正在读取 Markdown 目录…</p></div>
       <footer class="sidebar-footer"><span class="read-dot"></span>直接读取 Markdown · 只读</footer>
     </aside>
 
     <div class="workspace">
       <header class="page-header">
         <div class="header-line">
-          <button id="mobile-menu" class="button mobile-menu" aria-controls="sidebar" aria-expanded="false">目录</button>
           <div id="breadcrumbs" class="breadcrumbs">业务阅读</div>
           <div class="page-actions">
             <button id="source-button" class="button action-button" aria-label="查看 Markdown" title="查看 Markdown"><svg class="action-icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M14 3H6a1 1 0 0 0-1 1v16a1 1 0 0 0 1 1h12a1 1 0 0 0 1-1V8zm0 0v5h5M8 13h8m-8 4h6"/></svg><span class="action-label">查看 Markdown</span></button>
             <button id="copy-link" class="button action-button" aria-label="复制链接" title="复制链接"><svg class="action-icon" viewBox="0 0 24 24" aria-hidden="true"><path d="m10 13 4-4m-6 6-1 1a4 4 0 0 1-6-6l4-4a4 4 0 0 1 6 0m2 3 1-1a4 4 0 0 1 6 6l-4 4a4 4 0 0 1-6 0" transform="translate(1 1)"/></svg><span class="action-label">复制链接</span></button>
             <button id="refresh-button" class="button refresh action-button" aria-label="刷新内容" title="刷新内容"><svg class="action-icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M20 7v5h-5M4 17v-5h5m-4-4a8 8 0 0 1 13-3l2 2M4 17l2 2a8 8 0 0 0 13-3"/></svg><span class="action-label">刷新内容</span></button>
-            <button id="theme-button" class="button theme-button" aria-label="切换为夜墨主题" title="切换为夜墨主题" aria-pressed="false"><svg class="action-icon theme-moon" viewBox="0 0 24 24" aria-hidden="true"><path d="M20 15a8 8 0 0 1-11-11 8.5 8.5 0 1 0 11 11Z"/></svg><svg class="action-icon theme-sun" viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="4"/><path d="M12 2v2m0 16v2M2 12h2m16 0h2M5 5l1.5 1.5m11 11L19 19M5 19l1.5-1.5m11-11L19 5"/></svg></button>
           </div>
         </div>
         <div class="title-line"><span id="document-kind" class="kind-label">业务内容</span><h1 id="page-title">业务手册</h1></div>
-        <p id="page-description" class="page-description">从业务入口了解流程、规则与依据。</p>
+        <div class="description-line"><p id="page-description" class="page-description">从业务入口了解流程、规则与依据。</p><nav id="page-links" class="page-links" aria-label="任务原始资料" hidden></nav></div>
       </header>
       <main id="content" tabindex="-1">
         <div id="notice" class="notice" role="status" hidden></div>
@@ -64,5 +68,6 @@
       <div id="diagram-full" class="diagram-full" tabindex="0" aria-label="可滚动的原始比例图表"></div>
     </dialog>
     <div id="toast" class="toast" role="status" hidden></div>
+    <div id="nav-tooltip" class="nav-tooltip" role="tooltip" hidden></div>
   </body>
 </html>

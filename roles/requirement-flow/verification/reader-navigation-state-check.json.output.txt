@@ -1,0 +1,24 @@
+Already up to date
+Done in 157ms using pnpm v11.17.0
+
+ RUN  v4.1.4 /Users/mmhm/AIRules
+
+
+ Test Files  6 passed (6)
+      Tests  155 passed (155)
+   Start at  01:10:51
+   Duration  28.23s (transform 122ms, setup 0ms, import 211ms, tests 27.65s, environment 0ms)
+
+Already up to date
+Done in 158ms using pnpm v11.17.0
+$ tsc --noEmit
+Already up to date
+Done in 158ms using pnpm v11.17.0
+Ordinary Ponytail regression: role.test.ts wrapper passed; 22 discovered cases (separate from ESM run below)
+Additional ESM fixture condition: package.json type=module; AIRULES_TEST_TMPDIR=/var/folders/75/83064q_d1255_5hq4270dsp80000gn/T/rf-scope-batch-esm-df7ph2n9/tmp
+......................
+----------------------------------------------------------------------
+Ran 22 tests in 1.784s
+
+OK
+Additional ESM fixture cleaned: true

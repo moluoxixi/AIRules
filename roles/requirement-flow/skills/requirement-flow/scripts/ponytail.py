@@ -21,7 +21,15 @@ MODES = ("off", "lite", "full", "ultra")
 CONFIG_CALL = """const c = require(process.argv[1]);
 if (process.argv[2] === 'write' && c.writeDefaultMode(process.argv[3]) !== process.argv[3])
   throw new Error('Official default-mode setter rejected the requested mode');
-console.log(JSON.stringify({effective: c.getDefaultMode(), path: c.getConfigPath()}));
+const path = c.getConfigPath(), override = c.normalizeMode(process.env.PONYTAIL_DEFAULT_MODE);
+let configured = null;
+try {
+  configured = c.normalizeMode(JSON.parse(require('fs').readFileSync(path, 'utf8').replace(/^\\uFEFF/, '')).defaultMode);
+} catch (_) {}
+console.log(JSON.stringify({effective: c.getDefaultMode(), path,
+  source: override ? 'environment' : configured ? 'config_file' : 'builtin_default',
+  environmentOverride: override,
+  environmentIgnored: process.env.PONYTAIL_DEFAULT_MODE !== undefined && override === null}));
 """
 
 
@@ -89,7 +97,8 @@ def default_mode(root, operation, expected, environment, timeout):
             require(isinstance(previous, dict), "Existing Ponytail configuration is not an object; preserved without changes")
         current = json.loads(native(["node", "-e", CONFIG_CALL, module, "write", expected], environment, timeout))
     return {"expected": expected, "effective": current["effective"], "config_path": current["path"],
-            "environment_override": environment.get("PONYTAIL_DEFAULT_MODE"), "matches": current["effective"] == expected}
+            "source": current["source"], "environment_override": current["environmentOverride"],
+            "environment_ignored": current["environmentIgnored"], "matches": current["effective"] == expected}
 
 
 def native_hooks(environment, cwd, timeout):
@@ -167,9 +176,10 @@ def hook_state(metadata, cwd):
     hooks = [hook for hook in entries[0]["hooks"] if hook.get("pluginId") == PLUGIN_ID]
     missing = [event for event in NATIVE_EVENTS if not any(hook.get("eventName") == event for hook in hooks)]
     errors = entries[0].get("errors", [])
-    active = bool(hooks) and not missing and not errors and all(hook.get("enabled") is True
-                                                              and hook.get("trustStatus") in ("trusted", "managed") for hook in hooks)
-    return {"status": "trusted" if active else "review_required", "missing_events": missing,
+    trusted = bool(hooks) and all(hook.get("trustStatus") in ("trusted", "managed") for hook in hooks)
+    active = trusted and not missing and not errors and all(hook.get("enabled") is True for hook in hooks)
+    status = "trusted" if active else "disabled" if trusted and not missing and not errors else "review_required"
+    return {"status": status, "missing_events": missing,
             "errors": errors, "warnings": entries[0].get("warnings", []),
             "events": [{key: hook.get(key) for key in ("eventName", "enabled", "trustStatus", "currentHash")} for hook in hooks]}
 
@@ -184,8 +194,8 @@ def inspect(args):
     report = {"operation": args.operation, "codex_home": str(codex_home), "cwd": str(cwd),
               "plugin": {"status": "not_checked"}, "default_mode": {"status": "not_checked"},
               "hooks": {"status": "not_checked"}, "configuration_ready": False,
-              "fresh_session_verified": False, "problems": [],
-              "next_step": "Open a fresh Codex thread after native hook review; installation and metadata checks do not prove runtime activation or business acceptance"}
+              "fresh_session_verified": False, "problems": []}
+    next_steps = []
     try:
         plugin = installed_plugin(environment, args.timeout)
         if plugin is None and args.operation == "setup":
@@ -194,25 +204,55 @@ def inspect(args):
             plugin = installed_plugin(environment, args.timeout)
         if plugin is None:
             report["plugin"] = {"status": "missing"}
-            report["problems"].append("Official Ponytail is not installed; run setup to use the native plugin installer")
+            report["problems"].append("Official Ponytail is not installed")
+            report["next_step"] = f"Run setup --default {args.default} to install the official plugin."
             return report
         root = plugin_root(codex_home, plugin)
         report["plugin"] = {"status": "installed", "enabled": plugin.get("enabled") is True, "version": plugin["version"],
                             "source": plugin["source"], "root": str(root)}
         if plugin.get("enabled") is not True:
-            report["problems"].append("Official Ponytail is disabled; review and enable it using Codex's native plugin controls")
+            report["problems"].append("Official Ponytail is disabled")
+            report["next_step"] = "Review and enable Ponytail in Codex's native plugin controls, then rerun doctor."
             return report
-        report["default_mode"] = default_mode(root, args.operation, args.default, environment, args.timeout)
-        if not report["default_mode"]["matches"]:
-            report["problems"].append("Effective default differs from the requested mode; PONYTAIL_DEFAULT_MODE overrides the shared configuration")
+        mode = default_mode(root, args.operation, args.default, environment, args.timeout)
+        report["default_mode"] = mode
+        if not mode["matches"]:
+            difference = f"Expected {args.default}, but Ponytail resolved {mode['effective']}"
+            if mode["environment_override"] is not None:
+                report["problems"].append(f"{difference} from PONYTAIL_DEFAULT_MODE")
+                next_steps.append(f"Set PONYTAIL_DEFAULT_MODE to {args.default} in the environment that launches Codex, "
+                                  f"or unset it and run setup --default {args.default} to use the shared configuration.")
+            else:
+                source = f"configuration file {mode['config_path']}" if mode["source"] == "config_file" else "Ponytail's built-in default"
+                report["problems"].append(f"{difference} from {source}")
+                next_steps.append(f"Run setup --default {args.default} to set the shared default, "
+                                  f"or doctor --default {mode['effective']} if that mode is intentional.")
         report["hooks"] = hook_state(native_hooks(environment, cwd, args.timeout), cwd)
         if report["hooks"]["errors"]:
             report["problems"].append("Native hook loading failed: " + json.dumps(report["hooks"]["errors"], ensure_ascii=False))
+            next_steps.append("Resolve the reported hook loading errors, then rerun doctor with your intended --default.")
+        elif report["hooks"]["missing_events"]:
+            report["problems"].append("Codex did not list the required Ponytail events: " + ", ".join(report["hooks"]["missing_events"]))
+            next_steps.append("Check that native hooks are enabled for this project and the official plugin is loaded. "
+                              "Inspect the listed events in /hooks, then rerun doctor with your intended --default.")
         elif report["hooks"]["status"] != "trusted":
-            report["problems"].append("Review Ponytail lifecycle hooks in Codex's native /hooks controls; this tool never approves trust or replaces hashes")
+            untrusted = [event["eventName"] for event in report["hooks"]["events"]
+                         if event["trustStatus"] not in ("trusted", "managed")]
+            disabled = [event["eventName"] for event in report["hooks"]["events"] if event["enabled"] is not True]
+            if untrusted:
+                report["problems"].append("Ponytail lifecycle hooks need Codex's native startup hook review: " + ", ".join(untrusted))
+                next_steps.append("Start Codex for this project and choose Review hooks on its startup prompt. "
+                                  "Review, trust and enable the Ponytail commands you approve, then rerun doctor with your intended --default. "
+                                  "If /hooks in an existing session disagrees with doctor, use the startup review.")
+            if disabled:
+                report["problems"].append("Ponytail lifecycle hooks are disabled: " + ", ".join(disabled))
+                next_steps.append("Use Codex's native /hooks controls for this project to enable the listed Ponytail event commands "
+                                  "you approve, then rerun doctor with your intended --default.")
         report["configuration_ready"] = not report["problems"]
     except (OSError, ValueError, TypeError, KeyError, subprocess.TimeoutExpired) as error:
         report["problems"].append(str(error))
+        next_steps.append(f"Resolve the reported failure, then rerun {args.operation} in the same environment.")
+    report["next_step"] = " ".join(next_steps) or "Open a fresh Codex thread to check actual hook activation."
     return report
 
 

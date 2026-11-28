@@ -1,0 +1,16 @@
+Already up to date
+Done in 170ms using pnpm v11.17.0
+
+ RUN  v4.1.4 /Users/mmhm/AIRules
+
+
+ Test Files  4 passed (4)
+      Tests  24 passed (24)
+   Start at  16:32:34
+   Duration  16.29s (transform 88ms, setup 0ms, import 169ms, tests 15.83s, environment 0ms)
+
+Already up to date
+Done in 179ms using pnpm v11.17.0
+$ tsc --noEmit
+Already up to date
+Done in 180ms using pnpm v11.17.0

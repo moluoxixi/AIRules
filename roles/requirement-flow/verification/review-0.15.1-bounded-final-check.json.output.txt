@@ -1,0 +1,79 @@
+Already up to date
+Done in 1.8s using pnpm v11.17.0
+$ vitest run roles/development/__test__/development-role.test.ts roles/memory-superpowers/__test__/role.test.ts roles/matt/__test__/matt-role.test.ts scripts/lib/__test__/contract-diff-cli.test.ts --maxWorkers=1
+
+ RUN  v4.1.4 /Users/mmhm/AIRules
+
+stdout | roles/memory-superpowers/__test__/role.test.ts > distributes the requirements reviewer and its dependencies to all supported hosts
+
+--- 正在验证公共 Agent skills 层 ---
+[info] 预期技能总数: 2
+[result] 有效=2, 缺失=0, 损坏=0
+✅ 公共 Agent skills 层 验证通过
+
+stdout | roles/memory-superpowers/__test__/role.test.ts > distributes the requirements reviewer and its dependencies to all supported hosts
+
+--- 正在验证宿主: claude ---
+[info] 预期技能总数: 2
+[result] 有效=2, 缺失=0, 损坏=0
+✅ claude 验证通过
+
+stdout | roles/memory-superpowers/__test__/role.test.ts > distributes the requirements reviewer and its dependencies to all supported hosts
+
+--- 正在验证宿主: codex ---
+[info] 宿主未启用 skills 投影，跳过 skills 链接校验
+
+stdout | roles/memory-superpowers/__test__/role.test.ts > distributes the requirements reviewer and its dependencies to all supported hosts
+
+--- 正在验证宿主: cursor ---
+[info] 宿主未启用 skills 投影，跳过 skills 链接校验
+
+stdout | roles/memory-superpowers/__test__/role.test.ts > distributes the requirements reviewer and its dependencies to all supported hosts
+
+--- 正在验证公共 Agent skills 层 ---
+[info] 预期技能总数: 2
+[result] 有效=2, 缺失=0, 损坏=0
+✅ 公共 Agent skills 层 验证通过
+
+stdout | roles/memory-superpowers/__test__/role.test.ts > distributes the requirements reviewer and its dependencies to all supported hosts
+
+--- 正在验证宿主: claude ---
+[info] 预期技能总数: 2
+[result] 有效=2, 缺失=0, 损坏=0
+✅ claude 验证通过
+
+stdout | roles/memory-superpowers/__test__/role.test.ts > distributes the requirements reviewer and its dependencies to all supported hosts
+
+--- 正在验证宿主: codex ---
+[info] 宿主未启用 skills 投影，跳过 skills 链接校验
+
+stdout | roles/memory-superpowers/__test__/role.test.ts > distributes the requirements reviewer and its dependencies to all supported hosts
+
+--- 正在验证宿主: cursor ---
+[info] 宿主未启用 skills 投影，跳过 skills 链接校验
+
+ ❯ roles/memory-superpowers/__test__/role.test.ts (2 tests | 1 failed) 6185ms
+   × distributes the requirements reviewer and its dependencies to all supported hosts 6117ms
+
+⎯⎯⎯⎯⎯⎯⎯ Failed Tests 1 ⎯⎯⎯⎯⎯⎯⎯
+
+ FAIL  roles/memory-superpowers/__test__/role.test.ts > distributes the requirements reviewer and its dependencies to all supported hosts
+Error: Test timed out in 5000ms.
+If this is a long-running test, pass a timeout value as the last argument or configure it globally with "testTimeout".
+ ❯ roles/memory-superpowers/__test__/role.test.ts:19:1
+     17| })
+     18|
+     19| it('distributes the requirements reviewer and its dependencies to all …
+       | ^
+     20|   const sandbox = mkdtempSync(path.join(os.tmpdir(), 'airules-review-p…
+     21|   try {
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[1/1]⎯
+
+
+ Test Files  1 failed | 3 passed (4)
+      Tests  1 failed | 16 passed (17)
+   Start at  11:00:31
+   Duration  35.62s (transform 1.36s, setup 0ms, import 3.19s, tests 28.62s, environment 2ms)
+
+[ELIFECYCLE] Test failed. See above for more details.

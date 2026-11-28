@@ -19,13 +19,15 @@ SPEC = importlib.util.spec_from_file_location("rf_ponytail", SCRIPT)
 ponytail = importlib.util.module_from_spec(SPEC)
 SPEC.loader.exec_module(ponytail)
 
-# A small implementation of the three upstream APIs is the integration fixture.
+# The upstream configuration APIs are represented by this local fixture.
 # It lets these tests observe real Node config writes without touching user settings.
 CONFIG = """const fs=require('fs'), path=require('path');
 const p=path.join(process.env.XDG_CONFIG_HOME, 'ponytail/config.json');
-function read(){try{return JSON.parse(fs.readFileSync(p,'utf8'))}catch(_){return {}}}
-module.exports={getConfigPath:()=>p,
-getDefaultMode:()=>process.env.PONYTAIL_DEFAULT_MODE || read().defaultMode || 'full',
+function read(){try{return JSON.parse(fs.readFileSync(p,'utf8').replace(/^\\uFEFF/,''))}catch(_){return {}}}
+function normalizeMode(value){if(typeof value!=='string')return null;const mode=value.trim().toLowerCase();
+return ['full','lite','off','ultra'].includes(mode)?mode:null}
+module.exports={getConfigPath:()=>p,normalizeMode,
+getDefaultMode:()=>normalizeMode(process.env.PONYTAIL_DEFAULT_MODE) || normalizeMode(read().defaultMode) || 'full',
 writeDefaultMode:m=>{let c=read();c.defaultMode=m;fs.mkdirSync(path.dirname(p),{recursive:true});
 fs.writeFileSync(p,JSON.stringify(c));return m}};
 """
@@ -60,6 +62,7 @@ class PonytailTest(unittest.TestCase):
         self.cache = self.codex_home / "plugins/cache/ponytail/ponytail/5.3.3"
         (self.cache / ".codex-plugin").mkdir(parents=True)
         (self.cache / "hooks").mkdir()
+        (self.cache / "package.json").write_text("{}\n", encoding="utf-8")
         self.manifest = self.cache / ".codex-plugin/plugin.json"
         self.manifest.write_text(json.dumps({"name": "ponytail", "version": "5.3.3",
                                             "repository": "https://github.com/DietrichGebert/ponytail",
@@ -198,13 +201,18 @@ class PonytailTest(unittest.TestCase):
         self.assertEqual(len(self.commands), 1)
 
     def test_environment_override_is_not_removed_or_mistaken_for_full(self):
-        self.environment["PONYTAIL_DEFAULT_MODE"] = "lite"
+        self.environment["PONYTAIL_DEFAULT_MODE"] = " LiTe "
         code, report = self.cli()
         self.assertEqual(code, 1)
         self.assertEqual(report["default_mode"]["effective"], "lite")
         self.assertFalse(report["default_mode"]["matches"])
         self.assertEqual(json.loads(self.config.read_text())["defaultMode"], "full")
-        self.assertEqual(self.environment["PONYTAIL_DEFAULT_MODE"], "lite")
+        self.assertEqual(self.environment["PONYTAIL_DEFAULT_MODE"], " LiTe ")
+        self.assertEqual(report["default_mode"]["environment_override"], "lite")
+        self.assertEqual(report["default_mode"]["source"], "environment")
+        self.assertFalse(report["default_mode"]["environment_ignored"])
+        self.assertIn("resolved lite from PONYTAIL_DEFAULT_MODE", " ".join(report["problems"]))
+        self.assertIn("Set PONYTAIL_DEFAULT_MODE to full", report["next_step"])
 
     def test_doctor_does_not_rewrite_the_shared_default(self):
         before = self.config.read_bytes()
@@ -213,6 +221,48 @@ class PonytailTest(unittest.TestCase):
         self.assertEqual(report["default_mode"]["effective"], "lite")
         self.assertEqual(self.config.read_bytes(), before)
         self.assertEqual(report["hooks"]["status"], "trusted")
+        self.assertIsNone(report["default_mode"]["environment_override"])
+        self.assertEqual(report["default_mode"]["source"], "config_file")
+        self.assertFalse(report["default_mode"]["environment_ignored"])
+        self.assertIn(str(self.config), " ".join(report["problems"]))
+        self.assertIn("setup --default full", report["next_step"])
+        self.assertIn("doctor --default lite", report["next_step"])
+
+    def test_ignored_environment_value_does_not_hide_shared_configuration(self):
+        for value in ("review", "invalid", ""):
+            with self.subTest(environment=value):
+                self.environment["PONYTAIL_DEFAULT_MODE"] = value
+                code, report = self.cli("doctor")
+                self.assertEqual(code, 1)
+                self.assertIsNone(report["default_mode"]["environment_override"])
+                self.assertEqual(report["default_mode"]["source"], "config_file")
+                self.assertTrue(report["default_mode"]["environment_ignored"])
+                self.assertEqual(report["default_mode"]["effective"], "lite")
+                self.assertIn(str(self.config), " ".join(report["problems"]))
+                self.assertNotIn("PONYTAIL_DEFAULT_MODE", report["next_step"])
+
+    def test_missing_or_invalid_file_resolves_to_builtin_default_without_writing(self):
+        for content in (None, b'{"defaultMode":"review"}', b'{"defaultMode": unfinished'):
+            with self.subTest(content=content):
+                if content is None:
+                    self.config.unlink()
+                else:
+                    self.config.write_bytes(content)
+                code, report = self.cli("doctor")
+                self.assertEqual(code, 0, report)
+                self.assertEqual(report["default_mode"]["effective"], "full")
+                self.assertEqual(report["default_mode"]["source"], "builtin_default")
+                self.assertFalse(report["default_mode"]["environment_ignored"])
+                self.assertEqual(self.config.read_bytes() if self.config.exists() else None, content)
+
+    def test_bom_file_uses_the_same_normalization_as_the_upstream_resolver(self):
+        content = b'\xef\xbb\xbf{"defaultMode":" LiTe "}'
+        self.config.write_bytes(content)
+        code, report = self.cli("doctor")
+        self.assertEqual(code, 1)
+        self.assertEqual(report["default_mode"]["effective"], "lite")
+        self.assertEqual(report["default_mode"]["source"], "config_file")
+        self.assertEqual(self.config.read_bytes(), content)
 
     def test_invalid_existing_config_is_preserved(self):
         self.config.write_bytes(b'{"keep": unfinished')
@@ -221,20 +271,67 @@ class PonytailTest(unittest.TestCase):
         self.assertFalse(report["configuration_ready"])
         self.assertEqual(self.config.read_bytes(), b'{"keep": unfinished')
 
-    def test_untrusted_modified_or_disabled_hooks_require_native_review(self):
-        for status, enabled in (("untrusted", True), ("modified", True), ("trusted", False)):
-            with self.subTest(status=status, enabled=enabled):
-                self.metadata["data"][0]["hooks"][0].update(trustStatus=status, enabled=enabled)
+    def test_untrusted_or_modified_hooks_require_native_review(self):
+        for status in ("untrusted", "modified"):
+            with self.subTest(status=status):
+                self.metadata["data"][0]["hooks"][0].update(trustStatus=status)
                 code, report = self.cli()
                 self.assertEqual(code, 1)
                 self.assertEqual(report["hooks"]["status"], "review_required")
-                self.assertIn("/hooks", " ".join(report["problems"]))
+                self.assertIn("startup hook review", " ".join(report["problems"]))
+                self.assertIn("/hooks", report["next_step"])
+                self.assertIn("Review hooks", report["next_step"])
+                self.assertIn("startup", report["next_step"])
+
+    def test_trusted_but_disabled_hooks_need_enablement_not_first_trust(self):
+        for status in ("trusted", "managed"):
+            with self.subTest(status=status):
+                self.metadata["data"][0]["hooks"][0].update(trustStatus=status, enabled=False)
+                code, report = self.cli()
+                self.assertEqual(code, 1)
+                self.assertEqual(report["hooks"]["status"], "disabled")
+                self.assertFalse(report["configuration_ready"])
+                self.assertIn("are disabled: sessionStart", " ".join(report["problems"]))
+                self.assertNotIn("startup hook review", " ".join(report["problems"]))
+                self.assertIn("/hooks", report["next_step"])
+                self.assertIn("enable", report["next_step"])
+                self.assertNotIn("Review hooks", report["next_step"])
+                self.assertNotIn("startup", report["next_step"])
+
+    def test_untrusted_and_disabled_hooks_report_both_required_actions(self):
+        self.metadata["data"][0]["hooks"][0].update(trustStatus="modified")
+        self.metadata["data"][0]["hooks"][1].update(enabled=False)
+        code, report = self.cli()
+        self.assertEqual(code, 1)
+        self.assertEqual(report["hooks"]["status"], "review_required")
+        self.assertIn("startup hook review: sessionStart", " ".join(report["problems"]))
+        self.assertIn("are disabled: userPromptSubmit", " ".join(report["problems"]))
+        self.assertIn("Review hooks", report["next_step"])
+        self.assertIn("native /hooks controls", report["next_step"])
+
+    def test_fresh_default_and_untrusted_hooks_require_only_native_review(self):
+        self.config.unlink()
+        for hook in self.metadata["data"][0]["hooks"]:
+            hook["trustStatus"] = "untrusted"
+        code, report = self.cli("doctor")
+        self.assertEqual(code, 1)
+        self.assertEqual(report["default_mode"]["effective"], "full")
+        self.assertTrue(report["default_mode"]["matches"])
+        self.assertEqual(report["default_mode"]["source"], "builtin_default")
+        self.assertFalse(report["configuration_ready"])
+        self.assertFalse(report["fresh_session_verified"])
+        self.assertIn("/hooks", report["next_step"])
+        self.assertIn("Review hooks", report["next_step"])
+        self.assertNotIn("setup", report["next_step"])
+        self.assertFalse(self.config.exists())
 
     def test_missing_lifecycle_hook_cannot_pass(self):
         self.metadata["data"][0]["hooks"].pop()
         code, report = self.cli()
         self.assertEqual(code, 1)
         self.assertEqual(report["hooks"]["missing_events"], ["subagentStart"])
+        self.assertIn("subagentStart", " ".join(report["problems"]))
+        self.assertIn("/hooks", report["next_step"])
 
     def test_native_loading_errors_block_ready_even_with_three_trusted_hooks(self):
         error = {"path": str(self.cache / "hooks/native.json"), "message": "Hook command could not be loaded"}
@@ -261,7 +358,9 @@ class PonytailTest(unittest.TestCase):
 
     def test_hanging_app_server_is_stopped_and_reported(self):
         self.server_mode = "hang"
-        code, report = self.cli("doctor", "--timeout", "0.1")
+        # Test the RPC deadline independently of Node process startup time.
+        with patch.object(ponytail, "default_mode", return_value={"matches": True}):
+            code, report = self.cli("doctor", "--timeout", "0.1")
         self.assertEqual(code, 1)
         self.assertIn("timed out", " ".join(report["problems"]))
         self.assertFalse(report["fresh_session_verified"])

@@ -1,0 +1,213 @@
+Already up to date
+Done in 3.1s using pnpm v11.17.0
+$ vitest run --maxWorkers=1
+
+ RUN  v4.1.4 /Users/mmhm/AIRules
+
+Cloning into '/tmp/rf-review-oio1mfr_/vendor-sync-pX6VlH/remote-work'...
+warning: You appear to have cloned an empty repository.
+done.
+Switched to a new branch 'main'
+To /tmp/rf-review-oio1mfr_/vendor-sync-pX6VlH/origin.git
+ * [new branch]      main -> main
+Cloning into '/tmp/rf-review-oio1mfr_/vendor-sync-pX6VlH/home/vendor/repos/demo'...
+done.
+HEAD is now at 96c69d3 initial remote skill
+Reset branch 'main'
+branch 'main' set up to track 'origin/main'.
+Your branch is up to date with 'origin/main'.
+HEAD is now at 96c69d3 initial remote skill
+To /tmp/rf-review-oio1mfr_/vendor-sync-pX6VlH/origin.git
+   96c69d3..40791dc  main -> main
+From /tmp/rf-review-oio1mfr_/vendor-sync-pX6VlH/origin
+   96c69d3..40791dc  main       -> origin/main
+HEAD is now at c7f1ed2 local-only commit
+Reset branch 'main'
+branch 'main' set up to track 'origin/main'.
+Your branch is up to date with 'origin/main'.
+HEAD is now at 40791dc remote latest skill
+Cloning into '/tmp/rf-review-oio1mfr_/vendor-sync-KQBKg0/remote-work'...
+warning: You appear to have cloned an empty repository.
+done.
+Switched to a new branch 'main'
+To /tmp/rf-review-oio1mfr_/vendor-sync-KQBKg0/origin.git
+ * [new branch]      main -> main
+Cloning into '/tmp/rf-review-oio1mfr_/vendor-sync-KQBKg0/home/vendor/repos/demo'...
+done.
+HEAD is now at 8aa78f0 initial remote skill
+Reset branch 'main'
+branch 'main' set up to track 'origin/main'.
+Your branch is up to date with 'origin/main'.
+HEAD is now at 8aa78f0 initial remote skill
+To /tmp/rf-review-oio1mfr_/vendor-sync-KQBKg0/origin.git
+ + 8aa78f0...468d40f main -> main (forced update)
+From /tmp/rf-review-oio1mfr_/vendor-sync-KQBKg0/origin
+ + 8aa78f0...468d40f main       -> origin/main  (forced update)
+HEAD is now at 8aa78f0 initial remote skill
+Reset branch 'main'
+branch 'main' set up to track 'origin/main'.
+Your branch is up to date with 'origin/main'.
+HEAD is now at 468d40f rewritten remote skill
+Cloning into '/tmp/rf-review-oio1mfr_/vendor-sync-TQcs6A/remote-work'...
+warning: You appear to have cloned an empty repository.
+done.
+Switched to a new branch 'main'
+To /tmp/rf-review-oio1mfr_/vendor-sync-TQcs6A/origin.git
+ * [new branch]      main -> main
+To /tmp/rf-review-oio1mfr_/vendor-sync-TQcs6A/origin.git
+   f8e0d82..02bf398  main -> main
+Cloning into '/tmp/rf-review-oio1mfr_/vendor-sync-TQcs6A/home/vendor/repos/demo'...
+done.
+From /tmp/rf-review-oio1mfr_/vendor-sync-TQcs6A/origin
+ * branch            f8e0d82e0f8244cabc486bb7697994e8c91a8f80 -> FETCH_HEAD
+HEAD is now at 02bf398 newer revision
+HEAD is now at f8e0d82 pinned revision
+HEAD is now at f8e0d82 pinned revision
+Previous HEAD position was f8e0d82 pinned revision
+Switched to branch 'main'
+Cloning into '/tmp/rf-review-oio1mfr_/vendor-sync-7NFEXM/remote-work'...
+warning: You appear to have cloned an empty repository.
+done.
+Switched to a new branch 'main'
+To /tmp/rf-review-oio1mfr_/vendor-sync-7NFEXM/origin.git
+ * [new branch]      main -> main
+Cloning into '/tmp/rf-review-oio1mfr_/vendor-sync-7NFEXM/home/vendor/repos/demo'...
+done.
+HEAD is now at c163b22 initial
+Reset branch 'main'
+branch 'main' set up to track 'origin/main'.
+Your branch is up to date with 'origin/main'.
+HEAD is now at c163b22 initial
+Cloning into '/tmp/rf-review-oio1mfr_/vendor-sync-YuK0KU/remote-work'...
+warning: You appear to have cloned an empty repository.
+done.
+Switched to a new branch 'main'
+To /tmp/rf-review-oio1mfr_/vendor-sync-YuK0KU/origin.git
+ * [new branch]      main -> main
+Cloning into '/tmp/rf-review-oio1mfr_/vendor-sync-YuK0KU/home/vendor/repos/demo'...
+done.
+HEAD is now at 46500da initial
+Reset branch 'main'
+branch 'main' set up to track 'origin/main'.
+Your branch is up to date with 'origin/main'.
+HEAD is now at 46500da initial
+Cloning into '/tmp/rf-review-oio1mfr_/vendor-sync-9ghsz8/remote-work'...
+warning: You appear to have cloned an empty repository.
+done.
+Switched to a new branch 'main'
+To /tmp/rf-review-oio1mfr_/vendor-sync-9ghsz8/origin.git
+ * [new branch]      main -> main
+Cloning into '/tmp/rf-review-oio1mfr_/vendor-sync-9ghsz8/home/vendor/repos/demo'...
+done.
+HEAD is now at 864085f initial
+Reset branch 'main'
+branch 'main' set up to track 'origin/main'.
+Your branch is up to date with 'origin/main'.
+HEAD is now at 864085f initial
+Cloning into '/tmp/rf-review-oio1mfr_/vendor-sync-KGwhOw/remote-work'...
+warning: You appear to have cloned an empty repository.
+done.
+Switched to a new branch 'trunk'
+To /tmp/rf-review-oio1mfr_/vendor-sync-KGwhOw/origin.git
+ * [new branch]      trunk -> trunk
+Cloning into '/tmp/rf-review-oio1mfr_/vendor-sync-KGwhOw/clone'...
+done.
+warning: remote HEAD refers to nonexistent ref, unable to checkout
+Cloning into '/tmp/rf-review-oio1mfr_/vendor-sync-HAKFNY/remote-work'...
+warning: You appear to have cloned an empty repository.
+done.
+Switched to a new branch 'feature-only'
+To /tmp/rf-review-oio1mfr_/vendor-sync-HAKFNY/origin.git
+ * [new branch]      feature-only -> feature-only
+Cloning into '/tmp/rf-review-oio1mfr_/vendor-sync-HAKFNY/clone'...
+done.
+warning: remote HEAD refers to nonexistent ref, unable to checkout
+Cloning into '/tmp/rf-review-oio1mfr_/vendor-sync-hpAAiS/remote-work'...
+warning: You appear to have cloned an empty repository.
+done.
+Switched to a new branch 'first'
+To /tmp/rf-review-oio1mfr_/vendor-sync-hpAAiS/origin.git
+ * [new branch]      first -> first
+Switched to a new branch 'second'
+To /tmp/rf-review-oio1mfr_/vendor-sync-hpAAiS/origin.git
+ * [new branch]      second -> second
+Cloning into '/tmp/rf-review-oio1mfr_/vendor-sync-hpAAiS/clone'...
+done.
+warning: remote HEAD refers to nonexistent ref, unable to checkout
+Cloning into '/tmp/rf-review-oio1mfr_/vendor-sync-apQqb0/remote-work'...
+warning: You appear to have cloned an empty repository.
+done.
+Switched to a new branch 'main'
+To /tmp/rf-review-oio1mfr_/vendor-sync-apQqb0/origin.git
+ * [new branch]      main -> main
+Cloning into '/tmp/rf-review-oio1mfr_/vendor-sync-apQqb0/home/vendor/repos/remote-demo'...
+warning: filtering not recognized by server, ignoring
+warning: filtering not recognized by server, ignoring
+HEAD is now at 0c5071d initial remote
+Reset branch 'main'
+branch 'main' set up to track 'origin/main'.
+Your branch is up to date with 'origin/main'.
+HEAD is now at 0c5071d initial remote
+Cloning into '/tmp/rf-review-oio1mfr_/vendor-sync-Sp7D9k/remote-work'...
+warning: You appear to have cloned an empty repository.
+done.
+Switched to a new branch 'main'
+To /tmp/rf-review-oio1mfr_/vendor-sync-Sp7D9k/origin.git
+ * [new branch]      main -> main
+Cloning into '/tmp/rf-review-oio1mfr_/vendor-sync-Sp7D9k/home/vendor/repos/remote-demo'...
+warning: filtering not recognized by server, ignoring
+warning: filtering not recognized by server, ignoring
+HEAD is now at 11ce34f initial remote
+Reset branch 'main'
+branch 'main' set up to track 'origin/main'.
+Your branch is up to date with 'origin/main'.
+HEAD is now at 11ce34f initial remote
+To /tmp/rf-review-oio1mfr_/airules-repository-update-Z1oRkp/remote.git
+ * [new branch]      main -> main
+Cloning into '/tmp/rf-review-oio1mfr_/airules-repository-update-Z1oRkp/checkout'...
+done.
+To /tmp/rf-review-oio1mfr_/airules-repository-update-Z1oRkp/remote.git
+   980220f..09fa51e  main -> main
+To /tmp/rf-review-oio1mfr_/airules-repository-update-AejGLA/remote.git
+ * [new branch]      main -> main
+Cloning into '/tmp/rf-review-oio1mfr_/airules-repository-update-AejGLA/checkout'...
+done.
+To /tmp/rf-review-oio1mfr_/airules-repository-update-AejGLA/remote.git
+   e7426e0..3053d07  main -> main
+
+up to date, audited 1 package in 1s
+
+found 0 vulnerabilities
+
+> airules-update-fixture@1.0.0 build
+> node -e "require('node:fs').writeFileSync('build-marker', 'built')"
+
+To /tmp/rf-review-oio1mfr_/airules-repository-update-eK5zi5/remote.git
+ * [new branch]      main -> main
+Cloning into '/tmp/rf-review-oio1mfr_/airules-repository-update-eK5zi5/checkout'...
+done.
+To /tmp/rf-review-oio1mfr_/airules-repository-update-eK5zi5/remote.git
+   f8a1101..0bed7fb  main -> main
+To /tmp/rf-review-oio1mfr_/airules-repository-update-e24Efp/remote.git
+ * [new branch]      main -> main
+Cloning into '/tmp/rf-review-oio1mfr_/airules-repository-update-e24Efp/checkout'...
+done.
+HEAD is now at 6416b98 initial
+To /tmp/rf-review-oio1mfr_/airules-repository-update-uyae72/remote.git
+ * [new branch]      main -> main
+Cloning into '/tmp/rf-review-oio1mfr_/airules-repository-update-uyae72/checkout'...
+done.
+To /tmp/rf-review-oio1mfr_/airules-repository-update-PJZhEj/remote.git
+ * [new branch]      main -> main
+Cloning into '/tmp/rf-review-oio1mfr_/airules-repository-update-PJZhEj/checkout'...
+done.
+To /tmp/rf-review-oio1mfr_/airules-repository-update-PJZhEj/remote.git
+   d24abbe..6a1fa67  main -> main
+Error: cannot acknowledge invalid knowledge relations: source_unmapped (path=api.md)
+Error: cannot acknowledge invalid knowledge relations: source_unmapped (path=api.md)
+[ELIFECYCLE] Test failed. See above for more details.
+Traceback (most recent call last):
+  File "<string>", line 1, in <module>
+  File "/Library/Developer/CommandLineTools/Library/Frameworks/Python3.framework/Versions/3.9/lib/python3.9/subprocess.py", line 528, in run
+    raise CalledProcessError(retcode, process.args,
+subprocess.CalledProcessError: Command '['pnpm', 'test', '--maxWorkers=1']' returned non-zero exit status 143.

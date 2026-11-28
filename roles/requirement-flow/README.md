@@ -10,9 +10,13 @@ python3 ~/.agents/skills/requirement-flow/scripts/ponytail.py setup --default fu
 airules verify requirement-flow --host codex
 ```
 
-`setup` 通过 Codex 原生插件机制安装或复用官方完整 Ponytail，调用上游配置函数设置默认 full，并检查配置。若提示 hooks 待审查，先在该宿主的原生 `/hooks` 界面检查并信任，再按需运行 `python3 ~/.agents/skills/requirement-flow/scripts/ponytail.py doctor`、开启新会话。`doctor` 只读检查安装、默认档位及 hook 信任，供配置变化后复查或排障；`configuration_ready` 不证明新会话实际运行或业务验收通过。上游资源保持原样，会话内切档与关闭沿用 Ponytail 自身能力。
+`airules verify` 核对 RF 技能分发。`setup` 通过 Codex 原生插件机制安装或复用官方 Ponytail，并设置用户级默认档位。这个设置也影响使用同一份 Ponytail 配置的其他项目和宿主。单次会话的切档或关闭沿用 Ponytail 自身能力。
 
-`--codex-home /path/to/codex-home` 只选择 Codex 的插件与配置目录。Ponytail 默认档位仍按上游规则从 `PONYTAIL_DEFAULT_MODE`、`$XDG_CONFIG_HOME/ponytail/config.json` 或 `~/.config/ponytail/config.json` 解析（Windows 回退到 APPDATA）。需要隔离默认配置时一并指定 XDG_CONFIG_HOME；设置只在安装、升级或诊断时检查，日常任务直接使用。
+首次安装后，若 `setup` 报告 `review_required`，在目标项目重新启动 Codex，在启动提示中选择 **Review hooks**，核对 Ponytail 的三项命令并信任、启用认可的 hook。已有会话的 `/hooks` 与 `doctor` 不一致时，以启动复审核对当前插件内容。运行 `python3 ~/.agents/skills/requirement-flow/scripts/ponytail.py doctor` 复查，然后开启新会话。日常直接开发；更新后若宿主提示 hook 已改变，再次审阅即可。`doctor` 只读核对配置，`configuration_ready` 表示当前项目的默认档位和 hook 设置已就绪。实际激活可在新会话的首轮 hook 事件中核对。
+
+若报告 `disabled`，表示 hook 已获信任但被禁用；按诊断列出的事件在原生 `/hooks` 控件中启用。未信任与禁用并存时，分别按启动审阅和启用提示处理。
+
+`--codex-home` 选择 Codex 的插件与配置目录。Ponytail 的共享配置文件位于 `$XDG_CONFIG_HOME/ponytail/config.json`，未设置时使用 `~/.config/ponytail/config.json`（Windows 使用 APPDATA）。需要隔离默认档位时，同时指定独立的 `XDG_CONFIG_HOME`。有效的 `PONYTAIL_DEFAULT_MODE` 优先于文件设置；若 `doctor` 报告它覆盖了目标档位，在启动 Codex 的环境中修改或取消该变量，再按 `next_step` 复查。无效环境值会被上游忽略；`source` 指出实际使用 `environment`、`config_file` 或 `builtin_default`。
 
 `ponytail-review`、`ponytail-audit`、`ponytail-debt` 等专项能力按实际需要使用，不是 RF 的必经阶段。Codex 中可用 `$ponytail:ponytail-review` 检查当前改动；完整调用方式见[官方命令说明](https://github.com/DietrichGebert/ponytail#commands)。`ultra` 是可选档位，默认仍为 full。日常从需求继续自主执行；RF 可自动发现，也可显式调用 `$requirement-flow`：
 
@@ -44,12 +48,12 @@ RF 不增加固定阶段、任务卡门禁或审查循环。官方 full 自带�
 
 ```bash
 python3 ~/.agents/skills/requirement-flow/scripts/reader.py --project /path/to/project \
-  --entry docs/business/index.md --tasks docs/changes --port 8765
+  --entry docs/business/index.md --port 8765
 ```
 
-从项目已有 Markdown 入口读取导航，沿链接阅读普通文档、规范和任务。页面提供查询、Mermaid 流程/状态图、原文及来源查看、任务互跳与反向关联；引用的 Markdown 也能查来源。内容只维护在 Markdown，刷新即可读取改动。
+从项目已有 Markdown 入口读取导航，沿链接阅读普通文档、规范和任务。页面提供顶部本地全文搜索、左侧业务/任务导航、可跳转并跟随滚动的本页标题目录、Mermaid 流程/状态图、原文及来源查看、原任务页面跳转、变更记录与反向关联；引用的 Markdown 也能查来源。业务内容只维护在 Markdown，刷新即可读取改动。普通 Markdown 记录显示为“变更记录”。省略 `--tasks` 时，每次刷新动态发现存在的 `docs/changes/`，该目录尚未创建也可阅读业务；显式指定的入口仍检查存在性与文件类型。原任务卡沿用已有 `model.json` / `handbook.html` 需求全景图：`--tasks` 可指定该目录或单个配对文件，也可由业务 Markdown 直接链接图页。阅读器只读连接原图页和 AI 记录，核对图页声明的模型摘要与外部 JSON；这不证明画布内嵌内容同版，不生成任务状态或恢复旧编排。
 
-`[现状]`、`[拟议变更]`、`[实测结果]` 是原文语义标记，不认证政策生效或验收完成。入口与任务位置、格式及读取边界见[阅读器说明](skills/requirement-flow/references/reader.md)。阅读服务按需启动，只监听本机且只读，运行时仅需 Python 3.9+；离线浏览器资源随技能分发。
+`[现状]`、`[拟议变更]`、`[实测结果]` 是原文语义标记，不认证政策生效或验收完成。入口与任务位置、格式及读取边界见[阅读器说明](skills/requirement-flow/references/reader.md)。阅读服务按需启动，只监听本机且只读，需要 Python 3.9+ 和 Node.js 20.19+；解析器与浏览器资源随技能分发，无需运行时安装 npm 包或访问外网。技能说明、交接及证据工具不需要 Node。
 
 在本仓库用保留的合成样例查阅：选择尚不存在的输出目录，准备后启动服务。
 
@@ -60,7 +64,7 @@ python3 roles/requirement-flow/skills/requirement-flow/scripts/reader.py \
   --tasks inventory/docs/copy-decision.md --tasks library/docs/changes --port 8765
 ```
 
-使用完关闭服务并清理自己创建的样例目录。浏览器程序资产的准备配置位于 `reader-build/`，仅维护这些资产时需要 Node。
+使用完关闭服务并清理自己创建的样例目录。解析器和浏览器资产的准备配置位于 `reader-build/`，仅维护这些资产时需要安装其中的 npm 构建依赖。
 
 ## 可复核的证据
 

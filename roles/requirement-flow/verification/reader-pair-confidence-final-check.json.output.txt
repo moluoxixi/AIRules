@@ -1,0 +1,101 @@
+Already up to date
+Done in 892ms using pnpm v11.17.0
+
+ RUN  v4.1.4 /Users/mmhm/AIRules
+
+test_assembled_existing_examples_have_live_business_task_and_source_links (test_reader.ReaderExampleTest) ... ok
+test_batch_json_keeps_record_encoding_lazy_and_includes_scan_warnings (test_reader.ReaderServerTest) ... ok
+test_batch_scans_once_and_keeps_readable_peers_if_one_document_disappears (test_reader.ReaderServerTest) ... ok
+test_catalog_reuses_one_marked_worker_and_follows_only_visible_sources (test_reader.ReaderServerTest) ... ok
+test_confirmed_undeclared_pairs_keep_their_identity_when_the_model_is_damaged (test_reader.ReaderServerTest) ... ok
+test_declared_tasks_and_explicit_pair_inputs_keep_errors_when_a_file_is_removed (test_reader.ReaderServerTest) ... ok
+test_default_task_probe_rejects_a_later_symlink_without_exposing_it (test_reader.ReaderServerTest) ... ok
+test_default_tasks_are_discovered_after_startup_and_existing_sources_stay_fresh (test_reader.ReaderServerTest) ... ok
+test_explicit_task_paths_keep_missing_and_type_diagnostics (test_reader.ReaderServerTest) ... ok
+test_handbook_probes_are_reused_only_inside_one_catalog_scan (test_reader.ReaderServerTest) ... ok
+test_healthy_task_models_are_read_and_parsed_once_per_catalog (test_reader.ReaderServerTest) ... ok
+test_metadata_cache_is_bounded_and_shared_safely_by_parallel_catalogs (test_reader.ReaderServerTest) ... ok
+test_metadata_cache_reuses_only_current_bytes_and_never_reuses_the_allowlist (test_reader.ReaderServerTest) ... ok
+test_metadata_errors_are_generic_and_always_reap_the_worker (test_reader.ReaderServerTest) ... ok
+test_numeric_loopback_serves_http_without_reverse_dns (test_reader.ReaderServerTest) ... ok
+test_task_capacity_checks_explicit_parts_without_claiming_ordinary_candidates (test_reader.ReaderServerTest) ... ok
+test_task_filename_candidates_require_positive_identity_or_an_explicit_single_file (test_reader.ReaderServerTest) ... ok
+test_task_markers_claim_failed_pairs_and_recover_without_filename_guessing (test_reader.ReaderServerTest) ... ok
+test_task_page_limit_does_not_read_unregistered_pairs (test_reader.ReaderServerTest) ... ok
+test_a_single_link_is_enough_for_relationships_without_writing_a_reciprocal_link (test_reader.ReaderTest) ... ok
+test_authentication_and_token_business_sources_are_readable_when_linked (test_reader.ReaderTest) ... ok
+test_bad_task_model_is_warned_and_non_string_titles_use_the_existing_directory (test_reader.ReaderTest) ... ok
+test_batch_includes_current_task_pair_metadata_and_drops_removed_pairs (test_reader.ReaderTest) ... ok
+test_batch_reports_newly_discovered_task_errors_and_clears_them_after_recovery (test_reader.ReaderTest) ... ok
+test_batch_returns_current_reachable_markdown_and_can_limit_it_to_tasks (test_reader.ReaderTest) ... ok
+test_binary_and_oversized_linked_sources_remain_unavailable (test_reader.ReaderTest) ... ok
+test_code_formatted_labels_link_documents_without_indexing_code_examples (test_reader.ReaderTest) ... ok
+test_content_revision_hashes_original_bom_and_crlf_bytes (test_reader.ReaderTest) ... ok
+test_content_revision_rejects_changed_markdown_and_evidence_until_catalog_refresh (test_reader.ReaderTest) ... ok
+test_destination_entities_follow_attribute_context_without_decoding_twice (test_reader.ReaderTest) ... ok
+test_encoded_names_and_anchors_resolve_to_the_original_markdown (test_reader.ReaderTest) ... ok
+test_explicit_credential_stores_stay_private_when_linked (test_reader.ReaderTest) ... ok
+test_explicit_workflow_document_entry_is_readable_without_exposing_private_paths (test_reader.ReaderTest) ... ok
+test_failed_pairs_disable_both_sources_independently_of_link_order (test_reader.ReaderTest) ... ok
+test_filename_and_query_entity_prefixes_remain_reachable (test_reader.ReaderTest) ... ok
+test_linked_symlinks_cannot_expose_files_outside_the_project (test_reader.ReaderTest) ... ok
+test_linked_task_errors_keep_the_actual_model_failure (test_reader.ReaderTest) ... ok
+test_markdown_destinations_decode_html_entities_once_like_rendered_href_attributes (test_reader.ReaderTest) ... ok
+test_missing_and_hidden_references_are_reported_without_invented_content (test_reader.ReaderTest) ... ok
+test_navigation_uses_entry_link_order_and_keeps_recursive_markdown_as_documents (test_reader.ReaderTest) ... ok
+test_only_linked_safe_text_sources_can_be_read (test_reader.ReaderTest) ... ok
+test_original_model_links_reject_updated_and_removed_pairs (test_reader.ReaderTest) ... Timeout (0:00:30)!
+Thread 0x00000001f849d8c0 (most recent call first):
+  File "/Library/Developer/CommandLineTools/Library/Frameworks/Python3.framework/Versions/3.9/lib/python3.9/pathlib.py", line 1313 in mkdir
+  File "/Library/Developer/CommandLineTools/Library/Frameworks/Python3.framework/Versions/3.9/lib/python3.9/pathlib.py", line 1323 in mkdir
+ok
+test_oversized_markdown_fails_clearly_and_can_be_replaced (test_reader.ReaderTest) ... ok
+test_parentheses_in_task_and_escaped_source_links_keep_their_full_targets (test_reader.ReaderTest) ... ok
+test_plain_handbook_keeps_its_local_identity_and_actual_read_error (test_reader.ReaderTest) ... ok
+test_plain_markdown_links_connect_business_and_task_in_both_directions (test_reader.ReaderTest) ... ok
+test_project_and_static_asset_path_traversals_are_rejected (test_reader.ReaderTest) ... ok
+test_reading_does_not_generate_or_modify_project_files (test_reader.ReaderTest) ... ok
+test_refresh_reads_changed_markdown_and_recalculates_relationships (test_reader.ReaderTest) ... ok
+test_retained_task_directory_or_either_file_is_discovered_without_markdown_link (test_reader.ReaderTest) ... ok
+test_retained_task_page_binds_model_links_without_editing_sources_or_sandbox (test_reader.ReaderTest) ... ok
+test_retained_task_rejects_changed_removed_private_or_unregistered_sources (test_reader.ReaderTest) ... ok
+test_task_digest_match_only_reports_the_declared_digest (test_reader.ReaderTest) ... ok
+test_task_links_keep_supported_view_query_and_fragment_only (test_reader.ReaderTest) ... ok
+test_task_pair_batch_rechecks_changes_after_the_single_catalog_scan (test_reader.ReaderTest) ... ok
+test_text_html_sources_are_not_served_as_executable_html (test_reader.ReaderTest) ... ok
+test_unknown_routes_fail_and_entry_can_be_reloaded_after_an_error (test_reader.ReaderTest) ... ok
+test_unpaired_handbook_remains_a_plain_business_source (test_reader.ReaderTest) ... ok
+test_write_methods_do_not_modify_the_markdown (test_reader.ReaderTest) ... ok
+
+----------------------------------------------------------------------
+Ran 59 tests in 41.279s
+
+OK
+ ❯ roles/requirement-flow/__test__/role.test.ts (5 tests | 1 failed) 99973ms
+   × runs the role regressions in test_reader.py 60100ms
+
+⎯⎯⎯⎯⎯⎯⎯ Failed Tests 1 ⎯⎯⎯⎯⎯⎯⎯
+
+ FAIL  roles/requirement-flow/__test__/role.test.ts > runs the role regressions in test_reader.py
+Error: spawnSync python3 ETIMEDOUT
+ ❯ roles/requirement-flow/__test__/role.test.ts:127:5
+    125|   const py = python()
+    126|   try {
+    127|     execFileSync(py.command, [...py.prefix, '-c', regressionRunner, te…
+       |     ^
+    128|       cwd: repo,
+    129|       env: { ...process.env, PYTHONUTF8: '1', PYTHONDONTWRITEBYTECODE:…
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[1/1]⎯
+
+
+ Test Files  1 failed | 5 passed (6)
+      Tests  1 failed | 62 passed (63)
+   Start at  19:58:35
+   Duration  103.23s (transform 470ms, setup 0ms, import 860ms, tests 100.73s, environment 1ms)
+
+Traceback (most recent call last):
+  File "<string>", line 1, in <module>
+  File "/Library/Developer/CommandLineTools/Library/Frameworks/Python3.framework/Versions/3.9/lib/python3.9/subprocess.py", line 528, in run
+    raise CalledProcessError(retcode, process.args,
+subprocess.CalledProcessError: Command '['pnpm', 'exec', 'vitest', 'run', 'roles/requirement-flow/__test__/role.test.ts', 'roles/requirement-flow/__test__/reader-search.test.ts', 'roles/requirement-flow/__test__/reader-metadata.test.ts', 'roles/requirement-flow/__test__/reader-links.test.ts', 'roles/requirement-flow/__test__/reader-anchors.test.ts', 'roles/requirement-flow/__test__/reader-records.test.ts', '--configLoader', 'runner', '--maxWorkers=1']' returned non-zero exit status 1.

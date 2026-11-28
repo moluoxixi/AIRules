@@ -1,0 +1,24 @@
+Already up to date
+Done in 372ms using pnpm v11.17.0
+
+ RUN  v4.1.4 /Users/mmhm/AIRules
+
+
+ Test Files  6 passed (6)
+      Tests  63 passed (63)
+   Start at  19:55:30
+   Duration  58.96s (transform 313ms, setup 0ms, import 593ms, tests 56.63s, environment 1ms)
+
+Already up to date
+Done in 737ms using pnpm v11.17.0
+$ tsc --noEmit
+roles/requirement-flow/__test__/reader-links.test.ts(209,66): error TS2345: Argument of type '{ "task/handbook.html"?: undefined; } | { "task/handbook.html": string; }' is not assignable to parameter of type 'Record<string, string> | undefined'.
+  Type '{ "task/handbook.html"?: undefined; }' is not assignable to type 'Record<string, string>'.
+    Property '"task/handbook.html"' is incompatible with index signature.
+      Type 'undefined' is not assignable to type 'string'.
+[ELIFECYCLE] Command failed with exit code 2.
+Traceback (most recent call last):
+  File "<string>", line 1, in <module>
+  File "/Library/Developer/CommandLineTools/Library/Frameworks/Python3.framework/Versions/3.9/lib/python3.9/subprocess.py", line 528, in run
+    raise CalledProcessError(retcode, process.args,
+subprocess.CalledProcessError: Command '['pnpm', 'run', 'typecheck']' returned non-zero exit status 2.

@@ -1,0 +1,331 @@
+Already up to date
+Done in 841ms using pnpm v11.17.0
+$ vitest run --maxWorkers=1
+
+ RUN  v4.1.4 /Users/mmhm/AIRules
+
+Cloning into '/tmp/rf-review-oio1mfr_/vendor-sync-gs01DL/remote-work'...
+warning: You appear to have cloned an empty repository.
+done.
+Switched to a new branch 'main'
+To /tmp/rf-review-oio1mfr_/vendor-sync-gs01DL/origin.git
+ * [new branch]      main -> main
+Cloning into '/tmp/rf-review-oio1mfr_/vendor-sync-gs01DL/home/vendor/repos/demo'...
+done.
+HEAD is now at 814c452 initial remote skill
+Reset branch 'main'
+branch 'main' set up to track 'origin/main'.
+Your branch is up to date with 'origin/main'.
+HEAD is now at 814c452 initial remote skill
+To /tmp/rf-review-oio1mfr_/vendor-sync-gs01DL/origin.git
+   814c452..23acf8e  main -> main
+From /tmp/rf-review-oio1mfr_/vendor-sync-gs01DL/origin
+   814c452..23acf8e  main       -> origin/main
+HEAD is now at 3520316 local-only commit
+Reset branch 'main'
+branch 'main' set up to track 'origin/main'.
+Your branch is up to date with 'origin/main'.
+HEAD is now at 23acf8e remote latest skill
+Cloning into '/tmp/rf-review-oio1mfr_/vendor-sync-NhIkme/remote-work'...
+warning: You appear to have cloned an empty repository.
+done.
+Switched to a new branch 'main'
+To /tmp/rf-review-oio1mfr_/vendor-sync-NhIkme/origin.git
+ * [new branch]      main -> main
+Cloning into '/tmp/rf-review-oio1mfr_/vendor-sync-NhIkme/home/vendor/repos/demo'...
+done.
+HEAD is now at 6906e5a initial remote skill
+Reset branch 'main'
+branch 'main' set up to track 'origin/main'.
+Your branch is up to date with 'origin/main'.
+HEAD is now at 6906e5a initial remote skill
+To /tmp/rf-review-oio1mfr_/vendor-sync-NhIkme/origin.git
+ + 6906e5a...0ac8d94 main -> main (forced update)
+From /tmp/rf-review-oio1mfr_/vendor-sync-NhIkme/origin
+ + 6906e5a...0ac8d94 main       -> origin/main  (forced update)
+HEAD is now at 6906e5a initial remote skill
+Reset branch 'main'
+branch 'main' set up to track 'origin/main'.
+Your branch is up to date with 'origin/main'.
+HEAD is now at 0ac8d94 rewritten remote skill
+Cloning into '/tmp/rf-review-oio1mfr_/vendor-sync-TjQ81f/remote-work'...
+warning: You appear to have cloned an empty repository.
+done.
+Switched to a new branch 'main'
+To /tmp/rf-review-oio1mfr_/vendor-sync-TjQ81f/origin.git
+ * [new branch]      main -> main
+To /tmp/rf-review-oio1mfr_/vendor-sync-TjQ81f/origin.git
+   96aba1e..5f8ac77  main -> main
+Cloning into '/tmp/rf-review-oio1mfr_/vendor-sync-TjQ81f/home/vendor/repos/demo'...
+done.
+From /tmp/rf-review-oio1mfr_/vendor-sync-TjQ81f/origin
+ * branch            96aba1eba039aeac0a45621a03c10229271743f1 -> FETCH_HEAD
+HEAD is now at 5f8ac77 newer revision
+HEAD is now at 96aba1e pinned revision
+HEAD is now at 96aba1e pinned revision
+Previous HEAD position was 96aba1e pinned revision
+Switched to branch 'main'
+Cloning into '/tmp/rf-review-oio1mfr_/vendor-sync-tP4Bpu/remote-work'...
+warning: You appear to have cloned an empty repository.
+done.
+Switched to a new branch 'main'
+To /tmp/rf-review-oio1mfr_/vendor-sync-tP4Bpu/origin.git
+ * [new branch]      main -> main
+Cloning into '/tmp/rf-review-oio1mfr_/vendor-sync-tP4Bpu/home/vendor/repos/demo'...
+done.
+HEAD is now at cdae738 initial
+Reset branch 'main'
+branch 'main' set up to track 'origin/main'.
+Your branch is up to date with 'origin/main'.
+HEAD is now at cdae738 initial
+Cloning into '/tmp/rf-review-oio1mfr_/vendor-sync-6n8837/remote-work'...
+warning: You appear to have cloned an empty repository.
+done.
+Switched to a new branch 'main'
+To /tmp/rf-review-oio1mfr_/vendor-sync-6n8837/origin.git
+ * [new branch]      main -> main
+Cloning into '/tmp/rf-review-oio1mfr_/vendor-sync-6n8837/home/vendor/repos/demo'...
+done.
+HEAD is now at c8e27fa initial
+Reset branch 'main'
+branch 'main' set up to track 'origin/main'.
+Your branch is up to date with 'origin/main'.
+HEAD is now at c8e27fa initial
+Cloning into '/tmp/rf-review-oio1mfr_/vendor-sync-gibrX0/remote-work'...
+warning: You appear to have cloned an empty repository.
+done.
+Switched to a new branch 'main'
+To /tmp/rf-review-oio1mfr_/vendor-sync-gibrX0/origin.git
+ * [new branch]      main -> main
+Cloning into '/tmp/rf-review-oio1mfr_/vendor-sync-gibrX0/home/vendor/repos/demo'...
+done.
+HEAD is now at 2d085f3 initial
+Reset branch 'main'
+branch 'main' set up to track 'origin/main'.
+Your branch is up to date with 'origin/main'.
+HEAD is now at 2d085f3 initial
+Cloning into '/tmp/rf-review-oio1mfr_/vendor-sync-BUT6tg/remote-work'...
+warning: You appear to have cloned an empty repository.
+done.
+Switched to a new branch 'trunk'
+To /tmp/rf-review-oio1mfr_/vendor-sync-BUT6tg/origin.git
+ * [new branch]      trunk -> trunk
+Cloning into '/tmp/rf-review-oio1mfr_/vendor-sync-BUT6tg/clone'...
+done.
+warning: remote HEAD refers to nonexistent ref, unable to checkout
+Cloning into '/tmp/rf-review-oio1mfr_/vendor-sync-zQizOY/remote-work'...
+warning: You appear to have cloned an empty repository.
+done.
+Switched to a new branch 'feature-only'
+To /tmp/rf-review-oio1mfr_/vendor-sync-zQizOY/origin.git
+ * [new branch]      feature-only -> feature-only
+Cloning into '/tmp/rf-review-oio1mfr_/vendor-sync-zQizOY/clone'...
+done.
+warning: remote HEAD refers to nonexistent ref, unable to checkout
+Cloning into '/tmp/rf-review-oio1mfr_/vendor-sync-rBatX9/remote-work'...
+warning: You appear to have cloned an empty repository.
+done.
+Switched to a new branch 'first'
+To /tmp/rf-review-oio1mfr_/vendor-sync-rBatX9/origin.git
+ * [new branch]      first -> first
+Switched to a new branch 'second'
+To /tmp/rf-review-oio1mfr_/vendor-sync-rBatX9/origin.git
+ * [new branch]      second -> second
+Cloning into '/tmp/rf-review-oio1mfr_/vendor-sync-rBatX9/clone'...
+done.
+warning: remote HEAD refers to nonexistent ref, unable to checkout
+Cloning into '/tmp/rf-review-oio1mfr_/vendor-sync-lu4pEz/remote-work'...
+warning: You appear to have cloned an empty repository.
+done.
+Switched to a new branch 'main'
+To /tmp/rf-review-oio1mfr_/vendor-sync-lu4pEz/origin.git
+ * [new branch]      main -> main
+Cloning into '/tmp/rf-review-oio1mfr_/vendor-sync-lu4pEz/home/vendor/repos/remote-demo'...
+warning: filtering not recognized by server, ignoring
+warning: filtering not recognized by server, ignoring
+HEAD is now at 1c5bbdc initial remote
+Reset branch 'main'
+branch 'main' set up to track 'origin/main'.
+Your branch is up to date with 'origin/main'.
+HEAD is now at 1c5bbdc initial remote
+Cloning into '/tmp/rf-review-oio1mfr_/vendor-sync-hhz7eO/remote-work'...
+warning: You appear to have cloned an empty repository.
+done.
+Switched to a new branch 'main'
+To /tmp/rf-review-oio1mfr_/vendor-sync-hhz7eO/origin.git
+ * [new branch]      main -> main
+Cloning into '/tmp/rf-review-oio1mfr_/vendor-sync-hhz7eO/home/vendor/repos/remote-demo'...
+warning: filtering not recognized by server, ignoring
+warning: filtering not recognized by server, ignoring
+HEAD is now at b167819 initial remote
+Reset branch 'main'
+branch 'main' set up to track 'origin/main'.
+Your branch is up to date with 'origin/main'.
+HEAD is now at b167819 initial remote
+To /tmp/rf-review-oio1mfr_/airules-repository-update-TNbXg2/remote.git
+ * [new branch]      main -> main
+Cloning into '/tmp/rf-review-oio1mfr_/airules-repository-update-TNbXg2/checkout'...
+done.
+To /tmp/rf-review-oio1mfr_/airules-repository-update-TNbXg2/remote.git
+   b299a3f..383cc67  main -> main
+To /tmp/rf-review-oio1mfr_/airules-repository-update-p9Uf8f/remote.git
+ * [new branch]      main -> main
+Cloning into '/tmp/rf-review-oio1mfr_/airules-repository-update-p9Uf8f/checkout'...
+done.
+To /tmp/rf-review-oio1mfr_/airules-repository-update-p9Uf8f/remote.git
+   1861943..c2c84f6  main -> main
+
+up to date, audited 1 package in 1s
+
+found 0 vulnerabilities
+
+> airules-update-fixture@1.0.0 build
+> node -e "require('node:fs').writeFileSync('build-marker', 'built')"
+
+To /tmp/rf-review-oio1mfr_/airules-repository-update-CLvk23/remote.git
+ * [new branch]      main -> main
+Cloning into '/tmp/rf-review-oio1mfr_/airules-repository-update-CLvk23/checkout'...
+done.
+To /tmp/rf-review-oio1mfr_/airules-repository-update-CLvk23/remote.git
+   6acbca7..6b22576  main -> main
+To /tmp/rf-review-oio1mfr_/airules-repository-update-2ufjGy/remote.git
+ * [new branch]      main -> main
+Cloning into '/tmp/rf-review-oio1mfr_/airules-repository-update-2ufjGy/checkout'...
+done.
+HEAD is now at 3f4b599 initial
+To /tmp/rf-review-oio1mfr_/airules-repository-update-jlM3X5/remote.git
+ * [new branch]      main -> main
+Cloning into '/tmp/rf-review-oio1mfr_/airules-repository-update-jlM3X5/checkout'...
+done.
+To /tmp/rf-review-oio1mfr_/airules-repository-update-obAmwp/remote.git
+ * [new branch]      main -> main
+Cloning into '/tmp/rf-review-oio1mfr_/airules-repository-update-obAmwp/checkout'...
+done.
+To /tmp/rf-review-oio1mfr_/airules-repository-update-obAmwp/remote.git
+   418feeb..fb36335  main -> main
+Error: cannot acknowledge invalid knowledge relations: source_unmapped (path=api.md)
+Error: cannot acknowledge invalid knowledge relations: source_unmapped (path=api.md)
+ ❯ scripts/lib/__test__/contract-diff-cli.test.ts (8 tests | 1 failed) 23377ms
+     × documents the command without requiring contract paths 6340ms
+ ❯ roles/matt/__test__/matt-role.test.ts (3 tests | 1 failed) 7515ms
+     × stages the remote skills and canonical role path together 7202ms
+stdout | roles/memory-superpowers/__test__/role.test.ts > distributes the requirements reviewer and its dependencies to all supported hosts
+
+--- 正在验证公共 Agent skills 层 ---
+[info] 预期技能总数: 2
+[result] 有效=2, 缺失=0, 损坏=0
+✅ 公共 Agent skills 层 验证通过
+
+stdout | roles/memory-superpowers/__test__/role.test.ts > distributes the requirements reviewer and its dependencies to all supported hosts
+
+--- 正在验证宿主: claude ---
+[info] 预期技能总数: 2
+[result] 有效=2, 缺失=0, 损坏=0
+✅ claude 验证通过
+
+stdout | roles/memory-superpowers/__test__/role.test.ts > distributes the requirements reviewer and its dependencies to all supported hosts
+
+--- 正在验证宿主: codex ---
+[info] 宿主未启用 skills 投影，跳过 skills 链接校验
+
+stdout | roles/memory-superpowers/__test__/role.test.ts > distributes the requirements reviewer and its dependencies to all supported hosts
+
+--- 正在验证宿主: cursor ---
+[info] 宿主未启用 skills 投影，跳过 skills 链接校验
+
+stdout | roles/memory-superpowers/__test__/role.test.ts > distributes the requirements reviewer and its dependencies to all supported hosts
+
+--- 正在验证公共 Agent skills 层 ---
+[info] 预期技能总数: 2
+[result] 有效=2, 缺失=0, 损坏=0
+✅ 公共 Agent skills 层 验证通过
+
+stdout | roles/memory-superpowers/__test__/role.test.ts > distributes the requirements reviewer and its dependencies to all supported hosts
+
+--- 正在验证宿主: claude ---
+[info] 预期技能总数: 2
+[result] 有效=2, 缺失=0, 损坏=0
+✅ claude 验证通过
+
+stdout | roles/memory-superpowers/__test__/role.test.ts > distributes the requirements reviewer and its dependencies to all supported hosts
+
+--- 正在验证宿主: codex ---
+[info] 宿主未启用 skills 投影，跳过 skills 链接校验
+
+stdout | roles/memory-superpowers/__test__/role.test.ts > distributes the requirements reviewer and its dependencies to all supported hosts
+
+--- 正在验证宿主: cursor ---
+[info] 宿主未启用 skills 投影，跳过 skills 链接校验
+
+ ❯ roles/memory-superpowers/__test__/role.test.ts (2 tests | 1 failed) 7702ms
+   × distributes the requirements reviewer and its dependencies to all supported hosts 7652ms
+ ❯ roles/development/__test__/development-role.test.ts (4 tests | 1 failed) 8230ms
+     × stages shared development assets without the optional engineering workflow 7573ms
+[channel spawn] context path escapes cwd, refusing: ../moluoxixi-runtime-external-8rRUab/evidence.md (add its real directory to channel.trusted_context_dirs in .moluoxixi/config.yaml to allow)
+
+⎯⎯⎯⎯⎯⎯⎯ Failed Tests 4 ⎯⎯⎯⎯⎯⎯⎯
+
+ FAIL  roles/development/__test__/development-role.test.ts > shared development template > stages shared development assets without the optional engineering workflow
+Error: Test timed out in 5000ms.
+If this is a long-running test, pass a timeout value as the last argument or configure it globally with "testTimeout".
+ ❯ roles/development/__test__/development-role.test.ts:63:3
+     61|   })
+     62|
+     63|   it('stages shared development assets without the optional engineerin…
+       |   ^
+     64|     const root = fs.mkdtempSync(path.join(os.tmpdir(), 'airules-develo…
+     65|     temporaryRoots.push(root)
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[1/4]⎯
+
+ FAIL  roles/memory-superpowers/__test__/role.test.ts > distributes the requirements reviewer and its dependencies to all supported hosts
+Error: Test timed out in 5000ms.
+If this is a long-running test, pass a timeout value as the last argument or configure it globally with "testTimeout".
+ ❯ roles/memory-superpowers/__test__/role.test.ts:19:1
+     17| })
+     18|
+     19| it('distributes the requirements reviewer and its dependencies to all …
+       | ^
+     20|   const sandbox = mkdtempSync(path.join(os.tmpdir(), 'airules-review-p…
+     21|   try {
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[2/4]⎯
+
+ FAIL  roles/matt/__test__/matt-role.test.ts > matt role > stages the remote skills and canonical role path together
+Error: Test timed out in 5000ms.
+If this is a long-running test, pass a timeout value as the last argument or configure it globally with "testTimeout".
+ ❯ roles/matt/__test__/matt-role.test.ts:127:3
+    125|   })
+    126|
+    127|   it('stages the remote skills and canonical role path together', asyn…
+       |   ^
+    128|     const root = fs.mkdtempSync(path.join(os.tmpdir(), 'airules-matt-r…
+    129|     temporaryRoots.push(root)
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[3/4]⎯
+
+ FAIL  scripts/lib/__test__/contract-diff-cli.test.ts > contract-diff CLI > documents the command without requiring contract paths
+Error: Test timed out in 5000ms.
+If this is a long-running test, pass a timeout value as the last argument or configure it globally with "testTimeout".
+ ❯ scripts/lib/__test__/contract-diff-cli.test.ts:220:3
+    218|   })
+    219|
+    220|   it('documents the command without requiring contract paths', () => {
+       |   ^
+    221|     const result = run(['--help'])
+    222|
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[4/4]⎯
+
+
+ Test Files  4 failed | 36 passed (40)
+      Tests  4 failed | 494 passed (498)
+   Start at  10:49:13
+   Duration  462.91s (transform 10.86s, setup 0ms, import 28.75s, tests 399.97s, environment 10ms)
+
+[ELIFECYCLE] Test failed. See above for more details.
+Traceback (most recent call last):
+  File "<string>", line 1, in <module>
+  File "/Library/Developer/CommandLineTools/Library/Frameworks/Python3.framework/Versions/3.9/lib/python3.9/subprocess.py", line 528, in run
+    raise CalledProcessError(retcode, process.args,
+subprocess.CalledProcessError: Command '['pnpm', 'test', '--maxWorkers=1']' returned non-zero exit status 1.

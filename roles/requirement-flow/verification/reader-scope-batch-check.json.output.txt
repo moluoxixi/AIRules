@@ -1,0 +1,29 @@
+Already up to date
+Done in 160ms using pnpm v11.17.0
+
+ RUN  v4.1.4 /Users/mmhm/AIRules
+
+
+ Test Files  6 passed (6)
+      Tests  50 passed (50)
+   Start at  18:33:24
+   Duration  15.36s (transform 100ms, setup 0ms, import 186ms, tests 14.79s, environment 0ms)
+
+Already up to date
+Done in 180ms using pnpm v11.17.0
+$ tsc --noEmit
+Already up to date
+Done in 162ms using pnpm v11.17.0
+
+/Users/mmhm/AIRules/roles/requirement-flow/__test__/reader-anchors.test.ts
+  51:62  error  This line has 3 statements. Maximum allowed is 1  style/max-statements-per-line
+  54:30  error  Strings must use singlequote                      style/quotes
+
+✖ 2 problems (2 errors, 0 warnings)
+  1 error and 0 warnings potentially fixable with the `--fix` option.
+
+Traceback (most recent call last):
+  File "<string>", line 1, in <module>
+  File "/Library/Developer/CommandLineTools/Library/Frameworks/Python3.framework/Versions/3.9/lib/python3.9/subprocess.py", line 528, in run
+    raise CalledProcessError(retcode, process.args,
+subprocess.CalledProcessError: Command '['pnpm', 'exec', 'eslint', 'roles/requirement-flow/skills/requirement-flow/reader/assets/reader.js', 'roles/requirement-flow/skills/requirement-flow/reader/assets/search.js', 'roles/requirement-flow/skills/requirement-flow/reader/metadata.mjs', 'roles/requirement-flow/__test__/role.test.ts', 'roles/requirement-flow/__test__/reader-search.test.ts', 'roles/requirement-flow/__test__/reader-metadata.test.ts', 'roles/requirement-flow/__test__/reader-links.test.ts', 'roles/requirement-flow/__test__/reader-anchors.test.ts', 'roles/requirement-flow/__test__/reader-records.test.ts', 'roles/requirement-flow/reader-build/build.mjs']' returned non-zero exit status 1.

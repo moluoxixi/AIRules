@@ -1,0 +1,436 @@
+Already up to date
+Done in 927ms using pnpm v11.17.0
+$ vitest run --maxWorkers=4
+
+ RUN  v4.1.4 /Users/mmhm/AIRules
+
+Cloning into '/tmp/rf-review-oio1mfr_/vendor-sync-yCnROy/remote-work'...
+warning: You appear to have cloned an empty repository.
+done.
+Switched to a new branch 'main'
+To /tmp/rf-review-oio1mfr_/airules-repository-update-JHhYJw/remote.git
+ * [new branch]      main -> main
+To /tmp/rf-review-oio1mfr_/vendor-sync-yCnROy/origin.git
+ * [new branch]      main -> main
+Cloning into '/tmp/rf-review-oio1mfr_/vendor-sync-yCnROy/home/vendor/repos/demo'...
+done.
+Cloning into '/tmp/rf-review-oio1mfr_/airules-repository-update-JHhYJw/checkout'...
+done.
+HEAD is now at 16ce653 initial remote skill
+Reset branch 'main'
+To /tmp/rf-review-oio1mfr_/airules-repository-update-JHhYJw/remote.git
+   3171a83..3ae26f2  main -> main
+branch 'main' set up to track 'origin/main'.
+Your branch is up to date with 'origin/main'.
+HEAD is now at 16ce653 initial remote skill
+To /tmp/rf-review-oio1mfr_/vendor-sync-yCnROy/origin.git
+   16ce653..0c6419b  main -> main
+From /tmp/rf-review-oio1mfr_/vendor-sync-yCnROy/origin
+   16ce653..0c6419b  main       -> origin/main
+HEAD is now at 08ba9e2 local-only commit
+Reset branch 'main'
+branch 'main' set up to track 'origin/main'.
+Your branch is up to date with 'origin/main'.
+HEAD is now at 0c6419b remote latest skill
+To /tmp/rf-review-oio1mfr_/airules-repository-update-ImrY8L/remote.git
+ * [new branch]      main -> main
+Cloning into '/tmp/rf-review-oio1mfr_/airules-repository-update-ImrY8L/checkout'...
+done.
+Cloning into '/tmp/rf-review-oio1mfr_/vendor-sync-hplN5t/remote-work'...
+warning: You appear to have cloned an empty repository.
+done.
+Switched to a new branch 'main'
+To /tmp/rf-review-oio1mfr_/airules-repository-update-ImrY8L/remote.git
+   b316a70..ff4a79d  main -> main
+To /tmp/rf-review-oio1mfr_/vendor-sync-hplN5t/origin.git
+ * [new branch]      main -> main
+Cloning into '/tmp/rf-review-oio1mfr_/vendor-sync-hplN5t/home/vendor/repos/demo'...
+done.
+HEAD is now at 33672f1 initial remote skill
+Reset branch 'main'
+branch 'main' set up to track 'origin/main'.
+Your branch is up to date with 'origin/main'.
+HEAD is now at 33672f1 initial remote skill
+To /tmp/rf-review-oio1mfr_/vendor-sync-hplN5t/origin.git
+ + 33672f1...91db0af main -> main (forced update)
+From /tmp/rf-review-oio1mfr_/vendor-sync-hplN5t/origin
+ + 33672f1...91db0af main       -> origin/main  (forced update)
+HEAD is now at 33672f1 initial remote skill
+Reset branch 'main'
+branch 'main' set up to track 'origin/main'.
+Your branch is up to date with 'origin/main'.
+HEAD is now at 91db0af rewritten remote skill
+
+up to date, audited 1 package in 15s
+
+found 0 vulnerabilities
+Cloning into '/tmp/rf-review-oio1mfr_/vendor-sync-B8Iy7D/remote-work'...
+warning: You appear to have cloned an empty repository.
+done.
+Switched to a new branch 'main'
+
+> airules-update-fixture@1.0.0 build
+> node -e "require('node:fs').writeFileSync('build-marker', 'built')"
+
+To /tmp/rf-review-oio1mfr_/vendor-sync-B8Iy7D/origin.git
+ * [new branch]      main -> main
+To /tmp/rf-review-oio1mfr_/vendor-sync-B8Iy7D/origin.git
+   2e7af5f..8c66380  main -> main
+Cloning into '/tmp/rf-review-oio1mfr_/vendor-sync-B8Iy7D/home/vendor/repos/demo'...
+done.
+To /tmp/rf-review-oio1mfr_/airules-repository-update-RP9kOT/remote.git
+ * [new branch]      main -> main
+From /tmp/rf-review-oio1mfr_/vendor-sync-B8Iy7D/origin
+ * branch            2e7af5f17688b58efdef8b63131f7f7f783f10fd -> FETCH_HEAD
+HEAD is now at 8c66380 newer revision
+Cloning into '/tmp/rf-review-oio1mfr_/airules-repository-update-RP9kOT/checkout'...
+done.
+HEAD is now at 2e7af5f pinned revision
+HEAD is now at 2e7af5f pinned revision
+Previous HEAD position was 2e7af5f pinned revision
+Switched to branch 'main'
+To /tmp/rf-review-oio1mfr_/airules-repository-update-RP9kOT/remote.git
+   04ec1ef..f0447df  main -> main
+Cloning into '/tmp/rf-review-oio1mfr_/vendor-sync-yv55KV/remote-work'...
+warning: You appear to have cloned an empty repository.
+done.
+Switched to a new branch 'main'
+To /tmp/rf-review-oio1mfr_/vendor-sync-yv55KV/origin.git
+ * [new branch]      main -> main
+Cloning into '/tmp/rf-review-oio1mfr_/vendor-sync-yv55KV/home/vendor/repos/demo'...
+done.
+To /tmp/rf-review-oio1mfr_/airules-repository-update-tKRquV/remote.git
+ * [new branch]      main -> main
+HEAD is now at 446f34b initial
+Reset branch 'main'
+branch 'main' set up to track 'origin/main'.
+Your branch is up to date with 'origin/main'.
+Cloning into '/tmp/rf-review-oio1mfr_/airules-repository-update-tKRquV/checkout'...
+done.
+HEAD is now at 446f34b initial
+HEAD is now at 3425b60 initial
+Cloning into '/tmp/rf-review-oio1mfr_/vendor-sync-q3mj5u/remote-work'...
+warning: You appear to have cloned an empty repository.
+done.
+Switched to a new branch 'main'
+To /tmp/rf-review-oio1mfr_/airules-repository-update-Avpw8V/remote.git
+ * [new branch]      main -> main
+To /tmp/rf-review-oio1mfr_/vendor-sync-q3mj5u/origin.git
+ * [new branch]      main -> main
+Cloning into '/tmp/rf-review-oio1mfr_/vendor-sync-q3mj5u/home/vendor/repos/demo'...
+Cloning into '/tmp/rf-review-oio1mfr_/airules-repository-update-Avpw8V/checkout'...
+done.
+done.
+HEAD is now at 8e209d2 initial
+Reset branch 'main'
+branch 'main' set up to track 'origin/main'.
+Your branch is up to date with 'origin/main'.
+HEAD is now at 8e209d2 initial
+To /tmp/rf-review-oio1mfr_/airules-repository-update-2pqWND/remote.git
+ * [new branch]      main -> main
+Cloning into '/tmp/rf-review-oio1mfr_/vendor-sync-JUA285/remote-work'...
+warning: You appear to have cloned an empty repository.
+done.
+Switched to a new branch 'main'
+Cloning into '/tmp/rf-review-oio1mfr_/airules-repository-update-2pqWND/checkout'...
+done.
+To /tmp/rf-review-oio1mfr_/vendor-sync-JUA285/origin.git
+ * [new branch]      main -> main
+Cloning into '/tmp/rf-review-oio1mfr_/vendor-sync-JUA285/home/vendor/repos/demo'...
+done.
+HEAD is now at 16a7057 initial
+Reset branch 'main'
+branch 'main' set up to track 'origin/main'.
+Your branch is up to date with 'origin/main'.
+HEAD is now at 16a7057 initial
+To /tmp/rf-review-oio1mfr_/airules-repository-update-2pqWND/remote.git
+   a5da906..293eb8e  main -> main
+Cloning into '/tmp/rf-review-oio1mfr_/vendor-sync-7BnJFL/remote-work'...
+warning: You appear to have cloned an empty repository.
+done.
+Switched to a new branch 'trunk'
+ ❯ scripts/lib/__test__/repository-update.test.mjs (6 tests | 1 failed) 82550ms
+   × installs dependencies and rebuilds when only the npm lockfile changes 42321ms
+To /tmp/rf-review-oio1mfr_/vendor-sync-7BnJFL/origin.git
+ * [new branch]      trunk -> trunk
+Cloning into '/tmp/rf-review-oio1mfr_/vendor-sync-7BnJFL/clone'...
+done.
+warning: remote HEAD refers to nonexistent ref, unable to checkout
+Cloning into '/tmp/rf-review-oio1mfr_/vendor-sync-UcYcMN/remote-work'...
+warning: You appear to have cloned an empty repository.
+done.
+Switched to a new branch 'feature-only'
+Error: cannot acknowledge invalid knowledge relations: source_unmapped (path=api.md)
+To /tmp/rf-review-oio1mfr_/vendor-sync-UcYcMN/origin.git
+ * [new branch]      feature-only -> feature-only
+Cloning into '/tmp/rf-review-oio1mfr_/vendor-sync-UcYcMN/clone'...
+done.
+warning: remote HEAD refers to nonexistent ref, unable to checkout
+Cloning into '/tmp/rf-review-oio1mfr_/vendor-sync-8AUVMM/remote-work'...
+warning: You appear to have cloned an empty repository.
+done.
+Switched to a new branch 'first'
+To /tmp/rf-review-oio1mfr_/vendor-sync-8AUVMM/origin.git
+ * [new branch]      first -> first
+Switched to a new branch 'second'
+To /tmp/rf-review-oio1mfr_/vendor-sync-8AUVMM/origin.git
+ * [new branch]      second -> second
+Cloning into '/tmp/rf-review-oio1mfr_/vendor-sync-8AUVMM/clone'...
+done.
+warning: remote HEAD refers to nonexistent ref, unable to checkout
+Cloning into '/tmp/rf-review-oio1mfr_/vendor-sync-J3Vl1G/remote-work'...
+warning: You appear to have cloned an empty repository.
+done.
+Switched to a new branch 'main'
+To /tmp/rf-review-oio1mfr_/vendor-sync-J3Vl1G/origin.git
+ * [new branch]      main -> main
+Cloning into '/tmp/rf-review-oio1mfr_/vendor-sync-J3Vl1G/home/vendor/repos/remote-demo'...
+warning: filtering not recognized by server, ignoring
+warning: filtering not recognized by server, ignoring
+HEAD is now at 8b9c4e5 initial remote
+Reset branch 'main'
+branch 'main' set up to track 'origin/main'.
+Your branch is up to date with 'origin/main'.
+HEAD is now at 8b9c4e5 initial remote
+Cloning into '/tmp/rf-review-oio1mfr_/vendor-sync-mk65Jm/remote-work'...
+warning: You appear to have cloned an empty repository.
+done.
+Switched to a new branch 'main'
+ ❯ roles/trellis/__test__/trellis-knowledge-extension.test.ts (25 tests | 1 failed) 51110ms
+     × rejects malformed relations, missing pages, and dangling sources 8033ms
+test_assembled_existing_examples_have_live_business_task_and_source_links (test_reader.ReaderExampleTest) ... ok
+test_batch_scans_once_and_keeps_readable_peers_if_one_document_disappears (test_reader.ReaderServerTest) ... ok
+test_numeric_loopback_serves_http_without_reverse_dns (test_reader.ReaderServerTest) ... ok
+test_task_page_limit_does_not_read_unregistered_pairs (test_reader.ReaderServerTest) ... ok
+test_a_single_link_is_enough_for_relationships_without_writing_a_reciprocal_link (test_reader.ReaderTest) ... ok
+test_authentication_and_token_business_sources_are_readable_when_linked (test_reader.ReaderTest) ... ok
+test_bad_task_model_is_warned_and_non_string_titles_use_the_existing_directory (test_reader.ReaderTest) ... ok
+test_batch_returns_current_reachable_markdown_and_can_limit_it_to_tasks (test_reader.ReaderTest) ... ok
+test_binary_and_oversized_linked_sources_remain_unavailable (test_reader.ReaderTest) ... ok
+test_code_formatted_labels_link_documents_without_indexing_code_examples (test_reader.ReaderTest) ... ok
+test_content_revision_hashes_original_bom_and_crlf_bytes (test_reader.ReaderTest) ... ok
+test_content_revision_rejects_changed_markdown_and_evidence_until_catalog_refresh (test_reader.ReaderTest) ... ok
+test_encoded_names_and_anchors_resolve_to_the_original_markdown (test_reader.ReaderTest) ... ok
+test_explicit_credential_stores_stay_private_when_linked (test_reader.ReaderTest) ... ok
+test_explicit_workflow_document_entry_is_readable_without_exposing_private_paths (test_reader.ReaderTest) ... Timeout (0:00:30)!
+Thread 0x000000016d8c7000 (most recent call first):
+  File "/Users/mmhm/AIRules/roles/requirement-flow/__test__/test_reader.py", line 80 in read_output
+  File "/Library/Developer/CommandLineTools/Library/Frameworks/Python3.framework/Versions/3.9/lib/python3.9/threading.py", line 910 in run
+  File "/Library/Developer/CommandLineTools/Library/Frameworks/Python3.framework/Versions/3.9/lib/python3.9/threading.py", line 973 in _bootstrap_inner
+  File "/Library/Developer/CommandLineTools/Library/Frameworks/Python3.framework/Versions/3.9/lib/python3.9/threading.py", line 930 in _bootstrap
+
+Thread 0x00000001f849d8c0 (most recent call first):
+  File "/Library/Developer/CommandLineTools/Library/Frameworks/Python3.framework/Versions/3.9/lib/python3.9/socket.py", line 704 in readinto
+  File "/Library/Developer/CommandLineTools/Library/Frameworks/Python3.framework/Versions/3.9/lib/python3.9/http/client.py", line 277 in _read_status
+  File "/Library/Developer/CommandLineTools/Library/Frameworks/Python3.framework/Versions/3.9/lib/python3.9/http/client.py", line 316 in begin
+  File "/Library/Developer/CommandLineTools/Library/Frameworks/Python3.framework/Versions/3.9/lib/python3.9/http/client.py", line 1349 in getresponse
+  File "/Library/Developer/CommandLineTools/Library/Frameworks/Python3.framework/Versions/3.9/lib/python3.9/urllib/request.py", line 1369 in do_open
+ok
+test_linked_symlinks_cannot_expose_files_outside_the_project (test_reader.ReaderTest) ... ok
+test_missing_and_hidden_references_are_reported_without_invented_content (test_reader.ReaderTest) ... ok
+test_navigation_uses_entry_link_order_and_keeps_recursive_markdown_as_documents (test_reader.ReaderTest) ... ok
+test_only_linked_safe_text_sources_can_be_read (test_reader.ReaderTest) ... ok
+test_oversized_markdown_fails_clearly_and_can_be_replaced (test_reader.ReaderTest) ... ok
+test_parentheses_in_task_and_escaped_source_links_keep_their_full_targets (test_reader.ReaderTest) ... ok
+test_plain_markdown_links_connect_business_and_task_in_both_directions (test_reader.ReaderTest) ... ok
+test_project_and_static_asset_path_traversals_are_rejected (test_reader.ReaderTest) ... ok
+test_reading_does_not_generate_or_modify_project_files (test_reader.ReaderTest) ... ok
+test_refresh_reads_changed_markdown_and_recalculates_relationships (test_reader.ReaderTest) ... ok
+test_retained_task_directory_or_either_file_is_discovered_without_markdown_link (test_reader.ReaderTest) ... ok
+test_retained_task_page_has_original_bytes_links_and_isolated_headers (test_reader.ReaderTest) ... ok
+test_retained_task_rejects_changed_removed_private_or_unregistered_sources (test_reader.ReaderTest) ... ok
+test_text_html_sources_are_not_served_as_executable_html (test_reader.ReaderTest) ... ok
+test_unknown_routes_fail_and_entry_can_be_reloaded_after_an_error (test_reader.ReaderTest) ... ok
+test_unpaired_handbook_remains_a_plain_business_source (test_reader.ReaderTest) ... ok
+test_write_methods_do_not_modify_the_markdown (test_reader.ReaderTest) ... ok
+
+----------------------------------------------------------------------
+Ran 32 tests in 51.356s
+
+OK
+To /tmp/rf-review-oio1mfr_/vendor-sync-mk65Jm/origin.git
+ * [new branch]      main -> main
+Cloning into '/tmp/rf-review-oio1mfr_/vendor-sync-mk65Jm/home/vendor/repos/remote-demo'...
+warning: filtering not recognized by server, ignoring
+warning: filtering not recognized by server, ignoring
+HEAD is now at 186739b initial remote
+Reset branch 'main'
+branch 'main' set up to track 'origin/main'.
+Your branch is up to date with 'origin/main'.
+HEAD is now at 186739b initial remote
+ ❯ scripts/lib/__test__/vendor-sync.test.ts (12 tests | 1 failed) 155774ms
+   × ensureVendorRepo - handles non-fast-forward remote branch updates 32289ms
+Error: cannot acknowledge invalid knowledge relations: source_unmapped (path=api.md)
+ ❯ roles/requirement-flow/__test__/role.test.ts (5 tests | 1 failed) 171701ms
+   × runs the role regressions in test_reader.py 60333ms
+ ❯ scripts/lib/__test__/install-cli.test.ts (8 tests | 1 failed) 22169ms
+   × documents role-first install and verify commands 5319ms
+ ❯ roles/moluoxixi/__test__/init-project.test.ts (2 tests | 1 failed) 49532ms
+     × stages the self-contained extension beside the untouched package workspace 49307ms
+ ❯ roles/trellis/__test__/trellis-role.test.ts (5 tests | 1 failed) 8964ms
+     × stages the project initializer as the role skill 7585ms
+ ❯ __test__/commitlint.test.ts (2 tests | 2 failed) 25413ms
+   × commitlint - accepts scoped conventional commits 13897ms
+   × commitlint - rejects messages without a scope 11512ms
+ ❯ roles/general/__test__/general-role.test.ts (1 test | 1 failed) 14261ms
+     × distributes only shared skills and the memory MCP, including visualization assets 14252ms
+ ❯ roles/moluoxixi/__test__/moluoxixi-source.test.ts (26 tests | 1 failed) 8041ms
+     × maps native assets and distributes the self-contained initializer 6704ms
+[channel spawn] context path escapes cwd, refusing: ../moluoxixi-runtime-external-5cTmDa/evidence.md (add its real directory to channel.trusted_context_dirs in .moluoxixi/config.yaml to allow)
+
+⎯⎯⎯⎯⎯⎯ Failed Tests 11 ⎯⎯⎯⎯⎯⎯⎯
+
+ FAIL  __test__/commitlint.test.ts > commitlint - accepts scoped conventional commits
+Error: Test timed out in 5000ms.
+If this is a long-running test, pass a timeout value as the last argument or configure it globally with "testTimeout".
+ ❯ __test__/commitlint.test.ts:34:1
+     32| }
+     33|
+     34| it('commitlint - accepts scoped conventional commits', () => {
+       | ^
+     35|   withCommitMessage('feat(husky): add hook guards', (messagePath) => {
+     36|     assert.doesNotThrow(() => runCommitlint(messagePath))
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[1/11]⎯
+
+ FAIL  __test__/commitlint.test.ts > commitlint - rejects messages without a scope
+Error: Test timed out in 5000ms.
+If this is a long-running test, pass a timeout value as the last argument or configure it globally with "testTimeout".
+ ❯ __test__/commitlint.test.ts:40:1
+     38| })
+     39|
+     40| it('commitlint - rejects messages without a scope', () => {
+       | ^
+     41|   withCommitMessage('feat: add hook guards', (messagePath) => {
+     42|     assert.throws(() => runCommitlint(messagePath))
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[2/11]⎯
+
+ FAIL  roles/general/__test__/general-role.test.ts > general role > distributes only shared skills and the memory MCP, including visualization assets
+Error: Test timed out in 5000ms.
+If this is a long-running test, pass a timeout value as the last argument or configure it globally with "testTimeout".
+ ❯ roles/general/__test__/general-role.test.ts:22:3
+     20|
+     21| describe('general role', () => {
+     22|   it('distributes only shared skills and the memory MCP, including vis…
+       |   ^
+     23|     const loaded = await loadVendorManifest(manifestPath)
+     24|     expect(loaded.hosts).toEqual(HOST_IDS)
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[3/11]⎯
+
+ FAIL  roles/trellis/__test__/trellis-knowledge-extension.test.ts > trellis role-owned knowledge extension > rejects malformed relations, missing pages, and dangling sources
+Error: Test timed out in 5000ms.
+If this is a long-running test, pass a timeout value as the last argument or configure it globally with "testTimeout".
+ ❯ roles/trellis/__test__/trellis-knowledge-extension.test.ts:298:3
+    296|   }, 15_000)
+    297|
+    298|   detectorIt('rejects malformed relations, missing pages, and dangling…
+       |   ^
+    299|     const root = projectFixture()
+    300|     installExtension({ project: root, platforms: ['codex'] })
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[4/11]⎯
+
+ FAIL  roles/trellis/__test__/trellis-role.test.ts > native Trellis role > stages the project initializer as the role skill
+Error: Test timed out in 5000ms.
+If this is a long-running test, pass a timeout value as the last argument or configure it globally with "testTimeout".
+ ❯ roles/trellis/__test__/trellis-role.test.ts:245:3
+    243|   })
+    244|
+    245|   it('stages the project initializer as the role skill', async () => {
+       |   ^
+    246|     const root = fs.mkdtempSync(path.join(os.tmpdir(), 'airules-trelli…
+    247|     temporaryRoots.push(root)
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[5/11]⎯
+
+ FAIL  roles/moluoxixi/__test__/init-project.test.ts > init-project skill > stages the self-contained extension beside the untouched package workspace
+Error: Hook timed out in 10000ms.
+If this is a long-running hook, pass a timeout value as the last argument or configure it globally with "hookTimeout".
+ ❯ roles/moluoxixi/__test__/init-project.test.ts:12:1
+     10| const temporaryRoots: string[] = []
+     11|
+     12| afterEach(() => {
+       | ^
+     13|   for (const root of temporaryRoots.splice(0))
+     14|     fs.rmSync(root, { recursive: true, force: true })
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[6/11]⎯
+
+ FAIL  roles/moluoxixi/__test__/moluoxixi-source.test.ts > moluoxixi finalized role assets > maps native assets and distributes the self-contained initializer
+Error: Test timed out in 5000ms.
+If this is a long-running test, pass a timeout value as the last argument or configure it globally with "testTimeout".
+ ❯ roles/moluoxixi/__test__/moluoxixi-source.test.ts:165:3
+    163|   })
+    164|
+    165|   it('maps native assets and distributes the self-contained initialize…
+       |   ^
+    166|     const manifest = readRoleManifest()
+    167|     expect(manifest).toMatchObject({
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[7/11]⎯
+
+ FAIL  roles/requirement-flow/__test__/role.test.ts > runs the role regressions in test_reader.py
+Error: spawnSync python3 ETIMEDOUT
+ ❯ roles/requirement-flow/__test__/role.test.ts:126:5
+    124|   const py = python()
+    125|   try {
+    126|     execFileSync(py.command, [...py.prefix, '-c', regressionRunner, te…
+       |     ^
+    127|       cwd: repo,
+    128|       env: { ...process.env, PYTHONUTF8: '1', PYTHONDONTWRITEBYTECODE:…
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[8/11]⎯
+
+ FAIL  scripts/lib/__test__/install-cli.test.ts > documents role-first install and verify commands
+Error: Test timed out in 5000ms.
+If this is a long-running test, pass a timeout value as the last argument or configure it globally with "testTimeout".
+ ❯ scripts/lib/__test__/install-cli.test.ts:34:1
+     32| }
+     33|
+     34| it('documents role-first install and verify commands', () => {
+       | ^
+     35|   const result = runCli(['--help'])
+     36|
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[9/11]⎯
+
+ FAIL  scripts/lib/__test__/repository-update.test.mjs > installs dependencies and rebuilds when only the npm lockfile changes
+Error: Test timed out in 30000ms.
+If this is a long-running test, pass a timeout value as the last argument or configure it globally with "testTimeout".
+ ❯ scripts/lib/__test__/repository-update.test.mjs:71:3
+     69| }, GIT_TEST_TIMEOUT)
+     70|
+     71| it('installs dependencies and rebuilds when only the npm lockfile chan…
+       |   ^
+     72|   const packageJson = `${JSON.stringify({
+     73|     name: 'airules-update-fixture',
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[10/11]⎯
+
+ FAIL  scripts/lib/__test__/vendor-sync.test.ts > ensureVendorRepo - handles non-fast-forward remote branch updates
+Error: Test timed out in 30000ms.
+If this is a long-running test, pass a timeout value as the last argument or configure it globally with "testTimeout".
+ ❯ scripts/lib/__test__/vendor-sync.test.ts:83:1
+     81| }, GIT_INTEGRATION_TIMEOUT_MS)
+     82|
+     83| it('ensureVendorRepo - handles non-fast-forward remote branch updates'…
+       | ^
+     84|   withTempGitDir((tempRoot) => {
+     85|     const originRepo = path.join(tempRoot, 'origin.git')
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[11/11]⎯
+
+
+ Test Files  10 failed | 30 passed (40)
+      Tests  11 failed | 487 passed (498)
+   Start at  10:30:15
+   Duration  293.08s (transform 22.84s, setup 0ms, import 42.16s, tests 1062.73s, environment 9ms)
+
+[ELIFECYCLE] Test failed. See above for more details.
+Traceback (most recent call last):
+  File "<string>", line 1, in <module>
+  File "/Library/Developer/CommandLineTools/Library/Frameworks/Python3.framework/Versions/3.9/lib/python3.9/subprocess.py", line 528, in run
+    raise CalledProcessError(retcode, process.args,
+subprocess.CalledProcessError: Command '['pnpm', 'test', '--maxWorkers=4']' returned non-zero exit status 1.

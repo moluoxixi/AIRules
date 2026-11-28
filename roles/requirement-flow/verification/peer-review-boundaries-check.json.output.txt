@@ -1,0 +1,7 @@
+Already up to date
+Done in 182ms using pnpm v11.17.0
+Traceback (most recent call last):
+  File "<string>", line 1, in <module>
+  File "/Library/Developer/CommandLineTools/Library/Frameworks/Python3.framework/Versions/3.9/lib/python3.9/subprocess.py", line 528, in run
+    raise CalledProcessError(retcode, process.args,
+subprocess.CalledProcessError: Command '['pnpm', 'exec', 'vitest', 'run', 'roles/requirement-flow/__test__/role.test.ts', 'roles/requirement-flow/__test__/reader-search.test.ts', 'roles/requirement-flow/__test__/reader-metadata.test.ts', 'roles/requirement-flow/__test__/reader-links.test.ts', '--maxWorkers=1']' returned non-zero exit status 143.

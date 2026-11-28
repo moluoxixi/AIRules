@@ -1,0 +1,32 @@
+CHECK ["pnpm", "test", " roles/development/__test__/development-role.test.ts", " roles/memory-superpowers/__test__/role.test.ts", " roles/matt/__test__/matt-role.test.ts", " scripts/lib/__test__/contract-diff-cli.test.ts", "--maxWorkers=1"]
+Already up to date
+Done in 849ms using pnpm v11.17.0
+$ vitest run ' roles/development/__test__/development-role.test.ts' ' roles/memory-superpowers/__test__/role.test.ts' ' roles/matt/__test__/matt-role.test.ts' ' scripts/lib/__test__/contract-diff-cli.test.ts' --maxWorkers=1
+
+ RUN  v4.1.4 /Users/mmhm/AIRules
+
+No test files found, exiting with code 1
+
+filter:  roles/development/__test__/development-role.test.ts,  roles/memory-superpowers/__test__/role.test.ts,  roles/matt/__test__/matt-role.test.ts,  scripts/lib/__test__/contract-diff-cli.test.ts
+include: **/*.{test,spec}.?(c|m)[jt]s?(x)
+exclude:  **/node_modules/**, **/.pnpm-store/**, **/.qoder/**, **/.airules/**, **/dist/**, roles/*/packages/**, .skill-references/**, roles/*/.sync/**, vendor/**, .cache-git/**
+
+[ELIFECYCLE] Test failed. See above for more details.
+CHECK_EXIT 1
+CHECK ["pnpm", "run", "lint:check"]
+Already up to date
+Done in 587ms using pnpm v11.17.0
+$ eslint .
+CHECK_EXIT 0
+CHECK ["pnpm", "run", "typecheck"]
+Already up to date
+Done in 735ms using pnpm v11.17.0
+$ tsc --noEmit
+CHECK_EXIT 0
+CHECK ["pnpm", "run", "build"]
+Already up to date
+Done in 1.1s using pnpm v11.17.0
+$ node scripts/clean-dist.mjs
+$ tsc -p tsconfig.build.json
+CHECK_EXIT 0
+CHECK_RESULTS [{"command": ["pnpm", "test", " roles/development/__test__/development-role.test.ts", " roles/memory-superpowers/__test__/role.test.ts", " roles/matt/__test__/matt-role.test.ts", " scripts/lib/__test__/contract-diff-cli.test.ts", "--maxWorkers=1"], "exit_code": 1}, {"command": ["pnpm", "run", "lint:check"], "exit_code": 0}, {"command": ["pnpm", "run", "typecheck"], "exit_code": 0}, {"command": ["pnpm", "run", "build"], "exit_code": 0}]

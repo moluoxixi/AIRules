@@ -1,6 +1,6 @@
 schema_version: 2
 role_id: requirement-flow
-role_version: 0.15.0
+role_version: 0.15.1
 status: experimental
 canonical_root: roles/requirement-flow
 description: Business understanding, resumable change records and reviewable evidence alongside the official Ponytail plugin in full mode.
