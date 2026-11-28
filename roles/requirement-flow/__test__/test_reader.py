@@ -1051,7 +1051,7 @@ class ReaderServerTest(unittest.TestCase):
         spec.loader.exec_module(module)
         with tempfile.TemporaryDirectory(prefix="requirement-flow-embed-failure-") as directory:
             project = Path(directory)
-            html, model = "tasks/</script>/handbook.html", "tasks/</script>/model.json"
+            html, model = "tasks/repair/handbook.html", "tasks/repair/model.json"
             folder = (project / html).parent
             folder.mkdir(parents=True)
             page_data = b'<h1>Task</h1><a href="model.json">AI record</a>'
@@ -1082,21 +1082,23 @@ class ReaderServerTest(unittest.TestCase):
                     with response:
                         return response.status, response.read(), response.headers
 
-                def check_notification(status, source):
-                    with patch.object(reader, "task_page_content", wraps=reader.task_page_content) as read:
-                        actual, data, headers = get(embedded)
+                def check_notification(status, source, name=html, failure=None):
+                    behavior = {"wraps": reader.task_page_content} if failure is None else {"side_effect": failure}
+                    with patch.object(reader, "task_page_content", **behavior) as read:
+                        actual, data, headers = get(base + quote(name, safe="/") + "?view=detail&embed=1&embed_request=" + token)
                     self.assertEqual(actual, status)
-                    read.assert_called_once_with(html, page["sha256"], page["model_sha256"])
+                    read.assert_called_once_with(name, page["sha256"], page["model_sha256"])
                     self.assertTrue(headers["Content-Type"].startswith("text/html"))
                     self.assertEqual(headers["Content-Security-Policy"], module.TASK_PAGE_CSP)
                     text = data.decode()
                     self.assertIn(source, text)
                     message = re.search(r"<script>parent\.postMessage\((.*), '\*'\);</script>", text)
                     self.assertIsNotNone(message, text)
-                    self.assertEqual(json.loads(message.group(1)), expected)
+                    self.assertEqual(json.loads(message.group(1)), {**expected, "path": name})
                     self.assertEqual(text.count("</script>"), 1)
                     self.assertNotIn("tasks/</script>", text)
-                    self.assertIn(r"\u003c/script\u003e", message.group(1))
+                    if "</script>" in name:
+                        self.assertIn(r"\u003c/script\u003e", message.group(1))
 
                 try:
                     status, data, headers = get(embedded)
@@ -1118,9 +1120,15 @@ class ReaderServerTest(unittest.TestCase):
                     self.assertEqual(json.loads(data)["error_source"], "index.md")
                     entry.write_bytes(entry_data)
                     (project / model).unlink()
-                    check_notification(404, "tasks/&lt;/script&gt;/model.json")
+                    check_notification(404, model)
+                    # Exercise hostile URL/error serialization without creating a Windows-invalid filename.
+                    hostile_path = "tasks/</script>/handbook.html"
+                    hostile_error = module.ReaderError("来源不存在：tasks/</script>/model.json", 404)
+                    check_notification(404, "tasks/&lt;/script&gt;/model.json", hostile_path, hostile_error)
                     for query in ("?embed=1", "?embed=1&embed_request=" + quote("</script>")):
-                        status, data, headers = get(route + query)
+                        with patch.object(reader, "task_page_content", side_effect=hostile_error) as read:
+                            status, data, headers = get(base + quote(hostile_path, safe="/") + query)
+                        read.assert_called_once_with(hostile_path, page["sha256"], page["model_sha256"])
                         self.assertEqual(status, 404)
                         self.assertTrue(headers["Content-Type"].startswith("text/html"))
                         self.assertNotIn(b"<script>", data)
