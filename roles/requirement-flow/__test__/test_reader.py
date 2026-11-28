@@ -2,6 +2,7 @@
 import importlib.util
 import io
 import hashlib
+from contextlib import nullcontext
 from html import unescape as html_unescape
 import json
 from pathlib import Path
@@ -1276,48 +1277,59 @@ class ReaderServerTest(unittest.TestCase):
         spec = importlib.util.spec_from_file_location("requirement_flow_reader_authored_pair", SCRIPT)
         module = importlib.util.module_from_spec(spec)
         spec.loader.exec_module(module)
-        for scanned in (False, True):
-            for model_first in (False, True):
-                for model_data in (b'{"work":', b'{"currency":"CNY"}', b'{"work":{}}'):
-                    for view in (None, "overview", "detail", "unsupported", "", "overview&view="):
-                        with self.subTest(scanned=scanned, model_first=model_first, model_data=model_data, view=view), \
-                                tempfile.TemporaryDirectory(prefix="requirement-flow-authored-pair-") as directory:
-                            project = Path(directory)
-                            folder = project / "docs/changes/pickup"
-                            folder.mkdir(parents=True)
-                            (folder / "handbook.html").write_bytes(b'<h1>Task page without a digest declaration</h1>')
-                            (folder / "model.json").write_bytes(model_data)
-                            html, model = "docs/changes/pickup/handbook.html", "docs/changes/pickup/model.json"
-                            query = "" if view is None else "?view=" + view
-                            links = [f"[Task]({html}{query}#node=pickup)", f"[Model]({model})"]
-                            if model_first:
-                                links.reverse()
-                            (project / "index.md").write_text("# Business\n" + "\n".join(links), encoding="utf-8")
-                            # Every case starts a new reader, with no warm relationship memory.
-                            reader = module.ReaderProject(project, "index.md", None if scanned else [])
-                            current = reader.catalog()
-                            link = next(link for link in current["documents"][0]["links"] if link["target"] == html)
-                            if view in ("unsupported", "", "overview&view="):
-                                self.assertEqual(current["task_errors"], {})
-                                self.assertEqual(current["task_pages"], [])
-                                self.assertTrue(all(link["kind"] == "source" and link["exists"]
-                                                    for link in current["documents"][0]["links"]))
-                                self.assertEqual(reader.content(model), model_data)
-                                continue
-                            self.assertEqual((link["kind"], link["query"], link["fragment"]),
-                                             ("task-page", query.lstrip("?"), "node=pickup"))
-                            if model_data == b'{"work":{}}':
-                                self.assertEqual(current["task_errors"], {})
-                                self.assertEqual(current["task_pages"][0]["path"], html)
-                                self.assertTrue(link["exists"])
-                            else:
-                                self.assertEqual(current["task_errors"][html], current["task_errors"][model])
-                                self.assertTrue(current["warnings"])
-                                self.assertFalse(link["exists"])
-                                self.assertTrue({html, model}.isdisjoint(source["path"] for source in current["sources"]))
-                                with self.assertRaises(module.ReaderError) as refused:
-                                    reader.content(model)
-                                self.assertIn("JSON" if model_data == b'{"work":' else "work", str(refused.exception))
+        with patch.object(module.subprocess, "Popen", wraps=module.subprocess.Popen) as starts:
+            with module.MarkdownMetadata() as metadata, \
+                    patch.object(module, "MarkdownMetadata", side_effect=lambda: nullcontext(metadata)), \
+                    patch.object(metadata, "read", wraps=metadata.read) as reads:
+                for scanned in (False, True):
+                    for model_first in (False, True):
+                        for model_data in (b'{"work":', b'{"currency":"CNY"}', b'{"work":{}}'):
+                            for view in (None, "overview", "detail", "unsupported", "", "overview&view="):
+                                with self.subTest(scanned=scanned, model_first=model_first, model_data=model_data, view=view), \
+                                        tempfile.TemporaryDirectory(prefix="requirement-flow-authored-pair-") as directory:
+                                    project = Path(directory)
+                                    folder = project / "docs/changes/pickup"
+                                    folder.mkdir(parents=True)
+                                    (folder / "handbook.html").write_bytes(b'<h1>Task page without a digest declaration</h1>')
+                                    (folder / "model.json").write_bytes(model_data)
+                                    html, model = "docs/changes/pickup/handbook.html", "docs/changes/pickup/model.json"
+                                    query = "" if view is None else "?view=" + view
+                                    links = [f"[Task]({html}{query}#node=pickup)", f"[Model]({model})"]
+                                    if model_first:
+                                        links.reverse()
+                                    (project / "index.md").write_text("# Business\n" + "\n".join(links), encoding="utf-8")
+                                    # Only the source-to-metadata parser is shared; every project starts cold.
+                                    reader = module.ReaderProject(project, "index.md", None if scanned else [])
+                                    self.assertEqual(reader.metadata_cache, {})
+                                    self.assertEqual(reader.confirmed_tasks, set())
+                                    current = reader.catalog()
+                                    link = next(link for link in current["documents"][0]["links"] if link["target"] == html)
+                                    if view in ("unsupported", "", "overview&view="):
+                                        self.assertEqual(current["task_errors"], {})
+                                        self.assertEqual(current["task_pages"], [])
+                                        self.assertTrue(all(link["kind"] == "source" and link["exists"]
+                                                            for link in current["documents"][0]["links"]))
+                                        self.assertEqual(reader.content(model), model_data)
+                                        continue
+                                    self.assertEqual((link["kind"], link["query"], link["fragment"]),
+                                                     ("task-page", query.lstrip("?"), "node=pickup"))
+                                    if model_data == b'{"work":{}}':
+                                        self.assertEqual(current["task_errors"], {})
+                                        self.assertEqual(current["task_pages"][0]["path"], html)
+                                        self.assertTrue(link["exists"])
+                                    else:
+                                        self.assertEqual(current["task_errors"][html], current["task_errors"][model])
+                                        self.assertTrue(current["warnings"])
+                                        self.assertFalse(link["exists"])
+                                        self.assertTrue({html, model}.isdisjoint(source["path"] for source in current["sources"]))
+                                        with self.assertRaises(module.ReaderError) as refused:
+                                            reader.content(model)
+                                        self.assertIn("JSON" if model_data == b'{"work":' else "work", str(refused.exception))
+                self.assertEqual(reads.call_count, 72)
+                starts.assert_called_once()
+            self.assertIsNotNone(metadata.process.poll())
+            self.assertTrue(metadata.process.stdin.closed)
+            self.assertTrue(metadata.process.stdout.closed)
 
     def test_global_task_evidence_makes_the_first_catalog_independent_of_document_order(self):
         spec = importlib.util.spec_from_file_location("requirement_flow_reader_global_intent", SCRIPT)
